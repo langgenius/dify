@@ -58,7 +58,7 @@ export const zDeleteTagsByTagIdPath = z.object({
 /**
  * Tag deleted successfully
  */
-export const zDeleteTagsByTagIdResponse = z.record(z.string(), z.never())
+export const zDeleteTagsByTagIdResponse = z.void()
 
 export const zPatchTagsByTagIdBody = zTagUpdateRequestPayload
 

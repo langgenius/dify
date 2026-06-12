@@ -3,944 +3,829 @@ Console management APIs for app configuration, monitoring, and administration
 
 ## Version: 1.0
 
-### Security
-**Bearer**  
-
-| apiKey | *API Key* |
-| ------ | --------- |
-| Description | Type: Bearer {your-api-key} |
-| In | header |
-| Name | Authorization |
+### Available authorizations
+#### Bearer (API Key Authentication)
+Type: Bearer {your-api-key}  
+**Name:** Authorization  
+**In:** header  
 
 ---
 ## console
 Console management API operations
 
-### /account/avatar
-
-#### GET
-##### Description
-
+### [GET] /account/avatar
 Get account avatar url
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | avatar | query | Avatar file ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AvatarUrlResponse](#avatarurlresponse) |
+| 200 | Success | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /account/avatar
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountAvatarPayload](#accountavatarpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountAvatarPayload](#accountavatarpayload)<br> |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
-
-### /account/change-email
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChangeEmailSendPayload](#changeemailsendpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Success | **application/json**: [Account](#account)<br> |
 
-### /account/change-email/check-email-unique
+### [POST] /account/change-email
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailSendPayload](#changeemailsendpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CheckEmailUniquePayload](#checkemailuniquepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
-### /account/change-email/reset
+### [POST] /account/change-email/check-email-unique
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CheckEmailUniquePayload](#checkemailuniquepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChangeEmailResetPayload](#changeemailresetpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /account/change-email/validity
+### [POST] /account/change-email/reset
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailResetPayload](#changeemailresetpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChangeEmailValidityPayload](#changeemailvaliditypayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [VerificationTokenResponse](#verificationtokenresponse) |
+| 200 | Success | **application/json**: [Account](#account)<br> |
 
-### /account/delete
+### [POST] /account/change-email/validity
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChangeEmailValidityPayload](#changeemailvaliditypayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountDeletePayload](#accountdeletepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
 
-### /account/delete/feedback
+### [POST] /account/delete
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountDeletePayload](#accountdeletepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountDeletionFeedbackPayload](#accountdeletionfeedbackpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /account/delete/verify
+### [POST] /account/delete/feedback
+#### Request Body
 
-#### GET
-##### Responses
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountDeletionFeedbackPayload](#accountdeletionfeedbackpayload)<br> |
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultDataResponse](#simpleresultdataresponse) |
-
-### /account/education
-
-#### GET
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [EducationStatusResponse](#educationstatusresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-#### POST
-##### Parameters
+### [GET] /account/delete/verify
+#### Responses
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EducationActivatePayload](#educationactivatepayload) |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
-##### Responses
+### [GET] /account/education
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EducationStatusResponse](#educationstatusresponse)<br> |
+
+### [POST] /account/education
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EducationActivatePayload](#educationactivatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /account/education/autocomplete
-
-#### GET
-##### Parameters
+### [GET] /account/education/autocomplete
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EducationAutocompleteQuery](#educationautocompletequery) |
+| keywords | query |  | Yes | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [EducationAutocompleteResponse](#educationautocompleteresponse) |
-
-### /account/education/verify
-
-#### GET
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [EducationVerifyResponse](#educationverifyresponse) |
+| 200 | Success | **application/json**: [EducationAutocompleteResponse](#educationautocompleteresponse)<br> |
 
-### /account/init
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountInitPayload](#accountinitpayload) |
-
-##### Responses
+### [GET] /account/education/verify
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [EducationVerifyResponse](#educationverifyresponse)<br> |
 
-### /account/integrates
+### [POST] /account/init
+#### Request Body
 
-#### GET
-##### Responses
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountInitPayload](#accountinitpayload)<br> |
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [AccountIntegrateListResponse](#accountintegratelistresponse) |
-
-### /account/interface-language
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountInterfaceLanguagePayload](#accountinterfacelanguagepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /account/interface-theme
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountInterfaceThemePayload](#accountinterfacethemepayload) |
-
-##### Responses
+### [GET] /account/integrates
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
+| 200 | Success | **application/json**: [AccountIntegrateListResponse](#accountintegratelistresponse)<br> |
 
-### /account/name
+### [POST] /account/interface-language
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountInterfaceLanguagePayload](#accountinterfacelanguagepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountNamePayload](#accountnamepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
+| 200 | Success | **application/json**: [Account](#account)<br> |
 
-### /account/password
+### [POST] /account/interface-theme
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountInterfaceThemePayload](#accountinterfacethemepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountPasswordPayload](#accountpasswordpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
+| 200 | Success | **application/json**: [Account](#account)<br> |
 
-### /account/profile
+### [POST] /account/name
+#### Request Body
 
-#### GET
-##### Responses
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountNamePayload](#accountnamepayload)<br> |
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
-
-### /account/timezone
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AccountTimezonePayload](#accounttimezonepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [Account](#account) |
+| 200 | Success | **application/json**: [Account](#account)<br> |
 
-### /activate
+### [POST] /account/password
+#### Request Body
 
-#### POST
-##### Description
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountPasswordPayload](#accountpasswordpayload)<br> |
 
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Account](#account)<br> |
+
+### [GET] /account/profile
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Account](#account)<br> |
+
+### [POST] /account/timezone
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountTimezonePayload](#accounttimezonepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Account](#account)<br> |
+
+### [POST] /activate
 Activate account with invitation token
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ActivatePayload](#activatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ActivatePayload](#activatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Account activated successfully | [ActivationResponse](#activationresponse) |
+| 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
 | 400 | Already activated or invalid token |  |
 
-### /activate/check
-
-#### GET
-##### Description
-
+### [GET] /activate/check
 Check if activation token is valid
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ActivateCheckQuery](#activatecheckquery) |
+| email | query |  | No |  |
+| token | query |  | Yes | string |
+| workspace_id | query |  | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ActivationCheckResponse](#activationcheckresponse) |
+| 200 | Success | **application/json**: [ActivationCheckResponse](#activationcheckresponse)<br> |
 
-### /agents
-
-#### GET
-##### Parameters
+### [GET] /agents
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query |  | No | string |
-| limit | query |  | No | integer |
-| page | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent roster list | [AgentRosterListResponse](#agentrosterlistresponse) |
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RosterAgentCreatePayload](#rosteragentcreatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent created | [AgentRosterResponse](#agentrosterresponse) |
+| 200 | Agent roster list | **application/json**: [AgentRosterListResponse](#agentrosterlistresponse)<br> |
 
-### /agents/invite-options
+### [POST] /agents
+#### Request Body
 
-#### GET
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RosterAgentCreatePayload](#rosteragentcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent created | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
+
+### [GET] /agents/invite-options
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | query | Workflow app id for in-current-workflow markers | No | string |
 | keyword | query |  | No | string |
-| limit | query |  | No | integer |
-| page | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent invite options | [AgentInviteOptionsResponse](#agentinviteoptionsresponse) |
+| 200 | Agent invite options | **application/json**: [AgentInviteOptionsResponse](#agentinviteoptionsresponse)<br> |
 
-### /agents/{agent_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /agents/{agent_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Agent archived |
 
-#### GET
-##### Parameters
+### [GET] /agents/{agent_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent detail | [AgentRosterResponse](#agentrosterresponse) |
+| 200 | Agent detail | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
 
-#### PATCH
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
-| payload | body |  | Yes | [RosterAgentUpdatePayload](#rosteragentupdatepayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent updated | [AgentRosterResponse](#agentrosterresponse) |
-
-### /agents/{agent_id}/versions
-
-#### GET
-##### Parameters
+### [PATCH] /agents/{agent_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RosterAgentUpdatePayload](#rosteragentupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent versions | [AgentConfigSnapshotListResponse](#agentconfigsnapshotlistresponse) |
+| 200 | Agent updated | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
 
-### /agents/{agent_id}/versions/{version_id}
+### [GET] /agents/{agent_id}/versions
+#### Parameters
 
-#### GET
-##### Parameters
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent versions | **application/json**: [AgentConfigSnapshotListResponse](#agentconfigsnapshotlistresponse)<br> |
+
+### [GET] /agents/{agent_id}/versions/{version_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string |
 | version_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent version detail | [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse) |
+| 200 | Agent version detail | **application/json**: [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse)<br> |
 
-### /all-workspaces
-
-#### GET
-##### Parameters
+### [GET] /all-workspaces
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkspaceListQuery](#workspacelistquery) |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /api-based-extension
-
-#### GET
-##### Description
-
+### [GET] /api-based-extension
 Get all API-based extensions for current tenant
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [APIBasedExtensionListResponse](#apibasedextensionlistresponse) |
+| 200 | Success | **application/json**: [APIBasedExtensionListResponse](#apibasedextensionlistresponse)<br> |
 
-#### POST
-##### Description
-
+### [POST] /api-based-extension
 Create a new API-based extension
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [APIBasedExtensionPayload](#apibasedextensionpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [APIBasedExtensionPayload](#apibasedextensionpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Extension created successfully | [APIBasedExtensionResponse](#apibasedextensionresponse) |
+| 201 | Extension created successfully | **application/json**: [APIBasedExtensionResponse](#apibasedextensionresponse)<br> |
 
-### /api-based-extension/{id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /api-based-extension/{id}
 Delete API-based extension
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | id | path | Extension ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Extension deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /api-based-extension/{id}
 Get API-based extension by ID
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | id | path | Extension ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [APIBasedExtensionResponse](#apibasedextensionresponse) |
+| 200 | Success | **application/json**: [APIBasedExtensionResponse](#apibasedextensionresponse)<br> |
 
-#### POST
-##### Description
-
+### [POST] /api-based-extension/{id}
 Update API-based extension
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [APIBasedExtensionPayload](#apibasedextensionpayload) |
 | id | path | Extension ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [APIBasedExtensionPayload](#apibasedextensionpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Extension updated successfully | [APIBasedExtensionResponse](#apibasedextensionresponse) |
+| 200 | Extension updated successfully | **application/json**: [APIBasedExtensionResponse](#apibasedextensionresponse)<br> |
 
-### /api-key-auth/data-source
-
-#### GET
-##### Responses
+### [GET] /api-key-auth/data-source
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ApiKeyAuthDataSourceListResponse](#apikeyauthdatasourcelistresponse) |
+| 200 | Success | **application/json**: [ApiKeyAuthDataSourceListResponse](#apikeyauthdatasourcelistresponse)<br> |
 
-### /api-key-auth/data-source/binding
+### [POST] /api-key-auth/data-source/binding
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiKeyAuthBindingPayload](#apikeyauthbindingpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ApiKeyAuthBindingPayload](#apikeyauthbindingpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /api-key-auth/data-source/{binding_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /api-key-auth/data-source/{binding_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | binding_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Binding deleted successfully |
 
-### /app-dsl-version
-
-#### GET
-##### Summary
-
-Get current app DSL version for workflow clipboard compatibility
-
-##### Description
+### [GET] /app-dsl-version
+**Get current app DSL version for workflow clipboard compatibility**
 
 Get current app DSL version
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AppDslVersionResponse](#appdslversionresponse) |
+| 200 | Success | **application/json**: [AppDslVersionResponse](#appdslversionresponse)<br> |
 
-### /app/prompt-templates
-
-#### GET
-##### Description
-
+### [GET] /app/prompt-templates
 Get advanced prompt templates based on app mode and model configuration
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AdvancedPromptTemplateQuery](#advancedprompttemplatequery) |
+| app_mode | query | Application mode | Yes | string |
+| has_context | query | Whether has context | No | string, <br>**Default:** true |
+| model_mode | query | Model mode | Yes | string |
+| model_name | query | Model name | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Prompt templates retrieved successfully | [ object ] |
+| 200 | Prompt templates retrieved successfully | **application/json**: [ object ]<br> |
 | 400 | Invalid request parameters |  |
 
-### /apps
-
-#### GET
-##### Summary
-
-Get app list
-
-##### Description
+### [GET] /apps
+**Get app list**
 
 Get list of applications with pagination and filtering
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppListQuery](#applistquery) |
+| creator_ids | query | Filter by creator account IDs | No |  |
+| is_created_by_me | query | Filter by creator | No |  |
+| limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| name | query | Filter by app name | No |  |
+| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Filter by tag IDs | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AppPagination](#apppagination) |
+| 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
 
-#### POST
-##### Summary
-
-Create app
-
-##### Description
+### [POST] /apps
+**Create app**
 
 Create a new application
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CreateAppPayload](#createapppayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateAppPayload](#createapppayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | App created successfully | [AppDetail](#appdetail) |
+| 201 | App created successfully | **application/json**: [AppDetail](#appdetail)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
-### /apps/imports
+### [POST] /apps/imports
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppImportPayload](#appimportpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppImportPayload](#appimportpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import completed | [Import](#import) |
-| 202 | Import pending confirmation | [Import](#import) |
-| 400 | Import failed | [Import](#import) |
+| 200 | Import completed | **application/json**: [Import](#import)<br> |
+| 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br> |
 
-### /apps/imports/{app_id}/check-dependencies
-
-#### GET
-##### Parameters
+### [GET] /apps/imports/{app_id}/check-dependencies
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked | [CheckDependenciesResult](#checkdependenciesresult) |
+| 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
 
-### /apps/imports/{import_id}/confirm
-
-#### POST
-##### Parameters
+### [POST] /apps/imports/{import_id}/confirm
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | import_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import confirmed | [Import](#import) |
-| 400 | Import failed | [Import](#import) |
+| 200 | Import confirmed | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br> |
 
-### /apps/workflows/online-users
-
-#### POST
-##### Description
-
+### [POST] /apps/workflows/online-users
 Get workflow online users
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowOnlineUsersPayload](#workflowonlineuserspayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowOnlineUsersPayload](#workflowonlineuserspayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow online users retrieved successfully | [WorkflowOnlineUsersResponse](#workflowonlineusersresponse) |
+| 200 | Workflow online users retrieved successfully | **application/json**: [WorkflowOnlineUsersResponse](#workflowonlineusersresponse)<br> |
 
-### /apps/{app_id}
-
-#### DELETE
-##### Summary
-
-Delete app
-
-##### Description
+### [DELETE] /apps/{app_id}
+**Delete app**
 
 Delete application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | App deleted successfully |
 | 403 | Insufficient permissions |
 
-#### GET
-##### Summary
-
-Get app detail
-
-##### Description
+### [GET] /apps/{app_id}
+**Get app detail**
 
 Get application details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AppDetailWithSite](#appdetailwithsite) |
+| 200 | Success | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 
-#### PUT
-##### Summary
-
-Update app
-
-##### Description
+### [PUT] /apps/{app_id}
+**Update app**
 
 Update application details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [UpdateAppPayload](#updateapppayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [UpdateAppPayload](#updateapppayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | App updated successfully | [AppDetailWithSite](#appdetailwithsite) |
+| 200 | App updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/advanced-chat/workflow-runs
-
-#### GET
-##### Summary
-
-Get advanced chat app workflow run list
-
-##### Description
+### [GET] /apps/{app_id}/advanced-chat/workflow-runs
+**Get advanced chat app workflow run list**
 
 Get advanced chat workflow run list
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | last_id | query | Last run ID for pagination | No | string |
-| limit | query | Number of items per page (1-100) | No | integer |
-| status | query | Workflow run status filter | No | string |
-| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
+| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
+| status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string, <br>**Available values:** "app-run", "debugging" |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs retrieved successfully | [AdvancedChatWorkflowRunPaginationResponse](#advancedchatworkflowrunpaginationresponse) |
+| 200 | Workflow runs retrieved successfully | **application/json**: [AdvancedChatWorkflowRunPaginationResponse](#advancedchatworkflowrunpaginationresponse)<br> |
 
-### /apps/{app_id}/advanced-chat/workflow-runs/count
+### [GET] /apps/{app_id}/advanced-chat/workflow-runs/count
+**Get advanced chat workflow runs count statistics**
 
-#### GET
-##### Summary
-
-Get advanced chat workflow runs count statistics
-
-##### Description
-
-Get advanced chat workflow runs count statistics
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| status | query | Workflow run status filter | No | string |
+| status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
 | time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
-| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string, <br>**Available values:** "app-run", "debugging" |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs count retrieved successfully | [WorkflowRunCountResponse](#workflowruncountresponse) |
+| 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
 
-### /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
-
-#### POST
-##### Summary
-
-Preview human input form content and placeholders
-
-##### Description
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
+**Preview human input form content and placeholders**
 
 Get human input form preview for advanced chat workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [HumanInputFormPreviewPayload](#humaninputformpreviewpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormPreviewPayload](#humaninputformpreviewpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
-
-#### POST
-##### Summary
-
-Submit human input form preview
-
-##### Description
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
+**Submit human input form preview**
 
 Submit human input form preview for advanced chat workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
-
-#### POST
-##### Summary
-
-Run draft workflow iteration node
-
-##### Description
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
+**Run draft workflow iteration node**
 
 Run draft workflow iteration node for advanced chat
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [IterationNodeRunPayload](#iterationnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IterationNodeRunPayload](#iterationnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -948,26 +833,25 @@ Run draft workflow iteration node for advanced chat
 | 403 | Permission denied |
 | 404 | Node not found |
 
-### /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
-
-#### POST
-##### Summary
-
-Run draft workflow loop node
-
-##### Description
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
+**Run draft workflow loop node**
 
 Run draft workflow loop node for advanced chat
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [LoopNodeRunPayload](#loopnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LoopNodeRunPayload](#loopnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -975,25 +859,24 @@ Run draft workflow loop node for advanced chat
 | 403 | Permission denied |
 | 404 | Node not found |
 
-### /apps/{app_id}/advanced-chat/workflows/draft/run
-
-#### POST
-##### Summary
-
-Run draft workflow
-
-##### Description
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
+**Run draft workflow**
 
 Run draft workflow for advanced chat application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AdvancedChatWorkflowRunPayload](#advancedchatworkflowrunpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AdvancedChatWorkflowRunPayload](#advancedchatworkflowrunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1001,137 +884,130 @@ Run draft workflow for advanced chat application
 | 400 | Invalid request parameters |
 | 403 | Permission denied |
 
-### /apps/{app_id}/agent-composer
-
-#### GET
-##### Parameters
+### [GET] /apps/{app_id}/agent-composer
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app composer state | [AgentAppComposerResponse](#agentappcomposerresponse) |
+| 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
 
-#### PUT
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer saved | [AgentAppComposerResponse](#agentappcomposerresponse) |
-
-### /apps/{app_id}/agent-composer/candidates
-
-#### GET
-##### Parameters
+### [PUT] /apps/{app_id}/agent-composer
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app composer candidates | [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse) |
+| 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
 
-### /apps/{app_id}/agent-composer/validate
-
-#### POST
-##### Parameters
+### [GET] /apps/{app_id}/agent-composer/candidates
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app composer validation result | [AgentComposerValidateResponse](#agentcomposervalidateresponse) |
+| 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
 
-### /apps/{app_id}/agent-features
+### [POST] /apps/{app_id}/agent-composer/validate
+#### Parameters
 
-#### POST
-##### Description
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+
+### [POST] /apps/{app_id}/agent-features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AgentAppFeaturesPayload](#agentappfeaturespayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppFeaturesPayload](#agentappfeaturespayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Features updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid configuration |  |
 | 404 | App not found |  |
 
-### /apps/{app_id}/agent-referencing-workflows
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/agent-referencing-workflows
 List workflow apps that reference this Agent App's bound Agent (read-only)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Referencing workflows listed successfully | [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse) |
+| 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
 | 404 | App not found |  |
 
-### /apps/{app_id}/agent-sandbox/files
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/agent-sandbox/files
 List a directory in an Agent App conversation sandbox
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | Directory path relative to the sandbox workspace | No | string |
+| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Listing returned | [SandboxListResponse](#sandboxlistresponse) |
+| 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
 
-### /apps/{app_id}/agent-sandbox/files/read
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/agent-sandbox/files/read
 Read a text/binary preview file in an Agent App conversation sandbox
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -1139,137 +1015,118 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | conversation_id | query | Agent App conversation ID | Yes | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Preview returned | [SandboxReadResponse](#sandboxreadresponse) |
+| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
-### /apps/{app_id}/agent-sandbox/files/upload
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/agent-sandbox/files/upload
 Upload one Agent App sandbox file as a Dify ToolFile mapping
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
-| payload | body |  | Yes | [AgentSandboxUploadPayload](#agentsandboxuploadpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentSandboxUploadPayload](#agentsandboxuploadpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Uploaded | [SandboxUploadResponse](#sandboxuploadresponse) |
+| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
-### /apps/{app_id}/agent/logs
-
-#### GET
-##### Summary
-
-Get agent logs
-
-##### Description
+### [GET] /apps/{app_id}/agent/logs
+**Get agent logs**
 
 Get agent execution logs for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AgentLogQuery](#agentlogquery) |
 | app_id | path | Application ID | Yes | string |
+| conversation_id | query | Conversation UUID | Yes | string |
+| message_id | query | Message UUID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent logs retrieved successfully | [ object ] |
+| 200 | Agent logs retrieved successfully | **application/json**: [ object ]<br> |
 | 400 | Invalid request parameters |  |
 
-### /apps/{app_id}/agent/skills/standardize
-
-#### POST
-##### Summary
-
-Upload a Skill, validate it, and standardize it into the app agent's drive
-
-##### Description
+### [POST] /apps/{app_id}/agent/skills/standardize
+**Upload a Skill, validate it, and standardize it into the app agent's drive**
 
 Validate + standardize a Skill into the agent drive (ENG-594)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 201 | Skill standardized into drive |
 | 400 | Invalid skill package or no bound agent |
 
-### /apps/{app_id}/agent/skills/upload
-
-#### POST
-##### Summary
-
-Validate an uploaded Skill package and persist the archive
-
-##### Description
+### [POST] /apps/{app_id}/agent/skills/upload
+**Validate an uploaded Skill package and persist the archive**
 
 Upload + validate a Skill package (.zip/.skill) and extract its manifest
 Returns a validated skill ref (to bind into the Agent soul config on save)
 plus its manifest. Standardizing into the agent drive is ENG-594.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 201 | Skill validated |
 | 400 | Invalid skill package |
 
-### /apps/{app_id}/annotation-reply/{action}
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/annotation-reply/{action}
 Enable or disable annotation reply for an app
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AnnotationReplyPayload](#annotationreplypayload) |
 | action | path | Action to perform (enable/disable) | Yes | string |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AnnotationReplyPayload](#annotationreplypayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Action completed successfully |
 | 403 | Insufficient permissions |
 
-### /apps/{app_id}/annotation-reply/{action}/status/{job_id}
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotation-reply/{action}/status/{job_id}
 Get status of annotation reply action job
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -1277,122 +1134,116 @@ Get status of annotation reply action job
 | app_id | path | Application ID | Yes | string |
 | job_id | path | Job ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Job status retrieved successfully |
 | 403 | Insufficient permissions |
 
-### /apps/{app_id}/annotation-setting
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotation-setting
 Get annotation settings for an app
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Annotation settings retrieved successfully |
 | 403 | Insufficient permissions |
 
-### /apps/{app_id}/annotation-settings/{annotation_setting_id}
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/annotation-settings/{annotation_setting_id}
 Update annotation settings for an app
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AnnotationSettingUpdatePayload](#annotationsettingupdatepayload) |
 | annotation_setting_id | path | Annotation setting ID | Yes | string |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AnnotationSettingUpdatePayload](#annotationsettingupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Settings updated successfully |
 | 403 | Insufficient permissions |
 
-### /apps/{app_id}/annotations
-
-#### DELETE
-##### Parameters
+### [DELETE] /apps/{app_id}/annotations
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AnnotationListQuery](#annotationlistquery) |
 | app_id | path | Application ID | Yes | string |
+| keyword | query | Search keyword | No | string |
+| limit | query | Page size | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Annotations retrieved successfully |
 | 403 | Insufficient permissions |
 
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/annotations
 Create a new annotation for an app
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CreateAnnotationPayload](#createannotationpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateAnnotationPayload](#createannotationpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Annotation created successfully | [Annotation](#annotation) |
+| 201 | Annotation created successfully | **application/json**: [Annotation](#annotation)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/annotations/batch-import
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/annotations/batch-import
 Batch import annotations from CSV file with rate limiting and security checks
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1402,204 +1253,184 @@ Batch import annotations from CSV file with rate limiting and security checks
 | 413 | File too large |
 | 429 | Too many requests or concurrent imports |
 
-### /apps/{app_id}/annotations/batch-import-status/{job_id}
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotations/batch-import-status/{job_id}
 Get status of batch import job
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | job_id | path | Job ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Job status retrieved successfully |
 | 403 | Insufficient permissions |
 
-### /apps/{app_id}/annotations/count
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotations/count
 Get count of message annotations for the app
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Annotation count retrieved successfully | [AnnotationCountResponse](#annotationcountresponse) |
+| 200 | Annotation count retrieved successfully | **application/json**: [AnnotationCountResponse](#annotationcountresponse)<br> |
 
-### /apps/{app_id}/annotations/export
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotations/export
 Export all annotations for an app with CSV injection protection
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Annotations exported successfully | [AnnotationExportList](#annotationexportlist) |
+| 200 | Annotations exported successfully | **application/json**: [AnnotationExportList](#annotationexportlist)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/annotations/{annotation_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /apps/{app_id}/annotations/{annotation_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | annotation_id | path |  | Yes | string |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [UpdateAnnotationPayload](#updateannotationpayload) |
 | annotation_id | path | Annotation ID | Yes | string |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [UpdateAnnotationPayload](#updateannotationpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Annotation updated successfully | [Annotation](#annotation) |
+| 200 | Annotation updated successfully | **application/json**: [Annotation](#annotation)<br> |
 | 204 | Annotation deleted successfully |  |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/annotations/{annotation_id}/hit-histories
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/annotations/{annotation_id}/hit-histories
 Get hit histories for an annotation
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | annotation_id | path | Annotation ID | Yes | string |
 | app_id | path | Application ID | Yes | string |
-| limit | query | Page size | No | integer |
-| page | query | Page number | No | integer |
+| limit | query | Page size | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Hit histories retrieved successfully | [AnnotationHitHistoryList](#annotationhithistorylist) |
+| 200 | Hit histories retrieved successfully | **application/json**: [AnnotationHitHistoryList](#annotationhithistorylist)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/api-enable
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/api-enable
 Enable or disable app API
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppApiStatusPayload](#appapistatuspayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppApiStatusPayload](#appapistatuspayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API status updated successfully | [AppDetail](#appdetail) |
+| 200 | API status updated successfully | **application/json**: [AppDetail](#appdetail)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/audio-to-text
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/audio-to-text
 Transcript audio to text for chat messages
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | App ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Audio transcription successful | [AudioTranscriptResponse](#audiotranscriptresponse) |
+| 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad request - No audio uploaded or unsupported type |  |
 | 413 | Audio file too large |  |
 
-### /apps/{app_id}/chat-conversations
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/chat-conversations
 Get chat conversations with pagination, filtering and summary
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChatConversationQuery](#chatconversationquery) |
 | app_id | path | Application ID | Yes | string |
+| annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| keyword | query | Search keyword | No |  |
+| limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort field and direction | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ConversationWithSummaryPagination](#conversationwithsummarypagination) |
+| 200 | Success | **application/json**: [ConversationWithSummaryPagination](#conversationwithsummarypagination)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/chat-conversations/{conversation_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
 Delete a chat conversation
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | conversation_id | path | Conversation ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1607,124 +1438,109 @@ Delete a chat conversation
 | 403 | Insufficient permissions |
 | 404 | Conversation not found |
 
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/chat-conversations/{conversation_id}
 Get chat conversation details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | conversation_id | path | Conversation ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ConversationDetail](#conversationdetail) |
+| 200 | Success | **application/json**: [ConversationDetail](#conversationdetail)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | Conversation not found |  |
 
-### /apps/{app_id}/chat-messages
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/chat-messages
 Get chat messages for a conversation with pagination
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChatMessagesQuery](#chatmessagesquery) |
 | app_id | path | Application ID | Yes | string |
+| conversation_id | query | Conversation ID | Yes | string |
+| first_id | query | First message ID for pagination | No |  |
+| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse) |
+| 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
 | 404 | Conversation not found |  |
 
-### /apps/{app_id}/chat-messages/{message_id}/suggested-questions
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/chat-messages/{message_id}/suggested-questions
 Get suggested questions for a message
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | message_id | path | Message ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Suggested questions retrieved successfully | [SuggestedQuestionsResponse](#suggestedquestionsresponse) |
+| 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
 | 404 | Message or conversation not found |  |
 
-### /apps/{app_id}/chat-messages/{task_id}/stop
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/chat-messages/{task_id}/stop
 Stop a running chat message generation
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | task_id | path | Task ID to stop | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /apps/{app_id}/completion-conversations
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/completion-conversations
 Get completion conversations with pagination and filtering
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CompletionConversationQuery](#completionconversationquery) |
 | app_id | path | Application ID | Yes | string |
+| annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| keyword | query | Search keyword | No |  |
+| limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ConversationPagination](#conversationpagination) |
+| 200 | Success | **application/json**: [ConversationPagination](#conversationpagination)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/completion-conversations/{conversation_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /apps/{app_id}/completion-conversations/{conversation_id}
 Delete a completion conversation
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | conversation_id | path | Conversation ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1732,41 +1548,40 @@ Delete a completion conversation
 | 403 | Insufficient permissions |
 | 404 | Conversation not found |
 
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/completion-conversations/{conversation_id}
 Get completion conversation details with messages
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | conversation_id | path | Conversation ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ConversationMessageDetail](#conversationmessagedetail) |
+| 200 | Success | **application/json**: [ConversationMessageDetail](#conversationmessagedetail)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | Conversation not found |  |
 
-### /apps/{app_id}/completion-messages
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/completion-messages
 Generate completion message for debugging
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CompletionMessagePayload](#completionmessagepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CompletionMessagePayload](#completionmessagepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1774,161 +1589,148 @@ Generate completion message for debugging
 | 400 | Invalid request parameters |
 | 404 | App not found |
 
-### /apps/{app_id}/completion-messages/{task_id}/stop
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/completion-messages/{task_id}/stop
 Stop a running completion message generation
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | task_id | path | Task ID to stop | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /apps/{app_id}/conversation-variables
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/conversation-variables
 Get conversation variables for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ConversationVariablesQuery](#conversationvariablesquery) |
 | app_id | path | Application ID | Yes | string |
+| conversation_id | query | Conversation ID to filter variables | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | [PaginatedConversationVariableResponse](#paginatedconversationvariableresponse) |
+| 200 | Conversation variables retrieved successfully | **application/json**: [PaginatedConversationVariableResponse](#paginatedconversationvariableresponse)<br> |
 
-### /apps/{app_id}/convert-to-workflow
-
-#### POST
-##### Summary
-
-Convert basic mode of chatbot app to workflow mode
-
-##### Description
+### [POST] /apps/{app_id}/convert-to-workflow
+**Convert basic mode of chatbot app to workflow mode**
 
 Convert application to workflow mode
 Convert expert mode of chatbot app to workflow mode
 Convert Completion App to Workflow App
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ConvertToWorkflowPayload](#converttoworkflowpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConvertToWorkflowPayload](#converttoworkflowpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Application converted to workflow successfully | [NewAppResponse](#newappresponse) |
+| 200 | Application converted to workflow successfully | **application/json**: [NewAppResponse](#newappresponse)<br> |
 | 400 | Application cannot be converted |  |
 | 403 | Permission denied |  |
 
-### /apps/{app_id}/copy
-
-#### POST
-##### Summary
-
-Copy app
-
-##### Description
+### [POST] /apps/{app_id}/copy
+**Copy app**
 
 Create a copy of an existing application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CopyAppPayload](#copyapppayload) |
 | app_id | path | Application ID to copy | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CopyAppPayload](#copyapppayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | App copied successfully | [AppDetailWithSite](#appdetailwithsite) |
+| 201 | App copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/export
-
-#### GET
-##### Summary
-
-Export app
-
-##### Description
+### [GET] /apps/{app_id}/export
+**Export app**
 
 Export application configuration as DSL
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppExportQuery](#appexportquery) |
 | app_id | path | Application ID to export | Yes | string |
+| include_secret | query | Include secrets in export | No | boolean |
+| workflow_id | query | Specific workflow ID to export | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | App exported successfully | [AppExportResponse](#appexportresponse) |
+| 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/feedbacks
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/feedbacks
 Create or update message feedback (like/dislike)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MessageFeedbackPayload](#messagefeedbackpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Feedback updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | Message not found |  |
 
-### /apps/{app_id}/feedbacks/export
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/feedbacks/export
 Export user feedback data for Google Sheets
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [FeedbackExportQuery](#feedbackexportquery) |
 | app_id | path | Application ID | Yes | string |
+| end_date | query | End date (YYYY-MM-DD) | No |  |
+| format | query | Export format | No | string, <br>**Available values:** "csv", "json", <br>**Default:** csv |
+| from_source | query | Filter by feedback source | No |  |
+| has_comment | query | Only include feedback with comments | No |  |
+| rating | query | Filter by rating | No |  |
+| start_date | query | Start date (YYYY-MM-DD) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1936,67 +1738,63 @@ Export user feedback data for Google Sheets
 | 400 | Invalid parameters |
 | 500 | Internal server error |
 
-### /apps/{app_id}/icon
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/icon
 Update application icon
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppIconPayload](#appiconpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppIconPayload](#appiconpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Icon updated successfully |
 | 403 | Insufficient permissions |
 
-### /apps/{app_id}/messages/{message_id}
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/messages/{message_id}
 Get message details by ID
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | message_id | path | Message ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Message retrieved successfully | [MessageDetailResponse](#messagedetailresponse) |
+| 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 404 | Message not found |  |
 
-### /apps/{app_id}/model-config
-
-#### POST
-##### Summary
-
-Modify app model config
-
-##### Description
+### [POST] /apps/{app_id}/model-config
+**Modify app model config**
 
 Update application model configuration
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ModelConfigRequest](#modelconfigrequest) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ModelConfigRequest](#modelconfigrequest)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -2004,745 +1802,666 @@ Update application model configuration
 | 400 | Invalid configuration |
 | 404 | App not found |
 
-### /apps/{app_id}/name
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/name
 Check if app name is available
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppNamePayload](#appnamepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppNamePayload](#appnamepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Name availability checked | [AppDetail](#appdetail) |
+| 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
 
-### /apps/{app_id}/publish-to-creators-platform
+### [POST] /apps/{app_id}/publish-to-creators-platform
+**Publish app to Creators Platform**
 
-#### POST
-##### Summary
-
-Publish app to Creators Platform
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [RedirectUrlResponse](#redirecturlresponse) |
+| 200 | Success | **application/json**: [RedirectUrlResponse](#redirecturlresponse)<br> |
 
-### /apps/{app_id}/server
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/server
 Get MCP server configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | MCP server configuration retrieved successfully | [AppMCPServerResponse](#appmcpserverresponse) |
+| 200 | MCP server configuration retrieved successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/server
 Create MCP server configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MCPServerCreatePayload](#mcpservercreatepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MCPServerCreatePayload](#mcpservercreatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | MCP server configuration created successfully | [AppMCPServerResponse](#appmcpserverresponse) |
+| 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
 
-#### PUT
-##### Description
-
+### [PUT] /apps/{app_id}/server
 Update MCP server configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MCPServerUpdatePayload](#mcpserverupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MCPServerUpdatePayload](#mcpserverupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | MCP server configuration updated successfully | [AppMCPServerResponse](#appmcpserverresponse) |
+| 200 | MCP server configuration updated successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | Server not found |  |
 
-### /apps/{app_id}/site
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/site
 Update application site configuration
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppSiteUpdatePayload](#appsiteupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppSiteUpdatePayload](#appsiteupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Site configuration updated successfully | [AppSiteResponse](#appsiteresponse) |
+| 200 | Site configuration updated successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | App not found |  |
 
-### /apps/{app_id}/site-enable
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/site-enable
 Enable or disable app site
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppSiteStatusPayload](#appsitestatuspayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppSiteStatusPayload](#appsitestatuspayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Site status updated successfully | [AppDetail](#appdetail) |
+| 200 | Site status updated successfully | **application/json**: [AppDetail](#appdetail)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/site/access-token-reset
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/site/access-token-reset
 Reset access token for application site
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Access token reset successfully | [AppSiteResponse](#appsiteresponse) |
+| 200 | Access token reset successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions (admin/owner required) |  |
 | 404 | App or site not found |  |
 
-### /apps/{app_id}/statistics/average-response-time
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/average-response-time
 Get average response time statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Average response time statistics retrieved successfully | [ object ] |
+| 200 | Average response time statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/average-session-interactions
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/average-session-interactions
 Get average session interaction statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Average session interaction statistics retrieved successfully | [ object ] |
+| 200 | Average session interaction statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/daily-conversations
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/daily-conversations
 Get daily conversation statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily conversation statistics retrieved successfully | [ object ] |
+| 200 | Daily conversation statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/daily-end-users
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/daily-end-users
 Get daily terminal/end-user statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily terminal statistics retrieved successfully | [ object ] |
+| 200 | Daily terminal statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/daily-messages
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/daily-messages
 Get daily message statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily message statistics retrieved successfully | [ object ] |
+| 200 | Daily message statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/token-costs
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/token-costs
 Get daily token cost statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily token cost statistics retrieved successfully | [ object ] |
+| 200 | Daily token cost statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/tokens-per-second
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/tokens-per-second
 Get tokens per second statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tokens per second statistics retrieved successfully | [ object ] |
+| 200 | Tokens per second statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/statistics/user-satisfaction-rate
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/statistics/user-satisfaction-rate
 Get user satisfaction rate statistics for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [StatisticTimeRangeQuery](#statistictimerangequery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | User satisfaction rate statistics retrieved successfully | [ object ] |
+| 200 | User satisfaction rate statistics retrieved successfully | **application/json**: [ object ]<br> |
 
-### /apps/{app_id}/text-to-audio
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/text-to-audio
 Convert text to speech for chat messages
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TextToSpeechPayload](#texttospeechpayload) |
 | app_id | path | App ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TextToSpeechPayload](#texttospeechpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Text to speech conversion successful |
 | 400 | Bad request - Invalid parameters |
 
-### /apps/{app_id}/text-to-audio/voices
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/text-to-audio/voices
 Get available TTS voices for a specific language
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TextToSpeechVoiceQuery](#texttospeechvoicequery) |
 | app_id | path | App ID | Yes | string |
+| language | query | Language code | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | TTS voices retrieved successfully | [ object ] |
+| 200 | TTS voices retrieved successfully | **application/json**: [ object ]<br> |
 | 400 | Invalid language parameter |  |
 
-### /apps/{app_id}/trace
-
-#### GET
-##### Summary
-
-Get app trace
-
-##### Description
+### [GET] /apps/{app_id}/trace
+**Get app trace**
 
 Get app tracing configuration
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Trace configuration retrieved successfully |
 
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/trace
 Update app tracing configuration
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [AppTracePayload](#apptracepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppTracePayload](#apptracepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Trace configuration updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Trace configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Insufficient permissions |  |
 
-### /apps/{app_id}/trace-config
-
-#### DELETE
-##### Summary
-
-Delete an existing trace app configuration
-
-##### Description
+### [DELETE] /apps/{app_id}/trace-config
+**Delete an existing trace app configuration**
 
 Delete an existing tracing configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TraceProviderQuery](#traceproviderquery) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceProviderQuery](#traceproviderquery)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Tracing configuration deleted successfully |
 | 400 | Invalid request parameters or configuration not found |
 
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/trace-config
 Get tracing configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TraceProviderQuery](#traceproviderquery) |
 | app_id | path | Application ID | Yes | string |
+| tracing_provider | query | Tracing provider name | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tracing configuration retrieved successfully | object |
+| 200 | Tracing configuration retrieved successfully | **application/json**: object<br> |
 | 400 | Invalid request parameters |  |
 
-#### PATCH
-##### Summary
-
-Update an existing trace app configuration
-
-##### Description
+### [PATCH] /apps/{app_id}/trace-config
+**Update an existing trace app configuration**
 
 Update an existing tracing configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TraceConfigPayload](#traceconfigpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceConfigPayload](#traceconfigpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tracing configuration updated successfully | object |
+| 200 | Tracing configuration updated successfully | **application/json**: object<br> |
 | 400 | Invalid request parameters or configuration not found |  |
 
-#### POST
-##### Summary
-
-Create a new trace app configuration
-
-##### Description
+### [POST] /apps/{app_id}/trace-config
+**Create a new trace app configuration**
 
 Create a new tracing configuration for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TraceConfigPayload](#traceconfigpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TraceConfigPayload](#traceconfigpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Tracing configuration created successfully | object |
+| 201 | Tracing configuration created successfully | **application/json**: object<br> |
 | 400 | Invalid request parameters or configuration already exists |  |
 
-### /apps/{app_id}/trigger-enable
+### [POST] /apps/{app_id}/trigger-enable
+**Update app trigger (enable/disable)**
 
-#### POST
-##### Summary
-
-Update app trigger (enable/disable)
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ParserEnable](#parserenable) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [WorkflowTriggerResponse](#workflowtriggerresponse) |
-
-### /apps/{app_id}/triggers
-
-#### GET
-##### Summary
-
-Get app triggers list
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserEnable](#parserenable)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [WorkflowTriggerListResponse](#workflowtriggerlistresponse) |
+| 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
 
-### /apps/{app_id}/workflow-app-logs
+### [GET] /apps/{app_id}/triggers
+**Get app triggers list**
 
-#### GET
-##### Summary
+#### Parameters
 
-Get workflow app logs
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
 
-##### Description
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkflowTriggerListResponse](#workflowtriggerlistresponse)<br> |
+
+### [GET] /apps/{app_id}/workflow-app-logs
+**Get workflow app logs**
 
 Get workflow application execution logs
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowAppLogQuery](#workflowapplogquery) |
 | app_id | path | Application ID | Yes | string |
+| created_at__after | query | Filter logs created after this timestamp | No |  |
+| created_at__before | query | Filter logs created before this timestamp | No |  |
+| created_by_account | query | Filter by account | No |  |
+| created_by_end_user_session_id | query | Filter by end user session ID | No |  |
+| detail | query | Whether to return detailed logs | No | boolean |
+| keyword | query | Search keyword for filtering logs | No |  |
+| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
+| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow app logs retrieved successfully | [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse) |
+| 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
 
-### /apps/{app_id}/workflow-archived-logs
-
-#### GET
-##### Summary
-
-Get workflow archived logs
-
-##### Description
+### [GET] /apps/{app_id}/workflow-archived-logs
+**Get workflow archived logs**
 
 Get workflow archived execution logs
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowAppLogQuery](#workflowapplogquery) |
 | app_id | path | Application ID | Yes | string |
+| created_at__after | query | Filter logs created after this timestamp | No |  |
+| created_at__before | query | Filter logs created before this timestamp | No |  |
+| created_by_account | query | Filter by account | No |  |
+| created_by_end_user_session_id | query | Filter by end user session ID | No |  |
+| detail | query | Whether to return detailed logs | No | boolean |
+| keyword | query | Search keyword for filtering logs | No |  |
+| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
+| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow archived logs retrieved successfully | [WorkflowArchivedLogPaginationResponse](#workflowarchivedlogpaginationresponse) |
+| 200 | Workflow archived logs retrieved successfully | **application/json**: [WorkflowArchivedLogPaginationResponse](#workflowarchivedlogpaginationresponse)<br> |
 
-### /apps/{app_id}/workflow-runs
+### [GET] /apps/{app_id}/workflow-runs
+**Get workflow run list**
 
-#### GET
-##### Summary
-
-Get workflow run list
-
-##### Description
-
-Get workflow run list
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | last_id | query | Last run ID for pagination | No | string |
-| limit | query | Number of items per page (1-100) | No | integer |
-| status | query | Workflow run status filter | No | string |
-| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
+| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
+| status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string, <br>**Available values:** "app-run", "debugging" |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs retrieved successfully | [WorkflowRunPaginationResponse](#workflowrunpaginationresponse) |
+| 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
 
-### /apps/{app_id}/workflow-runs/count
+### [GET] /apps/{app_id}/workflow-runs/count
+**Get workflow runs count statistics**
 
-#### GET
-##### Summary
-
-Get workflow runs count statistics
-
-##### Description
-
-Get workflow runs count statistics
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| status | query | Workflow run status filter | No | string |
+| status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
 | time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
-| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string |
+| triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string, <br>**Available values:** "app-run", "debugging" |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs count retrieved successfully | [WorkflowRunCountResponse](#workflowruncountresponse) |
+| 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
 
-### /apps/{app_id}/workflow-runs/tasks/{task_id}/stop
-
-#### POST
-##### Summary
-
-Stop workflow task
-
-##### Description
+### [POST] /apps/{app_id}/workflow-runs/tasks/{task_id}/stop
+**Stop workflow task**
 
 Stop running workflow task
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | task_id | path | Task ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Task not found |  |
 
-### /apps/{app_id}/workflow-runs/{run_id}
+### [GET] /apps/{app_id}/workflow-runs/{run_id}
+**Get workflow run detail**
 
-#### GET
-##### Summary
-
-Get workflow run detail
-
-##### Description
-
-Get workflow run detail
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetailResponse](#workflowrundetailresponse) |
+| 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
 
-### /apps/{app_id}/workflow-runs/{run_id}/export
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow-runs/{run_id}/export
 Generate a download URL for an archived workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Export URL generated | [WorkflowRunExportResponse](#workflowrunexportresponse) |
+| 200 | Export URL generated | **application/json**: [WorkflowRunExportResponse](#workflowrunexportresponse)<br> |
 
-### /apps/{app_id}/workflow-runs/{run_id}/node-executions
+### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
+**Get workflow run node execution list**
 
-#### GET
-##### Summary
-
-Get workflow run node execution list
-
-##### Description
-
-Get workflow run node execution list
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
+| 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 | 404 | Workflow run not found |  |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 List a directory in a workflow Agent node sandbox
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -2750,22 +2469,18 @@ List a directory in a workflow Agent node sandbox
 | node_id | path | Workflow Agent node ID | Yes | string |
 | workflow_run_id | path | Workflow run ID | Yes | string |
 | node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
-| path | query | Directory path relative to the sandbox workspace | No | string |
+| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Listing returned | [SandboxListResponse](#sandboxlistresponse) |
+| 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
 Read a text/binary preview file in a workflow Agent node sandbox
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -2775,208 +2490,166 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Preview returned | [SandboxReadResponse](#sandboxreadresponse) |
+| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
 Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
 | workflow_run_id | path |  | Yes | string |
-| payload | body |  | Yes | [WorkflowAgentSandboxUploadPayload](#workflowagentsandboxuploadpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowAgentSandboxUploadPayload](#workflowagentsandboxuploadpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Uploaded | [SandboxUploadResponse](#sandboxuploadresponse) |
+| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
-### /apps/{app_id}/workflow/comments
+### [GET] /apps/{app_id}/workflow/comments
+**Get all comments for a workflow**
 
-#### GET
-##### Summary
-
-Get all comments for a workflow
-
-##### Description
-
-Get all comments for a workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Comments retrieved successfully | [WorkflowCommentBasicList](#workflowcommentbasiclist) |
+| 200 | Comments retrieved successfully | **application/json**: [WorkflowCommentBasicList](#workflowcommentbasiclist)<br> |
 
-#### POST
-##### Summary
+### [POST] /apps/{app_id}/workflow/comments
+**Create a new workflow comment**
 
-Create a new workflow comment
-
-##### Description
-
-Create a new workflow comment
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowCommentCreatePayload](#workflowcommentcreatepayload) |
-| app_id | path | Application ID | Yes | string |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Comment created successfully | [WorkflowCommentCreate](#workflowcommentcreate) |
-
-### /apps/{app_id}/workflow/comments/mention-users
-
-#### GET
-##### Summary
-
-Get all users in current tenant for mentions
-
-##### Description
-
-Get all users in current tenant for mentions
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowCommentCreatePayload](#workflowcommentcreatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Mentionable users retrieved successfully | [WorkflowCommentMentionUsersPayload](#workflowcommentmentionuserspayload) |
+| 201 | Comment created successfully | **application/json**: [WorkflowCommentCreate](#workflowcommentcreate)<br> |
 
-### /apps/{app_id}/workflow/comments/{comment_id}
+### [GET] /apps/{app_id}/workflow/comments/mention-users
+**Get all users in current tenant for mentions**
 
-#### DELETE
-##### Summary
+#### Parameters
 
-Delete a workflow comment
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
 
-##### Description
+#### Responses
 
-Delete a workflow comment
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Mentionable users retrieved successfully | **application/json**: [WorkflowCommentMentionUsersPayload](#workflowcommentmentionuserspayload)<br> |
 
-##### Parameters
+### [DELETE] /apps/{app_id}/workflow/comments/{comment_id}
+**Delete a workflow comment**
+
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Comment deleted successfully |
 
-#### GET
-##### Summary
+### [GET] /apps/{app_id}/workflow/comments/{comment_id}
+**Get a specific workflow comment**
 
-Get a specific workflow comment
-
-##### Description
-
-Get a specific workflow comment
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Comment retrieved successfully | [WorkflowCommentDetail](#workflowcommentdetail) |
+| 200 | Comment retrieved successfully | **application/json**: [WorkflowCommentDetail](#workflowcommentdetail)<br> |
 
-#### PUT
-##### Summary
+### [PUT] /apps/{app_id}/workflow/comments/{comment_id}
+**Update a workflow comment**
 
-Update a workflow comment
-
-##### Description
-
-Update a workflow comment
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowCommentUpdatePayload](#workflowcommentupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowCommentUpdatePayload](#workflowcommentupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Comment updated successfully | [WorkflowCommentUpdate](#workflowcommentupdate) |
+| 200 | Comment updated successfully | **application/json**: [WorkflowCommentUpdate](#workflowcommentupdate)<br> |
 
-### /apps/{app_id}/workflow/comments/{comment_id}/replies
+### [POST] /apps/{app_id}/workflow/comments/{comment_id}/replies
+**Add a reply to a workflow comment**
 
-#### POST
-##### Summary
-
-Add a reply to a workflow comment
-
-##### Description
-
-Add a reply to a workflow comment
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowCommentReplyPayload](#workflowcommentreplypayload) |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowCommentReplyPayload](#workflowcommentreplypayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Reply created successfully | [WorkflowCommentReplyCreate](#workflowcommentreplycreate) |
+| 201 | Reply created successfully | **application/json**: [WorkflowCommentReplyCreate](#workflowcommentreplycreate)<br> |
 
-### /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
+### [DELETE] /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
+**Delete a comment reply**
 
-#### DELETE
-##### Summary
-
-Delete a comment reply
-
-##### Description
-
-Delete a comment reply
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -2984,456 +2657,406 @@ Delete a comment reply
 | comment_id | path | Comment ID | Yes | string |
 | reply_id | path | Reply ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Reply deleted successfully |
 
-#### PUT
-##### Summary
+### [PUT] /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
+**Update a comment reply**
 
-Update a comment reply
-
-##### Description
-
-Update a comment reply
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowCommentReplyPayload](#workflowcommentreplypayload) |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 | reply_id | path | Reply ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowCommentReplyPayload](#workflowcommentreplypayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Reply updated successfully | [WorkflowCommentReplyUpdate](#workflowcommentreplyupdate) |
+| 200 | Reply updated successfully | **application/json**: [WorkflowCommentReplyUpdate](#workflowcommentreplyupdate)<br> |
 
-### /apps/{app_id}/workflow/comments/{comment_id}/resolve
+### [POST] /apps/{app_id}/workflow/comments/{comment_id}/resolve
+**Resolve a workflow comment**
 
-#### POST
-##### Summary
-
-Resolve a workflow comment
-
-##### Description
-
-Resolve a workflow comment
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | comment_id | path | Comment ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Comment resolved successfully | [WorkflowCommentResolve](#workflowcommentresolve) |
+| 200 | Comment resolved successfully | **application/json**: [WorkflowCommentResolve](#workflowcommentresolve)<br> |
 
-### /apps/{app_id}/workflow/statistics/average-app-interactions
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow/statistics/average-app-interactions
 Get workflow average app interaction statistics
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Average app interaction statistics retrieved successfully |
 
-### /apps/{app_id}/workflow/statistics/daily-conversations
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow/statistics/daily-conversations
 Get workflow daily runs statistics
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Daily runs statistics retrieved successfully |
 
-### /apps/{app_id}/workflow/statistics/daily-terminals
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow/statistics/daily-terminals
 Get workflow daily terminals statistics
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Daily terminals statistics retrieved successfully |
 
-### /apps/{app_id}/workflow/statistics/token-costs
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflow/statistics/token-costs
 Get workflow daily token cost statistics
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowStatisticQuery](#workflowstatisticquery) |
 | app_id | path | Application ID | Yes | string |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Daily token cost statistics retrieved successfully |
 
-### /apps/{app_id}/workflows
-
-#### GET
-##### Summary
-
-Get published workflows
-
-##### Description
+### [GET] /apps/{app_id}/workflows
+**Get published workflows**
 
 Get all published workflows for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowListQuery](#workflowlistquery) |
 | app_id | path | Application ID | Yes | string |
+| limit | query |  | No | integer, <br>**Default:** 10 |
+| named_only | query |  | No | boolean |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| user_id | query |  | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
+| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
 
-### /apps/{app_id}/workflows/default-workflow-block-configs
-
-#### GET
-##### Summary
-
-Get default block config
-
-##### Description
+### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
+**Get default block config**
 
 Get default block configurations for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Default block configurations retrieved successfully |
 
-### /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
-
-#### GET
-##### Summary
-
-Get default block config
-
-##### Description
+### [GET] /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
+**Get default block config**
 
 Get default block configuration by type
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DefaultBlockConfigQuery](#defaultblockconfigquery) |
 | app_id | path | Application ID | Yes | string |
 | block_type | path | Block type | Yes | string |
+| q | query |  | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Default block configuration retrieved successfully |
 | 404 | Block type not found |
 
-### /apps/{app_id}/workflows/draft
-
-#### GET
-##### Summary
-
-Get draft workflow
-
-##### Description
+### [GET] /apps/{app_id}/workflows/draft
+**Get draft workflow**
 
 Get draft workflow for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | [WorkflowResponse](#workflowresponse) |
+| 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 404 | Draft workflow not found |  |
 
-#### POST
-##### Summary
-
-Sync draft workflow
-
-##### Description
+### [POST] /apps/{app_id}/workflows/draft
+**Sync draft workflow**
 
 Sync draft workflow configuration
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SyncDraftWorkflowPayload](#syncdraftworkflowpayload) |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SyncDraftWorkflowPayload](#syncdraftworkflowpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow synced successfully | [SyncDraftWorkflowResponse](#syncdraftworkflowresponse) |
+| 200 | Draft workflow synced successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
 | 400 | Invalid workflow configuration |  |
 | 403 | Permission denied |  |
 
-### /apps/{app_id}/workflows/draft/conversation-variables
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/conversation-variables
 Get conversation variables for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 | 404 | Draft workflow not found |  |
 
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/workflows/draft/conversation-variables
 Update conversation variables for workflow draft
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ConversationVariableUpdatePayload](#conversationvariableupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConversationVariableUpdatePayload](#conversationvariableupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Conversation variables updated successfully |
 
-### /apps/{app_id}/workflows/draft/environment-variables
-
-#### GET
-##### Summary
-
-Get draft workflow
-
-##### Description
+### [GET] /apps/{app_id}/workflows/draft/environment-variables
+**Get draft workflow**
 
 Get environment variables for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Environment variables retrieved successfully |
 | 404 | Draft workflow not found |
 
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/workflows/draft/environment-variables
 Update environment variables for workflow draft
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EnvironmentVariableUpdatePayload](#environmentvariableupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EnvironmentVariableUpdatePayload](#environmentvariableupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Environment variables updated successfully |
 
-### /apps/{app_id}/workflows/draft/features
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/workflows/draft/features
 Update draft workflow features
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowFeaturesPayload](#workflowfeaturespayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowFeaturesPayload](#workflowfeaturespayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow features updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Workflow features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test
-
-#### POST
-##### Summary
-
-Test human input delivery
-
-##### Description
+### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test
+**Test human input delivery**
 
 Test human input delivery for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [HumanInputDeliveryTestPayload](#humaninputdeliverytestpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputDeliveryTestPayload](#humaninputdeliverytestpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
-
-#### POST
-##### Summary
-
-Preview human input form content and placeholders
-
-##### Description
+### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
+**Preview human input form content and placeholders**
 
 Get human input form preview for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [HumanInputFormPreviewPayload](#humaninputformpreviewpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormPreviewPayload](#humaninputformpreviewpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
-
-#### POST
-##### Summary
-
-Submit human input form preview
-
-##### Description
+### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
+**Submit human input form preview**
 
 Submit human input form preview for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
+### [POST] /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
+**Run draft workflow iteration node**
 
-#### POST
-##### Summary
-
-Run draft workflow iteration node
-
-##### Description
-
-Run draft workflow iteration node
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [IterationNodeRunPayload](#iterationnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IterationNodeRunPayload](#iterationnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -3441,26 +3064,23 @@ Run draft workflow iteration node
 | 403 | Permission denied |
 | 404 | Node not found |
 
-### /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
+### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
+**Run draft workflow loop node**
 
-#### POST
-##### Summary
-
-Run draft workflow loop node
-
-##### Description
-
-Run draft workflow loop node
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [LoopNodeRunPayload](#loopnoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LoopNodeRunPayload](#loopnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -3468,172 +3088,167 @@ Run draft workflow loop node
 | 403 | Permission denied |
 | 404 | Node not found |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
-
-#### GET
-##### Parameters
+### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow agent composer state | [WorkflowAgentComposerResponse](#workflowagentcomposerresponse) |
+| 200 | Workflow agent composer state | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 
-#### PUT
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| node_id | path |  | Yes | string |
-| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workflow agent composer saved | [WorkflowAgentComposerResponse](#workflowagentcomposerresponse) |
-
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
-
-#### GET
-##### Parameters
+### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow agent composer candidates | [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse) |
+| 200 | Workflow agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
-
-#### POST
-##### Parameters
+### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
-| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow agent composer impact | [AgentComposerImpactResponse](#agentcomposerimpactresponse) |
+| 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
-
-#### POST
-##### Parameters
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
-| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow agent composer saved to roster | [WorkflowAgentComposerResponse](#workflowagentcomposerresponse) |
+| 200 | Workflow agent composer impact | **application/json**: [AgentComposerImpactResponse](#agentcomposerimpactresponse)<br> |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
-
-#### POST
-##### Parameters
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
-| payload | body |  | Yes | [ComposerSavePayload](#composersavepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow agent composer validation result | [AgentComposerValidateResponse](#agentcomposervalidateresponse) |
+| 200 | Workflow agent composer saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/last-run
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+#### Parameters
 
-#### GET
-##### Description
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow agent composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+
+### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/last-run
 Get last run result for draft workflow node
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Node last run not found |  |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/run
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/run
+**Run draft workflow node**
 
-#### POST
-##### Summary
-
-Run draft workflow node
-
-##### Description
-
-Run draft workflow node
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DraftWorkflowNodeRunPayload](#draftworkflownoderunpayload) |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowNodeRunPayload](#draftworkflownoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node run started successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Node not found |  |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run
+**Poll for trigger events and execute single node when event arrives**
 
-#### POST
-##### Summary
-
-Poll for trigger events and execute single node when event arrives
-
-##### Description
-
-Poll for trigger events and execute single node when event arrives
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -3641,119 +3256,98 @@ Poll for trigger events and execute single node when event arrives
 | 403 | Permission denied |
 | 500 | Internal server error |
 
-### /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
-
-#### DELETE
-##### Description
-
+### [DELETE] /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
 Delete all variables for a specific node
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Node variables deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
 Get variables for a specific node
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | node_id | path | Node ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
-### /apps/{app_id}/workflows/draft/run
+### [POST] /apps/{app_id}/workflows/draft/run
+**Run draft workflow**
 
-#### POST
-##### Summary
-
-Run draft workflow
-
-##### Description
-
-Run draft workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DraftWorkflowRunPayload](#draftworkflowrunpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Draft workflow run started successfully |
 | 403 | Permission denied |
 
-### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a draft workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run node outputs | [WorkflowRunSnapshotView](#workflowrunsnapshotview) |
+| 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
 | 404 | Workflow run not found |  |
 
-### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
 Server-Sent Events stream of inspector deltas for a draft workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Workflow run node output event stream |
 | 404 | Workflow run not found |
 
-### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
 One node's declared outputs for a draft workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -3761,21 +3355,17 @@ One node's declared outputs for a draft workflow run.
 | node_id | path | Node ID inside the workflow graph | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run node output detail | [NodeOutputsView](#nodeoutputsview) |
+| 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
 | 404 | Workflow run / node not found |  |
 
-### /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 Full value for one declared output, including signed download URL for files.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -3784,51 +3374,44 @@ Full value for one declared output, including signed download URL for files.
 | output_name | path | Declared output name as exposed by Composer | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run node output preview | [OutputPreviewView](#outputpreviewview) |
+| 200 | Workflow run node output preview | **application/json**: [OutputPreviewView](#outputpreviewview)<br> |
 | 404 | Workflow run / node / output not found |  |
 
-### /apps/{app_id}/workflows/draft/system-variables
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/system-variables
 Get system variables for workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
-### /apps/{app_id}/workflows/draft/trigger/run
+### [POST] /apps/{app_id}/workflows/draft/trigger/run
+**Poll for trigger events and execute full workflow when event arrives**
 
-#### POST
-##### Summary
-
-Poll for trigger events and execute full workflow when event arrives
-
-##### Description
-
-Poll for trigger events and execute full workflow when event arrives
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DraftWorkflowTriggerRunRequest](#draftworkflowtriggerrunrequest) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowTriggerRunRequest](#draftworkflowtriggerrunrequest)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -3836,25 +3419,22 @@ Poll for trigger events and execute full workflow when event arrives
 | 403 | Permission denied |
 | 500 | Internal server error |
 
-### /apps/{app_id}/workflows/draft/trigger/run-all
+### [POST] /apps/{app_id}/workflows/draft/trigger/run-all
+**Full workflow debug when the start node is a trigger**
 
-#### POST
-##### Summary
-
-Full workflow debug when the start node is a trigger
-
-##### Description
-
-Full workflow debug when the start node is a trigger
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DraftWorkflowTriggerRunAllPayload](#draftworkflowtriggerrunallpayload) |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowTriggerRunAllPayload](#draftworkflowtriggerrunallpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -3862,222 +3442,191 @@ Full workflow debug when the start node is a trigger
 | 403 | Permission denied |
 | 500 | Internal server error |
 
-### /apps/{app_id}/workflows/draft/variables
-
-#### DELETE
-##### Description
-
+### [DELETE] /apps/{app_id}/workflows/draft/variables
 Delete all draft workflow variables
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Workflow variables deleted successfully |
 
-#### GET
-##### Summary
-
-Get draft workflow
-
-##### Description
+### [GET] /apps/{app_id}/workflows/draft/variables
+**Get draft workflow**
 
 Get draft workflow variables
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowDraftVariableListQuery](#workflowdraftvariablelistquery) |
 | app_id | path | Application ID | Yes | string |
 | limit | query | Number of items per page (1-100) | No | string |
 | page | query | Page number (1-100000) | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue) |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
-### /apps/{app_id}/workflows/draft/variables/{variable_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Delete a workflow variable
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Variable deleted successfully |
 | 404 | Variable not found |
 
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Get a specific workflow variable
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | variable_id | path | Variable ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
-#### PATCH
-##### Description
-
+### [PATCH] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Update a workflow variable
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload) |
 | app_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
-### /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
-
-#### PUT
-##### Description
-
+### [PUT] /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
 Reset a workflow variable to its default value
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | variable_id | path | Variable ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
-### /apps/{app_id}/workflows/publish
-
-#### GET
-##### Summary
-
-Get published workflow
-
-##### Description
+### [GET] /apps/{app_id}/workflows/publish
+**Get published workflow**
 
 Get published workflow for an application
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully, or null if not found | [WorkflowResponse](#workflowresponse) |
+| 200 | Published workflow retrieved successfully, or null if not found | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 
-#### POST
-##### Summary
+### [POST] /apps/{app_id}/workflows/publish
+**Publish workflow**
 
-Publish workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [PublishWorkflowPayload](#publishworkflowpayload) |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishWorkflowPayload](#publishworkflowpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a published workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run node outputs | [WorkflowRunSnapshotView](#workflowrunsnapshotview) |
+| 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
 | 404 | Workflow run not found |  |
 
-### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
 Server-Sent Events stream of inspector deltas for a published workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Workflow run node output event stream |
 | 404 | Workflow run not found |
 
-### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
 One node's declared outputs for a published workflow run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -4085,21 +3634,17 @@ One node's declared outputs for a published workflow run.
 | node_id | path | Node ID inside the workflow graph | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run node output detail | [NodeOutputsView](#nodeoutputsview) |
+| 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
 | 404 | Workflow run / node not found |  |
 
-### /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
-
-#### GET
-##### Description
-
+### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 Full value for one declared output of a published run.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -4108,93 +3653,84 @@ Full value for one declared output of a published run.
 | output_name | path | Declared output name as exposed by Composer | Yes | string |
 | run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run node output preview | [OutputPreviewView](#outputpreviewview) |
+| 200 | Workflow run node output preview | **application/json**: [OutputPreviewView](#outputpreviewview)<br> |
 | 404 | Workflow run / node / output not found |  |
 
-### /apps/{app_id}/workflows/triggers/webhook
+### [GET] /apps/{app_id}/workflows/triggers/webhook
+**Get webhook trigger for a node**
 
-#### GET
-##### Summary
-
-Get webhook trigger for a node
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | query |  | No |  |
+| datasource_type | query |  | Yes | string |
+| inputs | query |  | Yes | object |
 | app_id | path |  | Yes | string |
-| payload | body |  | Yes | [Parser](#parser) |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [WebhookTriggerResponse](#webhooktriggerresponse) |
+| 200 | Success | **application/json**: [WebhookTriggerResponse](#webhooktriggerresponse)<br> |
 
-### /apps/{app_id}/workflows/{workflow_id}
+### [DELETE] /apps/{app_id}/workflows/{workflow_id}
+**Delete workflow**
 
-#### DELETE
-##### Summary
-
-Delete workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | workflow_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### PATCH
-##### Summary
-
-Update workflow attributes
-
-##### Description
+### [PATCH] /apps/{app_id}/workflows/{workflow_id}
+**Update workflow attributes**
 
 Update workflow by ID
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowUpdatePayload](#workflowupdatepayload) |
 | app_id | path | Application ID | Yes | string |
 | workflow_id | path | Workflow ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowUpdatePayload](#workflowupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow updated successfully | [WorkflowResponse](#workflowresponse) |
+| 200 | Workflow updated successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Workflow not found |  |
 
-### /apps/{app_id}/workflows/{workflow_id}/restore
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/workflows/{workflow_id}/restore
 Restore a published workflow version into the draft workflow
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | workflow_id | path | Published workflow ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -4202,512 +3738,462 @@ Restore a published workflow version into the draft workflow
 | 400 | Source workflow must be published |
 | 404 | Workflow not found |
 
-### /apps/{resource_id}/api-keys
+### [GET] /apps/{resource_id}/api-keys
+**Get all API keys for an app**
 
-#### GET
-##### Summary
-
-Get all API keys for an app
-
-##### Description
-
-Get all API keys for an app
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | resource_id | path | App ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API keys retrieved successfully | [ApiKeyList](#apikeylist) |
+| 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
-#### POST
-##### Summary
+### [POST] /apps/{resource_id}/api-keys
+**Create a new API key for an app**
 
-Create a new API key for an app
-
-##### Description
-
-Create a new API key for an app
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | resource_id | path | App ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | API key created successfully | [ApiKeyItem](#apikeyitem) |
+| 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded |  |
 
-### /apps/{resource_id}/api-keys/{api_key_id}
+### [DELETE] /apps/{resource_id}/api-keys/{api_key_id}
+**Delete an API key for an app**
 
-#### DELETE
-##### Summary
-
-Delete an API key for an app
-
-##### Description
-
-Delete an API key for an app
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | api_key_id | path | API key ID | Yes | string |
 | resource_id | path | App ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
 
-### /apps/{server_id}/server/refresh
-
-#### GET
-##### Description
-
+### [GET] /apps/{server_id}/server/refresh
 Refresh MCP server configuration and regenerate server code
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | server_id | path | Server ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | MCP server refreshed successfully | [AppMCPServerResponse](#appmcpserverresponse) |
+| 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions |  |
 | 404 | Server not found |  |
 
-### /auth/plugin/datasource/default-list
-
-#### GET
-##### Responses
+### [GET] /auth/plugin/datasource/default-list
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /auth/plugin/datasource/list
-
-#### GET
-##### Responses
+### [GET] /auth/plugin/datasource/list
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /auth/plugin/datasource/{provider_id}
-
-#### GET
-##### Parameters
+### [GET] /auth/plugin/datasource/{provider_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Parameters
+### [POST] /auth/plugin/datasource/{provider_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceCredentialPayload](#datasourcecredentialpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceCredentialPayload](#datasourcecredentialpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /auth/plugin/datasource/{provider_id}/custom-client
-
-#### DELETE
-##### Parameters
+### [DELETE] /auth/plugin/datasource/{provider_id}/custom-client
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /auth/plugin/datasource/{provider_id}/custom-client
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceCustomClientPayload](#datasourcecustomclientpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceCustomClientPayload](#datasourcecustomclientpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /auth/plugin/datasource/{provider_id}/default
-
-#### POST
-##### Parameters
+### [POST] /auth/plugin/datasource/{provider_id}/default
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceDefaultPayload](#datasourcedefaultpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceDefaultPayload](#datasourcedefaultpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /auth/plugin/datasource/{provider_id}/delete
-
-#### POST
-##### Parameters
+### [POST] /auth/plugin/datasource/{provider_id}/delete
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceCredentialDeletePayload](#datasourcecredentialdeletepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceCredentialDeletePayload](#datasourcecredentialdeletepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /auth/plugin/datasource/{provider_id}/update
-
-#### POST
-##### Parameters
+### [POST] /auth/plugin/datasource/{provider_id}/update
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceCredentialUpdatePayload](#datasourcecredentialupdatepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceCredentialUpdatePayload](#datasourcecredentialupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /auth/plugin/datasource/{provider_id}/update-name
-
-#### POST
-##### Parameters
+### [POST] /auth/plugin/datasource/{provider_id}/update-name
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceUpdateNamePayload](#datasourceupdatenamepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceUpdateNamePayload](#datasourceupdatenamepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /billing/invoices
-
-#### GET
-##### Responses
+### [GET] /billing/invoices
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /billing/partners/{partner_key}/tenants
-
-#### PUT
-##### Description
-
+### [PUT] /billing/partners/{partner_key}/tenants
 Sync partner tenants bindings
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [PartnerTenantsPayload](#partnertenantspayload) |
 | partner_key | path | Partner key | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PartnerTenantsPayload](#partnertenantspayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Tenants synced to partner successfully |
 | 400 | Invalid partner information |
 
-### /billing/subscription
-
-#### GET
-##### Responses
+### [GET] /billing/subscription
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /code-based-extension
-
-#### GET
-##### Description
-
+### [GET] /code-based-extension
 Get code-based extension data by module name
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | module | query | Extension module name | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [CodeBasedExtensionResponse](#codebasedextensionresponse) |
+| 200 | Success | **application/json**: [CodeBasedExtensionResponse](#codebasedextensionresponse)<br> |
 
-### /compliance/download
-
-#### GET
-##### Description
-
+### [GET] /compliance/download
 Get compliance document download link
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ComplianceDownloadQuery](#compliancedownloadquery) |
+| doc_name | query | Compliance document name | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /data-source/integrates
-
-#### GET
-##### Responses
+### [GET] /data-source/integrates
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [DataSourceIntegrateListResponse](#datasourceintegratelistresponse) |
+| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
 
-#### PATCH
-##### Responses
+### [PATCH] /data-source/integrates
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /data-source/integrates/{binding_id}/{action}
-
-#### GET
-##### Parameters
+### [GET] /data-source/integrates/{binding_id}/{action}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
 | binding_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [DataSourceIntegrateListResponse](#datasourceintegratelistresponse) |
+| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
 
-#### PATCH
-##### Parameters
+### [PATCH] /data-source/integrates/{binding_id}/{action}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
 | binding_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets
-
-#### GET
-##### Description
-
+### [GET] /datasets
 Get list of datasets
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | ids | query | Filter by dataset IDs | No | [ string ] |
 | include_all | query | Include all datasets | No | boolean |
 | keyword | query | Search keyword | No | string |
-| limit | query | Number of items per page | No | integer |
-| page | query | Page number | No | integer |
+| limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Datasets retrieved successfully | [DatasetListResponse](#datasetlistresponse) |
+| 200 | Datasets retrieved successfully | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
 
-#### POST
-##### Description
-
+### [POST] /datasets
 Create a new dataset
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DatasetCreatePayload](#datasetcreatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetCreatePayload](#datasetcreatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Dataset created successfully | [DatasetDetailResponse](#datasetdetailresponse) |
+| 201 | Dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### /datasets/api-base-info
-
-#### GET
-##### Description
-
+### [GET] /datasets/api-base-info
 Get dataset API base information
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API base info retrieved successfully | [ApiBaseUrlResponse](#apibaseurlresponse) |
+| 200 | API base info retrieved successfully | **application/json**: [ApiBaseUrlResponse](#apibaseurlresponse)<br> |
 
-### /datasets/api-keys
-
-#### GET
-##### Description
-
+### [GET] /datasets/api-keys
 Get dataset API keys
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API keys retrieved successfully | [ApiKeyList](#apikeylist) |
+| 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
-#### POST
-##### Responses
+### [POST] /datasets/api-keys
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API key created successfully | [ApiKeyItem](#apikeyitem) |
+| 200 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded |  |
 
-### /datasets/api-keys/{api_key_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /datasets/api-keys/{api_key_id}
 Delete dataset API key
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | api_key_id | path | API key ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
 
-### /datasets/batch_import_status/{job_id}
-
-#### GET
-##### Parameters
+### [GET] /datasets/batch_import_status/{job_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | job_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import status | [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse) |
+| 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /datasets/batch_import_status/{job_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | job_id | path |  | Yes | string |
-| payload | body |  | Yes | [BatchImportPayload](#batchimportpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BatchImportPayload](#batchimportpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import started | [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse) |
+| 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
-### /datasets/external
-
-#### POST
-##### Description
-
+### [POST] /datasets/external
 Create external knowledge dataset
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ExternalDatasetCreatePayload](#externaldatasetcreatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalDatasetCreatePayload](#externaldatasetcreatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | External dataset created successfully | [DatasetDetail](#datasetdetail) |
+| 201 | External dataset created successfully | **application/json**: [DatasetDetail](#datasetdetail)<br> |
 | 400 | Invalid parameters |  |
 | 403 | Permission denied |  |
 
-### /datasets/external-knowledge-api
-
-#### GET
-##### Description
-
+### [GET] /datasets/external-knowledge-api
 Get external knowledge API templates
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -4715,348 +4201,306 @@ Get external knowledge API templates
 | limit | query | Number of items per page (default: 20) | No | string |
 | page | query | Page number (default: 1) | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | External API templates retrieved successfully |
 
-#### POST
-##### Parameters
+### [POST] /datasets/external-knowledge-api
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ExternalKnowledgeApiPayload](#externalknowledgeapipayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalKnowledgeApiPayload](#externalknowledgeapipayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /datasets/external-knowledge-api/{external_knowledge_api_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/external-knowledge-api/{external_knowledge_api_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | external_knowledge_api_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | External knowledge API deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}
 Get external knowledge API template details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | external_knowledge_api_id | path | External knowledge API ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | External API template retrieved successfully |
 | 404 | Template not found |
 
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/external-knowledge-api/{external_knowledge_api_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ExternalKnowledgeApiPayload](#externalknowledgeapipayload) |
 | external_knowledge_api_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalKnowledgeApiPayload](#externalknowledgeapipayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
-
-#### GET
-##### Description
-
+### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
 Check if external knowledge API is being used
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | external_knowledge_api_id | path | External knowledge API ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Usage check completed successfully | [UsageCountResponse](#usagecountresponse) |
+| 200 | Usage check completed successfully | **application/json**: [UsageCountResponse](#usagecountresponse)<br> |
 
-### /datasets/indexing-estimate
-
-#### POST
-##### Description
-
+### [POST] /datasets/indexing-estimate
 Estimate dataset indexing cost
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [IndexingEstimatePayload](#indexingestimatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [IndexingEstimatePayload](#indexingestimatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Indexing estimate calculated successfully | [IndexingEstimateResponse](#indexingestimateresponse) |
+| 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
 
-### /datasets/init
-
-#### POST
-##### Description
-
+### [POST] /datasets/init
 Initialize dataset with documents
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [KnowledgeConfig](#knowledgeconfig) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeConfig](#knowledgeconfig)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Dataset initialized successfully | [DatasetAndDocumentResponse](#datasetanddocumentresponse) |
+| 201 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### /datasets/metadata/built-in
-
-#### GET
-##### Responses
+### [GET] /datasets/metadata/built-in
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Built-in fields retrieved successfully | [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse) |
+| 200 | Built-in fields retrieved successfully | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
 
-### /datasets/notion-indexing-estimate
+### [POST] /datasets/notion-indexing-estimate
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NotionEstimatePayload](#notionestimatepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [NotionEstimatePayload](#notionestimatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [IndexingEstimate](#indexingestimate) |
+| 200 | Success | **application/json**: [IndexingEstimate](#indexingestimate)<br> |
 
-### /datasets/process-rule
-
-#### GET
-##### Description
-
+### [GET] /datasets/process-rule
 Get dataset document processing rules
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | document_id | query | Document ID (optional) | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Process rules retrieved successfully |
 
-### /datasets/retrieval-setting
-
-#### GET
-##### Description
-
+### [GET] /datasets/retrieval-setting
 Get dataset retrieval settings
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Retrieval settings retrieved successfully | [RetrievalSettingResponse](#retrievalsettingresponse) |
+| 200 | Retrieval settings retrieved successfully | **application/json**: [RetrievalSettingResponse](#retrievalsettingresponse)<br> |
 
-### /datasets/retrieval-setting/{vector_type}
-
-#### GET
-##### Description
-
+### [GET] /datasets/retrieval-setting/{vector_type}
 Get mock dataset retrieval settings by vector type
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | vector_type | path | Vector store type | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Mock retrieval settings retrieved successfully | [RetrievalSettingResponse](#retrievalsettingresponse) |
+| 200 | Mock retrieval settings retrieved successfully | **application/json**: [RetrievalSettingResponse](#retrievalsettingresponse)<br> |
 
-### /datasets/{dataset_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Dataset deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}
 Get dataset details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dataset retrieved successfully | [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse) |
+| 200 | Dataset retrieved successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Dataset not found |  |
 
-#### PATCH
-##### Description
-
+### [PATCH] /datasets/{dataset_id}
 Update dataset details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DatasetUpdatePayload](#datasetupdatepayload) |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetUpdatePayload](#datasetupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dataset updated successfully | [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse) |
+| 200 | Dataset updated successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Dataset not found |  |
 
-### /datasets/{dataset_id}/api-keys/{status}
-
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/api-keys/{status}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | status | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets/{dataset_id}/auto-disable-logs
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/auto-disable-logs
 Get dataset auto disable logs
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Auto disable logs retrieved successfully | [AutoDisableLogsResponse](#autodisablelogsresponse) |
+| 200 | Auto disable logs retrieved successfully | **application/json**: [AutoDisableLogsResponse](#autodisablelogsresponse)<br> |
 | 404 | Dataset not found |  |
 
-### /datasets/{dataset_id}/batch/{batch}/indexing-estimate
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-estimate
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | batch | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /datasets/{dataset_id}/batch/{batch}/indexing-status
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-status
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | batch | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Indexing status retrieved successfully | [DocumentStatusListResponse](#documentstatuslistresponse) |
+| 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
 
-### /datasets/{dataset_id}/documents
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}/documents
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Documents deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/documents
 Get documents in a dataset
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5068,134 +4512,134 @@ Get documents in a dataset
 | sort | query | Sort order (default: -created_at) | No | string |
 | status | query | Filter documents by display status | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Documents retrieved successfully | [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse) |
+| 200 | Documents retrieved successfully | **application/json**: [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/documents
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [KnowledgeConfig](#knowledgeconfig) |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [KnowledgeConfig](#knowledgeconfig)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Documents created successfully | [DatasetAndDocumentResponse](#datasetanddocumentresponse) |
+| 200 | Documents created successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 
-### /datasets/{dataset_id}/documents/download-zip
-
-#### POST
-##### Summary
-
-Stream a ZIP archive containing the requested uploaded documents
-
-##### Description
+### [POST] /datasets/{dataset_id}/documents/download-zip
+**Stream a ZIP archive containing the requested uploaded documents**
 
 Download selected dataset documents as a single ZIP archive (upload-file only)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
-| payload | body |  | Yes | [DocumentBatchDownloadZipPayload](#documentbatchdownloadzippayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentBatchDownloadZipPayload](#documentbatchdownloadzippayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /datasets/{dataset_id}/documents/generate-summary
-
-#### POST
-##### Summary
-
-Generate summary index for specified documents
-
-##### Description
+### [POST] /datasets/{dataset_id}/documents/generate-summary
+**Generate summary index for specified documents**
 
 Generate summary index for documents
 This endpoint checks if the dataset configuration supports summary generation
 (indexing_technique must be 'high_quality' and summary_index_setting.enable must be true),
 then asynchronously generates summary indexes for the provided documents.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [GenerateSummaryPayload](#generatesummarypayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [GenerateSummaryPayload](#generatesummarypayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Summary generation started successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Summary generation started successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid request or dataset configuration |  |
 | 403 | Permission denied |  |
 | 404 | Dataset not found |  |
 
-### /datasets/{dataset_id}/documents/metadata
-
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/documents/metadata
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
-| payload | body |  | Yes | [MetadataOperationData](#metadataoperationdata) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MetadataOperationData](#metadataoperationdata)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Documents metadata updated successfully |
 
-### /datasets/{dataset_id}/documents/status/{action}/batch
-
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/{dataset_id}/documents/status/{action}/batch
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}/documents/{document_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Document deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/documents/{document_id}
 Get document details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5203,48 +4647,40 @@ Get document details
 | document_id | path | Document ID | Yes | string |
 | metadata | query | Metadata inclusion (all/only/without) | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Document retrieved successfully |
 | 404 | Document not found |
 
-### /datasets/{dataset_id}/documents/{document_id}/download
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 Get a signed download URL for a dataset document's original uploaded file
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Download URL generated successfully | [UrlResponse](#urlresponse) |
+| 200 | Download URL generated successfully | **application/json**: [UrlResponse](#urlresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/indexing-estimate
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-estimate
 Estimate document indexing cost
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -5252,130 +4688,111 @@ Estimate document indexing cost
 | 400 | Document already finished |
 | 404 | Document not found |
 
-### /datasets/{dataset_id}/documents/{document_id}/indexing-status
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-status
 Get document indexing status
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Indexing status retrieved successfully | [DocumentStatusResponse](#documentstatusresponse) |
+| 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusResponse](#documentstatusresponse)<br> |
 | 404 | Document not found |  |
 
-### /datasets/{dataset_id}/documents/{document_id}/metadata
-
-#### PUT
-##### Description
-
+### [PUT] /datasets/{dataset_id}/documents/{document_id}/metadata
 Update document metadata
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DocumentMetadataUpdatePayload](#documentmetadataupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentMetadataUpdatePayload](#documentmetadataupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document metadata updated successfully | [SimpleResultMessageResponse](#simpleresultmessageresponse) |
+| 200 | Document metadata updated successfully | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Document not found |  |
 
-### /datasets/{dataset_id}/documents/{document_id}/notion/sync
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/documents/{document_id}/notion/sync
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /datasets/{dataset_id}/documents/{document_id}/processing/pause
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
+**pause document**
 
-#### PATCH
-##### Summary
-
-pause document
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Document paused successfully |
 
-### /datasets/{dataset_id}/documents/{document_id}/processing/resume
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/resume
+**recover document**
 
-#### PATCH
-##### Summary
-
-recover document
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Document resumed successfully |
 
-### /datasets/{dataset_id}/documents/{document_id}/processing/{action}
-
-#### PATCH
-##### Description
-
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/{action}
 Update document processing status (pause/resume)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5383,52 +4800,56 @@ Update document processing status (pause/resume)
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Processing status updated successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Processing status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid action |  |
 | 404 | Document not found |  |
 
-### /datasets/{dataset_id}/documents/{document_id}/rename
-
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/documents/{document_id}/rename
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
-| payload | body |  | Yes | [DocumentRenamePayload](#documentrenamepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentRenamePayload](#documentrenamepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document renamed successfully | [DocumentResponse](#documentresponse) |
+| 200 | Document renamed successfully | **application/json**: [DocumentResponse](#documentresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segment
-
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/documents/{document_id}/segment
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SegmentCreatePayload](#segmentcreatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SegmentCreatePayload](#segmentcreatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Segment created successfully | [SegmentDetailResponse](#segmentdetailresponse) |
+| 200 | Segment created successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segment/{action}
-
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segment/{action}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5437,16 +4858,14 @@ Update document processing status (pause/resume)
 | document_id | path | Document ID | Yes | string |
 | segment_id | query | Segment IDs | No | [ string ] |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segments
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5454,67 +4873,68 @@ Update document processing status (pause/resume)
 | document_id | path | Document ID | Yes | string |
 | segment_id | query | Segment IDs | No | [ string ] |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Segments deleted successfully |
 
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/documents/{document_id}/segments
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
-| enabled | query |  | No | string |
+| enabled | query |  | No | string, <br>**Default:** all |
 | hit_count_gte | query |  | No | integer |
 | keyword | query |  | No | string |
-| limit | query |  | No | integer |
-| page | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 | status | query |  | No | [ string ] |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Segments retrieved successfully | [ConsoleSegmentListResponse](#consolesegmentlistresponse) |
+| 200 | Segments retrieved successfully | **application/json**: [ConsoleSegmentListResponse](#consolesegmentlistresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import status | [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse) |
+| 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
-| payload | body |  | Yes | [BatchImportPayload](#batchimportpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BatchImportPayload](#batchimportpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import started | [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse) |
+| 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5522,32 +4942,35 @@ Update document processing status (pause/resume)
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Segment ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Segment deleted successfully |
 
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SegmentUpdatePayload](#segmentupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Segment ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SegmentUpdatePayload](#segmentupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Segment updated successfully | [SegmentDetailResponse](#segmentdetailresponse) |
+| 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5555,51 +4978,59 @@ Update document processing status (pause/resume)
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
 | keyword | query |  | No | string |
-| limit | query |  | No | integer |
-| page | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Child chunks retrieved successfully | [ChildChunkListResponse](#childchunklistresponse) |
+| 200 | Child chunks retrieved successfully | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
 
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChildChunkBatchUpdatePayload](#childchunkbatchupdatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChildChunkBatchUpdatePayload](#childchunkbatchupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Child chunks updated successfully | [ChildChunkBatchUpdateResponse](#childchunkbatchupdateresponse) |
+| 200 | Child chunks updated successfully | **application/json**: [ChildChunkBatchUpdateResponse](#childchunkbatchupdateresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChildChunkCreatePayload](#childchunkcreatepayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChildChunkCreatePayload](#childchunkcreatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Child chunk created successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
+| 200 | Child chunk created successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -5608,37 +5039,36 @@ Update document processing status (pause/resume)
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Child chunk deleted successfully |
 
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChildChunkUpdatePayload](#childchunkupdatepayload) |
 | child_chunk_id | path | Child chunk ID | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 | segment_id | path | Parent segment ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChildChunkUpdatePayload](#childchunkupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Child chunk updated successfully | [ChildChunkDetailResponse](#childchunkdetailresponse) |
+| 200 | Child chunk updated successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
 
-### /datasets/{dataset_id}/documents/{document_id}/summary-status
-
-#### GET
-##### Summary
-
-Get summary index generation status for a document
-
-##### Description
+### [GET] /datasets/{dataset_id}/documents/{document_id}/summary-status
+**Get summary index generation status for a document**
 
 Get summary index generation status for a document
 Returns:
@@ -5650,75 +5080,68 @@ Returns:
   - not_started: Number of segments without summary records
 - summaries: List of summary records with status and content preview
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Summary status retrieved successfully |
 | 404 | Document not found |
 
-### /datasets/{dataset_id}/documents/{document_id}/website-sync
+### [GET] /datasets/{dataset_id}/documents/{document_id}/website-sync
+**sync website document**
 
-#### GET
-##### Summary
-
-sync website document
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | document_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets/{dataset_id}/error-docs
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/error-docs
 Get dataset error documents
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Error documents retrieved successfully | [ErrorDocsResponse](#errordocsresponse) |
+| 200 | Error documents retrieved successfully | **application/json**: [ErrorDocsResponse](#errordocsresponse)<br> |
 | 404 | Dataset not found |  |
 
-### /datasets/{dataset_id}/external-hit-testing
-
-#### POST
-##### Description
-
+### [POST] /datasets/{dataset_id}/external-hit-testing
 Test external knowledge retrieval for dataset
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ExternalHitTestingPayload](#externalhittestingpayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ExternalHitTestingPayload](#externalhittestingpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -5726,555 +5149,459 @@ Test external knowledge retrieval for dataset
 | 400 | Invalid parameters |
 | 404 | Dataset not found |
 
-### /datasets/{dataset_id}/hit-testing
-
-#### POST
-##### Description
-
+### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [HitTestingPayload](#hittestingpayload) |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HitTestingPayload](#hittestingpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Hit testing completed successfully | [HitTestingResponse](#hittestingresponse) |
+| 200 | Hit testing completed successfully | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
 | 400 | Invalid parameters |  |
 | 404 | Dataset not found |  |
 
-### /datasets/{dataset_id}/indexing-status
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/indexing-status
 Get dataset indexing status
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Indexing status retrieved successfully | [DocumentStatusListResponse](#documentstatuslistresponse) |
+| 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
 
-### /datasets/{dataset_id}/metadata
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/metadata
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Metadata retrieved successfully | [DatasetMetadataListResponse](#datasetmetadatalistresponse) |
+| 200 | Metadata retrieved successfully | **application/json**: [DatasetMetadataListResponse](#datasetmetadatalistresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/metadata
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
-| payload | body |  | Yes | [MetadataArgs](#metadataargs) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MetadataArgs](#metadataargs)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Metadata created successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
+| 201 | Metadata created successfully | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
 
-### /datasets/{dataset_id}/metadata/built-in/{action}
-
-#### POST
-##### Parameters
+### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Action completed successfully |
 
-### /datasets/{dataset_id}/metadata/{metadata_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /datasets/{dataset_id}/metadata/{metadata_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | metadata_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Metadata deleted successfully |
 
-#### PATCH
-##### Parameters
+### [PATCH] /datasets/{dataset_id}/metadata/{metadata_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 | metadata_id | path |  | Yes | string |
-| payload | body |  | Yes | [MetadataUpdatePayload](#metadataupdatepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MetadataUpdatePayload](#metadataupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Metadata updated successfully | [DatasetMetadataResponse](#datasetmetadataresponse) |
+| 200 | Metadata updated successfully | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
 
-### /datasets/{dataset_id}/notion/sync
-
-#### GET
-##### Parameters
+### [GET] /datasets/{dataset_id}/notion/sync
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /datasets/{dataset_id}/permission-part-users
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/permission-part-users
 Get dataset permission user list
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Permission users retrieved successfully | [PartialMemberListResponse](#partialmemberlistresponse) |
+| 200 | Permission users retrieved successfully | **application/json**: [PartialMemberListResponse](#partialmemberlistresponse)<br> |
 | 403 | Permission denied |  |
 | 404 | Dataset not found |  |
 
-### /datasets/{dataset_id}/queries
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/queries
 Get dataset query history
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Query history retrieved successfully | [DatasetQueryListResponse](#datasetquerylistresponse) |
+| 200 | Query history retrieved successfully | **application/json**: [DatasetQueryListResponse](#datasetquerylistresponse)<br> |
 
-### /datasets/{dataset_id}/related-apps
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/related-apps
 Get applications related to dataset
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Related apps retrieved successfully | [RelatedAppListResponse](#relatedapplistresponse) |
+| 200 | Related apps retrieved successfully | **application/json**: [RelatedAppListResponse](#relatedapplistresponse)<br> |
 
-### /datasets/{dataset_id}/retry
+### [POST] /datasets/{dataset_id}/retry
+**retry document**
 
-#### POST
-##### Summary
-
-retry document
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
-| payload | body |  | Yes | [DocumentRetryPayload](#documentretrypayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentRetryPayload](#documentretrypayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Documents retry started successfully |
 
-### /datasets/{dataset_id}/use-check
-
-#### GET
-##### Description
-
+### [GET] /datasets/{dataset_id}/use-check
 Check if dataset is in use
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dataset use status retrieved successfully | [UsageCheckResponse](#usagecheckresponse) |
+| 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
 
-### /datasets/{resource_id}/api-keys
+### [GET] /datasets/{resource_id}/api-keys
+**Get all API keys for a dataset**
 
-#### GET
-##### Summary
-
-Get all API keys for a dataset
-
-##### Description
-
-Get all API keys for a dataset
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | resource_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | API keys retrieved successfully | [ApiKeyList](#apikeylist) |
+| 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
-#### POST
-##### Summary
+### [POST] /datasets/{resource_id}/api-keys
+**Create a new API key for a dataset**
 
-Create a new API key for a dataset
-
-##### Description
-
-Create a new API key for a dataset
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | resource_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | API key created successfully | [ApiKeyItem](#apikeyitem) |
+| 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded |  |
 
-### /datasets/{resource_id}/api-keys/{api_key_id}
+### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
+**Delete an API key for a dataset**
 
-#### DELETE
-##### Summary
-
-Delete an API key for a dataset
-
-##### Description
-
-Delete an API key for a dataset
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | api_key_id | path | API key ID | Yes | string |
 | resource_id | path | Dataset ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | API key deleted successfully |
 
-### /email-code-login
+### [POST] /email-code-login
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailPayload](#emailpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EmailPayload](#emailpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
-### /email-code-login/validity
+### [POST] /email-code-login/validity
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailCodeLoginPayload](#emailcodeloginpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EmailCodeLoginPayload](#emailcodeloginpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /email-register
-
-#### POST
-##### Responses
+### [POST] /email-register
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /email-register/send-email
-
-#### POST
-##### Responses
+### [POST] /email-register/send-email
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
-### /email-register/validity
-
-#### POST
-##### Responses
+### [POST] /email-register/validity
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [VerificationTokenResponse](#verificationtokenresponse) |
+| 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
 
-### /explore/apps
-
-#### GET
-##### Parameters
+### [GET] /explore/apps
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Language code for recommended app localization | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [RecommendedAppListResponse](#recommendedapplistresponse) |
+| 200 | Success | **application/json**: [RecommendedAppListResponse](#recommendedapplistresponse)<br> |
 
-### /explore/apps/{app_id}
-
-#### GET
-##### Parameters
+### [GET] /explore/apps/{app_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /features
+### [GET] /features
+**Get feature configuration for current tenant**
 
-#### GET
-##### Summary
-
-Get feature configuration for current tenant
-
-##### Description
-
-Get feature configuration for current tenant
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [FeatureModel](#featuremodel) |
+| 200 | Success | **application/json**: [FeatureModel](#featuremodel)<br> |
 
-### /features/vector-space
+### [GET] /features/vector-space
+**Get vector-space usage and limit for current tenant**
 
-#### GET
-##### Summary
-
-Get vector-space usage and limit for current tenant
-
-##### Description
-
-Get vector-space usage and limit for current tenant
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [LimitationModel](#limitationmodel) |
+| 200 | Success | **application/json**: [LimitationModel](#limitationmodel)<br> |
 
-### /files/support-type
-
-#### GET
-##### Responses
+### [GET] /files/support-type
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AllowedExtensionsResponse](#allowedextensionsresponse) |
+| 200 | Success | **application/json**: [AllowedExtensionsResponse](#allowedextensionsresponse)<br> |
 
-### /files/upload
-
-#### GET
-##### Responses
+### [GET] /files/upload
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [UploadConfig](#uploadconfig) |
+| 200 | Success | **application/json**: [UploadConfig](#uploadconfig)<br> |
 
-#### POST
-##### Responses
+### [POST] /files/upload
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
+| 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
 
-### /files/{file_id}/preview
-
-#### GET
-##### Parameters
+### [GET] /files/{file_id}/preview
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | file_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TextContentResponse](#textcontentresponse) |
+| 200 | Success | **application/json**: [TextContentResponse](#textcontentresponse)<br> |
 
-### /forgot-password
-
-#### POST
-##### Description
-
+### [POST] /forgot-password
 Send password reset email
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ForgotPasswordSendPayload](#forgotpasswordsendpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ForgotPasswordSendPayload](#forgotpasswordsendpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Email sent successfully | [ForgotPasswordEmailResponse](#forgotpasswordemailresponse) |
+| 200 | Email sent successfully | **application/json**: [ForgotPasswordEmailResponse](#forgotpasswordemailresponse)<br> |
 | 400 | Invalid email or rate limit exceeded |  |
 
-### /forgot-password/resets
-
-#### POST
-##### Description
-
+### [POST] /forgot-password/resets
 Reset password with verification token
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ForgotPasswordResetPayload](#forgotpasswordresetpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ForgotPasswordResetPayload](#forgotpasswordresetpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Password reset successfully | [ForgotPasswordResetResponse](#forgotpasswordresetresponse) |
+| 200 | Password reset successfully | **application/json**: [ForgotPasswordResetResponse](#forgotpasswordresetresponse)<br> |
 | 400 | Invalid token or password mismatch |  |
 
-### /forgot-password/validity
-
-#### POST
-##### Description
-
+### [POST] /forgot-password/validity
 Verify password reset code
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ForgotPasswordCheckPayload](#forgotpasswordcheckpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ForgotPasswordCheckPayload](#forgotpasswordcheckpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Code verified successfully | [ForgotPasswordCheckResponse](#forgotpasswordcheckresponse) |
+| 200 | Code verified successfully | **application/json**: [ForgotPasswordCheckResponse](#forgotpasswordcheckresponse)<br> |
 | 400 | Invalid code or token |  |
 
-### /form/human_input/{form_token}
-
-#### GET
-##### Summary
-
-Get human input form definition by form token
-
-##### Description
+### [GET] /form/human_input/{form_token}
+**Get human input form definition by form token**
 
 GET /console/api/form/human_input/<form_token>
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Summary
-
-Submit human input form by form token
-
-##### Description
+### [POST] /form/human_input/{form_token}
+**Submit human input form by form token**
 
 POST /console/api/form/human_input/<form_token>
 
@@ -6286,452 +5613,437 @@ Request body:
     "action": "Approve"
 }
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
-| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /info
-
-#### POST
-##### Responses
+### [POST] /info
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TenantInfoResponse](#tenantinforesponse) |
+| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
 
-### /installed-apps
-
-#### GET
-##### Responses
+### [GET] /installed-apps
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [InstalledAppListResponse](#installedapplistresponse) |
+| 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
 
-#### POST
-##### Responses
+### [POST] /installed-apps
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleMessageResponse](#simplemessageresponse) |
+| 200 | Success | **application/json**: [SimpleMessageResponse](#simplemessageresponse)<br> |
 
-### /installed-apps/{installed_app_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /installed-apps/{installed_app_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | App uninstalled successfully |
 
-#### PATCH
-##### Parameters
+### [PATCH] /installed-apps/{installed_app_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultMessageResponse](#simpleresultmessageresponse) |
+| 200 | Success | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
 
-### /installed-apps/{installed_app_id}/audio-to-text
-
-#### POST
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/audio-to-text
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/chat-messages
-
-#### POST
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/chat-messages
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ChatMessagePayload](#chatmessagepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatMessagePayload](#chatmessagepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
-
-#### POST
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /installed-apps/{installed_app_id}/completion-messages
-
-#### POST
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/completion-messages
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [CompletionMessageExplorePayload](#completionmessageexplorepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CompletionMessageExplorePayload](#completionmessageexplorepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop
-
-#### POST
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /installed-apps/{installed_app_id}/conversations
-
-#### GET
-##### Parameters
+### [GET] /installed-apps/{installed_app_id}/conversations
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| last_id | query |  | No |  |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| pinned | query |  | No |  |
 | installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ConversationListQuery](#conversationlistquery) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/conversations/{c_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /installed-apps/{installed_app_id}/conversations/{c_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path |  | Yes | string |
 | installed_app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Conversation deleted successfully |
 
-### /installed-apps/{installed_app_id}/conversations/{c_id}/name
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path |  | Yes | string |
-| installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ConversationRenamePayload](#conversationrenamepayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /installed-apps/{installed_app_id}/conversations/{c_id}/pin
-
-#### PATCH
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/conversations/{c_id}/name
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path |  | Yes | string |
 | installed_app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [ResultResponse](#resultresponse) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConversationRenamePayload](#conversationrenamepayload)<br> |
 
-### /installed-apps/{installed_app_id}/conversations/{c_id}/unpin
+#### Responses
 
-#### PATCH
-##### Parameters
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/pin
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path |  | Yes | string |
 | installed_app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ResultResponse](#resultresponse) |
+| 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
 
-### /installed-apps/{installed_app_id}/messages
-
-#### GET
-##### Parameters
+### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/unpin
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| c_id | path |  | Yes | string |
 | installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [MessageListQuery](#messagelistquery) |
 
-##### Responses
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | query | Conversation UUID | Yes | string |
+| first_id | query | First message ID for pagination | No |  |
+| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+| installed_app_id | path |  | Yes | string |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
-| payload | body |  | Yes | [MessageFeedbackPayload](#messagefeedbackpayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Feedback submitted successfully | [ResultResponse](#resultresponse) |
-
-### /installed-apps/{installed_app_id}/messages/{message_id}/more-like-this
-
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
-| payload | body |  | Yes | [MoreLikeThisQuery](#morelikethisquery) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions
-
-#### GET
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 | message_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuggestedQuestionsResponse](#suggestedquestionsresponse) |
+| 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 
-### /installed-apps/{installed_app_id}/meta
-
-#### GET
-##### Summary
-
-Get app meta
-
-##### Parameters
+### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/more-like-this
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| response_mode | query |  | Yes | string, <br>**Available values:** "blocking", "streaming" |
 | installed_app_id | path |  | Yes | string |
+| message_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/parameters
-
-#### GET
-##### Summary
-
-Retrieve app parameters
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /installed-apps/{installed_app_id}/saved-messages
-
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [SavedMessageListQuery](#savedmessagelistquery) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [SavedMessageCreatePayload](#savedmessagecreatepayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | [ResultResponse](#resultresponse) |
-
-### /installed-apps/{installed_app_id}/saved-messages/{message_id}
-
-#### DELETE
-##### Parameters
+### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 | message_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/meta
+**Get app meta**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /installed-apps/{installed_app_id}/parameters
+**Retrieve app parameters**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /installed-apps/{installed_app_id}/saved-messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| last_id | query |  | No |  |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| installed_app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /installed-apps/{installed_app_id}/saved-messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SavedMessageCreatePayload](#savedmessagecreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
+
+### [DELETE] /installed-apps/{installed_app_id}/saved-messages/{message_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string |
+| message_id | path |  | Yes | string |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Saved message deleted successfully |
 
-### /installed-apps/{installed_app_id}/text-to-audio
-
-#### POST
-##### Parameters
+### [POST] /installed-apps/{installed_app_id}/text-to-audio
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [TextToAudioPayload](#texttoaudiopayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TextToAudioPayload](#texttoaudiopayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/workflows/run
+### [POST] /installed-apps/{installed_app_id}/workflows/run
+**Run workflow**
 
-#### POST
-##### Summary
-
-Run workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
-| payload | body |  | Yes | [WorkflowRunPayload](#workflowrunpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
+### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
+**Stop workflow task**
 
-#### POST
-##### Summary
-
-Stop workflow task
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /instruction-generate
-
-#### POST
-##### Description
-
+### [POST] /instruction-generate
 Generate instruction for workflow nodes or general use
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [InstructionGeneratePayload](#instructiongeneratepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstructionGeneratePayload](#instructiongeneratepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -6739,132 +6051,104 @@ Generate instruction for workflow nodes or general use
 | 400 | Invalid request parameters or flow/workflow not found |
 | 402 | Provider quota exceeded |
 
-### /instruction-generate/template
-
-#### POST
-##### Description
-
+### [POST] /instruction-generate/template
 Get instruction generation template
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [InstructionTemplatePayload](#instructiontemplatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstructionTemplatePayload](#instructiontemplatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Template retrieved successfully |
 | 400 | Invalid request parameters |
 
-### /login
+### [POST] /login
+**Authenticate user and login**
 
-#### POST
-##### Summary
+#### Request Body
 
-Authenticate user and login
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LoginPayload](#loginpayload)<br> |
 
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [LoginPayload](#loginpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse) |
+| 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
 
-### /logout
-
-#### POST
-##### Responses
+### [POST] /logout
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /mcp/oauth/callback
-
-#### GET
-##### Responses
+### [GET] /mcp/oauth/callback
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /notification
-
-#### GET
-##### Description
-
+### [GET] /notification
 Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success — inspect should_show to decide whether to render the modal |
 | 401 | Unauthorized |
 
-### /notification/dismiss
-
-#### POST
-##### Description
-
+### [POST] /notification/dismiss
 Mark a notification as dismissed for the current user.
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 401 | Unauthorized |  |
 
-### /notion/pages/{page_id}/{page_type}/preview
-
-#### GET
-##### Parameters
+### [GET] /notion/pages/{page_id}/{page_type}/preview
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | query | Credential ID | Yes | string |
 | page_id | path |  | Yes | string |
 | page_type | path |  | Yes | string |
-| credential_id | query | Credential ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TextContentResponse](#textcontentresponse) |
+| 200 | Success | **application/json**: [TextContentResponse](#textcontentresponse)<br> |
 
-### /notion/pre-import/pages
-
-#### GET
-##### Parameters
+### [GET] /notion/pre-import/pages
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_id | query | Credential ID | Yes | string |
 | dataset_id | query | Dataset ID | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [NotionIntegrateInfoListResponse](#notionintegrateinfolistresponse) |
+| 200 | Success | **application/json**: [NotionIntegrateInfoListResponse](#notionintegrateinfolistresponse)<br> |
 
-### /oauth/authorize/{provider}
-
-#### GET
-##### Description
-
+### [GET] /oauth/authorize/{provider}
 Handle OAuth callback and complete login process
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -6872,42 +6156,34 @@ Handle OAuth callback and complete login process
 | code | query | Authorization code from OAuth provider | No | string |
 | state | query | Optional state parameter (used for invite token) | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 302 | Redirect to console with access token |
 | 400 | OAuth process failed |
 
-### /oauth/data-source/binding/{provider}
-
-#### GET
-##### Description
-
+### [GET] /oauth/data-source/binding/{provider}
 Bind OAuth data source with authorization code
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | Data source provider name (notion) | Yes | string |
 | code | query | Authorization code from OAuth provider | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Data source binding success | [OAuthDataSourceBindingResponse](#oauthdatasourcebindingresponse) |
+| 200 | Data source binding success | **application/json**: [OAuthDataSourceBindingResponse](#oauthdatasourcebindingresponse)<br> |
 | 400 | Invalid provider or code |  |
 
-### /oauth/data-source/callback/{provider}
-
-#### GET
-##### Description
-
+### [GET] /oauth/data-source/callback/{provider}
 Handle OAuth callback from data source provider
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -6915,1173 +6191,1045 @@ Handle OAuth callback from data source provider
 | code | query | Authorization code from OAuth provider | No | string |
 | error | query | Error message from OAuth provider | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 302 | Redirect to console with result |
 | 400 | Invalid provider |
 
-### /oauth/data-source/{provider}
-
-#### GET
-##### Description
-
+### [GET] /oauth/data-source/{provider}
 Get OAuth authorization URL for data source provider
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | Data source provider name (notion) | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authorization URL or internal setup success | [OAuthDataSourceResponse](#oauthdatasourceresponse) |
+| 200 | Authorization URL or internal setup success | **application/json**: [OAuthDataSourceResponse](#oauthdatasourceresponse)<br> |
 | 400 | Invalid provider |  |
 | 403 | Admin privileges required |  |
 
-### /oauth/data-source/{provider}/{binding_id}/sync
-
-#### GET
-##### Description
-
+### [GET] /oauth/data-source/{provider}/{binding_id}/sync
 Sync data from OAuth data source
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | binding_id | path | Data source binding ID | Yes | string |
 | provider | path | Data source provider name (notion) | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Data source sync success | [OAuthDataSourceSyncResponse](#oauthdatasourcesyncresponse) |
+| 200 | Data source sync success | **application/json**: [OAuthDataSourceSyncResponse](#oauthdatasourcesyncresponse)<br> |
 | 400 | Invalid provider or sync failed |  |
 
-### /oauth/login/{provider}
-
-#### GET
-##### Description
-
+### [GET] /oauth/login/{provider}
 Initiate OAuth login process
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | OAuth provider name (github/google) | Yes | string |
 | invite_token | query | Optional invitation token | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 302 | Redirect to OAuth authorization URL |
 | 400 | Invalid provider |
 
-### /oauth/plugin/{provider_id}/datasource/callback
-
-#### GET
-##### Parameters
+### [GET] /oauth/plugin/{provider_id}/datasource/callback
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/plugin/{provider_id}/datasource/get-authorization-url
-
-#### GET
-##### Parameters
+### [GET] /oauth/plugin/{provider_id}/datasource/get-authorization-url
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/plugin/{provider}/tool/authorization-url
-
-#### GET
-##### Parameters
+### [GET] /oauth/plugin/{provider}/tool/authorization-url
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/plugin/{provider}/tool/callback
-
-#### GET
-##### Parameters
+### [GET] /oauth/plugin/{provider}/tool/callback
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/plugin/{provider}/trigger/callback
+### [GET] /oauth/plugin/{provider}/trigger/callback
+**Handle OAuth callback for trigger provider**
 
-#### GET
-##### Summary
-
-Handle OAuth callback for trigger provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/provider
-
-#### POST
-##### Responses
+### [POST] /oauth/provider
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/provider/account
-
-#### POST
-##### Responses
+### [POST] /oauth/provider/account
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/provider/authorize
-
-#### POST
-##### Responses
+### [POST] /oauth/provider/authorize
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /oauth/provider/token
-
-#### POST
-##### Responses
+### [POST] /oauth/provider/token
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipeline/customized/templates/{template_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /rag/pipeline/customized/templates/{template_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | template_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Pipeline template deleted |
 
-#### PATCH
-##### Parameters
+### [PATCH] /rag/pipeline/customized/templates/{template_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | template_id | path |  | Yes | string |
-| payload | body |  | Yes | [CustomizedPipelineTemplatePayload](#customizedpipelinetemplatepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CustomizedPipelineTemplatePayload](#customizedpipelinetemplatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Pipeline template updated |
 
-#### POST
-##### Parameters
+### [POST] /rag/pipeline/customized/templates/{template_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | template_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleDataResponse](#simpledataresponse) |
+| 200 | Success | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 
-### /rag/pipeline/dataset
+### [POST] /rag/pipeline/dataset
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RagPipelineDatasetImportPayload](#ragpipelinedatasetimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | RAG pipeline dataset import started | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+
+### [POST] /rag/pipeline/empty-dataset
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | RAG pipeline dataset created | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
+
+### [GET] /rag/pipeline/templates
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RagPipelineDatasetImportPayload](#ragpipelinedatasetimportpayload) |
+| language | query | Template language | No | string, <br>**Default:** en-US |
+| type | query | Template source: built-in or customized | No | string, <br>**Default:** built-in |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | RAG pipeline dataset import started | [RagPipelineImportResponse](#ragpipelineimportresponse) |
-
-### /rag/pipeline/empty-dataset
-
-#### POST
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | RAG pipeline dataset created | [DatasetDetailResponse](#datasetdetailresponse) |
+| 200 | Pipeline templates | **application/json**: [PipelineTemplateListResponse](#pipelinetemplatelistresponse)<br> |
 
-### /rag/pipeline/templates
-
-#### GET
-##### Parameters
+### [GET] /rag/pipeline/templates/{template_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Template language | No | string |
-| type | query | Template source: built-in or customized | No | string |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Pipeline templates | [PipelineTemplateListResponse](#pipelinetemplatelistresponse) |
-
-### /rag/pipeline/templates/{template_id}
-
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
+| type | query | Template source: built-in or customized | No | string, <br>**Default:** built-in |
 | template_id | path |  | Yes | string |
-| type | query | Template source: built-in or customized | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Pipeline template | [PipelineTemplateDetailResponse](#pipelinetemplatedetailresponse) |
+| 200 | Pipeline template | **application/json**: [PipelineTemplateDetailResponse](#pipelinetemplatedetailresponse)<br> |
 
-### /rag/pipelines/datasource-plugins
-
-#### GET
-##### Responses
+### [GET] /rag/pipelines/datasource-plugins
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/imports
+### [POST] /rag/pipelines/imports
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RagPipelineImportPayload](#ragpipelineimportpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RagPipelineImportPayload](#ragpipelineimportpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import completed | [RagPipelineImportResponse](#ragpipelineimportresponse) |
-| 202 | Import pending confirmation | [RagPipelineImportResponse](#ragpipelineimportresponse) |
-| 400 | Import failed | [RagPipelineImportResponse](#ragpipelineimportresponse) |
+| 200 | Import completed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+| 202 | Import pending confirmation | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+| 400 | Import failed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 
-### /rag/pipelines/imports/{import_id}/confirm
-
-#### POST
-##### Parameters
+### [POST] /rag/pipelines/imports/{import_id}/confirm
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | import_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import confirmed | [RagPipelineImportResponse](#ragpipelineimportresponse) |
-| 400 | Import failed | [RagPipelineImportResponse](#ragpipelineimportresponse) |
+| 200 | Import confirmed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+| 400 | Import failed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 
-### /rag/pipelines/imports/{pipeline_id}/check-dependencies
-
-#### GET
-##### Parameters
+### [GET] /rag/pipelines/imports/{pipeline_id}/check-dependencies
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked | [RagPipelineImportCheckDependenciesResponse](#ragpipelineimportcheckdependenciesresponse) |
+| 200 | Dependencies checked | **application/json**: [RagPipelineImportCheckDependenciesResponse](#ragpipelineimportcheckdependenciesresponse)<br> |
 
-### /rag/pipelines/recommended-plugins
-
-#### GET
-##### Responses
+### [GET] /rag/pipelines/recommended-plugins
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/transform/datasets/{dataset_id}
-
-#### POST
-##### Parameters
+### [POST] /rag/pipelines/transform/datasets/{dataset_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/customized/publish
-
-#### POST
-##### Parameters
+### [POST] /rag/pipelines/{pipeline_id}/customized/publish
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [CustomizedPipelineTemplatePayload](#customizedpipelinetemplatepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CustomizedPipelineTemplatePayload](#customizedpipelinetemplatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Pipeline template published |
 
-### /rag/pipelines/{pipeline_id}/exports
-
-#### GET
-##### Parameters
+### [GET] /rag/pipelines/{pipeline_id}/exports
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| include_secret | query | Whether to include secret values in the exported DSL | No | string, <br>**Default:** false |
 | pipeline_id | path |  | Yes | string |
-| include_secret | query | Whether to include secret values in the exported DSL | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Pipeline exported | [SimpleDataResponse](#simpledataresponse) |
+| 200 | Pipeline exported | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflow-runs
+### [GET] /rag/pipelines/{pipeline_id}/workflow-runs
+**Get workflow run list**
 
-#### GET
-##### Summary
-
-Get workflow run list
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs retrieved successfully | [WorkflowRunPaginationResponse](#workflowrunpaginationresponse) |
+| 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop
+### [POST] /rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop
+**Stop workflow task**
 
-#### POST
-##### Summary
-
-Stop workflow task
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Task stopped successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}
+### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}
+**Get workflow run detail**
 
-#### GET
-##### Summary
-
-Get workflow run detail
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | run_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetailResponse](#workflowrundetailresponse) |
+| 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions
+### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions
+**Get workflow run node execution list**
 
-#### GET
-##### Summary
-
-Get workflow run node execution list
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | run_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
+| 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflows
+### [GET] /rag/pipelines/{pipeline_id}/workflows
+**Get published workflows**
 
-#### GET
-##### Summary
-
-Get published workflows
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
+| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
 | 403 | Permission denied |  |
 
-### /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs
+### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs
+**Get default block config**
 
-#### GET
-##### Summary
-
-Get default block config
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}
+### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}
+**Get default block config**
 
-#### GET
-##### Summary
-
-Get default block config
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | block_type | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft
+**Get draft rag pipeline's workflow**
 
-#### GET
-##### Summary
-
-Get draft rag pipeline's workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | [WorkflowResponse](#workflowresponse) |
+| 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 404 | Draft workflow not found |  |
 
-#### POST
-##### Summary
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft
+**Sync draft workflow**
 
-Sync draft workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse) |
+| 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
+**Run rag pipeline datasource**
 
-#### POST
-##### Summary
-
-Run rag pipeline datasource
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceNodeRunPayload](#datasourcenoderunpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceNodeRunPayload](#datasourcenoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect
+**Set datasource variables**
 
-#### POST
-##### Summary
-
-Set datasource variables
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceVariablesPayload](#datasourcevariablespayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceVariablesPayload](#datasourcevariablespayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Datasource variables set successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Datasource variables set successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
+**Get draft workflow**
 
-#### GET
-##### Summary
-
-Get draft workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
+**Run draft workflow iteration node**
 
-#### POST
-##### Summary
-
-Run draft workflow iteration node
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [NodeRunPayload](#noderunpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run
-
-#### POST
-##### Summary
-
-Run draft workflow loop node
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [NodeRunPayload](#noderunpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run
-
-#### GET
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeRunPayload](#noderunpayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run
+**Run draft workflow loop node**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeRunPayload](#noderunpayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| node_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run
+**Run draft workflow node**
 
-#### POST
-##### Summary
-
-Run draft workflow node
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [NodeRunRequiredPayload](#noderunrequiredpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NodeRunRequiredPayload](#noderunrequiredpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node run started successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
-
-#### DELETE
-##### Parameters
+### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### GET
-##### Parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
+**Get first step parameters of rag pipeline**
 
-#### GET
-##### Summary
-
-Get first step parameters of rag pipeline
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters
+**Get second step parameters of rag pipeline**
 
-#### GET
-##### Summary
-
-Get second step parameters of rag pipeline
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/run
+### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/run
+**Run draft workflow**
 
-#### POST
-##### Summary
-
-Run draft workflow
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [DraftWorkflowRunPayload](#draftworkflowrunpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /rag/pipelines/{pipeline_id}/workflows/draft/system-variables
-
-#### GET
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowRunPayload](#draftworkflowrunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/variables
-
-#### DELETE
-##### Parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/system-variables
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### GET
-##### Summary
-
-Get draft workflow
-
-##### Parameters
+### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
+**Get draft workflow**
 
-#### DELETE
-##### Parameters
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| pipeline_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### GET
-##### Parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### PATCH
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
-| payload | body |  | Yes | [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
-
-#### PUT
-##### Parameters
+### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/publish
+### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
+#### Parameters
 
-#### GET
-##### Summary
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| pipeline_id | path |  | Yes | string |
+| variable_id | path |  | Yes | string |
 
-Get published pipeline
+#### Responses
 
-##### Parameters
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
+**Get published pipeline**
+
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully, or null if not exist | [WorkflowResponse](#workflowresponse) |
+| 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 
-#### POST
-##### Summary
+### [POST] /rag/pipelines/{pipeline_id}/workflows/publish
+**Publish workflow**
 
-Publish workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [RagPipelineWorkflowPublishResponse](#ragpipelineworkflowpublishresponse) |
+| 200 | Success | **application/json**: [RagPipelineWorkflowPublishResponse](#ragpipelineworkflowpublishresponse)<br> |
 
-### /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview
+### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview
+**Run datasource content preview**
 
-#### POST
-##### Summary
-
-Run datasource content preview
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [Parser](#parser) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [Parser](#parser)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run
+### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run
+**Run rag pipeline datasource**
 
-#### POST
-##### Summary
-
-Run rag pipeline datasource
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [DatasourceNodeRunPayload](#datasourcenoderunpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceNodeRunPayload](#datasourcenoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters
+**Get first step parameters of rag pipeline**
 
-#### GET
-##### Summary
-
-Get first step parameters of rag pipeline
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/published/processing/parameters
+### [GET] /rag/pipelines/{pipeline_id}/workflows/published/processing/parameters
+**Get second step parameters of rag pipeline**
 
-#### GET
-##### Summary
-
-Get second step parameters of rag pipeline
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/published/run
+### [POST] /rag/pipelines/{pipeline_id}/workflows/published/run
+**Run published workflow**
 
-#### POST
-##### Summary
-
-Run published workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
-| payload | body |  | Yes | [PublishedWorkflowRunPayload](#publishedworkflowrunpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishedWorkflowRunPayload](#publishedworkflowrunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
+### [DELETE] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
+**Delete a published workflow version that is not currently active on the pipeline**
 
-#### DELETE
-##### Summary
-
-Delete a published workflow version that is not currently active on the pipeline
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | workflow_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Workflow deleted successfully |
 
-#### PATCH
-##### Summary
+### [PATCH] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
+**Update workflow attributes**
 
-Update workflow attributes
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | workflow_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow updated successfully | [WorkflowResponse](#workflowresponse) |
+| 200 | Workflow updated successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 400 | No valid fields to update |  |
 | 403 | Permission denied |  |
 | 404 | Workflow not found |  |
 
-### /rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore
-
-#### POST
-##### Parameters
+### [POST] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | workflow_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse) |
+| 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
 
-### /refresh-token
-
-#### POST
-##### Responses
+### [POST] /refresh-token
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /remote-files/upload
+### [POST] /remote-files/upload
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RemoteFileUploadPayload](#remotefileuploadpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RemoteFileUploadPayload](#remotefileuploadpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | File uploaded successfully | [FileWithSignedUrl](#filewithsignedurl) |
+| 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
 
-### /remote-files/{url}
-
-#### GET
-##### Parameters
+### [GET] /remote-files/{url}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | url | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [RemoteFileInfo](#remotefileinfo) |
+| 200 | Success | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
 
-### /reset-password
+### [POST] /reset-password
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailPayload](#emailpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EmailPayload](#emailpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
-### /rule-code-generate
-
-#### POST
-##### Description
-
+### [POST] /rule-code-generate
 Generate code rules using LLM
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RuleCodeGeneratePayload](#rulecodegeneratepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RuleCodeGeneratePayload](#rulecodegeneratepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -8089,20 +7237,16 @@ Generate code rules using LLM
 | 400 | Invalid request parameters |
 | 402 | Provider quota exceeded |
 
-### /rule-generate
-
-#### POST
-##### Description
-
+### [POST] /rule-generate
 Generate rule configuration using LLM
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RuleGeneratePayload](#rulegeneratepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RuleGeneratePayload](#rulegeneratepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -8110,20 +7254,16 @@ Generate rule configuration using LLM
 | 400 | Invalid request parameters |
 | 402 | Provider quota exceeded |
 
-### /rule-structured-output-generate
-
-#### POST
-##### Description
-
+### [POST] /rule-structured-output-generate
 Generate structured output rules using LLM
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [RuleStructuredOutputPayload](#rulestructuredoutputpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RuleStructuredOutputPayload](#rulestructuredoutputpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -8131,603 +7271,522 @@ Generate structured output rules using LLM
 | 400 | Invalid request parameters |
 | 402 | Provider quota exceeded |
 
-### /snippets/{snippet_id}/workflow-runs
+### [GET] /snippets/{snippet_id}/workflow-runs
+**List workflow runs for snippet**
 
-#### GET
-##### Summary
-
-List workflow runs for snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow runs retrieved successfully | [WorkflowRunPaginationResponse](#workflowrunpaginationresponse) |
+| 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
 
-### /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
-
-#### POST
-##### Summary
-
-Stop a running snippet workflow task
-
-##### Description
+### [POST] /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
+**Stop a running snippet workflow task**
 
 Uses both the legacy stop flag mechanism and the graph engine
 command channel for backward compatibility.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Task stopped successfully |
 | 404 | Snippet not found |
 
-### /snippets/{snippet_id}/workflow-runs/{run_id}
+### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}
+**Get workflow run detail for snippet**
 
-#### GET
-##### Summary
-
-Get workflow run detail for snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | run_id | path |  | Yes | string |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow run detail retrieved successfully | [WorkflowRunDetailResponse](#workflowrundetailresponse) |
+| 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
 
-### /snippets/{snippet_id}/workflow-runs/{run_id}/node-executions
+### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}/node-executions
+**List node executions for a workflow run**
 
-#### GET
-##### Summary
-
-List node executions for a workflow run
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | run_id | path |  | Yes | string |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
+| 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 
-### /snippets/{snippet_id}/workflows
-
-#### GET
-##### Summary
-
-Get all published workflow versions for snippet
-
-##### Description
+### [GET] /snippets/{snippet_id}/workflows
+**Get all published workflow versions for snippet**
 
 Get all published workflows for a snippet
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SnippetWorkflowListQuery](#snippetworkflowlistquery) |
 | snippet_id | path | Snippet ID | Yes | string |
+| limit | query |  | No | integer, <br>**Default:** 10 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | [WorkflowPaginationResponse](#workflowpaginationresponse) |
+| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
 
-### /snippets/{snippet_id}/workflows/default-workflow-block-configs
+### [GET] /snippets/{snippet_id}/workflows/default-workflow-block-configs
+**Get default block configurations for snippet workflow**
 
-#### GET
-##### Summary
-
-Get default block configurations for snippet workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Default block configs retrieved successfully |
 
-### /snippets/{snippet_id}/workflows/draft
+### [GET] /snippets/{snippet_id}/workflows/draft
+**Get draft workflow for snippet**
 
-#### GET
-##### Summary
-
-Get draft workflow for snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow retrieved successfully | [SnippetWorkflowResponse](#snippetworkflowresponse) |
+| 200 | Draft workflow retrieved successfully | **application/json**: [SnippetWorkflowResponse](#snippetworkflowresponse)<br> |
 | 404 | Snippet or draft workflow not found |  |
 
-#### POST
-##### Summary
+### [POST] /snippets/{snippet_id}/workflows/draft
+**Sync draft workflow for snippet**
 
-Sync draft workflow for snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
-| payload | body |  | Yes | [SnippetDraftSyncPayload](#snippetdraftsyncpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SnippetDraftSyncPayload](#snippetdraftsyncpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Draft workflow synced successfully |
 | 400 | Hash mismatch |
 
-### /snippets/{snippet_id}/workflows/draft/config
+### [GET] /snippets/{snippet_id}/workflows/draft/config
+**Get snippet draft workflow configuration limits**
 
-#### GET
-##### Summary
-
-Get snippet draft workflow configuration limits
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Draft config retrieved successfully |
 
-### /snippets/{snippet_id}/workflows/draft/conversation-variables
-
-#### GET
-##### Description
-
+### [GET] /snippets/{snippet_id}/workflows/draft/conversation-variables
 Conversation variables are not used in snippet workflows; returns an empty list for API parity
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
-### /snippets/{snippet_id}/workflows/draft/environment-variables
-
-#### GET
-##### Description
-
+### [GET] /snippets/{snippet_id}/workflows/draft/environment-variables
 Get environment variables from snippet draft workflow graph
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Environment variables retrieved successfully |
 | 404 | Draft workflow not found |
 
-### /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
-
-#### POST
-##### Summary
-
-Run a draft workflow iteration node for snippet
-
-##### Description
+### [POST] /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
+**Run a draft workflow iteration node for snippet**
 
 Run draft workflow iteration node for snippet
 Iteration nodes execute their internal sub-graph multiple times over an input list.
 Returns an SSE event stream with iteration progress and results.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SnippetIterationNodeRunPayload](#snippetiterationnoderunpayload) |
 | node_id | path | Node ID | Yes | string |
 | snippet_id | path | Snippet ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SnippetIterationNodeRunPayload](#snippetiterationnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Iteration node run started successfully (SSE stream) |
 | 404 | Snippet or draft workflow not found |
 
-### /snippets/{snippet_id}/workflows/draft/loop/nodes/{node_id}/run
-
-#### POST
-##### Summary
-
-Run a draft workflow loop node for snippet
-
-##### Description
+### [POST] /snippets/{snippet_id}/workflows/draft/loop/nodes/{node_id}/run
+**Run a draft workflow loop node for snippet**
 
 Run draft workflow loop node for snippet
 Loop nodes execute their internal sub-graph repeatedly until a condition is met.
 Returns an SSE event stream with loop progress and results.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SnippetLoopNodeRunPayload](#snippetloopnoderunpayload) |
 | node_id | path | Node ID | Yes | string |
 | snippet_id | path | Snippet ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SnippetLoopNodeRunPayload](#snippetloopnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Loop node run started successfully (SSE stream) |
 | 404 | Snippet or draft workflow not found |
 
-### /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
-
-#### GET
-##### Summary
-
-Get the last run result for a specific node in snippet draft workflow
-
-##### Description
+### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
+**Get the last run result for a specific node in snippet draft workflow**
 
 Get last run result for a node in snippet draft workflow
 Returns the most recent execution record for the given node,
 including status, inputs, outputs, and timing information.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path | Node ID | Yes | string |
 | snippet_id | path | Snippet ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node last run retrieved successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 404 | Snippet, draft workflow, or node last run not found |  |
 
-### /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/run
-
-#### POST
-##### Summary
-
-Run a single node in snippet draft workflow
-
-##### Description
+### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/run
+**Run a single node in snippet draft workflow**
 
 Run a single node in snippet draft workflow (single-step debugging)
 Executes a specific node with provided inputs for single-step debugging.
 Returns the node execution result including status, outputs, and timing.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SnippetDraftNodeRunPayload](#snippetdraftnoderunpayload) |
 | node_id | path | Node ID | Yes | string |
 | snippet_id | path | Snippet ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SnippetDraftNodeRunPayload](#snippetdraftnoderunpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node run completed successfully | [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse) |
+| 200 | Node run completed successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 404 | Snippet or draft workflow not found |  |
 
-### /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables
-
-#### DELETE
-##### Description
-
+### [DELETE] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables
 Delete all variables for a specific node (snippet draft workflow)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Node variables deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables
 Get variables for a specific node (snippet draft workflow)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
-### /snippets/{snippet_id}/workflows/draft/run
-
-#### POST
-##### Summary
-
-Run draft workflow for snippet
-
-##### Description
+### [POST] /snippets/{snippet_id}/workflows/draft/run
+**Run draft workflow for snippet**
 
 Executes the snippet's draft workflow with the provided inputs
 and returns an SSE event stream with execution progress and results.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
-| payload | body |  | Yes | [SnippetDraftRunPayload](#snippetdraftrunpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SnippetDraftRunPayload](#snippetdraftrunpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Draft workflow run started successfully (SSE stream) |
 | 404 | Snippet or draft workflow not found |
 
-### /snippets/{snippet_id}/workflows/draft/system-variables
-
-#### GET
-##### Description
-
+### [GET] /snippets/{snippet_id}/workflows/draft/system-variables
 System variables are not used in snippet workflows; returns an empty list for API parity
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | [WorkflowDraftVariableList](#workflowdraftvariablelist) |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
-### /snippets/{snippet_id}/workflows/draft/variables
-
-#### DELETE
-##### Description
-
+### [DELETE] /snippets/{snippet_id}/workflows/draft/variables
 Delete all draft workflow variables for the current user (snippet scope)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Workflow variables deleted successfully |
 
-#### GET
-##### Description
-
+### [GET] /snippets/{snippet_id}/workflows/draft/variables
 List draft workflow variables without values (paginated, snippet scope)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| limit | query | Items per page | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 | snippet_id | path |  | Yes | string |
-| payload | body |  | Yes | [WorkflowDraftVariableListQuery](#workflowdraftvariablelistquery) |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue) |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
-### /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Delete a draft workflow variable (snippet scope)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Variable deleted successfully |
 | 404 | Variable not found |
 
-#### GET
-##### Description
-
+### [GET] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Get a specific draft workflow variable (snippet scope)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
-#### PATCH
-##### Description
-
+### [PATCH] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Update a draft workflow variable (snippet scope)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
-| payload | body |  | Yes | [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowDraftVariableUpdatePayload](#workflowdraftvariableupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
-### /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
-
-#### PUT
-##### Description
-
+### [PUT] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
 Reset a draft workflow variable to its default value (snippet scope)
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 | variable_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | [WorkflowDraftVariable](#workflowdraftvariable) |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
-### /snippets/{snippet_id}/workflows/publish
+### [GET] /snippets/{snippet_id}/workflows/publish
+**Get published workflow for snippet**
 
-#### GET
-##### Summary
-
-Get published workflow for snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflow retrieved successfully | [SnippetWorkflowResponse](#snippetworkflowresponse) |
+| 200 | Published workflow retrieved successfully | **application/json**: [SnippetWorkflowResponse](#snippetworkflowresponse)<br> |
 | 404 | Snippet not found |  |
 
-#### POST
-##### Summary
+### [POST] /snippets/{snippet_id}/workflows/publish
+**Publish snippet workflow**
 
-Publish snippet workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
-| payload | body |  | Yes | [PublishWorkflowPayload](#publishworkflowpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishWorkflowPayload](#publishworkflowpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Workflow published successfully |
 | 400 | No draft workflow found |
 
-### /snippets/{snippet_id}/workflows/{workflow_id}/restore
+### [POST] /snippets/{snippet_id}/workflows/{workflow_id}/restore
+**Restore a published snippet workflow version into the draft workflow**
 
-#### POST
-##### Summary
-
-Restore a published snippet workflow version into the draft workflow
-
-##### Description
-
-Restore a published snippet workflow version into the draft workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID | Yes | string |
 | workflow_id | path | Published workflow ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -8735,31 +7794,19 @@ Restore a published snippet workflow version into the draft workflow
 | 400 | Source workflow must be published |
 | 404 | Workflow not found |
 
-### /spec/schema-definitions
-
-#### GET
-##### Summary
-
-Get system JSON Schema definitions specification
-
-##### Description
+### [GET] /spec/schema-definitions
+**Get system JSON Schema definitions specification**
 
 Used for frontend component type mapping
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /system-features
-
-#### GET
-##### Summary
-
-Get system-wide feature configuration
-
-##### Description
+### [GET] /system-features
+**Get system-wide feature configuration**
 
 Get system-wide feature configuration
 NOTE: This endpoint is unauthenticated by design, as it provides system features
@@ -8769,390 +7816,348 @@ Authentication would create circular dependency (can't login without dashboard l
 
 Only non-sensitive configuration data should be returned by this endpoint.
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SystemFeatureModel](#systemfeaturemodel) |
+| 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
 
-### /tag-bindings
+### [POST] /tag-bindings
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TagBindingPayload](#tagbindingpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TagBindingPayload](#tagbindingpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /tag-bindings/remove
-
-#### POST
-##### Description
-
+### [POST] /tag-bindings/remove
 Remove one or more tag bindings from a target.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TagBindingRemovePayload](#tagbindingremovepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TagBindingRemovePayload](#tagbindingremovepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /tags
-
-#### GET
-##### Parameters
+### [GET] /tags
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword for tag name. | No | string |
 | type | query | Tag type filter. Can be "knowledge", "app", or "snippet". | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ [TagResponse](#tagresponse) ] |
+| 200 | Success | **application/json**: [ [TagResponse](#tagresponse) ]<br> |
 
-#### POST
-##### Parameters
+### [POST] /tags
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TagBasePayload](#tagbasepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TagBasePayload](#tagbasepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TagResponse](#tagresponse) |
+| 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
 
-### /tags/{tag_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /tags/{tag_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | tag_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Tag deleted successfully |
 
-#### PATCH
-##### Parameters
+### [PATCH] /tags/{tag_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | tag_id | path |  | Yes | string |
-| payload | body |  | Yes | [TagUpdateRequestPayload](#tagupdaterequestpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TagUpdateRequestPayload](#tagupdaterequestpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TagResponse](#tagresponse) |
+| 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
 
-### /test/retrieval
-
-#### POST
-##### Description
-
+### [POST] /test/retrieval
 Bedrock retrieval test (internal use only)
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [BedrockRetrievalPayload](#bedrockretrievalpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BedrockRetrievalPayload](#bedrockretrievalpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Bedrock retrieval test completed |
 
-### /trial-apps/{app_id}
+### [GET] /trial-apps/{app_id}
+**Get app detail**
 
-#### GET
-##### Summary
-
-Get app detail
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/audio-to-text
-
-#### POST
-##### Parameters
+### [POST] /trial-apps/{app_id}/audio-to-text
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/chat-messages
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| payload | body |  | Yes | [ChatRequest](#chatrequest) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /trial-apps/{app_id}/completion-messages
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| payload | body |  | Yes | [CompletionRequest](#completionrequest) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /trial-apps/{app_id}/datasets
-
-#### GET
-##### Parameters
+### [POST] /trial-apps/{app_id}/chat-messages
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatRequest](#chatrequest)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/messages/{message_id}/suggested-questions
+### [POST] /trial-apps/{app_id}/completion-messages
+#### Parameters
 
-#### GET
-##### Parameters
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CompletionRequest](#completionrequest)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /trial-apps/{app_id}/datasets
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | message_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/parameters
+### [GET] /trial-apps/{app_id}/parameters
+**Retrieve app parameters**
 
-#### GET
-##### Summary
-
-Retrieve app parameters
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/site
-
-#### GET
-##### Summary
-
-Retrieve app site info
-
-##### Description
+### [GET] /trial-apps/{app_id}/site
+**Retrieve app site info**
 
 Returns the site configuration for the application including theme, icons, and text.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/text-to-audio
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| payload | body |  | Yes | [TextToSpeechRequest](#texttospeechrequest) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /trial-apps/{app_id}/workflows
-
-#### GET
-##### Summary
-
-Get workflow detail
-
-##### Parameters
+### [POST] /trial-apps/{app_id}/text-to-audio
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TextToSpeechRequest](#texttospeechrequest)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/workflows/run
+### [GET] /trial-apps/{app_id}/workflows
+**Get workflow detail**
 
-#### POST
-##### Summary
-
-Run workflow
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
-| payload | body |  | Yes | [WorkflowRunRequest](#workflowrunrequest) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
+### [POST] /trial-apps/{app_id}/workflows/run
+**Run workflow**
 
-#### POST
-##### Summary
+#### Parameters
 
-Stop workflow task
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
 
-##### Parameters
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowRunRequest](#workflowrunrequest)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
+**Stop workflow task**
+
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /trial-models
-
-#### GET
-##### Summary
-
-Get hosted trial model provider configuration for model-provider pages
-
-##### Description
+### [GET] /trial-models
+**Get hosted trial model provider configuration for model-provider pages**
 
 Get hosted trial model provider configuration
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TrialModelsResponse](#trialmodelsresponse) |
+| 200 | Success | **application/json**: [TrialModelsResponse](#trialmodelsresponse)<br> |
 
-### /website/crawl
-
-#### POST
-##### Description
-
+### [POST] /website/crawl
 Crawl website content
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WebsiteCrawlPayload](#websitecrawlpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebsiteCrawlPayload](#websitecrawlpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Website crawl initiated successfully |
 | 400 | Invalid crawl parameters |
 
-### /website/crawl/status/{job_id}
-
-#### GET
-##### Description
-
+### [GET] /website/crawl/status/{job_id}
 Get website crawl status
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WebsiteCrawlStatusQuery](#websitecrawlstatusquery) |
 | job_id | path | Crawl job ID | Yes | string |
 | provider | query | Crawl provider (firecrawl/watercrawl/jinareader) | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -9160,20 +8165,16 @@ Get website crawl status
 | 400 | Invalid provider |
 | 404 | Crawl job not found |
 
-### /workflow-generate
-
-#### POST
-##### Description
-
+### [POST] /workflow-generate
 Generate a Dify workflow graph from natural language
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowGeneratePayload](#workflowgeneratepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowGeneratePayload](#workflowgeneratepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -9181,163 +8182,130 @@ Generate a Dify workflow graph from natural language
 | 400 | Invalid request parameters |
 | 402 | Provider quota exceeded |
 
-### /workflow/{workflow_run_id}/events
-
-#### GET
-##### Summary
-
-Get workflow execution events stream after resume
-
-##### Description
+### [GET] /workflow/{workflow_run_id}/events
+**Get workflow execution events stream after resume**
 
 GET /console/api/workflow/<workflow_run_id>/events
 
 Returns Server-Sent Events stream.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | workflow_run_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workflow/{workflow_run_id}/pause-details
-
-#### GET
-##### Summary
-
-Get workflow pause details
-
-##### Description
+### [GET] /workflow/{workflow_run_id}/pause-details
+**Get workflow pause details**
 
 Get workflow pause details
 GET /console/api/workflow/<workflow_run_id>/pause-details
 
 Returns information about why and where the workflow is paused.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | workflow_run_id | path | Workflow run ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow pause details retrieved successfully | [WorkflowPauseDetailsResponse](#workflowpausedetailsresponse) |
+| 200 | Workflow pause details retrieved successfully | **application/json**: [WorkflowPauseDetailsResponse](#workflowpausedetailsresponse)<br> |
 | 404 | Workflow run not found |  |
 
-### /workspaces
-
-#### GET
-##### Responses
+### [GET] /workspaces
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current
-
-#### POST
-##### Responses
+### [POST] /workspaces/current
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [TenantInfoResponse](#tenantinforesponse) |
+| 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
 
-### /workspaces/current/agent-provider/{provider_name}
-
-#### GET
-##### Description
-
+### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_name | path | Agent provider name | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | object |
+| 200 | Success | **application/json**: object<br> |
 
-### /workspaces/current/agent-providers
-
-#### GET
-##### Description
-
+### [GET] /workspaces/current/agent-providers
 Get list of available agent providers
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [ object ] |
+| 200 | Success | **application/json**: [ object ]<br> |
 
-### /workspaces/current/customized-snippets
+### [GET] /workspaces/current/customized-snippets
+**List customized snippets with pagination and search**
 
-#### GET
-##### Summary
-
-List customized snippets with pagination and search
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SnippetListQuery](#snippetlistquery) |
+| creators | query | Filter by creator account IDs | No |  |
+| is_published | query | Filter by published status | No |  |
+| keyword | query |  | No |  |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Filter by tag IDs | No |  |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Snippets retrieved successfully | [SnippetPagination](#snippetpagination) |
-
-#### POST
-##### Summary
-
-Create a new customized snippet
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CreateSnippetPayload](#createsnippetpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Snippet created successfully | [Snippet](#snippet) |
+| 200 | Snippets retrieved successfully | **application/json**: [SnippetPagination](#snippetpagination)<br> |
+
+### [POST] /workspaces/current/customized-snippets
+**Create a new customized snippet**
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CreateSnippetPayload](#createsnippetpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Snippet created successfully | **application/json**: [Snippet](#snippet)<br> |
 | 400 | Invalid request |  |
 
-### /workspaces/current/customized-snippets/imports
+### [POST] /workspaces/current/customized-snippets/imports
+**Import snippet from DSL**
 
-#### POST
-##### Summary
+#### Request Body
 
-Import snippet from DSL
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SnippetImportPayload](#snippetimportpayload)<br> |
 
-##### Description
-
-Import snippet from DSL
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SnippetImportPayload](#snippetimportpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -9345,2196 +8313,2049 @@ Import snippet from DSL
 | 202 | Import pending confirmation |
 | 400 | Import failed |
 
-### /workspaces/current/customized-snippets/imports/{import_id}/confirm
+### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
+**Confirm a pending snippet import**
 
-#### POST
-##### Summary
-
-Confirm a pending snippet import
-
-##### Description
-
-Confirm a pending snippet import
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | import_id | path | Import ID to confirm | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Import confirmed successfully |
 | 400 | Import failed |
 
-### /workspaces/current/customized-snippets/{snippet_id}
+### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
+**Delete customized snippet**
 
-#### DELETE
-##### Summary
-
-Delete customized snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Snippet deleted successfully |
 | 404 | Snippet not found |
 
-#### GET
-##### Summary
+### [GET] /workspaces/current/customized-snippets/{snippet_id}
+**Get customized snippet details**
 
-Get customized snippet details
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet retrieved successfully | [Snippet](#snippet) |
+| 200 | Snippet retrieved successfully | **application/json**: [Snippet](#snippet)<br> |
 | 404 | Snippet not found |  |
 
-#### PATCH
-##### Summary
+### [PATCH] /workspaces/current/customized-snippets/{snippet_id}
+**Update customized snippet**
 
-Update customized snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path |  | Yes | string |
-| payload | body |  | Yes | [UpdateSnippetPayload](#updatesnippetpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [UpdateSnippetPayload](#updatesnippetpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet updated successfully | [Snippet](#snippet) |
+| 200 | Snippet updated successfully | **application/json**: [Snippet](#snippet)<br> |
 | 400 | Invalid request |  |
 | 404 | Snippet not found |  |
 
-### /workspaces/current/customized-snippets/{snippet_id}/check-dependencies
+### [GET] /workspaces/current/customized-snippets/{snippet_id}/check-dependencies
+**Check dependencies for a snippet**
 
-#### GET
-##### Summary
-
-Check dependencies for a snippet
-
-##### Description
-
-Check dependencies for a snippet
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Dependencies checked successfully |
 | 404 | Snippet not found |
 
-### /workspaces/current/customized-snippets/{snippet_id}/export
-
-#### GET
-##### Summary
-
-Export snippet as DSL
-
-##### Description
+### [GET] /workspaces/current/customized-snippets/{snippet_id}/export
+**Export snippet as DSL**
 
 Export snippet configuration as DSL
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID to export | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Snippet exported successfully |
 | 404 | Snippet not found |
 
-### /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
-
-#### POST
-##### Summary
-
-Increment snippet use count when it is inserted into a workflow
-
-##### Description
+### [POST] /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
+**Increment snippet use count when it is inserted into a workflow**
 
 Increment snippet use count by 1
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Use count incremented successfully |
 | 404 | Snippet not found |
 
-### /workspaces/current/dataset-operators
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/dataset-operators
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AccountWithRoleList](#accountwithrolelist) |
+| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
 
-### /workspaces/current/default-model
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/default-model
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserGetDefault](#parsergetdefault) |
+| model_type | query |  | Yes | [ModelType](#modeltype) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Parameters
+### [POST] /workspaces/current/default-model
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPostDefault](#parserpostdefault) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPostDefault](#parserpostdefault)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/endpoints
-
-#### POST
-##### Description
-
+### [POST] /workspaces/current/endpoints
 Create a new plugin endpoint
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointCreatePayload](#endpointcreatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndpointCreatePayload](#endpointcreatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | [EndpointCreateResponse](#endpointcreateresponse) |
+| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/endpoints/create
+### ~~[POST] /workspaces/current/endpoints/create~~
 
-#### POST
 ***DEPRECATED***
-##### Description
 
 Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/current/endpoints instead.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointCreatePayload](#endpointcreatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndpointCreatePayload](#endpointcreatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | [EndpointCreateResponse](#endpointcreateresponse) |
+| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/endpoints/delete
+### ~~[POST] /workspaces/current/endpoints/delete~~
 
-#### POST
 ***DEPRECATED***
-##### Description
 
 Deprecated legacy alias for deleting a plugin endpoint. Use DELETE /workspaces/current/endpoints/{id} instead.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointIdPayload](#endpointidpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndpointIdPayload](#endpointidpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | [EndpointDeleteResponse](#endpointdeleteresponse) |
+| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/endpoints/disable
-
-#### POST
-##### Description
-
+### [POST] /workspaces/current/endpoints/disable
 Disable a plugin endpoint
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointIdPayload](#endpointidpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndpointIdPayload](#endpointidpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint disabled successfully | [EndpointDisableResponse](#endpointdisableresponse) |
+| 200 | Endpoint disabled successfully | **application/json**: [EndpointDisableResponse](#endpointdisableresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/endpoints/enable
-
-#### POST
-##### Description
-
+### [POST] /workspaces/current/endpoints/enable
 Enable a plugin endpoint
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointIdPayload](#endpointidpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndpointIdPayload](#endpointidpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint enabled successfully | [EndpointEnableResponse](#endpointenableresponse) |
+| 200 | Endpoint enabled successfully | **application/json**: [EndpointEnableResponse](#endpointenableresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/endpoints/list
-
-#### GET
-##### Description
-
+### [GET] /workspaces/current/endpoints/list
 List plugin endpoints with pagination
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointListQuery](#endpointlistquery) |
+| page | query |  | Yes | integer |
+| page_size | query |  | Yes | integer |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [EndpointListResponse](#endpointlistresponse) |
+| 200 | Success | **application/json**: [EndpointListResponse](#endpointlistresponse)<br> |
 
-### /workspaces/current/endpoints/list/plugin
-
-#### GET
-##### Description
-
+### [GET] /workspaces/current/endpoints/list/plugin
 List endpoints for a specific plugin
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointListForPluginQuery](#endpointlistforpluginquery) |
+| page | query |  | Yes | integer |
+| page_size | query |  | Yes | integer |
+| plugin_id | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [PluginEndpointListResponse](#pluginendpointlistresponse) |
+| 200 | Success | **application/json**: [PluginEndpointListResponse](#pluginendpointlistresponse)<br> |
 
-### /workspaces/current/endpoints/update
+### ~~[POST] /workspaces/current/endpoints/update~~
 
-#### POST
 ***DEPRECATED***
-##### Description
 
 Deprecated legacy alias for updating a plugin endpoint. Use PATCH /workspaces/current/endpoints/{id} instead.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [LegacyEndpointUpdatePayload](#legacyendpointupdatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LegacyEndpointUpdatePayload](#legacyendpointupdatepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | [EndpointUpdateResponse](#endpointupdateresponse) |
+| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/endpoints/{id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /workspaces/current/endpoints/{id}
 Delete a plugin endpoint
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | id | path | Endpoint ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | [EndpointDeleteResponse](#endpointdeleteresponse) |
+| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
 | 403 | Admin privileges required |  |
 
-#### PATCH
-##### Description
-
+### [PATCH] /workspaces/current/endpoints/{id}
 Update a plugin endpoint
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EndpointUpdatePayload](#endpointupdatepayload) |
 | id | path | Endpoint ID | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EndpointUpdatePayload](#endpointupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | [EndpointUpdateResponse](#endpointupdateresponse) |
+| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
 | 403 | Admin privileges required |  |
 
-### /workspaces/current/members
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/members
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AccountWithRoleList](#accountwithrolelist) |
+| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
 
-### /workspaces/current/members/invite-email
+### [POST] /workspaces/current/members/invite-email
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MemberInvitePayload](#memberinvitepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MemberInvitePayload](#memberinvitepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/members/owner-transfer-check
+### [POST] /workspaces/current/members/owner-transfer-check
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OwnerTransferCheckPayload](#ownertransfercheckpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [OwnerTransferCheckPayload](#ownertransfercheckpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [VerificationTokenResponse](#verificationtokenresponse) |
+| 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
 
-### /workspaces/current/members/send-owner-transfer-confirm-email
+### [POST] /workspaces/current/members/send-owner-transfer-confirm-email
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OwnerTransferEmailPayload](#ownertransferemailpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [OwnerTransferEmailPayload](#ownertransferemailpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
-### /workspaces/current/members/{member_id}
-
-#### DELETE
-##### Parameters
+### [DELETE] /workspaces/current/members/{member_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | member_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/members/{member_id}/owner-transfer
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/members/{member_id}/owner-transfer
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | member_id | path |  | Yes | string |
-| payload | body |  | Yes | [OwnerTransferPayload](#ownertransferpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OwnerTransferPayload](#ownertransferpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/members/{member_id}/update-role
-
-#### PUT
-##### Parameters
+### [PUT] /workspaces/current/members/{member_id}/update-role
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | member_id | path |  | Yes | string |
-| payload | body |  | Yes | [MemberRoleUpdatePayload](#memberroleupdatepayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MemberRoleUpdatePayload](#memberroleupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/model-providers
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserModelList](#parsermodellist) |
+| model_type | query |  | No |  |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/checkout-url
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/model-providers/{provider}/checkout-url
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/credentials
-
-#### DELETE
-##### Parameters
+### [DELETE] /workspaces/current/model-providers/{provider}/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCredentialDelete](#parsercredentialdelete) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserCredentialDelete](#parsercredentialdelete)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Credential deleted successfully |
 
-#### GET
-##### Parameters
+### [GET] /workspaces/current/model-providers/{provider}/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | query |  | No |  |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCredentialId](#parsercredentialid) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCredentialCreate](#parsercredentialcreate) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserCredentialCreate](#parsercredentialcreate)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### PUT
-##### Parameters
+### [PUT] /workspaces/current/model-providers/{provider}/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCredentialUpdate](#parsercredentialupdate) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserCredentialUpdate](#parsercredentialupdate)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/credentials/switch
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/credentials/switch
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCredentialSwitch](#parsercredentialswitch) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserCredentialSwitch](#parsercredentialswitch)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/model-providers/{provider}/credentials/validate
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/credentials/validate
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCredentialValidate](#parsercredentialvalidate) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserCredentialValidate](#parsercredentialvalidate)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/models
-
-#### DELETE
-##### Parameters
+### [DELETE] /workspaces/current/model-providers/{provider}/models
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserDeleteModels](#parserdeletemodels) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserDeleteModels](#parserdeletemodels)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Model deleted successfully |
 
-#### GET
-##### Parameters
+### [GET] /workspaces/current/model-providers/{provider}/models
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/models
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserPostModels](#parserpostmodels) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPostModels](#parserpostmodels)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/models/credentials
-
-#### DELETE
-##### Parameters
+### [DELETE] /workspaces/current/model-providers/{provider}/models/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserDeleteCredential](#parserdeletecredential) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserDeleteCredential](#parserdeletecredential)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 204 | Credential deleted successfully |
 
-#### GET
-##### Parameters
+### [GET] /workspaces/current/model-providers/{provider}/models/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| config_from | query |  | No |  |
+| credential_id | query |  | No |  |
+| model | query |  | Yes | string |
+| model_type | query |  | Yes | [ModelType](#modeltype) |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserGetCredentials](#parsergetcredentials) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/models/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserCreateCredential](#parsercreatecredential) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserCreateCredential](#parsercreatecredential)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### PUT
-##### Parameters
+### [PUT] /workspaces/current/model-providers/{provider}/models/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserUpdateCredential](#parserupdatecredential) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserUpdateCredential](#parserupdatecredential)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/models/credentials/switch
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/models/credentials/switch
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserSwitch](#parserswitch) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserSwitch](#parserswitch)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/model-providers/{provider}/models/credentials/validate
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/models/credentials/validate
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserValidate](#parservalidate) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserValidate](#parservalidate)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/models/disable
-
-#### PATCH
-##### Parameters
+### [PATCH] /workspaces/current/model-providers/{provider}/models/disable
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserDeleteModels](#parserdeletemodels) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserDeleteModels](#parserdeletemodels)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/model-providers/{provider}/models/enable
-
-#### PATCH
-##### Parameters
+### [PATCH] /workspaces/current/model-providers/{provider}/models/enable
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserDeleteModels](#parserdeletemodels) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserDeleteModels](#parserdeletemodels)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/model-providers/{provider}/models/load-balancing-configs/credentials-validate
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/credentials-validate
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [LoadBalancingCredentialPayload](#loadbalancingcredentialpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LoadBalancingCredentialPayload](#loadbalancingcredentialpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | config_id | path |  | Yes | string |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [LoadBalancingCredentialPayload](#loadbalancingcredentialpayload) |
 
-##### Responses
+#### Request Body
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LoadBalancingCredentialPayload](#loadbalancingcredentialpayload)<br> |
 
-### /workspaces/current/model-providers/{provider}/models/parameter-rules
-
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserParameter](#parserparameter) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/model-providers/{provider}/preferred-provider-type
+### [GET] /workspaces/current/model-providers/{provider}/models/parameter-rules
+#### Parameters
 
-#### POST
-##### Parameters
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| model | query |  | Yes | string |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /workspaces/current/model-providers/{provider}/preferred-provider-type
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [ParserPreferredProviderType](#parserpreferredprovidertype) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPreferredProviderType](#parserpreferredprovidertype)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/models/model-types/{model_type}
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/models/model-types/{model_type}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | model_type | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/permission
-
-#### GET
-##### Summary
-
-Get workspace permission settings
-
-##### Description
+### [GET] /workspaces/current/permission
+**Get workspace permission settings**
 
 Returns permission flags that control workspace features like member invitations and owner transfer.
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [WorkspacePermissionResponse](#workspacepermissionresponse) |
+| 200 | Success | **application/json**: [WorkspacePermissionResponse](#workspacepermissionresponse)<br> |
 
-### /workspaces/current/plugin/asset
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/asset
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserAsset](#parserasset) |
+| file_name | query |  | Yes | string |
+| plugin_unique_identifier | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/debugging-key
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/plugin/debugging-key
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [PluginDebuggingKeyResponse](#plugindebuggingkeyresponse) |
+| 200 | Success | **application/json**: [PluginDebuggingKeyResponse](#plugindebuggingkeyresponse)<br> |
 
-### /workspaces/current/plugin/fetch-manifest
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/fetch-manifest
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPluginIdentifierQuery](#parserpluginidentifierquery) |
+| plugin_unique_identifier | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/icon
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/icon
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserIcon](#parsericon) |
+| filename | query |  | Yes | string |
+| tenant_id | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/install/github
+### [POST] /workspaces/current/plugin/install/github
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserGithubInstall](#parsergithubinstall)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserGithubInstall](#parsergithubinstall) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/install/marketplace
+### [POST] /workspaces/current/plugin/install/marketplace
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPluginIdentifiers](#parserpluginidentifiers)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPluginIdentifiers](#parserpluginidentifiers) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/install/pkg
+### [POST] /workspaces/current/plugin/install/pkg
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPluginIdentifiers](#parserpluginidentifiers)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPluginIdentifiers](#parserpluginidentifiers) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/list
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/list
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserList](#parserlist) |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/list/installations/ids
+### [POST] /workspaces/current/plugin/list/installations/ids
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserLatest](#parserlatest)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserLatest](#parserlatest) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/list/latest-versions
+### [POST] /workspaces/current/plugin/list/latest-versions
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserLatest](#parserlatest)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserLatest](#parserlatest) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/marketplace/pkg
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/marketplace/pkg
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPluginIdentifierQuery](#parserpluginidentifierquery) |
+| plugin_unique_identifier | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/parameters/dynamic-options
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/parameters/dynamic-options
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserDynamicOptions](#parserdynamicoptions) |
+| action | query |  | Yes | string |
+| credential_id | query |  | No |  |
+| parameter | query |  | Yes | string |
+| plugin_id | query |  | Yes | string |
+| provider | query |  | Yes | string |
+| provider_type | query |  | Yes | string, <br>**Available values:** "tool", "trigger" |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/parameters/dynamic-options-with-credentials
+### [POST] /workspaces/current/plugin/parameters/dynamic-options-with-credentials
+**Fetch dynamic options using credentials directly (for edit mode)**
 
-#### POST
-##### Summary
+#### Request Body
 
-Fetch dynamic options using credentials directly (for edit mode)
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserDynamicOptionsWithCredentials](#parserdynamicoptionswithcredentials)<br> |
 
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserDynamicOptionsWithCredentials](#parserdynamicoptionswithcredentials) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/permission/change
+### [POST] /workspaces/current/plugin/permission/change
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPermissionChange](#parserpermissionchange)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPermissionChange](#parserpermissionchange) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuccessResponse](#successresponse) |
+| 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
 
-### /workspaces/current/plugin/permission/fetch
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/plugin/permission/fetch
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/preferences/autoupgrade/exclude
+### [POST] /workspaces/current/plugin/preferences/autoupgrade/exclude
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserExcludePlugin](#parserexcludeplugin)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /workspaces/current/plugin/preferences/change
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserPreferencesChange](#parserpreferenceschange)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/plugin/preferences/fetch
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/plugin/readme
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserExcludePlugin](#parserexcludeplugin) |
+| language | query |  | No | string, <br>**Default:** en-US |
+| plugin_unique_identifier | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/preferences/change
-
-#### POST
-##### Parameters
+### [GET] /workspaces/current/plugin/tasks
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserPreferencesChange](#parserpreferenceschange) |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
 
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/plugin/preferences/fetch
-
-#### GET
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/readme
-
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserReadme](#parserreadme) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/plugin/tasks
-
-#### GET
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserTasks](#parsertasks) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/plugin/tasks/delete_all
-
-#### POST
-##### Responses
+### [POST] /workspaces/current/plugin/tasks/delete_all
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuccessResponse](#successresponse) |
+| 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
 
-### /workspaces/current/plugin/tasks/{task_id}
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/plugin/tasks/{task_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/tasks/{task_id}/delete
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/plugin/tasks/{task_id}/delete
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuccessResponse](#successresponse) |
+| 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
 
-### /workspaces/current/plugin/tasks/{task_id}/delete/{identifier}
-
-#### POST
-##### Parameters
+### [POST] /workspaces/current/plugin/tasks/{task_id}/delete/{identifier}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | identifier | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuccessResponse](#successresponse) |
+| 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
 
-### /workspaces/current/plugin/uninstall
+### [POST] /workspaces/current/plugin/uninstall
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserUninstall](#parseruninstall)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserUninstall](#parseruninstall) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuccessResponse](#successresponse) |
+| 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
 
-### /workspaces/current/plugin/upgrade/github
+### [POST] /workspaces/current/plugin/upgrade/github
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserGithubUpgrade](#parsergithubupgrade)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserGithubUpgrade](#parsergithubupgrade) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/upgrade/marketplace
+### [POST] /workspaces/current/plugin/upgrade/marketplace
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserMarketplaceUpgrade](#parsermarketplaceupgrade)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserMarketplaceUpgrade](#parsermarketplaceupgrade) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/upload/bundle
-
-#### POST
-##### Responses
+### [POST] /workspaces/current/plugin/upload/bundle
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/upload/github
+### [POST] /workspaces/current/plugin/upload/github
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ParserGithubUpload](#parsergithubupload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ParserGithubUpload](#parsergithubupload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/plugin/upload/pkg
-
-#### POST
-##### Responses
+### [POST] /workspaces/current/plugin/upload/pkg
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-labels
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-labels
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/add
+### [POST] /workspaces/current/tool-provider/api/add
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolProviderAddPayload](#apitoolprovideraddpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ApiToolProviderAddPayload](#apitoolprovideraddpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/delete
+### [POST] /workspaces/current/tool-provider/api/delete
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolProviderDeletePayload](#apitoolproviderdeletepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ApiToolProviderDeletePayload](#apitoolproviderdeletepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/get
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-provider/api/get
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/remote
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-provider/api/remote
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/schema
+### [POST] /workspaces/current/tool-provider/api/schema
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolSchemaPayload](#apitoolschemapayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ApiToolSchemaPayload](#apitoolschemapayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/test/pre
+### [POST] /workspaces/current/tool-provider/api/test/pre
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolTestPayload](#apitooltestpayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ApiToolTestPayload](#apitooltestpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/tools
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-provider/api/tools
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/api/update
+### [POST] /workspaces/current/tool-provider/api/update
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ApiToolProviderUpdatePayload](#apitoolproviderupdatepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ApiToolProviderUpdatePayload](#apitoolproviderupdatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/add
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| payload | body |  | Yes | [BuiltinToolAddPayload](#builtintooladdpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/tool-provider/builtin/{provider}/credential/info
-
-#### GET
-##### Parameters
+### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BuiltinToolAddPayload](#builtintooladdpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
+#### Parameters
 
-#### GET
-##### Parameters
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_type | path |  | Yes | string |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/credentials
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/credentials
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/default-credential
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| payload | body |  | Yes | [BuiltinProviderDefaultCredentialPayload](#builtinproviderdefaultcredentialpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/tool-provider/builtin/{provider}/delete
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| payload | body |  | Yes | [BuiltinToolCredentialDeletePayload](#builtintoolcredentialdeletepayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/tool-provider/builtin/{provider}/icon
-
-#### GET
-##### Parameters
+### [POST] /workspaces/current/tool-provider/builtin/{provider}/default-credential
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BuiltinProviderDefaultCredentialPayload](#builtinproviderdefaultcredentialpayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/info
-
-#### GET
-##### Parameters
+### [POST] /workspaces/current/tool-provider/builtin/{provider}/delete
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BuiltinToolCredentialDeletePayload](#builtintoolcredentialdeletepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/icon
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
-
-#### DELETE
-##### Parameters
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/info
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### GET
-##### Parameters
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| payload | body |  | Yes | [ToolOAuthCustomClientPayload](#tooloauthcustomclientpayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/tool-provider/builtin/{provider}/tools
-
-#### GET
-##### Parameters
+### [DELETE] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/builtin/{provider}/update
-
-#### POST
-##### Parameters
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [BuiltinToolUpdatePayload](#builtintoolupdatepayload) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/mcp
-
-#### DELETE
-##### Parameters
+### [POST] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MCPProviderDeletePayload](#mcpproviderdeletepayload) |
+| provider | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ToolOAuthCustomClientPayload](#tooloauthcustomclientpayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/tool-provider/builtin/{provider}/tools
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /workspaces/current/tool-provider/builtin/{provider}/update
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [BuiltinToolUpdatePayload](#builtintoolupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [DELETE] /workspaces/current/tool-provider/mcp
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MCPProviderDeletePayload](#mcpproviderdeletepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-#### POST
-##### Parameters
+### [POST] /workspaces/current/tool-provider/mcp
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MCPProviderCreatePayload](#mcpprovidercreatepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MCPProviderCreatePayload](#mcpprovidercreatepayload)<br> |
 
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-#### PUT
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MCPProviderUpdatePayload](#mcpproviderupdatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/mcp/auth
+### [PUT] /workspaces/current/tool-provider/mcp
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MCPProviderUpdatePayload](#mcpproviderupdatepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [MCPAuthPayload](#mcpauthpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/mcp/tools/{provider_id}
+### [POST] /workspaces/current/tool-provider/mcp/auth
+#### Request Body
 
-#### GET
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MCPAuthPayload](#mcpauthpayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/tool-provider/mcp/tools/{provider_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/mcp/update/{provider_id}
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/tool-provider/mcp/update/{provider_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/workflow/create
+### [POST] /workspaces/current/tool-provider/workflow/create
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowToolCreatePayload](#workflowtoolcreatepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowToolCreatePayload](#workflowtoolcreatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/workflow/delete
+### [POST] /workspaces/current/tool-provider/workflow/delete
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowToolDeletePayload](#workflowtooldeletepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowToolDeletePayload](#workflowtooldeletepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/workflow/get
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-provider/workflow/get
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/workflow/tools
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-provider/workflow/tools
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-provider/workflow/update
+### [POST] /workspaces/current/tool-provider/workflow/update
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowToolUpdatePayload](#workflowtoolupdatepayload)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowToolUpdatePayload](#workflowtoolupdatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tool-providers
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tool-providers
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tools/api
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tools/api
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tools/builtin
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tools/builtin
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tools/mcp
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tools/mcp
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/tools/workflow
-
-#### GET
-##### Responses
+### [GET] /workspaces/current/tools/workflow
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/icon
-
-#### GET
-##### Parameters
+### [GET] /workspaces/current/trigger-provider/{provider}/icon
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/info
+### [GET] /workspaces/current/trigger-provider/{provider}/info
+**Get info for a trigger provider**
 
-#### GET
-##### Summary
-
-Get info for a trigger provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/oauth/client
+### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
+**Remove custom OAuth client configuration**
 
-#### DELETE
-##### Summary
-
-Remove custom OAuth client configuration
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### GET
-##### Summary
+### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
+**Get OAuth client configuration for a provider**
 
-Get OAuth client configuration for a provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Summary
+### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
+**Configure custom OAuth client for a provider**
 
-Configure custom OAuth client for a provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerOAuthClientPayload](#triggeroauthclientpayload) |
 
-##### Responses
+#### Request Body
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerOAuthClientPayload](#triggeroauthclientpayload)<br> |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
-
-#### POST
-##### Summary
-
-Build a subscription instance for a trigger provider
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| subscription_builder_id | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerSubscriptionBuilderUpdatePayload](#triggersubscriptionbuilderupdatepayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
+### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
+**Build a subscription instance for a trigger provider**
 
-#### POST
-##### Summary
-
-Add a new subscription instance for a trigger provider
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerSubscriptionBuilderCreatePayload](#triggersubscriptionbuildercreatepayload) |
-
-##### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
-
-#### GET
-##### Summary
-
-Get the request logs for a subscription instance for a trigger provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 | subscription_builder_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerSubscriptionBuilderUpdatePayload](#triggersubscriptionbuilderupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
+### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
+**Add a new subscription instance for a trigger provider**
 
-#### POST
-##### Summary
-
-Update a subscription instance for a trigger provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
-| subscription_builder_id | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerSubscriptionBuilderUpdatePayload](#triggersubscriptionbuilderupdatepayload) |
 
-##### Responses
+#### Request Body
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerSubscriptionBuilderCreatePayload](#triggersubscriptionbuildercreatepayload)<br> |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
-
-#### POST
-##### Summary
-
-Verify and update a subscription instance for a trigger provider
-
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| provider | path |  | Yes | string |
-| subscription_builder_id | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerSubscriptionBuilderVerifyPayload](#triggersubscriptionbuilderverifypayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
+### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
+**Get the request logs for a subscription instance for a trigger provider**
 
-#### GET
-##### Summary
-
-Get a subscription instance for a trigger provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 | subscription_builder_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/list
+### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
+**Update a subscription instance for a trigger provider**
 
-#### GET
-##### Summary
+#### Parameters
 
-List all trigger subscriptions for the current tenant's provider
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| subscription_builder_id | path |  | Yes | string |
 
-##### Parameters
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerSubscriptionBuilderUpdatePayload](#triggersubscriptionbuilderupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
+**Verify and update a subscription instance for a trigger provider**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| subscription_builder_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerSubscriptionBuilderVerifyPayload](#triggersubscriptionbuilderverifypayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
+**Get a subscription instance for a trigger provider**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | path |  | Yes | string |
+| subscription_builder_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/list
+**List all trigger subscriptions for the current tenant's provider**
+
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
+### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
+**Initiate OAuth authorization flow for a trigger provider**
 
-#### GET
-##### Summary
-
-Initiate OAuth authorization flow for a trigger provider
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
+### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
+**Verify credentials for an existing subscription (edit mode only)**
 
-#### POST
-##### Summary
-
-Verify credentials for an existing subscription (edit mode only)
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path |  | Yes | string |
 | subscription_id | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerSubscriptionBuilderVerifyPayload](#triggersubscriptionbuilderverifypayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerSubscriptionBuilderVerifyPayload](#triggersubscriptionbuilderverifypayload)<br> |
+
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
+### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
+**Delete a subscription instance**
 
-#### POST
-##### Summary
-
-Delete a subscription instance
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | subscription_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update
+### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update
+**Update a subscription instance**
 
-#### POST
-##### Summary
-
-Update a subscription instance
-
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | subscription_id | path |  | Yes | string |
-| payload | body |  | Yes | [TriggerSubscriptionBuilderUpdatePayload](#triggersubscriptionbuilderupdatepayload) |
 
-##### Responses
+#### Request Body
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TriggerSubscriptionBuilderUpdatePayload](#triggersubscriptionbuilderupdatepayload)<br> |
 
-### /workspaces/current/triggers
-
-#### GET
-##### Summary
-
-List all trigger providers for the current tenant
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/custom-config
+### [GET] /workspaces/current/triggers
+**List all trigger providers for the current tenant**
 
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkspaceCustomConfigPayload](#workspacecustomconfigpayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/custom-config/webapp-logo/upload
+### [POST] /workspaces/custom-config
+#### Request Body
 
-#### POST
-##### Responses
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceCustomConfigPayload](#workspacecustomconfigpayload)<br> |
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-
-### /workspaces/info
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkspaceInfoPayload](#workspaceinfopayload) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/switch
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [SwitchWorkspacePayload](#switchworkspacepayload) |
-
-##### Responses
+### [POST] /workspaces/custom-config/webapp-logo/upload
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
+### [POST] /workspaces/info
+#### Request Body
 
-#### GET
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceInfoPayload](#workspaceinfopayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [POST] /workspaces/switch
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SwitchWorkspacePayload](#switchworkspacepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -11543,7 +10364,7 @@ List all trigger providers for the current tenant
 | provider | path |  | Yes | string |
 | tenant_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -11553,21 +10374,17 @@ List all trigger providers for the current tenant
 ## default
 Default namespace
 
-### /explore/banners
+### [GET] /explore/banners
+**Get banner list**
 
-#### GET
-##### Summary
-
-Get banner list
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
 ---
-### Models
+### Schemas
 
 #### APIBasedExtensionListResponse
 
@@ -11669,7 +10486,7 @@ Get banner list
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interface_theme | string | *Enum:* `"dark"`, `"light"` | Yes |
+| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | Yes |
 
 #### AccountNamePayload
 
@@ -11792,7 +10609,7 @@ Get banner list
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | app_mode | string | Application mode | Yes |
-| has_context | string | Whether has context | No |
+| has_context | string, <br>**Default:** true | Whether has context | No |
 | model_mode | string | Model mode | Yes |
 | model_name | string | Model name | Yes |
 
@@ -11848,7 +10665,7 @@ composer/publish validators and skipped by runtime request builders.
 | dangerous_acknowledged | boolean |  | No |
 | dangerous_command | boolean |  | No |
 | description | string |  | No |
-| enabled | boolean |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
 | env | [AgentCliToolEnvConfig](#agentclitoolenvconfig) |  | No |
 | id | string |  | No |
 | install | string |  | No |
@@ -11931,7 +10748,7 @@ Risk marker for CLI tool bootstrap commands.
 | ---- | ---- | ----------- | -------- |
 | file_id | string |  | No |
 | id | string |  | No |
-| kind | string |  | No |
+| kind | string, <br>**Default:** file |  | No |
 | name | string |  | No |
 | reference | string |  | No |
 | remote_url | string |  | No |
@@ -11972,7 +10789,7 @@ Risk marker for CLI tool bootstrap commands.
 | description | string |  | No |
 | file_id | string |  | No |
 | id | string |  | No |
-| kind | string |  | No |
+| kind | string, <br>**Default:** skill |  | No |
 | name | string |  | No |
 | path | string |  | No |
 
@@ -12110,7 +10927,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
-| enabled | boolean |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
 | name | string |  | No |
 
 #### AgentIconType
@@ -12166,8 +10983,8 @@ Supported icon storage formats for Agent roster entries.
 | ---- | ---- | ----------- | -------- |
 | app_id | string | Workflow app id for in-current-workflow markers | No |
 | keyword | string |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### AgentInviteOptionsResponse
 
@@ -12411,7 +11228,7 @@ Visibility and lifecycle scope of an Agent record.
 | model | [AgentSoulModelConfig](#agentsoulmodelconfig) |  | No |
 | prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
 | sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
-| schema_version | integer |  | No |
+| schema_version | integer, <br>**Default:** 1 |  | No |
 | skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
 | tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
 
@@ -12427,14 +11244,14 @@ new callers should send ``plugin_id`` + ``provider`` when available.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_ref | [AgentSoulDifyToolCredentialRef](#agentsouldifytoolcredentialref) |  | No |
-| credential_type | string | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
+| credential_type | string, <br>**Available values:** "api-key", "oauth2", "unauthorized", <br>**Default:** api-key | *Enum:* `"api-key"`, `"oauth2"`, `"unauthorized"` | No |
 | description | string |  | No |
-| enabled | boolean |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
 | name | string |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
-| provider_type | string |  | No |
+| provider_type | string, <br>**Default:** plugin |  | No |
 | runtime_parameters | object |  | No |
 | tool_name | string |  | No |
 
@@ -12450,7 +11267,7 @@ old Agent tool payloads can be read while new payloads stay explicit.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | No |
 | provider | string |  | No |
-| type | string | *Enum:* `"provider"`, `"tool"` | No |
+| type | string, <br>**Available values:** "provider", "tool", <br>**Default:** tool | *Enum:* `"provider"`, `"tool"` | No |
 
 #### AgentSoulEnvConfig
 
@@ -12664,8 +11481,8 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| limit | integer | Page size | No |
-| page | integer | Page number | No |
+| limit | integer, <br>**Default:** 20 | Page size | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 
 #### AnnotationReplyPayload
 
@@ -12679,7 +11496,7 @@ Soft lifecycle state for Agent records.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string | *Enum:* `"disable"`, `"enable"` | Yes |
+| action | string, <br>**Available values:** "disable", "enable" | *Enum:* `"disable"`, `"enable"` | Yes |
 
 #### AnnotationSettingUpdatePayload
 
@@ -12897,10 +11714,10 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | creator_ids | [ string ] | Filter by creator account IDs | No |
 | is_created_by_me | boolean | Filter by creator | No |
-| limit | integer | Page size (1-100) | No |
-| mode | string | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | Filter by app name | No |
-| page | integer | Page number (1-99999) | No |
+| page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
 
 #### AppMCPServerResponse
@@ -13000,7 +11817,7 @@ AppMCPServer Status Enum
 | copyright | string |  | No |
 | custom_disclaimer | string |  | No |
 | customize_domain | string |  | No |
-| customize_token_strategy | string | *Enum:* `"allow"`, `"must"`, `"not_allow"` | No |
+| customize_token_strategy | string |  | No |
 | default_language | string |  | No |
 | description | string |  | No |
 | icon | string |  | No |
@@ -13152,12 +11969,12 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_status | string | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
+| annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
 | keyword | string | Search keyword | No |
-| limit | integer | Page size (1-100) | No |
-| page | integer | Page number | No |
-| sort_by | string | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+| limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
+| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort field and direction<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
 
 #### ChatMessagePayload
@@ -13165,13 +11982,13 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation ID | No |
-| files | [  ] | Uploaded files | No |
+| files | [ object ] | Uploaded files | No |
 | inputs | object |  | Yes |
 | model_config | object |  | No |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query | Yes |
-| response_mode | string | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
-| retriever_from | string | Retriever source | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming", <br>**Default:** blocking | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
+| retriever_from | string, <br>**Default:** dev | Retriever source | No |
 
 #### ChatMessagesQuery
 
@@ -13179,18 +11996,18 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation ID | Yes |
 | first_id | string | First message ID for pagination | No |
-| limit | integer | Number of messages to return (1-100) | No |
+| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
 
 #### ChatRequest
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
-| files | [  ] |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | parent_message_id | string |  | No |
 | query | string |  | Yes |
-| retriever_from | string |  | No |
+| retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### CheckDependenciesResult
 
@@ -13242,8 +12059,8 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### ChildChunkListResponse
 
@@ -13292,11 +12109,11 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_status | string | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
+| annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
 | keyword | string | Search keyword | No |
-| limit | integer | Page size (1-100) | No |
-| page | integer | Page number | No |
+| limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
 
 #### CompletionMessageExplorePayload
@@ -13306,29 +12123,29 @@ Button styles for user actions.
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
-| retriever_from | string |  | No |
+| response_mode | string |  | No |
+| retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### CompletionMessagePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [  ] | Uploaded files | No |
+| files | [ object ] | Uploaded files | No |
 | inputs | object |  | Yes |
 | model_config | object |  | No |
 | query | string | Query text | No |
-| response_mode | string | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
-| retriever_from | string | Retriever source | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming", <br>**Default:** blocking | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | No |
+| retriever_from | string, <br>**Default:** dev | Retriever source | No |
 
 #### CompletionRequest
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [  ] |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
-| retriever_from | string |  | No |
+| response_mode | string |  | No |
+| retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### ComplianceDownloadQuery
 
@@ -13341,7 +12158,7 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | agent_id | string |  | No |
-| binding_type | string | *Enum:* `"inline_agent"`, `"roster_agent"` | Yes |
+| binding_type | string, <br>**Available values:** "inline_agent", "roster_agent" | *Enum:* `"inline_agent"`, `"roster_agent"` | Yes |
 | current_snapshot_id | string |  | No |
 
 #### ComposerCandidateCapabilities
@@ -13382,7 +12199,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| locked | boolean |  | No |
+| locked | boolean, <br>**Default:** true |  | No |
 | unlocked_from_version_id | string |  | No |
 
 #### ComposerValidationFindingsResponse
@@ -13414,7 +12231,7 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
 | name | string |  | Yes |
 | value | string<br>[ string ]<br>integer<br>number |  | No |
 
@@ -13425,8 +12242,8 @@ Condition detail
 | ids | [ string ] | Filter by dataset IDs | No |
 | include_all | boolean | Include all datasets | No |
 | keyword | string | Search keyword | No |
-| limit | integer | Number of items per page | No |
-| page | integer | Page number | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
 
 #### ConsoleSegmentListResponse
@@ -13500,7 +12317,7 @@ Condition detail
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 | pinned | boolean |  | No |
 
 #### ConversationMessageDetail
@@ -13627,7 +12444,7 @@ Condition detail
 | icon | string | Icon | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
-| mode | string | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
 #### CreateSnippetPayload
@@ -13641,7 +12458,7 @@ Payload for creating a new snippet.
 | icon_info | [IconInfo](#iconinfo) |  | No |
 | input_fields | [ [InputFieldDefinition](#inputfielddefinition) ] |  | No |
 | name | string |  | Yes |
-| type | string | *Enum:* `"group"`, `"node"` | No |
+| type | string, <br>**Available values:** "group", "node", <br>**Default:** node | *Enum:* `"group"`, `"node"` | No |
 
 #### CredentialType
 
@@ -13727,7 +12544,7 @@ Payload for creating a new snippet.
 | indexing_technique | string |  | No |
 | name | string |  | Yes |
 | permission | [PermissionEnum](#permissionenum) |  | No |
-| provider | string |  | No |
+| provider | string, <br>**Default:** vendor |  | No |
 
 #### DatasetDetail
 
@@ -14270,7 +13087,7 @@ code can call ``output.failure_strategy.on_failure`` without None-guards.
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |
 | id | string |  | No |
 | name | string |  | Yes |
-| required | boolean |  | No |
+| required | boolean, <br>**Default:** true |  | No |
 | type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
 
 #### DeclaredOutputFailureStrategy
@@ -14522,7 +13339,7 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keywords | string |  | Yes |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 | page | integer |  | No |
 
 #### EducationAutocompleteResponse
@@ -14693,8 +13510,8 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| limit | integer | Number of items per page | No |
-| page | integer | Page number | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 
 #### ExternalDatasetCreatePayload
 
@@ -14748,13 +13565,13 @@ Request payload for bulk downloading documents as a zip archive.
 | billing | [BillingModel](#billingmodel) |  | Yes |
 | can_replace_logo | boolean |  | Yes |
 | dataset_operator_enabled | boolean |  | Yes |
-| docs_processing | string |  | Yes |
+| docs_processing | string, <br>**Default:** standard |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
-| is_allow_transfer_workspace | boolean |  | Yes |
+| is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
-| knowledge_rate_limit | integer |  | Yes |
+| knowledge_rate_limit | integer, <br>**Default:** 10 |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
@@ -14778,10 +13595,10 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | end_date | string | End date (YYYY-MM-DD) | No |
-| format | string | Export format<br>*Enum:* `"csv"`, `"json"` | No |
-| from_source | string | Filter by feedback source<br>*Enum:* `"admin"`, `"user"` | No |
+| format | string, <br>**Available values:** "csv", "json", <br>**Default:** csv | Export format<br>*Enum:* `"csv"`, `"json"` | No |
+| from_source | string | Filter by feedback source | No |
 | has_comment | boolean | Only include feedback with comments | No |
-| rating | string | Filter by rating<br>*Enum:* `"dislike"`, `"like"` | No |
+| rating | string | Filter by rating | No |
 | start_date | string | Start date (YYYY-MM-DD) | No |
 
 #### FeedbackStat
@@ -15093,7 +13910,7 @@ Icon information model.
 | ---- | ---- | ----------- | -------- |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string | *Enum:* `"emoji"`, `"image"` | No |
+| icon_type | string |  | No |
 | icon_url | string |  | No |
 
 #### IconType
@@ -15116,7 +13933,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string |  | No |
+| current_dsl_version | string, <br>**Default:** 0.6.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
@@ -15134,7 +13951,7 @@ Query parameter for including secret variables in export.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_secret | string | Whether to include secret variables | No |
+| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
 
 #### IndexingEstimate
 
@@ -15149,8 +13966,8 @@ Query parameter for including secret variables in export.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | dataset_id | string |  | No |
-| doc_form | string |  | No |
-| doc_language | string |  | No |
+| doc_form | string, <br>**Default:** text_model |  | No |
+| doc_language | string, <br>**Default:** English |  | No |
 | indexing_technique | string |  | Yes |
 | info_list | object |  | Yes |
 | process_rule | object |  | Yes |
@@ -15182,7 +13999,7 @@ Query parameter for including secret variables in export.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source_type | string | *Enum:* `"notion_import"`, `"upload_file"`, `"website_crawl"` | Yes |
+| data_source_type | string, <br>**Available values:** "notion_import", "upload_file", "website_crawl" | *Enum:* `"notion_import"`, `"upload_file"`, `"website_crawl"` | Yes |
 | file_info_list | [FileInfo](#fileinfo) |  | No |
 | notion_info_list | [ [NotionInfo](#notioninfo) ] |  | No |
 | website_info_list | [WebsiteInfo](#websiteinfo) |  | No |
@@ -15272,7 +14089,7 @@ Input field definition for snippet parameters.
 | flow_id | string | Workflow/Flow ID | Yes |
 | ideal_output | string | Expected ideal output | No |
 | instruction | string | Instruction for generation | Yes |
-| language | string | Programming language (javascript/python) | No |
+| language | string, <br>**Default:** javascript | Programming language (javascript/python) | No |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 | node_id | string | Node ID for workflow context | No |
 
@@ -15305,12 +14122,12 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data_source | [DataSource](#datasource) |  | No |
-| doc_form | string |  | No |
-| doc_language | string |  | No |
-| duplicate | boolean |  | No |
+| doc_form | string, <br>**Default:** text_model |  | No |
+| doc_language | string, <br>**Default:** English |  | No |
+| duplicate | boolean, <br>**Default:** true |  | No |
 | embedding_model | string |  | No |
 | embedding_model_provider | string |  | No |
-| indexing_technique | string | *Enum:* `"economy"`, `"high_quality"` | Yes |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | *Enum:* `"economy"`, `"high_quality"` | Yes |
 | is_multimodal | boolean |  | No |
 | name | string |  | No |
 | original_document_id | string |  | No |
@@ -15547,7 +14364,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
 | message_id | string | Message ID | Yes |
-| rating | string | *Enum:* `"dislike"`, `"like"` | No |
+| rating | string |  | No |
 
 #### MessageFile
 
@@ -15577,14 +14394,14 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | first_id | string | First message ID for pagination | No |
-| limit | integer | Number of messages to return (1-100) | No |
+| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
 
 #### MetadataArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-| type | string | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 
@@ -15601,7 +14418,7 @@ Metadata Filtering Condition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conditions | [ [Condition](#condition) ] |  | No |
-| logical_operator | string | *Enum:* `"and"`, `"or"` | No |
+| logical_operator | string |  | No |
 
 #### MetadataOperationData
 
@@ -15666,7 +14483,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | Yes |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | *Enum:* `"blocking"`, `"streaming"` | Yes |
 
 #### NewAppResponse
 
@@ -15704,11 +14521,11 @@ Lifecycle status of a single declared output within a run.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| node_completed_at | dateTime |  | No |
+| node_completed_at | string |  | No |
 | node_display_name | string |  | Yes |
 | node_id | string |  | Yes |
 | node_kind | string |  | Yes |
-| node_started_at | dateTime |  | No |
+| node_started_at | string |  | No |
 | node_status | [NodeStatus](#nodestatus) |  | Yes |
 | outputs | [ [NodeOutputView](#nodeoutputview) ] |  | No |
 
@@ -15736,8 +14553,8 @@ Coarse node-level status used by Inspector to pick a banner.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| doc_form | string |  | No |
-| doc_language | string |  | No |
+| doc_form | string, <br>**Default:** text_model |  | No |
+| doc_language | string, <br>**Default:** English |  | No |
 | notion_info_list | [ object ] |  | Yes |
 | process_rule | object |  | Yes |
 
@@ -15965,7 +14782,7 @@ Form input definition.
 | parameter | string |  | Yes |
 | plugin_id | string |  | Yes |
 | provider | string |  | Yes |
-| provider_type | string | *Enum:* `"tool"`, `"trigger"` | Yes |
+| provider_type | string, <br>**Available values:** "tool", "trigger" | *Enum:* `"tool"`, `"trigger"` | Yes |
 
 #### ParserDynamicOptionsWithCredentials
 
@@ -16050,8 +14867,8 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| page | integer | Page number | No |
-| page_size | integer | Page size (1-256) | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
+| page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
 
 #### ParserMarketplaceUpgrade
 
@@ -16118,13 +14935,13 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| preferred_provider_type | string | *Enum:* `"custom"`, `"system"` | Yes |
+| preferred_provider_type | string, <br>**Available values:** "custom", "system" | *Enum:* `"custom"`, `"system"` | Yes |
 
 #### ParserReadme
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string |  | No |
+| language | string, <br>**Default:** en-US |  | No |
 | plugin_unique_identifier | string |  | Yes |
 
 #### ParserSwitch
@@ -16139,8 +14956,8 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| page | integer | Page number | No |
-| page_size | integer | Page size (1-256) | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
+| page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
 
 #### ParserUninstall
 
@@ -16198,7 +15015,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| type | string | Template source: built-in or customized | No |
+| type | string, <br>**Default:** built-in | Template source: built-in or customized | No |
 
 #### PipelineTemplateDetailResponse
 
@@ -16230,8 +15047,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Template language | No |
-| type | string | Template source: built-in or customized | No |
+| language | string, <br>**Default:** en-US | Template language | No |
+| type | string, <br>**Default:** built-in | Template source: built-in or customized | No |
 
 #### PipelineTemplateListResponse
 
@@ -16363,7 +15180,7 @@ Payload for publishing snippet workflow.
 | inputs | object |  | Yes |
 | is_preview | boolean |  | No |
 | original_document_id | string |  | No |
-| response_mode | string | *Enum:* `"blocking"`, `"streaming"` | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming", <br>**Default:** streaming | *Enum:* `"blocking"`, `"streaming"` | No |
 | start_node_id | string |  | Yes |
 
 #### QAPreviewDetail
@@ -16378,7 +15195,7 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer |  | Yes |
-| reset_date | integer |  | Yes |
+| reset_date | integer, <br>**Default:** -1 |  | Yes |
 | usage | integer |  | Yes |
 
 #### RagPipelineDatasetImportPayload
@@ -16423,7 +15240,7 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| type | string |  | No |
+| type | string, <br>**Default:** all |  | No |
 
 #### RagPipelineWorkflowPublishResponse
 
@@ -16586,14 +15403,14 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### Rule
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string | *Enum:* `"full-doc"`, `"paragraph"` | No |
+| parent_mode | string |  | No |
 | pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
 | segmentation | [Segmentation](#segmentation) |  | No |
 | subchunk_segmentation | [Segmentation](#segmentation) |  | No |
@@ -16602,7 +15419,7 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code_language | string | Programming language for code generation | No |
+| code_language | string, <br>**Default:** javascript | Programming language for code generation | No |
 | instruction | string | Rule generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 | no_variable | boolean | Whether to exclude variables | No |
@@ -16629,7 +15446,7 @@ Payload for publishing snippet workflow.
 | mtime | integer |  | No |
 | name | string |  | Yes |
 | size | integer |  | No |
-| type | string | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
+| type | string, <br>**Available values:** "dir", "file", "other", "symlink" | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
 
 #### SandboxListResponse
 
@@ -16654,7 +15471,7 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | reference | string |  | Yes |
-| transfer_method | string |  | No |
+| transfer_method | string, <br>**Default:** tool_file |  | No |
 
 #### SandboxUploadResponse
 
@@ -16674,7 +15491,7 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 
 #### SegmentAttachmentResponse
 
@@ -16720,11 +15537,11 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | string |  | No |
+| enabled | string, <br>**Default:** all |  | No |
 | hit_count_gte | integer |  | No |
 | keyword | string |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 | status | [ string ] |  | No |
 
 #### SegmentResponse
@@ -16776,7 +15593,8 @@ Payload for publishing snippet workflow.
 | ---- | ---- | ----------- | -------- |
 | chunk_overlap | integer |  | No |
 | max_tokens | integer |  | Yes |
-| separator | string |  | No |
+| separator | string, <br>**Default:** 
+ |  | No |
 
 #### SelectInputConfig
 
@@ -16984,8 +15802,8 @@ Query parameters for listing snippets.
 | creators | [ string ] | Filter by creator account IDs | No |
 | is_published | boolean | Filter by published status | No |
 | keyword | string |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
 
 #### SnippetLoopNodeRunPayload
@@ -17012,8 +15830,8 @@ Query parameters for listing snippet published workflows.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 10 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### SnippetWorkflowResponse
 
@@ -17081,14 +15899,14 @@ Default configuration for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | interval | string |  | Yes |
-| plan | string |  | Yes |
+| plan | string, <br>**Default:** sandbox |  | Yes |
 
 #### SubscriptionQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| interval | string | Billing interval<br>*Enum:* `"month"`, `"year"` | Yes |
-| plan | string | Subscription plan<br>*Enum:* `"professional"`, `"team"` | Yes |
+| interval | string, <br>**Available values:** "month", "year" | Billing interval<br>*Enum:* `"month"`, `"year"` | Yes |
+| plan | string, <br>**Available values:** "professional", "team" | Subscription plan<br>*Enum:* `"professional"`, `"team"` | Yes |
 
 #### SuccessResponse
 
@@ -17131,11 +15949,11 @@ Default configuration for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
-| enable_change_email | boolean |  | Yes |
-| enable_collaboration_mode | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
@@ -17144,7 +15962,7 @@ Default configuration for form inputs.
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | license | [LicenseModel](#licensemodel) |  | Yes |
-| max_plugin_package_size | integer |  | Yes |
+| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
@@ -17187,7 +16005,7 @@ Default configuration for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
+| type | string, <br>**Available values:** "", "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
 
 #### TagResponse
 
@@ -17486,7 +16304,7 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credential_type | string |  | No |
+| credential_type | string, <br>**Default:** unauthorized |  | No |
 
 #### TriggerSubscriptionBuilderUpdatePayload
 
@@ -17627,7 +16445,7 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | dateTime |  | No |
+| created_at | string |  | No |
 | id | string |  | Yes |
 | node_id | string |  | Yes |
 | webhook_debug_url | string |  | Yes |
@@ -17639,21 +16457,21 @@ in form definiton, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | options | object |  | Yes |
-| provider | string | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
+| provider | string, <br>**Available values:** "firecrawl", "jinareader", "watercrawl" | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
 | url | string |  | Yes |
 
 #### WebsiteCrawlStatusQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| provider | string | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
+| provider | string, <br>**Available values:** "firecrawl", "jinareader", "watercrawl" | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
 
 #### WebsiteInfo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | job_id | string |  | Yes |
-| only_main_content | boolean |  | No |
+| only_main_content | boolean, <br>**Default:** true |  | No |
 | provider | string |  | Yes |
 | urls | [ string ] |  | Yes |
 
@@ -17669,7 +16487,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
 | vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
-| weight_type | string | *Enum:* `"customized"`, `"keyword_first"`, `"semantic_first"` | No |
+| weight_type | string |  | No |
 
 #### WeightVectorSetting
 
@@ -17740,14 +16558,14 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at__after | dateTime | Filter logs created after this timestamp | No |
-| created_at__before | dateTime | Filter logs created before this timestamp | No |
+| created_at__after | string | Filter logs created after this timestamp | No |
+| created_at__before | string | Filter logs created before this timestamp | No |
 | created_by_account | string | Filter by account | No |
 | created_by_end_user_session_id | string | Filter by end user session ID | No |
 | detail | boolean | Whether to return detailed logs | No |
 | keyword | string | Search keyword for filtering logs | No |
-| limit | integer | Number of items per page (1-100) | No |
-| page | integer | Page number (1-99999) | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
+| page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |
 
 #### WorkflowArchivedLogPaginationResponse
@@ -17966,8 +16784,8 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer | Items per page | No |
-| page | integer | Page number | No |
+| limit | integer, <br>**Default:** 20 | Items per page | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 
 #### WorkflowDraftVariableListWithoutValue
 
@@ -18039,16 +16857,16 @@ can reuse its existing handler.
 | current_graph | object | Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch | No |
 | ideal_output | string | Optional sample output for grounding | No |
 | instruction | string | Natural-language workflow description | Yes |
-| mode | string | Target app mode for the generated graph<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" | Target app mode for the generated graph<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 
 #### WorkflowListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 10 |  | No |
 | named_only | boolean |  | No |
-| page | integer |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 | user_id | string |  | No |
 
 #### WorkflowNodeJobConfig
@@ -18060,7 +16878,7 @@ can reuse its existing handler.
 | metadata | [WorkflowNodeJobMetadata](#workflownodejobmetadata) |  | No |
 | mode | [WorkflowNodeJobMode](#workflownodejobmode) |  | No |
 | previous_node_output_refs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
-| schema_version | integer |  | No |
+| schema_version | integer, <br>**Default:** 1 |  | No |
 | workflow_prompt | string |  | No |
 
 #### WorkflowNodeJobMetadata
@@ -18137,10 +16955,10 @@ can reuse its existing handler.
 | name | string |  | No |
 | node_id | string |  | No |
 | output | string |  | No |
-| selector | [  ] |  | No |
-| value_selector | [  ] |  | No |
+| selector | [ string<br>integer<br>number<br>boolean ] |  | No |
+| value_selector | [ string<br>integer<br>number<br>boolean ] |  | No |
 | variable | string |  | No |
-| variable_selector | [  ] |  | No |
+| variable_selector | [ string<br>integer<br>number<br>boolean ] |  | No |
 
 #### WorkflowResponse
 
@@ -18166,9 +16984,9 @@ can reuse its existing handler.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| status | string | Workflow run status filter<br>*Enum:* `"failed"`, `"partial-succeeded"`, `"running"`, `"stopped"`, `"succeeded"` | No |
+| status | string | Workflow run status filter | No |
 | time_range | string | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No |
-| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging<br>*Enum:* `"app-run"`, `"debugging"` | No |
+| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
 #### WorkflowRunCountResponse
 
@@ -18257,9 +17075,9 @@ can reuse its existing handler.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string | Last run ID for pagination | No |
-| limit | integer | Number of items per page (1-100) | No |
-| status | string | Workflow run status filter<br>*Enum:* `"failed"`, `"partial-succeeded"`, `"running"`, `"stopped"`, `"succeeded"` | No |
-| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging<br>*Enum:* `"app-run"`, `"debugging"` | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
+| status | string | Workflow run status filter | No |
+| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
 #### WorkflowRunNodeExecutionListResponse
 
@@ -18316,13 +17134,13 @@ Query parameters for workflow runs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 
 #### WorkflowRunRequest
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [  ] |  | No |
+| files | [ object ] |  | No |
 | inputs | object |  | Yes |
 
 #### WorkflowRunSnapshotView
@@ -18392,7 +17210,7 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | dateTime |  | No |
+| created_at | string |  | No |
 | icon | string |  | Yes |
 | id | string |  | Yes |
 | node_id | string |  | Yes |
@@ -18400,7 +17218,7 @@ Workflow tool configuration
 | status | string |  | Yes |
 | title | string |  | Yes |
 | trigger_type | string |  | Yes |
-| updated_at | dateTime |  | No |
+| updated_at | string |  | No |
 
 #### WorkflowUpdatePayload
 
@@ -18433,8 +17251,8 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### WorkspacePermissionResponse
 
@@ -18488,7 +17306,7 @@ Workflow tool configuration
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
 
-## FastOpenAPI Preview (OpenAPI 3.0)
+## FastOpenAPI Preview (OpenAPI 3.1)
 
 ### Dify API (FastOpenAPI PoC)
 FastOpenAPI proof of concept for Dify API
@@ -18620,7 +17438,7 @@ FastOpenAPI proof of concept for Dify API
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string | Admin email address | Yes |
-| language |  | Admin language | No |
+| language | string | Admin language | No |
 | name | string | Admin name (max 30 characters) | Yes |
 | password | string | Admin password | Yes |
 
@@ -18634,7 +17452,7 @@ FastOpenAPI proof of concept for Dify API
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| setup_at |  | Setup completion time (ISO format) | No |
+| setup_at | string | Setup completion time (ISO format) | No |
 | step | string, <br>**Available values:** "finished", "not_started" | Setup step status<br>*Enum:* `"finished"`, `"not_started"` | Yes |
 
 ###### VersionFeatures

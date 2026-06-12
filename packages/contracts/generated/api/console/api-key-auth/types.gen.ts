@@ -65,9 +65,7 @@ export type DeleteApiKeyAuthDataSourceByBindingIdData = {
 }
 
 export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteApiKeyAuthDataSourceByBindingIdResponse
