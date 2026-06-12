@@ -9,7 +9,7 @@ class TestGetRecommendAppDetailNullCheck:
     @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
-    def test_returns_none_when_retrieval_returns_none_and_trial_enabled(
+    def test_get_detail_returns_none_before_reading_trial_flag(
         self, mock_config: MagicMock, mock_factory_class: MagicMock, mock_feature_service: MagicMock
     ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"

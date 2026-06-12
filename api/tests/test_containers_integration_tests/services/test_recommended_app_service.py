@@ -352,7 +352,7 @@ class TestRecommendedAppServiceTrialFeatures:
     @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
-    def test_get_detail_returns_none_when_not_found_and_trial_enabled(
+    def test_get_detail_returns_none_before_reading_trial_flag(
         self,
         mock_config: MagicMock,
         mock_factory_class: MagicMock,
