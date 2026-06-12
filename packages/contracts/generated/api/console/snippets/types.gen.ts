@@ -12,8 +12,8 @@ export type WorkflowRunPaginationResponse = {
 
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccount | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
@@ -43,7 +43,7 @@ export type WorkflowPaginationResponse = {
 export type SnippetWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount
+  created_by?: SimpleAccount | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -61,7 +61,7 @@ export type SnippetWorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount
+  updated_by?: SimpleAccount | null
   version: string
 }
 
@@ -96,8 +96,8 @@ export type SnippetLoopNodeRunPayload = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccount | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
@@ -165,7 +165,7 @@ export type WorkflowDraftVariable = {
 
 export type WorkflowDraftVariableUpdatePayload = {
   name?: string | null
-  value?: unknown
+  value?: unknown | null
 }
 
 export type PublishWorkflowPayload = {
@@ -176,7 +176,7 @@ export type PublishWorkflowPayload = {
 
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
+  created_by_account?: SimpleAccount | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -204,7 +204,7 @@ export type SimpleEndUser = {
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount
+  created_by?: SimpleAccount | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -219,7 +219,7 @@ export type WorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount
+  updated_by?: SimpleAccount | null
   version: string
 }
 
@@ -630,9 +630,7 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = 
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse
@@ -708,9 +706,7 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse
@@ -755,9 +751,7 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdError
   = DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors[keyof DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse
@@ -836,9 +830,7 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetError
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariable
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse

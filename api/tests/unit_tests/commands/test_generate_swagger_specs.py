@@ -1,4 +1,4 @@
-"""Unit tests for the standalone Swagger export helper."""
+"""Unit tests for the standalone OpenAPI export helper."""
 
 import importlib.util
 import json
@@ -30,40 +30,80 @@ def _load_generate_swagger_specs_module():
     return module
 
 
-def test_generate_specs_writes_console_web_and_service_swagger_files(tmp_path):
+def _operation_ids(payload):
+    methods = {"delete", "get", "head", "options", "patch", "post", "put", "trace"}
+    for path_item in payload["paths"].values():
+        for method, operation in path_item.items():
+            if method in methods and isinstance(operation, dict) and "operationId" in operation:
+                yield operation["operationId"]
+
+
+def _get_operations(payload):
+    for path_item in payload["paths"].values():
+        operation = path_item.get("get")
+        if isinstance(operation, dict):
+            yield operation
+
+
+def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
 
     assert [path.name for path in written_paths] == [
-        "console-swagger.json",
-        "web-swagger.json",
-        "service-swagger.json",
-        "openapi-swagger.json",
+        "console-openapi.json",
+        "web-openapi.json",
+        "service-openapi.json",
+        "openapi-openapi.json",
     ]
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        assert payload["swagger"] == "2.0"
+        assert payload["openapi"].startswith("3.")
         assert "paths" in payload
 
 
-def test_generate_specs_writes_swagger_with_resolvable_references_and_no_nulls(tmp_path):
+def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(tmp_path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
 
     for path in written_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        definitions = payload["definitions"]
+        schemas = payload["components"]["schemas"]
         refs = {
-            item["$ref"].removeprefix("#/definitions/")
+            item["$ref"].removeprefix("#/components/schemas/")
             for item in _walk_values(payload)
-            if isinstance(item, dict) and isinstance(item.get("$ref"), str)
+            if isinstance(item, dict)
+            and isinstance(item.get("$ref"), str)
+            and item["$ref"].startswith("#/components/schemas/")
         }
 
-        assert refs <= set(definitions)
+        assert refs <= set(schemas)
         assert all(value is not None for value in _walk_values(payload))
+
+
+def test_generate_specs_writes_unique_operation_ids(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+
+    for path in written_paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        operation_ids = list(_operation_ids(payload))
+
+        assert len(operation_ids) == len(set(operation_ids))
+
+
+def test_generate_specs_moves_get_request_bodies_to_query_parameters(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+
+    for path in written_paths:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+
+        assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
 def test_generate_specs_is_idempotent(tmp_path):
