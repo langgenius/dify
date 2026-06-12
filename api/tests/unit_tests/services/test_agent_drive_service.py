@@ -428,3 +428,75 @@ def test_restandardize_same_slug_overwrites_both_keys_and_cleans_old_toolfiles()
         "pdf-toolkit/SKILL.md": new_md,
         "pdf-toolkit/.DIFY-SKILL-FULL.zip": new_zip,
     }
+
+
+# ── ENG-624: console drive inspector (service layer) ─────────────────────────
+
+
+def test_preview_returns_text_with_truncation_flags():
+    tf = _seed_tool_file(name="SKILL.md")
+    _commit("pdf-toolkit/SKILL.md", tf)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"# PDF Toolkit\nUse responsibly.\n"])
+        result = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/SKILL.md")
+
+    assert result == {
+        "key": "pdf-toolkit/SKILL.md",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "# PDF Toolkit\nUse responsibly.\n",
+    }
+
+
+def test_preview_marks_binary_and_oversized_content():
+    tf = _seed_tool_file(name="blob.bin")
+    _commit("files/blob.bin", tf)
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"\x00\x01\x02"])
+        binary = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin")
+    assert binary["binary"] is True
+    assert binary["text"] is None
+
+    with patch("services.agent_drive_service.storage") as storage_mock:
+        storage_mock.load_stream.return_value = iter([b"x" * (AgentDriveService.PREVIEW_MAX_BYTES + 10)])
+        oversized = AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="files/blob.bin")
+    assert oversized["truncated"] is True
+    assert oversized["binary"] is False
+    assert len(oversized["text"]) == AgentDriveService.PREVIEW_MAX_BYTES
+
+
+def test_preview_unknown_key_is_404():
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().preview(tenant_id=TENANT, agent_id=AGENT, key="ghost/SKILL.md")
+    assert exc_info.value.code == "drive_key_not_found"
+    assert exc_info.value.status_code == 404
+
+
+def test_preview_rejects_cross_tenant_agent():
+    with pytest.raises(AgentDriveError) as exc_info:
+        AgentDriveService().preview(
+            tenant_id="99999999-9999-9999-9999-999999999999", agent_id=AGENT, key="pdf-toolkit/SKILL.md"
+        )
+    assert exc_info.value.code == "agent_not_found"
+
+
+def test_download_url_signs_external_audience():
+    tf = _seed_tool_file(name="full.zip")
+    _commit("pdf-toolkit/.DIFY-SKILL-FULL.zip", tf)
+
+    with patch.object(AgentDriveService, "_resolve_download_url", return_value="https://signed.example/x") as resolver:
+        url = AgentDriveService().download_url(tenant_id=TENANT, agent_id=AGENT, key="pdf-toolkit/.DIFY-SKILL-FULL.zip")
+
+    assert url == "https://signed.example/x"
+    # console downloads are for browsers: external signing, never the internal URL
+    assert resolver.call_args.kwargs["for_external"] is True
+
+
+def test_manifest_items_carry_created_at_for_inspector():
+    tf = _seed_tool_file()
+    _commit("files/x.txt", tf)
+    items = AgentDriveService().manifest(tenant_id=TENANT, agent_id=AGENT)
+    assert items[0]["created_at"] is None or isinstance(items[0]["created_at"], int)
