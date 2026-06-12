@@ -381,30 +381,55 @@ describe('CreateFromAIModal', () => {
         app_id: 'app-ai',
         app_mode: 'workflow',
       })
-    mockDebugAndRepairDSLAgentDraftRun.mockResolvedValue({
-      draft_run: {
-        mode: 'workflow',
-        event_count: 2,
-        summary: {
+    mockDebugAndRepairDSLAgentDraftRun
+      .mockResolvedValueOnce({
+        draft_run: {
+          mode: 'workflow',
           event_count: 2,
-          status: 'failed',
-          succeeded: false,
-          outputs: null,
-          node_statuses: [],
-          failed_nodes: [{ node_id: 'llm-1', error: 'bad selector' }],
-          errors: [{ message: 'bad selector' }],
+          summary: {
+            event_count: 2,
+            status: 'failed',
+            succeeded: false,
+            outputs: null,
+            node_statuses: [],
+            failed_nodes: [{ node_id: 'llm-1', error: 'bad selector' }],
+            errors: [{ message: 'bad selector' }],
+          },
+          events: [],
         },
-        events: [],
-      },
-      needs_repair: true,
-      repair: {
-        yaml_content: 'app: repaired',
-        changed: true,
-        input_validation: {},
-        validation: {},
-        repair: {},
-      },
-    })
+        needs_repair: true,
+        repair: {
+          yaml_content: 'app: repaired',
+          changed: true,
+          input_validation: {},
+          validation: { valid: true },
+          repair: {},
+        },
+      })
+      .mockResolvedValueOnce({
+        draft_run: {
+          mode: 'workflow',
+          event_count: 3,
+          summary: {
+            event_count: 3,
+            status: 'succeeded',
+            succeeded: true,
+            outputs: { answer: 'ok' },
+            node_statuses: [],
+            failed_nodes: [],
+            errors: [],
+          },
+          events: [],
+        },
+        needs_repair: false,
+        repair: {
+          yaml_content: 'app: repaired',
+          changed: false,
+          input_validation: {},
+          validation: { valid: true },
+          repair: {},
+        },
+      })
 
     render(
       <CreateFromAIModal
@@ -436,6 +461,11 @@ describe('CreateFromAIModal', () => {
       query: 'Mock input for draft execution',
       include_events: true,
     }))
+    expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledWith('app-ai', expect.objectContaining({
+      yaml_content: 'app: repaired',
+      validation: { valid: true },
+    }))
+    expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledTimes(2)
     expect(mockImportDSL).toHaveBeenLastCalledWith({
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: 'app: repaired',
@@ -443,6 +473,7 @@ describe('CreateFromAIModal', () => {
       name: 'Generated App',
       description: 'Generated description',
     })
+    expect(toastMocks.success).toHaveBeenCalledWith('newApp.dslAgentRepairVerifiedNotice')
     expect(screen.getByText('newApp.dslAgentTestResultTitle')).toBeInTheDocument()
     expect(screen.getByText('app: repaired')).toBeInTheDocument()
   })

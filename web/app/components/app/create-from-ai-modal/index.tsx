@@ -638,6 +638,14 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     }
   }
 
+  const runDraftRepair = (appId: string, yamlContent: string, validation?: Record<string, unknown>) => {
+    return debugAndRepairDSLAgentDraftRun(appId, {
+      ...buildDraftRunInput(),
+      yaml_content: yamlContent,
+      validation,
+    })
+  }
+
   const executeAndRepair = async () => {
     if (!importedApp || !generatedYaml || isBusy)
       return
@@ -646,11 +654,11 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     setBuilderNotice('')
     try {
       startDslAgentStage(DslAgentStage.TEST)
-      const result = await debugAndRepairDSLAgentDraftRun(importedApp.id, {
-        ...buildDraftRunInput(),
-        yaml_content: generatedYaml,
-        validation: generatedResult?.metadata?.validation as Record<string, unknown> | undefined,
-      })
+      const result = await runDraftRepair(
+        importedApp.id,
+        generatedYaml,
+        generatedResult?.metadata?.validation as Record<string, unknown> | undefined,
+      )
       setDebugRepairResult(result)
 
       if (!result.needs_repair) {
@@ -696,10 +704,31 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         })
         setImportId(imported.id)
         setShowErrorModal(true)
+        return
       }
       else {
         failDslAgentStage(DslAgentStage.IMPORT)
+        return
       }
+
+      const verifiedAppId = imported.app_id || importedApp.id
+      startDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentRepairRetestNotice', { ns: 'app' }))
+      const verifyResult = await runDraftRepair(verifiedAppId, result.repair.yaml_content, result.repair.validation)
+      setDebugRepairResult(verifyResult)
+      if (!verifyResult.needs_repair) {
+        completeDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentRepairVerifiedNotice', { ns: 'app' }))
+        setBuilderNotice(t('newApp.dslAgentRepairVerifiedNotice', { ns: 'app' }))
+        toast.success(t('newApp.dslAgentRepairVerifiedNotice', { ns: 'app' }))
+        return
+      }
+
+      completeDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentRepairStillFailingNotice', { ns: 'app' }))
+      if (!verifyResult.repair.changed || !verifyResult.repair.yaml_content) {
+        failDslAgentStage(DslAgentStage.REPAIR, t('newApp.dslAgentRepairNoChangeNotice', { ns: 'app' }))
+        setBuilderNotice(t('newApp.dslAgentRepairNoChangeNotice', { ns: 'app' }))
+        return
+      }
+      setBuilderNotice(t('newApp.dslAgentRepairStillFailingNotice', { ns: 'app' }))
     }
     catch (error) {
       const message = await getDslAgentErrorMessage(error)
