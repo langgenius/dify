@@ -24,9 +24,13 @@ import MainNav from '../index'
 
 const activeEdgeClassName = 'before:pointer-events-none'
 
-const { mockSwitchWorkspace, mockToastSuccess } = vi.hoisted(() => ({
+const { mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
   mockToastSuccess: vi.fn(),
+  hotkeyRegistrations: new Map<string, {
+    handler: (event: { preventDefault: () => void }) => void
+    options?: { ignoreInputs?: boolean }
+  }>(),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -109,6 +113,20 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
     toast: {
       ...actual.toast,
       success: mockToastSuccess,
+    },
+  }
+})
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (
+      hotkey: string,
+      handler: (event: { preventDefault: () => void }) => void,
+      options?: { ignoreInputs?: boolean },
+    ) => {
+      hotkeyRegistrations.set(hotkey, { handler, options })
     },
   }
 })
@@ -299,6 +317,7 @@ describe('MainNav', () => {
       mutateAsync: mockUpdatePinStatus,
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
+    hotkeyRegistrations.clear()
     useAppStore.getState().setAppSidebarExpand('')
     useAppStore.getState().setAppDetail()
   })
@@ -643,6 +662,16 @@ describe('MainNav', () => {
     expect(screen.getAllByTestId('agent-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
+  it('registers the detail navigation shortcut to run while inputs are focused', () => {
+    mockPathname = '/app/app-1/overview'
+
+    renderMainNav()
+
+    expect(hotkeyRegistrations.get('Mod+B')?.options).toEqual(
+      expect.objectContaining({ ignoreInputs: false }),
+    )
   })
 
   it.each([
