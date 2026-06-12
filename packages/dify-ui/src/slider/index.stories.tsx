@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type * as React from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Slider,
   SliderControl,
@@ -51,7 +50,7 @@ function SliderDemo({
   defaultValue: _defaultValue,
   ...args
 }: React.ComponentProps<typeof Slider>) {
-  const [value, setValue] = useState(initialValue)
+  const [value, setValue] = React.useState(initialValue)
 
   return (
     <div className="w-[320px] space-y-3">

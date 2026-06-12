@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type {
   NumberFieldButtonProps,
   NumberFieldControlsProps,
@@ -6,6 +5,7 @@ import type {
   NumberFieldInputProps,
   NumberFieldUnitProps,
 } from '../index'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   NumberField,
@@ -21,7 +21,7 @@ type RenderNumberFieldOptions = {
   defaultValue?: number
   groupProps?: Partial<NumberFieldGroupProps>
   inputProps?: Partial<NumberFieldInputProps>
-  unitProps?: Partial<NumberFieldUnitProps> & { children?: ReactNode }
+  unitProps?: Partial<NumberFieldUnitProps> & { children?: React.ReactNode }
   controlsProps?: Partial<NumberFieldControlsProps>
   incrementProps?: Partial<NumberFieldButtonProps>
   decrementProps?: Partial<NumberFieldButtonProps>
@@ -191,7 +191,7 @@ describe('NumberField wrapper', () => {
 
     it('should rely on aria-labelledby when provided instead of injecting a fallback aria-label', async () => {
       const screen = await render(
-        <>
+        <React.Fragment>
           <span id="increment-label">Increment from label</span>
           <span id="decrement-label">Decrement from label</span>
           <NumberField defaultValue={8}>
@@ -203,7 +203,7 @@ describe('NumberField wrapper', () => {
               </NumberFieldControls>
             </NumberFieldGroup>
           </NumberField>
-        </>,
+        </React.Fragment>,
       )
 
       await expect.element(screen.getByRole('button', { name: 'Increment from label' })).not.toHaveAttribute('aria-label')
