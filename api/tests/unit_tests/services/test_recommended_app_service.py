@@ -15,8 +15,8 @@ class TestGetRecommendAppDetailNullCheck:
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
     def test_returns_none_when_retrieval_returns_none_and_trial_disabled(
-        self, mock_config, mock_factory_class, mock_feature_service
-    ):
+        self, mock_config: MagicMock, mock_factory_class: MagicMock, mock_feature_service: MagicMock
+    ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
         mock_instance = MagicMock()
         mock_instance.get_recommend_app_detail.return_value = None
@@ -31,8 +31,8 @@ class TestGetRecommendAppDetailNullCheck:
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
     def test_returns_none_when_retrieval_returns_none_and_trial_enabled(
-        self, mock_config, mock_factory_class, mock_feature_service
-    ):
+        self, mock_config: MagicMock, mock_factory_class: MagicMock, mock_feature_service: MagicMock
+    ) -> None:
         """Regression for #36096: must not crash when result is None and enable_trial_app is True."""
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
         mock_instance = MagicMock()
