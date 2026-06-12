@@ -7,6 +7,7 @@ from flask_login import LoginManager, UserMixin
 from pydantic import BaseModel
 from werkzeug.exceptions import HTTPException
 
+from controllers.console import wraps
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
@@ -28,6 +29,12 @@ from controllers.console.wraps import (
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from services.feature_service import LicenseStatus
+
+
+@pytest.fixture(autouse=True)
+def reset_setup_required_cache():
+    """Keep setup_required's process cache isolated across unit tests."""
+    wraps._is_setup_completed.reset_success()
 
 
 class MockUser(UserMixin):
@@ -570,6 +577,39 @@ class TestSystemSetup:
 
         # Assert
         assert result == "admin_success"
+
+    @patch("controllers.console.wraps.db")
+    def test_should_cache_completed_setup(self, mock_db):
+        """Test that completed setup skips repeated DB reads in this process"""
+        mock_db.session.scalar.return_value = MagicMock()
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            assert admin_view() == "admin_success"
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 1
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.wraps.os.environ.get")
+    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+        """Test that first-time bootstrap completion can be observed later in the same process"""
+        mock_db.session.scalar.side_effect = [None, MagicMock()]
+        mock_environ_get.return_value = None
+
+        @setup_required
+        def admin_view():
+            return "admin_success"
+
+        with patch("controllers.console.wraps.dify_config.EDITION", "SELF_HOSTED"):
+            with pytest.raises(NotSetupError):
+                admin_view()
+            assert admin_view() == "admin_success"
+
+        assert mock_db.session.scalar.call_count == 2
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.wraps.os.environ.get")
