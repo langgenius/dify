@@ -8,9 +8,17 @@ from contextlib import contextmanager
 from typing import Any
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, NotFound, UnprocessableEntity
+from werkzeug.exceptions import (
+    BadRequest,
+    HTTPException,
+    InternalServerError,
+    NotFound,
+    TooManyRequests,
+    UnprocessableEntity,
+)
 
 import services
+from controllers.common.fields import EventStreamResponse
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
@@ -29,6 +37,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
+    AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
@@ -71,6 +80,11 @@ def _translate_service_errors() -> Iterator[None]:
         raise ProviderQuotaExceededError()
     except ModelCurrentlyNotSupportError:
         raise ProviderModelCurrentlyNotSupportError()
+    except AppInvokeQuotaExceededError:
+        # App concurrency limit. Without this it falls through to the bare `except Exception`
+        # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
+        # the source message is dropped since it carries internal detail (client_id / limits).
+        raise TooManyRequests()
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description)
     except InvokeError as e:
@@ -123,7 +137,7 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
     @auth_router.guard(scope=Scope.APPS_RUN)
-    @openapi_ns.response(200, "Run result (SSE stream)")
+    @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
     def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
         app_model, caller, caller_kind = auth_data.require_app_context()

@@ -86,6 +86,7 @@ class RemoteFileUploadApi(WebApiResource):
         }
     )
     @web_ns.response(201, "Remote file uploaded", web_ns.models[FileWithSignedUrl.__name__])
+    @web_ns.expect(web_ns.models[RemoteFileUploadPayload.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Upload a file from a remote URL.
 

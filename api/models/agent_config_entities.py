@@ -76,7 +76,7 @@ RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | li
 
 
 class AgentFlexibleConfig(BaseModel):
-    model_config = ConfigDict(extra="allow", json_schema_extra={"x-dify-opaque": True})
+    model_config = ConfigDict(extra="allow")
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.model_dump(mode="python").get(key, default)
@@ -149,6 +149,9 @@ class AgentCliToolEnvConfig(BaseModel):
 
 
 class AgentCliToolConfig(AgentFlexibleConfig):
+    # Stable mention/reference id (minted by the frontend on creation, backfilled at
+    # composer save) so renaming a CLI tool never breaks `[§cli_tool:<id>§]` mentions.
+    id: str | None = Field(default=None, max_length=255)
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
     tool_name: str | None = Field(default=None, max_length=255)
@@ -159,7 +162,7 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     install_command: str | None = None
     install: str | None = None
     setup_command: str | None = None
-    invoke_metadata: dict[str, Any] = Field(default_factory=dict, json_schema_extra={"x-dify-opaque": True})
+    invoke_metadata: dict[str, Any] = Field(default_factory=dict)
     env: AgentCliToolEnvConfig = Field(default_factory=AgentCliToolEnvConfig)
     pre_authorized: bool | None = None
     authorization_status: AgentCliToolAuthorizationStatus | None = None
@@ -292,7 +295,7 @@ class WorkflowNodeJobMetadata(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     file_refs: list[AgentFileRefConfig] | None = None
-    agent_soul: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    agent_soul: dict[str, Any] | None = Field(default=None)
 
 
 class AgentSoulPromptConfig(BaseModel):
@@ -343,7 +346,11 @@ class AgentSoulDifyToolConfig(BaseModel):
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
-    tool_name: str = Field(min_length=1, max_length=255)
+    # ``None`` = provider-level entry selecting ALL tools of the provider (a
+    # provider hosts many tools, like an MCP server). The runtime expands the
+    # entry into every tool the provider currently declares; ``credential_ref``
+    # applies to all of them. Mention form: ``[§tool:<provider>/*§]``.
+    tool_name: str | None = Field(default=None, min_length=1, max_length=255)
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at
@@ -440,7 +447,7 @@ class AppVariableConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=64)
     required: bool = False
-    default: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    default: Any = Field(default=None)
 
 
 class AgentSoulConfig(BaseModel):
@@ -539,7 +546,7 @@ class DeclaredOutputFailureStrategy(BaseModel):
     # When ``on_failure == DEFAULT_VALUE`` this value replaces the failed output. The
     # value's shape must match the owning ``DeclaredOutputConfig.type``; that match is
     # enforced at ``DeclaredOutputConfig`` level so the strategy stays type-agnostic.
-    default_value: Any = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    default_value: Any = Field(default=None)
 
     @model_validator(mode="after")
     def _require_default_value_when_default_strategy(self) -> DeclaredOutputFailureStrategy:

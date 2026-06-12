@@ -19,10 +19,6 @@ function active(): ActiveContext {
     ctx: {
       account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
       workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-      available_workspaces: [
-        { id: 'ws-1', name: 'Default', role: 'owner' },
-        { id: 'ws-2', name: 'Other', role: 'normal' },
-      ],
     },
   }
 }
@@ -71,7 +67,7 @@ describe('runDescribeApp', () => {
   })
 
   it('text: agent app shows Agent: true', async () => {
-    const out = await render({ appId: 'app-4', workspace: 'ws-2' })
+    const out = await render({ appId: 'app-4', workspace: '00000000-0000-0000-0000-000000000002' })
     expect(out).toContain('Agent:')
     expect(out).toContain('true')
   })
