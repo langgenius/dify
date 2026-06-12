@@ -116,40 +116,39 @@ function AgentRosterItem({
 
   return (
     <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
-      <Link
-        href={`/roster/agent/${agent.id}/configure`}
-        aria-labelledby={nameId}
-        aria-describedby={agent.description ? descriptionId : undefined}
-        className="absolute inset-0 z-10 cursor-pointer touch-manipulation rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
-      >
-        <span className="sr-only">{agent.name}</span>
-      </Link>
       <div className="flex h-full min-w-0 flex-col">
-        <div className="flex shrink-0 items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-          <span aria-hidden className="shrink-0">
-            <AppIcon
-              size="xl"
-              rounded
-              iconType={iconType}
-              icon={agent.icon ?? undefined}
-              background={agent.icon_background}
-              imageUrl={imageUrl}
-            />
-          </span>
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-            <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
-              {agent.name}
-            </h2>
-            <p className="truncate system-xs-regular text-text-tertiary">
-              {agent.role}
-            </p>
+        <Link
+          href={`/roster/agent/${agent.id}/configure`}
+          aria-labelledby={nameId}
+          aria-describedby={agent.description ? descriptionId : undefined}
+          className="block shrink-0 cursor-pointer touch-manipulation rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+        >
+          <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
+            <span aria-hidden className="shrink-0">
+              <AppIcon
+                size="xl"
+                rounded
+                iconType={iconType}
+                icon={agent.icon ?? undefined}
+                background={agent.icon_background}
+                imageUrl={imageUrl}
+              />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
+                {agent.name}
+              </h2>
+              <p className="truncate system-xs-regular text-text-tertiary">
+                {agent.role}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="shrink-0 px-4 py-1 system-xs-regular text-text-tertiary">
-          <div id={descriptionId} className="line-clamp-2 min-h-8">
-            {agent.description}
+          <div className="px-4 py-1 system-xs-regular text-text-tertiary">
+            <div id={descriptionId} className="line-clamp-2 min-h-8">
+              {agent.description}
+            </div>
           </div>
-        </div>
+        </Link>
         <div className="flex min-w-0 shrink-0 items-center pt-2 pr-3 pb-3 pl-4 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             {hasPublishedReferences
@@ -158,7 +157,7 @@ function AgentRosterItem({
                     <DropdownMenuTrigger
                       aria-label={t('roster.references.trigger', { name: agent.name, count: referenceCount })}
                       className={cn(
-                        'relative z-20 -ml-1 flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                        '-ml-1 flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
                         isReferencesMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                       )}
                     >
