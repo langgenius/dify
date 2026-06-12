@@ -13,8 +13,15 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
 import Link from '@/next/link'
 
@@ -157,15 +164,19 @@ function AgentRosterDrawer({
 export function AgentRosterField({
   agent,
   portalContainerRef,
+  onChange,
 }: {
   agent?: AgentRosterNodeData
   portalContainerRef: RefObject<HTMLDivElement | null>
+  onChange: (agent: AgentRosterNodeData) => void
 }) {
   const { t } = useTranslation()
   const [isPanelOpen, setIsPanelOpen] = useState(false)
-
-  if (!agent)
-    return null
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false)
+  const rosterRequiredMessage = t('errorMsg.fieldRequired', {
+    ns: 'workflow',
+    field: t(`${i18nPrefix}.roster.label`, { ns: 'workflow' }),
+  })
 
   return (
     <FieldRoot name="agent_roster" className="gap-1 px-4 py-2">
@@ -173,39 +184,76 @@ export function AgentRosterField({
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t('nodes.agent.roster.label', { ns: 'workflow' })}
         </FieldLabel>
-        <button
-          type="button"
-          className="flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          onClick={() => setIsPanelOpen(true)}
-        >
-          {t(`${i18nPrefix}.roster.change`, { ns: 'workflow' })}
-        </button>
+        <Popover open={isSelectorOpen} onOpenChange={setIsSelectorOpen}>
+          <PopoverTrigger
+            render={(
+              <button
+                type="button"
+                className="flex h-6 shrink-0 cursor-pointer items-center justify-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                {t(`${i18nPrefix}.roster.change`, { ns: 'workflow' })}
+              </button>
+            )}
+          />
+          <PopoverContent
+            placement="bottom-end"
+            sideOffset={4}
+            popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+          >
+            <PopoverTitle className="sr-only">
+              {t('roster.nodeSelector.dialogLabel', { ns: 'agentV2' })}
+            </PopoverTitle>
+            <AgentSelectorContent
+              open={isSelectorOpen}
+              onOpenChange={setIsSelectorOpen}
+              onSelect={(nextAgent) => {
+                setIsSelectorOpen(false)
+                onChange(nextAgent)
+              }}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
-      <button
-        type="button"
-        aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
-        className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        onClick={() => setIsPanelOpen(true)}
-      >
-        <AgentRosterAvatar agent={agent} />
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-          <span className="truncate system-sm-medium text-text-secondary">
-            {agent.name}
-          </span>
-          <span className="truncate system-xs-regular text-text-tertiary">
-            {agent.role}
-          </span>
-        </span>
-        <span className="flex shrink-0 items-center text-text-tertiary">
-          <span aria-hidden className="i-ri-arrow-right-line size-4" />
-        </span>
-      </button>
-      <AgentRosterDrawer
-        agent={agent}
-        open={isPanelOpen}
-        portalContainerRef={portalContainerRef}
-        onClose={() => setIsPanelOpen(false)}
-      />
+      {agent
+        ? (
+            <>
+              <button
+                type="button"
+                aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
+                className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={() => setIsPanelOpen(true)}
+              >
+                <AgentRosterAvatar agent={agent} />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+                  <span className="truncate system-sm-medium text-text-secondary">
+                    {agent.name}
+                  </span>
+                  <span className="truncate system-xs-regular text-text-tertiary">
+                    {agent.role}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center text-text-tertiary">
+                  <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                </span>
+              </button>
+              <AgentRosterDrawer
+                agent={agent}
+                open={isPanelOpen}
+                portalContainerRef={portalContainerRef}
+                onClose={() => setIsPanelOpen(false)}
+              />
+            </>
+          )
+        : (
+            <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
+                <span aria-hidden className="i-ri-error-warning-line size-4" />
+              </span>
+              <span className="min-w-0 flex-1 truncate system-sm-medium text-text-destructive">
+                {rosterRequiredMessage}
+              </span>
+            </div>
+          )}
     </FieldRoot>
   )
 }

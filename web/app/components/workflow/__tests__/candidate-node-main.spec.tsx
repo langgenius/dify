@@ -201,6 +201,56 @@ describe('CandidateNodeMain', () => {
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('candidate-note')
   })
 
+  it('should sync draft immediately when committing an Agent v2 node', () => {
+    const candidateNode = createNode({
+      id: 'candidate-agent-v2',
+      type: CUSTOM_NODE,
+      data: {
+        type: BlockEnum.Agent,
+        title: 'Agent Candidate',
+        agent_binding: {
+          binding_type: 'roster_agent',
+          agent_id: 'agent-1',
+        },
+        agent_node_kind: 'dify_agent',
+        agent_roster: {
+          id: 'agent-1',
+          name: 'Nadia',
+          description: 'Clarification Drafter',
+          icon: 'N',
+          icon_background: '#E9D7FE',
+          icon_type: 'emoji',
+          role: 'Researcher',
+        },
+        version: '2',
+        _isCandidate: true,
+      },
+    })
+
+    render(<CandidateNodeMain candidateNode={candidateNode} />)
+
+    eventHandlers.click?.({ preventDefault: vi.fn() })
+
+    expect(mockSetNodes).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'candidate-agent-v2',
+        data: expect.objectContaining({
+          agent_binding: {
+            binding_type: 'roster_agent',
+            agent_id: 'agent-1',
+          },
+          agent_node_kind: 'dify_agent',
+          agent_roster: expect.objectContaining({
+            id: 'agent-1',
+          }),
+          version: '2',
+          _isCandidate: false,
+        }),
+      }),
+    ]))
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+  })
+
   it('should append iteration and loop start helper nodes for control-flow candidates', () => {
     const iterationNode = createNode({
       id: 'candidate-iteration',

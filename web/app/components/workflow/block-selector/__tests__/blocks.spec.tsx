@@ -16,6 +16,8 @@ const runtimeState = vi.hoisted(() => ({
 
 const queryMocks = vi.hoisted(() => ({
   inviteOptionsQueryFn: vi.fn(),
+  versionDetailGet: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 vi.mock('reactflow', () => ({
@@ -37,6 +39,18 @@ vi.mock('@/app/components/app/store', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agents: {
+      byAgentId: {
+        versions: {
+          byVersionId: {
+            get: {
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryKey: ['agent-version-detail', input],
+                queryFn: () => queryMocks.versionDetailGet(input),
+              }),
+            },
+          },
+        },
+      },
       inviteOptions: {
         get: {
           queryOptions: (options: unknown) => ({
@@ -46,6 +60,12 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
+  },
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: (message: string) => queryMocks.toastError(message),
   },
 }))
 
@@ -167,6 +187,7 @@ describe('Blocks', () => {
           id: 'agent-1',
           name: 'Nadia',
           description: 'Clarification Drafter',
+          active_config_snapshot_id: 'version-1',
           role: 'Researcher',
           agent_kind: 'dify_agent',
           icon: 'A',
@@ -181,6 +202,14 @@ describe('Blocks', () => {
       limit: 8,
       page: 1,
       total: 1,
+    })
+    queryMocks.versionDetailGet.mockResolvedValue({
+      config_snapshot: {
+        model: {
+          model: 'gpt-4o',
+          model_provider: 'openai',
+        },
+      },
     })
 
     const queryClient = new QueryClient({
@@ -227,6 +256,12 @@ describe('Blocks', () => {
 
     await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
 
+    await waitFor(() => expect(queryMocks.versionDetailGet).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+        version_id: 'version-1',
+      },
+    }))
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
         binding_type: 'roster_agent',
@@ -253,6 +288,72 @@ describe('Blocks', () => {
         },
       },
     })
+  })
+
+  it('does not select an Agent v2 roster agent without model config', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
+      data: [
+        {
+          id: 'agent-1',
+          name: 'Nadia',
+          description: 'Clarification Drafter',
+          active_config_snapshot_id: 'version-1',
+          role: 'Researcher',
+          agent_kind: 'dify_agent',
+          icon: 'A',
+          icon_background: '#E9D7FE',
+          icon_type: 'emoji',
+          scope: 'roster',
+          source: 'workflow',
+          status: 'active',
+        },
+      ],
+      has_more: false,
+      limit: 8,
+      page: 1,
+      total: 1,
+    })
+    queryMocks.versionDetailGet.mockResolvedValue({
+      config_snapshot: {},
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const hooksStore = createHooksStore({
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HooksStoreContext value={hooksStore}>
+          <Blocks
+            searchText=""
+            onSelect={onSelect}
+            availableBlocksTypes={[BlockEnum.AgentV2]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+          />
+        </HooksStoreContext>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    expect(await screen.findByText('Nadia')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+
+    await waitFor(() => expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'))
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
   it('closes the agent selector when Escape closes the combobox', async () => {

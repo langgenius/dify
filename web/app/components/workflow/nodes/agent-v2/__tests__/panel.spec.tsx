@@ -2,24 +2,82 @@ import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Panel } from '../panel'
 
 const {
   mockEditorFocus,
   mockEditorUpdate,
+  mockHandleNodeDataUpdateWithSyncDraft,
+  mockInvalidateQueries,
   mockInsertNodes,
+  mockMutateAsync,
   mockPromptEditorProps,
+  mockSetQueryData,
   mockSetInputs,
+  mockUseComposerQuery,
   mockUseNodeCrud,
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
+  mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
+  mockInvalidateQueries: vi.fn(),
   mockInsertNodes: vi.fn(),
+  mockMutateAsync: vi.fn(),
   mockPromptEditorProps: [] as PromptEditorProps[],
+  mockSetQueryData: vi.fn(),
   mockSetInputs: vi.fn(),
+  mockUseComposerQuery: vi.fn(),
   mockUseNodeCrud: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  skipToken: Symbol('skipToken'),
+  useMutation: () => ({
+    mutateAsync: mockMutateAsync,
+  }),
+  useQuery: () => mockUseComposerQuery(),
+  useQueryClient: () => ({
+    invalidateQueries: mockInvalidateQueries,
+    setQueryData: mockSetQueryData,
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  get: {
+                    queryKey: (input: unknown) => ['workflow-agent-composer', input],
+                    queryOptions: (options: unknown) => ({
+                      queryKey: ['workflow-agent-composer', options],
+                    }),
+                  },
+                  put: {
+                    mutationOptions: (options?: unknown) => options ?? {},
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+}))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { configsMap: { flowId: string } }) => unknown) => selector({
+    configsMap: {
+      flowId: 'app-1',
+    },
+  }),
 }))
 
 vi.mock('../../_base/components/output-vars', () => ({
@@ -74,6 +132,29 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: (id: string, data: AgentV2NodeType) => mockUseNodeCrud(id, data),
 }))
 
+vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
+  AgentSelectorContent: ({
+    onSelect,
+  }: {
+    onSelect: (agent: NonNullable<AgentV2NodeType['agent_roster']>) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() => onSelect({
+        id: 'agent-2',
+        name: 'Mara',
+        description: 'Tender Analyst',
+        icon: 'M',
+        icon_background: '#D1E9FF',
+        icon_type: 'emoji',
+        role: 'Analyst',
+      })}
+    >
+      Select Mara
+    </button>
+  ),
+}))
+
 vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: () => ({
     availableVars: [{
@@ -93,6 +174,9 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({
+  useNodeDataUpdate: () => ({
+    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+  }),
   useWorkflowVariableType: () => vi.fn(),
 }))
 
@@ -120,10 +204,77 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
 
 const panelProps = {} as NodePanelProps<AgentV2NodeType>['panelProps']
 
+const createComposerState = (overrides: Record<string, unknown> = {}) => ({
+  variant: 'workflow',
+  agent: {
+    id: 'agent-1',
+    name: 'Nadia',
+    description: 'Clarification Drafter',
+    scope: 'roster',
+    status: 'active',
+    active_config_snapshot_id: 'version-1',
+  },
+  active_config_snapshot: {
+    id: 'version-1',
+    version: 1,
+  },
+  binding: {
+    id: 'binding-1',
+    binding_type: 'roster_agent',
+    agent_id: 'agent-1',
+    current_snapshot_id: 'version-1',
+    workflow_id: 'workflow-1',
+    node_id: 'agent-node',
+  },
+  soul_lock: {
+    locked: true,
+    can_unlock: true,
+  },
+  agent_soul: {},
+  node_job: {
+    schema_version: 1,
+    mode: 'tell_agent_what_to_do',
+    workflow_prompt: '',
+    previous_node_output_refs: [],
+    declared_outputs: [],
+    human_contacts: [],
+    metadata: {},
+  },
+  effective_declared_outputs: [
+    {
+      name: 'text',
+      type: 'string',
+      required: false,
+      description: 'Free-form text answer.',
+    },
+    {
+      name: 'files',
+      type: 'array',
+      required: false,
+      description: 'Files produced by the agent.',
+      array_item: {
+        type: 'file',
+      },
+    },
+    {
+      name: 'json',
+      type: 'object',
+      required: false,
+      description: 'Free-form JSON object.',
+    },
+  ],
+  save_options: ['node_job_only'],
+  ...overrides,
+})
+
 describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
+    mockMutateAsync.mockResolvedValue(createComposerState())
+    mockUseComposerQuery.mockReturnValue({
+      data: createComposerState(),
+    })
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentV2NodeType) => ({
       inputs: data,
       setInputs: mockSetInputs,
@@ -148,7 +299,7 @@ describe('agent/panel', () => {
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage:object:workflow.nodes.agent.outputVars.usage')).not.toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
+    expect(screen.getByText('json:Object:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
   })
 
   it('opens and closes the roster agent layered panel', () => {
@@ -173,7 +324,7 @@ describe('agent/panel', () => {
     expect(screen.queryByRole('dialog', { name: 'Nadia' })).not.toBeInTheDocument()
   })
 
-  it('does not render roster metadata when no roster agent is selected', () => {
+  it('renders a required roster state when no roster agent is selected', () => {
     render(
       <AgentV2Panel
         id="agent-node"
@@ -182,9 +333,45 @@ describe('agent/panel', () => {
       />,
     )
 
-    expect(screen.queryByText('workflow.nodes.agent.roster.label')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toBeInTheDocument()
+    expect(screen.getByText(/^workflow\.errorMsg\.fieldRequired/)).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+  })
+
+  it('updates roster agent binding from the selector', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Select Mara' }))
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_binding: {
+            binding_type: 'roster_agent',
+            agent_id: 'agent-2',
+          },
+          agent_roster: expect.objectContaining({
+            id: 'agent-2',
+            name: 'Mara',
+            role: 'Analyst',
+          }),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+    expect(mockInvalidateQueries).toHaveBeenCalled()
   })
 
   it('does not fall back to the roster agent description when role is empty', () => {
@@ -211,15 +398,31 @@ describe('agent/panel', () => {
   })
 
   it('updates agent task and opens prompt insertion shortcuts', () => {
+    mockUseComposerQuery.mockReturnValue({
+      data: createComposerState({
+        node_job: {
+          schema_version: 1,
+          mode: 'tell_agent_what_to_do',
+          workflow_prompt: 'Composer task',
+          previous_node_output_refs: [],
+          declared_outputs: [],
+          human_contacts: [],
+          metadata: {},
+        },
+      }),
+    })
+
     render(
       <AgentV2Panel
         id="agent-node"
-        data={createData({ agent_task: 'Clarify tender' })}
+        data={createData({ agent_task: 'Graph task' })}
         panelProps={panelProps}
       />,
     )
 
     const editor = screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })
+    expect(editor).toHaveValue('Composer task')
+
     fireEvent.change(editor, { target: { value: 'Clarify {{#start.question#}}' } })
 
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
@@ -236,5 +439,75 @@ describe('agent/panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.mention' }))
     expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
+  })
+
+  it('saves agent task to the workflow composer node job', async () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' }), {
+      target: {
+        value: 'Use the previous result',
+      },
+    })
+
+    await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'agent-node',
+      },
+      body: {
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        node_job: {
+          schema_version: 1,
+          mode: 'tell_agent_what_to_do',
+          workflow_prompt: 'Use the previous result',
+          previous_node_output_refs: [],
+          declared_outputs: [],
+          human_contacts: [],
+          metadata: {},
+        },
+      },
+    }))
+  })
+
+  it('renders effective declared outputs from the workflow composer', () => {
+    mockUseComposerQuery.mockReturnValue({
+      data: createComposerState({
+        effective_declared_outputs: [
+          {
+            name: 'summary',
+            type: 'string',
+            description: 'Short summary',
+          },
+          {
+            name: 'attachments',
+            type: 'array',
+            description: 'Generated files',
+            array_item: {
+              type: 'file',
+            },
+          },
+        ],
+      }),
+    })
+
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('summary:String:Short summary')).toBeInTheDocument()
+    expect(screen.getByText('attachments:Array[File]:Generated files')).toBeInTheDocument()
+    expect(screen.queryByText('text:String:workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
   })
 })

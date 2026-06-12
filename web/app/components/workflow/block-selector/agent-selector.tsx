@@ -19,7 +19,8 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useQuery } from '@tanstack/react-query'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,7 +31,7 @@ import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
 
-function AgentSelectorContent({
+export function AgentSelectorContent({
   open,
   onOpenChange,
   onSelect,
@@ -39,9 +40,11 @@ function AgentSelectorContent({
   onOpenChange: (open: boolean) => void
   onSelect: (agent: AgentRosterNodeData) => void
 }) {
-  const { t } = useTranslation(['agentV2', 'common'])
+  const { t } = useTranslation(['agentV2', 'common', 'workflow'])
+  const queryClient = useQueryClient()
   const appId = useHooksStore(s => s.configsMap?.flowId)
   const [searchText, setSearchText] = useState('')
+  const [validatingAgentId, setValidatingAgentId] = useState<string>()
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({
     ...consoleQuery.agents.inviteOptions.get.queryOptions({
@@ -60,16 +63,45 @@ function AgentSelectorContent({
     if (details.reason !== 'item-press')
       setSearchText(nextSearchText)
   }
-  const handleValueChange = (agent: AgentInviteOptionResponse | null) => {
+  const handleValueChange = async (agent: AgentInviteOptionResponse | null) => {
     if (!agent)
       return
 
-    onSelect(toAgentRosterNodeData(agent))
+    if (!agent.active_config_snapshot_id) {
+      toast.error(t('nodes.agent.modelNotSelected', { ns: 'workflow' }))
+      return
+    }
+
+    setValidatingAgentId(agent.id)
+    try {
+      const activeConfigSnapshot = await queryClient.fetchQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
+        input: {
+          params: {
+            agent_id: agent.id,
+            version_id: agent.active_config_snapshot_id,
+          },
+        },
+      }))
+
+      if (!activeConfigSnapshot.config_snapshot.model) {
+        toast.error(t('nodes.agent.modelNotSelected', { ns: 'workflow' }))
+        return
+      }
+
+      onSelect(toAgentRosterNodeData(agent))
+    }
+    catch {
+      toast.error(t('roster.loadingError', { ns: 'agentV2' }))
+    }
+    finally {
+      setValidatingAgentId(undefined)
+    }
   }
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen)
       onOpenChange(false)
   }
+  const isLoading = agentsQuery.isPending || !!validatingAgentId
 
   return (
     <div className="w-90 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
@@ -96,17 +128,17 @@ function AgentSelectorContent({
           </ComboboxInputGroup>
         </div>
         <div className="max-h-54 overflow-y-auto p-1">
-          {agentsQuery.isPending && (
+          {isLoading && (
             <ComboboxStatus className="px-3 py-2 system-xs-regular">
               {t('loading', { ns: 'common' })}
             </ComboboxStatus>
           )}
-          {!agentsQuery.isPending && agentsQuery.isError && (
+          {!isLoading && agentsQuery.isError && (
             <ComboboxStatus className="px-3 py-2 system-xs-regular">
               {t('roster.loadingError', { ns: 'agentV2' })}
             </ComboboxStatus>
           )}
-          {!agentsQuery.isPending && !agentsQuery.isError && (
+          {!isLoading && !agentsQuery.isError && (
             <>
               <ComboboxList className="max-h-none overflow-visible p-0">
                 {(agent: AgentInviteOptionResponse) => (

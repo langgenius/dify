@@ -17,6 +17,7 @@ import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-co
 import { CUSTOM_NODE } from './constants'
 import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from './hooks'
 import CustomNode from './nodes'
+import { isAgentV2NodeData } from './nodes/agent-v2/types'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import {
@@ -81,6 +82,9 @@ const CandidateNodeMain: FC<Props> = ({
         onSuccess: () => autoGenerateWebhookUrl(candidateNode.id),
       })
     }
+
+    if (isAgentV2NodeData(candidateNode.data))
+      handleSyncWorkflowDraft(true, true)
   })
 
   useEventListener('contextmenu', (e) => {
