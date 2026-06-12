@@ -1,9 +1,11 @@
 'use client'
 
 import type { AgentKnowledgeRetrievalItem } from '../../data'
+import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store'
+import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionConfigurableItem } from '../common/configurable-item'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -62,7 +64,7 @@ export function AgentKnowledgeRetrieval() {
 
     return t('agentDetail.configure.knowledgeRetrieval.defaultName', { index })
   }
-  const addRetrieval = () => {
+  const addRetrieval = (options?: AgentOrchestrateAddActionOptions) => {
     const nextRetrieval: AgentKnowledgeRetrievalItem = {
       id: globalThis.crypto?.randomUUID?.() ?? `retrieval-${Date.now()}`,
       name: getDefaultRetrievalName(retrievals.length + 1),
@@ -72,7 +74,9 @@ export function AgentKnowledgeRetrieval() {
     setRetrievals([...retrievals, nextRetrieval])
     setEditingRetrieval(nextRetrieval)
     setIsAddDialogOpen(true)
+    options?.onAdded?.(nextRetrieval)
   }
+  useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
 
   return (
     <>
@@ -87,7 +91,7 @@ export function AgentKnowledgeRetrieval() {
         actions={(
           <ConfigureSectionAddButton
             ariaLabel={t('agentDetail.configure.knowledgeRetrieval.add')}
-            onClick={addRetrieval}
+            onClick={() => addRetrieval()}
           />
         )}
       >

@@ -4,11 +4,12 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEnvVariables } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSection } from '../common/section'
-import { parseEnvVariables } from './env-utils'
+import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
 
 export type EnvScope = 'secret' | 'plain'
 
@@ -26,6 +27,24 @@ const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetai
 }
 
 const envScopeOptions: EnvScope[] = ['secret', 'plain']
+
+const envImportTipKeys = {
+  mac: 'agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac',
+  windows: 'agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows',
+  other: 'agentDetail.configure.advancedSettings.envEditor.importEnvTip.other',
+} as const
+
+const getCurrentEnvImportPlatform = () => {
+  if (typeof navigator === 'undefined')
+    return 'other'
+
+  const userAgentData = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData
+
+  return getEnvImportPlatform({
+    platform: userAgentData?.platform ?? navigator.platform,
+    userAgent: navigator.userAgent,
+  })
+}
 
 const createEnvVariable = (): EnvVariable => ({
   id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
@@ -321,7 +340,9 @@ export function AgentEnvEditor() {
   const [envVariables, setEnvVariables] = useEnvVariables()
   const envImportInputRef = useRef<HTMLInputElement>(null)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
+  const envImportTip = t(envImportTipKeys[getCurrentEnvImportPlatform()])
   const envEditorTableId = 'agent-configure-env-editor-table'
+
   const addVariable = () => {
     setEnvVariables([...envVariables, createEnvVariable()])
   }
@@ -367,8 +388,6 @@ export function AgentEnvEditor() {
         <>
           <input
             ref={envImportInputRef}
-            aria-label={t('agentDetail.configure.advancedSettings.envEditor.importEnv')}
-            accept=".env"
             className="hidden"
             type="file"
             onChange={(event) => {
@@ -379,14 +398,24 @@ export function AgentEnvEditor() {
                 void importEnvVariables(file)
             }}
           />
-          <button
-            type="button"
-            onClick={() => envImportInputRef.current?.click()}
-            className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-file-upload-line size-3.5" />
-            <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={t('agentDetail.configure.advancedSettings.envEditor.importEnv')}
+                  onClick={() => envImportInputRef.current?.click()}
+                  className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                >
+                  <span aria-hidden className="i-ri-file-upload-line size-3.5" />
+                  <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
+                </button>
+              )}
+            />
+            <TooltipContent className="max-w-72">
+              {envImportTip}
+            </TooltipContent>
+          </Tooltip>
         </>
       )}
     >

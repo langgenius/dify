@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentEnvEditor } from '../env'
-import { parseEnvVariables } from '../env-utils'
+import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
 
 function renderAgentEnvEditor() {
   return render(
@@ -37,10 +37,22 @@ describe('AgentEnvEditor', () => {
     })
   })
 
+  describe('Platform Detection', () => {
+    it('should detect the hidden-file help platform from browser values', () => {
+      expect(getEnvImportPlatform({ platform: 'MacIntel' })).toBe('mac')
+      expect(getEnvImportPlatform({ platform: 'Win32' })).toBe('windows')
+      expect(getEnvImportPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' })).toBe('windows')
+      expect(getEnvImportPlatform({ platform: 'Linux x86_64' })).toBe('other')
+    })
+  })
+
   describe('User Interactions', () => {
     it('should import dotenv variables into the env table when a file is selected', async () => {
       const user = userEvent.setup()
-      renderAgentEnvEditor()
+      const { container } = renderAgentEnvEditor()
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement
+
+      expect(input).not.toHaveAttribute('accept')
 
       const file = new File([
         'API_KEY=abc123\n',
@@ -48,7 +60,7 @@ describe('AgentEnvEditor', () => {
       ], '.env', { type: 'text/plain' })
 
       await user.upload(
-        screen.getByLabelText('agentV2.agentDetail.configure.advancedSettings.envEditor.importEnv'),
+        input,
         file,
       )
 

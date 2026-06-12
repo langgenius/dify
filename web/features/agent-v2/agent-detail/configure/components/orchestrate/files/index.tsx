@@ -2,12 +2,14 @@
 
 import type { ReactNode } from 'react'
 import type { AgentFileNode } from '../../data'
+import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import {
   FileTreeGuide,
 } from '@langgenius/dify-ui/file-tree'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFiles } from '@/features/agent-v2/agent-composer/store'
+import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -72,15 +74,25 @@ export function AgentFiles() {
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
+  const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const removeFile = useCallback((fileId: string) => {
     setFiles(removeFileNode(files, fileId))
   }, [files, setFiles])
-  const handleOpenUpload = useCallback(() => {
+  const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
+    promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
   }, [])
+  useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
   const handleUploaded = useCallback((file: AgentFileNode) => {
     setFiles([...files, file])
+    promptAddCallbackRef.current?.(file)
+    promptAddCallbackRef.current = undefined
   }, [files, setFiles])
+  const handleUploadOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      promptAddCallbackRef.current = undefined
+    setIsUploadOpen(open)
+  }, [])
 
   return (
     <>
@@ -94,7 +106,7 @@ export function AgentFiles() {
         actions={(
           <ConfigureSectionAddButton
             ariaLabel={t('agentDetail.configure.files.add')}
-            onClick={handleOpenUpload}
+            onClick={() => handleOpenUpload()}
           />
         )}
       >
@@ -127,7 +139,7 @@ export function AgentFiles() {
       </ConfigureSection>
       <AgentFileUploadDialog
         open={isUploadOpen}
-        onOpenChange={setIsUploadOpen}
+        onOpenChange={handleUploadOpenChange}
         onUploaded={handleUploaded}
       />
     </>

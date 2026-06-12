@@ -3,6 +3,7 @@
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
@@ -46,17 +47,19 @@ export function AgentOrchestratePanel({
           content: 'min-h-full px-4 py-3',
         }}
       >
-        <AgentModelField
-          currentModel={currentModel}
-          textGenerationModelList={textGenerationModelList}
-          onSelect={onSelectModel}
-        />
-        <AgentPromptEditor />
-        <AgentSkills agentId={agentId} />
-        <AgentFiles />
-        <AgentTools />
-        <AgentKnowledgeRetrieval />
-        <AgentAdvancedSettings />
+        <AgentOrchestrateAddActionsProvider>
+          <AgentModelField
+            currentModel={currentModel}
+            textGenerationModelList={textGenerationModelList}
+            onSelect={onSelectModel}
+          />
+          <AgentPromptEditor />
+          <AgentSkills agentId={agentId} />
+          <AgentFiles />
+          <AgentTools />
+          <AgentKnowledgeRetrieval />
+          <AgentAdvancedSettings />
+        </AgentOrchestrateAddActionsProvider>
       </ScrollArea>
 
       <AgentConfigurePublishBar

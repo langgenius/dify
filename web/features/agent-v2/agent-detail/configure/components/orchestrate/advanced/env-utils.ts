@@ -57,3 +57,24 @@ export const parseEnvVariables = (content: string) => {
     }]
   })
 }
+
+export type EnvImportPlatform = 'mac' | 'windows' | 'other'
+
+export const getEnvImportPlatform = ({
+  platform,
+  userAgent,
+}: {
+  platform?: string
+  userAgent?: string
+}): EnvImportPlatform => {
+  const normalizedPlatform = platform?.toLowerCase() ?? ''
+  const normalizedUserAgent = userAgent?.toLowerCase() ?? ''
+
+  if (normalizedPlatform.includes('mac') || normalizedUserAgent.includes('mac os'))
+    return 'mac'
+
+  if (normalizedPlatform.includes('win') || normalizedUserAgent.includes('windows'))
+    return 'windows'
+
+  return 'other'
+}

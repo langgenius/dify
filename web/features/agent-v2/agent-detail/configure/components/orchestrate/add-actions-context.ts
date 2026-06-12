@@ -1,0 +1,46 @@
+import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../data'
+import type { AgentSkill } from './skills/item'
+import type { AgentCliTool } from './tools/types'
+import { createContext, use, useEffect } from 'react'
+
+export type AgentOrchestrateAddActionKey = 'cli' | 'files' | 'knowledge' | 'skills'
+
+export type AgentOrchestrateAddedItem = AgentCliTool | AgentFileNode | AgentKnowledgeRetrievalItem | AgentSkill
+
+export type AgentOrchestrateAddActionOptions = {
+  onAdded?: (item: AgentOrchestrateAddedItem) => void
+}
+
+export type AgentOrchestrateAddAction = (options?: AgentOrchestrateAddActionOptions) => void
+
+export type AgentOrchestrateAddActions = Partial<Record<AgentOrchestrateAddActionKey, AgentOrchestrateAddAction>>
+
+export type AgentOrchestrateAddActionsContextValue = {
+  actions: AgentOrchestrateAddActions
+  registerAction: (key: AgentOrchestrateAddActionKey, action: AgentOrchestrateAddAction) => () => void
+}
+
+export const AgentOrchestrateAddActionsContext = createContext<AgentOrchestrateAddActionsContextValue | null>(null)
+
+export function useAgentOrchestrateAddActions() {
+  const context = use(AgentOrchestrateAddActionsContext)
+  if (!context)
+    return {}
+
+  return context.actions
+}
+
+export function useRegisterAgentOrchestrateAddAction(
+  key: AgentOrchestrateAddActionKey,
+  action: AgentOrchestrateAddAction,
+) {
+  const context = use(AgentOrchestrateAddActionsContext)
+  const registerAction = context?.registerAction
+
+  useEffect(() => {
+    if (!registerAction)
+      return
+
+    return registerAction(key, action)
+  }, [action, key, registerAction])
+}

@@ -1,8 +1,11 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
+import type { AgentSkill } from './item'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRemoveSkill, useSkills } from '@/features/agent-v2/agent-composer/store'
+import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -15,13 +18,28 @@ export function AgentSkills({
   agentId: string
 }) {
   const { t } = useTranslation('agentV2')
-  const [skills] = useSkills()
+  const [skills, setSkills] = useSkills()
   const removeSkill = useRemoveSkill()
   const skillsTip = t('agentDetail.configure.skills.tip')
   const skillsListId = 'agent-configure-skills-list'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
-  const handleOpenUpload = useCallback(() => {
+  const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
+  const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
+    promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
+  }, [])
+  useRegisterAgentOrchestrateAddAction('skills', handleOpenUpload)
+  const handleUploaded = useCallback((skill: AgentSkill) => {
+    setSkills(skills.some(currentSkill => currentSkill.id === skill.id)
+      ? skills
+      : [...skills, skill])
+    promptAddCallbackRef.current?.(skill)
+    promptAddCallbackRef.current = undefined
+  }, [setSkills, skills])
+  const handleUploadOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      promptAddCallbackRef.current = undefined
+    setIsUploadOpen(open)
   }, [])
 
   return (
@@ -37,7 +55,7 @@ export function AgentSkills({
         actions={(
           <ConfigureSectionAddButton
             ariaLabel={t('agentDetail.configure.skills.add')}
-            onClick={handleOpenUpload}
+            onClick={() => handleOpenUpload()}
           />
         )}
       >
@@ -55,7 +73,8 @@ export function AgentSkills({
       <AgentSkillUploadDialog
         agentId={agentId}
         open={isUploadOpen}
-        onOpenChange={setIsUploadOpen}
+        onOpenChange={handleUploadOpenChange}
+        onUploaded={handleUploaded}
       />
     </>
   )

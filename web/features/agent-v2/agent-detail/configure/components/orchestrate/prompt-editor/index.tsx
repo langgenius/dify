@@ -16,6 +16,7 @@ import {
   useSkills,
   useTools,
 } from '@/features/agent-v2/agent-composer/store'
+import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentPromptOptionMenu } from './option-menu'
 import { appendToken, insertOptions, mentionOptions, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
@@ -70,6 +71,7 @@ export function AgentPromptEditor() {
   const [files] = useFiles()
   const [tools, setTools] = useTools()
   const [retrievals] = useKnowledgeRetrievals()
+  const addActions = useAgentOrchestrateAddActions()
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
   const count = value.length
@@ -292,6 +294,10 @@ export function AgentPromptEditor() {
               files={files}
               tools={tools}
               onToolsChange={setTools}
+              onAddCliTool={addActions.cli}
+              onAddFile={addActions.files}
+              onAddKnowledge={addActions.knowledge}
+              onAddSkill={addActions.skills}
               retrievals={retrievals}
               onBack={() => setSlashMenuView('main')}
               onOpenCategory={setSlashMenuView}

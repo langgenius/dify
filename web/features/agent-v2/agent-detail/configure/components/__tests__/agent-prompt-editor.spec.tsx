@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { agentComposerDraftAtom, agentComposerPromptAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
+import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
@@ -182,6 +183,88 @@ describe('AgentPromptEditor', () => {
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
       })
+    })
+
+    it('should insert references after prompt add actions create skills, files, CLI tools, or knowledge retrievals', () => {
+      const onSelect = vi.fn()
+      const categories = [
+        { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
+        { key: 'files' as const, label: 'Files', icon: 'i-ri-file-line' },
+        { key: 'tools' as const, label: 'Tools', icon: 'i-ri-box-3-line' },
+        { key: 'knowledge' as const, label: 'Knowledge', icon: 'i-ri-book-open-line' },
+      ]
+
+      const { rerender } = render(
+        <AgentPromptSlashMenu
+          view="skills"
+          categories={categories}
+          skills={[]}
+          files={[]}
+          tools={[]}
+          onToolsChange={vi.fn()}
+          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
+          retrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onSelect={onSelect}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
+      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
+
+      rerender(
+        <AgentPromptSlashMenu
+          view="files"
+          categories={categories}
+          skills={[]}
+          files={[]}
+          tools={[]}
+          onToolsChange={vi.fn()}
+          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown' })}
+          retrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onSelect={onSelect}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
+      expect(onSelect).toHaveBeenCalledWith('[§file:file-1:Guide.md§]')
+
+      rerender(
+        <AgentPromptSlashMenu
+          view="knowledge"
+          categories={categories}
+          skills={[]}
+          files={[]}
+          tools={[]}
+          onToolsChange={vi.fn()}
+          onAddKnowledge={options => options?.onAdded?.({ id: 'retrieval-1', name: 'Retrieval One', queryMode: 'agent' })}
+          retrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onSelect={onSelect}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.knowledgeRetrieval\.add/i }))
+      expect(onSelect).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
+
+      rerender(
+        <AgentPromptSlashMenu
+          view="tools"
+          categories={categories}
+          skills={[]}
+          files={[]}
+          tools={[]}
+          onToolsChange={vi.fn()}
+          onAddCliTool={options => options?.onAdded?.({ id: 'cli-1', kind: 'cli', name: 'Lark CLI' })}
+          retrievals={[]}
+          onBack={vi.fn()}
+          onOpenCategory={vi.fn()}
+          onSelect={onSelect}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i }))
+      expect(onSelect).toHaveBeenCalledWith('[§cli_tool:cli-1:Lark CLI§]')
     })
 
     it('should append available provider tool references and add missing tools to the configuration', () => {

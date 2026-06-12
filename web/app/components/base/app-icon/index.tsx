@@ -8,9 +8,17 @@ import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
 import { init } from 'emoji-mart'
 import * as React from 'react'
-import { useRef } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 
 init({ data })
+
+const subscribeHydrationState = () => () => {}
+
+const useIsHydrated = () => useSyncExternalStore(
+  subscribeHydrationState,
+  () => true,
+  () => false,
+)
 
 type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large' | 'xl' | 'xxl'
@@ -105,7 +113,8 @@ const AppIcon: FC<AppIconProps> = ({
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
   const emojiIcon = (icon && icon !== '') ? icon : '🤖'
-  const Icon = <em-emoji key={emojiIcon} id={emojiIcon} />
+  const isHydrated = useIsHydrated()
+  const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
 

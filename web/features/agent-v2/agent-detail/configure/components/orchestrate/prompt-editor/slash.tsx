@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../../data'
+import type { AgentOrchestrateAddAction, AgentOrchestrateAddedItem } from '../add-actions-context'
 import type { AgentSkill } from '../skills/item'
 import type { AgentTool } from '../tools/types'
 import type { Tool } from '@/app/components/tools/types'
@@ -38,6 +39,10 @@ type AgentPromptSlashMenuProps = {
   files: AgentFileNode[]
   tools: AgentTool[]
   onToolsChange: (tools: AgentTool[]) => void
+  onAddCliTool?: AgentOrchestrateAddAction
+  onAddFile?: AgentOrchestrateAddAction
+  onAddKnowledge?: AgentOrchestrateAddAction
+  onAddSkill?: AgentOrchestrateAddAction
   retrievals: AgentKnowledgeRetrievalItem[]
   onBack: () => void
   onOpenCategory: (view: Exclude<SlashMenuView, 'main'>) => void
@@ -46,6 +51,18 @@ type AgentPromptSlashMenuProps = {
 
 const createReferenceToken = (kind: string, id: string, label?: string) => (
   `[§${kind}:${id}${label ? `:${label}` : ''}§]`
+)
+
+const isPromptReferenceItem = (item: AgentOrchestrateAddedItem): item is AgentFileNode | AgentSkill => (
+  'id' in item && 'name' in item
+)
+
+const isCliToolItem = (item: AgentOrchestrateAddedItem): item is Extract<AgentTool, { kind: 'cli' }> => (
+  'kind' in item && item.kind === 'cli'
+)
+
+const isKnowledgeRetrievalItem = (item: AgentOrchestrateAddedItem): item is AgentKnowledgeRetrievalItem => (
+  'queryMode' in item || 'customQuery' in item || 'selectedDatasets' in item || 'nameKey' in item
 )
 
 const getFileIcon = (file: AgentFileNode) => {
@@ -66,6 +83,10 @@ export function AgentPromptSlashMenu({
   files,
   tools,
   onToolsChange,
+  onAddCliTool,
+  onAddFile,
+  onAddKnowledge,
+  onAddSkill,
   retrievals,
   onBack,
   onOpenCategory,
@@ -73,6 +94,36 @@ export function AgentPromptSlashMenu({
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation('agentV2')
   const title = categories.find(category => category.key === view)?.label
+  const handleAddFromFooter = () => {
+    if (view === 'skills') {
+      onAddSkill?.({
+        onAdded: (item) => {
+          if (isPromptReferenceItem(item))
+            onSelect(createReferenceToken('skill', item.id, item.name))
+        },
+      })
+      return
+    }
+
+    if (view === 'files') {
+      onAddFile?.({
+        onAdded: (item) => {
+          if (isPromptReferenceItem(item))
+            onSelect(createReferenceToken('file', item.id, item.name))
+        },
+      })
+      return
+    }
+
+    if (view === 'knowledge') {
+      onAddKnowledge?.({
+        onAdded: (item) => {
+          if (isKnowledgeRetrievalItem(item))
+            onSelect(createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)))
+        },
+      })
+    }
+  }
 
   if (view === 'main') {
     return (
@@ -124,12 +175,24 @@ export function AgentPromptSlashMenu({
         )}
       </div>
       {view === 'tools'
-        ? <AgentPromptToolFooter />
+        ? (
+            <AgentPromptToolFooter
+              onAddCliTool={() => {
+                onAddCliTool?.({
+                  onAdded: (item) => {
+                    if (isCliToolItem(item))
+                      onSelect(createReferenceToken('cli_tool', item.id, item.name))
+                  },
+                })
+              }}
+            />
+          )
         : (
             <div className="border-t border-divider-subtle p-1">
               <button
                 type="button"
                 className="flex h-6 w-full items-center gap-1 rounded-md pr-2 pl-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+                onClick={handleAddFromFooter}
               >
                 <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
                 <span className="system-sm-regular text-text-secondary">
@@ -488,7 +551,11 @@ function AgentPromptProviderIcon({
   )
 }
 
-function AgentPromptToolFooter() {
+function AgentPromptToolFooter({
+  onAddCliTool,
+}: {
+  onAddCliTool?: () => void
+}) {
   const { t } = useTranslation()
 
   return (
@@ -505,6 +572,7 @@ function AgentPromptToolFooter() {
       <button
         type="button"
         className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+        onClick={onAddCliTool}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
         <span className="system-sm-regular text-text-secondary">{t('agentDetail.configure.tools.cliDialog.title', { ns: 'agentV2' })}</span>
@@ -584,12 +652,19 @@ function AgentPromptKnowledgeRows({
         <AgentPromptSubmenuRow
           key={retrieval.id}
           icon="i-ri-book-open-line"
-          label={retrieval.name ?? (retrieval.nameKey ? t(retrieval.nameKey) : retrieval.id)}
-          onClick={() => onSelect(createReferenceToken('knowledge', retrieval.id, retrieval.name ?? (retrieval.nameKey ? t(retrieval.nameKey) : retrieval.id)))}
+          label={getKnowledgeRetrievalName(retrieval, t)}
+          onClick={() => onSelect(createReferenceToken('knowledge', retrieval.id, getKnowledgeRetrievalName(retrieval, t)))}
         />
       ))}
     </>
   )
+}
+
+function getKnowledgeRetrievalName(
+  retrieval: AgentKnowledgeRetrievalItem,
+  t: ReturnType<typeof useTranslation>['t'],
+) {
+  return retrieval.name ?? (retrieval.nameKey ? t(retrieval.nameKey) : retrieval.id)
 }
 
 function AgentPromptSubmenuRow({

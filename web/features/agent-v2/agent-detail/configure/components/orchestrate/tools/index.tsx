@@ -1,12 +1,14 @@
 'use client'
 
+import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -213,6 +215,24 @@ export function AgentTools() {
     handleCliDialogOpenChange,
     closeProviderSettingsDialog,
   } = useAgentToolsOperations()
+  const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
+  const openCliToolDialogFromPrompt = useCallback((options?: AgentOrchestrateAddActionOptions) => {
+    promptAddCallbackRef.current = options?.onAdded
+    openCliToolDialog()
+  }, [openCliToolDialog])
+  const handleCliDialogSaveWithPromptInsert = useCallback((tool: AgentCliTool) => {
+    handleCliDialogSave(tool)
+    if (!editingCliTool) {
+      promptAddCallbackRef.current?.(tool)
+      promptAddCallbackRef.current = undefined
+    }
+  }, [editingCliTool, handleCliDialogSave])
+  const handleCliDialogOpenChangeWithPromptInsert = useCallback((open: boolean) => {
+    if (!open)
+      promptAddCallbackRef.current = undefined
+    handleCliDialogOpenChange(open)
+  }, [handleCliDialogOpenChange])
+  useRegisterAgentOrchestrateAddAction('cli', openCliToolDialogFromPrompt)
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
 
@@ -263,9 +283,9 @@ export function AgentTools() {
         key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
         mode={editingCliTool ? 'edit' : 'add'}
         tool={editingCliTool}
-        onSaveCliTool={handleCliDialogSave}
+        onSaveCliTool={handleCliDialogSaveWithPromptInsert}
         open={isCliToolDialogOpen}
-        onOpenChange={handleCliDialogOpenChange}
+        onOpenChange={handleCliDialogOpenChangeWithPromptInsert}
       />
     </>
   )

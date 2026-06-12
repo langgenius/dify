@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentSkill } from './item'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -13,6 +14,24 @@ import { formatFileSize } from '@/utils/format'
 
 const skillPackageAccept = '.zip,.skill'
 const skillPackageExtensions = ['.zip', '.skill']
+
+const getStringValue = (value: unknown) => typeof value === 'string' ? value : undefined
+
+const getSkillNameFromFile = (file: File) => file.name.replace(/\.(?:skill|zip)$/iu, '') || file.name
+
+const toUploadedSkill = (response: Record<string, unknown>, file: File): AgentSkill => {
+  const name = getStringValue(response.name)
+    ?? getStringValue(response.skill_name)
+    ?? getSkillNameFromFile(file)
+  const id = getStringValue(response.id)
+    ?? getStringValue(response.skill_id)
+    ?? name
+
+  return {
+    id,
+    name,
+  }
+}
 
 function isSupportedSkillPackage(file: File) {
   const fileName = file.name.toLowerCase()
@@ -120,10 +139,12 @@ function AgentSkillPackageUploader({
 
 export function AgentSkillUploadDialog({
   agentId,
+  onUploaded,
   open,
   onOpenChange,
 }: {
   agentId: string
+  onUploaded?: (skill: AgentSkill) => void
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -144,8 +165,9 @@ export function AgentSkillUploadDialog({
         file,
       },
     }, {
-      onSuccess: () => {
+      onSuccess: (response) => {
         toast.success(t('agentDetail.configure.skills.upload.success'))
+        onUploaded?.(toUploadedSkill(response, file))
         setFile(undefined)
         onOpenChange(false)
       },
