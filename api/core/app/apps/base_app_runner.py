@@ -431,9 +431,7 @@ class AppRunner:
             url=f"/files/tools/{tool_file.id}",
             upload_file_id=tool_file.id,
             created_by_role=(
-                CreatorUserRole.ACCOUNT
-                if queue_manager.invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE}
-                else CreatorUserRole.END_USER
+                CreatorUserRole.ACCOUNT if queue_manager.invoke_from.runs_as_account() else CreatorUserRole.END_USER
             ),
             created_by=user_id,
         )

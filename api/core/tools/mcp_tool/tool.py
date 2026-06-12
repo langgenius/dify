@@ -358,7 +358,17 @@ class MCPTool(Tool):
                 tenant_id=self.tenant_id,
                 app_id=app_id,
                 audience=audience,
+                user_type=self._resolve_user_type(),
             )
         except MCPTokenError as e:
             raise ToolInvokeError(f"Failed to obtain forwarded identity token: {e}") from e
         headers[FORWARDED_IDENTITY_HEADER] = token
+
+    def _resolve_user_type(self) -> str:
+        """Return "account" for console-authenticated callers (debugger/explore),
+        "end_user" for webapp / service-api / trigger callers — so the enterprise
+        side routes to the console store vs the published-webapp store."""
+        invoke_from = self.runtime.invoke_from
+        if invoke_from is not None and invoke_from.runs_as_account():
+            return "account"
+        return "end_user"
