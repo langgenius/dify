@@ -2,12 +2,45 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentConfigureDraft } from '../../../../draft'
+import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentTools } from '../index'
+
+const agentToolsDraft = {
+  ...defaultAgentComposerDraft,
+  tools: [
+    {
+      id: 'duckduckgo',
+      kind: 'provider',
+      name: 'DuckDuckGo',
+      iconClassName: 'i-simple-icons-duckduckgo',
+      credentialKey: 'agentDetail.configure.tools.credential.authOne',
+      credentialVariant: 'authorized',
+      actions: [
+        {
+          id: 'duckduckgo-search',
+          name: 'DuckDuckGo Search',
+          toolName: 'search',
+          description: 'Search the web.',
+        },
+        {
+          id: 'duckduckgo-image-search',
+          name: 'DuckDuckGo Image Search',
+          toolName: 'image_search',
+          description: 'Search images.',
+        },
+      ],
+    },
+    {
+      id: 'lark-cli',
+      kind: 'cli',
+      name: 'Lark CLI',
+    },
+  ],
+} satisfies typeof defaultAgentComposerDraft
 
 function renderAgentTools() {
   return render(
-    <AgentComposerProvider initialDraft={defaultAgentConfigureDraft}>
+    <AgentComposerProvider initialDraft={agentToolsDraft}>
       <AgentTools />
     </AgentComposerProvider>,
   )

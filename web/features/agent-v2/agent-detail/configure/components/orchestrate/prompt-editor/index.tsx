@@ -2,6 +2,9 @@
 
 import type { KeyboardEvent, MouseEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
+import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -70,6 +73,11 @@ export function AgentPromptEditor() {
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
   const count = value.length
+  const { copied, copy, reset } = useClipboard({
+    onCopyError: () => {
+      toast.error(t('agentDetail.configure.prompt.copyFailed'))
+    },
+  })
   const [slashMenuView, setSlashMenuView] = useState<SlashMenuView>('main')
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -78,6 +86,10 @@ export function AgentPromptEditor() {
   const handleInsert = useCallback((token: string) => {
     onChange(appendToken(value, token))
   }, [onChange, value])
+
+  const handleCopyPrompt = useCallback(() => {
+    void copy(value)
+  }, [copy, value])
 
   const closeSlashMenu = () => {
     setIsSlashMenuOpen(false)
@@ -198,6 +210,24 @@ export function AgentPromptEditor() {
             {promptTip}
           </Infotip>
         </div>
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <button
+                type="button"
+                aria-label={copied ? t('agentDetail.configure.prompt.copied') : t('agentDetail.configure.prompt.copy')}
+                className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={handleCopyPrompt}
+                onMouseLeave={reset}
+              >
+                <span aria-hidden className={copied ? 'i-ri-check-line size-4' : 'i-ri-clipboard-line size-4'} />
+              </button>
+            )}
+          />
+          <TooltipContent>
+            {copied ? t('agentDetail.configure.prompt.copied') : t('agentDetail.configure.prompt.copy')}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <div
@@ -211,12 +241,12 @@ export function AgentPromptEditor() {
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
         >
-          <div ref={editorRef} className="max-h-64 min-h-20 overflow-y-auto px-3 pt-2">
+          <div ref={editorRef} className="h-80 max-h-80 overflow-y-auto px-3 pt-2">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               compact
-              wrapperClassName="min-h-20"
-              className="min-h-20 text-text-primary"
+              wrapperClassName="min-h-80"
+              className="min-h-80 text-text-primary"
               placeholder={t('agentDetail.configure.prompt.placeholder')}
               value={value}
               onChange={onChange}

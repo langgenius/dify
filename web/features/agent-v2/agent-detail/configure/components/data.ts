@@ -1,5 +1,4 @@
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
-import type { AgentSkill } from './orchestrate/skills/item'
 import type {
   MetadataFilteringConditions,
   MetadataFilteringModeEnum,
@@ -57,67 +56,3 @@ export type AgentKnowledgeRetrievalItem = {
   metadataFilteringConditions?: MetadataFilteringConditions
   metadataModelConfig?: ModelConfig
 }
-
-export const defaultAgentSkills: AgentSkill[] = [
-  {
-    id: 'playwright',
-    name: 'Playwright',
-  },
-]
-
-export const defaultAgentFiles: AgentFileNode[] = [
-  {
-    id: 'preview-image',
-    name: 'agent-roster-skill-detail-dialog-preview-image.png',
-    icon: 'image',
-  },
-]
-
-export const defaultAgentTools: AgentTool[] = [
-  {
-    id: 'duckduckgo',
-    name: 'DuckDuckGo',
-    kind: 'provider',
-    iconClassName: 'i-custom-public-other-default-tool-icon text-[#ef5b39]',
-    credentialKey: 'agentDetail.configure.tools.credential.authOne',
-    credentialVariant: 'authorized',
-    actions: [
-      {
-        id: 'duckduckgo-ai-chat',
-        name: 'DuckDuckGo AI Chat',
-        toolName: 'duckduckgo_ai_chat',
-        description: 'Chat with DuckDuckGo AI for lightweight web answers.',
-      },
-      {
-        id: 'duckduckgo-image-search',
-        name: 'DuckDuckGo Image Search',
-        toolName: 'duckduckgo_image_search',
-        description: 'Search DuckDuckGo images and return matching image results.',
-      },
-      {
-        id: 'duckduckgo-search',
-        name: 'DuckDuckGo Search',
-        toolName: 'duckduckgo_search',
-        description: 'Search DuckDuckGo and return relevant webpage snippets.',
-      },
-      {
-        id: 'duckduckgo-translate',
-        name: 'DuckDuckGo Translate',
-        toolName: 'duckduckgo_translate',
-        description: 'Translate short text with DuckDuckGo translation tools.',
-      },
-    ],
-  },
-  {
-    id: 'lark-cli-badge',
-    name: 'Lark CLI',
-    kind: 'cli',
-  },
-]
-
-export const defaultAgentKnowledgeRetrievals: AgentKnowledgeRetrievalItem[] = [
-  {
-    id: 'retrieval-1',
-    nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
-  },
-]

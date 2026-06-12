@@ -196,7 +196,7 @@ function AgentPromptToolRows({
             tool={tool}
             onClick={() => {
               if (tool.kind === 'provider')
-                onSelect(createReferenceToken('tool-all', tool.id, tool.name))
+                onSelect(createReferenceToken('tool', `${tool.id}/*`, tool.name))
               else
                 onSelect(createReferenceToken('cli_tool', tool.id, tool.name))
             }}
@@ -206,7 +206,7 @@ function AgentPromptToolRows({
               key={action.id}
               label={action.name}
               depth={1}
-              onClick={() => onSelect(createReferenceToken('tool', `${tool.id}/${action.toolName}`, action.toolName))}
+              onClick={() => onSelect(createReferenceToken('tool', `${tool.id}/${action.toolName}`, action.name))}
             />
           ))}
         </div>

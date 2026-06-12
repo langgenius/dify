@@ -3,9 +3,18 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
-import { defaultAgentConfigureDraft } from '../../../../draft'
+import { defaultAgentComposerDraft, useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
 import { AgentKnowledgeRetrieval } from '../index'
+
+const agentKnowledgeDraft = {
+  ...defaultAgentComposerDraft,
+  knowledgeRetrievals: [
+    {
+      id: 'retrieval-1',
+      nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
+    },
+  ],
+} satisfies typeof defaultAgentComposerDraft
 
 function PublishPayloadPreview() {
   const payload = useConfigPublishPayload({ agentId: 'agent-1' })
@@ -22,7 +31,7 @@ function renderKnowledgeRetrieval({ showPublishPayload = false } = {}) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={defaultAgentConfigureDraft}>
+      <AgentComposerProvider initialDraft={agentKnowledgeDraft}>
         <AgentKnowledgeRetrieval />
         {showPublishPayload && <PublishPayloadPreview />}
       </AgentComposerProvider>

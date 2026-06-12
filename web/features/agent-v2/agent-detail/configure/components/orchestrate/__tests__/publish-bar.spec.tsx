@@ -3,9 +3,8 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, agentComposerOriginalDraftAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { agentConfigurePromptAtom } from '../../../atoms'
-import { defaultAgentConfigureDraft } from '../../../draft'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
 type PublishHandler = NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['onPublish']>
@@ -42,6 +41,17 @@ const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   version: 1,
   created_at: 1710000000,
 }
+
+const originalDraftWithFile = {
+  ...defaultAgentComposerDraft,
+  files: [
+    {
+      id: 'preview-image',
+      name: 'agent-roster-skill-detail-dialog-preview-image.png',
+      icon: 'image',
+    },
+  ],
+} satisfies typeof defaultAgentComposerDraft
 
 function renderPublishBar({
   activeConfigSnapshot,
@@ -144,9 +154,9 @@ describe('AgentConfigurePublishBar', () => {
     renderPublishBar({
       activeConfigSnapshot,
       setupStore: (store) => {
-        store.set(agentComposerOriginalDraftAtom, defaultAgentConfigureDraft)
+        store.set(agentComposerOriginalDraftAtom, originalDraftWithFile)
         store.set(agentComposerDraftAtom, {
-          ...defaultAgentConfigureDraft,
+          ...originalDraftWithFile,
           files: [],
         })
       },

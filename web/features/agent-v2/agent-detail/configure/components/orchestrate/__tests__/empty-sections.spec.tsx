@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentConfigureDraft } from '../../../draft'
+import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentFiles } from '../files'
 import { AgentKnowledgeRetrieval } from '../knowledge'
 import { AgentSkills } from '../skills'
@@ -15,7 +15,7 @@ function renderEmptySections() {
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider
         initialDraft={{
-          ...defaultAgentConfigureDraft,
+          ...defaultAgentComposerDraft,
           files: [],
           knowledgeRetrievals: [],
           skills: [],
