@@ -108,7 +108,9 @@ class ModelProviderListApi(Resource):
         args = ParserModelList.model_validate(payload)
 
         model_provider_service = ModelProviderService()
-        provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=str(args.model_type) if args.model_type else "")
+        provider_list = model_provider_service.get_provider_list(
+            tenant_id=tenant_id, model_type=str(args.model_type) if args.model_type else ""
+        )
 
         return jsonable_encoder({"data": provider_list})
 
