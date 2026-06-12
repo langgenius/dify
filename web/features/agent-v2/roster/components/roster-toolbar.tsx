@@ -1,36 +1,35 @@
 'use client'
 
+import type { RosterFilterValue } from './roster-filter'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreateAgentDialog } from './create-agent-dialog'
 
 type RosterToolbarProps = {
   draftAgents: number
+  filter: RosterFilterValue
   inUseAgents: number
   keyword: string
   totalAgents: number
+  onFilterChange: (value: RosterFilterValue) => void
   onKeywordChange: (value: string) => void
 }
 
 type RosterFilterItemProps = {
   count: number
-  disabled?: boolean
   label: string
-  value: string
+  value: RosterFilterValue
 }
 
 function RosterFilterItem({
   count,
-  disabled,
   label,
   value,
 }: RosterFilterItemProps) {
   return (
     <SegmentedControlItem
       value={value}
-      disabled={disabled}
       className="gap-1 data-pressed:text-text-secondary"
     >
       <span>{label}</span>
@@ -43,9 +42,11 @@ function RosterFilterItem({
 
 export function RosterToolbar({
   draftAgents,
+  filter,
   inUseAgents,
   keyword,
   totalAgents,
+  onFilterChange,
   onKeywordChange,
 }: RosterToolbarProps) {
   const { t } = useTranslation('agentV2')
@@ -54,8 +55,13 @@ export function RosterToolbar({
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <SegmentedControl
         aria-label={t('roster.filters.label')}
-        value={['all']}
-        onValueChange={noop}
+        value={[filter]}
+        onValueChange={(value) => {
+          const nextFilter = value[0]
+
+          if (nextFilter)
+            onFilterChange(nextFilter)
+        }}
       >
         <RosterFilterItem
           value="all"
@@ -66,13 +72,11 @@ export function RosterToolbar({
           value="in-use"
           label={t('roster.filters.inUse')}
           count={inUseAgents}
-          disabled
         />
         <RosterFilterItem
           value="drafts"
           label={t('roster.filters.drafts')}
           count={draftAgents}
-          disabled
         />
       </SegmentedControl>
       <SearchInput

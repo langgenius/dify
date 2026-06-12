@@ -1,5 +1,6 @@
 'use client'
 
+import type { RosterFilterValue } from './components/roster-filter'
 import {
   ScrollAreaContent,
   ScrollAreaRoot,
@@ -10,16 +11,30 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { debounce, parseAsString, useQueryState } from 'nuqs'
+import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
+import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 import { RosterToolbar } from './components/roster-toolbar'
 
 const ROSTER_PAGE_SIZE = 30
 const isAgentInUse = (agent: { published_reference_count?: number }) => (agent.published_reference_count ?? 0) > 0
 const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
+
+const getFilteredRosterItems = <T extends { published_reference_count?: number }>(
+  agents: T[],
+  filter: RosterFilterValue,
+) => {
+  if (filter === 'in-use')
+    return agents.filter(isAgentInUse)
+
+  if (filter === 'drafts')
+    return agents.filter(agent => !isAgentInUse(agent))
+
+  return agents
+}
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
@@ -27,6 +42,10 @@ export default function RosterPage() {
   const [keyword, setKeyword] = useQueryState('keyword', parseAsString.withDefault('').withOptions({
     limitUrlUpdates: debounce(300),
   }))
+  const [rosterFilter, setRosterFilter] = useQueryState(
+    'filter',
+    parseAsStringLiteral(ROSTER_FILTER_VALUES).withDefault('all'),
+  )
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
   const rosterQueryInput = {
@@ -60,6 +79,7 @@ export default function RosterPage() {
   const totalAgents = rosterPages?.pages[0]?.total ?? 0
   const inUseAgents = rosterItems.filter(isAgentInUse).length
   const draftAgents = Math.max(rosterItems.length - inUseAgents, 0)
+  const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
 
   useDocumentTitle(tCommon('menus.roster'))
 
@@ -89,9 +109,13 @@ export default function RosterPage() {
           <div className="mt-3.5">
             <RosterToolbar
               draftAgents={draftAgents}
+              filter={rosterFilter}
               inUseAgents={inUseAgents}
               keyword={keyword}
               totalAgents={totalAgents}
+              onFilterChange={(value) => {
+                void setRosterFilter(value)
+              }}
               onKeywordChange={(value) => {
                 void setKeyword(value)
               }}
@@ -104,9 +128,9 @@ export default function RosterPage() {
             <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
               <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
                 <AgentRosterList
-                  agents={rosterItems}
+                  agents={filteredRosterItems}
                   hasMore={!!hasNextPage}
-                  isEmptySearch={!!debouncedKeyword}
+                  isEmptySearch={!!debouncedKeyword || rosterFilter !== 'all'}
                   isError={!!error}
                   isFetching={isFetching}
                   isFetchingNextPage={isFetchingNextPage}
