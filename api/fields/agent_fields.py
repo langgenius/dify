@@ -197,11 +197,15 @@ class AgentComposerValidateResponse(ResponseModel):
 
 class AgentComposerDifyToolCandidateResponse(ResponseModel):
     id: str | None = None
+    # "provider" = the whole provider (all of its tools, id "<provider>/*");
+    # "tool" = one tool (id "<provider>/<tool_name>"). See ENG-616.
+    granularity: str | None = None
     name: str | None = None
     description: str | None = None
     provider: str | None = None
     provider_id: str | None = None
     plugin_id: str | None = None
+    tools_count: int | None = None
 
 
 class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):

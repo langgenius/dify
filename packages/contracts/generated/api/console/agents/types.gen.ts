@@ -385,6 +385,7 @@ export type AgentCliToolConfig = {
   description?: string | null
   enabled?: boolean
   env?: AgentCliToolEnvConfig
+  id?: string | null
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -416,7 +417,7 @@ export type AgentSoulDifyToolConfig = {
   runtime_parameters?: {
     [key: string]: unknown
   }
-  tool_name: string
+  tool_name?: string | null
 }
 
 export type AgentModerationProviderConfig = {
