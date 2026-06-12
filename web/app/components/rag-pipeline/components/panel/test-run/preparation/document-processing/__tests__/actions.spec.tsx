@@ -1,6 +1,7 @@
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { expectLoadingButton } from '@/test/button'
 import Actions from '../actions'
 
 let mockWorkflowRunningData: { result: { status: WorkflowRunningStatus } } | undefined
@@ -62,6 +63,6 @@ describe('Document processing actions', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i })).toBeDisabled()
+    expectLoadingButton(screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }))
   })
 })

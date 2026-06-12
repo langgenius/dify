@@ -1,6 +1,7 @@
 import type { InstalledApp } from '@/models/explore'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MediaType } from '@/hooks/use-breakpoints'
+import { expectLoadingButton } from '@/test/button'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
 
@@ -224,7 +225,7 @@ describe('SideBar', () => {
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(screen.getByText('common.operation.cancel')).toBeDisabled()
-      expect(screen.getByText('common.operation.confirm')).toBeDisabled()
+      expectLoadingButton(screen.getByText('common.operation.confirm').closest('button'))
     })
   })
 

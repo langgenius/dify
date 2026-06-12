@@ -2,6 +2,7 @@ import type { App, AppSSO } from '@/types/app'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { expectLoadingButton } from '@/test/button'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
@@ -265,7 +266,7 @@ describe('AppInfoModals', () => {
 
     const firstClick = user.click(confirmButton)
     await waitFor(() => {
-      expect(confirmButton).toBeDisabled()
+      expectLoadingButton(confirmButton)
       expect(confirmButton).toHaveTextContent('common.operation.exporting')
     })
     await user.click(confirmButton)
