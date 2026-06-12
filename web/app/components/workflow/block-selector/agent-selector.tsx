@@ -151,6 +151,7 @@ function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNod
     icon_type: agent.icon_type,
     id: agent.id,
     name: agent.name,
+    role: agent.role,
   }
 }
 
@@ -199,7 +200,7 @@ function AgentSelectorItem({
             {agent.name}
           </span>
           <span className="truncate system-xs-regular text-text-tertiary">
-            {agent.description}
+            {agent.role || agent.description}
           </span>
         </span>
       </ComboboxItemText>

@@ -96,8 +96,7 @@ function AgentRosterItem({
     ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
     : null
   const sourceLabel = t(getSourceLabelKey(agent.source))
-  // TODO: replace with real reference count when API is ready
-  const referenceCount = 0
+  const referenceCount = agent.published_reference_count ?? 0
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = imageUrl ? 'image' : agent.icon_type
 
@@ -127,7 +126,7 @@ function AgentRosterItem({
               {agent.name}
             </h2>
             <p className="mt-1.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-              {sourceLabel}
+              {agent.role || sourceLabel}
             </p>
           </div>
         </div>

@@ -167,6 +167,7 @@ describe('Blocks', () => {
           id: 'agent-1',
           name: 'Nadia',
           description: 'Clarification Drafter',
+          role: 'Researcher',
           agent_kind: 'dify_agent',
           icon: 'A',
           icon_background: '#E9D7FE',
@@ -222,11 +223,15 @@ describe('Blocks', () => {
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
-    expect(screen.getByText('Clarification Drafter')).toBeInTheDocument()
+    expect(screen.getByText('Researcher')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Clarification Drafter' }))
+    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: 'agent-1',
+      },
       agent_node_kind: 'dify_agent',
       agent_roster: {
         description: 'Clarification Drafter',
@@ -235,6 +240,7 @@ describe('Blocks', () => {
         icon_type: 'emoji',
         id: 'agent-1',
         name: 'Nadia',
+        role: 'Researcher',
       },
       version: '2',
     })

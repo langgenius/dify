@@ -21,6 +21,7 @@ type EditAgentDialogProps = {
 type AgentFormValues = {
   description?: string
   name?: string
+  role?: string
 }
 
 export function EditAgentDialog({
@@ -32,13 +33,16 @@ export function EditAgentDialog({
   const { t: tCommon } = useTranslation('common')
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
+  const [role, setRole] = useState(agent.role ?? '')
   const updateAgentMutation = useMutation(consoleQuery.agents.byAgentId.patch.mutationOptions())
 
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedDescription = formValues.description?.trim() ?? ''
+    const trimmedRole = formValues.role?.trim() ?? ''
     const hasFormChanges = trimmedName !== agent.name.trim()
       || trimmedDescription !== (agent.description?.trim() ?? '')
+      || trimmedRole !== (agent.role?.trim() ?? '')
 
     if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
       return
@@ -50,6 +54,7 @@ export function EditAgentDialog({
       body: {
         name: trimmedName,
         description: trimmedDescription,
+        role: trimmedRole,
       },
     }, {
       onSuccess: () => {
@@ -66,14 +71,17 @@ export function EditAgentDialog({
     if (nextOpen) {
       setName(agent.name)
       setDescription(agent.description ?? '')
+      setRole(agent.role ?? '')
     }
     onOpenChange(nextOpen)
   }
 
   const trimmedName = name.trim()
   const trimmedDescription = description.trim()
+  const trimmedRole = role.trim()
   const hasChanges = trimmedName !== agent.name.trim()
     || trimmedDescription !== (agent.description?.trim() ?? '')
+    || trimmedRole !== (agent.role?.trim() ?? '')
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -116,6 +124,18 @@ export function EditAgentDialog({
               onValueChange={setDescription}
               placeholder={t('roster.createForm.descriptionPlaceholder')}
               value={description}
+            />
+          </FieldRoot>
+          <FieldRoot name="role">
+            <FieldLabel>
+              {t('roster.createForm.roleLabel')}
+            </FieldLabel>
+            <FieldControl
+              autoComplete="off"
+              maxLength={255}
+              onValueChange={setRole}
+              placeholder={t('roster.createForm.rolePlaceholder')}
+              value={role}
             />
           </FieldRoot>
           <div className="flex justify-end gap-2 pt-2">

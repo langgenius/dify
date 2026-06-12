@@ -117,6 +117,10 @@ const Blocks = ({
                   block={block}
                   onSelect={agent =>
                     onSelect(BlockEnum.AgentV2, {
+                      agent_binding: {
+                        binding_type: 'roster_agent',
+                        agent_id: agent.id,
+                      },
                       agent_node_kind: 'dify_agent',
                       agent_roster: agent,
                       version: '2',

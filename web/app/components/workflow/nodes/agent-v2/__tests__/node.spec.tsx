@@ -27,6 +27,10 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
   title: 'Agent',
   desc: '',
   type: BlockEnum.AgentV2,
+  agent_binding: {
+    binding_type: 'roster_agent',
+    agent_id: 'agent-1',
+  },
   agent_node_kind: 'dify_agent',
   agent_roster: {
     id: 'agent-1',
@@ -35,6 +39,7 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
     icon: 'N',
     icon_background: '#E9D7FE',
     icon_type: 'emoji',
+    role: 'Researcher',
   },
   version: '2',
   ...overrides,
@@ -65,5 +70,21 @@ describe('agent/node', () => {
     )
 
     expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent('workflow.errorMsg.fieldRequired')
+  })
+
+  it('renders an error state when the roster binding does not match the selected agent', () => {
+    render(
+      <AgentV2Node
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'roster_agent',
+            agent_id: 'agent-2',
+          },
+        })}
+      />,
+    )
+
+    expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent('Nadia')
   })
 })

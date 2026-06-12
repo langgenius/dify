@@ -17,6 +17,10 @@ const createPayload = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeTyp
   title: 'Agent',
   desc: '',
   type: BlockEnum.AgentV2,
+  agent_binding: {
+    binding_type: 'roster_agent',
+    agent_id: 'agent-1',
+  },
   agent_node_kind: 'dify_agent',
   agent_roster: {
     id: 'agent-1',
@@ -25,6 +29,7 @@ const createPayload = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeTyp
     icon: 'N',
     icon_background: '#E9D7FE',
     icon_type: 'emoji',
+    role: 'Researcher',
   },
   version: '2',
   ...overrides,
@@ -37,6 +42,29 @@ describe('agent/default', () => {
 
   it('requires a selected roster agent', () => {
     const result = nodeDefault.checkValid(createPayload({ agent_roster: undefined }), t)
+
+    expect(result).toEqual({
+      isValid: false,
+      errorMessage: 'required:Agent',
+    })
+  })
+
+  it('requires a roster agent binding', () => {
+    const result = nodeDefault.checkValid(createPayload({ agent_binding: undefined }), t)
+
+    expect(result).toEqual({
+      isValid: false,
+      errorMessage: 'required:Agent',
+    })
+  })
+
+  it('requires the roster agent binding to match the selected roster agent', () => {
+    const result = nodeDefault.checkValid(createPayload({
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: 'agent-2',
+      },
+    }), t)
 
     expect(result).toEqual({
       isValid: false,

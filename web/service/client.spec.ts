@@ -5,6 +5,11 @@ import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+type ParsedAgentRosterResponse = AgentRosterResponse & Required<Pick<
+  AgentRosterResponse,
+  'published_node_reference_count' | 'published_reference_count' | 'published_references' | 'role'
+>>
+
 const loadGetBaseURL = async (isClientValue: boolean) => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: isClientValue, isServer: !isClientValue }))
@@ -44,15 +49,19 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   ...overrides,
 })
 
-const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterResponse => ({
-  agent_kind: 'dify_agent',
-  description: 'Agent description',
-  id: 'agent-1',
-  name: 'Agent',
-  scope: 'roster',
-  source: 'agent_app',
-  status: 'active',
+const createAgent = (overrides: Partial<AgentRosterResponse> = {}): ParsedAgentRosterResponse => ({
   ...overrides,
+  agent_kind: overrides.agent_kind ?? 'dify_agent',
+  description: overrides.description ?? 'Agent description',
+  id: overrides.id ?? 'agent-1',
+  name: overrides.name ?? 'Agent',
+  published_node_reference_count: overrides.published_node_reference_count ?? 0,
+  published_reference_count: overrides.published_reference_count ?? 0,
+  published_references: overrides.published_references ?? [],
+  role: overrides.role ?? '',
+  scope: overrides.scope ?? 'roster',
+  source: overrides.source ?? 'agent_app',
+  status: overrides.status ?? 'active',
 })
 
 // Scenario: base URL selection and warnings.

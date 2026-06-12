@@ -14,6 +14,7 @@ import { consoleQuery } from '@/service/client'
 type AgentFormValues = {
   description?: string
   name?: string
+  role?: string
 }
 
 export function CreateAgentDialog() {
@@ -31,6 +32,7 @@ export function CreateAgentDialog() {
       body: {
         name: trimmedName,
         description: formValues.description?.trim() ?? '',
+        role: formValues.role?.trim() ?? '',
       },
     }, {
       onSuccess: () => {
@@ -91,6 +93,16 @@ export function CreateAgentDialog() {
             <Textarea
               autoComplete="off"
               placeholder={t('roster.createForm.descriptionPlaceholder')}
+            />
+          </FieldRoot>
+          <FieldRoot name="role">
+            <FieldLabel>
+              {t('roster.createForm.roleLabel')}
+            </FieldLabel>
+            <FieldControl
+              autoComplete="off"
+              maxLength={255}
+              placeholder={t('roster.createForm.rolePlaceholder')}
             />
           </FieldRoot>
           <div className="flex justify-end gap-2 pt-2">

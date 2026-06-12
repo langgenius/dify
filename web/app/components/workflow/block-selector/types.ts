@@ -78,10 +78,16 @@ export type DataSourceDefaultValue = Omit<PluginCommonDefaultValue, 'provider_id
 
 export type AgentRosterNodeData = Pick<
   AgentInviteOptionResponse,
-  'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name'
+  'description' | 'icon' | 'icon_background' | 'icon_type' | 'id' | 'name' | 'role'
 >
 
+export type AgentRosterBinding = {
+  binding_type: 'roster_agent'
+  agent_id: string
+}
+
 export type AgentDefaultValue = {
+  agent_binding: AgentRosterBinding
   agent_node_kind: 'dify_agent'
   agent_roster: AgentRosterNodeData
   version: '2'

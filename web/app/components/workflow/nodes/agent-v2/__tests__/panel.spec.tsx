@@ -100,6 +100,10 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
   title: 'Agent',
   desc: '',
   type: BlockEnum.AgentV2,
+  agent_binding: {
+    binding_type: 'roster_agent',
+    agent_id: 'agent-1',
+  },
   agent_node_kind: 'dify_agent',
   agent_roster: {
     id: 'agent-1',
@@ -108,6 +112,7 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
     icon: 'N',
     icon_background: '#E9D7FE',
     icon_type: 'emoji',
+    role: 'Researcher',
   },
   version: '2',
   ...overrides,
@@ -159,7 +164,7 @@ describe('agent/panel', () => {
 
     const panel = screen.getByRole('dialog', { name: 'Nadia' })
     expect(panel).toBeInTheDocument()
-    expect(within(panel).getByText('Clarification Drafter')).toBeInTheDocument()
+    expect(within(panel).getByText('Researcher')).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).toHaveAttribute('href', '/roster/agent/agent-1/configure')
     expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()
 
