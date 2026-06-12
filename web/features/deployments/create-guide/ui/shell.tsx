@@ -6,11 +6,11 @@ import { GuideCard, GuideFrame } from './layout'
 import {
   ReleaseActionButtons,
   ReleaseStepContent,
-} from './release-step/release-step-content'
+} from './release-step'
 import {
   SourceActionButtons,
   SourceStepContent,
-} from './source-step/source-step-content'
+} from './source-step'
 import {
   TargetBackButton,
   TargetDeployButton,
