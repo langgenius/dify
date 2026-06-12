@@ -55,7 +55,7 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
       const titleButton = within(dialog).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
       })
       expect(titleButton).toBeInTheDocument()
       expect(within(dialog).queryByRole('textbox', {
@@ -66,7 +66,7 @@ describe('AgentKnowledgeRetrieval', () => {
 
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
-      })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
+      })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo')
       expect(within(dialog).getByText('appDebug.datasetConfig.knowledgeTip')).toBeInTheDocument()
       expect(within(dialog).getByRole('button', {
         name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
@@ -98,6 +98,45 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).getByPlaceholderText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder')).toBeInTheDocument()
       expect(within(dialog).getByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription')).toBeInTheDocument()
       expect(within(dialog).queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription')).not.toBeInTheDocument()
+    })
+
+    it('should save newly added retrieval data into the publish config', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval({ showPublishPayload: true })
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+
+      expect(within(dialog).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
+      })).toBeInTheDocument()
+
+      await user.click(within(dialog).getByRole('radio', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
+      }))
+      await user.type(within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
+      }), 'new release notes')
+
+      const knowledgeConfig = JSON.parse(screen.getByLabelText('publish payload').textContent ?? '{}')
+      expect(knowledgeConfig.datasets).toEqual(expect.arrayContaining([
+        {
+          id: 'retrieval-1',
+          name: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
+        },
+        expect.objectContaining({
+          name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
+        }),
+      ]))
+      expect(knowledgeConfig).toMatchObject({
+        query_config: {
+          query: 'new release notes',
+          top_k: 4,
+        },
+        query_mode: 'user_query',
+      })
     })
 
     it('should open the knowledge retrieval dialog from the edit button', async () => {
