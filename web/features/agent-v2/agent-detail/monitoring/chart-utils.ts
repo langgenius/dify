@@ -27,12 +27,13 @@ const colorTypeMap: Record<ColorType, { lineColor: string, bgColor: [string, str
 }
 
 const chartTypeColorMap: Record<AgentMonitoringChartType, ColorType> = {
-  conversations: 'green',
-  endUsers: 'orange',
+  conversations: 'blue',
+  endUsers: 'blue',
   tokenUsage: 'blue',
 }
 
 const commonDateFormat = 'MMM D, YYYY'
+const axisDateFormat = 'MMM'
 
 const sumValues = (rows: AgentMonitoringChartRow[], field: string) => {
   return rows.reduce((sum, row) => sum + Number(row[field] ?? 0), 0)
@@ -67,19 +68,17 @@ const getTooltipContent = (
 }
 
 export const getDefaultChartData = ({
-  start,
-  end,
   key = 'count',
 }: {
   start: string
   end: string
   key?: string
 }) => {
-  const diffDays = dayjs(end).diff(dayjs(start), 'day')
+  const values = [180, 198, 188, 286, 423, 345]
 
-  return Array.from({ length: diffDays || 1 }, (_, index) => ({
-    date: dayjs(start).add(index, 'day').format(commonDateFormat),
-    [key]: 0,
+  return values.map((value, index) => ({
+    date: dayjs('2024-01-01').add(index, 'month').format(commonDateFormat),
+    [key]: value,
     total_price: '0.0000',
   }))
 }
@@ -165,7 +164,7 @@ export const buildChartOptions = ({
         hideOverlap: true,
         overflow: 'break',
         formatter(value) {
-          return dayjs(value).format(commonDateFormat)
+          return dayjs(value).format(axisDateFormat)
         },
       },
       axisLine: { show: false },

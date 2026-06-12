@@ -1,45 +1,32 @@
 'use client'
 
 import type { AgentAccessSource } from '../access/access-sources'
-import { Button } from '@langgenius/dify-ui/button'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Chip from '@/app/components/base/chip'
+import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
 import { getAgentAccessSources } from '../access/access-sources'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './mock-data'
+import { AgentMonitoringTimeRangePicker } from './time-range-picker'
 
-type TimeRangeKey = 'today' | 'last7days' | 'last30days'
 type SourceFilterValue = 'all' | AgentAccessSource['id']
 type AgentMonitoringPageProps = {
   agentId: string
 }
 
 const queryDateFormat = 'YYYY-MM-DD HH:mm'
-const displayDateFormat = 'MMM D'
 
-const timeRangeOptions: Array<{ value: TimeRangeKey, days: number }> = [
-  { value: 'today', days: 0 },
-  { value: 'last7days', days: 7 },
-  { value: 'last30days', days: 30 },
-]
-
-const getPeriod = (timeRange: TimeRangeKey) => {
-  const option = timeRangeOptions.find(item => item.value === timeRange) ?? timeRangeOptions[0]!
+const getDefaultPeriodQuery = () => {
+  const start = dayjs().startOf('day')
   const end = dayjs().endOf('day')
-  const start = option.days === 0
-    ? dayjs().startOf('day')
-    : dayjs().subtract(option.days, 'day').startOf('day')
 
   return {
-    query: {
-      start: start.format(queryDateFormat),
-      end: end.format(queryDateFormat),
-    },
-    dateLabel: `${start.format(displayDateFormat)} - ${end.format(displayDateFormat)}`,
+    start: start.format(queryDateFormat),
+    end: end.format(queryDateFormat),
   }
 }
 
@@ -49,7 +36,11 @@ export function AgentMonitoringPage({
   agentId,
 }: AgentMonitoringPageProps) {
   const { t } = useTranslation('agentV2')
-  const [timeRange, setTimeRange] = useState<TimeRangeKey>('today')
+  const docLink = useDocLink()
+  const [period, setPeriod] = useState(() => ({
+    name: t('agentDetail.monitoring.timeRanges.today'),
+    query: getDefaultPeriodQuery(),
+  }))
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>('all')
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
@@ -59,112 +50,81 @@ export function AgentMonitoringPage({
     },
   }))
   const accessSources = getAgentAccessSources(agentQuery.data)
-  const selectedTimeRange = timeRangeOptions.find(option => option.value === timeRange) ?? timeRangeOptions[0]!
-  const selectedSource = accessSources.find(source => getSourceValue(source) === sourceFilter)
-  const period = getPeriod(timeRange)
+  const sourceItems = [
+    {
+      value: 'all' as const,
+      name: t('agentDetail.monitoring.sources.all'),
+      triggerName: t('agentDetail.monitoring.sourceTrigger', {
+        name: t('agentDetail.monitoring.sources.all'),
+      }),
+    },
+    ...accessSources.map(source => ({
+      value: getSourceValue(source),
+      name: t(source.nameKey),
+      triggerName: t('agentDetail.monitoring.sourceTrigger', {
+        name: t(source.nameKey),
+      }),
+    })),
+  ]
   const metrics = getAgentMonitoringMetrics(period.query)
 
   return (
     <section
       aria-label={t('agentDetail.sections.monitoring')}
-      className="h-full min-w-0 flex-1 overflow-auto bg-components-panel-bg-blur px-4 py-6 sm:px-12"
+      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-components-panel-bg-blur"
     >
-      <div className="mx-auto max-w-none">
-        <header className="mb-4 flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="mr-2 system-xl-semibold text-text-primary">
+      <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
+        <div className="min-w-0">
+          <h2 className="system-xl-semibold text-text-primary">
             {t('agentDetail.monitoring.title')}
           </h2>
-
-          <Select
-            value={timeRange}
-            onValueChange={(nextValue) => {
-              if (nextValue)
-                setTimeRange(nextValue as TimeRangeKey)
-            }}
-          >
-            <SelectTrigger
-              aria-label={t('agentDetail.monitoring.timeRangeLabel')}
-              className="mt-0 w-fit max-w-full min-w-25"
+          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
+            <span>{t('agentDetail.monitoring.description')}</span>
+            <a
+              href={docLink('/use-dify/monitor/logs')}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
-              {t(`agentDetail.monitoring.timeRanges.${selectedTimeRange.value}`)}
-            </SelectTrigger>
-            <SelectContent>
-              {timeRangeOptions.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  <SelectItemText>{t(`agentDetail.monitoring.timeRanges.${option.value}`)}</SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              {t('agentDetail.monitoring.learnMore')}
+              <span aria-hidden className="i-ri-external-link-line size-3" />
+            </a>
+          </p>
+        </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            className="h-8 gap-2 px-3"
-            aria-label={t('agentDetail.monitoring.dateRangeLabel')}
-          >
-            <span aria-hidden className="i-ri-calendar-line size-4" />
-            {period.dateLabel}
-          </Button>
+        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+          <AgentMonitoringTimeRangePicker
+            value={period}
+            onChange={setPeriod}
+          />
 
-          <Select
+          <Chip
+            showLeftIcon={false}
+            className="min-w-53"
+            panelClassName="w-61"
             value={sourceFilter}
-            onValueChange={(nextValue) => {
-              if (nextValue)
-                setSourceFilter(nextValue as SourceFilterValue)
+            items={sourceItems}
+            onSelect={(item) => {
+              setSourceFilter(item.value)
             }}
-          >
-            <SelectTrigger
-              aria-label={t('agentDetail.monitoring.sourceLabel')}
-              className="mt-0 w-fit max-w-full min-w-34"
-            >
-              <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 align-middle">
-                <span aria-hidden className={`${selectedSource?.icon ?? 'i-ri-stack-line'} size-4 shrink-0`} />
-                <span className="min-w-0 truncate">
-                  {selectedSource ? t(selectedSource.nameKey) : t('agentDetail.monitoring.sources.all')}
-                </span>
-              </span>
-            </SelectTrigger>
-            <SelectContent popupClassName="w-61">
-              <div className="px-3 pt-2 pb-1 system-2xs-semibold-uppercase text-text-tertiary">
-                {t('agentDetail.monitoring.pickSource')}
-              </div>
-              <SelectItem value="all">
-                <SelectItemText>
-                  <span className="flex items-center gap-2">
-                    <span aria-hidden className="i-ri-stack-line size-4 text-text-tertiary" />
-                    {t('agentDetail.monitoring.sources.all')}
-                  </span>
-                </SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              {accessSources.map(source => (
-                <SelectItem key={source.id} value={getSourceValue(source)}>
-                  <SelectItemText>
-                    <span className="flex items-center gap-2">
-                      <span aria-hidden className={`${source.icon} size-4 text-text-accent-light-mode-only`} />
-                      {t(source.nameKey)}
-                    </span>
-                  </SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </header>
+            onClear={() => {
+              setSourceFilter('all')
+            }}
+          />
+        </div>
+      </header>
 
-        <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="min-h-0 flex-1 overflow-auto px-6 pt-2 pb-3">
+        <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
           {metrics.map(metric => (
             <AgentMonitoringChart
               key={metric.id}
               titleKey={metric.titleKey}
               explanationKey={metric.explanationKey}
-              periodName={t(`agentDetail.monitoring.timeRanges.${selectedTimeRange.value}`)}
+              summaryValue={metric.summaryValue}
               rows={metric.rows}
               chartType={metric.chartType}
               valueKey={metric.valueKey}
-              isAvg={metric.isAvg}
               unitKey={metric.unitKey}
               yMax={metric.yMax}
             />

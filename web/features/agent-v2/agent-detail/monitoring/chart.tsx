@@ -8,18 +8,16 @@ import { Infotip } from '@/app/components/base/infotip'
 import {
   buildChartOptions,
   getChartValueField,
-  getSummaryValue,
   getTokenSummary,
 } from './chart-utils'
 
 type AgentMonitoringChartProps = {
   titleKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
   explanationKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
-  periodName: string
+  summaryValue: string
   rows: AgentMonitoringChartRow[]
   chartType: AgentMonitoringChartType
   valueKey?: string
-  isAvg?: boolean
   unitKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
   yMax?: number
 }
@@ -27,23 +25,15 @@ type AgentMonitoringChartProps = {
 export function AgentMonitoringChart({
   titleKey,
   explanationKey,
-  periodName,
+  summaryValue,
   rows,
   chartType,
   valueKey,
-  isAvg,
   unitKey,
   yMax,
 }: AgentMonitoringChartProps) {
   const { t } = useTranslation('agentV2')
   const yField = getChartValueField(rows, valueKey)
-  const summaryValue = getSummaryValue({
-    chartType,
-    rows,
-    valueKey: yField,
-    isAvg,
-    unit: unitKey ? t(unitKey) : undefined,
-  })
   const tokenSummary = getTokenSummary(rows)
   const options = buildChartOptions({
     rows,
@@ -54,27 +44,29 @@ export function AgentMonitoringChart({
   const isEmptySummary = summaryValue === '0' || summaryValue.startsWith('0 ')
 
   return (
-    <article className="flex min-h-63 w-full min-w-0 flex-col rounded-xl border border-components-panel-border bg-components-chart-bg px-6 py-4 shadow-xs">
-      <div className="mb-3 min-w-0">
+    <article className="flex min-h-79 w-full min-w-0 flex-col rounded-xl border border-components-panel-border bg-components-chart-bg px-6 pt-6 pb-4 shadow-xs">
+      <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-1">
-          <h3 className="truncate system-md-semibold text-text-primary">
+          <h3 className="truncate system-xs-semibold-uppercase text-text-secondary">
             {t(titleKey)}
           </h3>
           <Infotip aria-label={t(explanationKey)}>
             {t(explanationKey)}
           </Infotip>
         </div>
-        <div className="mt-2 system-2xs-medium-uppercase text-text-tertiary">
-          {periodName}
-        </div>
       </div>
 
-      <div className="mb-4">
-        <div className={`truncate text-3xl leading-9 font-normal ${isEmptySummary ? 'text-text-quaternary' : 'text-text-primary'}`}>
+      <div className="mt-2 mb-4 flex min-w-0 items-baseline gap-1">
+        <div className={`truncate text-2xl leading-8 font-semibold ${isEmptySummary ? 'text-text-quaternary' : 'text-text-primary'}`}>
           {summaryValue}
         </div>
+        {chartType !== 'tokenUsage' && unitKey && (
+          <div className="truncate system-sm-regular text-text-secondary">
+            {t(unitKey)}
+          </div>
+        )}
         {chartType === 'tokenUsage' && (
-          <div className="mt-2 system-2xs-semibold-uppercase text-text-secondary">
+          <div className="truncate system-sm-regular text-text-secondary">
             {t('agentDetail.monitoring.tokenUsageConsumed')}
             {' '}
             <span className="text-util-colors-orange-orange-600">
@@ -86,7 +78,7 @@ export function AgentMonitoringChart({
         )}
       </div>
 
-      <ReactECharts option={options} style={{ height: 160 }} />
+      <ReactECharts option={options} style={{ height: 240 }} />
     </article>
   )
 }

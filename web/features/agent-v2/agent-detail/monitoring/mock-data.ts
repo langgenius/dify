@@ -8,8 +8,8 @@ type AgentMonitoringMetric = {
   explanationKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
   chartType: 'conversations' | 'endUsers' | 'tokenUsage'
   rows: AgentMonitoringChartRow[]
+  summaryValue: string
   valueKey?: string
-  isAvg?: boolean
   unitKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.monitoring.'>
   yMax: number
 }
@@ -22,11 +22,13 @@ export const getAgentMonitoringMetrics = ({
   end: string
 }): AgentMonitoringMetric[] => [
   {
-    id: 'total-conversations',
-    titleKey: 'agentDetail.monitoring.metrics.totalConversations.title',
-    explanationKey: 'agentDetail.monitoring.metrics.totalConversations.explanation',
+    id: 'total-messages',
+    titleKey: 'agentDetail.monitoring.metrics.totalMessages.title',
+    explanationKey: 'agentDetail.monitoring.metrics.totalMessages.explanation',
     chartType: 'conversations',
-    rows: getDefaultChartData({ start, end }),
+    rows: getDefaultChartData({ start, end, key: 'messages' }),
+    summaryValue: '250k',
+    valueKey: 'messages',
     yMax: 500,
   },
   {
@@ -34,7 +36,9 @@ export const getAgentMonitoringMetrics = ({
     titleKey: 'agentDetail.monitoring.metrics.activeUsers.title',
     explanationKey: 'agentDetail.monitoring.metrics.activeUsers.explanation',
     chartType: 'endUsers',
-    rows: getDefaultChartData({ start, end }),
+    rows: getDefaultChartData({ start, end, key: 'users' }),
+    summaryValue: '20k',
+    valueKey: 'users',
     yMax: 500,
   },
   {
@@ -43,8 +47,8 @@ export const getAgentMonitoringMetrics = ({
     explanationKey: 'agentDetail.monitoring.metrics.avgSessionInteractions.explanation',
     chartType: 'conversations',
     rows: getDefaultChartData({ start, end, key: 'interactions' }),
+    summaryValue: '20k',
     valueKey: 'interactions',
-    isAvg: true,
     yMax: 500,
   },
   {
@@ -53,8 +57,8 @@ export const getAgentMonitoringMetrics = ({
     explanationKey: 'agentDetail.monitoring.metrics.tokenOutputSpeed.explanation',
     chartType: 'conversations',
     rows: getDefaultChartData({ start, end, key: 'tps' }),
+    summaryValue: '1087',
     valueKey: 'tps',
-    isAvg: true,
     unitKey: 'agentDetail.monitoring.units.tokenPerSecond',
     yMax: 100,
   },
@@ -64,8 +68,8 @@ export const getAgentMonitoringMetrics = ({
     explanationKey: 'agentDetail.monitoring.metrics.userSatisfactionRate.explanation',
     chartType: 'endUsers',
     rows: getDefaultChartData({ start, end, key: 'rate' }),
+    summaryValue: '0',
     valueKey: 'rate',
-    isAvg: true,
     yMax: 1000,
   },
   {
@@ -73,15 +77,9 @@ export const getAgentMonitoringMetrics = ({
     titleKey: 'agentDetail.monitoring.metrics.tokenUsage.title',
     explanationKey: 'agentDetail.monitoring.metrics.tokenUsage.explanation',
     chartType: 'tokenUsage',
-    rows: getDefaultChartData({ start, end }),
+    rows: getDefaultChartData({ start, end, key: 'tokens' }),
+    summaryValue: '1087',
+    valueKey: 'tokens',
     yMax: 100,
-  },
-  {
-    id: 'total-messages',
-    titleKey: 'agentDetail.monitoring.metrics.totalMessages.title',
-    explanationKey: 'agentDetail.monitoring.metrics.totalMessages.explanation',
-    chartType: 'conversations',
-    rows: getDefaultChartData({ start, end }),
-    yMax: 500,
   },
 ]
