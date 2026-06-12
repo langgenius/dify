@@ -18,8 +18,7 @@ import {
   useTools,
 } from '@/features/agent-v2/agent-composer/store'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
-import { AgentPromptOptionMenu } from './option-menu'
-import { appendToken, insertOptions, replaceTrailingSlashWithToken } from './options'
+import { replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
 const subscribeHydrationState = () => () => {}
@@ -32,11 +31,9 @@ const useIsHydrated = () => useSyncExternalStore(
 
 function AgentPromptPlaceholder({
   insertLabel,
-  mentionLabel,
   text,
 }: {
   insertLabel: string
-  mentionLabel: string
   text: string
 }) {
   return (
@@ -47,13 +44,6 @@ function AgentPromptPlaceholder({
       </Kbd>
       <span className="underline decoration-dotted underline-offset-2">
         {insertLabel}
-      </span>
-      <span>,</span>
-      <Kbd className="text-text-placeholder">
-        @
-      </Kbd>
-      <span className="underline decoration-dotted underline-offset-2">
-        {mentionLabel}
       </span>
     </span>
   )
@@ -108,10 +98,8 @@ export function AgentPromptEditor() {
     <AgentPromptPlaceholder
       text={t('agentDetail.configure.prompt.placeholder')}
       insertLabel={t('agentDetail.configure.prompt.insert.label').toLocaleLowerCase()}
-      mentionLabel={t('agentDetail.configure.prompt.mention.label').toLocaleLowerCase()}
     />
   )
-  const count = value.length
   const { copied, copy, reset } = useClipboard({
     onCopyError: () => {
       toast.error(t('agentDetail.configure.prompt.copyFailed'))
@@ -121,10 +109,6 @@ export function AgentPromptEditor() {
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
-
-  const handleInsert = useCallback((token: string) => {
-    onChange(appendToken(value, token))
-  }, [onChange, value])
 
   const handleCopyPrompt = useCallback(() => {
     void copy(value)
@@ -280,12 +264,12 @@ export function AgentPromptEditor() {
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
         >
-          <div ref={editorRef} className="h-8 min-h-8 overflow-y-auto px-3 pt-0.5">
+          <div ref={editorRef} className="min-h-[72px] overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               compact
-              wrapperClassName="min-h-8"
-              className="min-h-8 text-text-primary"
+              wrapperClassName="min-h-[72px]"
+              className="min-h-[72px] text-text-primary"
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               value={value}
@@ -299,21 +283,6 @@ export function AgentPromptEditor() {
               disableSlashPicker
               disableBracePicker
             />
-          </div>
-
-          <div className="flex h-9 min-h-9 items-center gap-2 px-2.5 py-1.5">
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-              <AgentPromptOptionMenu
-                label={t('agentDetail.configure.prompt.insert.label')}
-                icon="i-custom-vender-agent-v2-prompt-insert"
-                options={insertOptions}
-                onInsert={handleInsert}
-              />
-            </div>
-
-            <div className="min-w-4 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-center system-2xs-medium-uppercase text-text-tertiary">
-              {count}
-            </div>
           </div>
         </div>
 

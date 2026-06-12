@@ -4,6 +4,9 @@ import type { ReactNode } from 'react'
 import type { AgentFileNode } from '../../data'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import {
+  Dialog,
+} from '@langgenius/dify-ui/dialog'
+import {
   FileTreeGuide,
 } from '@langgenius/dify-ui/file-tree'
 import { useCallback, useRef, useState } from 'react'
@@ -13,6 +16,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
 import { AgentFileUploadDialog } from './upload-dialog'
 
@@ -27,34 +31,52 @@ function AgentFileItem({
   children,
   depth,
   file,
+  files,
   onRemove,
   selected,
 }: {
   children: ReactNode
   depth: number
   file: AgentFileNode
+  files: AgentFileNode[]
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
 
   return (
     <li className="group/file-row relative min-w-0">
-      <div
-        data-selected={selected || undefined}
-        aria-current={selected ? 'true' : undefined}
-        className="group/file-tree-row relative flex h-6 w-full min-w-0 items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover data-[selected]:bg-state-base-active"
-      >
-        {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
-          <FileTreeGuide key={index} />
-        ))}
-        <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
-          {children}
-        </div>
-      </div>
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <button
+          type="button"
+          data-selected={selected || undefined}
+          aria-current={selected ? 'true' : undefined}
+          className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-[selected]:bg-state-base-active"
+          onClick={() => setIsPreviewOpen(true)}
+        >
+          {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
+            <FileTreeGuide key={index} />
+          ))}
+          <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
+            {children}
+          </div>
+        </button>
+        {isPreviewOpen && (
+          <AgentSkillDetailDialog
+            skillName={file.name}
+            detail={{
+              description: t('agentDetail.configure.files.tip'),
+              files,
+              selectedFileId: file.id,
+              sections: [],
+            }}
+          />
+        )}
+      </Dialog>
       <button
         type="button"
         data-agent-file-remove-button
@@ -128,6 +150,7 @@ export function AgentFiles() {
                   <AgentFileItem
                     depth={depth}
                     file={file}
+                    files={files}
                     selected={selected}
                     onRemove={removeFile}
                   >
