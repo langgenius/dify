@@ -79,8 +79,10 @@ const MainNav = ({
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showAgentDetailNavigation = !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation
-  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
+  const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
+    hasAppDetail: !!state.appDetail,
     appSidebarExpand: state.appSidebarExpand,
+    setAppDetail: state.setAppDetail,
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useLocalStorage<string>(DETAIL_SIDEBAR_STORAGE_KEY, 'expand', { raw: true })
@@ -144,6 +146,13 @@ const MainNav = ({
 
     setStoredDetailSidebarExpand(detailNavigationMode)
   }, [detailNavigationMode, setStoredDetailSidebarExpand, showDetailNavigation])
+
+  useEffect(() => {
+    if (pathname.startsWith('/app/') || !hasAppDetail)
+      return
+
+    setAppDetail()
+  }, [hasAppDetail, pathname, setAppDetail])
 
   useHotkey('Mod+B', (e) => {
     if (!showDetailNavigation)
