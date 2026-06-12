@@ -6,7 +6,7 @@ import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import { GotoAnything } from '@/app/components/goto-anything'
-import Header from '@/app/components/header'
+import { Header } from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
@@ -17,9 +17,9 @@ import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import PartnerStack from '../components/billing/partner-stack'
 import { CommonLayoutHydrationBoundary } from './hydration-boundary'
-import RoleRouteGuard from './role-route-guard'
+import { RoleRouteGuard } from './role-route-guard'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
+export default async function Layout({ children }: { children: ReactNode }) {
   return (
     <>
       <GoogleAnalyticsScripts />
@@ -51,4 +51,3 @@ const Layout = async ({ children }: { children: ReactNode }) => {
     </>
   )
 }
-export default Layout

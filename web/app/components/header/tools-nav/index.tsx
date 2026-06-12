@@ -9,13 +9,11 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 
-type ToolsNavProps = {
-  className?: string
-}
-
-const ToolsNav = ({
+export function ToolsNav({
   className,
-}: ToolsNavProps) => {
+}: {
+  className?: string
+}) {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
   const activated = selectedSegment === 'tools'
@@ -30,11 +28,9 @@ const ToolsNav = ({
           ? <RiHammerFill className="size-4" />
           : <RiHammerLine className="size-4" />
       }
-      <div className="ml-2 max-[1024px]:hidden">
+      <div className="ml-2 max-[1120px]:hidden">
         {t('menus.tools', { ns: 'common' })}
       </div>
     </Link>
   )
 }
-
-export default ToolsNav

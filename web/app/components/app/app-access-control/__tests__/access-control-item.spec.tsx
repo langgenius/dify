@@ -1,45 +1,43 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import AccessControlItem from '../access-control-item'
+import { AccessControlItem } from '../access-control-item'
+import { AccessControlRadioGroupHarness } from './access-control-radio-group-harness'
+import { createAccessControlDraftHarness } from './access-control-test-utils'
 
 describe('AccessControlItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAccessControlStore.setState({
-      appId: '',
-      specificGroups: [],
-      specificMembers: [],
-      currentMenu: AccessMode.PUBLIC,
-      selectedGroupsForBreadcrumb: [],
-    })
   })
 
   it('should update current menu when selecting a different access type', () => {
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
+    const harness = createAccessControlDraftHarness(
+      <AccessControlRadioGroupHarness>
+        <AccessControlItem type={AccessMode.ORGANIZATION}>
+          <span>Organization Only</span>
+        </AccessControlItem>
+      </AccessControlRadioGroupHarness>,
+      { currentMenu: AccessMode.PUBLIC },
     )
+    render(harness.element)
 
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
+    const option = screen.getByRole('radio', { name: 'Organization Only' })
     fireEvent.click(option)
 
-    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
+    expect(harness.getSnapshot().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 
   it('should keep the selected state for the active access type', () => {
-    useAccessControlStore.setState({
-      currentMenu: AccessMode.ORGANIZATION,
-    })
-
-    render(
-      <AccessControlItem type={AccessMode.ORGANIZATION}>
-        <span>Organization Only</span>
-      </AccessControlItem>,
+    const harness = createAccessControlDraftHarness(
+      <AccessControlRadioGroupHarness>
+        <AccessControlItem type={AccessMode.ORGANIZATION}>
+          <span>Organization Only</span>
+        </AccessControlItem>
+      </AccessControlRadioGroupHarness>,
+      { currentMenu: AccessMode.ORGANIZATION },
     )
+    render(harness.element)
 
-    const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    expect(option).toHaveClass('border-components-option-card-option-selected-border')
+    const option = screen.getByRole('radio', { name: 'Organization Only' })
+    expect(option).toHaveAttribute('data-checked')
   })
 })

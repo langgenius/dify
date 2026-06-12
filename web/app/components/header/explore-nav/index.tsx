@@ -9,13 +9,11 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 
-type ExploreNavProps = {
-  className?: string
-}
-
-const ExploreNav = ({
+export function ExploreNav({
   className,
-}: ExploreNavProps) => {
+}: {
+  className?: string
+}) {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
   const activated = selectedSegment === 'explore'
@@ -30,11 +28,9 @@ const ExploreNav = ({
           ? <RiPlanetFill className="size-4" />
           : <RiPlanetLine className="size-4" />
       }
-      <div className="ml-2 max-[1024px]:hidden">
+      <div className="ml-2 max-[1120px]:hidden">
         {t('menus.explore', { ns: 'common' })}
       </div>
     </Link>
   )
 }
-
-export default ExploreNav

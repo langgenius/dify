@@ -1,5 +1,5 @@
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { AccessMode } from '@/models/access-control'
+import type { AccessMode, Subject } from '@/models/access-control'
 import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
 import type { AppMeta } from '@/models/share'
@@ -33,6 +33,12 @@ type InstalledAppMutationResponse = {
 
 type AppAccessModeResponse = {
   accessMode: AccessMode
+}
+
+type UpdateAppAccessModeBody = {
+  appId: string
+  accessMode: AccessMode
+  subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
 }
 
 export const exploreAppsContract = base
@@ -87,6 +93,14 @@ export const exploreInstalledAppAccessModeContract = base
   })
   .input(type<{ query: { appId: string } }>())
   .output(type<AppAccessModeResponse>())
+
+export const exploreInstalledAppAccessModeUpdateContract = base
+  .route({
+    path: '/enterprise/webapp/app/access-mode',
+    method: 'POST',
+  })
+  .input(type<{ body: UpdateAppAccessModeBody }>())
+  .output(type<unknown>())
 
 export const exploreInstalledAppParametersContract = base
   .route({

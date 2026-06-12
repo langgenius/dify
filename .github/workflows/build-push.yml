@@ -9,6 +9,7 @@ on:
       - "release/e-*"
       - "hotfix/**"
       - "feat/hitl-backend"
+      - "4-27-app-deploy"
     tags:
       - "*"
 

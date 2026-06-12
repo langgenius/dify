@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ToolsNav from '../index'
+import { ToolsNav } from '../index'
 
 const mockUseSelectedLayoutSegment = vi.fn()
 vi.mock('@/next/navigation', () => ({

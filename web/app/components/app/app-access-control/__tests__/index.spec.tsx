@@ -3,9 +3,8 @@ import type { App } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode } from '@/models/access-control'
-import AccessControl from '../index'
+import { AccessControl } from '../index'
 
 let mockWebappAuth = {
   enabled: true,
@@ -18,19 +17,23 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: mockWebappAuth },
 })
 
-const mockMutateAsync = vi.fn()
-const mockUseUpdateAccessMode = vi.fn(() => ({
-  isPending: false,
-  mutateAsync: mockMutateAsync,
-}))
+const mockMutate = vi.fn()
+const mockUseMutation = vi.hoisted(() => vi.fn())
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
 
 vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
-  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useMutation: (...args: unknown[]) => mockUseMutation(...args),
+  }
+})
 
 describe('AccessControl', () => {
   beforeEach(() => {
@@ -41,14 +44,13 @@ describe('AccessControl', () => {
       allow_email_password_login: false,
       allow_email_code_login: false,
     }
-    useAccessControlStore.setState({
-      appId: '',
-      specificGroups: [],
-      specificMembers: [],
-      currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-      selectedGroupsForBreadcrumb: [],
+    mockMutate.mockImplementation((_: unknown, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.()
     })
-    mockMutateAsync.mockResolvedValue(undefined)
+    mockUseMutation.mockReturnValue({
+      isPending: false,
+      mutate: mockMutate,
+    })
     mockUseAppWhiteListSubjects.mockReturnValue({
       isPending: false,
       data: {
@@ -81,18 +83,18 @@ describe('AccessControl', () => {
       />,
     )
 
-    await waitFor(() => {
-      expect(useAccessControlStore.getState().appId).toBe(app.id)
-      expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.PUBLIC)
-    })
-
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith({
-        appId: app.id,
-        accessMode: AccessMode.PUBLIC,
-      })
+      expect(mockMutate).toHaveBeenCalledWith(
+        {
+          body: {
+            appId: app.id,
+            accessMode: AccessMode.PUBLIC,
+          },
+        },
+        expect.objectContaining({ onSuccess: expect.any(Function) }),
+      )
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalledTimes(1)
     })

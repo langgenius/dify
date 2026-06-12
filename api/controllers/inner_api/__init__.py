@@ -16,6 +16,7 @@ api = ExternalApi(
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
 from . import mail as _mail
+from . import runtime_credentials as _runtime_credentials
 from .app import dsl as _app_dsl
 from .plugin import agent_drive as _agent_drive
 from .plugin import plugin as _plugin
@@ -28,6 +29,7 @@ __all__ = [
     "_app_dsl",
     "_mail",
     "_plugin",
+    "_runtime_credentials",
     "_workspace",
     "api",
     "bp",
