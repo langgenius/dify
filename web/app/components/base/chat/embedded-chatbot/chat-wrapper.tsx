@@ -235,7 +235,10 @@ const ChatWrapper = () => {
   const [descExpanded, setDescExpanded] = useState(false)
 
   const description = appData?.site.description
-  const showDescToggle = !!description && (description.includes('\n') || description.length > 100)
+  const [showDescToggle, setShowDescToggle] = useState(false)
+  const handleDescRef = useCallback((node: HTMLDivElement | null) => {
+    setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
+  }, [])
 
   const descriptionNode = useMemo(() => {
     if (!description || currentConversationId || hasSent)
@@ -244,11 +247,13 @@ const ChatWrapper = () => {
       <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
         <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
           <div className={cn('p-6', isMobile && 'p-4')}>
-            <div className={cn(
-              'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
-              !descExpanded && 'line-clamp-2',
-              descExpanded && 'max-h-32 overflow-y-auto',
-            )}
+            <div
+              ref={handleDescRef}
+              className={cn(
+                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                !descExpanded && 'line-clamp-3',
+                descExpanded && 'max-h-32 overflow-y-auto',
+              )}
             >
               {description}
               {!descExpanded && showDescToggle && (

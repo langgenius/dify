@@ -40,6 +40,10 @@ const TextGeneration: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [descExpanded, setDescExpanded] = useState(false)
+  const [showDescToggle, setShowDescToggle] = useState(false)
+  const handleDescRef = useCallback((node: HTMLDivElement | null) => {
+    setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
+  }, [])
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -184,8 +188,6 @@ const TextGeneration: FC<Props> = ({
     )
   }
 
-  const showDescToggle = !!siteInfo.description && (siteInfo.description.includes('\n') || siteInfo.description.length > 100)
-
   return (
     <div className={cn(
       'rounded-2xl border border-components-panel-border bg-background-section-burn',
@@ -216,11 +218,13 @@ const TextGeneration: FC<Props> = ({
           </div>
           {siteInfo.description && (
             <div>
-              <div className={cn(
-                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
-                !descExpanded && 'line-clamp-2',
-                descExpanded && 'max-h-32 overflow-y-auto',
-              )}
+              <div
+                ref={handleDescRef}
+                className={cn(
+                  'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                  !descExpanded && 'line-clamp-3',
+                  descExpanded && 'max-h-32 overflow-y-auto',
+                )}
               >
                 {siteInfo.description}
                 {!descExpanded && showDescToggle && (
