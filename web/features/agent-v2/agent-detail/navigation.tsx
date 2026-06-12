@@ -7,14 +7,17 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
+import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
 
 type AgentDetailTopProps = {
@@ -169,11 +172,23 @@ export function AgentDetailSection({
   const { t } = useTranslation('agentV2')
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
+  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+    input: agentId
+      ? {
+          params: {
+            agent_id: agentId,
+          },
+        }
+      : skipToken,
+  }))
 
   if (!agentId)
     return null
 
   const navigation = getAgentDetailNavigation(agentId)
+  const agent = agentQuery.data
+  const imageUrl = (agent?.icon_type === 'image' || agent?.icon_type === 'link') ? agent.icon : undefined
+  const iconType = imageUrl ? 'image' : agent?.icon_type
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -186,25 +201,34 @@ export function AgentDetailSection({
           />
         </div>
       )}
-      <div className="py-2">
+      <div className={cn('py-2', expand && '-mx-1')}>
         <div className={cn(
-          'flex items-center rounded-xl p-2',
+          'flex h-13 items-center rounded-xl py-1.5 pr-2 pl-1.5',
           !expand && 'justify-center',
         )}
         >
           <div className={cn(
-            'flex size-8 shrink-0 items-center justify-center rounded-lg bg-text-accent text-text-primary-on-surface shadow-xs',
+            'shrink-0',
             expand && 'mr-2',
           )}
           >
-            <span aria-hidden className="i-custom-vender-main-nav-roster-active size-4" />
+            <span aria-hidden>
+              <AppIcon
+                size="large"
+                rounded
+                iconType={iconType}
+                icon={agent?.icon ?? undefined}
+                background={agent?.icon_background}
+                imageUrl={imageUrl}
+              />
+            </span>
           </div>
-          <div className={cn('min-w-0', !expand && 'hidden')}>
+          <div className={cn('flex h-10 min-w-0 flex-1 flex-col justify-center', !expand && 'hidden')}>
             <div className="truncate system-md-semibold text-text-secondary">
-              {t('agentDetail.title')}
+              {agent?.name ?? t('agentDetail.title')}
             </div>
-            <div className="system-2xs-medium-uppercase text-text-tertiary">
-              {t('agentDetail.type')}
+            <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
+              {agent?.role ?? t('agentDetail.type')}
             </div>
           </div>
         </div>
