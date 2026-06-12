@@ -9,7 +9,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 import services
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.fields import SimpleResultStringListResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -39,7 +39,7 @@ register_response_schema_models(service_api_ns, ResultResponse, SimpleResultStri
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[MessageListQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(MessageListQuery))
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(description="List messages in a conversation")
     @service_api_ns.doc(
@@ -120,7 +120,7 @@ class MessageFeedbackApi(Resource):
 
 @service_api_ns.route("/app/feedbacks")
 class AppGetFeedbacksApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[FeedbackListQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(FeedbackListQuery))
     @service_api_ns.doc("get_app_feedbacks")
     @service_api_ns.doc(description="Get all feedbacks for the application")
     @service_api_ns.doc(

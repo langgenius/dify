@@ -7,7 +7,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
@@ -166,7 +166,7 @@ class WorkflowAppLogApi(Resource):
     @console_ns.doc("get_workflow_app_logs")
     @console_ns.doc(description="Get workflow application execution logs")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowAppLogQuery))
     @console_ns.response(
         200,
         "Workflow app logs retrieved successfully",
@@ -209,7 +209,7 @@ class WorkflowArchivedLogApi(Resource):
     @console_ns.doc("get_workflow_archived_logs")
     @console_ns.doc(description="Get workflow archived execution logs")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowAppLogQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowAppLogQuery))
     @console_ns.response(
         200,
         "Workflow archived logs retrieved successfully",

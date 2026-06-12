@@ -283,9 +283,9 @@ Check if activation token is valid
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| email | query |  | No |  |
+| email | query |  | No | string |
 | token | query |  | Yes | string |
-| workspace_id | query |  | No |  |
+| workspace_id | query |  | No | string |
 
 #### Responses
 
@@ -570,13 +570,13 @@ Get list of applications with pagination and filtering
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| creator_ids | query | Filter by creator account IDs | No |  |
-| is_created_by_me | query | Filter by creator | No |  |
+| creator_ids | query | Filter by creator account IDs | No | [ string ] |
+| is_created_by_me | query | Filter by creator | No | boolean |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
-| name | query | Filter by app name | No |  |
+| name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| tag_ids | query | Filter by tag IDs | No |  |
+| tag_ids | query | Filter by tag IDs | No | [ string ] |
 
 #### Responses
 
@@ -1406,12 +1406,12 @@ Get chat conversations with pagination, filtering and summary
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| keyword | query | Search keyword | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search keyword | No | string |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 | sort_by | query | Sort field and direction | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -1465,7 +1465,7 @@ Get chat messages for a conversation with pagination
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | conversation_id | query | Conversation ID | Yes | string |
-| first_id | query | First message ID for pagination | No |  |
+| first_id | query | First message ID for pagination | No | string |
 | limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
 
 #### Responses
@@ -1517,11 +1517,11 @@ Get completion conversations with pagination and filtering
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| keyword | query | Search keyword | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search keyword | No | string |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -1683,7 +1683,7 @@ Export application configuration as DSL
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID to export | Yes | string |
 | include_secret | query | Include secrets in export | No | boolean |
-| workflow_id | query | Specific workflow ID to export | No |  |
+| workflow_id | query | Specific workflow ID to export | No | string |
 
 #### Responses
 
@@ -1723,12 +1723,12 @@ Export user feedback data for Google Sheets
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end_date | query | End date (YYYY-MM-DD) | No |  |
+| end_date | query | End date (YYYY-MM-DD) | No | string |
 | format | query | Export format | No | string, <br>**Available values:** "csv", "json", <br>**Default:** csv |
-| from_source | query | Filter by feedback source | No |  |
-| has_comment | query | Only include feedback with comments | No |  |
-| rating | query | Filter by rating | No |  |
-| start_date | query | Start date (YYYY-MM-DD) | No |  |
+| from_source | query | Filter by feedback source | No | string, <br>**Available values:** "admin", "user" |
+| has_comment | query | Only include feedback with comments | No | boolean |
+| rating | query | Filter by rating | No | string, <br>**Available values:** "dislike", "like" |
+| start_date | query | Start date (YYYY-MM-DD) | No | string |
 
 #### Responses
 
@@ -1968,8 +1968,8 @@ Get average response time statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -1985,8 +1985,8 @@ Get average session interaction statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2002,8 +2002,8 @@ Get daily conversation statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2019,8 +2019,8 @@ Get daily terminal/end-user statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2036,8 +2036,8 @@ Get daily message statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2053,8 +2053,8 @@ Get daily token cost statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2070,8 +2070,8 @@ Get tokens per second statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2087,8 +2087,8 @@ Get user satisfaction rate statistics for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2309,15 +2309,15 @@ Get workflow application execution logs
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| created_at__after | query | Filter logs created after this timestamp | No |  |
-| created_at__before | query | Filter logs created before this timestamp | No |  |
-| created_by_account | query | Filter by account | No |  |
-| created_by_end_user_session_id | query | Filter by end user session ID | No |  |
+| created_at__after | query | Filter logs created after this timestamp | No | dateTime |
+| created_at__before | query | Filter logs created before this timestamp | No | dateTime |
+| created_by_account | query | Filter by account | No | string |
+| created_by_end_user_session_id | query | Filter by end user session ID | No | string |
 | detail | query | Whether to return detailed logs | No | boolean |
-| keyword | query | Search keyword for filtering logs | No |  |
+| keyword | query | Search keyword for filtering logs | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |  |
+| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
 
 #### Responses
 
@@ -2335,15 +2335,15 @@ Get workflow archived execution logs
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| created_at__after | query | Filter logs created after this timestamp | No |  |
-| created_at__before | query | Filter logs created before this timestamp | No |  |
-| created_by_account | query | Filter by account | No |  |
-| created_by_end_user_session_id | query | Filter by end user session ID | No |  |
+| created_at__after | query | Filter logs created after this timestamp | No | dateTime |
+| created_at__before | query | Filter logs created before this timestamp | No | dateTime |
+| created_by_account | query | Filter by account | No | string |
+| created_by_end_user_session_id | query | Filter by end user session ID | No | string |
 | detail | query | Whether to return detailed logs | No | boolean |
-| keyword | query | Search keyword for filtering logs | No |  |
+| keyword | query | Search keyword for filtering logs | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |  |
+| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
 
 #### Responses
 
@@ -2710,8 +2710,8 @@ Get workflow average app interaction statistics
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2727,8 +2727,8 @@ Get workflow daily runs statistics
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2744,8 +2744,8 @@ Get workflow daily terminals statistics
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2761,8 +2761,8 @@ Get workflow daily token cost statistics
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| end | query | End date and time (YYYY-MM-DD HH:MM) | No |  |
-| start | query | Start date and time (YYYY-MM-DD HH:MM) | No |  |
+| end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
+| start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
 
@@ -2783,7 +2783,7 @@ Get all published workflows for an application
 | limit | query |  | No | integer, <br>**Default:** 10 |
 | named_only | query |  | No | boolean |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| user_id | query |  | No |  |
+| user_id | query |  | No | string |
 
 #### Responses
 
@@ -2819,7 +2819,7 @@ Get default block configuration by type
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
 | block_type | path | Block type | Yes | string |
-| q | query |  | No |  |
+| q | query |  | No | string |
 
 #### Responses
 
@@ -3467,8 +3467,8 @@ Get draft workflow variables
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-| limit | query | Number of items per page (1-100) | No | string |
-| page | query | Page number (1-100000) | No | string |
+| limit | query | Items per page | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 
 #### Responses
 
@@ -3667,9 +3667,7 @@ Full value for one declared output of a published run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | query |  | No |  |
-| datasource_type | query |  | Yes | string |
-| inputs | query |  | Yes | object |
+| node_id | query |  | Yes | string |
 | app_id | path |  | Yes | string |
 
 #### Responses
@@ -5762,9 +5760,9 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| last_id | query |  | No |  |
+| last_id | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| pinned | query |  | No |  |
+| pinned | query |  | No | boolean |
 | installed_app_id | path |  | Yes | string |
 
 #### Responses
@@ -5841,7 +5839,7 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No |  |
+| first_id | query | First message ID for pagination | No | string |
 | limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
 | installed_app_id | path |  | Yes | string |
 
@@ -5935,7 +5933,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| last_id | query |  | No |  |
+| last_id | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | installed_app_id | path |  | Yes | string |
 
@@ -8155,7 +8153,7 @@ Get website crawl status
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | job_id | path | Crawl job ID | Yes | string |
-| provider | query | Crawl provider (firecrawl/watercrawl/jinareader) | No | string |
+| provider | query | Crawl provider (firecrawl/watercrawl/jinareader) | Yes | string, <br>**Available values:** "firecrawl", "jinareader", "watercrawl" |
 
 #### Responses
 
@@ -8267,12 +8265,12 @@ Get list of available agent providers
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| creators | query | Filter by creator account IDs | No |  |
-| is_published | query | Filter by published status | No |  |
-| keyword | query |  | No |  |
+| creators | query | Filter by creator account IDs | No | [ string ] |
+| is_published | query | Filter by published status | No | boolean |
+| keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| tag_ids | query | Filter by tag IDs | No |  |
+| tag_ids | query | Filter by tag IDs | No | [ string ] |
 
 #### Responses
 
@@ -8448,7 +8446,7 @@ Increment snippet use count by 1
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| model_type | query |  | Yes | [ModelType](#modeltype) |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
 
 #### Responses
 
@@ -8747,7 +8745,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| model_type | query |  | No |  |
+| model_type | query | Enum class for model type. | No | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
 
 #### Responses
 
@@ -8792,7 +8790,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| credential_id | query |  | No |  |
+| credential_id | query |  | No | string |
 | provider | path |  | Yes | string |
 
 #### Responses
@@ -8952,10 +8950,10 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| config_from | query |  | No |  |
-| credential_id | query |  | No |  |
+| config_from | query |  | No | string |
+| credential_id | query |  | No | string |
 | model | query |  | Yes | string |
-| model_type | query |  | Yes | [ModelType](#modeltype) |
+| model_type | query | Enum class for model type. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
 | provider | path |  | Yes | string |
 
 #### Responses
@@ -9320,7 +9318,7 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | query |  | Yes | string |
-| credential_id | query |  | No |  |
+| credential_id | query |  | No | string |
 | parameter | query |  | Yes | string |
 | plugin_id | query |  | Yes | string |
 | provider | query |  | Yes | string |
@@ -11465,6 +11463,13 @@ Soft lifecycle state for Agent records.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
+
+#### AnnotationHitHistoryListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 | Page size | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 
 #### AnnotationList
 

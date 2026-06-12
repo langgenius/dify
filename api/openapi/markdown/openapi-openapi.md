@@ -81,7 +81,7 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| mode | query |  | No | string |
+| mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
 | tag | query |  | No | string |
@@ -318,7 +318,7 @@ Upload a file to use as an input variable when running the app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| mode | query |  | No | string |
+| mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
 

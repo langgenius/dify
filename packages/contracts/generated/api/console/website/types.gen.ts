@@ -40,8 +40,8 @@ export type GetWebsiteCrawlStatusByJobIdData = {
   path: {
     job_id: string
   }
-  query?: {
-    provider?: string
+  query: {
+    provider: 'firecrawl' | 'jinareader' | 'watercrawl'
   }
   url: '/website/crawl/status/{job_id}'
 }

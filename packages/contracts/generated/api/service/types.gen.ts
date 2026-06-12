@@ -1424,7 +1424,7 @@ export type GetConversationsData = {
   body?: never
   path?: never
   query?: {
-    last_id?: string | null
+    last_id?: string
     limit?: number
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
   }
@@ -1514,9 +1514,9 @@ export type GetConversationsByCIdVariablesData = {
     c_id: string
   }
   query?: {
-    last_id?: string | null
+    last_id?: string
     limit?: number
-    variable_name?: string | null
+    variable_name?: string
   }
   url: '/conversations/{c_id}/variables'
 }
@@ -3236,7 +3236,7 @@ export type GetMessagesData = {
   path?: never
   query: {
     conversation_id: string
-    first_id?: string | null
+    first_id?: string
     limit?: number
   }
   url: '/messages'
@@ -3466,14 +3466,14 @@ export type GetWorkflowsLogsData = {
   body?: never
   path?: never
   query?: {
-    created_at__after?: string | null
-    created_at__before?: string | null
-    created_by_account?: string | null
-    created_by_end_user_session_id?: string | null
-    keyword?: string | null
+    created_at__after?: string
+    created_at__before?: string
+    created_by_account?: string
+    created_by_end_user_session_id?: string
+    keyword?: string
     limit?: number
     page?: number
-    status?: 'failed' | 'stopped' | 'succeeded' | null
+    status?: 'failed' | 'stopped' | 'succeeded'
   }
   url: '/workflows/logs'
 }

@@ -569,7 +569,15 @@ export type GetAppsData = {
   path?: never
   query: {
     limit?: number
-    mode?: string
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'rag-pipeline'
+      | 'workflow'
     name?: string
     page?: number
     tag?: string
@@ -891,7 +899,15 @@ export type GetPermittedExternalAppsData = {
   path?: never
   query?: {
     limit?: number
-    mode?: string
+    mode?:
+      | 'advanced-chat'
+      | 'agent'
+      | 'agent-chat'
+      | 'channel'
+      | 'chat'
+      | 'completion'
+      | 'rag-pipeline'
+      | 'workflow'
     name?: string
     page?: number
   }
