@@ -136,6 +136,7 @@ class Agent(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     icon_type: Mapped[AgentIconType | None] = mapped_column(EnumText(AgentIconType, length=32), nullable=True)
     icon: Mapped[str | None] = mapped_column(
         String(255),

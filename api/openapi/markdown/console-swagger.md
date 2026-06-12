@@ -12282,6 +12282,17 @@ the current roster/workflow APIs scoped to Dify Agent.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### AgentPublishedReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_mode | string |  | Yes |
+| app_name | string |  | Yes |
+| node_ids | [ string ] |  | No |
+| workflow_id | string |  | Yes |
+| workflow_version | string |  | Yes |
+
 #### AgentRosterResponse
 
 | Name | Type | Description | Required |
@@ -12300,6 +12311,10 @@ the current roster/workflow APIs scoped to Dify Agent.
 | icon_type | [AgentIconType](#agenticontype) |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
+| published_node_reference_count | integer |  | No |
+| published_reference_count | integer |  | No |
+| published_references | [ [AgentPublishedReferenceResponse](#agentpublishedreferenceresponse) ] |  | No |
+| role | string |  | No |
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
@@ -16542,6 +16557,7 @@ Payload for publishing snippet workflow.
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | version_note | string |  | No |
 
 #### RosterAgentUpdatePayload
@@ -16553,6 +16569,7 @@ Payload for publishing snippet workflow.
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
 | name | string |  | No |
+| role | string |  | No |
 
 #### RosterListQuery
 

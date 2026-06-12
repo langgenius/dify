@@ -8,7 +8,7 @@ from core.workflow.nodes.agent_v2.validators import (
     WorkflowAgentNodeValidationError,
     WorkflowAgentNodeValidator,
 )
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 
@@ -108,6 +108,24 @@ def test_publish_validation_accepts_upstream_previous_output_ref():
                 ]
             )
         ),
+    )
+
+
+def test_publish_validation_uses_active_snapshot_for_roster_agent():
+    node_job = WorkflowNodeJobConfig()
+    binding = _binding(node_job)
+    binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+    binding.current_snapshot_id = "old-snapshot"
+    agent = _agent()
+    agent.active_config_snapshot_id = "active-snapshot"
+    snapshot = _snapshot()
+    snapshot.id = "active-snapshot"
+    session = Mock()
+    session.scalar.side_effect = [binding, agent, snapshot]
+
+    WorkflowAgentNodeValidator.validate_published_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
     )
 
 
