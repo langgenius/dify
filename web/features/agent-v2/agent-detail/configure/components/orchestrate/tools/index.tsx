@@ -9,6 +9,12 @@ import {
   CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
@@ -116,6 +122,52 @@ function CliIcon() {
     <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular bg-text-tertiary p-1 text-text-primary-on-surface">
       <span aria-hidden className="i-ri-terminal-box-line size-3.5" />
     </span>
+  )
+}
+
+function AgentToolAddDropdown() {
+  const { t } = useTranslation('agentV2')
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={(
+          <ConfigureSectionAddButton
+            ariaLabel={t('agentDetail.configure.tools.add')}
+            className="data-popup-open:bg-state-base-hover"
+          />
+        )}
+      />
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[280px] p-1">
+        <DropdownMenuItem className="mx-0 h-auto min-h-[66px] w-full items-start gap-2 rounded-lg py-2 pr-3 pl-2">
+          <span aria-hidden className="i-custom-vender-plugin-box-sparkle-fill size-4 shrink-0 text-text-secondary" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="system-sm-semibold text-text-secondary">
+              {t('agentDetail.configure.tools.addMenu.tool.label')}
+            </span>
+            <span className="system-xs-regular text-text-tertiary">
+              {t('agentDetail.configure.tools.addMenu.tool.description')}
+            </span>
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuItem className="mx-0 h-auto min-h-[82px] w-full items-start gap-2 rounded-lg py-2 pr-3 pl-2">
+          <span aria-hidden className="i-ri-terminal-box-line size-4 shrink-0 text-text-secondary" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="flex min-w-0 items-center gap-1">
+              <span className="shrink-0 system-sm-semibold text-text-secondary">
+                {t('agentDetail.configure.tools.addMenu.cliTool.label')}
+              </span>
+              <span className="min-w-0 shrink rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-center system-2xs-medium-uppercase text-text-tertiary">
+                {t('agentDetail.configure.tools.addMenu.cliTool.badge')}
+              </span>
+            </span>
+            <span className="system-xs-regular text-text-tertiary">
+              {t('agentDetail.configure.tools.addMenu.cliTool.description')}
+            </span>
+          </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -315,7 +367,7 @@ export function AgentTools() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={(
-          <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.tools.add')} />
+          <AgentToolAddDropdown />
         )}
       >
         {tools.map(tool => (
