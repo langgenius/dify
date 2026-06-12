@@ -1,11 +1,14 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType, ProviderModel
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType, ProviderModel
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
 
 
 class ModelStatus(StrEnum):
@@ -52,6 +55,7 @@ class ProviderModelWithStatusEntity(ProviderModel):
     Model class for model response.
     """
 
+    model_properties: dict[ModelPropertyKey, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     status: ModelStatus
     load_balancing_enabled: bool = False
     has_invalid_load_balancing_configs: bool = False

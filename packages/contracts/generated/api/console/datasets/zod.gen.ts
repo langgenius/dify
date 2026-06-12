@@ -92,6 +92,11 @@ export const zNotionEstimatePayload = z.object({
 })
 
 /**
+ * OpaqueObjectResponse
+ */
+export const zOpaqueObjectResponse = z.record(z.string(), z.unknown())
+
+/**
  * RetrievalSettingResponse
  */
 export const zRetrievalSettingResponse = z.object({
@@ -121,6 +126,11 @@ export const zAutoDisableLogsResponse = z.object({
 export const zDocumentBatchDownloadZipPayload = z.object({
   document_ids: z.array(z.uuid()).min(1).max(100),
 })
+
+/**
+ * BinaryFileResponse
+ */
+export const zBinaryFileResponse = z.custom<Blob | File>()
 
 /**
  * GenerateSummaryPayload
@@ -236,6 +246,14 @@ export const zExternalHitTestingPayload = z.object({
   metadata_filtering_conditions: z.record(z.string(), z.unknown()).nullish(),
   query: z.string(),
 })
+
+/**
+ * ExternalRetrievalTestResponse
+ */
+export const zExternalRetrievalTestResponse = z.union([
+  z.record(z.string(), z.unknown()),
+  z.array(z.record(z.string(), z.unknown())),
+])
 
 /**
  * MetadataArgs
@@ -419,6 +437,39 @@ export const zTag = z.object({
   id: z.string(),
   name: z.string(),
   type: z.string(),
+})
+
+/**
+ * ExternalKnowledgeDatasetBindingResponse
+ */
+export const zExternalKnowledgeDatasetBindingResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * ExternalKnowledgeApiResponse
+ */
+export const zExternalKnowledgeApiResponse = z.object({
+  created_at: z.string(),
+  created_by: z.string(),
+  dataset_bindings: z.array(zExternalKnowledgeDatasetBindingResponse).optional(),
+  description: z.string(),
+  id: z.string(),
+  name: z.string(),
+  settings: z.record(z.string(), z.unknown()).nullish(),
+  tenant_id: z.string(),
+})
+
+/**
+ * ExternalKnowledgeApiListResponse
+ */
+export const zExternalKnowledgeApiListResponse = z.object({
+  data: z.array(zExternalKnowledgeApiResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -1054,7 +1105,15 @@ export const zDatasetDetail = z.object({
   author_name: z.string().optional(),
   built_in_field_enabled: z.boolean().optional(),
   chunk_structure: z.string().optional(),
-  created_at: z.record(z.string(), z.unknown()).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   created_by: z.string().optional(),
   data_source_type: z.string().optional(),
   description: z.string().optional(),
@@ -1082,7 +1141,15 @@ export const zDatasetDetail = z.object({
   tags: z.array(zTag).optional(),
   total_available_documents: z.int().optional(),
   total_documents: z.int().optional(),
-  updated_at: z.record(z.string(), z.unknown()).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
   updated_by: z.string().optional(),
   word_count: z.int().optional(),
 })
@@ -1472,21 +1539,21 @@ export const zPostDatasetsExternalResponse = zDatasetDetail
 
 export const zGetDatasetsExternalKnowledgeApiQuery = z.object({
   keyword: z.string().optional(),
-  limit: z.string().optional(),
-  page: z.string().optional(),
+  limit: z.int().optional().default(20),
+  page: z.int().optional().default(1),
 })
 
 /**
  * External API templates retrieved successfully
  */
-export const zGetDatasetsExternalKnowledgeApiResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsExternalKnowledgeApiResponse = zExternalKnowledgeApiListResponse
 
 export const zPostDatasetsExternalKnowledgeApiBody = zExternalKnowledgeApiPayload
 
 /**
- * Success
+ * External API template created successfully
  */
-export const zPostDatasetsExternalKnowledgeApiResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsExternalKnowledgeApiResponse = zExternalKnowledgeApiResponse
 
 export const zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.object({
   external_knowledge_api_id: z.string(),
@@ -1504,10 +1571,8 @@ export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.ob
 /**
  * External API template retrieved successfully
  */
-export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
+  = zExternalKnowledgeApiResponse
 
 export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdBody
   = zExternalKnowledgeApiPayload
@@ -1517,12 +1582,10 @@ export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath = z.
 })
 
 /**
- * Success
+ * External API template updated successfully
  */
-export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse
+  = zExternalKnowledgeApiResponse
 
 export const zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckPath = z.object({
   external_knowledge_api_id: z.string(),
@@ -1567,7 +1630,7 @@ export const zGetDatasetsProcessRuleQuery = z.object({
 /**
  * Process rules retrieved successfully
  */
-export const zGetDatasetsProcessRuleResponse = z.record(z.string(), z.unknown())
+export const zGetDatasetsProcessRuleResponse = zOpaqueObjectResponse
 
 /**
  * Retrieval settings retrieved successfully
@@ -1637,12 +1700,9 @@ export const zGetDatasetsByDatasetIdBatchByBatchIndexingEstimatePath = z.object(
 })
 
 /**
- * Success
+ * Batch indexing estimate calculated successfully
  */
-export const zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse = zOpaqueObjectResponse
 
 export const zGetDatasetsByDatasetIdBatchByBatchIndexingStatusPath = z.object({
   batch: z.string(),
@@ -1699,12 +1759,9 @@ export const zPostDatasetsByDatasetIdDocumentsDownloadZipPath = z.object({
 })
 
 /**
- * Success
+ * ZIP archive generated successfully
  */
-export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdDocumentsDownloadZipResponse = zBinaryFileResponse
 
 export const zPostDatasetsByDatasetIdDocumentsGenerateSummaryBody = zGenerateSummaryPayload
 
@@ -1760,10 +1817,7 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdQuery = z.object({
 /**
  * Document retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse = zOpaqueObjectResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath = z.object({
   dataset_id: z.string(),
@@ -1783,10 +1837,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath = 
 /**
  * Indexing estimate calculated successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse
+  = zOpaqueObjectResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusPath = z.object({
   dataset_id: z.string(),
@@ -1829,12 +1881,10 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogPat
 })
 
 /**
- * Success
+ * Document pipeline execution log retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
+  = zOpaqueObjectResponse
 
 export const zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath = z.object({
   dataset_id: z.string(),
@@ -2084,10 +2134,8 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath = z.o
 /**
  * Summary status retrieved successfully
  */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse
+  = zOpaqueObjectResponse
 
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath = z.object({
   dataset_id: z.string(),
@@ -2117,7 +2165,7 @@ export const zPostDatasetsByDatasetIdExternalHitTestingPath = z.object({
 /**
  * External hit testing completed successfully
  */
-export const zPostDatasetsByDatasetIdExternalHitTestingResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdExternalHitTestingResponse = zExternalRetrievalTestResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 

@@ -3,13 +3,13 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, RootModel, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
 from controllers.common.errors import NotFoundError
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
@@ -37,20 +37,22 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class TriggerSubscriptionBuilderCreatePayload(BaseModel):
     credential_type: str = CredentialType.UNAUTHORIZED
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     name: str | None = None
-    parameters: dict[str, Any] | None = None
-    properties: dict[str, Any] | None = None
-    credentials: dict[str, Any] | None = None
+    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    properties: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
     @model_validator(mode="after")
     def check_at_least_one_field(self):
@@ -60,8 +62,28 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
 
 
 class TriggerOAuthClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
+    client_params: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     enabled: bool | None = None
+
+
+class TriggerOAuthAuthorizeResponse(BaseModel):
+    authorization_url: str
+    subscription_builder_id: str
+    subscription_builder: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+class TriggerOAuthClientResponse(BaseModel):
+    configured: bool
+    system_configured: bool
+    custom_configured: bool
+    oauth_client_schema: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    custom_enabled: bool
+    redirect_uri: str
+    params: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+class TriggerProviderOpaqueResponse(RootModel[Any]):
+    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 register_schema_models(
@@ -71,11 +93,20 @@ register_schema_models(
     TriggerSubscriptionBuilderUpdatePayload,
     TriggerOAuthClientPayload,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(
+    console_ns,
+    BinaryFileResponse,
+    RedirectResponse,
+    SimpleResultResponse,
+    TriggerOAuthAuthorizeResponse,
+    TriggerOAuthClientResponse,
+    TriggerProviderOpaqueResponse,
+)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
 class TriggerProviderIconApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -86,6 +117,7 @@ class TriggerProviderIconApi(Resource):
 
 @console_ns.route("/workspaces/current/triggers")
 class TriggerProviderListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -97,6 +129,7 @@ class TriggerProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/info")
 class TriggerProviderInfoApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -108,6 +141,7 @@ class TriggerProviderInfoApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
 class TriggerSubscriptionListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -136,6 +170,7 @@ class TriggerSubscriptionListApi(Resource):
 )
 class TriggerSubscriptionBuilderCreateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -164,6 +199,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderGetApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -180,6 +216,7 @@ class TriggerSubscriptionBuilderGetApi(Resource):
 )
 class TriggerSubscriptionBuilderVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -211,6 +248,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
 )
 class TriggerSubscriptionBuilderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -242,6 +280,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/logs/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderLogsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -261,6 +300,7 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -294,6 +334,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
 )
 class TriggerSubscriptionUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -382,6 +423,11 @@ class TriggerSubscriptionDeleteApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize")
 class TriggerOAuthAuthorizeApi(Resource):
+    @console_ns.response(
+        200,
+        "Authorization URL retrieved successfully",
+        console_ns.models[TriggerOAuthAuthorizeResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -463,6 +509,11 @@ class TriggerOAuthAuthorizeApi(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider>/trigger/callback")
 class TriggerOAuthCallbackApi(Resource):
+    @console_ns.response(
+        302,
+        "Redirect to console OAuth callback page",
+        console_ns.models[RedirectResponse.__name__],
+    )
     @setup_required
     def get(self, provider: str):
         """Handle OAuth callback for trigger provider"""
@@ -528,6 +579,7 @@ class TriggerOAuthCallbackApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/oauth/client")
 class TriggerOAuthClientManageApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerOAuthClientResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -572,6 +624,7 @@ class TriggerOAuthClientManageApi(Resource):
             raise
 
     @console_ns.expect(console_ns.models[TriggerOAuthClientPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -600,6 +653,7 @@ class TriggerOAuthClientManageApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
     def delete(self, tenant_id: str, provider: str):
         """Remove custom OAuth client configuration"""
@@ -622,6 +676,7 @@ class TriggerOAuthClientManageApi(Resource):
 )
 class TriggerSubscriptionVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required

@@ -1,12 +1,14 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from core.rag.entities import Rule
 from core.rag.entities.metadata_entities import MetadataFilteringCondition
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.enums import ProcessRuleMode
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
 
 
 class RerankingModel(BaseModel):
@@ -90,7 +92,7 @@ class RetrievalModel(BaseModel):
 
 class MetaDataConfig(BaseModel):
     doc_type: str
-    doc_metadata: dict[str, Any]
+    doc_metadata: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class KnowledgeConfig(BaseModel):
@@ -100,7 +102,7 @@ class KnowledgeConfig(BaseModel):
     data_source: DataSource | None = None
     process_rule: ProcessRule | None = None
     retrieval_model: RetrievalModel | None = None
-    summary_index_setting: dict[str, Any] | None = None
+    summary_index_setting: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: str | None = None

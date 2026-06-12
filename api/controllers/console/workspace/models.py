@@ -20,16 +20,25 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from graphon.model_runtime.entities.model_entities import ModelType
+from core.entities.provider_entities import CredentialConfiguration
+from fields.base import ResponseModel
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
+from services.entities.model_provider_entities import (
+    DefaultModelResponse,
+    ModelWithProviderEntityResponse,
+    ProviderWithModelsResponse,
+)
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
 
 
 class ParserGetDefault(BaseModel):
@@ -52,7 +61,7 @@ class ParserDeleteModels(BaseModel):
 
 
 class LoadBalancingPayload(BaseModel):
-    configs: list[dict[str, Any]] | None = None
+    configs: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     enabled: bool | None = None
 
 
@@ -92,12 +101,12 @@ class ParserCredentialBase(BaseModel):
 
 class ParserCreateCredential(ParserCredentialBase):
     name: str | None = Field(default=None, max_length=30)
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class ParserUpdateCredential(ParserCredentialBase):
     credential_id: str
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     name: str | None = Field(default=None, max_length=30)
 
     @field_validator("credential_id")
@@ -125,6 +134,40 @@ class ParserSwitch(BaseModel):
     credential_id: str
 
 
+class DefaultModelDataResponse(ResponseModel):
+    data: DefaultModelResponse | None = None
+
+
+class ModelWithProviderListResponse(ResponseModel):
+    data: list[ModelWithProviderEntityResponse]
+
+
+class ProviderWithModelsDataResponse(ResponseModel):
+    data: list[ProviderWithModelsResponse]
+
+
+class ModelCredentialLoadBalancingResponse(ResponseModel):
+    enabled: bool
+    configs: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+class ModelCredentialResponse(ResponseModel):
+    credentials: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    load_balancing: ModelCredentialLoadBalancingResponse
+    available_credentials: list[CredentialConfiguration]
+
+
+class ModelCredentialValidateResponse(ResponseModel):
+    result: str
+    error: str | None = None
+
+
+class ModelParameterRulesResponse(ResponseModel):
+    data: list[ParameterRule]
+
+
 register_schema_models(
     console_ns,
     ParserGetDefault,
@@ -139,7 +182,16 @@ register_schema_models(
     Inner,
     ParserSwitch,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(
+    console_ns,
+    SimpleResultResponse,
+    DefaultModelDataResponse,
+    ModelWithProviderListResponse,
+    ProviderWithModelsDataResponse,
+    ModelCredentialResponse,
+    ModelCredentialValidateResponse,
+    ModelParameterRulesResponse,
+)
 
 register_enum_models(console_ns, ModelType)
 
@@ -147,6 +199,7 @@ register_enum_models(console_ns, ModelType)
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserGetDefault))
+    @console_ns.response(200, "Success", console_ns.models[DefaultModelDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -196,6 +249,7 @@ class DefaultModelApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ModelWithProviderListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -207,6 +261,7 @@ class ModelProviderModelApi(Resource):
         return jsonable_encoder({"data": models})
 
     @console_ns.expect(console_ns.models[ParserPostModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -273,6 +328,7 @@ class ModelProviderModelApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserGetCredentials))
+    @console_ns.response(200, "Success", console_ns.models[ModelCredentialResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -331,6 +387,7 @@ class ModelProviderModelCredentialApi(Resource):
         )
 
     @console_ns.expect(console_ns.models[ParserCreateCredential.__name__])
+    @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -362,6 +419,7 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 201
 
     @console_ns.expect(console_ns.models[ParserUpdateCredential.__name__])
+    @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -477,7 +535,7 @@ class ModelProviderModelDisableApi(Resource):
 class ParserValidate(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 register_schema_models(console_ns, ParserSwitch, ParserValidate)
@@ -486,6 +544,11 @@ register_schema_models(console_ns, ParserSwitch, ParserValidate)
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
     @console_ns.expect(console_ns.models[ParserValidate.__name__])
+    @console_ns.response(
+        200,
+        "Credential validation result",
+        console_ns.models[ModelCredentialValidateResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -521,6 +584,7 @@ class ModelProviderModelValidateApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
     @console_ns.doc(params=query_params_from_model(ParserParameter))
+    @console_ns.response(200, "Success", console_ns.models[ModelParameterRulesResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -538,6 +602,7 @@ class ModelProviderModelParameterRuleApi(Resource):
 
 @console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ProviderWithModelsDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

@@ -14,6 +14,8 @@ from core.entities.parameter_entities import (
 from core.tools.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class ProviderQuotaType(StrEnum):
     PAID = auto()
@@ -88,7 +90,7 @@ class SystemConfiguration(BaseModel):
     enabled: bool
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
-    credentials: dict[str, Any] | None = None
+    credentials: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -96,7 +98,7 @@ class CustomProviderConfiguration(BaseModel):
     Model class for provider custom configuration.
     """
 
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_credentials: list[CredentialConfiguration] = []
@@ -109,7 +111,7 @@ class CustomModelConfiguration(BaseModel):
 
     model: str
     model_type: ModelType
-    credentials: dict[str, Any] | None
+    credentials: dict[str, Any] | None = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     available_model_credentials: list[CredentialConfiguration] = []
@@ -145,7 +147,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
 
     id: str
     name: str
-    credentials: dict[str, Any]
+    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     credential_source_type: str | None = None
     credential_id: str | None = None
 

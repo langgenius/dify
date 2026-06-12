@@ -33,10 +33,12 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
 from .. import console_ns
 from ..wraps import account_initialization_required, setup_required, with_current_tenant_id, with_current_user
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class NotionEstimatePayload(BaseModel):
-    notion_info_list: list[dict[str, Any]]
-    process_rule: dict[str, Any]
+    notion_info_list: list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    process_rule: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     doc_form: str = Field(default="text_model")
     doc_language: str = Field(default="English")
 

@@ -1,7 +1,9 @@
 from collections.abc import Sequence
+from decimal import Decimal
 from enum import StrEnum
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
 from core.entities.model_entities import (
@@ -16,8 +18,9 @@ from core.entities.provider_entities import (
     UnaddedModelConfiguration,
 )
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.entities.provider_entities import (
+    AIModelEntity,
     ConfigurateMethod,
     ModelCredentialSchema,
     ProviderCredentialSchema,
@@ -25,6 +28,10 @@ from graphon.model_runtime.entities.provider_entities import (
     SimpleProviderEntity,
 )
 from models.provider import ProviderType
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_DECIMAL_STRING_PATTERN = r"^(?![-+.]*$)[+-]?0*\d*\.?\d*$"
+CodegenSafeDecimal = Annotated[Decimal, Field(json_schema_extra={"pattern": _DECIMAL_STRING_PATTERN})]
 
 
 class CustomConfigurationStatus(StrEnum):
@@ -130,12 +137,27 @@ class ProviderWithModelsResponse(BaseModel):
         return self
 
 
+class PriceConfigResponse(BaseModel):
+    """Serialized pricing info with codegen-safe decimal string patterns."""
+
+    input: CodegenSafeDecimal
+    output: CodegenSafeDecimal | None = None
+    unit: CodegenSafeDecimal
+    currency: str
+
+
+class AIModelEntityResponse(AIModelEntity):
+    model_properties: dict[ModelPropertyKey, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    pricing: PriceConfigResponse | None = None
+
+
 class SimpleProviderEntityResponse(SimpleProviderEntity):
     """
     Simple provider entity response.
     """
 
     tenant_id: str
+    models: list[AIModelEntityResponse] = []
 
     @model_validator(mode="after")
     def _(self):

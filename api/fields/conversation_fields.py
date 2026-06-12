@@ -11,6 +11,8 @@ from libs.helper import to_timestamp
 
 type JSONValue = Any
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class MessageFile(ResponseModel):
     id: str
@@ -34,7 +36,7 @@ class MessageFile(ResponseModel):
 class SimpleConversation(ResponseModel):
     id: str
     name: str
-    inputs: dict[str, JSONValue]
+    inputs: dict[str, JSONValue] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     status: str
     introduction: str | None = None
     created_at: int | None = None
@@ -111,7 +113,7 @@ class AgentThought(ResponseModel):
     position: int
     thought: str | None = None
     tool: str | None = None
-    tool_labels: JSONValue
+    tool_labels: JSONValue = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     tool_input: str | None = None
     created_at: int | None = None
     observation: str | None = None
@@ -132,9 +134,9 @@ class AgentThought(ResponseModel):
 class MessageDetail(ResponseModel):
     id: str
     conversation_id: str
-    inputs: dict[str, JSONValue]
+    inputs: dict[str, JSONValue] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str
-    message: JSONValue
+    message: JSONValue = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     message_tokens: int
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     answer_tokens: int
@@ -149,7 +151,7 @@ class MessageDetail(ResponseModel):
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
-    metadata: JSONValue = Field(validation_alias="message_metadata_dict")
+    metadata: JSONValue = Field(validation_alias="message_metadata_dict", json_schema_extra=_OPAQUE_JSON_SCHEMA)
     status: str
     error: str | None = None
     parent_message_id: str | None = None
@@ -179,20 +181,24 @@ class StatusCount(ResponseModel):
 
 class ModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = None
-    model: JSONValue | None = None
-    user_input_form: JSONValue | None = None
+    suggested_questions: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    model: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    user_input_form: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = None
+    agent_mode: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class SimpleModelConfig(ResponseModel):
-    model: JSONValue | None = Field(default=None, validation_alias="model_dict")
+    model: JSONValue | None = Field(
+        default=None,
+        validation_alias="model_dict",
+        json_schema_extra=_OPAQUE_JSON_SCHEMA,
+    )
     pre_prompt: str | None = None
 
 
 class SimpleMessageDetail(ResponseModel):
-    inputs: dict[str, JSONValue]
+    inputs: dict[str, JSONValue] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str
     message: str
     answer: str

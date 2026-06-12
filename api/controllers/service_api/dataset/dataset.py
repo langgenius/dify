@@ -45,6 +45,8 @@ from services.tag_service import (
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
@@ -57,7 +59,7 @@ class DatasetCreatePayload(BaseModel):
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    summary_index_setting: dict | None = None
+    summary_index_setting: dict | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -69,9 +71,13 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model_provider: str | None = None
     retrieval_model: RetrievalModel | None = None
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
+
+
+class DocumentStatusPayload(BaseModel):
+    document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
 
 
 class TagNamePayload(BaseModel):
@@ -175,6 +181,7 @@ register_schema_models(
     service_api_ns,
     DatasetCreatePayload,
     DatasetUpdatePayload,
+    DocumentStatusPayload,
     TagCreatePayload,
     TagUpdatePayload,
     TagDeletePayload,
@@ -535,6 +542,7 @@ class DocumentStatusApi(DatasetApiResource):
             400: "Bad request - invalid action",
         }
     )
+    @service_api_ns.expect(service_api_ns.models[DocumentStatusPayload.__name__])
     def patch(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
@@ -569,8 +577,8 @@ class DocumentStatusApi(DatasetApiResource):
         DatasetService.check_dataset_model_setting(dataset)
 
         # Get document IDs from request body
-        data = request.get_json()
-        document_ids = data.get("document_ids", [])
+        payload = DocumentStatusPayload.model_validate(request.get_json() or {})
+        document_ids = payload.document_ids
 
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)

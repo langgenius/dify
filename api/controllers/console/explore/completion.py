@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -40,19 +40,21 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class CompletionMessageExplorePayload(BaseModel):
-    inputs: dict[str, Any]
+    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str = ""
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="explore_app")
 
 
 class ChatMessagePayload(BaseModel):
-    inputs: dict[str, Any]
+    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = Field(default="explore_app")
@@ -73,7 +75,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 # define completion api for user
@@ -83,6 +85,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 )
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -158,6 +161,7 @@ class CompletionStopApi(InstalledAppResource):
 )
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app

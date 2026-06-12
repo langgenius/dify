@@ -13,6 +13,8 @@ from libs.helper import to_timestamp
 
 type JSONValueType = JSONValue
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class SimpleFeedback(ResponseModel):
     rating: str | None = None
@@ -47,7 +49,7 @@ class MessageListItem(ResponseModel):
     id: str
     conversation_id: str
     parent_message_id: str | None = None
-    inputs: dict[str, JSONValueType]
+    inputs: dict[str, JSONValueType] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
@@ -71,7 +73,11 @@ class MessageListItem(ResponseModel):
 
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+        json_schema_extra=_OPAQUE_JSON_SCHEMA,
+    )
 
 
 class MessageInfiniteScrollPagination(ResponseModel):
@@ -88,7 +94,7 @@ class WebMessageInfiniteScrollPagination(ResponseModel):
 
 class SavedMessageItem(ResponseModel):
     id: str
-    inputs: dict[str, JSONValueType]
+    inputs: dict[str, JSONValueType] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str
     answer: str
     message_files: list[MessageFile]

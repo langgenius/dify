@@ -49,6 +49,8 @@ from services.dataset_service import DatasetPermissionService, DatasetService, D
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 def _validate_indexing_technique(value: str | None) -> str | None:
     if value is None:
@@ -95,13 +97,13 @@ class DatasetUpdatePayload(BaseModel):
     indexing_technique: str | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    retrieval_model: dict[str, Any] | None = None
-    summary_index_setting: dict[str, Any] | None = None
+    retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    summary_index_setting: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
-    icon_info: dict[str, Any] | None = None
+    icon_info: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     is_multimodal: bool | None = False
 
     @field_validator("indexing_technique")
@@ -111,8 +113,8 @@ class DatasetUpdatePayload(BaseModel):
 
 
 class IndexingEstimatePayload(BaseModel):
-    info_list: dict[str, Any]
-    process_rule: dict[str, Any]
+    info_list: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    process_rule: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     indexing_technique: str
     doc_form: str = "text_model"
     dataset_id: str | None = None

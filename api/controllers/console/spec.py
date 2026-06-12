@@ -1,7 +1,10 @@
 import logging
+from typing import Any
 
 from flask_restx import Resource
+from pydantic import Field, RootModel
 
+from controllers.common.schema import register_response_schema_models
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
@@ -12,10 +15,19 @@ from libs.login import login_required
 from . import console_ns
 
 logger = logging.getLogger(__name__)
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
+
+class SchemaDefinitionsResponse(RootModel[Any]):
+    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+register_response_schema_models(console_ns, SchemaDefinitionsResponse)
 
 
 @console_ns.route("/spec/schema-definitions")
 class SpecSchemaDefinitionsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SchemaDefinitionsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

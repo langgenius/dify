@@ -26,10 +26,12 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class EndpointCreatePayload(BaseModel):
     plugin_unique_identifier: str
-    settings: dict[str, Any]
+    settings: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     name: str = Field(min_length=1)
 
 
@@ -38,12 +40,12 @@ class EndpointIdPayload(BaseModel):
 
 
 class EndpointUpdatePayload(BaseModel):
-    settings: dict[str, Any]
+    settings: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     name: str = Field(min_length=1)
 
 
 class LegacyEndpointUpdatePayload(EndpointIdPayload):
-    settings: dict[str, Any]
+    settings: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     name: str = Field(min_length=1)
 
 
@@ -61,11 +63,17 @@ class EndpointCreateResponse(BaseModel):
 
 
 class EndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+        json_schema_extra=_OPAQUE_JSON_SCHEMA,
+    )
 
 
 class PluginEndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+        json_schema_extra=_OPAQUE_JSON_SCHEMA,
+    )
 
 
 class EndpointDeleteResponse(BaseModel):

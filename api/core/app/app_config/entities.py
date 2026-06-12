@@ -11,6 +11,8 @@ from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class ModelConfigEntity(BaseModel):
     """
@@ -115,7 +117,7 @@ class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = Field(default_factory=dict)
+    completion_params: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):

@@ -35,6 +35,8 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger: logging.Logger = logging.getLogger(__name__)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class PipelineTemplateListQuery(BaseModel):
     type: str = Field(default="built-in", description="Template source: built-in or customized")
@@ -48,7 +50,7 @@ class PipelineTemplateDetailQuery(BaseModel):
 class PipelineTemplateItemResponse(ResponseModel):
     id: str
     name: str
-    icon: dict[str, Any]
+    icon: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     description: str
     position: int
     chunk_structure: str
@@ -63,18 +65,21 @@ class PipelineTemplateListResponse(ResponseModel):
 class PipelineTemplateDetailResponse(ResponseModel):
     id: str
     name: str
-    icon_info: dict[str, Any]
+    icon_info: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     description: str
     chunk_structure: str
     export_data: str
-    graph: dict[str, Any]
+    graph: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     created_by: str | None = None
 
 
 class CustomizedPipelineTemplatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field(default="", max_length=400)
-    icon_info: dict[str, object] = Field(default_factory=lambda: IconInfo(icon="").model_dump())
+    icon_info: dict[str, object] = Field(
+        default_factory=lambda: IconInfo(icon="").model_dump(),
+        json_schema_extra=_OPAQUE_JSON_SCHEMA,
+    )
 
 
 register_schema_models(

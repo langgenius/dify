@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, RootModel, computed_field
 
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
@@ -10,6 +10,8 @@ from models.model import IconType
 
 type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
 type JSONObject = dict[str, Any]
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
 
 
 class SystemParameters(BaseModel):
@@ -22,6 +24,34 @@ class SystemParameters(BaseModel):
 
 class SimpleResultResponse(ResponseModel):
     result: str
+
+
+class GeneratedAppResponse(RootModel[JSONValue]):
+    root: JSONValue = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+class EventStreamResponse(RootModel[str]):
+    root: str
+
+
+class TextFileResponse(RootModel[str]):
+    root: str
+
+
+class RedirectResponse(RootModel[str]):
+    root: str
+
+
+class BinaryFileResponse(RootModel[bytes]):
+    root: bytes
+
+
+class AudioBinaryResponse(RootModel[bytes]):
+    root: bytes
+
+
+class AudioTranscriptResponse(ResponseModel):
+    text: str
 
 
 class SimpleResultMessageResponse(ResponseModel):
@@ -130,15 +160,15 @@ class NewAppResponse(ResponseModel):
 class Parameters(BaseModel):
     opening_statement: str | None = None
     suggested_questions: list[str]
-    suggested_questions_after_answer: JSONObject
-    speech_to_text: JSONObject
-    text_to_speech: JSONObject
-    retriever_resource: JSONObject
-    annotation_reply: JSONObject
-    more_like_this: JSONObject
-    user_input_form: list[JSONObject]
-    sensitive_word_avoidance: JSONObject
-    file_upload: JSONObject
+    suggested_questions_after_answer: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    speech_to_text: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    text_to_speech: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    retriever_resource: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    annotation_reply: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    more_like_this: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    user_input_form: list[JSONObject] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    sensitive_word_avoidance: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    file_upload: JSONObject = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     system_parameters: SystemParameters
 
 

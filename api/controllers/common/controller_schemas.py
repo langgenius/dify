@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from libs.helper import UUIDStrOrEmpty
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 # --- Conversation schemas ---
 
 
@@ -61,8 +63,8 @@ class WorkflowListQuery(BaseModel):
 
 
 class WorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
 
 
 class WorkflowUpdatePayload(BaseModel):

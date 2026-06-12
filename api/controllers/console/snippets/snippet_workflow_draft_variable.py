@@ -23,6 +23,7 @@ from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist
 from controllers.console.app.workflow_draft_variable import (
+    EnvironmentVariableListResponse,
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
     ensure_variable_access,
@@ -306,7 +307,11 @@ class SnippetSystemVariableCollectionApi(Resource):
 class SnippetEnvironmentVariableCollectionApi(Resource):
     @console_ns.doc("get_snippet_environment_variables")
     @console_ns.doc(description="Get environment variables from snippet draft workflow graph")
-    @console_ns.response(200, "Environment variables retrieved successfully")
+    @console_ns.response(
+        200,
+        "Environment variables retrieved successfully",
+        console_ns.models[EnvironmentVariableListResponse.__name__],
+    )
     @console_ns.response(404, "Draft workflow not found")
     @_snippet_draft_var_prerequisite
     def get(self, _current_user: Account, snippet: CustomizedSnippet) -> dict[str, list[dict[str, Any]]]:

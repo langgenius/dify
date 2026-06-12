@@ -1,17 +1,64 @@
 from typing import Any, cast
 
 from flask_restx import fields, marshal, marshal_with
+from pydantic import Field
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
+from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.helper import AppIconUrlField
 from models.account import TenantStatus
 from models.model import App, EndUser, Site
 from services.feature_service import FeatureService
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
+
+class AppSiteModelConfigResponse(ResponseModel):
+    opening_statement: str | None = None
+    suggested_questions: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    suggested_questions_after_answer: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    more_like_this: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    model: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    user_input_form: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    pre_prompt: str | None = None
+
+
+class AppSiteResponse(ResponseModel):
+    title: str | None = None
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    icon_url: str | None = None
+    description: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    default_language: str | None = None
+    prompt_public: bool | None = None
+    show_workflow_steps: bool | None = None
+    use_icon_as_answer_icon: bool | None = None
+
+
+class AppSiteInfoResponse(ResponseModel):
+    app_id: str
+    end_user_id: str | None = None
+    enable_site: bool
+    site: AppSiteResponse
+    model_config_: AppSiteModelConfigResponse | None = Field(default=None, alias="model_config")
+    plan: str | None = None
+    can_replace_logo: bool
+    custom_config: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+register_response_schema_models(web_ns, AppSiteInfoResponse)
 
 
 @web_ns.route("/site")
@@ -69,6 +116,7 @@ class AppSiteApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[AppSiteInfoResponse.__name__])
     @marshal_with(app_fields)
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app site info."""

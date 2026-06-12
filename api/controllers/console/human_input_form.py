@@ -5,15 +5,18 @@ Console/Studio Human Input Form APIs.
 import json
 import logging
 from collections.abc import Generator
+from typing import Any
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
+from pydantic import Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.fields import EventStreamResponse
 from controllers.common.human_input import HumanInputFormSubmitPayload
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -40,7 +43,24 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
+
+class ConsoleHumanInputFormDefinitionResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+class ConsoleHumanInputFormSubmitResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
 register_schema_models(console_ns, HumanInputFormSubmitPayload)
+register_response_schema_models(
+    console_ns,
+    ConsoleHumanInputFormDefinitionResponse,
+    ConsoleHumanInputFormSubmitResponse,
+    EventStreamResponse,
+)
 
 
 def _jsonify_form_definition(form: Form) -> Response:
@@ -67,6 +87,7 @@ class ConsoleHumanInputFormApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[ConsoleHumanInputFormDefinitionResponse.__name__])
     @with_current_tenant_id
     def get(self, current_tenant_id: str, form_token: str):
         """
@@ -89,6 +110,7 @@ class ConsoleHumanInputFormApi(Resource):
     @with_current_tenant_id
     @model_validate(HumanInputFormSubmitPayload)
     @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ConsoleHumanInputFormSubmitResponse.__name__])
     def post(
         self,
         payload: HumanInputFormSubmitPayload,
@@ -136,6 +158,7 @@ class ConsoleHumanInputFormApi(Resource):
 class ConsoleWorkflowEventsApi(Resource):
     """Console API for getting workflow execution events after resume."""
 
+    @console_ns.response(200, "SSE event stream", console_ns.models[EventStreamResponse.__name__])
     @account_initialization_required
     @login_required
     @with_current_user

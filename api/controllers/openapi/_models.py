@@ -11,6 +11,7 @@ from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
 
 
 class UsageInfo(BaseModel):
@@ -148,6 +149,18 @@ class WorkspacePayload(BaseModel):
     id: str
     name: str
     role: str
+
+
+class DeviceTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    subject_type: Literal["account", "external_sso"]
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
 
 
 class AccountResponse(BaseModel):
@@ -290,9 +303,9 @@ class AppListQuery(BaseModel):
 
 
 class AppRunRequest(BaseModel):
-    inputs: dict[str, Any]
+    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
     query: str | None = None
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
@@ -469,3 +482,11 @@ class FormSubmitResponse(BaseModel):
     than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    expiration_time: int | None = None

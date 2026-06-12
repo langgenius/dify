@@ -1,8 +1,8 @@
 from flask_restx import Resource
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -10,20 +10,29 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import login_required
 from models import Account, TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class LoadBalancingCredentialPayload(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict[str, object]
+    credentials: dict[str, object] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+class LoadBalancingCredentialValidateResponse(ResponseModel):
+    result: str
+    error: str | None = None
 
 
 register_schema_models(console_ns, LoadBalancingCredentialPayload)
+register_response_schema_models(console_ns, LoadBalancingCredentialValidateResponse)
 
 
 @console_ns.route(
@@ -31,6 +40,11 @@ register_schema_models(console_ns, LoadBalancingCredentialPayload)
 )
 class LoadBalancingCredentialsValidateApi(Resource):
     @console_ns.expect(console_ns.models[LoadBalancingCredentialPayload.__name__])
+    @console_ns.response(
+        200,
+        "Credential validation result",
+        console_ns.models[LoadBalancingCredentialValidateResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -75,6 +89,11 @@ class LoadBalancingCredentialsValidateApi(Resource):
 )
 class LoadBalancingConfigCredentialsValidateApi(Resource):
     @console_ns.expect(console_ns.models[LoadBalancingCredentialPayload.__name__])
+    @console_ns.response(
+        200,
+        "Credential validation result",
+        console_ns.models[LoadBalancingCredentialValidateResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required

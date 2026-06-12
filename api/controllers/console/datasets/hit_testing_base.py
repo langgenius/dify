@@ -28,11 +28,13 @@ from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class HitTestingPayload(BaseModel):
     query: str = Field(max_length=250)
     retrieval_model: RetrievalModel | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     attachment_ids: list[str] | None = None
 
 

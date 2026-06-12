@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class HumanInputFormDefinition(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -22,7 +24,7 @@ class HumanInputFormDefinition(BaseModel):
 
     # `form_token` is `None` if the corresponding form has been submitted.
     form_token: str | None = None
-    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     expiration_time: int
 
 

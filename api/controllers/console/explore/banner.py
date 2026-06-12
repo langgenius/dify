@@ -1,17 +1,46 @@
+from typing import Any
+
 from flask import request
 from flask_restx import Resource
+from pydantic import BaseModel, Field, RootModel
 from sqlalchemy import select
 
+from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import api
 from controllers.console.explore.wraps import explore_banner_enabled
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from models.enums import BannerStatus
 from models.model import ExporleBanner
+
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
+
+class BannerListQuery(BaseModel):
+    language: str = Field(default="en-US", description="Banner language")
+
+
+class BannerResponse(ResponseModel):
+    id: str
+    content: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    link: str | None = None
+    sort: int
+    status: str
+    created_at: str | None = None
+
+
+class BannerListResponse(RootModel[list[BannerResponse]]):
+    root: list[BannerResponse]
+
+
+register_response_schema_models(api, BannerListResponse)
 
 
 class BannerApi(Resource):
     """Resource for banner list."""
 
+    @api.doc(params=query_params_from_model(BannerListQuery))
+    @api.response(200, "Success", api.models[BannerListResponse.__name__])
     @explore_banner_enabled
     def get(self):
         """Get banner list."""

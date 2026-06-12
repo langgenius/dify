@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 from flask_restx import Resource
+from pydantic import Field
 
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
@@ -12,6 +13,8 @@ from fields.base import ResponseModel
 from models.model import App, AppMode
 from services.app_service import AppService
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class AppInfoResponse(ResponseModel):
     name: str
@@ -21,7 +24,11 @@ class AppInfoResponse(ResponseModel):
     author_name: str | None
 
 
-register_response_schema_models(service_api_ns, AppInfoResponse)
+class AppMetaResponse(ResponseModel):
+    tool_icons: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+
+
+register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)
 
 
 @service_api_ns.route("/parameters")
@@ -37,6 +44,7 @@ class AppParameterApi(Resource):
             404: "Application not found",
         }
     )
+    @service_api_ns.response(200, "Parameters retrieved successfully", service_api_ns.models[Parameters.__name__])
     @validate_app_token
     def get(self, app_model: App):
         """Retrieve app parameters.
@@ -74,6 +82,7 @@ class AppMetaApi(Resource):
             404: "Application not found",
         }
     )
+    @service_api_ns.response(200, "Metadata retrieved successfully", service_api_ns.models[AppMetaResponse.__name__])
     @validate_app_token
     def get(self, app_model: App):
         """Get app metadata.

@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -51,6 +51,8 @@ from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
 
+_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
     response_mode: Literal["blocking", "streaming"] | None = None
@@ -69,7 +71,7 @@ class WorkflowLogQuery(BaseModel):
 
 
 register_schema_models(service_api_ns, WorkflowRunPayload, WorkflowLogQuery)
-register_response_schema_models(service_api_ns, SimpleResultResponse)
+register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 def _enum_value(value):
@@ -97,8 +99,10 @@ class WorkflowRunResponse(ResponseModel):
     id: str
     workflow_id: str
     status: str
-    inputs: dict | list | str | int | float | bool | None = None
-    outputs: dict = Field(default_factory=dict)
+    inputs: dict | list | str | int | float | bool | None = Field(
+        default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA
+    )
+    outputs: dict = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     error: str | None = None
     total_steps: int | None = None
     total_tokens: int | None = None
@@ -139,7 +143,9 @@ class WorkflowRunForLogResponse(ResponseModel):
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
-    details: dict | list | str | int | float | bool | None = None
+    details: dict | list | str | int | float | bool | None = Field(
+        default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA
+    )
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = None
@@ -165,7 +171,7 @@ class WorkflowAppLogPaginationResponse(ResponseModel):
     data: list[WorkflowAppLogPartialResponse]
 
 
-register_schema_models(
+register_response_schema_models(
     service_api_ns,
     WorkflowRunResponse,
     WorkflowRunForLogResponse,
@@ -262,6 +268,11 @@ class WorkflowRunApi(Resource):
             500: "Internal server error",
         }
     )
+    @service_api_ns.response(
+        200,
+        "Workflow executed successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
+    )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         """Execute a workflow.
@@ -321,6 +332,11 @@ class WorkflowRunByIdApi(Resource):
             429: "Rate limit exceeded",
             500: "Internal server error",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Workflow executed successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, workflow_id: str):
