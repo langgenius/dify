@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
+import type { DataSet, IconInfo } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -16,6 +16,26 @@ import FeatureIcon from '@/app/components/header/account-setting/model-provider-
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Link from '@/next/link'
 import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
+
+const DEFAULT_DATASET_ICON: IconInfo = {
+  icon_type: 'emoji',
+  icon: '\u{1F4D9}',
+  icon_background: '#FFF4ED',
+  icon_url: '',
+}
+
+const SelectDatasetIcon: FC<{ icon_info?: IconInfo | null }> = ({ icon_info }) => {
+  const icon = icon_info || DEFAULT_DATASET_ICON
+  return (
+    <AppIcon
+      size="tiny"
+      iconType={icon.icon_type}
+      icon={icon.icon}
+      background={icon.icon_type === 'image' ? undefined : icon.icon_background}
+      imageUrl={icon.icon_type === 'image' ? icon.icon_url : undefined}
+    />
+  )
+}
 
 type ISelectDataSetProps = {
   isShow: boolean
@@ -126,13 +146,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 >
                   <div className="mr-1 flex grow items-center overflow-hidden">
                     <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                      <AppIcon
-                        size="tiny"
-                        iconType={item.icon_info.icon_type}
-                        icon={item.icon_info.icon}
-                        background={item.icon_info.icon_type === 'image' ? undefined : item.icon_info.icon_background}
-                        imageUrl={item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined}
-                      />
+                      <SelectDatasetIcon icon_info={item.icon_info} />
                     </div>
                     <div className={cn('max-w-50 truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && 'max-w-30! opacity-30')}>{item.name}</div>
                     {!item.embedding_available && (
