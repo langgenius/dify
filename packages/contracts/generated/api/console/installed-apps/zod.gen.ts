@@ -234,9 +234,9 @@ export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
 })
 
 export const zGetInstalledAppsByInstalledAppIdConversationsQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  pinned: z.boolean().nullish(),
+  pinned: z.boolean().optional(),
 })
 
 /**
@@ -299,7 +299,7 @@ export const zGetInstalledAppsByInstalledAppIdMessagesPath = z.object({
 
 export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().nullish(),
+  first_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
@@ -373,7 +373,7 @@ export const zGetInstalledAppsByInstalledAppIdSavedMessagesPath = z.object({
 })
 
 export const zGetInstalledAppsByInstalledAppIdSavedMessagesQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 

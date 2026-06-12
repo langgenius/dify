@@ -431,21 +431,6 @@ const isNullSchema = (schema: SwaggerSchema) => {
   return schema.type === 'null'
 }
 
-const resolveSchemaRef = (
-  schema: SwaggerSchema | undefined,
-  schemas: Record<string, SwaggerSchema>,
-): SwaggerSchema | undefined => {
-  const ref = schema?.$ref
-  if (!ref)
-    return schema
-
-  const refName = schemaNameFromRef(ref)
-  if (!refName)
-    return schema
-
-  return schemas[refName] ?? schema
-}
-
 const withoutNullableWrapper = (schema: SwaggerSchema | undefined): SwaggerSchema => {
   if (!schema)
     return {}
@@ -459,95 +444,6 @@ const withoutNullableWrapper = (schema: SwaggerSchema | undefined): SwaggerSchem
     ...rest,
     ...nonNullSchema,
   }
-}
-
-const queryParameterFromSchema = (
-  name: string,
-  schema: SwaggerSchema | undefined,
-  required: boolean,
-): SwaggerParameter => {
-  const querySchema = withoutNullableWrapper(schema)
-  const parameter: SwaggerParameter = {
-    in: 'query',
-    name,
-    required,
-    schema: querySchema,
-  }
-
-  if (querySchema.description)
-    parameter.description = querySchema.description
-
-  return parameter
-}
-
-const mergeQueryParameter = (
-  parameters: SwaggerParameter[],
-  queryParameter: SwaggerParameter,
-) => {
-  const existingIndex = parameters.findIndex((parameter) => {
-    return parameter.in === 'query' && parameter.name === queryParameter.name
-  })
-
-  if (existingIndex === -1) {
-    parameters.push(queryParameter)
-    return
-  }
-
-  const existingParameter = parameters[existingIndex]
-  if (!existingParameter) {
-    parameters.push(queryParameter)
-    return
-  }
-
-  parameters[existingIndex] = {
-    ...existingParameter,
-    ...queryParameter,
-    description: queryParameter.description ?? existingParameter.description,
-    required: Boolean(existingParameter.required) || Boolean(queryParameter.required),
-  }
-}
-
-const normalizeGetBodyParameters = (
-  operation: SwaggerOperation,
-  schemas: Record<string, SwaggerSchema>,
-) => {
-  const bodyParameters: SwaggerParameter[] = []
-  const normalizedParameters: SwaggerParameter[] = []
-
-  for (const parameter of operation.parameters ?? []) {
-    if (parameter.in === 'body') {
-      bodyParameters.push(parameter)
-      continue
-    }
-
-    normalizedParameters.push(parameter)
-  }
-
-  const requestBodySchema = getRequestBodySchema(operation)
-  if (requestBodySchema) {
-    bodyParameters.push({
-      in: 'body',
-      name: 'payload',
-      required: Boolean(operation.requestBody?.required),
-      schema: requestBodySchema,
-    })
-  }
-
-  for (const parameter of bodyParameters) {
-    const schema = resolveSchemaRef(parameter.schema, schemas)
-    const properties = schema?.properties ?? {}
-    const required = new Set(schema?.required ?? [])
-
-    for (const [name, propertySchema] of Object.entries(properties)) {
-      mergeQueryParameter(
-        normalizedParameters,
-        queryParameterFromSchema(name, propertySchema, required.has(name)),
-      )
-    }
-  }
-
-  operation.parameters = normalizedParameters
-  delete operation.requestBody
 }
 
 const normalizeResponses = (operation: SwaggerOperation) => {
@@ -710,8 +606,6 @@ const normalizeOperations = (document: SwaggerDocument, surface: string) => {
       const swaggerOperation = operation as SwaggerOperation
       swaggerOperation.operationId = operationId(method, routePath)
 
-      if (method === 'get')
-        normalizeGetBodyParameters(swaggerOperation, schemas)
       normalizeResponses(swaggerOperation)
       const hasPossiblyInaccurateTypes = hasPossiblyInaccurateGeneratedContractTypes(swaggerOperation, schemas, {
         method,

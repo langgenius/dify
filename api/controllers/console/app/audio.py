@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -162,7 +162,7 @@ class TextModesApi(Resource):
     @console_ns.doc("get_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for a specific language")
     @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.expect(console_ns.models[TextToSpeechVoiceQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(TextToSpeechVoiceQuery))
     @console_ns.response(
         200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
     )

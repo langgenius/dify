@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from extensions.ext_database import db
@@ -69,7 +69,7 @@ register_schema_models(
 class ActivateCheckApi(Resource):
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
-    @console_ns.expect(console_ns.models[ActivateCheckQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ActivateCheckQuery))
     @console_ns.response(
         200,
         "Success",

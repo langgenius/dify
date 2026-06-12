@@ -95,7 +95,7 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path):
         assert len(operation_ids) == len(set(operation_ids))
 
 
-def test_generate_specs_moves_get_request_bodies_to_query_parameters(tmp_path):
+def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)

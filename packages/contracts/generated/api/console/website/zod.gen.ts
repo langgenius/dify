@@ -23,7 +23,7 @@ export const zGetWebsiteCrawlStatusByJobIdPath = z.object({
 })
 
 export const zGetWebsiteCrawlStatusByJobIdQuery = z.object({
-  provider: z.string().optional(),
+  provider: z.enum(['firecrawl', 'jinareader', 'watercrawl']),
 })
 
 /**

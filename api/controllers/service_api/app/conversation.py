@@ -10,7 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -138,7 +138,7 @@ register_schema_models(
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationListQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
     @service_api_ns.doc(
@@ -250,7 +250,7 @@ class ConversationRenameApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
 class ConversationVariablesApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationVariablesQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})

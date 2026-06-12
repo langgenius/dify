@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -98,7 +98,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserModelList.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserModelList))
     @setup_required
     @login_required
     @account_initialization_required
@@ -115,7 +115,7 @@ class ModelProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
-    @console_ns.expect(console_ns.models[ParserCredentialId.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserCredentialId))
     @setup_required
     @login_required
     @account_initialization_required

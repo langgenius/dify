@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
+from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, query_params_from_model
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
@@ -26,7 +26,7 @@ console_ns.schema_model(
 class AdvancedPromptTemplateList(Resource):
     @console_ns.doc("get_advanced_prompt_templates")
     @console_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
-    @console_ns.expect(console_ns.models[AdvancedPromptTemplateQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AdvancedPromptTemplateQuery))
     @console_ns.response(
         200, "Prompt templates retrieved successfully", fields.List(fields.Raw(description="Prompt template data"))
     )

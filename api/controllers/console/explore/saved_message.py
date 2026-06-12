@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
@@ -24,7 +24,7 @@ register_response_schema_models(console_ns, ResultResponse)
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[SavedMessageListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app

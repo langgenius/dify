@@ -16,7 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -201,7 +201,7 @@ class TenantListApi(Resource):
 
 @console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
-    @console_ns.expect(console_ns.models[WorkspaceListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkspaceListQuery))
     @setup_required
     @admin_required
     def get(self):

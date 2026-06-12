@@ -264,7 +264,7 @@ Supports pagination using last_id and limit parameters.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| last_id | query | Last conversation ID for pagination | No |  |
+| last_id | query | Last conversation ID for pagination | No | string |
 | limit | query | Number of conversations to return | No | integer, <br>**Default:** 20 |
 | sort_by | query | Sort order for conversations | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
 
@@ -327,9 +327,9 @@ Conversational variables are only available for chat applications.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path | Conversation ID | Yes | string |
-| last_id | query | Last variable ID for pagination | No |  |
+| last_id | query | Last variable ID for pagination | No | string |
 | limit | query | Number of variables to return | No | integer, <br>**Default:** 20 |
-| variable_name | query | Filter variables by name | No |  |
+| variable_name | query | Filter variables by name | No | string |
 
 #### Responses
 
@@ -1570,7 +1570,7 @@ Retrieves messages with pagination support using first_id.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No |  |
+| first_id | query | First message ID for pagination | No | string |
 | limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
 
 #### Responses
@@ -1722,14 +1722,14 @@ Returns paginated workflow execution logs with filtering options.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| created_at__after | query |  | No |  |
-| created_at__before | query |  | No |  |
-| created_by_account | query |  | No |  |
-| created_by_end_user_session_id | query |  | No |  |
-| keyword | query |  | No |  |
+| created_at__after | query |  | No | string |
+| created_at__before | query |  | No | string |
+| created_by_account | query |  | No | string |
+| created_by_end_user_session_id | query |  | No | string |
+| keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| status | query |  | No |  |
+| status | query |  | No | string, <br>**Available values:** "failed", "stopped", "succeeded" |
 
 #### Responses
 

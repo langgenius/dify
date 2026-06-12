@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -86,7 +86,7 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.expect(console_ns.models[Parser.__name__])
+    @console_ns.doc(params=query_params_from_model(Parser))
     @setup_required
     @login_required
     @account_initialization_required

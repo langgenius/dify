@@ -5,7 +5,7 @@ from flask import abort, jsonify, request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
@@ -39,7 +39,7 @@ class DailyMessageStatistic(Resource):
     @console_ns.doc("get_daily_message_statistics")
     @console_ns.doc(description="Get daily message statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily message statistics retrieved successfully",
@@ -99,7 +99,7 @@ class DailyConversationStatistic(Resource):
     @console_ns.doc("get_daily_conversation_statistics")
     @console_ns.doc(description="Get daily conversation statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily conversation statistics retrieved successfully",
@@ -158,7 +158,7 @@ class DailyTerminalsStatistic(Resource):
     @console_ns.doc("get_daily_terminals_statistics")
     @console_ns.doc(description="Get daily terminal/end-user statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily terminal statistics retrieved successfully",
@@ -218,7 +218,7 @@ class DailyTokenCostStatistic(Resource):
     @console_ns.doc("get_daily_token_cost_statistics")
     @console_ns.doc(description="Get daily token cost statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily token cost statistics retrieved successfully",
@@ -281,7 +281,7 @@ class AverageSessionInteractionStatistic(Resource):
     @console_ns.doc("get_average_session_interaction_statistics")
     @console_ns.doc(description="Get average session interaction statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Average session interaction statistics retrieved successfully",
@@ -360,7 +360,7 @@ class UserSatisfactionRateStatistic(Resource):
     @console_ns.doc("get_user_satisfaction_rate_statistics")
     @console_ns.doc(description="Get user satisfaction rate statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "User satisfaction rate statistics retrieved successfully",
@@ -429,7 +429,7 @@ class AverageResponseTimeStatistic(Resource):
     @console_ns.doc("get_average_response_time_statistics")
     @console_ns.doc(description="Get average response time statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Average response time statistics retrieved successfully",
@@ -489,7 +489,7 @@ class TokensPerSecondStatistic(Resource):
     @console_ns.doc("get_tokens_per_second_statistics")
     @console_ns.doc(description="Get tokens per second statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Tokens per second statistics retrieved successfully",
