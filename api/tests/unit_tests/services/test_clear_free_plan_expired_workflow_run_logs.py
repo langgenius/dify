@@ -3,38 +3,27 @@ from typing import Any
 
 import pytest
 
+from repositories.api_workflow_run_repository import WorkflowRunCleanupRef
 from services.billing_service import SubscriptionPlan
 from services.retention.workflow_run import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 
-class FakeRun:
-    def __init__(
-        self,
-        run_id: str,
-        tenant_id: str,
-        created_at: datetime.datetime,
-        app_id: str = "app-1",
-        workflow_id: str = "wf-1",
-        triggered_from: str = "workflow-run",
-    ) -> None:
-        self.id = run_id
-        self.tenant_id = tenant_id
-        self.app_id = app_id
-        self.workflow_id = workflow_id
-        self.triggered_from = triggered_from
-        self.created_at = created_at
+def make_ref(run_id: str, tenant_id: str, created_at: datetime.datetime) -> WorkflowRunCleanupRef:
+    return WorkflowRunCleanupRef(id=run_id, tenant_id=tenant_id, created_at=created_at)
 
 
 class FakeRepo:
     def __init__(
         self,
-        batches: list[list[FakeRun]],
+        batches: list[list[WorkflowRunCleanupRef]],
         delete_result: dict[str, int] | None = None,
         count_result: dict[str, int] | None = None,
     ) -> None:
         self.batches = batches
-        self.call_idx = 0
+        self.candidate_call_idx = 0
+        self.last_candidate_batch: list[WorkflowRunCleanupRef] = []
+        self.cleanup_ref_calls: list[dict[str, object]] = []
         self.deleted: list[list[str]] = []
         self.counted: list[list[str]] = []
         self.delete_result = delete_result or {
@@ -56,7 +45,7 @@ class FakeRepo:
             "pause_reasons": 0,
         }
 
-    def get_runs_batch_by_time_range(
+    def get_cleanup_refs_batch_by_time_range(
         self,
         start_from: datetime.datetime | None,
         end_before: datetime.datetime,
@@ -65,27 +54,50 @@ class FakeRepo:
         run_types=None,
         tenant_ids=None,
         workflow_ids=None,
-    ) -> list[FakeRun]:
-        if self.call_idx >= len(self.batches):
+        upper_bound: tuple[datetime.datetime, str] | None = None,
+    ) -> list[WorkflowRunCleanupRef]:
+        self.cleanup_ref_calls.append(
+            {
+                "start_from": start_from,
+                "end_before": end_before,
+                "last_seen": last_seen,
+                "batch_size": batch_size,
+                "run_types": run_types,
+                "tenant_ids": tenant_ids,
+                "workflow_ids": workflow_ids,
+                "upper_bound": upper_bound,
+            }
+        )
+        if tenant_ids is not None or upper_bound is not None:
+            refs = self.last_candidate_batch
+            if tenant_ids is not None:
+                tenant_id_set = set(tenant_ids)
+                refs = [ref for ref in refs if ref.tenant_id in tenant_id_set]
+            if upper_bound is not None:
+                refs = [ref for ref in refs if (ref.created_at, ref.id) <= upper_bound]
+            return refs[:batch_size]
+
+        if self.candidate_call_idx >= len(self.batches):
             return []
-        batch = self.batches[self.call_idx]
-        self.call_idx += 1
+        batch = self.batches[self.candidate_call_idx]
+        self.candidate_call_idx += 1
+        self.last_candidate_batch = batch
         return batch
 
-    def delete_runs_with_related(
-        self, runs: list[FakeRun], delete_node_executions=None, delete_trigger_logs=None
+    def delete_runs_with_related_by_ids(
+        self, run_ids: list[str], delete_node_executions=None, delete_trigger_logs=None
     ) -> dict[str, int]:
-        self.deleted.append([run.id for run in runs])
+        self.deleted.append(list(run_ids))
         result = self.delete_result.copy()
-        result["runs"] = len(runs)
+        result["runs"] = len(run_ids)
         return result
 
-    def count_runs_with_related(
-        self, runs: list[FakeRun], count_node_executions=None, count_trigger_logs=None
+    def count_runs_with_related_by_ids(
+        self, run_ids: list[str], count_node_executions=None, count_trigger_logs=None
     ) -> dict[str, int]:
-        self.counted.append([run.id for run in runs])
+        self.counted.append(list(run_ids))
         result = self.count_result.copy()
-        result["runs"] = len(runs)
+        result["runs"] = len(run_ids)
         return result
 
 
@@ -218,8 +230,8 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     repo = FakeRepo(
         batches=[
             [
-                FakeRun("run-free", "t_free", cutoff),
-                FakeRun("run-paid", "t_paid", cutoff),
+                make_ref("run-free", "t_free", cutoff),
+                make_ref("run-paid", "t_paid", cutoff),
             ]
         ]
     )
@@ -240,11 +252,43 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup.run()
 
     assert repo.deleted == [["run-free"]]
+    assert repo.cleanup_ref_calls[1]["tenant_ids"] == ["t_free"]
+
+
+def test_run_filters_candidate_tenants_before_target_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    cutoff = datetime.datetime.now()
+    repo = FakeRepo(
+        batches=[
+            [
+                make_ref("run-free", "t_free", cutoff),
+                make_ref("run-paid", "t_paid", cutoff),
+            ]
+        ]
+    )
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    billing_calls: list[list[str]] = []
+
+    def fake_bulk(tenant_ids: list[str]) -> dict[str, SubscriptionPlan]:
+        billing_calls.append(tenant_ids)
+        return {
+            "t_free": plan_info("sandbox", -1),
+            "t_paid": plan_info("team", -1),
+        }
+
+    monkeypatch.setattr(cleanup_module.BillingService, "get_plan_bulk_with_cache", staticmethod(fake_bulk))
+
+    cleanup.run()
+
+    assert billing_calls == [["t_free", "t_paid"]]
+    assert repo.cleanup_ref_calls[1]["tenant_ids"] == ["t_free"]
+    assert repo.deleted == [["run-free"]]
 
 
 def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     cutoff = datetime.datetime.now()
-    repo = FakeRepo(batches=[[FakeRun("run-paid", "t_paid", cutoff)]])
+    repo = FakeRepo(batches=[[make_ref("run-paid", "t_paid", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
@@ -257,6 +301,53 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     cleanup.run()
 
     assert repo.deleted == []
+    assert len(repo.cleanup_ref_calls) == 2
+
+
+def test_run_paid_only_records_skipped_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
+    cutoff = datetime.datetime.now()
+    repo = FakeRepo(batches=[[make_ref("run-paid", "t_paid", cutoff)]])
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
+
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    monkeypatch.setattr(
+        cleanup_module.BillingService,
+        "get_plan_bulk_with_cache",
+        staticmethod(lambda tenant_ids: {tenant_id: plan_info("team", 1893456000) for tenant_id in tenant_ids}),
+    )
+    batch_calls: list[dict[str, object]] = []
+    monkeypatch.setattr(cleanup._metrics, "record_batch", lambda **kwargs: batch_calls.append(kwargs))
+
+    cleanup.run()
+
+    assert repo.deleted == []
+    assert repo.counted == []
+    assert batch_calls[0]["batch_rows"] == 1
+    assert batch_calls[0]["targeted_runs"] == 0
+    assert batch_calls[0]["skipped_runs"] == 1
+    assert batch_calls[0]["deleted_runs"] == 0
+
+
+def test_run_target_query_is_bounded_by_candidate_high_water(monkeypatch: pytest.MonkeyPatch) -> None:
+    first_created_at = datetime.datetime(2024, 1, 1, 0, 0, 0)
+    second_created_at = datetime.datetime(2024, 1, 1, 0, 1, 0)
+    repo = FakeRepo(
+        batches=[
+            [
+                make_ref("run-free-1", "t_free", first_created_at),
+                make_ref("run-free-2", "t_free", second_created_at),
+            ]
+        ]
+    )
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=2)
+
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+
+    cleanup.run()
+
+    assert repo.cleanup_ref_calls[1]["last_seen"] is None
+    assert repo.cleanup_ref_calls[1]["upper_bound"] == (second_created_at, "run-free-2")
+    assert repo.cleanup_ref_calls[2]["last_seen"] == (second_created_at, "run-free-2")
 
 
 def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -268,7 +359,7 @@ def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_run_records_metrics_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
     cutoff = datetime.datetime.now()
     repo = FakeRepo(
-        batches=[[FakeRun("run-free", "t_free", cutoff)]],
+        batches=[[make_ref("run-free", "t_free", cutoff)]],
         delete_result={
             "runs": 0,
             "node_executions": 2,
@@ -300,13 +391,13 @@ def test_run_records_metrics_on_success(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_run_records_failed_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
     class FailingRepo(FakeRepo):
-        def delete_runs_with_related(
-            self, runs: list[FakeRun], delete_node_executions=None, delete_trigger_logs=None
+        def delete_runs_with_related_by_ids(
+            self, run_ids: list[str], delete_node_executions=None, delete_trigger_logs=None
         ) -> dict[str, int]:
             raise RuntimeError("delete failed")
 
     cutoff = datetime.datetime.now()
-    repo = FailingRepo(batches=[[FakeRun("run-free", "t_free", cutoff)]])
+    repo = FailingRepo(batches=[[make_ref("run-free", "t_free", cutoff)]])
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
 
@@ -323,7 +414,7 @@ def test_run_records_failed_metrics(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     cutoff = datetime.datetime.now()
     repo = FakeRepo(
-        batches=[[FakeRun("run-free", "t_free", cutoff)]],
+        batches=[[make_ref("run-free", "t_free", cutoff)]],
         count_result={
             "runs": 0,
             "node_executions": 2,
