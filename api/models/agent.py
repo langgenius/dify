@@ -372,10 +372,9 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
     node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    # JSON-encoded list of cleanup layer specs ({name, type, deps, config}).
-    # Drives Agent backend cleanup-only runs: the agenton compositor rejects a
-    # session snapshot whose layer names do not match the cleanup composition,
-    # so we replay the same layer graph (minus credential-bearing plugin layers).
+    # JSON-encoded list of non-sensitive runtime layer specs ({name, type, deps,
+    # config}). The persisted schema keeps its original name because the sandbox
+    # refactor intentionally avoids a storage migration.
     composition_layer_specs: Mapped[str] = mapped_column(LongText, nullable=False, server_default="[]")
     # Conversation-owner column (NULL for workflow owner).
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
