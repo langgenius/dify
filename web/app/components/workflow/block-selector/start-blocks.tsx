@@ -210,7 +210,7 @@ function StartBlockPreviewCard({
   ].includes(block.type)
 
   return (
-    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 pt-3 pb-4">
+    <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 pt-3 pb-2.5">
       <div>
         <BlockIcon
           size="md"
@@ -224,7 +224,7 @@ function StartBlockPreviewCard({
           {description}
         </div>
         {showDifyTeamAuthor && (
-          <div className="my-1 system-xs-regular text-text-tertiary">
+          <div className="mt-1 system-xs-regular text-text-tertiary">
             {t('author', { ns: 'tools' })}
             {' '}
             {t('difyTeam', { ns: 'workflow' })}
