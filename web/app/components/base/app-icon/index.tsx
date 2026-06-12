@@ -117,6 +117,16 @@ const AppIcon: FC<AppIconProps> = ({
   const Icon = isHydrated ? <em-emoji key={emojiIcon} id={emojiIcon} /> : emojiIcon
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLSpanElement>) => {
+    if (!onClick)
+      return
+
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    onClick()
+  }
 
   return (
     <span
@@ -124,6 +134,9 @@ const AppIcon: FC<AppIconProps> = ({
       className={cn(appIconVariants({ size, rounded }), className)}
       style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
       onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
     >
       {
         isValidImageIcon

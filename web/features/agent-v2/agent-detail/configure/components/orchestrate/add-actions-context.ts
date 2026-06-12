@@ -1,7 +1,7 @@
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../data'
 import type { AgentSkill } from './skills/item'
 import type { AgentCliTool } from './tools/types'
-import { createContext, use, useEffect } from 'react'
+import { createContext, use, useCallback, useEffect, useRef } from 'react'
 
 export type AgentOrchestrateAddActionKey = 'cli' | 'files' | 'knowledge' | 'skills'
 
@@ -36,11 +36,18 @@ export function useRegisterAgentOrchestrateAddAction(
 ) {
   const context = use(AgentOrchestrateAddActionsContext)
   const registerAction = context?.registerAction
+  const actionRef = useRef(action)
+
+  actionRef.current = action
+
+  const stableAction = useCallback<AgentOrchestrateAddAction>((options) => {
+    actionRef.current(options)
+  }, [])
 
   useEffect(() => {
     if (!registerAction)
       return
 
-    return registerAction(key, action)
-  }, [action, key, registerAction])
+    return registerAction(key, stableAction)
+  }, [key, registerAction, stableAction])
 }
