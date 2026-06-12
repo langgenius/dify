@@ -10,7 +10,7 @@
   "apps.resultNum": "{{num}} results",
   "apps.title": "Templates",
   "apps.viewMore": "View more",
-  "banner.greeting": "Welcome back, {{name}} 👋",
+  "banner.greeting": "Welcome back, {{name}}👋",
   "banner.tagline": "What if… this is where your next idea begins.",
   "banner.viewMore": "VIEW MORE",
   "category.Agent": "Agent",

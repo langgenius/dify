@@ -126,6 +126,7 @@
   "detailPanel.operation.update": "更新",
   "detailPanel.operation.updateTooltip": "最新のモデルにアクセスするために更新してください。",
   "detailPanel.operation.viewDetail": "詳細を見る",
+  "detailPanel.operation.viewReadme": "README を見る",
   "detailPanel.serviceOk": "サービスは正常です",
   "detailPanel.strategyNum": "{{num}} {{strategy}} が含まれています",
   "detailPanel.switchVersion": "バージョンの切り替え",
