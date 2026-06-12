@@ -27,7 +27,7 @@ const toProviderToolAction = (tool: ToolDefaultValue) => ({
 const getCredentialVariant = (tool: ToolDefaultValue) =>
   tool.is_team_authorization ? 'authorized' as const : 'endUser' as const
 
-const addProviderTools = (
+export const addProviderTools = (
   currentTools: AgentTool[],
   selectedTools: ToolDefaultValue[],
 ): AgentTool[] => {

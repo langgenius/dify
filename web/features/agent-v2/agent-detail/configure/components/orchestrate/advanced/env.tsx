@@ -4,10 +4,11 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEnvVariables } from '@/features/agent-v2/agent-composer/store'
-import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
+import { parseEnvVariables } from './env-utils'
 
 export type EnvScope = 'secret' | 'plain'
 
@@ -25,6 +26,25 @@ const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetai
 }
 
 const envScopeOptions: EnvScope[] = ['secret', 'plain']
+
+const createEnvVariable = (): EnvVariable => ({
+  id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+  key: '',
+  value: '',
+  scope: 'plain',
+})
+
+const createEnvVariableFromEntry = ({
+  key,
+  value,
+}: {
+  key: string
+  value: string
+}): EnvVariable => ({
+  ...createEnvVariable(),
+  key,
+  value,
+})
 
 function EnvEditorScope({
   scope,
@@ -299,11 +319,33 @@ export function EnvVariablesTable({
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
   const [envVariables, setEnvVariables] = useEnvVariables()
+  const envImportInputRef = useRef<HTMLInputElement>(null)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envEditorTableId = 'agent-configure-env-editor-table'
+  const addVariable = () => {
+    setEnvVariables([...envVariables, createEnvVariable()])
+  }
+  const importEnvVariables = async (file: File) => {
+    const importedVariables = parseEnvVariables(await file.text()).map(createEnvVariableFromEntry)
+
+    if (importedVariables.length === 0)
+      return
+
+    setEnvVariables([...envVariables, ...importedVariables])
+  }
+  const updateVariableKey = (id: string, key: string) => {
+    setEnvVariables(envVariables.map(variable => (
+      variable.id === id ? { ...variable, key } : variable
+    )))
+  }
   const updateVariableScope = (id: string, scope: EnvScope) => {
     setEnvVariables(envVariables.map(variable => (
       variable.id === id ? { ...variable, scope } : variable
+    )))
+  }
+  const updateVariableValue = (id: string, value: string) => {
+    setEnvVariables(envVariables.map(variable => (
+      variable.id === id ? { ...variable, value } : variable
     )))
   }
   const deleteVariable = (id: string) => {
@@ -323,23 +365,40 @@ export function AgentEnvEditor() {
       panelContentClassName="px-3 pb-3"
       actions={(
         <>
+          <input
+            ref={envImportInputRef}
+            aria-label={t('agentDetail.configure.advancedSettings.envEditor.importEnv')}
+            accept=".env"
+            className="hidden"
+            type="file"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+
+              if (file)
+                void importEnvVariables(file)
+            }}
+          />
           <button
             type="button"
+            onClick={() => envImportInputRef.current?.click()}
             className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-file-upload-line size-3.5" />
             <span className="system-xs-medium">{t('agentDetail.configure.advancedSettings.envEditor.importEnv')}</span>
           </button>
-          <div className="mx-1 h-3 w-px shrink-0 bg-divider-regular" />
-          <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.advancedSettings.envEditor.add')} />
         </>
       )}
     >
       <EnvVariablesTable
+        editable
         envVariables={envVariables}
         highlightedIndex={1}
+        onAdd={addVariable}
         onDelete={deleteVariable}
+        onKeyChange={updateVariableKey}
         onScopeChange={updateVariableScope}
+        onValueChange={updateVariableValue}
       />
     </ConfigureSection>
   )

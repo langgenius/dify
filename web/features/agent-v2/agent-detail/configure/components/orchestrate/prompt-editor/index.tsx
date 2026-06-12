@@ -68,7 +68,7 @@ export function AgentPromptEditor() {
   const [value, onChange] = usePrompt()
   const [skills] = useSkills()
   const [files] = useFiles()
-  const [tools] = useTools()
+  const [tools, setTools] = useTools()
   const [retrievals] = useKnowledgeRetrievals()
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
@@ -291,6 +291,7 @@ export function AgentPromptEditor() {
               skills={skills}
               files={files}
               tools={tools}
+              onToolsChange={setTools}
               retrievals={retrievals}
               onBack={() => setSlashMenuView('main')}
               onOpenCategory={setSlashMenuView}

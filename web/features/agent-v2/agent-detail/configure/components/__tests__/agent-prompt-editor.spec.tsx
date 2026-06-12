@@ -8,6 +8,42 @@ import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
 const mockReset = vi.hoisted(() => vi.fn())
+const mockBuiltInTools = vi.hoisted(() => [
+  {
+    id: 'duckduckgo',
+    name: 'DuckDuckGo',
+    author: 'Dify',
+    description: { en_US: 'DuckDuckGo tools' },
+    icon: '/duckduckgo.svg',
+    label: { en_US: 'DuckDuckGo' },
+    type: 'builtin',
+    team_credentials: {},
+    is_team_authorization: true,
+    allow_delete: false,
+    labels: [],
+    meta: {},
+    tools: [
+      {
+        name: 'ddg_search',
+        author: 'Dify',
+        label: { en_US: 'DuckDuckGo Search' },
+        description: { en_US: 'Search the web.' },
+        parameters: [],
+        labels: [],
+        output_schema: {},
+      },
+      {
+        name: 'ddg_translate',
+        author: 'Dify',
+        label: { en_US: 'DuckDuckGo Translate' },
+        description: { en_US: 'Translate search results.' },
+        parameters: [],
+        labels: [],
+        output_schema: {},
+      },
+    ],
+  },
+])
 
 vi.mock('@/app/components/base/prompt-editor', () => ({
   __esModule: true,
@@ -32,6 +68,17 @@ vi.mock('foxact/use-clipboard', () => ({
     copy: mockCopy,
     reset: mockReset,
   }),
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useGetLanguage: () => 'en_US',
+}))
+
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllWorkflowTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: [] }),
 }))
 
 const promptEditorDraft = {
@@ -62,10 +109,14 @@ const promptEditorDraft = {
   ],
 } satisfies typeof defaultAgentComposerDraft
 
-const renderAgentPromptEditor = (value: string) => {
+const renderAgentPromptEditor = (
+  value: string,
+  draftOverrides: Partial<typeof defaultAgentComposerDraft> = {},
+) => {
   const store = createStore()
   store.set(agentComposerDraftAtom, {
     ...promptEditorDraft,
+    ...draftOverrides,
     prompt: value,
   })
 
@@ -133,21 +184,42 @@ describe('AgentPromptEditor', () => {
       })
     })
 
-    it('should append provider tool references with provider and action names', () => {
-      const { store, rerenderWithValue } = renderAgentPromptEditor('Research/')
+    it('should append available provider tool references and add missing tools to the configuration', () => {
+      const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
 
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
       fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]')
+      expect(store.get(agentComposerDraftAtom).tools).toEqual([
+        expect.objectContaining({
+          id: 'duckduckgo',
+          actions: [
+            expect.objectContaining({
+              name: 'DuckDuckGo Search',
+              toolName: 'ddg_search',
+            }),
+          ],
+        }),
+      ])
 
       rerenderWithValue('Research/')
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.pluginType/i }))
+      fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo.*workflow\.tabs\.plugin/i }))
 
       expect(store.get(agentComposerPromptAtom)).toBe('Research [§tool:duckduckgo/*:DuckDuckGo§]')
+      expect(store.get(agentComposerDraftAtom).tools).toEqual([
+        expect.objectContaining({
+          id: 'duckduckgo',
+          actions: [
+            expect.objectContaining({ toolName: 'ddg_search' }),
+            expect.objectContaining({ toolName: 'ddg_translate' }),
+          ],
+        }),
+      ])
     })
 
     it('should close slash menu when slash is deleted or the user clicks outside', async () => {
