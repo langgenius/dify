@@ -3202,7 +3202,7 @@ Model class for model response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ProviderWithModelsListResponse | array |  |  |
+| data | [ [ProviderWithModelsResponse](#providerwithmodelsresponse) ] |  | Yes |
 
 #### ProviderWithModelsResponse
 
