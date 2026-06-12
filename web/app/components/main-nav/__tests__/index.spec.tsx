@@ -300,6 +300,7 @@ describe('MainNav', () => {
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     useAppStore.getState().setAppSidebarExpand('')
+    useAppStore.getState().setAppDetail()
   })
 
   it('renders primary navigation with the planned routes', () => {
@@ -492,6 +493,26 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+  })
+
+  it('keeps app detail store when rendering app detail navigation', () => {
+    mockPathname = '/app/app-1/logs'
+    useAppStore.getState().setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
+
+    renderMainNav()
+
+    expect(useAppStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('clears app detail store after leaving app routes', async () => {
+    mockPathname = '/apps'
+    useAppStore.getState().setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
+
+    renderMainNav()
+
+    await waitFor(() => {
+      expect(useAppStore.getState().appDetail).toBeUndefined()
+    })
   })
 
   it('collapses app detail navigation from the top-right toggle', () => {

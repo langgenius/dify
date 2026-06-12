@@ -61,7 +61,7 @@ const AppDetailSection = ({
   const { isCurrentWorkspaceEditor } = useAppContext()
   const appDetail = useStore(state => state.appDetail)
   const appInfoActions = useAppInfoActions({
-    resetKey: appDetail ? `${appDetail.id}:${pathname}` : undefined,
+    resetKey: appDetail?.id,
   })
 
   const navigation = useMemo<AppDetailNavItem[]>(() => {

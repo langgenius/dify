@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import AppDetailSection from '../app-detail-section'
+import { useAppInfoActions } from '../app-info/use-app-info-actions'
 
 let mockAppMode = 'chat'
 let mockIsCurrentWorkspaceEditor = true
+let mockPathname = '/app/app-1/logs'
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
@@ -24,7 +26,7 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/logs',
+  usePathname: () => mockPathname,
 }))
 
 vi.mock('../app-info', () => ({
@@ -32,7 +34,7 @@ vi.mock('../app-info', () => ({
 }))
 
 vi.mock('../app-info/use-app-info-actions', () => ({
-  useAppInfoActions: () => ({}),
+  useAppInfoActions: vi.fn(() => ({})),
 }))
 
 vi.mock('../../base/divider', () => ({
@@ -50,6 +52,7 @@ describe('AppDetailSection', () => {
     vi.clearAllMocks()
     mockAppMode = 'chat'
     mockIsCurrentWorkspaceEditor = true
+    mockPathname = '/app/app-1/logs'
   })
 
   // Rendering behavior for app detail navigation entries.
@@ -133,6 +136,19 @@ describe('AppDetailSection', () => {
       // Assert
       expect(screen.getByTestId('app-info')).toHaveAttribute('data-expand', 'false')
       expect(screen.getByRole('link', { name: 'common.appMenus.logs' })).toHaveAttribute('data-mode', 'collapse')
+    })
+
+    it('should scope app info state to the app instead of the current path', () => {
+      // Arrange
+      const { rerender } = render(<AppDetailSection />)
+
+      // Act
+      mockPathname = '/app/app-1/overview'
+      rerender(<AppDetailSection />)
+
+      // Assert
+      expect(useAppInfoActions).toHaveBeenCalledWith({ resetKey: 'app-1' })
+      expect(useAppInfoActions).toHaveBeenLastCalledWith({ resetKey: 'app-1' })
     })
   })
 })

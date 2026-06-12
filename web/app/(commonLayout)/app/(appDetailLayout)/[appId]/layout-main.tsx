@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useUnmount } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,48 +42,71 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })))
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
+  const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
   useEffect(() => {
+    let ignore = false
+
+    const currentAppDetail = useStore.getState().appDetail
+    if (currentAppDetail?.id === appId) {
+      return () => {
+        ignore = true
+      }
+    }
+
     setAppDetail()
-    void Promise.resolve().then(() => setIsLoadingAppDetail(true))
+    void Promise.resolve().then(() => {
+      if (!ignore)
+        setIsLoadingAppDetail(true)
+    })
     fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
+      if (ignore)
+        return
+
       setAppDetailRes(res)
     }).catch((error: unknown) => {
+      if (ignore)
+        return
+
       if (isNotFoundError(error))
         router.replace('/apps')
     }).finally(() => {
+      if (ignore)
+        return
+
       setIsLoadingAppDetail(false)
     })
-  }, [appId, pathname, router, setAppDetail])
+
+    return () => {
+      ignore = true
+    }
+  }, [appId, router, setAppDetail])
 
   useEffect(() => {
-    if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
+    if (!routeAppDetail || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
       return
-    if (appDetailRes.id !== appId)
+    if (routeAppDetail.id !== appId)
       return
-    const res = appDetailRes
+
     // redirection
     const canIEditApp = isCurrentWorkspaceEditor
     if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs') || pathname.endsWith('annotations'))) {
       router.replace(`/app/${appId}/overview`)
       return
     }
-    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
+    if ((routeAppDetail.mode === AppModeEnum.WORKFLOW || routeAppDetail.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
       router.replace(`/app/${appId}/workflow`)
     }
-    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
+    else if ((routeAppDetail.mode !== AppModeEnum.WORKFLOW && routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
       router.replace(`/app/${appId}/configuration`)
+      return
     }
-    else {
-      setAppDetail({ ...res, enable_sso: false })
-    }
-  }, [appDetailRes, appId, currentWorkspace.id, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
-  useUnmount(() => {
-    setAppDetail()
-  })
+    if (appDetailRes && appDetail?.id !== appDetailRes.id)
+      setAppDetail({ ...appDetailRes, enable_sso: false })
+  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, routeAppDetail, router, setAppDetail])
 
   if (!appDetail) {
     return (

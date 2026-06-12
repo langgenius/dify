@@ -54,14 +54,15 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
         # If an engine is provided, create a sessionmaker from it
-        if isinstance(session_factory, Engine):
-            self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
-        elif isinstance(session_factory, sessionmaker):
-            self._session_factory = session_factory
-        else:
-            raise ValueError(
-                f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
-            )
+        match session_factory:
+            case Engine():
+                self._session_factory = sessionmaker(bind=session_factory, expire_on_commit=False)
+            case sessionmaker():
+                self._session_factory = session_factory
+            case _:
+                raise ValueError(
+                    f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
+                )
 
         # Extract tenant_id from user
         tenant_id = extract_tenant_id(user)
