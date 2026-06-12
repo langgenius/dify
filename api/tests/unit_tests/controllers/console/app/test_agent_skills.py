@@ -104,3 +104,115 @@ def test_standardize_maps_drive_error():
             body, status = raw(AgentSkillStandardizeApi(), _USER, _APP)
     assert status == 404
     assert body["code"] == "source_not_found"
+
+
+# ── ENG-625: drive files commit + delete endpoints ────────────────────────────
+
+
+def _json_ctx(payload: dict | None = None, *, method: str = "POST", query_string: str = ""):
+    return app.test_request_context(f"/?{query_string}", method=method, json=payload or {})
+
+
+def test_files_commit_validates_upload_and_returns_drive_ref():
+    from controllers.console.app.agent import AgentDriveFilesApi
+
+    raw = _raw(AgentDriveFilesApi.post)
+    upload = SimpleNamespace(id="uf-1", name="sample qna.pdf")
+    with _json_ctx({"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}):
+        with (
+            patch(f"{_MOD}.console_ns") as ns,
+            patch(f"{_MOD}.db") as db_mock,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            ns.payload = {"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}
+            db_mock.session.scalar.return_value = upload
+            drive.return_value.commit.return_value = [
+                {"key": "files/sample qna.pdf", "size": 5, "mime_type": "application/pdf"}
+            ]
+            body, status = raw(AgentDriveFilesApi(), _USER, _APP)
+
+    assert status == 201
+    assert body["file"]["drive_key"] == "files/sample qna.pdf"
+    assert body["file"]["file_id"] == "uf-1"
+    item = drive.return_value.commit.call_args.kwargs["items"][0]
+    assert item.value_owned_by_drive is True
+    assert item.file_ref.kind == "upload_file"
+
+
+def test_files_commit_404_when_upload_not_in_tenant():
+    from controllers.console.app.agent import AgentDriveFilesApi
+
+    raw = _raw(AgentDriveFilesApi.post)
+    with _json_ctx({"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}):
+        with (
+            patch(f"{_MOD}.console_ns") as ns,
+            patch(f"{_MOD}.db") as db_mock,
+        ):
+            ns.payload = {"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}
+            db_mock.session.scalar.return_value = None
+            body, status = raw(AgentDriveFilesApi(), _USER, _APP)
+    assert status == 404
+    assert body["code"] == "upload_file_not_found"
+
+
+def test_files_delete_updates_soul_then_drive():
+    from controllers.console.app.agent import AgentDriveFilesApi
+
+    raw = _raw(AgentDriveFilesApi.delete)
+    calls: list[str] = []
+    with _json_ctx(method="DELETE", query_string="key=files/sample.pdf"):
+        with (
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.remove_drive_refs.side_effect = lambda **kw: calls.append("soul") or "ver-2"
+            drive.return_value.delete.side_effect = lambda **kw: calls.append("drive") or ["files/sample.pdf"]
+            body = raw(AgentDriveFilesApi(), _USER, _APP)
+
+    assert calls == ["soul", "drive"]  # soul-first ordering
+    assert body == {"result": "success", "removed_keys": ["files/sample.pdf"], "config_version_id": "ver-2"}
+    assert composer.remove_drive_refs.call_args.kwargs["file_key"] == "files/sample.pdf"
+
+
+def test_files_delete_survives_drive_failure():
+    from controllers.console.app.agent import AgentDriveFilesApi
+
+    raw = _raw(AgentDriveFilesApi.delete)
+    with _json_ctx(method="DELETE", query_string="key=files/sample.pdf"):
+        with (
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.remove_drive_refs.return_value = "ver-2"
+            drive.return_value.delete.side_effect = RuntimeError("storage down")
+            body = raw(AgentDriveFilesApi(), _USER, _APP)
+    # soul already updated; drive cleanup is best-effort and retryable
+    assert body == {"result": "success", "removed_keys": [], "config_version_id": "ver-2"}
+
+
+def test_skill_delete_uses_slug_prefix_and_is_idempotent():
+    from controllers.console.app.agent import AgentSkillApi
+
+    raw = _raw(AgentSkillApi.delete)
+    with _json_ctx(method="DELETE"):
+        with (
+            patch(f"{_MOD}.AgentComposerService") as composer,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            composer.remove_drive_refs.return_value = None  # ref already gone
+            drive.return_value.delete.return_value = []
+            body = raw(AgentSkillApi(), _USER, _APP, "tender-analyzer")
+
+    assert body == {"result": "success", "removed_keys": [], "config_version_id": None}
+    assert drive.return_value.delete.call_args.kwargs["prefix"] == "tender-analyzer/"
+    assert composer.remove_drive_refs.call_args.kwargs["skill_slug"] == "tender-analyzer"
+
+
+def test_skill_delete_rejects_path_like_slug():
+    from controllers.console.app.agent import AgentSkillApi
+
+    raw = _raw(AgentSkillApi.delete)
+    with _json_ctx(method="DELETE"):
+        body, status = raw(AgentSkillApi(), _USER, _APP, "a/b")
+    assert status == 400
+    assert body["code"] == "drive_key_invalid"

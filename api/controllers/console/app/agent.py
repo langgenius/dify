@@ -1,6 +1,9 @@
+import logging
+
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -10,12 +13,21 @@ from extensions.ext_database import db
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
-from models.model import App, AppMode
+from models.model import App, AppMode, UploadFile
+from services.agent.composer_service import AgentComposerService
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.agent.skill_standardize_service import SkillStandardizeService
-from services.agent_drive_service import AgentDriveError
+from services.agent_drive_service import (
+    AgentDriveError,
+    AgentDriveService,
+    DriveCommitItem,
+    DriveFileRef,
+    normalize_drive_key,
+)
 from services.agent_service import AgentService
 from services.file_service import FileService
+
+logger = logging.getLogger(__name__)
 
 
 class AgentLogQuery(BaseModel):
@@ -127,3 +139,148 @@ class AgentSkillStandardizeApi(Resource):
         except (SkillPackageError, AgentDriveError) as exc:
             return {"code": exc.code, "message": exc.message}, exc.status_code
         return result, 201
+
+
+class AgentDriveFilePayload(BaseModel):
+    upload_file_id: str = Field(..., description="UploadFile UUID from POST /console/api/files/upload")
+
+    @field_validator("upload_file_id")
+    @classmethod
+    def validate_upload_file_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+register_schema_models(console_ns, AgentDriveFilePayload)
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/files")
+class AgentDriveFilesApi(Resource):
+    @console_ns.doc("commit_agent_drive_file")
+    @console_ns.doc(description="Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[AgentDriveFilePayload.__name__])
+    @console_ns.response(201, "File committed into the agent drive")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.AGENT])
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        """ADD FILE: commit one uploaded file into the bound agent's drive."""
+        agent_id = app_model.bound_agent_id
+        if not agent_id:
+            return {"code": "agent_not_bound", "message": "app has no bound agent"}, 400
+        payload = AgentDriveFilePayload.model_validate(console_ns.payload or {})
+
+        upload_file = db.session.scalar(
+            select(UploadFile).where(
+                UploadFile.id == payload.upload_file_id,
+                UploadFile.tenant_id == app_model.tenant_id,
+            )
+        )
+        if upload_file is None:
+            return {"code": "upload_file_not_found", "message": "upload file not found in this workspace"}, 404
+
+        try:
+            key = normalize_drive_key(f"files/{upload_file.name}")
+            committed = AgentDriveService().commit(
+                tenant_id=app_model.tenant_id,
+                user_id=current_user.id,
+                agent_id=agent_id,
+                items=[
+                    DriveCommitItem(
+                        key=key,
+                        file_ref=DriveFileRef(kind="upload_file", id=upload_file.id),
+                        # ADD FILE uploads exist solely to live in the drive, so the
+                        # drive owns (and physically cleans) the value on delete.
+                        value_owned_by_drive=True,
+                    )
+                ],
+            )
+        except AgentDriveError as exc:
+            return {"code": exc.code, "message": exc.message}, exc.status_code
+
+        row = committed[0]
+        return {
+            "file": {
+                "name": upload_file.name,
+                "drive_key": row["key"],
+                "file_id": upload_file.id,
+                "size": row.get("size"),
+                "mime_type": row.get("mime_type"),
+            }
+        }, 201
+
+    @console_ns.doc("delete_agent_drive_file")
+    @console_ns.doc(description="Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)")
+    @console_ns.doc(params={"app_id": "Application ID", "key": "Drive key, e.g. files/sample.pdf"})
+    @console_ns.response(200, "File removed")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.AGENT])
+    @with_current_user
+    def delete(self, current_user: Account, app_model: App):
+        agent_id = app_model.bound_agent_id
+        if not agent_id:
+            return {"code": "agent_not_bound", "message": "app has no bound agent"}, 400
+        raw_key = request.args.get("key", "")
+        try:
+            key = normalize_drive_key(raw_key)
+        except AgentDriveError as exc:
+            return {"code": exc.code, "message": exc.message}, exc.status_code
+
+        config_version_id = AgentComposerService.remove_drive_refs(
+            tenant_id=app_model.tenant_id,
+            agent_id=agent_id,
+            account_id=current_user.id,
+            file_key=key,
+        )
+        removed_keys: list[str] = []
+        try:
+            removed_keys = AgentDriveService().delete(tenant_id=app_model.tenant_id, agent_id=agent_id, key=key)
+        except AgentDriveError as exc:
+            return {"code": exc.code, "message": exc.message}, exc.status_code
+        except Exception:
+            # Soul-first ordering: the ref is already gone; orphan KV rows are
+            # harmless and an idempotent DELETE retry cleans them.
+            logger.exception("agent drive delete failed for key %s (soul already updated)", key)
+        return {"result": "success", "removed_keys": removed_keys, "config_version_id": config_version_id}
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/skills/<string:slug>")
+class AgentSkillApi(Resource):
+    @console_ns.doc("delete_agent_skill")
+    @console_ns.doc(
+        description="Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)"
+    )
+    @console_ns.doc(params={"app_id": "Application ID", "slug": "Skill slug (single path segment)"})
+    @console_ns.response(200, "Skill removed")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.AGENT])
+    @with_current_user
+    def delete(self, current_user: Account, app_model: App, slug: str):
+        agent_id = app_model.bound_agent_id
+        if not agent_id:
+            return {"code": "agent_not_bound", "message": "app has no bound agent"}, 400
+        if "/" in slug or not slug.strip():
+            return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
+
+        config_version_id = AgentComposerService.remove_drive_refs(
+            tenant_id=app_model.tenant_id,
+            agent_id=agent_id,
+            account_id=current_user.id,
+            skill_slug=slug,
+        )
+        removed_keys: list[str] = []
+        try:
+            removed_keys = AgentDriveService().delete(
+                tenant_id=app_model.tenant_id, agent_id=agent_id, prefix=f"{slug}/"
+            )
+        except AgentDriveError as exc:
+            return {"code": exc.code, "message": exc.message}, exc.status_code
+        except Exception:
+            logger.exception("agent drive delete failed for skill %s (soul already updated)", slug)
+        return {"result": "success", "removed_keys": removed_keys, "config_version_id": config_version_id}

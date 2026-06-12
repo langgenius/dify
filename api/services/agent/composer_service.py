@@ -305,6 +305,70 @@ class AgentComposerService:
         return findings
 
     @classmethod
+    def remove_drive_refs(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        skill_slug: str | None = None,
+        file_key: str | None = None,
+    ) -> str | None:
+        """Drop the soul refs backed by a drive skill/file before the drive rows go.
+
+        Soul-first ordering (ENG-625 D5): a mid-failure leaves harmless orphan KV
+        rows that an idempotent DELETE retry cleans, instead of a soul ref that
+        keeps failing dangling-ref validation. Returns the new config version id,
+        or ``None`` when the soul held no matching ref (idempotent re-delete).
+        """
+        if (skill_slug is None) == (file_key is None):
+            raise ValueError("remove_drive_refs requires exactly one of skill_slug or file_key")
+        agent = db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        if agent is None or not agent.active_config_snapshot_id:
+            return None
+        current_snapshot = cls._require_version(
+            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
+        )
+        agent_soul = AgentSoulConfig.model_validate(current_snapshot.config_snapshot_dict)
+
+        removed_display: str | None = None
+        if skill_slug is not None:
+            kept_skills = []
+            for skill in agent_soul.skills_files.skills:
+                slug = (skill.skill_md_key or "").split("/", 1)[0] or (skill.path or "").strip("/")
+                if slug == skill_slug:
+                    removed_display = skill.name or skill.id or skill_slug
+                    continue
+                kept_skills.append(skill)
+            if removed_display is None:
+                return None
+            agent_soul.skills_files.skills = kept_skills
+            note = f"Removed skill '{removed_display}' from the drive."
+        else:
+            kept_files = []
+            for file in agent_soul.skills_files.files:
+                if file.drive_key == file_key:
+                    removed_display = file.name or file.drive_key
+                    continue
+                kept_files.append(file)
+            if removed_display is None:
+                return None
+            agent_soul.skills_files.files = kept_files
+            note = f"Removed file '{removed_display}' from the drive."
+
+        version = cls._update_current_version(
+            current_snapshot=current_snapshot,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+            version_note=note,
+        )
+        agent.active_config_snapshot_id = version.id
+        agent.updated_by = account_id
+        db.session.commit()
+        return version.id
+
+    @classmethod
     def resolve_bound_agent_id(cls, *, tenant_id: str, app_id: str) -> str | None:
         """The Agent App's bound roster agent id, if any (validate-endpoint context)."""
         return db.session.scalar(

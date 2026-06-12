@@ -1204,3 +1204,94 @@ def test_collect_validation_findings_appends_drive_findings_with_agent_context(m
     # without agent context the drive check is skipped entirely
     findings_no_agent = AgentComposerService.collect_validation_findings(tenant_id="tenant-1", payload=payload)
     assert all(w["code"] not in {"skill_ref_dangling", "file_ref_dangling"} for w in findings_no_agent["warnings"])
+
+
+# ── ENG-625 D5: soul-first ref removal ───────────────────────────────────────
+
+
+def _patch_remove_drive_refs_env(monkeypatch, *, soul_dict):
+    """Wire the classmethod's collaborators so soul editing + versioning is observable."""
+    from types import SimpleNamespace
+
+    import services.agent.composer_service as module
+
+    agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="snap-1", updated_by=None)
+    snapshot = SimpleNamespace(id="snap-1", tenant_id="tenant-1", agent_id="agent-1", config_snapshot_dict=soul_dict)
+    committed: dict[str, object] = {}
+
+    fake_session = SimpleNamespace(scalar=lambda stmt: agent, commit=lambda: committed.setdefault("committed", True))
+    monkeypatch.setattr(module.db, "session", fake_session)
+    monkeypatch.setattr(AgentComposerService, "_require_version", classmethod(lambda cls, **kwargs: snapshot))
+
+    captured: dict[str, object] = {}
+
+    def fake_update(cls, *, current_snapshot, account_id, agent_soul, operation, version_note):
+        captured["agent_soul"] = agent_soul
+        captured["version_note"] = version_note
+        return SimpleNamespace(id="snap-2")
+
+    monkeypatch.setattr(AgentComposerService, "_update_current_version", classmethod(fake_update))
+    return agent, captured, committed
+
+
+def test_remove_drive_refs_drops_skill_by_slug_and_versions(monkeypatch):
+    soul_dict = {
+        "skills_files": {
+            "skills": [
+                {"id": "sk-1", "name": "Tender Analyzer", "skill_md_key": "tender-analyzer/SKILL.md"},
+                {"id": "sk-2", "name": "Other", "skill_md_key": "other-skill/SKILL.md"},
+            ],
+            "files": [],
+        }
+    }
+    agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    version_id = AgentComposerService.remove_drive_refs(
+        tenant_id="tenant-1", agent_id="agent-1", account_id="acc-1", skill_slug="tender-analyzer"
+    )
+
+    assert version_id == "snap-2"
+    assert agent.active_config_snapshot_id == "snap-2"
+    kept = [s.skill_md_key for s in captured["agent_soul"].skills_files.skills]
+    assert kept == ["other-skill/SKILL.md"]
+    assert "Tender Analyzer" in str(captured["version_note"])
+    assert committed.get("committed") is True
+
+
+def test_remove_drive_refs_is_noop_when_ref_absent(monkeypatch):
+    soul_dict = {"skills_files": {"skills": [], "files": []}}
+    agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    assert (
+        AgentComposerService.remove_drive_refs(
+            tenant_id="tenant-1", agent_id="agent-1", account_id="acc-1", file_key="files/none.pdf"
+        )
+        is None
+    )
+    assert "agent_soul" not in captured
+    assert committed == {}
+
+
+def test_remove_drive_refs_drops_file_by_key(monkeypatch):
+    soul_dict = {
+        "skills_files": {
+            "skills": [],
+            "files": [
+                {"name": "keep.pdf", "drive_key": "files/keep.pdf"},
+                {"name": "drop.pdf", "drive_key": "files/drop.pdf"},
+            ],
+        }
+    }
+    _, captured, _ = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    version_id = AgentComposerService.remove_drive_refs(
+        tenant_id="tenant-1", agent_id="agent-1", account_id="acc-1", file_key="files/drop.pdf"
+    )
+
+    assert version_id == "snap-2"
+    assert [f.drive_key for f in captured["agent_soul"].skills_files.files] == ["files/keep.pdf"]
+
+
+def test_remove_drive_refs_requires_exactly_one_scope():
+    with pytest.raises(ValueError):
+        AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u")
