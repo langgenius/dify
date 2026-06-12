@@ -27,6 +27,8 @@ import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-conten
 import WorkspacePlanBadge from './workspace-plan-badge'
 import { WorkspaceSwitcher } from './workspace-switcher'
 
+const workspaceMenuTriggerHeight = 36
+const workspaceMenuAlignOffset = -28
 const workspaceCardSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const workspacePlans = new Set<string>(Object.values(Plan))
 
@@ -263,7 +265,8 @@ export function WorkspaceCard() {
         />
         <PopoverContent
           placement="bottom-start"
-          sideOffset={4}
+          sideOffset={-workspaceMenuTriggerHeight}
+          alignOffset={workspaceMenuAlignOffset}
           popupClassName="w-[280px] overflow-hidden bg-components-panel-bg-blur! p-0! backdrop-blur-[5px]"
         >
           <WorkspaceMenuHeader
