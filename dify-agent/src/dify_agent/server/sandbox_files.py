@@ -314,7 +314,9 @@ def _normalize_sandbox_path(path: str, *, allow_current_directory: bool) -> str:
             return "."
         raise SandboxFileError("invalid_sandbox_path", "path must not be blank", status_code=400)
     if normalized.startswith("/") or normalized.startswith("~"):
-        raise SandboxFileError("invalid_sandbox_path", "path must be relative to the sandbox workspace", status_code=400)
+        raise SandboxFileError(
+            "invalid_sandbox_path", "path must be relative to the sandbox workspace", status_code=400
+        )
     if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
         raise SandboxFileError("invalid_sandbox_path", "path contains unsupported control characters", status_code=400)
     return normalized
@@ -353,11 +355,19 @@ def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
             status_code=502,
         ) from exc
     if not isinstance(loaded, dict):
-        raise SandboxFileError("sandbox_command_failed", "sandbox command returned a non-object payload", status_code=502)
+        raise SandboxFileError(
+            "sandbox_command_failed", "sandbox command returned a non-object payload", status_code=502
+        )
     payload = cast(dict[str, object], loaded)
     error = payload.get("error")
     if isinstance(error, str):
-        status_code = 404 if error in {"sandbox_not_found", "sandbox_path_not_found"} else 502 if error == "agent_stub_upload_failed" else 400
+        status_code = (
+            404
+            if error in {"sandbox_not_found", "sandbox_path_not_found"}
+            else 502
+            if error == "agent_stub_upload_failed"
+            else 400
+        )
         if error in {"sandbox_command_failed", "agent_stub_upload_failed"}:
             status_code = 502
         message = payload.get("message")
@@ -381,7 +391,9 @@ def _validate_response_model(
     try:
         return model_type.model_validate(payload)
     except ValidationError as exc:
-        raise SandboxFileError("sandbox_command_failed", f"sandbox command returned invalid payload: {exc}", status_code=502) from exc
+        raise SandboxFileError(
+            "sandbox_command_failed", f"sandbox command returned invalid payload: {exc}", status_code=502
+        ) from exc
 
 
 __all__ = ["SandboxFileError", "SandboxFileService"]

@@ -237,9 +237,9 @@ export type SandboxReadResponse = {
   truncated: boolean
 }
 
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
+export type AgentSandboxUploadPayload = {
+  conversation_id: string
+  path: string
 }
 
 export type SandboxUploadResponse = {
@@ -646,6 +646,11 @@ export type WorkflowRunExportResponse = {
 
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowAgentSandboxUploadPayload = {
+  node_execution_id?: string | null
+  path: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -1213,6 +1218,11 @@ export type SandboxFileEntryResponse = {
   name: string
   size?: number | null
   type: 'dir' | 'file' | 'other' | 'symlink'
+}
+
+export type SandboxToolFileResponse = {
+  reference: string
+  transfer_method?: string
 }
 
 export type AnnotationHitHistory = {
@@ -2701,10 +2711,7 @@ export type GetAppsByAppIdAgentSandboxFilesReadResponse
   = GetAppsByAppIdAgentSandboxFilesReadResponses[keyof GetAppsByAppIdAgentSandboxFilesReadResponses]
 
 export type PostAppsByAppIdAgentSandboxFilesUploadData = {
-  body: {
-    conversation_id: string
-    path: string
-  }
+  body: AgentSandboxUploadPayload
   path: {
     app_id: string
   }
@@ -4572,20 +4579,19 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse
   = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData
-  = {
-    body?: never
-    path: {
-      app_id: string
-      node_id: string
-      workflow_run_id: string
-    }
-    query: {
-      node_execution_id?: string
-      path: string
-    }
-    url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData = {
+  body?: never
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
   }
+  query: {
+    node_execution_id?: string
+    path: string
+  }
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
+}
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses = {
   200: SandboxReadResponse
@@ -4594,24 +4600,21 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse
   = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
 
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData
-  = {
-    body: {
-      node_execution_id?: string
-      path: string
-    }
-    path: {
-      app_id: string
-      node_id: string
-      workflow_run_id: string
-    }
-    query?: never
-    url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData = {
+  body: WorkflowAgentSandboxUploadPayload
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
   }
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses = {
-  200: SandboxUploadResponse
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
 }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses
+  = {
+    200: SandboxUploadResponse
+  }
 
 export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse
   = PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]

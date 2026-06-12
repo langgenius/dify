@@ -14,9 +14,9 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
+from dify_agent.protocol import RuntimeLayerSpec
 from sqlalchemy import delete
 
-from dify_agent.protocol import RuntimeLayerSpec
 from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.session_store import (
     StoredWorkflowAgentSession,
@@ -85,9 +85,7 @@ def test_load_active_snapshot_returns_none_when_no_row_matches():
 def test_save_active_snapshot_creates_row_and_load_round_trips():
     store = WorkflowAgentRuntimeSessionStore()
     snapshot = _snapshot(messages=2)
-    store.save_active_snapshot(
-        scope=_scope(), backend_run_id="run-1", snapshot=snapshot, runtime_layer_specs=_specs()
-    )
+    store.save_active_snapshot(scope=_scope(), backend_run_id="run-1", snapshot=snapshot, runtime_layer_specs=_specs())
 
     loaded = store.load_active_snapshot(_scope())
     assert loaded is not None

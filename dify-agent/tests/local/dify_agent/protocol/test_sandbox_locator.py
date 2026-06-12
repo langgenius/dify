@@ -104,7 +104,11 @@ def test_build_sandbox_locator_from_layer_specs_rejects_missing_snapshot_layer()
         build_sandbox_locator_from_layer_specs(
             layer_specs=specs,
             session_snapshot=CompositorSessionSnapshot(
-                layers=[LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})]
+                layers=[
+                    LayerSessionSnapshot(
+                        name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
+                    )
+                ]
             ),
         )
 

@@ -28,7 +28,10 @@ def create_sandbox_files_router(get_service: Callable[[], SandboxFileService | N
     def service_dep() -> SandboxFileService:
         service = get_service()
         if service is None:
-            raise HTTPException(status_code=503, detail={"code": "sandbox_backend_unavailable", "message": "sandbox service is not configured"})
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "sandbox_backend_unavailable", "message": "sandbox service is not configured"},
+            )
         return service
 
     def raise_http(exc: SandboxFileError) -> HTTPException:

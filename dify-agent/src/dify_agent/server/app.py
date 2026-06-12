@@ -45,9 +45,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_token_codec=agent_stub_token_codec,
     )
     sandbox_file_service = (
-        SandboxFileService(layer_providers=layer_providers)
-        if resolved_settings.shellctl_entrypoint
-        else None
+        SandboxFileService(layer_providers=layer_providers) if resolved_settings.shellctl_entrypoint else None
     )
     state: dict[str, object] = {}
 

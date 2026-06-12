@@ -37,8 +37,8 @@ from clients.agent_backend import (
     AgentBackendRunRequestBuilder,
     AgentBackendWorkflowNodeRunInput,
     RuntimeLayerSpec,
-    redact_for_agent_backend_log,
     extract_runtime_layer_specs,
+    redact_for_agent_backend_log,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 

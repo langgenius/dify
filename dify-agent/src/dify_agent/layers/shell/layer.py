@@ -752,7 +752,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         job_offsets = dict(self.runtime_state.job_offsets)
         _ = job_offsets.pop(job_id, None)
         self.runtime_state.job_offsets = job_offsets
-        self.runtime_state.job_ids = [tracked_job_id for tracked_job_id in self.runtime_state.job_ids if tracked_job_id != job_id]
+        self.runtime_state.job_ids = [
+            tracked_job_id for tracked_job_id in self.runtime_state.job_ids if tracked_job_id != job_id
+        ]
 
     def _build_user_shell_run_env(self) -> dict[str, str] | None:
         """Build per-command Agent Stub env only for user-visible ``shell.run``."""

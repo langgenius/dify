@@ -96,6 +96,14 @@ export const zSandboxReadResponse = z.object({
 })
 
 /**
+ * AgentSandboxUploadPayload
+ */
+export const zAgentSandboxUploadPayload = z.object({
+  conversation_id: z.string().min(1),
+  path: z.string().min(1),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -393,6 +401,14 @@ export const zWorkflowRunExportResponse = z.object({
   presigned_url: z.string().nullish(),
   presigned_url_expires_at: z.string().nullish(),
   status: z.string(),
+})
+
+/**
+ * WorkflowAgentSandboxUploadPayload
+ */
+export const zWorkflowAgentSandboxUploadPayload = z.object({
+  node_execution_id: z.string().nullish(),
+  path: z.string().min(1),
 })
 
 /**
@@ -890,7 +906,7 @@ export const zSandboxListResponse = z.object({
  */
 export const zSandboxToolFileResponse = z.object({
   reference: z.string(),
-  transfer_method: z.enum(['tool_file']).optional().default('tool_file'),
+  transfer_method: z.string().optional().default('tool_file'),
 })
 
 /**
@@ -3219,10 +3235,7 @@ export const zGetAppsByAppIdAgentSandboxFilesReadQuery = z.object({
  */
 export const zGetAppsByAppIdAgentSandboxFilesReadResponse = zSandboxReadResponse
 
-export const zPostAppsByAppIdAgentSandboxFilesUploadBody = z.object({
-  conversation_id: z.string().min(1),
-  path: z.string().min(1),
-})
+export const zPostAppsByAppIdAgentSandboxFilesUploadBody = zAgentSandboxUploadPayload
 
 export const zPostAppsByAppIdAgentSandboxFilesUploadPath = z.object({
   app_id: z.string(),
@@ -4170,16 +4183,13 @@ export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandbox
   })
 
 /**
- * File bytes
+ * Preview returned
  */
 export const zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse
   = zSandboxReadResponse
 
 export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadBody
-  = z.object({
-    node_execution_id: z.string().optional(),
-    path: z.string().min(1),
-  })
+  = zWorkflowAgentSandboxUploadPayload
 
 export const zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadPath
   = z.object({

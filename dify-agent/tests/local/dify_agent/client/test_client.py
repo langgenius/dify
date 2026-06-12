@@ -249,13 +249,18 @@ def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "note.txt"
             assert payload["max_bytes"] == 128
-            return httpx.Response(200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"})
+            return httpx.Response(
+                200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+            )
         if request.url.path == "/sandbox/files/upload":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "report.txt"
             return httpx.Response(
                 200,
-                json={"path": "report.txt", "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}},
+                json={
+                    "path": "report.txt",
+                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                },
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
@@ -280,11 +285,16 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
         if request.url.path == "/sandbox/files/list":
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
         if request.url.path == "/sandbox/files/read":
-            return httpx.Response(200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"})
+            return httpx.Response(
+                200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+            )
         if request.url.path == "/sandbox/files/upload":
             return httpx.Response(
                 200,
-                json={"path": "report.txt", "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}},
+                json={
+                    "path": "report.txt",
+                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                },
             )
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 

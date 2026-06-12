@@ -338,7 +338,7 @@ def test_upload_file_injects_agent_stub_env_and_returns_mapping() -> None:
             AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
             AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
         }
-        assert "dify-agent\", \"file\", \"upload\"" in script
+        assert 'dify-agent", "file", "upload"' in script
         return _job_result(
             output={
                 "path": "report.txt",
@@ -429,14 +429,18 @@ def test_router_list_ok() -> None:
         lambda script, cwd, env, timeout: _job_result(output={"path": ".", "entries": [], "truncated": False})
     )
 
-    response = _client(service).post("/sandbox/files/list", json={"locator": _locator().model_dump(mode="json"), "path": "."})
+    response = _client(service).post(
+        "/sandbox/files/list", json={"locator": _locator().model_dump(mode="json"), "path": "."}
+    )
 
     assert response.status_code == 200
     assert response.json()["path"] == "."
 
 
 def test_router_returns_503_when_service_unconfigured() -> None:
-    response = _client(None).post("/sandbox/files/list", json={"locator": _locator().model_dump(mode="json"), "path": "."})
+    response = _client(None).post(
+        "/sandbox/files/list", json={"locator": _locator().model_dump(mode="json"), "path": "."}
+    )
 
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "sandbox_backend_unavailable"

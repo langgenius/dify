@@ -729,7 +729,9 @@ def _validate_create_run_request(request: CreateRunRequest) -> CreateRunRequest:
     raise DifyAgentValidationError(detail="request must be a CreateRunRequest")
 
 
-def _build_request_model[_RequestModelT: BaseModel](model_type: type[_RequestModelT], /, **payload: object) -> _RequestModelT:
+def _build_request_model[_RequestModelT: BaseModel](
+    model_type: type[_RequestModelT], /, **payload: object
+) -> _RequestModelT:
     """Validate one request DTO built from method parameters."""
     try:
         return model_type.model_validate(payload)

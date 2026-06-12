@@ -12,7 +12,7 @@ composition-driven.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import ClassVar, cast
+from typing import ClassVar
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
@@ -38,11 +38,10 @@ from dify_agent.protocol import (
     DIFY_AGENT_OUTPUT_LAYER_ID,
     CreateRunRequest,
     LayerExitSignals,
-    RuntimeLayerSpec,
     RunComposition,
     RunLayerSpec,
     RunPurpose,
-    extract_runtime_layer_specs,
+    RuntimeLayerSpec,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
@@ -53,6 +52,7 @@ AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_SHELL_LAYER_ID = "shell"
+
 
 def _filter_snapshot_to_specs(
     snapshot: CompositorSessionSnapshot,

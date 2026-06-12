@@ -1156,7 +1156,7 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path |  | Yes | string |
 | payload | body |  | Yes | [AgentSandboxUploadPayload](#agentsandboxuploadpayload) |
 
 ##### Responses
@@ -2792,9 +2792,9 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| node_id | path | Workflow Agent node ID | Yes | string |
-| workflow_run_id | path | Workflow run ID | Yes | string |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+| workflow_run_id | path |  | Yes | string |
 | payload | body |  | Yes | [WorkflowAgentSandboxUploadPayload](#workflowagentsandboxuploadpayload) |
 
 ##### Responses
@@ -12313,6 +12313,13 @@ the current roster/workflow APIs scoped to Dify Agent.
 | image | string |  | No |
 | working_dir | string |  | No |
 
+#### AgentSandboxUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_id | string | Agent App conversation ID | Yes |
+| path | string | File path relative to the sandbox workspace | Yes |
+
 #### AgentScope
 
 Visibility and lifecycle scope of an Agent record.
@@ -16591,6 +16598,47 @@ Payload for publishing snippet workflow.
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 
+#### SandboxFileEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mtime | integer |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+| type | string | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
+
+#### SandboxListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entries | [ [SandboxFileEntryResponse](#sandboxfileentryresponse) ] |  | No |
+| path | string |  | Yes |
+| truncated | boolean |  | No |
+
+#### SandboxReadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
+#### SandboxToolFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reference | string |  | Yes |
+| transfer_method | string |  | No |
+
+#### SandboxUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | [SandboxToolFileResponse](#sandboxtoolfileresponse) |  | Yes |
+| path | string |  | Yes |
+
 #### SavedMessageCreatePayload
 
 | Name | Type | Description | Required |
@@ -17634,6 +17682,13 @@ How a workflow node is bound to an Agent.
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 
+#### WorkflowAgentSandboxUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
+| path | string | File path relative to the sandbox workspace | Yes |
+
 #### WorkflowAppLogPaginationResponse
 
 | Name | Type | Description | Required |
@@ -18344,22 +18399,6 @@ Workflow tool configuration
 | remove_webapp_brand | boolean |  | No |
 | replace_webapp_logo | string |  | No |
 
-#### AgentSandboxUploadPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string | Agent App conversation ID | Yes |
-| path | string | File path relative to the sandbox workspace | Yes |
-
-#### SandboxFileEntryResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mtime | integer |  | No |
-| name | string |  | Yes |
-| size | integer |  | No |
-| type | string | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
-
 #### WorkspaceInfoPayload
 
 | Name | Type | Description | Required |
@@ -18373,14 +18412,6 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### SandboxListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| entries | [ [SandboxFileEntryResponse](#sandboxfileentryresponse) ] |  | No |
-| path | string |  | Yes |
-| truncated | boolean |  | No |
-
 #### WorkspacePermissionResponse
 
 | Name | Type | Description | Required |
@@ -18388,37 +18419,6 @@ Workflow tool configuration
 | allow_member_invite | boolean |  | Yes |
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
-
-#### SandboxReadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| binary | boolean |  | Yes |
-| path | string |  | Yes |
-| size | integer |  | No |
-| text | string |  | No |
-| truncated | boolean |  | Yes |
-
-#### SandboxToolFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reference | string |  | Yes |
-| transfer_method | string | *Enum:* `"tool_file"` | No |
-
-#### SandboxUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| file | [SandboxToolFileResponse](#sandboxtoolfileresponse) |  | Yes |
-| path | string |  | Yes |
-
-#### WorkflowAgentSandboxUploadPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
-| path | string | File path relative to the sandbox workspace | Yes |
 
 #### _AnonymousInlineModel_7b67ac8a4db8
 

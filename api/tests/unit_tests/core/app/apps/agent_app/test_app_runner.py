@@ -9,8 +9,7 @@ from typing import Any, override
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.protocol import CancelRunRequest, CancelRunResponse
-from dify_agent.protocol import RuntimeLayerSpec
+from dify_agent.protocol import CancelRunRequest, CancelRunResponse, RuntimeLayerSpec
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -68,7 +67,9 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 class _FakeSessionStore:
     def __init__(self, loaded: CompositorSessionSnapshot | None = None) -> None:
         self.loaded = loaded
-        self.saved: list[tuple[AgentAppSessionScope, str, CompositorSessionSnapshot | None, list[RuntimeLayerSpec]]] = []
+        self.saved: list[
+            tuple[AgentAppSessionScope, str, CompositorSessionSnapshot | None, list[RuntimeLayerSpec]]
+        ] = []
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
         return self.loaded
@@ -148,7 +149,12 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert saved_scope.agent_config_snapshot_id == "snap-1"
     assert saved_run_id == "fake-run-1"
     assert saved_snapshot is not None
-    assert [spec.name for spec in saved_specs] == ["agent_soul_prompt", "agent_app_user_prompt", "execution_context", "history"]
+    assert [spec.name for spec in saved_specs] == [
+        "agent_soul_prompt",
+        "agent_app_user_prompt",
+        "execution_context",
+        "history",
+    ]
 
 
 def test_prior_session_snapshot_is_threaded_into_request():
