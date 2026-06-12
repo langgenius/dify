@@ -7,6 +7,7 @@ from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
 
+from ...common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
 from .. import console_ns
 from ..wraps import (
     account_initialization_required,
@@ -23,7 +24,7 @@ class ComplianceDownloadQuery(BaseModel):
 
 console_ns.schema_model(
     ComplianceDownloadQuery.__name__,
-    ComplianceDownloadQuery.model_json_schema(ref_template="#/definitions/{model}"),
+    ComplianceDownloadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
 )
 
 

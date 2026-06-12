@@ -22,7 +22,7 @@ export const zDataSourceIntegrateIconResponse = z.object({
  * DataSourceIntegratePageResponse
  */
 export const zDataSourceIntegratePageResponse = z.object({
-  page_icon: zDataSourceIntegrateIconResponse,
+  page_icon: zDataSourceIntegrateIconResponse.nullable(),
   page_id: z.string(),
   page_name: z.string(),
   parent_id: z.string(),
@@ -50,7 +50,7 @@ export const zDataSourceIntegrateResponse = z.object({
   is_bound: z.boolean(),
   link: z.string(),
   provider: z.string(),
-  source_info: zDataSourceIntegrateWorkspaceResponse,
+  source_info: zDataSourceIntegrateWorkspaceResponse.nullable(),
 })
 
 /**

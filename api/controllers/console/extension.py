@@ -14,7 +14,7 @@ from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
-from ..common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_models
+from ..common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_models
 from . import console_ns
 from .wraps import account_initialization_required, setup_required, with_current_tenant_id
 
@@ -63,7 +63,7 @@ class APIBasedExtensionResponse(ResponseModel):
 register_schema_models(console_ns, APIBasedExtensionPayload, CodeBasedExtensionResponse, APIBasedExtensionResponse)
 console_ns.schema_model(
     "APIBasedExtensionListResponse",
-    TypeAdapter(list[APIBasedExtensionResponse]).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+    TypeAdapter(list[APIBasedExtensionResponse]).json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
 )
 
 

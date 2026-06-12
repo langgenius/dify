@@ -34,7 +34,7 @@ export const zActivationCheckData = z.object({
  * ActivationCheckResponse
  */
 export const zActivationCheckResponse = z.object({
-  data: zActivationCheckData.optional(),
+  data: zActivationCheckData.nullish(),
   is_valid: z.boolean(),
 })
 

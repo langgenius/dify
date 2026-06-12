@@ -6,7 +6,7 @@ export type ClientOptions = {
 
 export type TenantInfoResponse = {
   created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse
+  custom_config?: WorkspaceCustomConfigResponse | null
   id: string
   in_trial?: boolean | null
   name?: string | null
@@ -32,7 +32,7 @@ export type CreateSnippetPayload = {
   graph?: {
     [key: string]: unknown
   } | null
-  icon_info?: IconInfo
+  icon_info?: IconInfo | null
   input_fields?: Array<InputFieldDefinition> | null
   name: string
   type?: 'group' | 'node'
@@ -77,13 +77,15 @@ export type SnippetImportPayload = {
 
 export type UpdateSnippetPayload = {
   description?: string | null
-  icon_info?: IconInfo
+  icon_info?: IconInfo | null
   name?: string | null
 }
 
 export type AccountWithRoleList = {
   accounts: Array<AccountWithRole>
 }
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type ParserPostDefault = {
   model_settings: Array<Inner>
@@ -223,7 +225,7 @@ export type ParserDeleteModels = {
 export type ParserPostModels = {
   config_from?: string | null
   credential_id?: string | null
-  load_balancing?: LoadBalancingPayload
+  load_balancing?: LoadBalancingPayload | null
   model: string
   model_type: ModelType
 }
@@ -459,7 +461,7 @@ export type McpProviderCreatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
-  identity_mode?: IdentityMode
+  identity_mode?: IdentityMode | null
   name: string
   server_identifier: string
   server_url: string
@@ -478,7 +480,7 @@ export type McpProviderUpdatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
-  identity_mode?: IdentityMode
+  identity_mode?: IdentityMode | null
   name: string
   provider_id: string
   server_identifier: string
@@ -640,8 +642,6 @@ export type Inner = {
 }
 
 export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
-
-export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type LoadBalancingPayload = {
   configs?: Array<{
@@ -866,9 +866,7 @@ export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdError
   = DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -1026,7 +1024,7 @@ export type GetWorkspacesCurrentDefaultModelData = {
   body?: never
   path?: never
   query: {
-    model_type: string
+    model_type: ModelType
   }
   url: '/workspaces/current/default-model'
 }
@@ -1393,7 +1391,7 @@ export type GetWorkspacesCurrentModelProvidersData = {
   body?: never
   path?: never
   query?: {
-    model_type?: string | null
+    model_type?: ModelType | null
   }
   url: '/workspaces/current/model-providers'
 }
@@ -1435,9 +1433,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse
@@ -1543,9 +1539,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponse
@@ -1597,9 +1591,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
@@ -1614,7 +1606,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
     config_from?: string | null
     credential_id?: string | null
     model: string
-    model_type: string
+    model_type: ModelType
   }
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }

@@ -2,6 +2,7 @@ from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
@@ -17,7 +18,7 @@ class AdvancedPromptTemplateQuery(BaseModel):
 
 console_ns.schema_model(
     AdvancedPromptTemplateQuery.__name__,
-    AdvancedPromptTemplateQuery.model_json_schema(ref_template="#/definitions/{model}"),
+    AdvancedPromptTemplateQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
 )
 
 

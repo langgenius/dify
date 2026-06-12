@@ -10,7 +10,7 @@ export type RecommendedAppListResponse = {
 }
 
 export type RecommendedAppResponse = {
-  app?: RecommendedAppInfoResponse
+  app?: RecommendedAppInfoResponse | null
   app_id: string
   can_trial?: boolean | null
   categories?: Array<string>
