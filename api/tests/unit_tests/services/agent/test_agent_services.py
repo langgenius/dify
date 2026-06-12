@@ -1295,3 +1295,101 @@ def test_remove_drive_refs_drops_file_by_key(monkeypatch):
 def test_remove_drive_refs_requires_exactly_one_scope():
     with pytest.raises(ValueError):
         AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u")
+
+
+# ── ENG-623/625: resolver helpers + save-path drive guard ────────────────────
+
+
+def test_resolve_bound_agent_id_queries_active_roster_agent(monkeypatch):
+    from types import SimpleNamespace
+
+    import services.agent.composer_service as module
+
+    monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: "agent-9"))
+    assert AgentComposerService.resolve_bound_agent_id(tenant_id="t-1", app_id="app-1") == "agent-9"
+
+
+def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(monkeypatch):
+    from types import SimpleNamespace
+
+    def boom(cls, **kwargs):
+        raise ValueError("no draft workflow")
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", classmethod(boom))
+    assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") is None
+
+    monkeypatch.setattr(
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: None))
+    assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") is None
+
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_workflow_binding",
+        classmethod(lambda cls, **kwargs: SimpleNamespace(agent_id="agent-7")),
+    )
+    assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") == "agent-7"
+
+
+def test_remove_drive_refs_returns_none_without_agent_or_snapshot(monkeypatch):
+    from types import SimpleNamespace
+
+    import services.agent.composer_service as module
+
+    monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: None))
+    assert AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u", skill_slug="s") is None
+
+    agent_without_snapshot = SimpleNamespace(id="a", active_config_snapshot_id=None)
+    monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: agent_without_snapshot))
+    assert AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u", skill_slug="s") is None
+
+
+def test_save_workflow_composer_guards_drive_refs_for_existing_agent_strategies(monkeypatch):
+    from types import SimpleNamespace
+
+    from services.entities.agent_entities import ComposerSavePayload
+
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "workflow",
+            "save_strategy": "save_to_current_version",
+            "agent_soul": _drive_soul().model_dump(mode="json"),
+            "soul_lock": {"locked": False},
+        }
+    )
+    monkeypatch.setattr(
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_workflow_binding",
+        classmethod(lambda cls, **kwargs: SimpleNamespace(agent_id="agent-1")),
+    )
+    guarded: dict[str, str] = {}
+
+    def fake_guard(cls, *, tenant_id, agent_id, agent_soul):
+        guarded["agent_id"] = agent_id
+        raise InvalidComposerConfigError("skill_ref_dangling: boom")
+
+    from services.agent.errors import InvalidComposerConfigError
+
+    monkeypatch.setattr(AgentComposerService, "_require_drive_refs_resolved", classmethod(fake_guard))
+
+    with pytest.raises(InvalidComposerConfigError, match="skill_ref_dangling"):
+        AgentComposerService.save_workflow_composer(
+            tenant_id="t-1", app_id="app-1", node_id="n-1", account_id="acc-1", payload=payload
+        )
+    assert guarded["agent_id"] == "agent-1"
+
+
+def test_remove_drive_refs_noop_when_skill_slug_unmatched(monkeypatch):
+    soul_dict = {"skills_files": {"skills": [{"name": "Other", "skill_md_key": "other/SKILL.md"}], "files": []}}
+    _, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+    assert (
+        AgentComposerService.remove_drive_refs(
+            tenant_id="t-1", agent_id="agent-1", account_id="acc-1", skill_slug="ghost"
+        )
+        is None
+    )
+    assert committed == {}

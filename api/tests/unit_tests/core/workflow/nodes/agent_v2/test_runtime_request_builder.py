@@ -784,3 +784,15 @@ def test_workflow_run_request_has_no_drive_layer_when_flag_disabled():
     assert all(layer["name"] != "drive" for layer in dumped["composition"]["layers"])
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert any(w["code"] == "drive_manifest_disabled" for w in warnings)
+
+
+def test_build_drive_layer_config_all_refs_dangling_yields_no_config():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    soul = AgentSoulConfig(
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u1"}]},
+    )
+    config, warnings = build_drive_layer_config(soul, agent_id="agent-1")
+    assert config is None
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
