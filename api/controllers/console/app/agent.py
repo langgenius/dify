@@ -3,6 +3,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
+from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -20,7 +21,7 @@ from services.agent_drive_service import AgentDriveError
 from services.agent_service import AgentService
 from services.file_service import FileService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class AgentLogQuery(BaseModel):

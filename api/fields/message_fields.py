@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from pydantic import Field, field_validator
+from pydantic.json_schema import JsonDict
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
@@ -13,7 +14,7 @@ from libs.helper import to_timestamp
 
 type JSONValueType = JSONValue
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SimpleFeedback(ResponseModel):

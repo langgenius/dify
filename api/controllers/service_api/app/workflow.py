@@ -7,6 +7,7 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
@@ -51,7 +52,7 @@ from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):

@@ -6,6 +6,7 @@ from urllib.parse import quote
 from flask import Response, request
 from flask_restx import Resource, marshal
 from pydantic import Field, RootModel
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
@@ -40,7 +41,7 @@ from services.snippet_service import SnippetService
 logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SnippetImportResponse(RootModel[dict[str, Any]]):

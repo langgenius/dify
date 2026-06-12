@@ -4,6 +4,7 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
@@ -38,7 +39,7 @@ from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ParserGetDefault(BaseModel):

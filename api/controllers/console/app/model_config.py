@@ -4,6 +4,7 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -26,7 +27,7 @@ from libs.login import login_required
 from models.model import App, AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ModelConfigRequest(BaseModel):

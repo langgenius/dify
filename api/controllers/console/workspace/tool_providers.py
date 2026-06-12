@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl, RootModel, field_validator, model_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -48,7 +49,7 @@ from services.tools.workflow_tools_manage_service import WorkflowToolManageServi
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 def is_valid_url(url: str) -> bool:

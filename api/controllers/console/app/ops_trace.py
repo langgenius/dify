@@ -3,6 +3,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -15,7 +16,7 @@ from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class TraceProviderQuery(BaseModel):

@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import Field, field_validator, model_validator
+from pydantic.json_schema import JsonDict
 
 from fields.base import ResponseModel
 from graphon.file import File
@@ -11,7 +12,7 @@ from libs.helper import to_timestamp
 
 type JSONValue = Any
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class MessageFile(ResponseModel):

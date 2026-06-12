@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, computed_field
+from pydantic.json_schema import JsonDict
 
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
@@ -11,7 +12,7 @@ from models.model import IconType
 type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
 type JSONObject = dict[str, Any]
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SystemParameters(BaseModel):

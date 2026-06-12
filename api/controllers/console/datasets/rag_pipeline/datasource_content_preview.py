@@ -4,6 +4,7 @@ from flask_restx import (  # type: ignore
     Resource,  # type: ignore
 )
 from pydantic import BaseModel, Field, RootModel
+from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -14,7 +15,7 @@ from models import Account
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class Parser(BaseModel):

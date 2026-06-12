@@ -2,8 +2,9 @@ import uuid
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic.json_schema import JsonDict
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SnippetListQuery(BaseModel):

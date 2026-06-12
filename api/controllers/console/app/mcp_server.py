@@ -5,6 +5,7 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -24,7 +25,7 @@ from libs.login import login_required
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class MCPServerCreatePayload(BaseModel):

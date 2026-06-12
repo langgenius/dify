@@ -4,6 +4,7 @@ from enum import StrEnum, auto
 from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.json_schema import JsonDict
 
 from core.entities.parameter_entities import (
     AppSelectorScope,
@@ -14,7 +15,7 @@ from core.entities.parameter_entities import (
 from core.tools.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ProviderQuotaType(StrEnum):

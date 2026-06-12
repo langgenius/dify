@@ -7,6 +7,7 @@ import pytz
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -66,7 +67,7 @@ from services.entities.auth_entities import (
 )
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class AccountInitPayload(BaseModel):

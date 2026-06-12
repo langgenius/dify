@@ -4,6 +4,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
+from pydantic.json_schema import JsonDict
 
 from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -15,7 +16,7 @@ from libs.login import login_required
 from models import Account
 from services.recommended_app_service import RecommendedAppService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class RecommendedAppsQuery(BaseModel):

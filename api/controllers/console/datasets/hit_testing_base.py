@@ -2,6 +2,7 @@ import logging
 from typing import Any, cast
 
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -28,7 +29,7 @@ from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class HitTestingPayload(BaseModel):

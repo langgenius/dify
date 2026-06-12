@@ -1,6 +1,7 @@
 from typing import Any, cast
 
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 
 from controllers.common import fields
 from controllers.common.schema import register_response_schema_models
@@ -11,7 +12,7 @@ from core.app.app_config.common.parameters_mapping import get_parameters_from_fe
 from models.model import AppMode, InstalledApp
 from services.app_service import AppService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ExploreAppMetaResponse(BaseModel):

@@ -5,6 +5,7 @@ from functools import wraps
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
@@ -57,7 +58,7 @@ from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 # Register Pydantic models with Swagger
 

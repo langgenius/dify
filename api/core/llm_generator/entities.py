@@ -1,10 +1,12 @@
+from pydantic.json_schema import JsonDict
+
 """Shared payload models for LLM generator helpers and controllers."""
 
 from pydantic import BaseModel, Field
 
 from core.app.app_config.entities import ModelConfig
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class RuleGeneratePayload(BaseModel):

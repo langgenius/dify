@@ -11,6 +11,7 @@ import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -75,7 +76,7 @@ from ..wraps import (
     with_current_user,
 )
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 logger = logging.getLogger(__name__)
 

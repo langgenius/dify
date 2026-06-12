@@ -7,6 +7,7 @@ from typing import Any, NotRequired, TypedDict
 from flask import abort, request
 from flask_restx import Resource, fields
 from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -85,7 +86,7 @@ RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be pub
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
 WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
 ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class EnvironmentVariableResponseDict(TypedDict):

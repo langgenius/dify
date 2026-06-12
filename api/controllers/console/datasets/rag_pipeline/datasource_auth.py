@@ -3,6 +3,7 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -27,7 +28,7 @@ from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class DatasourceCredentialPayload(BaseModel):

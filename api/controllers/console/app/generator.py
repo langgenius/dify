@@ -3,6 +3,7 @@ from typing import Any, Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleDataResponse
@@ -30,7 +31,7 @@ from models import App
 from services.workflow_generator_service import WorkflowGeneratorService
 from services.workflow_service import WorkflowService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class InstructionGeneratePayload(BaseModel):

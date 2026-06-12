@@ -2,6 +2,7 @@ from typing import Any, cast
 
 from flask_restx import fields, marshal, marshal_with
 from pydantic import Field
+from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -16,7 +17,7 @@ from models.account import TenantStatus
 from models.model import App, EndUser, Site
 from services.feature_service import FeatureService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class AppSiteModelConfigResponse(ResponseModel):

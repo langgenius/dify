@@ -4,6 +4,7 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, model_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -37,7 +38,7 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class TriggerSubscriptionBuilderCreatePayload(BaseModel):

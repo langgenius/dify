@@ -13,6 +13,7 @@ from uuid import UUID
 
 from flask import request, send_file
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -68,7 +69,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.file_service import FileService
 from services.summary_index_service import SummaryIndexService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class DocumentTextCreatePayload(BaseModel):

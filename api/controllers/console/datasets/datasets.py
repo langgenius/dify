@@ -5,6 +5,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic.json_schema import JsonDict
 from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -49,7 +50,7 @@ from services.dataset_service import DatasetPermissionService, DatasetService, D
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:

@@ -4,6 +4,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
@@ -35,7 +36,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class PipelineTemplateListQuery(BaseModel):

@@ -3,12 +3,13 @@ from enum import StrEnum, auto
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.json_schema import JsonDict
 
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType, ProviderModel
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ModelStatus(StrEnum):

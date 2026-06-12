@@ -4,6 +4,7 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import BinaryFileResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -26,7 +27,7 @@ from services.billing_service import BillingService
 from services.entities.model_provider_entities import ProviderResponse
 from services.model_provider_service import ModelProviderService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ParserModelList(BaseModel):

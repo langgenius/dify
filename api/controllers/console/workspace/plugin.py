@@ -5,6 +5,7 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
+from pydantic.json_schema import JsonDict
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -36,7 +37,7 @@ from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ParserList(BaseModel):

@@ -2,8 +2,9 @@ from collections.abc import Mapping
 from typing import Any
 
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class DatasourceNodeRunApiEntity(BaseModel):

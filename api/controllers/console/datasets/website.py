@@ -3,6 +3,7 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
+from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -11,7 +12,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from libs.login import login_required
 from services.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class WebsiteCrawlPayload(BaseModel):

@@ -4,11 +4,12 @@ from collections.abc import Mapping, Sequence
 from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic.json_schema import JsonDict
 
 from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class HumanInputFormDefinition(BaseModel):

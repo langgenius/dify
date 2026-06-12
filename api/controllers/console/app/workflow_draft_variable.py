@@ -1,12 +1,13 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, TypedDict
+from typing import Any, Concatenate, TypedDict, override
 from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -42,11 +43,13 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class OpaqueRawField(fields.Raw):
-    __schema__ = {"type": "object", **_OPAQUE_JSON_SCHEMA}
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "object", **_OPAQUE_JSON_SCHEMA}
 
 
 class WorkflowDraftVariableListQuery(BaseModel):

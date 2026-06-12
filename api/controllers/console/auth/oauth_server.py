@@ -6,6 +6,7 @@ from flask import jsonify, request
 from flask.typing import ResponseReturnValue
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -18,7 +19,7 @@ from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType,
 
 from .. import console_ns
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class OAuthClientPayload(BaseModel):

@@ -4,6 +4,7 @@ from typing import Any, Literal, cast
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -101,7 +102,7 @@ from services.recommended_app_service import RecommendedAppService
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)

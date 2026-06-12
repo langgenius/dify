@@ -3,6 +3,7 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import (
     DEFAULT_REF_TEMPLATE_OPENAPI_3_0,
@@ -15,7 +16,7 @@ from fields.base import ResponseModel
 from libs.login import login_required
 from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class AdvancedPromptTemplateQuery(BaseModel):

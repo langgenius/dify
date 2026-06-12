@@ -3,6 +3,7 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -45,7 +46,7 @@ from services.tag_service import (
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class DatasetCreatePayload(BaseModel):

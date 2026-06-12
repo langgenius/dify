@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic.json_schema import JsonDict
 
 from configs import dify_config
 from core.entities.model_entities import (
@@ -18,18 +19,22 @@ from core.entities.provider_entities import (
     UnaddedModelConfiguration,
 )
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from graphon.model_runtime.entities.model_entities import (
+    FetchFrom,
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+)
 from graphon.model_runtime.entities.provider_entities import (
-    AIModelEntity,
     ConfigurateMethod,
     ModelCredentialSchema,
     ProviderCredentialSchema,
     ProviderHelpEntity,
-    SimpleProviderEntity,
 )
 from models.provider import ProviderType
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 _DECIMAL_STRING_PATTERN = r"^(?![-+.]*$)[+-]?0*\d*\.?\d*$"
 CodegenSafeDecimal = Annotated[Decimal, Field(json_schema_extra={"pattern": _DECIMAL_STRING_PATTERN})]
 
@@ -146,16 +151,29 @@ class PriceConfigResponse(BaseModel):
     currency: str
 
 
-class AIModelEntityResponse(AIModelEntity):
+class AIModelEntityResponse(BaseModel):
+    model: str
+    label: I18nObject
+    model_type: ModelType
+    features: list[ModelFeature] | None = None
+    fetch_from: FetchFrom
     model_properties: dict[ModelPropertyKey, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    deprecated: bool = False
+    parameter_rules: list[ParameterRule] = []
     pricing: PriceConfigResponse | None = None
 
 
-class SimpleProviderEntityResponse(SimpleProviderEntity):
+class SimpleProviderEntityResponse(BaseModel):
     """
     Simple provider entity response.
     """
 
+    provider: str
+    provider_name: str = ""
+    label: I18nObject
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    supported_model_types: Sequence[ModelType]
     tenant_id: str
     models: list[AIModelEntityResponse] = []
 

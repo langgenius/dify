@@ -13,6 +13,7 @@ from typing import Any
 from flask import Response
 from flask_restx import Resource
 from pydantic import ConfigDict, Field
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
@@ -29,7 +30,7 @@ from services.human_input_service import Form, FormNotFoundError, HumanInputServ
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class HumanInputFormDefinitionResponse(ResponseModel):

@@ -3,6 +3,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -40,7 +41,7 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class CompletionMessageExplorePayload(BaseModel):

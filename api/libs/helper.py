@@ -128,7 +128,9 @@ def run(script):
 
 
 class AppIconUrlField(fields.Raw):
-    __schema__ = {"type": "string", "nullable": True}
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "string", "nullable": True}
 
     @override
     def output(self, key, obj, **kwargs):
@@ -179,7 +181,9 @@ class AvatarUrlField(fields.Raw):
 
 
 class TimestampField(fields.Raw):
-    __schema__ = {"type": "integer", "format": "int64"}
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "integer", "format": "int64"}
 
     @override
     def format(self, value) -> int:
@@ -187,7 +191,9 @@ class TimestampField(fields.Raw):
 
 
 class OptionalTimestampField(fields.Raw):
-    __schema__ = {"type": "integer", "format": "int64", "nullable": True}
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "integer", "format": "int64", "nullable": True}
 
     @override
     def format(self, value) -> int | None:

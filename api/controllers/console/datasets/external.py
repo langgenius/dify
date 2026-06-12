@@ -4,6 +4,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, RootModel
+from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -46,7 +47,7 @@ from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetT
 
 register_response_schema_models(console_ns, UsageCountResponse)
 
-_OPAQUE_JSON_SCHEMA = {"x-dify-opaque": True}
+_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 def _build_dataset_detail_model():
