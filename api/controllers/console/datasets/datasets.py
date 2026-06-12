@@ -392,7 +392,6 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_preview", resource_required=False)
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
@@ -413,12 +412,27 @@ class DatasetListApi(Resource):
 
         accessible_dataset_ids: list[str] | None = None
         include_own_datasets = False
-        if dify_config.RBAC_ENABLED and "dataset.acl.readonly" not in permissions.dataset.default_permission_keys:
-            accessible_dataset_ids = [
-                override.resource_id
-                for override in permissions.dataset.overrides
-                if "dataset.acl.readonly" in override.permission_keys
-            ]
+        if dify_config.RBAC_ENABLED:
+            whitelist_scope = enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources(
+                str(current_tenant_id),
+                current_user.id,
+            )
+            has_default_readonly = "dataset.preview" in permissions.dataset.default_permission_keys
+            permission_dataset_ids: set[str] | None = None
+            if not has_default_readonly:
+                permission_dataset_ids = {
+                    override.resource_id
+                    for override in permissions.dataset.overrides
+                    if "dataset.preview" in override.permission_keys
+                }
+            if getattr(whitelist_scope, "unrestricted", False):
+                filtered_dataset_ids = permission_dataset_ids
+            else:
+                filtered_dataset_ids = set(whitelist_scope.resource_ids)
+                if permission_dataset_ids is not None:
+                    filtered_dataset_ids &= permission_dataset_ids
+            if filtered_dataset_ids is not None:
+                accessible_dataset_ids = sorted(filtered_dataset_ids)
             include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
 
         if query.ids:

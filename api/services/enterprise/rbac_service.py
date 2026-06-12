@@ -198,6 +198,54 @@ class MemberBindingsResponse(_RBACModel):
     data: list[AccessPolicyMemberBinding] = Field(default_factory=list)
 
 
+class ResourceWhitelist(_RBACModel):
+    account_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("account_ids", mode="before")
+    @classmethod
+    def _coerce_account_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
+class ResourceWhitelistResources(_RBACModel):
+    unrestricted: bool = False
+    resource_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("resource_ids", mode="before")
+    @classmethod
+    def _coerce_resource_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
+class ResourceUserAccessPolicies(_RBACModel):
+    account: RBACRoleAccount
+    roles: list[RBACRole] = Field(default_factory=list)
+    access_policies: list[AccessPolicy] = Field(default_factory=list)
+
+
+class ResourceUserAccessPoliciesResponse(_RBACModel):
+    data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
+
+
+class ReplaceUserAccessPolicies(_RBACModel):
+    access_policy_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("access_policy_ids", mode="before")
+    @classmethod
+    def _coerce_access_policy_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
+class ReplaceUserAccessPoliciesResponse(_RBACModel):
+    access_policies: list[AccessPolicy] = Field(default_factory=list)
+
+
 class MemberRolesResponse(_RBACModel):
     account_id: str
     roles: list[RBACRole] = Field(default_factory=list)
@@ -880,6 +928,77 @@ class RBACService:
     # ------------------------------------------------------------------
     class AppAccess:
         @staticmethod
+        def whitelist_resources(
+            tenant_id: str, account_id: str | None
+        ) -> ResourceWhitelistResources:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/apps/whitelist/resources",
+                tenant_id=tenant_id,
+                account_id=account_id,
+            )
+            return ResourceWhitelistResources.model_validate(data or {})
+
+        @staticmethod
+        def user_access_policies(
+            tenant_id: str, account_id: str | None, app_id: str
+        ) -> ResourceUserAccessPoliciesResponse:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/apps/user-access-policies",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id},
+            )
+            return ResourceUserAccessPoliciesResponse.model_validate(data or {})
+
+        @staticmethod
+        def replace_user_access_policies(
+            tenant_id: str,
+            account_id: str | None,
+            app_id: str,
+            target_account_id: str,
+            payload: ReplaceUserAccessPolicies,
+        ) -> ReplaceUserAccessPoliciesResponse:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/apps/user-access-policies",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id, "account_id": target_account_id},
+                json=payload.model_dump(mode="json"),
+            )
+            return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
+
+        @staticmethod
+        def whitelist(tenant_id: str, account_id: str | None, app_id: str) -> ResourceWhitelist:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/apps/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id},
+            )
+            return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def replace_whitelist(
+            tenant_id: str,
+            account_id: str | None,
+            app_id: str,
+            payload: ReplaceMemberBindings,
+        ) -> ResourceWhitelist:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/apps/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id},
+                json=payload.model_dump(mode="json"),
+            )
+            return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
         def matrix(tenant_id: str, account_id: str | None, app_id: str) -> AppAccessMatrix:
             data = _inner_call(
                 "GET",
@@ -980,6 +1099,77 @@ class RBACService:
     # Per-dataset access (screenshot 1: Knowledge Base Access Config).
     # ------------------------------------------------------------------
     class DatasetAccess:
+        @staticmethod
+        def whitelist_resources(
+            tenant_id: str, account_id: str | None
+        ) -> ResourceWhitelistResources:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/datasets/whitelist/resources",
+                tenant_id=tenant_id,
+                account_id=account_id,
+            )
+            return ResourceWhitelistResources.model_validate(data or {})
+
+        @staticmethod
+        def user_access_policies(
+            tenant_id: str, account_id: str | None, dataset_id: str
+        ) -> ResourceUserAccessPoliciesResponse:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/datasets/user-access-policies",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id},
+            )
+            return ResourceUserAccessPoliciesResponse.model_validate(data or {})
+
+        @staticmethod
+        def replace_user_access_policies(
+            tenant_id: str,
+            account_id: str | None,
+            dataset_id: str,
+            target_account_id: str,
+            payload: ReplaceUserAccessPolicies,
+        ) -> ReplaceUserAccessPoliciesResponse:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/datasets/user-access-policies",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id, "account_id": target_account_id},
+                json=payload.model_dump(mode="json"),
+            )
+            return ReplaceUserAccessPoliciesResponse.model_validate(data or {})
+
+        @staticmethod
+        def whitelist(tenant_id: str, account_id: str | None, dataset_id: str) -> ResourceWhitelist:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/datasets/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id},
+            )
+            return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def replace_whitelist(
+            tenant_id: str,
+            account_id: str | None,
+            dataset_id: str,
+            payload: ReplaceMemberBindings,
+        ) -> ResourceWhitelist:
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/datasets/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id},
+                json=payload.model_dump(mode="json"),
+            )
+            return ResourceWhitelist.model_validate(data or {})
+
         @staticmethod
         def matrix(tenant_id: str, account_id: str | None, dataset_id: str) -> DatasetAccessMatrix:
             data = _inner_call(

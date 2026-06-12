@@ -269,6 +269,104 @@ class TestAccessPolicies:
 
 
 class TestResourceAccess:
+    def test_app_whitelist_resources(self, mock_send: MagicMock):
+        mock_send.return_value = {"unrestricted": True, "resource_ids": ["app-1", "app-2"]}
+
+        out = svc.RBACService.AppAccess.whitelist_resources("tenant-1", "acct-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/apps/whitelist/resources"
+        assert call.params is None
+        assert out.unrestricted is True
+        assert out.resource_ids == ["app-1", "app-2"]
+
+    def test_dataset_whitelist_resources(self, mock_send: MagicMock):
+        mock_send.return_value = {"resource_ids": ["dataset-1"]}
+
+        out = svc.RBACService.DatasetAccess.whitelist_resources("tenant-1", "acct-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist/resources"
+        assert call.params is None
+        assert out.resource_ids == ["dataset-1"]
+
+    def test_app_user_access_policies(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "data": [
+                {
+                    "account": {"account_id": "acct-1", "account_name": "Alice"},
+                    "roles": [
+                        {
+                            "id": "role-1",
+                            "type": "workspace",
+                            "name": "Editor",
+                            "permission_keys": [],
+                        }
+                    ],
+                    "access_policies": [
+                        {
+                            "id": "policy-1",
+                            "resource_type": "app",
+                            "name": "Can edit",
+                        }
+                    ],
+                }
+            ]
+        }
+
+        out = svc.RBACService.AppAccess.user_access_policies("tenant-1", "acct-1", "app-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/apps/user-access-policies"
+        assert call.params == {"app_id": "app-1"}
+        assert out.data[0].account.account_name == "Alice"
+        assert out.data[0].roles[0].id == "role-1"
+        assert out.data[0].access_policies[0].id == "policy-1"
+
+    def test_dataset_replace_user_access_policies(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "access_policies": [{"id": "policy-1", "resource_type": "dataset", "name": "Can edit"}]
+        }
+        payload = svc.ReplaceUserAccessPolicies(access_policy_ids=["policy-1"])
+
+        out = svc.RBACService.DatasetAccess.replace_user_access_policies(
+            "tenant-1", "acct-actor", "dataset-1", "acct-target", payload
+        )
+
+        call = _call_args(mock_send)
+        assert call.method == "PUT"
+        assert call.endpoint == "/rbac/datasets/user-access-policies"
+        assert call.params == {"dataset_id": "dataset-1", "account_id": "acct-target"}
+        assert call.json == {"access_policy_ids": ["policy-1"]}
+        assert out.access_policies[0].id == "policy-1"
+
+    def test_app_replace_whitelist(self, mock_send: MagicMock):
+        mock_send.return_value = {"account_ids": ["acct-1", "acct-2"]}
+        payload = svc.ReplaceMemberBindings(account_ids=["acct-1", "acct-2"])
+
+        out = svc.RBACService.AppAccess.replace_whitelist("tenant-1", "acct-1", "app-1", payload)
+
+        call = _call_args(mock_send)
+        assert call.method == "PUT"
+        assert call.endpoint == "/rbac/apps/whitelist"
+        assert call.params == {"app_id": "app-1"}
+        assert call.json == {"account_ids": ["acct-1", "acct-2"]}
+        assert out.account_ids == ["acct-1", "acct-2"]
+
+    def test_dataset_whitelist(self, mock_send: MagicMock):
+        mock_send.return_value = {"account_ids": ["acct-2"]}
+
+        out = svc.RBACService.DatasetAccess.whitelist("tenant-1", "acct-1", "dataset-1")
+
+        call = _call_args(mock_send)
+        assert call.method == "GET"
+        assert call.endpoint == "/rbac/datasets/whitelist"
+        assert call.params == {"dataset_id": "dataset-1"}
+        assert out.account_ids == ["acct-2"]
+
     def test_app_matrix(self, mock_send: MagicMock):
         mock_send.return_value = {"resource_id": "app-1", "items": []}
         out = svc.RBACService.AppAccess.matrix("tenant-1", "acct-1", "app-1")

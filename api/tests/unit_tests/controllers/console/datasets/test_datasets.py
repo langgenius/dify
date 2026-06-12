@@ -2,6 +2,7 @@ import datetime
 import json
 from contextlib import ExitStack
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -266,6 +267,10 @@ class TestDatasetList:
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
                     return_value=permissions,
                 ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(resource_ids=[]),
+                ),
                 patch.object(
                     ProviderManager,
                     "get_configurations",
@@ -276,6 +281,38 @@ class TestDatasetList:
 
         assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
         assert get_datasets.call_args.kwargs["include_own_datasets"] is True
+
+    def test_get_workspace_owner_bypasses_dataset_whitelist(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                default_permission_keys=["dataset.acl.readonly"]
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(unrestricted=True, resource_ids=[]),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] is None
 
     def test_get_limits_to_dataset_read_overrides(self, app: Flask):
         api = DatasetListApi()
@@ -304,6 +341,12 @@ class TestDatasetList:
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
                     return_value=permissions,
                 ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(
+                        resource_ids=["dataset-shared", "dataset-whitelist-only"]
+                    ),
+                ),
                 patch.object(
                     ProviderManager,
                     "get_configurations",
@@ -328,6 +371,10 @@ class TestDatasetList:
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
                     return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(resource_ids=[]),
                 ),
                 patch.object(
                     ProviderManager,

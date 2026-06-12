@@ -522,7 +522,6 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_preview", resource_required=False)
     @enterprise_license_required
     @with_session(write=False)
     @with_current_user_id
@@ -545,19 +544,34 @@ class AppListApi(Resource):
             current_user_id,
         )
         if dify_config.RBAC_ENABLED:
-            if "app.acl.view_layout" not in permissions.app.default_permission_keys:
-                accessible_app_ids = [
+            whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(
+                str(current_tenant_id),
+                current_user_id,
+            )
+            can_manage_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
+            has_default_preview = "app.preview" in permissions.app.default_permission_keys
+            permission_app_ids: set[str] | None = None
+            if not has_default_preview:
+                permission_app_ids = {
                     override.resource_id
                     for override in permissions.app.overrides
-                    if "app.acl.view_layout" in override.permission_keys
-                ]
-                if accessible_app_ids:
-                    params.accessible_app_ids = accessible_app_ids
-                    params.include_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
-                elif "app.create_and_management" in permissions.workspace.permission_keys:
-                    params.is_created_by_me = True
-                else:
-                    params.accessible_app_ids = []
+                    if "app.preview" in override.permission_keys
+                }
+
+            if getattr(whitelist_scope, "unrestricted", False):
+                accessible_app_ids = permission_app_ids
+            else:
+                accessible_app_ids = set(whitelist_scope.resource_ids)
+                if permission_app_ids is not None:
+                    accessible_app_ids &= permission_app_ids
+
+            if accessible_app_ids:
+                params.accessible_app_ids = sorted(accessible_app_ids)
+                params.include_own_apps = can_manage_own_apps
+            elif accessible_app_ids is not None and can_manage_own_apps:
+                params.is_created_by_me = True
+            elif accessible_app_ids is not None:
+                params.accessible_app_ids = []
 
         # get app list
         app_service = AppService()

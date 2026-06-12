@@ -1,19 +1,20 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from flask import request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from controllers.console import console_ns
 from controllers.console.wraps import rbac_permission_required
 from core.db.session_factory import session_factory
 from libs.login import current_account_with_tenant, login_required
-from models import Account
+from models import Account, TenantAccountJoin
 from services.enterprise import rbac_service as svc
 
 _LEGACY_ROLE_PERMISSION_KEYS: dict[str, list[str]] = {
@@ -110,6 +111,14 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
             if account_id and not account.account_name:
                 account.account_name = account_names.get(account_id, {}).get("name", "")
             account.avatar = account_names.get(account_id, {}).get("avatar", "")
+
+
+def _hydrate_resource_user_account_names(items: list[svc.ResourceUserAccessPolicies]) -> None:
+    account_names = _account_names_by_ids([item.account.account_id for item in items])
+    for item in items:
+        account_id = item.account.account_id
+        if account_id and not item.account.account_name:
+            item.account.account_name = account_names.get(account_id, {}).get("name", "")
 
 
 class _PaginationQuery(BaseModel):
@@ -434,9 +443,27 @@ class RBACAccessPolicyBindingUnlockApi(Resource):
 # ---------------------------------------------------------------------------
 
 
+class _AccessScope(StrEnum):
+    ALL = "all"
+    SPECIFIC = "specific"
+    ONLY_ME = "only_me"
+
+
+class _ResourceAccessScopeRequest(BaseModel):
+    scope: _AccessScope
+    account_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("account_ids", mode="before")
+    @classmethod
+    def _coerce_bindings(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
 class _ReplaceBindingsRequest(BaseModel):
-    role_ids: list[str] = []
-    account_ids: list[str] = []
+    role_ids: list[str] = Field(default_factory=list)
+    account_ids: list[str] = Field(default_factory=list)
 
     @field_validator("role_ids", "account_ids", mode="before")
     @classmethod
@@ -444,6 +471,29 @@ class _ReplaceBindingsRequest(BaseModel):
         if value is None:
             return []
         return value
+
+
+def _resolve_access_scope_account_ids(
+    tenant_id: str, account_id: str, payload: _ResourceAccessScopeRequest
+) -> list[str]:
+    if payload.scope is _AccessScope.ONLY_ME:
+        return [account_id]
+
+    requested_ids = sorted({value.strip() for value in payload.account_ids if value and value.strip()})
+    with session_factory.create_session() as session:
+        workspace_account_ids = set(
+            session.scalars(
+                select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == tenant_id)
+            ).all()
+        )
+
+    if payload.scope is _AccessScope.ALL:
+        return sorted(workspace_account_ids)
+
+    unknown_ids = sorted(set(requested_ids) - workspace_account_ids)
+    if unknown_ids:
+        raise BadRequest(f"Accounts do not belong to the current workspace: {', '.join(unknown_ids)}")
+    return requested_ids
 
 
 @console_ns.route("/workspaces/current/rbac/my-permissions")
@@ -471,6 +521,57 @@ class RBACAppMatrixApi(Resource):
         return _dump(result)
 
 
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/whitelist")
+class RBACAppWhitelistApi(Resource):
+    @login_required
+    def get(self, app_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AppAccess.whitelist(tenant_id, account_id, str(app_id)))
+
+    @login_required
+    def put(self, app_id):
+        tenant_id, account_id = _current_ids()
+        request = _payload(_ResourceAccessScopeRequest)
+        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
+        return _dump(
+            svc.RBACService.AppAccess.replace_whitelist(
+                tenant_id,
+                account_id,
+                str(app_id),
+                svc.ReplaceMemberBindings(account_ids=account_ids),
+            )
+        )
+
+
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/user-access-policies")
+class RBACAppUserAccessPoliciesApi(Resource):
+    @login_required
+    def get(self, app_id):
+        tenant_id, account_id = _current_ids()
+        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id))
+        _hydrate_resource_user_account_names(result.data)
+        return _dump(result)
+
+
+@console_ns.route(
+    "/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies"
+)
+class RBACAppUserAccessPolicyAssignmentApi(Resource):
+    @login_required
+    def put(self, app_id, target_account_id):
+        tenant_id, account_id = _current_ids()
+        payload = _payload(svc.ReplaceUserAccessPolicies)
+        return _dump(
+            svc.RBACService.AppAccess.replace_user_access_policies(
+                tenant_id,
+                account_id,
+                str(app_id),
+                str(target_account_id),
+                payload,
+            )
+        )
+
+
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<uuid:policy_id>/role-bindings")
 class RBACAppRoleBindingsApi(Resource):
     @login_required
@@ -491,15 +592,18 @@ class RBACAppMemberBindingsApi(Resource):
 class RBACAppBindingsApi(Resource):
     @login_required
     def put(self, app_id, policy_id):
+        # Compatibility route: resource scope is now stored in the resource
+        # whitelist and no longer depends on the policy id.
+        _ = policy_id
         tenant_id, account_id = _current_ids()
-        request = _payload(_ReplaceBindingsRequest)
+        request = _payload(_ResourceAccessScopeRequest)
+        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
         return _dump(
-            svc.RBACService.AppAccess.replace_bindings(
+            svc.RBACService.AppAccess.replace_whitelist(
                 tenant_id,
                 account_id,
                 str(app_id),
-                str(policy_id),
-                svc.ReplaceBindings(role_ids=list(request.role_ids), account_ids=list(request.account_ids)),
+                svc.ReplaceMemberBindings(account_ids=account_ids),
             )
         )
 
@@ -519,6 +623,57 @@ class RBACDatasetMatrixApi(Resource):
         return _dump(result)
 
 
+@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/whitelist")
+class RBACDatasetWhitelistApi(Resource):
+    @login_required
+    def get(self, dataset_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.DatasetAccess.whitelist(tenant_id, account_id, str(dataset_id)))
+
+    @login_required
+    def put(self, dataset_id):
+        tenant_id, account_id = _current_ids()
+        request = _payload(_ResourceAccessScopeRequest)
+        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
+        return _dump(
+            svc.RBACService.DatasetAccess.replace_whitelist(
+                tenant_id,
+                account_id,
+                str(dataset_id),
+                svc.ReplaceMemberBindings(account_ids=account_ids),
+            )
+        )
+
+
+@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")
+class RBACDatasetUserAccessPoliciesApi(Resource):
+    @login_required
+    def get(self, dataset_id):
+        tenant_id, account_id = _current_ids()
+        result = svc.RBACService.DatasetAccess.user_access_policies(tenant_id, account_id, str(dataset_id))
+        _hydrate_resource_user_account_names(result.data)
+        return _dump(result)
+
+
+@console_ns.route(
+    "/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies"
+)
+class RBACDatasetUserAccessPolicyAssignmentApi(Resource):
+    @login_required
+    def put(self, dataset_id, target_account_id):
+        tenant_id, account_id = _current_ids()
+        payload = _payload(svc.ReplaceUserAccessPolicies)
+        return _dump(
+            svc.RBACService.DatasetAccess.replace_user_access_policies(
+                tenant_id,
+                account_id,
+                str(dataset_id),
+                str(target_account_id),
+                payload,
+            )
+        )
+
+
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policies/<uuid:policy_id>/role-bindings")
 class RBACDatasetRoleBindingsApi(Resource):
     @login_required
@@ -533,15 +688,17 @@ class RBACDatasetRoleBindingsApi(Resource):
 class RBACDatasetBindingsApi(Resource):
     @login_required
     def put(self, dataset_id, policy_id):
+        # Compatibility route; see RBACAppBindingsApi.put.
+        _ = policy_id
         tenant_id, account_id = _current_ids()
-        request = _payload(_ReplaceBindingsRequest)
+        request = _payload(_ResourceAccessScopeRequest)
+        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
         return _dump(
-            svc.RBACService.DatasetAccess.replace_bindings(
+            svc.RBACService.DatasetAccess.replace_whitelist(
                 tenant_id,
                 account_id,
                 str(dataset_id),
-                str(policy_id),
-                svc.ReplaceBindings(role_ids=list(request.role_ids), account_ids=list(request.account_ids)),
+                svc.ReplaceMemberBindings(account_ids=account_ids),
             )
         )
 
