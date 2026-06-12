@@ -1,6 +1,6 @@
 import type { FetchContext, HttpMethod, ResolvedOptions } from './types.js'
 import { describe, expect, it } from 'vitest'
-import { backoffDelay, shouldRetry } from './retry.js'
+import { backoffDelay, isIdempotentRetryMethod, shouldRetry } from './retry.js'
 
 function ctxFor(method: HttpMethod): FetchContext {
   const options: ResolvedOptions = {
@@ -10,6 +10,7 @@ function ctxFor(method: HttpMethod): FetchContext {
     timeoutMs: undefined,
     retryAttempts: 0,
     throwOnError: true,
+    retryOnRateLimit: false,
   }
   return {
     request: new Request('https://x/y', { method }),
@@ -30,6 +31,11 @@ describe('shouldRetry', () => {
     expect(shouldRetry(res, ctxFor('GET'))).toBe(false)
   })
 
+  it('no longer retries 429 here (it has a dedicated branch in execute())', () => {
+    const res = new Response(null, { status: 429 })
+    expect(shouldRetry(res, ctxFor('GET'))).toBe(false)
+  })
+
   it('does not retry POST regardless of status', () => {
     const res = new Response(null, { status: 503 })
     expect(shouldRetry(res, ctxFor('POST'))).toBe(false)
@@ -47,6 +53,16 @@ describe('shouldRetry', () => {
 
   it('does not retry transport errors on non-retryable methods', () => {
     expect(shouldRetry(new Error('econnreset'), ctxFor('POST'))).toBe(false)
+  })
+})
+
+describe('isIdempotentRetryMethod', () => {
+  it('is true for GET/PUT/DELETE and false for POST/PATCH', () => {
+    expect(isIdempotentRetryMethod('GET')).toBe(true)
+    expect(isIdempotentRetryMethod('PUT')).toBe(true)
+    expect(isIdempotentRetryMethod('DELETE')).toBe(true)
+    expect(isIdempotentRetryMethod('POST')).toBe(false)
+    expect(isIdempotentRetryMethod('PATCH')).toBe(false)
   })
 })
 

@@ -12,6 +12,7 @@ export const ErrorCode = {
   ConfigInvalidKey: 'config_invalid_key',
   ConfigInvalidValue: 'config_invalid_value',
   NetworkConnection: 'network_connection',
+  RateLimited: 'rate_limited',
   Server5xx: 'server_5xx',
   Server4xxOther: 'server_4xx_other',
   ClientError: 'client_error',
@@ -28,6 +29,8 @@ export const ExitCode = {
   Usage: 2,
   Auth: 4,
   VersionCompat: 6,
+  // Distinct from Generic so wrappers can tell "rate limited, retry later" from a hard failure.
+  RateLimited: 7,
 } as const
 
 export type ExitCodeValue = (typeof ExitCode)[keyof typeof ExitCode]
@@ -46,6 +49,7 @@ const CODE_TO_EXIT: Readonly<Record<ErrorCodeValue, ExitCodeValue>> = {
   config_invalid_key: ExitCode.Usage,
   config_invalid_value: ExitCode.Usage,
   network_connection: ExitCode.Generic,
+  rate_limited: ExitCode.RateLimited,
   server_5xx: ExitCode.Generic,
   server_4xx_other: ExitCode.Generic,
   client_error: ExitCode.Generic,

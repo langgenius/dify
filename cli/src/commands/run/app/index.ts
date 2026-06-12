@@ -35,6 +35,7 @@ export default class RunApp extends DifyCommand {
     'workspace': Flags.string({ description: 'Workspace id (overrides DIFY_WORKSPACE_ID and stored default)' }),
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive (default: collect and print at end)', default: false }),
     'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
+    'retry-on-limit': Flags.boolean({ description: 'On a 429 rate limit, wait and retry this POST (bounded) instead of failing immediately. Off by default since running an app is not idempotent.', default: false }),
     'http-retry': httpRetryFlag,
     'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
   }
@@ -56,6 +57,7 @@ export default class RunApp extends DifyCommand {
         format,
         stream: flags.stream,
         think: flags.think,
+        retryOnRateLimit: flags['retry-on-limit'],
       },
       { active: ctx.active, http: ctx.http, host: ctx.host, io: ctx.io, cache: ctx.cache },
     )
