@@ -24,6 +24,18 @@ class OpaqueRawField(fields.Raw):
         return {"type": "object"}
 
 
+class StringListRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "array", "items": {"type": "string"}}
+
+
+class ObjectListRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "array", "items": {"type": "object"}}
+
+
 app_detail_kernel_fields = {
     "id": fields.String,
     "name": fields.String,
@@ -42,7 +54,7 @@ related_app_list = {
 
 model_config_fields = {
     "opening_statement": fields.String,
-    "suggested_questions": OpaqueRawField(attribute="suggested_questions_list"),
+    "suggested_questions": StringListRawField(attribute="suggested_questions_list"),
     "suggested_questions_after_answer": OpaqueRawField(attribute="suggested_questions_after_answer_dict"),
     "speech_to_text": OpaqueRawField(attribute="speech_to_text_dict"),
     "text_to_speech": OpaqueRawField(attribute="text_to_speech_dict"),
@@ -50,9 +62,9 @@ model_config_fields = {
     "annotation_reply": OpaqueRawField(attribute="annotation_reply_dict"),
     "more_like_this": OpaqueRawField(attribute="more_like_this_dict"),
     "sensitive_word_avoidance": OpaqueRawField(attribute="sensitive_word_avoidance_dict"),
-    "external_data_tools": OpaqueRawField(attribute="external_data_tools_list"),
+    "external_data_tools": ObjectListRawField(attribute="external_data_tools_list"),
     "model": OpaqueRawField(attribute="model_dict"),
-    "user_input_form": OpaqueRawField(attribute="user_input_form_list"),
+    "user_input_form": ObjectListRawField(attribute="user_input_form_list"),
     "dataset_query_variable": fields.String,
     "pre_prompt": fields.String,
     "agent_mode": OpaqueRawField(attribute="agent_mode_dict"),

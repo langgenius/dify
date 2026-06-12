@@ -17705,7 +17705,7 @@ Tag type
 | created_by | string |  | No |
 | dataset_configs | object |  | No |
 | dataset_query_variable | string |  | No |
-| external_data_tools | object |  | No |
+| external_data_tools | [ object ] |  | No |
 | file_upload | object |  | No |
 | model | object |  | No |
 | more_like_this | object |  | No |
@@ -17715,12 +17715,12 @@ Tag type
 | retriever_resource | object |  | No |
 | sensitive_word_avoidance | object |  | No |
 | speech_to_text | object |  | No |
-| suggested_questions | object |  | No |
+| suggested_questions | [ string ] |  | No |
 | suggested_questions_after_answer | object |  | No |
 | text_to_speech | object |  | No |
 | updated_at | long |  | No |
 | updated_by | string |  | No |
-| user_input_form | object |  | No |
+| user_input_form | [ object ] |  | No |
 
 #### TrialConversationVariable
 
@@ -17729,7 +17729,7 @@ Tag type
 | description | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
-| value | object |  | No |
+| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
 | value_type | string |  | No |
 
 #### TrialDataset
@@ -17785,7 +17785,7 @@ Tag type
 | allow_file_upload_methods | [ string ] |  | No |
 | allowed_file_types | [ string ] |  | No |
 | belong_to_node_id | string |  | No |
-| default_value | object |  | No |
+| default_value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
 | label | string |  | No |
 | max_length | integer |  | No |
 | options | [ string ] |  | No |
@@ -18460,7 +18460,7 @@ How a workflow node is bound to an Agent.
 | name | string |  | No |
 | selector | [ string ] |  | No |
 | type | string |  | No |
-| value | object |  | No |
+| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
 | value_type | string |  | No |
 | visible | boolean |  | No |
 

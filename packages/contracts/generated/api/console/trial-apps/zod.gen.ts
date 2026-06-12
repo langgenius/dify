@@ -112,7 +112,7 @@ export const zTrialAppModelConfig = z.object({
   created_by: z.string().optional(),
   dataset_configs: z.record(z.string(), z.unknown()).optional(),
   dataset_query_variable: z.string().optional(),
-  external_data_tools: z.record(z.string(), z.unknown()).optional(),
+  external_data_tools: z.array(z.record(z.string(), z.unknown())).optional(),
   file_upload: z.record(z.string(), z.unknown()).optional(),
   model: z.record(z.string(), z.unknown()).optional(),
   more_like_this: z.record(z.string(), z.unknown()).optional(),
@@ -122,7 +122,7 @@ export const zTrialAppModelConfig = z.object({
   retriever_resource: z.record(z.string(), z.unknown()).optional(),
   sensitive_word_avoidance: z.record(z.string(), z.unknown()).optional(),
   speech_to_text: z.record(z.string(), z.unknown()).optional(),
-  suggested_questions: z.record(z.string(), z.unknown()).optional(),
+  suggested_questions: z.array(z.string()).optional(),
   suggested_questions_after_answer: z.record(z.string(), z.unknown()).optional(),
   text_to_speech: z.record(z.string(), z.unknown()).optional(),
   updated_at: z.coerce
@@ -135,7 +135,7 @@ export const zTrialAppModelConfig = z.object({
     })
     .optional(),
   updated_by: z.string().optional(),
-  user_input_form: z.record(z.string(), z.unknown()).optional(),
+  user_input_form: z.array(z.record(z.string(), z.unknown())).optional(),
 })
 
 export const zTrialSite = z.object({
@@ -331,7 +331,16 @@ export const zTrialConversationVariable = z.object({
   description: z.string().optional(),
   id: z.string().optional(),
   name: z.string().optional(),
-  value: z.record(z.string(), z.unknown()).optional(),
+  value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
   value_type: z.string().optional(),
 })
 
@@ -346,7 +355,16 @@ export const zTrialPipelineVariable = z.object({
   allow_file_upload_methods: z.array(z.string()).optional(),
   allowed_file_types: z.array(z.string()).optional(),
   belong_to_node_id: z.string().optional(),
-  default_value: z.record(z.string(), z.unknown()).optional(),
+  default_value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
   label: z.string().optional(),
   max_length: z.int().optional(),
   options: z.array(z.string()).optional(),

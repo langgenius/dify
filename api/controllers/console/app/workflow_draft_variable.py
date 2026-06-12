@@ -50,6 +50,22 @@ class OpaqueRawField(fields.Raw):
         return {"type": "object"}
 
 
+class JsonValueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "integer"},
+                {"type": "number"},
+                {"type": "boolean"},
+                {"type": "object", "additionalProperties": True},
+                {"type": "array", "items": {}},
+                {"type": "null"},
+            ]
+        }
+
+
 class WorkflowDraftVariableListQuery(BaseModel):
     page: int = Field(default=1, ge=1, le=100_000, description="Page number")
     limit: int = Field(default=20, ge=1, le=100, description="Items per page")
@@ -185,7 +201,7 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
 
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = {
     **_WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
-    "value": OpaqueRawField(attribute=_serialize_var_value),
+    "value": JsonValueRawField(attribute=_serialize_var_value),
     "full_content": OpaqueRawField(attribute=_serialize_full_content),
 }
 

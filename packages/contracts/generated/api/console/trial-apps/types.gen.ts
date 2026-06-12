@@ -170,9 +170,9 @@ export type TrialAppModelConfig = {
     [key: string]: unknown
   }
   dataset_query_variable?: string
-  external_data_tools?: {
+  external_data_tools?: Array<{
     [key: string]: unknown
-  }
+  }>
   file_upload?: {
     [key: string]: unknown
   }
@@ -194,9 +194,7 @@ export type TrialAppModelConfig = {
   speech_to_text?: {
     [key: string]: unknown
   }
-  suggested_questions?: {
-    [key: string]: unknown
-  }
+  suggested_questions?: Array<string>
   suggested_questions_after_answer?: {
     [key: string]: unknown
   }
@@ -205,9 +203,9 @@ export type TrialAppModelConfig = {
   }
   updated_at?: number
   updated_by?: string
-  user_input_form?: {
+  user_input_form?: Array<{
     [key: string]: unknown
-  }
+  }>
 }
 
 export type TrialSite = {
@@ -289,9 +287,16 @@ export type TrialConversationVariable = {
   description?: string
   id?: string
   name?: string
-  value?: {
-    [key: string]: unknown
-  }
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
   value_type?: string
 }
 
@@ -306,9 +311,16 @@ export type TrialPipelineVariable = {
   allow_file_upload_methods?: Array<string>
   allowed_file_types?: Array<string>
   belong_to_node_id?: string
-  default_value?: {
-    [key: string]: unknown
-  }
+  default_value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
   label?: string
   max_length?: number
   options?: Array<string>

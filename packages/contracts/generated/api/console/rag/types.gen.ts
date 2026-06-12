@@ -293,9 +293,16 @@ export type WorkflowDraftVariable = {
   name?: string
   selector?: Array<string>
   type?: string
-  value?: {
-    [key: string]: unknown
-  }
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
   value_type?: string
   visible?: boolean
 }

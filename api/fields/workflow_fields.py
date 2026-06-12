@@ -18,6 +18,22 @@ class OpaqueRawField(fields.Raw):
         return {"type": "object"}
 
 
+class JsonValueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "integer"},
+                {"type": "number"},
+                {"type": "boolean"},
+                {"type": "object", "additionalProperties": True},
+                {"type": "array", "items": {}},
+                {"type": "null"},
+            ]
+        }
+
+
 class EnvironmentVariableField(fields.Raw):
     @override
     def schema(self) -> dict[str, object]:
@@ -58,7 +74,7 @@ conversation_variable_fields = {
     "id": fields.String,
     "name": fields.String,
     "value_type": fields.String(attribute=serialize_value_type),
-    "value": OpaqueRawField,
+    "value": JsonValueRawField,
     "description": fields.String,
 }
 
@@ -70,7 +86,7 @@ pipeline_variable_fields = {
     "max_length": fields.Integer,
     "required": fields.Boolean,
     "unit": fields.String,
-    "default_value": OpaqueRawField,
+    "default_value": JsonValueRawField,
     "options": fields.List(fields.String),
     "placeholder": fields.String,
     "tooltips": fields.String,
