@@ -1,10 +1,12 @@
 'use client'
 
 import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
+import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { useTools } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -81,15 +83,43 @@ function AddToolMenuItem({
 
 function AddToolMenu({
   onAddCliTool,
+  onAddTools,
+  selectedTools,
 }: {
   onAddCliTool: () => void
+  onAddTools: (tools: ToolDefaultValue[]) => void
+  selectedTools: ToolValue[]
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
+  const [isToolPickerOpen, setIsToolPickerOpen] = useState(false)
+
+  const openToolPicker = () => {
+    setOpen(false)
+    setIsToolPickerOpen(true)
+  }
 
   const openCliToolDialog = () => {
     setOpen(false)
     onAddCliTool()
+  }
+
+  if (isToolPickerOpen) {
+    return (
+      <ToolPicker
+        trigger={<ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.tools.add')} />}
+        placement="bottom-end"
+        offset={4}
+        panelClassName="w-[400px] overflow-hidden"
+        isShow={isToolPickerOpen}
+        onShowChange={setIsToolPickerOpen}
+        disabled={false}
+        supportAddCustomTool
+        selectedTools={selectedTools}
+        onSelect={tool => onAddTools([tool])}
+        onSelectMultiple={onAddTools}
+      />
+    )
   }
 
   return (
@@ -108,7 +138,7 @@ function AddToolMenu({
           iconClassName="i-ri-box-3-line"
           label={t('agentDetail.configure.tools.addMenu.tool.label')}
           description={t('agentDetail.configure.tools.addMenu.tool.description')}
-          onClick={() => setOpen(false)}
+          onClick={openToolPicker}
         />
         <AddToolMenuItem
           iconClassName="i-ri-terminal-box-line"
@@ -120,6 +150,70 @@ function AddToolMenu({
       </PopoverContent>
     </Popover>
   )
+}
+
+const toSelectedToolValue = (tool: AgentTool): ToolValue[] => {
+  if (tool.kind !== 'provider')
+    return []
+
+  return tool.actions.map(action => ({
+    provider_name: tool.id,
+    tool_name: action.toolName,
+    tool_label: action.name,
+    tool_description: action.description,
+  }))
+}
+
+const toProviderToolAction = (tool: ToolDefaultValue) => ({
+  id: `${tool.provider_id}:${tool.tool_name}`,
+  name: tool.tool_label || tool.title || tool.tool_name,
+  toolName: tool.tool_name,
+  description: tool.tool_description || '',
+})
+
+const getCredentialVariant = (tool: ToolDefaultValue) =>
+  tool.is_team_authorization ? 'authorized' as const : 'endUser' as const
+
+const addProviderTools = (
+  currentTools: AgentTool[],
+  selectedTools: ToolDefaultValue[],
+): AgentTool[] => {
+  if (selectedTools.length === 0)
+    return currentTools
+
+  const nextTools = [...currentTools]
+
+  selectedTools.forEach((selectedTool) => {
+    const action = toProviderToolAction(selectedTool)
+    const existingToolIndex = nextTools.findIndex(tool => tool.kind === 'provider' && tool.id === selectedTool.provider_id)
+    const existingTool = nextTools[existingToolIndex]
+
+    if (existingTool?.kind === 'provider') {
+      if (existingTool.actions.some(existingAction => existingAction.toolName === action.toolName))
+        return
+
+      nextTools[existingToolIndex] = {
+        ...existingTool,
+        actions: [...existingTool.actions, action],
+      }
+      return
+    }
+
+    nextTools.push({
+      id: selectedTool.provider_id,
+      name: selectedTool.provider_name,
+      kind: 'provider',
+      iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+      providerType: selectedTool.provider_type,
+      credentialKey: selectedTool.is_team_authorization
+        ? 'agentDetail.configure.tools.credential.authOne'
+        : 'agentDetail.configure.tools.credential.endUserOAuth',
+      credentialVariant: getCredentialVariant(selectedTool),
+      actions: [action],
+    })
+  })
+
+  return nextTools
 }
 
 export function AgentTools() {
@@ -166,6 +260,7 @@ export function AgentTools() {
 
     setIsCliToolDialogOpen(open)
   }
+  const selectedTools = tools.flatMap(toSelectedToolValue)
 
   return (
     <>
@@ -178,7 +273,11 @@ export function AgentTools() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={(
-          <AddToolMenu onAddCliTool={openCliToolDialog} />
+          <AddToolMenu
+            onAddCliTool={openCliToolDialog}
+            onAddTools={selectedTools => setTools(addProviderTools(tools, selectedTools))}
+            selectedTools={selectedTools}
+          />
         )}
       >
         {tools.length === 0

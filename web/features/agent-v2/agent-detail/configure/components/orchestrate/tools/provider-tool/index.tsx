@@ -42,7 +42,7 @@ const createToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
   description: localize(`${tool.name} tools`),
   icon: '',
   label: localize(tool.name),
-  type: CollectionType.builtIn,
+  type: (tool.providerType as CollectionType | undefined) ?? CollectionType.builtIn,
   team_credentials: {},
   is_team_authorization: true,
   allow_delete: false,

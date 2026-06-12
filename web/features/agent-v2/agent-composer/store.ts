@@ -67,7 +67,7 @@ const toDifyToolConfigs = (
     name: action.name,
     provider: tool.name,
     provider_id: tool.id,
-    provider_type: 'builtin',
+    provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
     runtime_parameters: toolSettings[action.id] ?? {},
     credential_type: tool.credentialVariant === 'endUser' ? 'oauth2' as const : 'api-key' as const,

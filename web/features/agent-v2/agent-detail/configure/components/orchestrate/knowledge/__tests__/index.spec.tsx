@@ -61,6 +61,34 @@ describe('AgentKnowledgeRetrieval', () => {
 
       expect(within(dialog).getByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription')).toBeInTheDocument()
     })
+
+    it('should open the knowledge retrieval dialog from the edit button', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval()
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      }))
+
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+      expect(within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
+      })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
+    })
+
+    it('should remove the knowledge retrieval row from the remove button', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval()
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      }))
+
+      expect(screen.queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')).not.toBeInTheDocument()
+      expect(screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.empty.title')).toBeInTheDocument()
+    })
   })
 
   describe('Edge Cases', () => {

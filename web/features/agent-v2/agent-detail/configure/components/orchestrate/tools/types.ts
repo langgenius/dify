@@ -16,6 +16,7 @@ export type AgentToolAction = {
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
   iconClassName: string
+  providerType?: string
   credentialKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
   credentialVariant: 'authorized' | 'endUser'
   actions: AgentToolAction[]
