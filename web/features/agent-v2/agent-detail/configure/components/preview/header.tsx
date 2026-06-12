@@ -5,15 +5,11 @@ import { useTranslation } from 'react-i18next'
 
 export function AgentPreviewHeader({
   isChatFeaturesOpen,
-  isVersionsOpen,
   onToggleChatFeatures,
-  onToggleVersions,
   onRestart,
 }: {
   isChatFeaturesOpen: boolean
-  isVersionsOpen: boolean
   onToggleChatFeatures: () => void
-  onToggleVersions: () => void
   onRestart: () => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -44,18 +40,6 @@ export function AgentPreviewHeader({
         >
           <span aria-hidden className="i-ri-apps-2-add-line size-4" />
           <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
-        </button>
-        <button
-          type="button"
-          aria-pressed={isVersionsOpen}
-          onClick={onToggleVersions}
-          className={cn(
-            'flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-            isVersionsOpen && 'bg-state-base-hover text-text-secondary',
-          )}
-          aria-label={t('agentDetail.configure.preview.settings')}
-        >
-          <span aria-hidden className="i-ri-equalizer-2-line size-4" />
         </button>
       </div>
     </div>

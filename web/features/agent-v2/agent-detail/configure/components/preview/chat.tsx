@@ -272,24 +272,20 @@ function AgentPreviewChatEmptyState({
 
 export function AgentPreviewChat({
   appId,
-  activeVersionId,
   agentIcon,
   agentIconBackground,
   agentIconType,
   agentName,
   agentSoulConfig,
-  isConfigPending,
   clearChatList,
   onClearChatListChange,
 }: {
   appId?: string | null
-  activeVersionId?: string | null
   agentIcon?: string | null
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
-  isConfigPending: boolean
   clearChatList: boolean
   onClearChatListChange: (clearChatList: boolean) => void
 }) {
@@ -412,7 +408,6 @@ export function AgentPreviewChat({
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
-      inputDisabled={!appId || (!!activeVersionId && isConfigPending)}
       noSpacing
     />
   )

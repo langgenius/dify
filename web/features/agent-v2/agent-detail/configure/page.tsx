@@ -99,22 +99,18 @@ function AgentConfigurePageContent({
         <div className="flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
           <AgentPreviewHeader
             isChatFeaturesOpen={showChatFeatures}
-            isVersionsOpen={showPreviewVersions}
             onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
-            onToggleVersions={() => setShowPreviewVersions(open => !open)}
             onRestart={() => setClearPreviewChat(true)}
           />
 
           <div className="min-h-0 flex-1">
             <AgentPreviewChat
               appId={agentQuery.data?.app_id}
-              activeVersionId={activeVersionId}
               agentIcon={agentQuery.data?.icon}
               agentIconBackground={agentQuery.data?.icon_background}
               agentIconType={agentQuery.data?.icon_type}
               agentName={agentQuery.data?.name}
               agentSoulConfig={previewAgentSoulConfig}
-              isConfigPending={versionQuery.isPending}
               clearChatList={clearPreviewChat}
               onClearChatListChange={setClearPreviewChat}
             />

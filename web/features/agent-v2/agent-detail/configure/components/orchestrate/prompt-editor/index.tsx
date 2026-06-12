@@ -2,6 +2,7 @@
 
 import type { KeyboardEvent, MouseEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
@@ -18,7 +19,7 @@ import {
 } from '@/features/agent-v2/agent-composer/store'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentPromptOptionMenu } from './option-menu'
-import { appendToken, insertOptions, mentionOptions, replaceTrailingSlashWithToken } from './options'
+import { appendToken, insertOptions, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
 const subscribeHydrationState = () => () => {}
@@ -28,6 +29,35 @@ const useIsHydrated = () => useSyncExternalStore(
   () => true,
   () => false,
 )
+
+function AgentPromptPlaceholder({
+  insertLabel,
+  mentionLabel,
+  text,
+}: {
+  insertLabel: string
+  mentionLabel: string
+  text: string
+}) {
+  return (
+    <span className="flex items-center gap-0.5 system-sm-regular whitespace-nowrap text-components-input-text-placeholder">
+      <span>{text}</span>
+      <Kbd className="text-text-placeholder">
+        /
+      </Kbd>
+      <span className="underline decoration-dotted underline-offset-2">
+        {insertLabel}
+      </span>
+      <span>,</span>
+      <Kbd className="text-text-placeholder">
+        @
+      </Kbd>
+      <span className="underline decoration-dotted underline-offset-2">
+        {mentionLabel}
+      </span>
+    </span>
+  )
+}
 
 const getLastTextContent = (node: Node): string => {
   if (node.nodeType === Node.TEXT_NODE)
@@ -74,6 +104,13 @@ export function AgentPromptEditor() {
   const addActions = useAgentOrchestrateAddActions()
   const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
+  const promptPlaceholder = (
+    <AgentPromptPlaceholder
+      text={t('agentDetail.configure.prompt.placeholder')}
+      insertLabel={t('agentDetail.configure.prompt.insert.label').toLocaleLowerCase()}
+      mentionLabel={t('agentDetail.configure.prompt.mention.label').toLocaleLowerCase()}
+    />
+  )
   const count = value.length
   const { copied, copy, reset } = useClipboard({
     onCopyError: () => {
@@ -238,18 +275,19 @@ export function AgentPromptEditor() {
         onPointerDownCapture={handleRootPointerDown}
       >
         <div
-          className="overflow-hidden rounded-[10px] border-[1.5px] border-components-input-border-active-prompt-1 bg-components-input-bg-active shadow-xs shadow-shadow-shadow-3"
+          className="min-h-20 overflow-hidden rounded-[10px] border-[1.5px] border-transparent bg-components-input-bg-normal pt-1 focus-within:border-components-input-border-active-prompt-1 focus-within:bg-components-input-bg-active focus-within:shadow-xs focus-within:shadow-shadow-shadow-3"
           onKeyDownCapture={handleEditorKeyDown}
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
         >
-          <div ref={editorRef} className="h-80 max-h-80 overflow-y-auto px-3 pt-2">
+          <div ref={editorRef} className="h-8 min-h-8 overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               compact
-              wrapperClassName="min-h-80"
-              className="min-h-80 text-text-primary"
-              placeholder={t('agentDetail.configure.prompt.placeholder')}
+              wrapperClassName="min-h-8"
+              className="min-h-8 text-text-primary"
+              placeholder={promptPlaceholder}
+              placeholderClassName="top-0!"
               value={value}
               onChange={onChange}
               variableBlock={{
@@ -263,18 +301,12 @@ export function AgentPromptEditor() {
             />
           </div>
 
-          <div className="flex min-h-9 items-center gap-2 px-2.5 py-1.5">
+          <div className="flex h-9 min-h-9 items-center gap-2 px-2.5 py-1.5">
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
               <AgentPromptOptionMenu
                 label={t('agentDetail.configure.prompt.insert.label')}
                 icon="i-custom-vender-agent-v2-prompt-insert"
                 options={insertOptions}
-                onInsert={handleInsert}
-              />
-              <AgentPromptOptionMenu
-                label={t('agentDetail.configure.prompt.mention.label')}
-                icon="i-ri-at-line"
-                options={mentionOptions}
                 onInsert={handleInsert}
               />
             </div>
