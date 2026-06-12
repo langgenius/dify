@@ -16,7 +16,7 @@ from libs.login import current_account_with_tenant
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
-from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+from tasks.annotation.batch_import_annotations_task import AnnotationImportRecord, batch_import_annotations_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
@@ -65,13 +65,6 @@ class UpsertAnnotationArgs(TypedDict, total=False):
 
 class InsertAnnotationArgs(TypedDict):
     """Expected shape of the args dict passed to insert_app_annotation_directly."""
-
-    question: str
-    answer: str
-
-
-class AnnotationImportRecord(TypedDict):
-    """Normalized annotation record parsed from a supported import file."""
 
     question: str
     answer: str
