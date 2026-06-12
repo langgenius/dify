@@ -30,6 +30,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { createDSLRun, debugAndRepairDSLAgentDraftRun, getDSLRun, importDSL, importDSLConfirm } from '@/service/apps'
+import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
@@ -115,6 +116,17 @@ const EMPTY_GUIDE_FIELDS: BuilderGuideFields = {
   testInput: '',
 }
 
+const APP_TYPE_OPTIONS = [
+  {
+    mode: AppModeEnum.WORKFLOW,
+    label: 'newApp.dslAgentAppType.workflow',
+  },
+  {
+    mode: AppModeEnum.ADVANCED_CHAT,
+    label: 'newApp.dslAgentAppType.chatflow',
+  },
+]
+
 const GUIDE_FIELD_CONFIG: Array<{
   key: keyof BuilderGuideFields
   label: string
@@ -175,11 +187,18 @@ const redactSecretLikeText = (value: string) => {
     .replace(/((?:api[_\s-]?key|token|secret|password|credential)\s*[:=]\s*)([^\s,;]+)/gi, '$1[redacted]')
 }
 
-const buildStructuredRequirement = (basePrompt: string, guideFields: BuilderGuideFields, currentYaml?: string) => {
+const buildStructuredRequirement = (
+  basePrompt: string,
+  guideFields: BuilderGuideFields,
+  appMode: AppModeEnum,
+  currentYaml?: string,
+) => {
   const sections: string[] = []
   const prompt = basePrompt.trim()
   if (prompt)
     sections.push(prompt)
+
+  sections.push(`Target app type: ${appMode}.`)
 
   const fieldEntries = [
     ['Trigger', guideFields.trigger],
@@ -239,7 +258,9 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   const { t } = useTranslation()
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiAppName, setAiAppName] = useState('')
+  const [selectedAppMode, setSelectedAppMode] = useState<AppModeEnum>(AppModeEnum.WORKFLOW)
   const [guideFields, setGuideFields] = useState<BuilderGuideFields>(EMPTY_GUIDE_FIELDS)
+  const [showGuideFields, setShowGuideFields] = useState(false)
   const [selectedModel, setSelectedModel] = useState<DefaultModel>()
   const [generatedResult, setGeneratedResult] = useState<DSLGenerateResponse>()
   const [generatedYaml, setGeneratedYaml] = useState('')
@@ -377,7 +398,9 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
       return
     setAiPrompt('')
     setAiAppName('')
+    setSelectedAppMode(AppModeEnum.WORKFLOW)
     setGuideFields(EMPTY_GUIDE_FIELDS)
+    setShowGuideFields(false)
     setGeneratedResult(undefined)
     setGeneratedYaml('')
     setImportedApp(undefined)
@@ -485,10 +508,11 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
   const createAndPollDslAgentRun = async () => {
     startDslAgentStage(DslAgentStage.PLAN)
-    const prompt = buildStructuredRequirement(aiPrompt.trim(), guideFields, generatedYaml)
+    const prompt = buildStructuredRequirement(aiPrompt.trim(), guideFields, selectedAppMode, generatedYaml)
     let run = await createDSLRun({
       prompt,
       app_name: aiAppName.trim() || undefined,
+      app_mode: selectedAppMode,
       provider: activeModel?.provider,
       model: activeModel?.model,
       input_variable: 'input',
@@ -824,6 +848,26 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
+                  <div className="mb-1 system-md-semibold text-text-secondary">{t('newApp.dslAgentAppType', { ns: 'app' })}</div>
+                  <div className="grid w-full grid-cols-2 rounded-lg bg-background-section-burn p-1">
+                    {APP_TYPE_OPTIONS.map(option => (
+                      <button
+                        key={option.mode}
+                        type="button"
+                        className={cn(
+                          'h-9 rounded-md px-3 system-sm-medium transition-colors',
+                          selectedAppMode === option.mode
+                            ? 'bg-components-panel-bg text-text-primary shadow-xs'
+                            : 'text-text-tertiary hover:text-text-secondary',
+                        )}
+                        onClick={() => setSelectedAppMode(option.mode)}
+                      >
+                        {t(option.label, { ns: 'app' })}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
                   <div className="mb-1 system-md-semibold text-text-secondary">{t('newApp.dslAgentPrompt', { ns: 'app' })}</div>
                   <Textarea
                     className="min-h-[84px]"
@@ -860,32 +904,44 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                {GUIDE_FIELD_CONFIG.map((field) => {
-                  const value = guideFields[field.key]
-                  const setValue = (nextValue: string) => setGuideFields(prev => ({ ...prev, [field.key]: nextValue }))
-                  return (
-                    <div key={field.key} className={field.wide ? 'sm:col-span-2' : undefined}>
-                      <div className="mb-1 system-sm-semibold text-text-secondary">{t(field.label, { ns: 'app' })}</div>
-                      {field.multiline
-                        ? (
-                            <Textarea
-                              className="min-h-[56px]"
-                              placeholder={t(field.placeholder, { ns: 'app' }) || ''}
-                              value={value}
-                              onChange={e => setValue(e.target.value)}
-                            />
-                          )
-                        : (
-                            <Input
-                              placeholder={t(field.placeholder, { ns: 'app' }) || ''}
-                              value={value}
-                              onChange={e => setValue(e.target.value)}
-                            />
-                          )}
-                    </div>
-                  )
-                })}
+              <div>
+                <button
+                  type="button"
+                  className="flex h-8 items-center gap-1 rounded-lg px-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                  onClick={() => setShowGuideFields(prev => !prev)}
+                >
+                  <span className={cn('i-ri-arrow-right-s-line h-4 w-4 transition-transform', showGuideFields && 'rotate-90')} />
+                  {t(showGuideFields ? 'newApp.dslAgentHideDetails' : 'newApp.dslAgentAddDetails', { ns: 'app' })}
+                </button>
+                {showGuideFields && (
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {GUIDE_FIELD_CONFIG.map((field) => {
+                      const value = guideFields[field.key]
+                      const setValue = (nextValue: string) => setGuideFields(prev => ({ ...prev, [field.key]: nextValue }))
+                      return (
+                        <div key={field.key} className={field.wide ? 'sm:col-span-2' : undefined}>
+                          <div className="mb-1 system-sm-semibold text-text-secondary">{t(field.label, { ns: 'app' })}</div>
+                          {field.multiline
+                            ? (
+                                <Textarea
+                                  className="min-h-[56px]"
+                                  placeholder={t(field.placeholder, { ns: 'app' }) || ''}
+                                  value={value}
+                                  onChange={e => setValue(e.target.value)}
+                                />
+                              )
+                            : (
+                                <Input
+                                  placeholder={t(field.placeholder, { ns: 'app' }) || ''}
+                                  value={value}
+                                  onChange={e => setValue(e.target.value)}
+                                />
+                              )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {!!generatedYaml && (

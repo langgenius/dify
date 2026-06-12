@@ -2,6 +2,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
+import { AppModeEnum } from '@/types/app'
 import CreateFromAIModal from '../index'
 
 const mockPush = vi.fn()
@@ -253,8 +254,9 @@ describe('CreateFromAIModal', () => {
     })
 
     expect(mockCreateDSLRun).toHaveBeenCalledWith({
-      prompt: 'Summarize customer support tickets.',
+      prompt: 'Summarize customer support tickets.\n\nTarget app type: workflow.',
       app_name: 'Support Summarizer',
+      app_mode: AppModeEnum.WORKFLOW,
       provider: 'langgenius/openai/openai',
       model: 'gpt-5.5',
       input_variable: 'input',
@@ -335,6 +337,7 @@ describe('CreateFromAIModal', () => {
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
       target: { value: 'Build an onboarding workflow.' },
     })
+    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAddDetails/i }))
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.triggerPlaceholder'), {
       target: { value: 'Manual run from sales team' },
     })
@@ -357,6 +360,7 @@ describe('CreateFromAIModal', () => {
 
     const prompt = mockCreateDSLRun.mock.calls[0][0].prompt
     expect(prompt).toContain('Build an onboarding workflow.')
+    expect(prompt).toContain('Target app type: workflow.')
     expect(prompt).toContain('Guided workflow requirements:')
     expect(prompt).toContain('- Trigger: Manual run from sales team')
     expect(prompt).toContain('- Data source: HubSpot company notes')
@@ -441,6 +445,7 @@ describe('CreateFromAIModal', () => {
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
       target: { value: 'Build a workflow that needs runtime repair.' },
     })
+    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAddDetails/i }))
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.testInputPlaceholder'), {
       target: { value: 'Mock input for draft execution' },
     })
@@ -539,6 +544,37 @@ describe('CreateFromAIModal', () => {
     expect(mockCreateDSLRun).toHaveBeenCalledWith(expect.objectContaining({
       provider: 'langgenius/openai/openai',
       model: 'gpt-4o',
+    }))
+  })
+
+  it('should pass the selected app type to the DSL agent run', async () => {
+    mockCreateDSLRun.mockResolvedValue(buildDslRun())
+    mockImportDSL.mockResolvedValue({
+      id: 'import-ai',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-ai',
+      app_mode: AppModeEnum.ADVANCED_CHAT,
+    })
+
+    render(
+      <CreateFromAIModal
+        show
+        onClose={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAppType\.chatflow/i }))
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Build a chatflow that answers support questions.' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    expect(mockCreateDSLRun).toHaveBeenCalledWith(expect.objectContaining({
+      app_mode: AppModeEnum.ADVANCED_CHAT,
+      prompt: 'Build a chatflow that answers support questions.\n\nTarget app type: advanced-chat.',
     }))
   })
 

@@ -51,6 +51,7 @@ export type DSLGenerateRequest = {
   prompt: string
   app_name?: string
   app_description?: string
+  app_mode?: AppModeEnum
   provider?: string
   model?: string
   generation_backend?: string

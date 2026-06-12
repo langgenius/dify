@@ -7,6 +7,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from libs.login import current_account_with_tenant, login_required
 from models.model import AppMode
 from services.app_dsl_agent_service import (
+    DEFAULT_APP_MODE,
     DEFAULT_INPUT_VARIABLE,
     DEFAULT_MODEL_NAME,
     DEFAULT_MODEL_PROVIDER,
@@ -30,6 +31,7 @@ class AppDslAgentGeneratePayload(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=8000)
     app_name: str | None = Field(None, max_length=80)
     app_description: str | None = Field(None, max_length=240)
+    app_mode: str = Field(DEFAULT_APP_MODE, max_length=32)
     provider: str = Field(DEFAULT_MODEL_PROVIDER, max_length=255)
     model: str = Field(DEFAULT_MODEL_NAME, max_length=255)
     generation_backend: str | None = Field(None, max_length=64)
@@ -91,6 +93,7 @@ class AppDslAgentGenerateApi(Resource):
                 prompt=args.prompt,
                 app_name=args.app_name,
                 app_description=args.app_description,
+                app_mode=args.app_mode,
                 provider=args.provider,
                 model=args.model,
                 generation_backend=args.generation_backend,
@@ -124,6 +127,7 @@ class AppDslAgentRunsApi(Resource):
                 prompt=args.prompt,
                 app_name=args.app_name,
                 app_description=args.app_description,
+                app_mode=args.app_mode,
                 provider=args.provider,
                 model=args.model,
                 generation_backend=args.generation_backend,

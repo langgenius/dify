@@ -105,6 +105,33 @@ def test_generate_builds_importable_workflow_yaml(monkeypatch):
     assert result.metadata["repair"]["backend"] == "not_needed"
 
 
+def test_generate_builds_importable_chatflow_yaml(monkeypatch):
+    monkeypatch.setattr(
+        app_dsl_agent_service.DependenciesAnalysisService,
+        "generate_latest_dependencies",
+        lambda _plugin_ids: [],
+    )
+
+    result = AppDslAgentService().generate(
+        AppDslAgentGenerateArgs(
+            prompt="Answer customer support questions conversationally.",
+            app_mode="advanced-chat",
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            resolve_dependencies=False,
+        )
+    )
+    data = yaml.safe_load(result.yaml_content)
+    nodes = {node["id"]: node for node in data["workflow"]["graph"]["nodes"]}
+
+    assert data["app"]["mode"] == "advanced-chat"
+    assert result.metadata["mode"] == "advanced-chat"
+    assert nodes["answer"]["type"] == "answer"
+    assert nodes["answer"]["data"]["answer"] == "{{#llm.text#}}"
+    assert "end" not in nodes
+    assert result.metadata["validation"]["valid"] is True
+
+
 def test_deterministic_starter_builds_classifier_graph(monkeypatch):
     monkeypatch.setattr(
         app_dsl_agent_service.DependenciesAnalysisService,

@@ -23,6 +23,7 @@ DEFAULT_MODEL_PROVIDER = "langgenius/openai/openai"
 DEFAULT_MODEL_NAME = "gpt-4o-mini"
 DEFAULT_GENERATION_MODEL = "gpt-5.5"
 DEFAULT_INPUT_VARIABLE = "input"
+DEFAULT_APP_MODE = "workflow"
 DEFAULT_APP_NAME = "DSL Agent App"
 GENERATION_BACKEND_DETERMINISTIC = "deterministic_starter"
 GENERATION_BACKEND_OPENAI = "openai"
@@ -114,6 +115,7 @@ class AppDslAgentGenerateArgs:
     prompt: str
     app_name: str | None = None
     app_description: str | None = None
+    app_mode: str = DEFAULT_APP_MODE
     provider: str = DEFAULT_MODEL_PROVIDER
     model: str = DEFAULT_MODEL_NAME
     generation_backend: str | None = None
@@ -574,7 +576,7 @@ class DslAgentOrchestrator:
             description=plan["app_description"],
             warnings=warnings,
             metadata={
-                "mode": "workflow",
+                "mode": plan["app_mode"],
                 "backend": generation_report.get("backend") or self.backend,
                 "provider": plan["provider"],
                 "model": plan["model"],
@@ -596,6 +598,7 @@ class DslAgentOrchestrator:
         app_description = (args.app_description or "Generated from a natural language requirement.").strip()
         provider = (args.provider or DEFAULT_MODEL_PROVIDER).strip()
         model = (args.model or DEFAULT_MODEL_NAME).strip()
+        app_mode = self._normalize_app_mode(args.app_mode)
         generation_model = (
             args.generation_model
             or os.environ.get("DIFY_DSL_AGENT_GENERATION_MODEL")
@@ -605,10 +608,11 @@ class DslAgentOrchestrator:
         generation_backend = self._normalize_generation_backend(args.generation_backend)
         input_variable = self._normalize_variable(args.input_variable)
         plugin_id = (args.marketplace_plugin_id or self._plugin_id_from_provider(provider)).strip()
-        graph_plan = self._deterministic_graph_plan(prompt)
+        graph_plan = self._deterministic_graph_plan(prompt, app_mode=app_mode)
         plan = {
             "app_name": app_name,
             "app_description": app_description,
+            "app_mode": app_mode,
             "prompt": prompt,
             "provider": provider,
             "model": model,
@@ -627,7 +631,7 @@ class DslAgentOrchestrator:
         plugin_id = str(plan.get("plugin_id") or "")
         evidence = {
             "policy": [
-                "Use Dify workflow graph format with start, llm, and end nodes.",
+                "Use Dify workflow graph format with start, llm, and end/answer terminal nodes.",
                 "Use the requested model provider as a plugin dependency when possible.",
                 "Keep generated YAML importable before adding complex agent behavior.",
             ],
@@ -639,7 +643,7 @@ class DslAgentOrchestrator:
             "dsl_shape": {
                 "version": "0.6.0",
                 "kind": "app",
-                "mode": "workflow",
+                "mode": plan["app_mode"],
                 "required_workflow_sections": [
                     "graph",
                     "features",
@@ -704,7 +708,7 @@ class DslAgentOrchestrator:
                 "icon": "\U0001f916",
                 "icon_background": "#EFF6FF",
                 "icon_type": "emoji",
-                "mode": "workflow",
+                "mode": plan["app_mode"],
                 "name": plan["app_name"],
                 "use_icon_as_answer_icon": False,
             },
@@ -939,6 +943,12 @@ class DslAgentOrchestrator:
     def _normalize_generation_backend(self, generation_backend: str | None) -> str:
         return normalize_generation_backend(generation_backend)
 
+    def _normalize_app_mode(self, app_mode: str | None) -> str:
+        normalized = (app_mode or DEFAULT_APP_MODE).strip().lower().replace("_", "-")
+        if normalized in {"advanced-chat", "chatflow"}:
+            return "advanced-chat"
+        return DEFAULT_APP_MODE
+
     def _attach_openai_plan(self, plan: dict) -> None:
         if not os.environ.get("OPENAI_API_KEY"):
             plan["generation_plan_error"] = "OPENAI_API_KEY is not configured"
@@ -965,7 +975,7 @@ class DslAgentOrchestrator:
             f"{plan['prompt'].strip()}\n\n"
             "Target Dify app constraints:\n"
             f"- Preferred app name: {plan['app_name']}\n"
-            f"- Preferred app mode: workflow\n"
+            f"- Preferred app mode: {plan['app_mode']}\n"
             f"- Preferred model provider: {plan['provider']}\n"
             f"- Preferred model name: {plan['model']}\n"
             f"- Preferred start input variable: {plan['input_variable']}\n"
@@ -976,7 +986,7 @@ class DslAgentOrchestrator:
         return {
             "app": {
                 "name": plan["app_name"],
-                "mode": "workflow",
+                "mode": plan["app_mode"],
                 "description": plan["app_description"],
             },
             "requirements": {
@@ -1138,18 +1148,19 @@ class DslAgentOrchestrator:
 
         return emit
 
-    def _deterministic_graph_plan(self, prompt: str) -> dict:
+    def _deterministic_graph_plan(self, prompt: str, *, app_mode: str = DEFAULT_APP_MODE) -> dict:
+        terminal_type = self._terminal_node_type(app_mode)
         labels = self._classification_labels(prompt)
         if labels:
             nodes = [{"id": "start", "type": "start"}, {"id": "classify", "type": "question-classifier"}]
             edges = [{"source": "start", "target": "classify"}]
             for label in labels:
                 reply_id = f"reply_{label}"
-                finish_id = f"finish_{label}"
+                finish_id = f"{terminal_type}_{label}"
                 nodes.extend(
                     [
                         {"id": reply_id, "type": "llm", "class_id": label},
-                        {"id": finish_id, "type": "end", "class_id": label},
+                        {"id": finish_id, "type": terminal_type, "class_id": label},
                     ]
                 )
                 edges.extend(
@@ -1159,7 +1170,7 @@ class DslAgentOrchestrator:
                     ]
                 )
             return {
-                "mode": "workflow",
+                "mode": app_mode,
                 "nodes": nodes,
                 "edges": edges,
                 "data_flow_notes": ["A question-classifier routes the input before short per-class LLM responses."],
@@ -1167,38 +1178,38 @@ class DslAgentOrchestrator:
 
         if self._needs_rag_node(prompt):
             return {
-                "mode": "workflow",
+                "mode": app_mode,
                 "nodes": [
                     {"id": "start", "type": "start"},
                     {"id": "retrieve_knowledge", "type": "knowledge-retrieval"},
                     {"id": "llm", "type": "llm"},
-                    {"id": "end", "type": "end"},
+                    {"id": terminal_type, "type": terminal_type},
                 ],
                 "edges": [
                     {"source": "start", "target": "retrieve_knowledge"},
                     {"source": "retrieve_knowledge", "target": "llm"},
-                    {"source": "llm", "target": "end"},
+                    {"source": "llm", "target": terminal_type},
                 ],
                 "data_flow_notes": ["Knowledge retrieval feeds grounded context into the LLM answer node."],
             }
 
         if self._needs_if_else_node(prompt):
             return {
-                "mode": "workflow",
+                "mode": app_mode,
                 "nodes": [
                     {"id": "start", "type": "start"},
                     {"id": "if_else", "type": "if-else"},
                     {"id": "urgent_reply", "type": "llm"},
                     {"id": "normal_reply", "type": "llm"},
-                    {"id": "finish_urgent", "type": "end"},
-                    {"id": "finish_normal", "type": "end"},
+                    {"id": f"{terminal_type}_urgent", "type": terminal_type},
+                    {"id": f"{terminal_type}_normal", "type": terminal_type},
                 ],
                 "edges": [
                     {"source": "start", "target": "if_else"},
                     {"source": "if_else", "target": "urgent_reply", "source_handle": "true"},
                     {"source": "if_else", "target": "normal_reply", "source_handle": "false"},
-                    {"source": "urgent_reply", "target": "finish_urgent"},
-                    {"source": "normal_reply", "target": "finish_normal"},
+                    {"source": "urgent_reply", "target": f"{terminal_type}_urgent"},
+                    {"source": "normal_reply", "target": f"{terminal_type}_normal"},
                 ],
                 "data_flow_notes": ["A native if-else branch routes urgent inputs separately from the default branch."],
             }
@@ -1213,14 +1224,17 @@ class DslAgentOrchestrator:
             nodes.append({"id": "postprocess", "type": "code"})
             edges.append({"source": "llm", "target": "postprocess"})
             data_flow_notes.append("A code node normalizes structured output before the end node.")
-        nodes.append({"id": "end", "type": "end"})
-        edges.append({"source": nodes[-2]["id"], "target": "end"})
+        nodes.append({"id": terminal_type, "type": terminal_type})
+        edges.append({"source": nodes[-2]["id"], "target": terminal_type})
         return {
-            "mode": "workflow",
+            "mode": app_mode,
             "nodes": nodes,
             "edges": edges,
             "data_flow_notes": data_flow_notes,
         }
+
+    def _terminal_node_type(self, app_mode: str) -> str:
+        return "answer" if app_mode == "advanced-chat" else "end"
 
     def _needs_postprocess_code_node(self, prompt: str) -> bool:
         lowered = prompt.lower()
@@ -1278,6 +1292,8 @@ class DslAgentOrchestrator:
         provider = str(plan["provider"])
         model = str(plan["model"])
         input_variable = str(plan["input_variable"])
+        app_mode = str(plan.get("app_mode") or DEFAULT_APP_MODE)
+        terminal_type = self._terminal_node_type(app_mode)
         postprocess_with_code = self._plan_has_node_type(plan, "code")
         system_prompt = (
             "You are a Dify workflow app generated from this requirement.\n"
@@ -1293,11 +1309,11 @@ class DslAgentOrchestrator:
             edges.extend(
                 [
                     self._graph_edge("llm", "postprocess", "llm", "code"),
-                    self._graph_edge("postprocess", "end", "code", "end"),
+                    self._graph_edge("postprocess", terminal_type, "code", terminal_type),
                 ]
             )
         else:
-            edges.append(self._graph_edge("llm", "end", "llm", "end"))
+            edges.append(self._graph_edge("llm", terminal_type, "llm", terminal_type))
 
         nodes = [
             self._start_node(input_variable),
@@ -1305,7 +1321,7 @@ class DslAgentOrchestrator:
         ]
         if postprocess_with_code:
             nodes.append(self._postprocess_code_node())
-        nodes.append(self._end_node(source_node_id="postprocess" if postprocess_with_code else "llm"))
+        nodes.append(self._terminal_node(app_mode, source_node_id="postprocess" if postprocess_with_code else "llm"))
         return {
             "edges": edges,
             "nodes": nodes,
@@ -1322,6 +1338,8 @@ class DslAgentOrchestrator:
         provider = str(plan["provider"])
         model = str(plan["model"])
         input_variable = str(plan["input_variable"])
+        app_mode = str(plan.get("app_mode") or DEFAULT_APP_MODE)
+        terminal_type = self._terminal_node_type(app_mode)
         labels = self._classification_labels(prompt)
         if not labels:
             labels = self._labels_from_graph_plan(plan) or ["primary", "secondary", "other"]
@@ -1333,7 +1351,7 @@ class DslAgentOrchestrator:
         for index, label in enumerate(labels):
             y = 40 + index * 170
             reply_id = f"reply_{label}"
-            finish_id = f"finish_{label}"
+            finish_id = f"{terminal_type}_{label}"
             nodes.extend(
                 [
                     self._llm_node(
@@ -1349,7 +1367,7 @@ class DslAgentOrchestrator:
                         x=620,
                         y=y,
                     ),
-                    self._end_node(node_id=finish_id, source_node_id=reply_id, x=960, y=y),
+                    self._terminal_node(app_mode, node_id=finish_id, source_node_id=reply_id, x=960, y=y),
                 ]
             )
             edges.extend(
@@ -1361,7 +1379,7 @@ class DslAgentOrchestrator:
                         "llm",
                         source_handle=label,
                     ),
-                    self._graph_edge(reply_id, finish_id, "llm", "end"),
+                    self._graph_edge(reply_id, finish_id, "llm", terminal_type),
                 ]
             )
         return {"edges": edges, "nodes": nodes, "viewport": {"x": 0, "y": 0, "zoom": 0.8}}
@@ -1371,11 +1389,13 @@ class DslAgentOrchestrator:
         provider = str(plan["provider"])
         model = str(plan["model"])
         input_variable = str(plan["input_variable"])
+        app_mode = str(plan.get("app_mode") or DEFAULT_APP_MODE)
+        terminal_type = self._terminal_node_type(app_mode)
         return {
             "edges": [
                 self._graph_edge("start", "retrieve_knowledge", "start", "knowledge-retrieval"),
                 self._graph_edge("retrieve_knowledge", "llm", "knowledge-retrieval", "llm"),
-                self._graph_edge("llm", "end", "llm", "end"),
+                self._graph_edge("llm", terminal_type, "llm", terminal_type),
             ],
             "nodes": [
                 self._start_node(input_variable),
@@ -1394,7 +1414,7 @@ class DslAgentOrchestrator:
                         "Retrieved context:\n{{#retrieve_knowledge.result#}}"
                     ),
                 ),
-                self._end_node(source_node_id="llm"),
+                self._terminal_node(app_mode, source_node_id="llm"),
             ],
             "viewport": {"x": 0, "y": 0, "zoom": 0.8},
         }
@@ -1404,13 +1424,15 @@ class DslAgentOrchestrator:
         provider = str(plan["provider"])
         model = str(plan["model"])
         input_variable = str(plan["input_variable"])
+        app_mode = str(plan.get("app_mode") or DEFAULT_APP_MODE)
+        terminal_type = self._terminal_node_type(app_mode)
         return {
             "edges": [
                 self._graph_edge("start", "if_else", "start", "if-else"),
                 self._graph_edge("if_else", "urgent_reply", "if-else", "llm", source_handle="true"),
                 self._graph_edge("if_else", "normal_reply", "if-else", "llm", source_handle="false"),
-                self._graph_edge("urgent_reply", "finish_urgent", "llm", "end"),
-                self._graph_edge("normal_reply", "finish_normal", "llm", "end"),
+                self._graph_edge("urgent_reply", f"{terminal_type}_urgent", "llm", terminal_type),
+                self._graph_edge("normal_reply", f"{terminal_type}_normal", "llm", terminal_type),
             ],
             "nodes": [
                 self._start_node(input_variable),
@@ -1441,8 +1463,12 @@ class DslAgentOrchestrator:
                     x=620,
                     y=240,
                 ),
-                self._end_node(node_id="finish_urgent", source_node_id="urgent_reply", x=960, y=40),
-                self._end_node(node_id="finish_normal", source_node_id="normal_reply", x=960, y=240),
+                self._terminal_node(
+                    app_mode, node_id=f"{terminal_type}_urgent", source_node_id="urgent_reply", x=960, y=40
+                ),
+                self._terminal_node(
+                    app_mode, node_id=f"{terminal_type}_normal", source_node_id="normal_reply", x=960, y=240
+                ),
             ],
             "viewport": {"x": 0, "y": 0, "zoom": 0.8},
         }
@@ -1679,6 +1705,40 @@ class DslAgentOrchestrator:
             "targetPosition": "left",
             "type": "end",
         }
+
+    def _answer_node(self, *, source_node_id: str, node_id: str = "answer", x: int | None = None, y: int = 120) -> dict:
+        answer_selector = (
+            f"{{{{#{source_node_id}.result#}}}}"
+            if source_node_id == "postprocess"
+            else f"{{{{#{source_node_id}.text#}}}}"
+        )
+        return {
+            "data": {
+                "answer": answer_selector,
+                "desc": "",
+                "title": "Answer",
+                "type": "answer",
+                "variables": [],
+            },
+            "id": node_id,
+            "position": {"x": x if x is not None else (1100 if source_node_id == "postprocess" else 760), "y": y},
+            "sourcePosition": "right",
+            "targetPosition": "left",
+            "type": "answer",
+        }
+
+    def _terminal_node(
+        self,
+        app_mode: str,
+        *,
+        source_node_id: str,
+        node_id: str | None = None,
+        x: int | None = None,
+        y: int = 120,
+    ) -> dict:
+        if self._terminal_node_type(app_mode) == "answer":
+            return self._answer_node(source_node_id=source_node_id, node_id=node_id or "answer", x=x, y=y)
+        return self._end_node(source_node_id=source_node_id, node_id=node_id or "end", x=x, y=y)
 
     def _resolve_marketplace_dependency(
         self,
@@ -1953,6 +2013,7 @@ class AppDslAgentRunStore:
             prompt=prompt,
             app_name=self._optional_string(request.get("app_name")),
             app_description=self._optional_string(request.get("app_description")),
+            app_mode=str(request.get("app_mode") or DEFAULT_APP_MODE),
             provider=str(request.get("provider") or DEFAULT_MODEL_PROVIDER),
             model=str(request.get("model") or DEFAULT_MODEL_NAME),
             generation_backend=self._optional_string(request.get("generation_backend")),
