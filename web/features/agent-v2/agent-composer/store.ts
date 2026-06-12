@@ -139,6 +139,7 @@ const toConfigSnapshot = ({
     dify_tools: toDifyToolConfigs(draft.tools, draft.toolSettings),
     cli_tools: toCliToolConfigs(draft.tools),
   },
+  app_features: draft.config?.app_features ?? baseConfig?.app_features,
   knowledge: {
     ...baseConfig?.knowledge,
     datasets: toKnowledgeDatasets(draft.knowledgeRetrievals),

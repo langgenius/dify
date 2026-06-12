@@ -6,12 +6,14 @@ import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   FileTreeFile,
 } from '@langgenius/dify-ui/file-tree'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFiles } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
+import { AgentFileUploadDialog } from './upload-dialog'
 
 function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSkillDetail {
   return {
@@ -42,37 +44,48 @@ function createFileDetail(file: AgentFileNode, files: AgentFileNode[]): AgentSki
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const [files] = useFiles()
+  const [files, setFiles] = useFiles()
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
 
   return (
-    <ConfigureSection
-      label={t('agentDetail.configure.files.label')}
-      labelId="agent-configure-files-label"
-      tip={filesTip}
-      tipAriaLabel={filesTip}
-      rootClassName="border-b border-divider-subtle pt-4"
-      panelContentClassName="pb-4"
-      actions={(
-        <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.files.add')} />
-      )}
-    >
-      <AgentFileTree
-        id={filesTreeId}
-        files={files}
-        treeLabel={t('agentDetail.configure.files.treeLabel')}
-        className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
-        scrollAreaClassName="max-h-[250px] flex-none"
-        renderFile={({ file, selected, children }) => (
-          <Dialog>
-            <DialogTrigger render={<FileTreeFile selected={selected} />}>
-              {children}
-            </DialogTrigger>
-            <AgentSkillDetailDialog skillName={file.name} detail={createFileDetail(file, files)} />
-          </Dialog>
+    <>
+      <ConfigureSection
+        label={t('agentDetail.configure.files.label')}
+        labelId="agent-configure-files-label"
+        tip={filesTip}
+        tipAriaLabel={filesTip}
+        rootClassName="border-b border-divider-subtle pt-4"
+        panelContentClassName="pb-4"
+        actions={(
+          <ConfigureSectionAddButton
+            ariaLabel={t('agentDetail.configure.files.add')}
+            onClick={() => setIsUploadOpen(true)}
+          />
         )}
+      >
+        <AgentFileTree
+          id={filesTreeId}
+          files={files}
+          treeLabel={t('agentDetail.configure.files.treeLabel')}
+          className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+          scrollAreaClassName="max-h-[250px] flex-none"
+          renderFile={({ file, selected, children }) => (
+            <Dialog>
+              <DialogTrigger render={<FileTreeFile selected={selected} />}>
+                {children}
+              </DialogTrigger>
+              <AgentSkillDetailDialog skillName={file.name} detail={createFileDetail(file, files)} />
+            </Dialog>
+          )}
+        />
+      </ConfigureSection>
+      <AgentFileUploadDialog
+        open={isUploadOpen}
+        onOpenChange={setIsUploadOpen}
+        onUploaded={file => setFiles([...files, file])}
       />
-    </ConfigureSection>
+    </>
   )
 }

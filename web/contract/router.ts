@@ -23,6 +23,7 @@ import {
   exploreInstalledAppUninstallContract,
   learnDifyAppsContract,
 } from './console/explore'
+import { fileUploadContract } from './console/files'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
@@ -147,6 +148,13 @@ export const consoleRouterContract = {
     datasets: trialAppDatasetsContract,
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
+  },
+  files: {
+    ...communityContract.files,
+    upload: {
+      ...communityContract.files.upload,
+      post: fileUploadContract,
+    },
   },
   modelProviders: {
     models: modelProvidersModelsContract,

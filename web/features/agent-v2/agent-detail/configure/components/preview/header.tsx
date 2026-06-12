@@ -4,11 +4,15 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 
 export function AgentPreviewHeader({
+  isChatFeaturesOpen,
   isVersionsOpen,
+  onToggleChatFeatures,
   onToggleVersions,
   onRestart,
 }: {
+  isChatFeaturesOpen: boolean
   isVersionsOpen: boolean
+  onToggleChatFeatures: () => void
   onToggleVersions: () => void
   onRestart: () => void
 }) {
@@ -30,10 +34,16 @@ export function AgentPreviewHeader({
         </button>
         <button
           type="button"
-          className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          aria-label={t('agentDetail.configure.preview.endUserAuth')}
+          aria-pressed={isChatFeaturesOpen}
+          onClick={onToggleChatFeatures}
+          className={cn(
+            'flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
+          )}
+          aria-label={t('agentDetail.configure.preview.chatFeatures')}
         >
-          <span aria-hidden className="i-custom-vender-agent-v2-end-user-auth size-4" />
+          <span aria-hidden className="i-ri-apps-2-add-line size-4" />
+          <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
         </button>
         <button
           type="button"
