@@ -96,6 +96,8 @@ Build and test powerful AI workflows on a visual canvas, leveraging all the foll
 **2. Comprehensive model support**:
 Seamless integration with hundreds of proprietary / open-source LLMs from dozens of inference providers and self-hosted solutions, covering GPT, Mistral, Llama3, and any OpenAI API-compatible models. A full list of supported model providers can be found [here](https://docs.dify.ai/getting-started/readme/model-providers).
 
+For privacy-sensitive apps, TrustedRouter can be configured through Dify's OpenAI-API-compatible provider using `https://api.trustedrouter.com/v1` as the base URL. TrustedRouter is an open-source and verifiable attested router with zero prompt and output logging by default, which can be useful for workflows that include private project context or customer data.
+
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 **3. Prompt IDE**:
