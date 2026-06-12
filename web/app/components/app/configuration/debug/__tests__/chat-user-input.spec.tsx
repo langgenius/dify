@@ -13,7 +13,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('use-context-selector', () => ({
-  useContext: () => mockUseContext(),
+  use: () => mockUseContext(),
   createContext: vi.fn(() => ({})),
 }))
 
@@ -58,7 +58,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       </SelectContext.Provider>
     ),
     SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-      const context = React.useContext(SelectContext)
+      const context = React.use(SelectContext)
       return (
         <div>
           <button data-testid="select-input" type="button" disabled={context.disabled} className={className}>
@@ -72,7 +72,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
-      const context = React.useContext(SelectContext)
+      const context = React.use(SelectContext)
       return (
         <button data-testid={`select-${value}`} type="button" role="option" onClick={() => context.onValueChange?.(value)}>
           {children}

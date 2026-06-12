@@ -25,7 +25,7 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(() => ({})),
+  use: vi.fn(() => ({})),
   useContextSelector: vi.fn(() => false),
   createContext: vi.fn(() => ({})),
 }))

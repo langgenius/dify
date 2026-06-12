@@ -67,7 +67,7 @@ vi.mock('ahooks', async (importOriginal) => {
 
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
+  use: () => ({
     notify: tagMocks.api,
   }),
 }))

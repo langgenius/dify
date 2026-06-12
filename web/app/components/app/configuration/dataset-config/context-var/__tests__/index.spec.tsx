@@ -43,7 +43,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
   }
 
   const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
-    const { open, setOpen } = React.useContext(PopoverContext)
+    const { open, setOpen } = React.use(PopoverContext)
     return (
       <div
         data-testid="popover-trigger"
@@ -58,7 +58,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     children,
     ...props
   }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
-    const { open } = React.useContext(PopoverContext)
+    const { open } = React.use(PopoverContext)
     if (!open)
       return null
 

@@ -60,7 +60,7 @@ vi.mock('use-context-selector', async () => {
   const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
   return {
     ...actual,
-    useContext: vi.fn(() => ({ notify: toastMocks.api })),
+    use: vi.fn(() => ({ notify: toastMocks.api })),
   }
 })
 
