@@ -3,14 +3,25 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
+from controllers.common.fields import (
+    AudioBinaryResponse,
+    AudioTranscriptResponse,
+    GeneratedAppResponse,
+    SimpleResultResponse,
+)
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.schema import (
+    get_or_create_model,
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -54,6 +65,7 @@ from fields.app_fields import (
 )
 from fields.dataset_fields import dataset_fields
 from fields.member_fields import simple_account_fields
+from fields.message_fields import SuggestedQuestionsResponse
 from fields.workflow_fields import (
     conversation_variable_fields,
     pipeline_variable_fields,
@@ -119,16 +131,28 @@ workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conve
 workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
 workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
+dataset_model = get_or_create_model("TrialDataset", dataset_fields)
+dataset_list_model = get_or_create_model(
+    "TrialDatasetList",
+    {
+        "data": fields.List(fields.Nested(dataset_model)),
+        "has_more": fields.Boolean,
+        "limit": fields.Integer,
+        "total": fields.Integer,
+        "page": fields.Integer,
+    },
+)
+
 
 class WorkflowRunRequest(BaseModel):
     inputs: dict
-    files: list | None = None
+    files: list | None = Field(default=None)
 
 
 class ChatRequest(BaseModel):
     inputs: dict
     query: str
-    files: list | None = None
+    files: list | None = Field(default=None)
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = "explore_app"
@@ -144,17 +168,41 @@ class TextToSpeechRequest(BaseModel):
 class CompletionRequest(BaseModel):
     inputs: dict
     query: str = ""
-    files: list | None = None
+    files: list | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = "explore_app"
 
 
-register_schema_models(console_ns, WorkflowRunRequest, ChatRequest, TextToSpeechRequest, CompletionRequest)
+class TrialDatasetListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Number of items per page")
+    ids: list[str] = Field(default_factory=list, description="Dataset IDs")
+
+
+register_schema_models(
+    console_ns,
+    WorkflowRunRequest,
+    ChatRequest,
+    TextToSpeechRequest,
+    CompletionRequest,
+    TrialDatasetListQuery,
+)
+register_response_schema_models(
+    console_ns,
+    ParametersResponse,
+    AudioBinaryResponse,
+    AudioTranscriptResponse,
+    GeneratedAppResponse,
+    SimpleResultResponse,
+    SiteResponse,
+    SuggestedQuestionsResponse,
+)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
     @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
     def post(self, current_user: Account, trial_app):
         """
@@ -195,6 +243,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
 
 
 class TrialAppWorkflowTaskStopApi(TrialAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @trial_feature_enable
     def post(self, trial_app, task_id: str):
         """
@@ -219,6 +268,7 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
@@ -273,6 +323,7 @@ class TrialChatApi(TrialAppResource):
 
 
 class TrialMessageSuggestedQuestionApi(TrialAppResource):
+    @console_ns.response(200, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @with_current_user
     def get(self, current_user: Account, trial_app, message_id):
         app_model = trial_app
@@ -308,6 +359,7 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
 
 class TrialChatAudioApi(TrialAppResource):
+    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
@@ -351,6 +403,7 @@ class TrialChatAudioApi(TrialAppResource):
 
 class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
@@ -397,6 +450,7 @@ class TrialChatTextApi(TrialAppResource):
 
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
@@ -446,6 +500,7 @@ class TrialCompletionApi(TrialAppResource):
 class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
+    @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app site info.
@@ -467,6 +522,7 @@ class TrialSitApi(Resource):
 class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
+    @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
         """Retrieve app parameters."""
@@ -495,6 +551,7 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
+    @console_ns.response(200, "Success", app_detail_with_site_model)
     @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
@@ -507,6 +564,7 @@ class AppApi(Resource):
 
 
 class AppWorkflowApi(Resource):
+    @console_ns.response(200, "Success", workflow_model)
     @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
@@ -519,6 +577,8 @@ class AppWorkflowApi(Resource):
 
 
 class DatasetListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
+    @console_ns.response(200, "Success", dataset_list_model)
     @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)

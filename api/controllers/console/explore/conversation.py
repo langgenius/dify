@@ -36,7 +36,12 @@ class ConversationListQuery(BaseModel):
 
 
 register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)
-register_response_schema_models(console_ns, ResultResponse)
+register_response_schema_models(
+    console_ns,
+    ConversationInfiniteScrollPagination,
+    ResultResponse,
+    SimpleConversation,
+)
 
 
 @console_ns.route(
@@ -45,6 +50,7 @@ register_response_schema_models(console_ns, ResultResponse)
 )
 class ConversationListApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(ConversationListQuery))
+    @console_ns.response(200, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -118,6 +124,7 @@ class ConversationApi(InstalledAppResource):
 )
 class ConversationRenameApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
+    @console_ns.response(200, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__])
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp, c_id: UUID):
         app_model = installed_app.app

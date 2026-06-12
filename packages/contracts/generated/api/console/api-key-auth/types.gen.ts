@@ -16,6 +16,10 @@ export type ApiKeyAuthBindingPayload = {
   provider: string
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type ApiKeyAuthDataSourceItem = {
   category: string
   created_at: number
@@ -47,9 +51,7 @@ export type PostApiKeyAuthDataSourceBindingData = {
 }
 
 export type PostApiKeyAuthDataSourceBindingResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostApiKeyAuthDataSourceBindingResponse

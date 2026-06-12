@@ -142,9 +142,9 @@ Get account avatar url
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -419,9 +419,9 @@ Check if activation token is valid
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceListResponse](#workspacelistresponse)<br> |
 
 ### [GET] /api-based-extension
 Get all API-based extensions for current tenant
@@ -514,9 +514,9 @@ Update API-based extension
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /api-key-auth/data-source/{binding_id}
 #### Parameters
@@ -558,7 +558,7 @@ Get advanced prompt templates based on app mode and model configuration
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Prompt templates retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Prompt templates retrieved successfully | **application/json**: [AdvancedPromptTemplateResponse](#advancedprompttemplateresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [GET] /apps
@@ -779,9 +779,9 @@ Get human input form preview for advanced chat workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
 **Submit human input form preview**
@@ -803,9 +803,9 @@ Submit human input form preview for advanced chat workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -827,11 +827,11 @@ Run draft workflow iteration node for advanced chat
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Iteration node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -853,11 +853,11 @@ Run draft workflow loop node for advanced chat
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Loop node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
 **Run draft workflow**
@@ -878,11 +878,11 @@ Run draft workflow for advanced chat application
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow run started successfully |
-| 400 | Invalid request parameters |
-| 403 | Permission denied |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Permission denied |  |
 
 ### [GET] /apps/{app_id}/agent-composer
 #### Parameters
@@ -1059,7 +1059,7 @@ Get agent execution logs for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent logs retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [POST] /apps/{app_id}/agent/skills/standardize
@@ -1075,10 +1075,10 @@ Validate + standardize a Skill into the agent drive (ENG-594)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 201 | Skill standardized into drive |
-| 400 | Invalid skill package or no bound agent |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
 
 ### [POST] /apps/{app_id}/agent/skills/upload
 **Validate an uploaded Skill package and persist the archive**
@@ -1095,10 +1095,10 @@ plus its manifest. Standardizing into the agent drive is ENG-594.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 201 | Skill validated |
-| 400 | Invalid skill package |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package |  |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}
 Enable or disable annotation reply for an app
@@ -1118,10 +1118,10 @@ Enable or disable annotation reply for an app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Action completed successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Action completed successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotation-reply/{action}/status/{job_id}
 Get status of annotation reply action job
@@ -1136,10 +1136,10 @@ Get status of annotation reply action job
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Job status retrieved successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotation-setting
 Get annotation settings for an app
@@ -1152,10 +1152,10 @@ Get annotation settings for an app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Annotation settings retrieved successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Annotation settings retrieved successfully | **application/json**: [AnnotationSettingResponse](#annotationsettingresponse)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/annotation-settings/{annotation_setting_id}
 Update annotation settings for an app
@@ -1175,10 +1175,10 @@ Update annotation settings for an app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Settings updated successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Settings updated successfully | **application/json**: [AnnotationSettingResponse](#annotationsettingresponse)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [DELETE] /apps/{app_id}/annotations
 #### Parameters
@@ -1191,7 +1191,7 @@ Update annotation settings for an app
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Annotations deleted successfully |
 
 ### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
@@ -1207,10 +1207,10 @@ Get annotations for an app with pagination
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Annotations retrieved successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Annotations retrieved successfully | **application/json**: [AnnotationList](#annotationlist)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/annotations
 Create a new annotation for an app
@@ -1245,13 +1245,13 @@ Batch import annotations from CSV file with rate limiting and security checks
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Batch import started successfully |
-| 400 | No file uploaded or too many files |
-| 403 | Insufficient permissions |
-| 413 | File too large |
-| 429 | Too many requests or concurrent imports |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Batch import started successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 400 | No file uploaded or too many files |  |
+| 403 | Insufficient permissions |  |
+| 413 | File too large |  |
+| 429 | Too many requests or concurrent imports |  |
 
 ### [GET] /apps/{app_id}/annotations/batch-import-status/{job_id}
 Get status of batch import job
@@ -1265,10 +1265,10 @@ Get status of batch import job
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Job status retrieved successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotations/count
 Get count of message annotations for the app
@@ -1313,7 +1313,7 @@ Export all annotations for an app with CSV injection protection
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Annotation deleted successfully |
 
 ### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
@@ -1583,11 +1583,11 @@ Generate completion message for debugging
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Completion generated successfully |
-| 400 | Invalid request parameters |
-| 404 | App not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Completion generated successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 404 | App not found |  |
 
 ### [POST] /apps/{app_id}/completion-messages/{task_id}/stop
 Stop a running completion message generation
@@ -1732,11 +1732,11 @@ Export user feedback data for Google Sheets
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Feedback data exported successfully |
-| 400 | Invalid parameters |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedback data exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
+| 400 | Invalid parameters |  |
+| 500 | Internal server error |  |
 
 ### [POST] /apps/{app_id}/icon
 Update application icon
@@ -1755,10 +1755,10 @@ Update application icon
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Icon updated successfully |
-| 403 | Insufficient permissions |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Icon updated successfully | **application/json**: [AppDetail](#appdetail)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/messages/{message_id}
 Get message details by ID
@@ -1796,11 +1796,11 @@ Update application model configuration
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Model configuration updated successfully |
-| 400 | Invalid configuration |
-| 404 | App not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Invalid configuration |  |
+| 404 | App not found |  |
 
 ### [POST] /apps/{app_id}/name
 Check if app name is available
@@ -1975,7 +1975,7 @@ Get average response time statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Average response time statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Average response time statistics retrieved successfully | **application/json**: [AverageResponseTimeStatisticResponse](#averageresponsetimestatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/average-session-interactions
 Get average session interaction statistics for an application
@@ -1992,7 +1992,7 @@ Get average session interaction statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Average session interaction statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Average session interaction statistics retrieved successfully | **application/json**: [AverageSessionInteractionStatisticResponse](#averagesessioninteractionstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-conversations
 Get daily conversation statistics for an application
@@ -2009,7 +2009,7 @@ Get daily conversation statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily conversation statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Daily conversation statistics retrieved successfully | **application/json**: [DailyConversationStatisticResponse](#dailyconversationstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-end-users
 Get daily terminal/end-user statistics for an application
@@ -2026,7 +2026,7 @@ Get daily terminal/end-user statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily terminal statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Daily terminal statistics retrieved successfully | **application/json**: [DailyTerminalStatisticResponse](#dailyterminalstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-messages
 Get daily message statistics for an application
@@ -2043,7 +2043,7 @@ Get daily message statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily message statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Daily message statistics retrieved successfully | **application/json**: [DailyMessageStatisticResponse](#dailymessagestatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/token-costs
 Get daily token cost statistics for an application
@@ -2060,7 +2060,7 @@ Get daily token cost statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Daily token cost statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Daily token cost statistics retrieved successfully | **application/json**: [DailyTokenCostStatisticResponse](#dailytokencoststatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/tokens-per-second
 Get tokens per second statistics for an application
@@ -2077,7 +2077,7 @@ Get tokens per second statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tokens per second statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | Tokens per second statistics retrieved successfully | **application/json**: [TokensPerSecondStatisticResponse](#tokenspersecondstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/user-satisfaction-rate
 Get user satisfaction rate statistics for an application
@@ -2094,7 +2094,7 @@ Get user satisfaction rate statistics for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | User satisfaction rate statistics retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | User satisfaction rate statistics retrieved successfully | **application/json**: [UserSatisfactionRateStatisticResponse](#usersatisfactionratestatisticresponse)<br> |
 
 ### [POST] /apps/{app_id}/text-to-audio
 Convert text to speech for chat messages
@@ -2113,10 +2113,10 @@ Convert text to speech for chat messages
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Text to speech conversion successful |
-| 400 | Bad request - Invalid parameters |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Text to speech conversion successful | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| 400 | Bad request - Invalid parameters |  |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
 Get available TTS voices for a specific language
@@ -2132,7 +2132,7 @@ Get available TTS voices for a specific language
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | TTS voices retrieved successfully | **application/json**: [ object ]<br> |
+| 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter |  |
 
 ### [GET] /apps/{app_id}/trace
@@ -2148,9 +2148,9 @@ Get app tracing configuration
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Trace configuration retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trace configuration retrieved successfully | **application/json**: [AppTraceResponse](#apptraceresponse)<br> |
 
 ### [POST] /apps/{app_id}/trace
 Update app tracing configuration
@@ -2184,12 +2184,7 @@ Delete an existing tracing configuration for an application
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [TraceProviderQuery](#traceproviderquery)<br> |
+| tracing_provider | query | Tracing provider name | Yes | string |
 
 #### Responses
 
@@ -2212,7 +2207,7 @@ Get tracing configuration for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tracing configuration retrieved successfully | **application/json**: object<br> |
+| 200 | Tracing configuration retrieved successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [PATCH] /apps/{app_id}/trace-config
@@ -2236,7 +2231,7 @@ Update an existing tracing configuration for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Tracing configuration updated successfully | **application/json**: object<br> |
+| 200 | Tracing configuration updated successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or configuration not found |  |
 
 ### [POST] /apps/{app_id}/trace-config
@@ -2260,7 +2255,7 @@ Create a new tracing configuration for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Tracing configuration created successfully | **application/json**: object<br> |
+| 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or configuration already exists |  |
 
 ### [POST] /apps/{app_id}/trigger-enable
@@ -2715,9 +2710,9 @@ Get workflow average app interaction statistics
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Average app interaction statistics retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Average app interaction statistics retrieved successfully | **application/json**: [WorkflowAverageAppInteractionStatisticResponse](#workflowaverageappinteractionstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/daily-conversations
 Get workflow daily runs statistics
@@ -2732,9 +2727,9 @@ Get workflow daily runs statistics
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Daily runs statistics retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Daily runs statistics retrieved successfully | **application/json**: [WorkflowDailyRunsStatisticResponse](#workflowdailyrunsstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/daily-terminals
 Get workflow daily terminals statistics
@@ -2749,9 +2744,9 @@ Get workflow daily terminals statistics
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Daily terminals statistics retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Daily terminals statistics retrieved successfully | **application/json**: [WorkflowDailyTerminalsStatisticResponse](#workflowdailyterminalsstatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/token-costs
 Get workflow daily token cost statistics
@@ -2766,9 +2761,9 @@ Get workflow daily token cost statistics
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Daily token cost statistics retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Daily token cost statistics retrieved successfully | **application/json**: [WorkflowDailyTokenCostStatisticResponse](#workflowdailytokencoststatisticresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows
 **Get published workflows**
@@ -2804,9 +2799,9 @@ Get default block configurations for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default block configurations retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configurations retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
 **Get default block config**
@@ -2823,10 +2818,10 @@ Get default block configuration by type
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default block configuration retrieved successfully |
-| 404 | Block type not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configuration retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
+| 404 | Block type not found |  |
 
 ### [GET] /apps/{app_id}/workflows/draft
 **Get draft workflow**
@@ -2904,9 +2899,9 @@ Update conversation variables for workflow draft
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Conversation variables updated successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/environment-variables
 **Get draft workflow**
@@ -2921,10 +2916,10 @@ Get environment variables for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Environment variables retrieved successfully |
-| 404 | Draft workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
+| 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/environment-variables
 Update environment variables for workflow draft
@@ -2943,9 +2938,9 @@ Update environment variables for workflow draft
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Environment variables updated successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Environment variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/features
 Update draft workflow features
@@ -2988,9 +2983,9 @@ Test human input delivery for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input delivery test result | **application/json**: [EmptyObjectResponse](#emptyobjectresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
@@ -3012,9 +3007,9 @@ Get human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
 **Submit human input form preview**
@@ -3036,9 +3031,9 @@ Submit human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -3058,11 +3053,11 @@ Submit human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow iteration node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -3082,11 +3077,11 @@ Submit human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow loop node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
 #### Parameters
@@ -3250,11 +3245,11 @@ Get last run result for draft workflow node
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Trigger event received and node executed successfully |
-| 403 | Permission denied |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trigger event received and node executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 500 | Internal server error |  |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
 Delete all variables for a specific node
@@ -3305,10 +3300,10 @@ Get variables for a specific node
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Draft workflow run started successfully |
-| 403 | Permission denied |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a draft workflow run.
@@ -3339,10 +3334,10 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow run node output event stream |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 404 | Workflow run not found |  |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
 One node's declared outputs for a draft workflow run.
@@ -3413,11 +3408,11 @@ Get system variables for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Trigger event received and workflow executed successfully |
-| 403 | Permission denied |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trigger event received and workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 500 | Internal server error |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run-all
 **Full workflow debug when the start node is a trigger**
@@ -3436,11 +3431,11 @@ Get system variables for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow executed successfully |
-| 403 | Permission denied |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 500 | Internal server error |  |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables
 Delete all draft workflow variables
@@ -3585,9 +3580,9 @@ Get published workflow for an application
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a published workflow run.
@@ -3618,10 +3613,10 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow run node output event stream |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 404 | Workflow run not found |  |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
 One node's declared outputs for a published workflow run.
@@ -3690,7 +3685,7 @@ Full value for one declared output of a published run.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Workflow deleted successfully |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
 **Update workflow attributes**
@@ -3730,11 +3725,11 @@ Restore a published workflow version into the draft workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow restored successfully |
-| 400 | Source workflow must be published |
-| 404 | Workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
+| 400 | Source workflow must be published |  |
+| 404 | Workflow not found |  |
 
 ### [GET] /apps/{resource_id}/api-keys
 **Get all API keys for an app**
@@ -3803,16 +3798,16 @@ Refresh MCP server configuration and regenerate server code
 ### [GET] /auth/plugin/datasource/default-list
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DatasourceCredentialsResponse](#datasourcecredentialsresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/list
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DatasourceCredentialsResponse](#datasourcecredentialsresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/{provider_id}
 #### Parameters
@@ -3823,9 +3818,9 @@ Refresh MCP server configuration and regenerate server code
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DatasourceCredentialsResponse](#datasourcecredentialsresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}
 #### Parameters
@@ -3842,9 +3837,9 @@ Refresh MCP server configuration and regenerate server code
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -3874,9 +3869,9 @@ Refresh MCP server configuration and regenerate server code
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/default
 #### Parameters
@@ -3931,9 +3926,9 @@ Refresh MCP server configuration and regenerate server code
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/update-name
 #### Parameters
@@ -3957,9 +3952,9 @@ Refresh MCP server configuration and regenerate server code
 ### [GET] /billing/invoices
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BillingResponse](#billingresponse)<br> |
 
 ### [PUT] /billing/partners/{partner_key}/tenants
 Sync partner tenants bindings
@@ -3978,17 +3973,24 @@ Sync partner tenants bindings
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Tenants synced to partner successfully |
-| 400 | Invalid partner information |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Tenants synced to partner successfully | **application/json**: [BillingResponse](#billingresponse)<br> |
+| 400 | Invalid partner information |  |
 
 ### [GET] /billing/subscription
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| interval | query | Billing interval | Yes | string, <br>**Available values:** "month", "year" |
+| plan | query | Subscription plan | Yes | string, <br>**Available values:** "professional", "team" |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BillingResponse](#billingresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -3997,7 +3999,7 @@ Get code-based extension data by module name
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| module | query | Extension module name | No | string |
+| module | query |  | Yes | string |
 
 #### Responses
 
@@ -4016,9 +4018,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ComplianceDownloadResponse](#compliancedownloadresponse)<br> |
 
 ### [GET] /data-source/integrates
 #### Responses
@@ -4196,14 +4198,14 @@ Get external knowledge API templates
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| limit | query | Number of items per page (default: 20) | No | string |
-| page | query | Page number (default: 1) | No | string |
+| limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | External API templates retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | External API templates retrieved successfully | **application/json**: [ExternalKnowledgeApiListResponse](#externalknowledgeapilistresponse)<br> |
 
 ### [POST] /datasets/external-knowledge-api
 #### Request Body
@@ -4214,9 +4216,9 @@ Get external knowledge API templates
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | External API template created successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 
 ### [DELETE] /datasets/external-knowledge-api/{external_knowledge_api_id}
 #### Parameters
@@ -4242,10 +4244,10 @@ Get external knowledge API template details
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | External API template retrieved successfully |
-| 404 | Template not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | External API template retrieved successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
+| 404 | Template not found |  |
 
 ### [PATCH] /datasets/external-knowledge-api/{external_knowledge_api_id}
 #### Parameters
@@ -4262,9 +4264,9 @@ Get external knowledge API template details
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | External API template updated successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
 Check if external knowledge API is being used
@@ -4343,9 +4345,9 @@ Get dataset document processing rules
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Process rules retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Process rules retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting
 Get dataset retrieval settings
@@ -4464,9 +4466,9 @@ Get dataset auto disable logs
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Batch indexing estimate calculated successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-status
 #### Parameters
@@ -4554,9 +4556,9 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | ZIP archive generated successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
 **Generate summary index for specified documents**
@@ -4647,10 +4649,10 @@ Get document details
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document retrieved successfully |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 Get a signed download URL for a dataset document's original uploaded file
@@ -4680,11 +4682,11 @@ Estimate document indexing cost
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Indexing estimate calculated successfully |
-| 400 | Document already finished |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Indexing estimate calculated successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 400 | Document already finished |  |
+| 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-status
 Get document indexing status
@@ -4751,9 +4753,9 @@ Update document metadata
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document pipeline execution log retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
 **pause document**
@@ -5087,10 +5089,10 @@ Returns:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Summary status retrieved successfully |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Summary status retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/website-sync
 **sync website document**
@@ -5141,11 +5143,11 @@ Test external knowledge retrieval for dataset
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | External hit testing completed successfully |
-| 400 | Invalid parameters |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | External hit testing completed successfully | **application/json**: [ExternalRetrievalTestResponse](#externalretrievaltestresponse)<br> |
+| 400 | Invalid parameters |  |
+| 404 | Dataset not found |  |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
@@ -5435,13 +5437,25 @@ Check if dataset is in use
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /email-register
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailRegisterResetPayload](#emailregisterresetpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EmailRegisterResetResponse](#emailregisterresetresponse)<br> |
 
 ### [POST] /email-register/send-email
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailRegisterSendPayload](#emailregistersendpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -5449,6 +5463,12 @@ Check if dataset is in use
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 
 ### [POST] /email-register/validity
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailRegisterValidityPayload](#emailregistervaliditypayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -5477,9 +5497,9 @@ Check if dataset is in use
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
 
 ### [GET] /features
 **Get feature configuration for current tenant**
@@ -5594,9 +5614,9 @@ GET /console/api/form/human_input/<form_token>
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ConsoleHumanInputFormDefinitionResponse](#consolehumaninputformdefinitionresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit human input form by form token**
@@ -5625,9 +5645,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
 
 ### [POST] /info
 #### Responses
@@ -5637,6 +5657,12 @@ Request body:
 | 200 | Success | **application/json**: [TenantInfoResponse](#tenantinforesponse)<br> |
 
 ### [GET] /installed-apps
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | query | App ID to filter by | No | string |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -5644,6 +5670,12 @@ Request body:
 | 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
 
 ### [POST] /installed-apps
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledAppCreatePayload](#installedappcreatepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -5670,6 +5702,12 @@ Request body:
 | ---- | ---------- | ----------- | -------- | ------ |
 | installed_app_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledAppUpdatePayload](#installedappupdatepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -5685,9 +5723,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages
 #### Parameters
@@ -5704,9 +5742,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
 #### Parameters
@@ -5737,9 +5775,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop
 #### Parameters
@@ -5767,9 +5805,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
 
 ### [DELETE] /installed-apps/{installed_app_id}/conversations/{c_id}
 #### Parameters
@@ -5801,9 +5839,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/pin
 #### Parameters
@@ -5845,9 +5883,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
 #### Parameters
@@ -5880,9 +5918,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -5909,9 +5947,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ExploreAppMetaResponse](#exploreappmetaresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/parameters
 **Retrieve app parameters**
@@ -5924,9 +5962,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/saved-messages
 #### Parameters
@@ -5939,9 +5977,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/saved-messages
 #### Parameters
@@ -5991,9 +6029,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/run
 **Run workflow**
@@ -6012,9 +6050,9 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -6043,11 +6081,11 @@ Generate instruction for workflow nodes or general use
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Instruction generated successfully |
-| 400 | Invalid request parameters or flow/workflow not found |
-| 402 | Provider quota exceeded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Instruction generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 400 | Invalid request parameters or flow/workflow not found |  |
+| 402 | Provider quota exceeded |  |
 
 ### [POST] /instruction-generate/template
 Get instruction generation template
@@ -6060,10 +6098,10 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Template retrieved successfully |
-| 400 | Invalid request parameters |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Template retrieved successfully | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
+| 400 | Invalid request parameters |  |
 
 ### [POST] /login
 **Authenticate user and login**
@@ -6088,24 +6126,37 @@ Get instruction generation template
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /mcp/oauth/callback
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| code | query |  | Yes | string |
+| state | query |  | Yes | string |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 
 ### [GET] /notification
 Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success — inspect should_show to decide whether to render the modal |
-| 401 | Unauthorized |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success — inspect should_show to decide whether to render the modal | **application/json**: [NotificationResponse](#notificationresponse)<br> |
+| 401 | Unauthorized |  |
 
 ### [POST] /notification/dismiss
 Mark a notification as dismissed for the current user.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DismissNotificationPayload](#dismissnotificationpayload)<br> |
 
 #### Responses
 
@@ -6151,15 +6202,15 @@ Handle OAuth callback and complete login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | OAuth provider name (github/google) | Yes | string |
-| code | query | Authorization code from OAuth provider | No | string |
-| state | query | Optional state parameter (used for invite token) | No | string |
+| code | query | Authorization code from OAuth provider | Yes | string |
+| state | query | OAuth state parameter | No | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to console with access token |
-| 400 | OAuth process failed |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| 400 | OAuth process failed |  |
 
 ### [GET] /oauth/data-source/binding/{provider}
 Bind OAuth data source with authorization code
@@ -6169,7 +6220,7 @@ Bind OAuth data source with authorization code
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | Data source provider name (notion) | Yes | string |
-| code | query | Authorization code from OAuth provider | No | string |
+| code | query | Authorization code from OAuth provider | Yes | string |
 
 #### Responses
 
@@ -6191,10 +6242,10 @@ Handle OAuth callback from data source provider
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to console with result |
-| 400 | Invalid provider |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to console with result | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| 400 | Invalid provider |  |
 
 ### [GET] /oauth/data-source/{provider}
 Get OAuth authorization URL for data source provider
@@ -6239,39 +6290,46 @@ Initiate OAuth login process
 | ---- | ---------- | ----------- | -------- | ------ |
 | provider | path | OAuth provider name (github/google) | Yes | string |
 | invite_token | query | Optional invitation token | No | string |
+| language | query | Preferred interface language | No | string |
+| timezone | query | Preferred timezone | No | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to OAuth authorization URL |
-| 400 | Invalid provider |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth authorization URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| 400 | Invalid provider |  |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/callback
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| code | query | Authorization code from OAuth provider | No | string |
+| context_id | query | OAuth proxy context ID | No | string |
+| error | query | Error message from OAuth provider | No | string |
+| state | query | OAuth state parameter | No | string |
 | provider_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/get-authorization-url
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | query | Credential ID to reauthorize | No | string |
 | provider_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authorization URL retrieved successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/authorization-url
 #### Parameters
@@ -6282,9 +6340,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authorization URL retrieved successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
 #### Parameters
@@ -6295,9 +6353,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
 **Handle OAuth callback for trigger provider**
@@ -6310,37 +6368,61 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 
 ### [POST] /oauth/provider
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthProviderRequest](#oauthproviderrequest)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [OAuthProviderAppResponse](#oauthproviderappresponse)<br> |
 
 ### [POST] /oauth/provider/account
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthClientPayload](#oauthclientpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [OAuthProviderAccountResponse](#oauthprovideraccountresponse)<br> |
 
 ### [POST] /oauth/provider/authorize
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthClientPayload](#oauthclientpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [OAuthProviderAuthorizeResponse](#oauthproviderauthorizeresponse)<br> |
 
 ### [POST] /oauth/provider/token
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [OAuthTokenRequest](#oauthtokenrequest)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [OAuthProviderTokenResponse](#oauthprovidertokenresponse)<br> |
 
 ### [DELETE] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
@@ -6438,9 +6520,9 @@ Initiate OAuth login process
 ### [GET] /rag/pipelines/datasource-plugins
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/imports
 #### Request Body
@@ -6485,11 +6567,17 @@ Initiate OAuth login process
 | 200 | Dependencies checked | **application/json**: [RagPipelineImportCheckDependenciesResponse](#ragpipelineimportcheckdependenciesresponse)<br> |
 
 ### [GET] /rag/pipelines/recommended-plugins
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| type | query |  | No | string, <br>**Default:** all |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/transform/datasets/{dataset_id}
 #### Parameters
@@ -6500,9 +6588,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/customized/publish
 #### Parameters
@@ -6544,6 +6632,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| last_id | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
@@ -6607,6 +6697,10 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 10 |
+| named_only | query |  | No | boolean |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| user_id | query |  | No | string |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
@@ -6627,9 +6721,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}
 **Get default block config**
@@ -6638,14 +6732,15 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| q | query |  | No | string |
 | block_type | path |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block config retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft
 **Get draft rag pipeline's workflow**
@@ -6672,6 +6767,12 @@ Initiate OAuth login process
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowSyncPayload](#draftworkflowsyncpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -6696,9 +6797,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect
 **Set datasource variables**
@@ -6732,9 +6833,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -6754,9 +6855,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -6776,9 +6877,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run
 #### Parameters
@@ -6828,7 +6929,7 @@ Initiate OAuth login process
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Node variables deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
 #### Parameters
@@ -6840,9 +6941,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -6851,13 +6952,14 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| node_id | query |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters
 **Get second step parameters of rag pipeline**
@@ -6866,13 +6968,14 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| node_id | query |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/run
 **Run draft workflow**
@@ -6891,9 +6994,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/system-variables
 #### Parameters
@@ -6904,9 +7007,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 #### Parameters
@@ -6919,7 +7022,7 @@ Initiate OAuth login process
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Workflow variables deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 **Get draft workflow**
@@ -6928,13 +7031,15 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -6948,7 +7053,7 @@ Initiate OAuth login process
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Variable deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -6960,9 +7065,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -6980,9 +7085,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 
 ### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
 #### Parameters
@@ -6994,9 +7099,10 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 204 | Variable reset (no content) |  |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
 **Get published pipeline**
@@ -7046,9 +7152,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DataSourceContentPreviewResponse](#datasourcecontentpreviewresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -7068,9 +7174,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -7079,13 +7185,14 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| node_id | query |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/processing/parameters
 **Get second step parameters of rag pipeline**
@@ -7094,13 +7201,14 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| node_id | query |  | Yes | string |
 | pipeline_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/run
 **Run published workflow**
@@ -7119,9 +7227,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
 **Delete a published workflow version that is not currently active on the pipeline**
@@ -7148,6 +7256,12 @@ Initiate OAuth login process
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string |
 | workflow_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowUpdatePayload](#workflowupdatepayload)<br> |
 
 #### Responses
 
@@ -7229,11 +7343,11 @@ Generate code rules using LLM
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Code rules generated successfully |
-| 400 | Invalid request parameters |
-| 402 | Provider quota exceeded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Code rules generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 402 | Provider quota exceeded |  |
 
 ### [POST] /rule-generate
 Generate rule configuration using LLM
@@ -7246,11 +7360,11 @@ Generate rule configuration using LLM
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Rule configuration generated successfully |
-| 400 | Invalid request parameters |
-| 402 | Provider quota exceeded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Rule configuration generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 402 | Provider quota exceeded |  |
 
 ### [POST] /rule-structured-output-generate
 Generate structured output rules using LLM
@@ -7263,11 +7377,11 @@ Generate structured output rules using LLM
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Structured output generated successfully |
-| 400 | Invalid request parameters |
-| 402 | Provider quota exceeded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Structured output generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 402 | Provider quota exceeded |  |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs
 **List workflow runs for snippet**
@@ -7276,6 +7390,8 @@ Generate structured output rules using LLM
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| last_id | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
 | snippet_id | path |  | Yes | string |
 
 #### Responses
@@ -7299,10 +7415,10 @@ command channel for backward compatibility.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Task stopped successfully |
-| 404 | Snippet not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 404 | Snippet not found |  |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}
 **Get workflow run detail for snippet**
@@ -7367,9 +7483,9 @@ Get all published workflows for a snippet
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default block configs retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft
 **Get draft workflow for snippet**
@@ -7404,10 +7520,10 @@ Get all published workflows for a snippet
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Draft workflow synced successfully |
-| 400 | Hash mismatch |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow synced successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
+| 400 | Hash mismatch |  |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/config
 **Get snippet draft workflow configuration limits**
@@ -7420,9 +7536,9 @@ Get all published workflows for a snippet
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Draft config retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft config retrieved successfully | **application/json**: [SnippetDraftConfigResponse](#snippetdraftconfigresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/conversation-variables
 Conversation variables are not used in snippet workflows; returns an empty list for API parity
@@ -7450,10 +7566,10 @@ Get environment variables from snippet draft workflow graph
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Environment variables retrieved successfully |
-| 404 | Draft workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
+| 404 | Draft workflow not found |  |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run a draft workflow iteration node for snippet**
@@ -7477,10 +7593,10 @@ Returns an SSE event stream with iteration progress and results.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Iteration node run started successfully (SSE stream) |
-| 404 | Snippet or draft workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Iteration node run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 404 | Snippet or draft workflow not found |  |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run a draft workflow loop node for snippet**
@@ -7504,10 +7620,10 @@ Returns an SSE event stream with loop progress and results.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Loop node run started successfully (SSE stream) |
-| 404 | Snippet or draft workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Loop node run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 404 | Snippet or draft workflow not found |  |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
 **Get the last run result for a specific node in snippet draft workflow**
@@ -7609,10 +7725,10 @@ and returns an SSE event stream with execution progress and results.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Draft workflow run started successfully (SSE stream) |
-| 404 | Snippet or draft workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 404 | Snippet or draft workflow not found |  |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/system-variables
 System variables are not used in snippet workflows; returns an empty list for API parity
@@ -7769,10 +7885,10 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow published successfully |
-| 400 | No draft workflow found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 400 | No draft workflow found |  |
 
 ### [POST] /snippets/{snippet_id}/workflows/{workflow_id}/restore
 **Restore a published snippet workflow version into the draft workflow**
@@ -7786,11 +7902,11 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow restored successfully |
-| 400 | Source workflow must be published |
-| 404 | Workflow not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
+| 400 | Source workflow must be published |  |
+| 404 | Workflow not found |  |
 
 ### [GET] /spec/schema-definitions
 **Get system JSON Schema definitions specification**
@@ -7799,9 +7915,9 @@ Used for frontend component type mapping
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SchemaDefinitionsResponse](#schemadefinitionsresponse)<br> |
 
 ### [GET] /system-features
 **Get system-wide feature configuration**
@@ -7853,8 +7969,8 @@ Remove one or more tag bindings from a target.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query | Search keyword for tag name. | No | string |
-| type | query | Tag type filter. Can be "knowledge", "app", or "snippet". | No | string |
+| keyword | query | Search keyword | No | string |
+| type | query | Tag type filter | No | string, <br>**Available values:** "", "app", "knowledge", "snippet" |
 
 #### Responses
 
@@ -7918,9 +8034,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Bedrock retrieval test completed |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Bedrock retrieval test completed | **application/json**: [ExternalRetrievalTestResponse](#externalretrievaltestresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
 **Get app detail**
@@ -7933,9 +8049,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TrialAppDetailWithSite](#trialappdetailwithsite)<br> |
 
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
@@ -7946,9 +8062,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/chat-messages
 #### Parameters
@@ -7965,9 +8081,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -7984,22 +8100,25 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/datasets
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| ids | query | Dataset IDs | No | [ string ] |
+| limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
 | app_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TrialDatasetList](#trialdatasetlist)<br> |
 
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -8011,9 +8130,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/parameters
 **Retrieve app parameters**
@@ -8026,9 +8145,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
 
 ### [GET] /trial-apps/{app_id}/site
 **Retrieve app site info**
@@ -8043,9 +8162,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Site](#site)<br> |
 
 ### [POST] /trial-apps/{app_id}/text-to-audio
 #### Parameters
@@ -8062,9 +8181,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/workflows
 **Get workflow detail**
@@ -8077,9 +8196,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TrialWorkflow](#trialworkflow)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/run
 **Run workflow**
@@ -8098,9 +8217,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -8114,9 +8233,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /trial-models
 **Get hosted trial model provider configuration for model-provider pages**
@@ -8140,10 +8259,10 @@ Crawl website content
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Website crawl initiated successfully |
-| 400 | Invalid crawl parameters |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Website crawl initiated successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
+| 400 | Invalid crawl parameters |  |
 
 ### [GET] /website/crawl/status/{job_id}
 Get website crawl status
@@ -8157,11 +8276,11 @@ Get website crawl status
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Crawl status retrieved successfully |
-| 400 | Invalid provider |
-| 404 | Crawl job not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
+| 400 | Invalid provider |  |
+| 404 | Crawl job not found |  |
 
 ### [POST] /workflow-generate
 Generate a Dify workflow graph from natural language
@@ -8174,11 +8293,11 @@ Generate a Dify workflow graph from natural language
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow graph generated successfully |
-| 400 | Invalid request parameters |
-| 402 | Provider quota exceeded |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow graph generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 402 | Provider quota exceeded |  |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Get workflow execution events stream after resume**
@@ -8195,9 +8314,9 @@ Returns Server-Sent Events stream.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/pause-details
 **Get workflow pause details**
@@ -8223,9 +8342,9 @@ Returns information about why and where the workflow is paused.
 ### [GET] /workspaces
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
 
 ### [POST] /workspaces/current
 #### Responses
@@ -8247,7 +8366,7 @@ Get specific agent provider details
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: object<br> |
+| 200 | Success | **application/json**: [AgentProviderResponse](#agentproviderresponse)<br> |
 
 ### [GET] /workspaces/current/agent-providers
 Get list of available agent providers
@@ -8256,7 +8375,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ object ]<br> |
+| 200 | Success | **application/json**: [AgentProviderListResponse](#agentproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
 **List customized snippets with pagination and search**
@@ -8305,11 +8424,11 @@ Get list of available agent providers
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Snippet imported successfully |
-| 202 | Import pending confirmation |
-| 400 | Import failed |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Snippet imported successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 202 | Import pending confirmation | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 400 | Import failed |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
 **Confirm a pending snippet import**
@@ -8322,10 +8441,10 @@ Get list of available agent providers
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Import confirmed successfully |
-| 400 | Import failed |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Import confirmed successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 400 | Import failed |  |
 
 ### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
 **Delete customized snippet**
@@ -8393,10 +8512,10 @@ Get list of available agent providers
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Dependencies checked successfully |
-| 404 | Snippet not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Dependencies checked successfully | **application/json**: [SnippetDependencyCheckResponse](#snippetdependencycheckresponse)<br> |
+| 404 | Snippet not found |  |
 
 ### [GET] /workspaces/current/customized-snippets/{snippet_id}/export
 **Export snippet as DSL**
@@ -8408,13 +8527,14 @@ Export snippet configuration as DSL
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID to export | Yes | string |
+| include_secret | query | Whether to include secret variables | No | string, <br>**Default:** false |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Snippet exported successfully |
-| 404 | Snippet not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Snippet exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
+| 404 | Snippet not found |  |
 
 ### [POST] /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
 **Increment snippet use count when it is inserted into a workflow**
@@ -8429,10 +8549,10 @@ Increment snippet use count by 1
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Use count incremented successfully |
-| 404 | Snippet not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Use count incremented successfully | **application/json**: [SnippetUseCountResponse](#snippetusecountresponse)<br> |
+| 404 | Snippet not found |  |
 
 ### [GET] /workspaces/current/dataset-operators
 #### Responses
@@ -8450,9 +8570,9 @@ Increment snippet use count by 1
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DefaultModelDataResponse](#defaultmodeldataresponse)<br> |
 
 ### [POST] /workspaces/current/default-model
 #### Request Body
@@ -8659,9 +8779,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
 #### Request Body
@@ -8698,9 +8818,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberActionTenantResponse](#memberactiontenantresponse)<br> |
 
 ### [POST] /workspaces/current/members/{member_id}/owner-transfer
 #### Parameters
@@ -8717,9 +8837,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [PUT] /workspaces/current/members/{member_id}/update-role
 #### Parameters
@@ -8736,9 +8856,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers
 #### Parameters
@@ -8749,9 +8869,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
@@ -8762,9 +8882,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ModelProviderPaymentCheckoutUrlResponse](#modelproviderpaymentcheckouturlresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -8795,9 +8915,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ProviderCredentialResponse](#providercredentialresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -8814,9 +8934,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [PUT] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -8833,9 +8953,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/credentials/switch
 #### Parameters
@@ -8871,9 +8991,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential validation result | **application/json**: [ProviderCredentialValidateResponse](#providercredentialvalidateresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -8903,9 +9023,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ModelWithProviderListResponse](#modelwithproviderlistresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -8922,9 +9042,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -8958,9 +9078,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ModelCredentialResponse](#modelcredentialresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -8977,9 +9097,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [PUT] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -8996,9 +9116,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials/switch
 #### Parameters
@@ -9034,9 +9154,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential validation result | **application/json**: [ModelCredentialValidateResponse](#modelcredentialvalidateresponse)<br> |
 
 ### [PATCH] /workspaces/current/model-providers/{provider}/models/disable
 #### Parameters
@@ -9091,9 +9211,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential validation result | **application/json**: [LoadBalancingCredentialValidateResponse](#loadbalancingcredentialvalidateresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate
 #### Parameters
@@ -9111,9 +9231,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential validation result | **application/json**: [LoadBalancingCredentialValidateResponse](#loadbalancingcredentialvalidateresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/models/parameter-rules
 #### Parameters
@@ -9125,9 +9245,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ModelParameterRulesResponse](#modelparameterrulesresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/preferred-provider-type
 #### Parameters
@@ -9157,9 +9277,9 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ProviderWithModelsDataResponse](#providerwithmodelsdataresponse)<br> |
 
 ### [GET] /workspaces/current/permission
 **Get workspace permission settings**
@@ -9182,9 +9302,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/debugging-key
 #### Responses
@@ -9202,9 +9322,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginManifestResponse](#pluginmanifestresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/icon
 #### Parameters
@@ -9216,9 +9336,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/github
 #### Request Body
@@ -9229,9 +9349,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/marketplace
 #### Request Body
@@ -9242,9 +9362,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/pkg
 #### Request Body
@@ -9255,9 +9375,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
@@ -9269,9 +9389,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginListResponse](#pluginlistresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/list/installations/ids
 #### Request Body
@@ -9282,9 +9402,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginInstallationsResponse](#plugininstallationsresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/list/latest-versions
 #### Request Body
@@ -9295,9 +9415,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginVersionsResponse](#pluginversionsresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/marketplace/pkg
 #### Parameters
@@ -9308,9 +9428,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginManifestResponse](#pluginmanifestresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/parameters/dynamic-options
 #### Parameters
@@ -9326,9 +9446,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/parameters/dynamic-options-with-credentials
 **Fetch dynamic options using credentials directly (for edit mode)**
@@ -9341,9 +9461,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/permission/change
 #### Request Body
@@ -9361,9 +9481,9 @@ Returns permission flags that control workspace features like member invitations
 ### [GET] /workspaces/current/plugin/permission/fetch
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginPermissionResponse](#pluginpermissionresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/preferences/autoupgrade/exclude
 #### Request Body
@@ -9374,9 +9494,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginOperationSuccessResponse](#pluginoperationsuccessresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/preferences/change
 #### Request Body
@@ -9387,16 +9507,16 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginOperationSuccessResponse](#pluginoperationsuccessresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/preferences/fetch
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginPreferencesResponse](#pluginpreferencesresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/readme
 #### Parameters
@@ -9408,9 +9528,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginReadmeResponse](#pluginreadmeresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/tasks
 #### Parameters
@@ -9422,9 +9542,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginTasksResponse](#plugintasksresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/delete_all
 #### Responses
@@ -9442,9 +9562,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginTaskResponse](#plugintaskresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/{task_id}/delete
 #### Parameters
@@ -9495,9 +9615,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upgrade/marketplace
 #### Request Body
@@ -9508,16 +9628,16 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/github
 #### Request Body
@@ -9528,23 +9648,23 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/pkg
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
 
 ### [GET] /workspaces/current/tool-labels
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/add
 #### Request Body
@@ -9555,9 +9675,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/delete
 #### Request Body
@@ -9568,23 +9688,35 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/get
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | query |  | Yes | string |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/remote
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| url | query |  | Yes | string (uri) |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/schema
 #### Request Body
@@ -9595,9 +9727,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/test/pre
 #### Request Body
@@ -9608,16 +9740,22 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/tools
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider | query |  | Yes | string |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/update
 #### Request Body
@@ -9628,9 +9766,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
 #### Parameters
@@ -9647,22 +9785,23 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| include_credential_ids | query | Credential IDs to include even if visibility would hide them | No | [ string ] |
 | provider | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}
 #### Parameters
@@ -9674,22 +9813,23 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credentials
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| include_credential_ids | query | Credential IDs to include even if visibility would hide them | No | [ string ] |
 | provider | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/default-credential
 #### Parameters
@@ -9706,9 +9846,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/delete
 #### Parameters
@@ -9725,9 +9865,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/icon
 #### Parameters
@@ -9738,9 +9878,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/info
 #### Parameters
@@ -9751,9 +9891,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema
 #### Parameters
@@ -9764,9 +9904,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolOAuthClientSchemaResponse](#tooloauthclientschemaresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -9777,9 +9917,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -9790,9 +9930,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolOAuthCustomClientResponse](#tooloauthcustomclientresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -9809,9 +9949,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/tools
 #### Parameters
@@ -9822,9 +9962,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/update
 #### Parameters
@@ -9841,9 +9981,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -9867,9 +10007,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [PUT] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -9880,9 +10020,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/mcp/auth
 #### Request Body
@@ -9893,9 +10033,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/tools/{provider_id}
 #### Parameters
@@ -9906,9 +10046,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/update/{provider_id}
 #### Parameters
@@ -9919,9 +10059,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/create
 #### Request Body
@@ -9932,9 +10072,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/delete
 #### Request Body
@@ -9945,23 +10085,36 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/get
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_app_id | query |  | No | string |
+| workflow_tool_id | query |  | No | string |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/tools
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_tool_id | query |  | Yes | string |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/update
 #### Request Body
@@ -9972,44 +10125,50 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tool-providers
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| type | query |  | No | string, <br>**Available values:** "api", "builtin", "mcp", "model", "workflow" |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tools/api
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tools/builtin
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tools/mcp
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/tools/workflow
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/icon
 #### Parameters
@@ -10020,9 +10179,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/info
 **Get info for a trigger provider**
@@ -10035,9 +10194,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Remove custom OAuth client configuration**
@@ -10050,9 +10209,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Get OAuth client configuration for a provider**
@@ -10065,9 +10224,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Configure custom OAuth client for a provider**
@@ -10086,9 +10245,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
 **Build a subscription instance for a trigger provider**
@@ -10108,9 +10267,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
 **Add a new subscription instance for a trigger provider**
@@ -10129,9 +10288,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
 **Get the request logs for a subscription instance for a trigger provider**
@@ -10145,9 +10304,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
 **Update a subscription instance for a trigger provider**
@@ -10167,9 +10326,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
 **Verify and update a subscription instance for a trigger provider**
@@ -10189,9 +10348,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
 **Get a subscription instance for a trigger provider**
@@ -10205,9 +10364,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/list
 **List all trigger subscriptions for the current tenant's provider**
@@ -10220,9 +10379,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
 **Initiate OAuth authorization flow for a trigger provider**
@@ -10235,9 +10394,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Authorization URL retrieved successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
 **Verify credentials for an existing subscription (edit mode only)**
@@ -10257,9 +10416,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
 **Delete a subscription instance**
@@ -10293,18 +10452,18 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
 **List all trigger providers for the current tenant**
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -10315,16 +10474,16 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
 
 ### [POST] /workspaces/custom-config/webapp-logo/upload
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Logo uploaded | **application/json**: [WorkspaceLogoUploadResponse](#workspacelogouploadresponse)<br> |
 
 ### [POST] /workspaces/info
 #### Request Body
@@ -10335,9 +10494,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
 
 ### [POST] /workspaces/switch
 #### Request Body
@@ -10348,9 +10507,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SwitchWorkspaceResponse](#switchworkspaceresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
 #### Parameters
@@ -10364,9 +10523,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
 
 ---
 ## default
@@ -10375,14 +10534,34 @@ Default namespace
 ### [GET] /explore/banners
 **Get banner list**
 
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Banner language | No | string, <br>**Default:** en-US |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [BannerListResponse](#bannerlistresponse)<br> |
 
 ---
 ### Schemas
+
+#### AIModelEntityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deprecated | boolean |  | No |
+| features | [ [ModelFeature](#modelfeature) ] |  | No |
+| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| model | string |  | Yes |
+| model_properties | object |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| parameter_rules | [ [ParameterRule](#parameterrule) ], <br>**Default:**  |  | No |
+| pricing | [PriceConfigResponse](#priceconfigresponse) |  | No |
 
 #### APIBasedExtensionListResponse
 
@@ -10610,6 +10789,13 @@ Default namespace
 | has_context | string, <br>**Default:** true | Whether has context | No |
 | model_mode | string | Model mode | Yes |
 | model_name | string | Model name | Yes |
+
+#### AdvancedPromptTemplateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_prompt_config | object |  | No |
+| completion_prompt_config | object |  | No |
 
 #### AgentAppComposerResponse
 
@@ -10994,6 +11180,17 @@ Supported icon storage formats for Agent roster entries.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### AgentIterationLogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | string |  | Yes |
+| files | [  ] |  | No |
+| thought | string |  | No |
+| tokens | integer |  | Yes |
+| tool_calls | [ [AgentToolCallResponse](#agenttoolcallresponse) ] |  | Yes |
+| tool_raw | object |  | Yes |
+
 #### AgentKind
 
 Agent implementation family.
@@ -11028,12 +11225,32 @@ the current roster/workflow APIs scoped to Dify Agent.
 | ---- | ---- | ----------- | -------- |
 | AgentKnowledgeQueryMode | string |  |  |
 
+#### AgentLogMetaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | string |  | Yes |
+| elapsed_time | number |  | No |
+| executor | string |  | Yes |
+| iterations | integer |  | Yes |
+| start_time | string |  | Yes |
+| status | string |  | Yes |
+| total_tokens | integer |  | Yes |
+
 #### AgentLogQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | message_id | string | Message UUID | Yes |
+
+#### AgentLogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [  ] |  | No |
+| iterations | [ [AgentIterationLogResponse](#agentiterationlogresponse) ] |  | Yes |
+| meta | [AgentLogMetaResponse](#agentlogmetaresponse) |  | Yes |
 
 #### AgentMemoryArtifactConfig
 
@@ -11073,6 +11290,18 @@ the current roster/workflow APIs scoped to Dify Agent.
 | allowed | boolean |  | No |
 | state | string |  | No |
 | status | string |  | No |
+
+#### AgentProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentProviderListResponse | array |  |  |
+
+#### AgentProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentProviderResponse | object |  |  |
 
 #### AgentPublishedReferenceResponse
 
@@ -11199,6 +11428,18 @@ Visibility and lifecycle scope of an Agent record.
 | id | string |  | No |
 | name | string |  | No |
 | path | string |  | No |
+
+#### AgentSkillStandardizeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentSkillStandardizeResponse | object |  |  |
+
+#### AgentSkillUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentSkillUploadResponse | object |  |  |
 
 #### AgentSoulAppFeaturesConfig
 
@@ -11408,6 +11649,20 @@ Soft lifecycle state for Agent records.
 | tool_input | string |  | No |
 | tool_labels | [JSONValue](#jsonvalue) |  | Yes |
 
+#### AgentToolCallResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| status | string |  | Yes |
+| time_cost | number<br>integer |  | Yes |
+| tool_icon |  |  | No |
+| tool_input | object |  | Yes |
+| tool_label | string |  | Yes |
+| tool_name | string |  | Yes |
+| tool_output | object |  | Yes |
+| tool_parameters | object |  | Yes |
+
 #### AllowedExtensionsResponse
 
 | Name | Type | Description | Required |
@@ -11418,7 +11673,7 @@ Soft lifecycle state for Agent records.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
+| answer | string |  | No |
 | created_at | integer |  | No |
 | hit_count | integer |  | No |
 | id | string |  | Yes |
@@ -11429,6 +11684,13 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | count | integer | Number of annotations | Yes |
+
+#### AnnotationEmbeddingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
 
 #### AnnotationExportList
 
@@ -11446,11 +11708,11 @@ Soft lifecycle state for Agent records.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_content | string |  | No |
-| annotation_question | string |  | No |
 | created_at | integer |  | No |
 | id | string |  | Yes |
+| match | string |  | No |
 | question | string |  | No |
+| response | string |  | No |
 | score | number |  | No |
 | source | string |  | No |
 
@@ -11470,6 +11732,15 @@ Soft lifecycle state for Agent records.
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 | Page size | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
+
+#### AnnotationJobStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_msg | string |  | No |
+| job_id | string |  | No |
+| job_status | string |  | No |
+| record_count | integer |  | No |
 
 #### AnnotationList
 
@@ -11502,6 +11773,15 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "disable", "enable" | *Enum:* `"disable"`, `"enable"` | Yes |
+
+#### AnnotationSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model | [AnnotationEmbeddingModelResponse](#annotationembeddingmodelresponse) |  | No |
+| enabled | boolean |  | Yes |
+| id | string |  | No |
+| score_threshold | number |  | No |
 
 #### AnnotationSettingUpdatePayload
 
@@ -11841,6 +12121,13 @@ AppMCPServer Status Enum
 | enabled | boolean | Enable or disable tracing | Yes |
 | tracing_provider | string | Tracing provider | No |
 
+#### AppTraceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| tracing_provider | string |  | No |
+
 #### AppVariableConfig
 
 | Name | Type | Description | Required |
@@ -11850,11 +12137,17 @@ AppMCPServer Status Enum
 | required | boolean |  | No |
 | type | string |  | Yes |
 
+#### AudioBinaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioBinaryResponse | string |  |  |
+
 #### AudioTranscriptResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| text | string | Transcribed text from audio | Yes |
+| text | string |  | Yes |
 
 #### AutoDisableLogsResponse
 
@@ -11868,6 +12161,49 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar_url | string |  | Yes |
+
+#### AverageResponseTimeStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| latency | number |  | Yes |
+
+#### AverageResponseTimeStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AverageResponseTimeStatisticItem](#averageresponsetimestatisticitem) ] |  | Yes |
+
+#### AverageSessionInteractionStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| interactions | number |  | Yes |
+
+#### AverageSessionInteractionStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AverageSessionInteractionStatisticItem](#averagesessioninteractionstatisticitem) ] |  | Yes |
+
+#### BannerListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BannerListResponse | array |  |  |
+
+#### BannerResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content |  |  | Yes |
+| created_at | string |  | No |
+| id | string |  | Yes |
+| link | string |  | No |
+| sort | integer |  | Yes |
+| status | string |  | Yes |
 
 #### BatchImportPayload
 
@@ -11899,6 +12235,18 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | enabled | boolean |  | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
+#### BillingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BillingResponse | object |  |  |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
+
 #### BrandingModel
 
 | Name | Type | Description | Required |
@@ -11908,6 +12256,12 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | favicon | string |  | Yes |
 | login_page_logo | string |  | Yes |
 | workspace_logo | string |  | Yes |
+
+#### BuiltinCredentialListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_credential_ids | [ string ] | Credential IDs to include even if visibility would hide them | No |
 
 #### BuiltinProviderDefaultCredentialPayload
 
@@ -12103,6 +12457,12 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | content | string |  | Yes |
 
+#### CodeBasedExtensionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| module | string |  | Yes |
+
 #### CodeBasedExtensionResponse
 
 | Name | Type | Description | Required |
@@ -12157,6 +12517,12 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | doc_name | string | Compliance document name | Yes |
+
+#### ComplianceDownloadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComplianceDownloadResponse | object |  |  |
 
 #### ComposerBindingPayload
 
@@ -12240,6 +12606,14 @@ Condition detail
 | name | string |  | Yes |
 | value | string<br>[ string ]<br>integer<br>number |  | No |
 
+#### ConfigurateMethod
+
+Enum class for configurate method of provider model.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
+
 #### ConsoleDatasetListQuery
 
 | Name | Type | Description | Required |
@@ -12250,6 +12624,18 @@ Condition detail
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
+
+#### ConsoleHumanInputFormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConsoleHumanInputFormDefinitionResponse | object |  |  |
+
+#### ConsoleHumanInputFormSubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConsoleHumanInputFormSubmitResponse | object |  |  |
 
 #### ConsoleSegmentListResponse
 
@@ -12316,6 +12702,14 @@ Condition detail
 | status | string |  | Yes |
 | updated_at | integer |  | No |
 | user_feedback_stats | [FeedbackStat](#feedbackstat) |  | No |
+
+#### ConversationInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SimpleConversation](#simpleconversation) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 
 #### ConversationListQuery
 
@@ -12465,11 +12859,71 @@ Payload for creating a new snippet.
 | name | string |  | Yes |
 | type | string, <br>**Available values:** "group", "node", <br>**Default:** node | *Enum:* `"group"`, `"node"` | No |
 
+#### CredentialConfiguration
+
+Model class for credential configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | Yes |
+| credential_name | string |  | Yes |
+
+#### CredentialFormSchema
+
+Model class for credential form schema.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | string |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| max_length | integer |  | No |
+| options | [ [FormOption](#formoption) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean, <br>**Default:** true |  | No |
+| show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
+| type | [FormType](#formtype) |  | Yes |
+| variable | string |  | Yes |
+
 #### CredentialType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CredentialType | string |  |  |
+
+#### CustomConfigurationResponse
+
+Model class for provider custom configuration response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | No |
+| can_added_models | [ [UnaddedModelConfiguration](#unaddedmodelconfiguration) ] |  | No |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| custom_models | [ [CustomModelConfiguration](#custommodelconfiguration) ] |  | No |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+
+#### CustomConfigurationStatus
+
+Enum class for custom configuration status.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CustomConfigurationStatus | string | Enum class for custom configuration status. |  |
+
+#### CustomModelConfiguration
+
+Model class for provider custom model configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_model_credentials | [ [CredentialConfiguration](#credentialconfiguration) ], <br>**Default:**  |  | No |
+| credentials | object |  | Yes |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| model | string |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| unadded_to_model_list | boolean |  | No |
 
 #### CustomizedPipelineTemplatePayload
 
@@ -12479,11 +12933,71 @@ Payload for creating a new snippet.
 | icon_info | object |  | No |
 | name | string |  | Yes |
 
+#### DailyConversationStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| date | string |  | Yes |
+
+#### DailyConversationStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyConversationStatisticItem](#dailyconversationstatisticitem) ] |  | Yes |
+
+#### DailyMessageStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| message_count | integer |  | Yes |
+
+#### DailyMessageStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyMessageStatisticItem](#dailymessagestatisticitem) ] |  | Yes |
+
+#### DailyTerminalStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| terminal_count | integer |  | Yes |
+
+#### DailyTerminalStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyTerminalStatisticItem](#dailyterminalstatisticitem) ] |  | Yes |
+
+#### DailyTokenCostStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| currency | string |  | Yes |
+| date | string |  | Yes |
+| token_count | integer |  | Yes |
+| total_price | string<br>number |  | Yes |
+
+#### DailyTokenCostStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [DailyTokenCostStatisticItem](#dailytokencoststatisticitem) ] |  | Yes |
+
 #### DataSource
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | info_list | [InfoList](#infolist) |  | Yes |
+
+#### DataSourceContentPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DataSourceContentPreviewResponse |  |  |  |
 
 #### DataSourceIntegrateIconResponse
 
@@ -12559,7 +13073,7 @@ Payload for creating a new snippet.
 | author_name | string |  | No |
 | built_in_field_enabled | boolean |  | No |
 | chunk_structure | string |  | No |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | string |  | No |
 | data_source_type | string |  | No |
 | description | string |  | No |
@@ -12587,7 +13101,7 @@ Payload for creating a new snippet.
 | tags | [ [Tag](#tag) ] |  | No |
 | total_available_documents | integer |  | No |
 | total_documents | integer |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | string |  | No |
 | word_count | integer |  | No |
 
@@ -13006,6 +13520,12 @@ Payload for creating a new snippet.
 | credentials | object |  | No |
 | name | string |  | No |
 
+#### DatasourceCredentialsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result |  |  | Yes |
+
 #### DatasourceCustomClientPayload
 
 | Name | Type | Description | Required |
@@ -13026,6 +13546,21 @@ Payload for creating a new snippet.
 | credential_id | string |  | No |
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
+
+#### DatasourceOAuthAuthorizationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string | Credential ID to reauthorize | No |
+
+#### DatasourceOAuthCallbackQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string | Authorization code from OAuth provider | No |
+| context_id | string | OAuth proxy context ID | No |
+| error | string | Error message from OAuth provider | No |
+| state | string | OAuth state parameter | No |
 
 #### DatasourceUpdateNamePayload
 
@@ -13139,6 +13674,34 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | ---- | ---- | ----------- | -------- |
 | q | string |  | No |
 
+#### DefaultBlockConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DefaultBlockConfigResponse | object |  |  |
+
+#### DefaultBlockConfigsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DefaultBlockConfigsResponse | array |  |  |
+
+#### DefaultModelDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [DefaultModelResponse](#defaultmodelresponse) |  | No |
+
+#### DefaultModelResponse
+
+Default model entity.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| provider | [SimpleProviderEntityResponse](#simpleproviderentityresponse) |  | Yes |
+
 #### DeletedTool
 
 | Name | Type | Description | Required |
@@ -13146,6 +13709,12 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | provider_id | string |  | Yes |
 | tool_name | string |  | Yes |
 | type | string |  | Yes |
+
+#### DismissNotificationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| notification_id | string |  | Yes |
 
 #### DocumentBatchDownloadZipPayload
 
@@ -13339,6 +13908,12 @@ Request payload for bulk downloading documents as a zip archive.
 | role | string |  | Yes |
 | token | string |  | Yes |
 
+#### EducationActivateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EducationActivateResponse | object |  |  |
+
 #### EducationAutocompleteQuery
 
 | Name | Type | Description | Required |
@@ -13404,12 +13979,27 @@ Request payload for bulk downloading documents as a zip archive.
 | timezone | string |  | No |
 | token | string |  | Yes |
 
+#### EmailRegisterResetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [EmailRegisterTokenPairResponse](#emailregistertokenpairresponse) |  | Yes |
+| result | string |  | Yes |
+
 #### EmailRegisterSendPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string | Email address | Yes |
 | language | string | Language code | No |
+
+#### EmailRegisterTokenPairResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| csrf_token | string |  | Yes |
+| refresh_token | string |  | Yes |
 
 #### EmailRegisterValidityPayload
 
@@ -13418,6 +14008,12 @@ Request payload for bulk downloading documents as a zip archive.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | token | string |  | Yes |
+
+#### EmptyObjectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmptyObjectResponse | object |  |  |
 
 #### EndpointCreatePayload
 
@@ -13491,6 +14087,27 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | success | boolean | Operation success | Yes |
 
+#### EnvironmentVariableItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| editable | boolean |  | Yes |
+| edited | boolean |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| selector | [ string ] |  | Yes |
+| type | string |  | Yes |
+| value |  |  | Yes |
+| value_type | string |  | Yes |
+| visible | boolean |  | Yes |
+
+#### EnvironmentVariableListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [EnvironmentVariableItemResponse](#environmentvariableitemresponse) ] |  | Yes |
+
 #### EnvironmentVariableUpdatePayload
 
 | Name | Type | Description | Required |
@@ -13504,11 +14121,23 @@ Request payload for bulk downloading documents as a zip archive.
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
 
+#### EventStreamResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EventStreamResponse | string |  |  |
+
 #### ExecutionContentType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ExecutionContentType | string |  |  |
+
+#### ExploreAppMetaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| tool_icons | object |  | No |
 
 #### ExternalApiTemplateListQuery
 
@@ -13536,12 +14165,42 @@ Request payload for bulk downloading documents as a zip archive.
 | metadata_filtering_conditions | object |  | No |
 | query | string |  | Yes |
 
+#### ExternalKnowledgeApiListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### ExternalKnowledgeApiPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | settings | object |  | Yes |
+
+#### ExternalKnowledgeApiResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | string |  | Yes |
+| created_by | string |  | Yes |
+| dataset_bindings | [ [ExternalKnowledgeDatasetBindingResponse](#externalknowledgedatasetbindingresponse) ] |  | No |
+| description | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| settings | object |  | No |
+| tenant_id | string |  | Yes |
+
+#### ExternalKnowledgeDatasetBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### ExternalKnowledgeInfo
 
@@ -13559,6 +14218,12 @@ Request payload for bulk downloading documents as a zip archive.
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | No |
+
+#### ExternalRetrievalTestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExternalRetrievalTestResponse | object<br>[ object ] |  |  |
 
 #### FeatureModel
 
@@ -13612,6 +14277,21 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | dislike | integer |  | Yes |
 | like | integer |  | Yes |
+
+#### FetchFrom
+
+Enum class for fetch from.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FetchFrom | string | Enum class for fetch from. |  |
+
+#### FieldModelSchema
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| placeholder | [I18nObject](#i18nobject) |  | No |
 
 #### FileInfo
 
@@ -13736,11 +14416,50 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
+#### FormOption
+
+Model class for form option.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
+| value | string |  | Yes |
+
+#### FormShowOnObject
+
+Model class for form show on.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| value | string |  | Yes |
+| variable | string |  | Yes |
+
+#### FormType
+
+Enum class for form type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormType | string | Enum class for form type. |  |
+
 #### GenerateSummaryPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | document_list | [ string ] |  | Yes |
+
+#### GeneratedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GeneratedAppResponse |  |  |  |
+
+#### GeneratorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GeneratorResponse |  |  |  |
 
 #### Github
 
@@ -13880,6 +14599,21 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | inputs | object | Values used to fill missing upstream variables referenced in form_content | No |
 
+#### HumanInputFormPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ object ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | No |
+| form_content | string |  | Yes |
+| form_id | string |  | Yes |
+| form_token | string |  | No |
+| inputs | [ object ] |  | No |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| resolved_default_values | object |  | No |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -13899,6 +14633,12 @@ Request payload for bulk downloading documents as a zip archive.
 | form_inputs | object | Values the user provides for the form's own fields | Yes |
 | inputs | object | Values used to fill missing upstream variables referenced in form_content | Yes |
 
+#### HumanInputFormSubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmitResponse | object |  |  |
+
 #### HumanInputPauseTypeResponse
 
 | Name | Type | Description | Required |
@@ -13906,6 +14646,15 @@ Request payload for bulk downloading documents as a zip archive.
 | backstage_input_url | string |  | No |
 | form_id | string |  | Yes |
 | type | string |  | Yes |
+
+#### I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
 
 #### IconInfo
 
@@ -14110,11 +14859,23 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
+#### JSONObject
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONObject | object |  |  |
+
 #### JSONValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue |  |  |  |
+| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+
+#### JSONValueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONValueType |  |  |  |
 
 #### JsonValue
 
@@ -14203,6 +14964,13 @@ Enum class for large language model mode.
 | model | string |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
 
+#### LoadBalancingCredentialValidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| result | string |  | Yes |
+
 #### LoadBalancingPayload
 
 | Name | Type | Description | Required |
@@ -14231,6 +14999,13 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | authorization_code | string |  | No |
 | provider_id | string |  | Yes |
+
+#### MCPCallbackQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| state | string |  | Yes |
 
 #### MCPProviderCreatePayload
 
@@ -14292,6 +15067,13 @@ Enum class for large language model mode.
 | marketplace_plugin_unique_identifier | string |  | Yes |
 | version | string |  | No |
 
+#### MemberActionTenantResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+| tenant_id | string |  | Yes |
+
 #### MemberInvitePayload
 
 | Name | Type | Description | Required |
@@ -14299,6 +15081,23 @@ Enum class for large language model mode.
 | emails | [ string ] |  | No |
 | language | string |  | No |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+
+#### MemberInviteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitation_results | [ [MemberInviteResultResponse](#memberinviteresultresponse) ] |  | Yes |
+| result | string |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### MemberInviteResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| message | string |  | No |
+| status | string |  | Yes |
+| url | string |  | No |
 
 #### MemberRoleUpdatePayload
 
@@ -14385,6 +15184,14 @@ Enum class for large language model mode.
 | upload_file_id | string |  | No |
 | url | string |  | No |
 
+#### MessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [MessageListItem](#messagelistitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
 #### MessageInfiniteScrollPaginationResponse
 
 | Name | Type | Description | Required |
@@ -14392,6 +15199,25 @@ Enum class for large language model mode.
 | data | [ [MessageDetailResponse](#messagedetailresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
+
+#### MessageListItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| error | string |  | No |
+| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
+| status | string |  | Yes |
 
 #### MessageListQuery
 
@@ -14476,6 +15302,81 @@ Metadata operation data
 | text_to_speech | object | Text to speech configuration | No |
 | tools | [ object ] | Available tools | No |
 
+#### ModelCredentialLoadBalancingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configs | [ object ] |  | No |
+| enabled | boolean |  | Yes |
+
+#### ModelCredentialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
+| credentials | object |  | No |
+| current_credential_id | string |  | No |
+| current_credential_name | string |  | No |
+| load_balancing | [ModelCredentialLoadBalancingResponse](#modelcredentialloadbalancingresponse) |  | Yes |
+
+#### ModelCredentialSchema
+
+Model class for model credential schema.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_form_schemas | [ [CredentialFormSchema](#credentialformschema) ] |  | Yes |
+| model | [FieldModelSchema](#fieldmodelschema) |  | Yes |
+
+#### ModelCredentialValidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| result | string |  | Yes |
+
+#### ModelFeature
+
+Enum class for llm feature.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelFeature | string | Enum class for llm feature. |  |
+
+#### ModelParameterRulesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ParameterRule](#parameterrule) ] |  | Yes |
+
+#### ModelPropertyKey
+
+Enum class for model property key.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelPropertyKey | string | Enum class for model property key. |  |
+
+#### ModelProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ProviderResponse](#providerresponse) ] |  | Yes |
+
+#### ModelProviderPaymentCheckoutUrlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| payment_link | string |  | Yes |
+
+#### ModelStatus
+
+Enum class for model status.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelStatus | string | Enum class for model status. |  |
+
 #### ModelType
 
 Enum class for model type.
@@ -14483,6 +15384,30 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelType | string | Enum class for model type. |  |
+
+#### ModelWithProviderEntityResponse
+
+Model with provider entity.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deprecated | boolean |  | No |
+| features | [ [ModelFeature](#modelfeature) ] |  | No |
+| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| has_invalid_load_balancing_configs | boolean |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| load_balancing_enabled | boolean |  | No |
+| model | string |  | Yes |
+| model_properties | object |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| provider | [SimpleProviderEntityResponse](#simpleproviderentityresponse) |  | Yes |
+| status | [ModelStatus](#modelstatus) |  | Yes |
+
+#### ModelWithProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelWithProviderEntityResponse](#modelwithproviderentityresponse) ] |  | Yes |
 
 #### MoreLikeThisQuery
 
@@ -14554,6 +15479,25 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | NodeStatus | string | Coarse node-level status used by Inspector to pick a banner. |  |
 
+#### NotificationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| body | string |  | Yes |
+| frequency | string |  | No |
+| lang | string |  | Yes |
+| notification_id | string |  | No |
+| subtitle | string |  | Yes |
+| title | string |  | Yes |
+| title_pic_url | string |  | Yes |
+
+#### NotificationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| notifications | [ [NotificationItemResponse](#notificationitemresponse) ] |  | Yes |
+| should_show | boolean |  | Yes |
+
 #### NotionEstimatePayload
 
 | Name | Type | Description | Required |
@@ -14614,11 +15558,37 @@ Coarse node-level status used by Inspector to pick a banner.
 | page_name | string |  | Yes |
 | type | string |  | Yes |
 
+#### OAuthCallbackQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string | Authorization code from OAuth provider | Yes |
+| state | string | OAuth state parameter | No |
+
+#### OAuthClientPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+
+#### OAuthDataSourceBindingQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string | Authorization code from OAuth provider | Yes |
+
 #### OAuthDataSourceBindingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
+
+#### OAuthDataSourceCallbackQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string | Authorization code from OAuth provider | No |
+| error | string | Error message from OAuth provider | No |
 
 #### OAuthDataSourceResponse
 
@@ -14631,6 +15601,71 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
+
+#### OAuthLoginQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invite_token | string | Optional invitation token | No |
+| language | string | Preferred interface language | No |
+| timezone | string | Preferred timezone | No |
+
+#### OAuthProviderAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| email | string |  | Yes |
+| interface_language | string |  | Yes |
+| name | string |  | Yes |
+| timezone | string |  | Yes |
+
+#### OAuthProviderAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_icon | string |  | Yes |
+| app_label | object |  | Yes |
+| scope | string |  | Yes |
+
+#### OAuthProviderAuthorizeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+
+#### OAuthProviderRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| redirect_uri | string |  | Yes |
+
+#### OAuthProviderTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+| expires_in | integer |  | Yes |
+| refresh_token | string |  | Yes |
+| token_type | string |  | Yes |
+
+#### OAuthTokenRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_secret | string |  | No |
+| code | string |  | No |
+| grant_type | string |  | Yes |
+| redirect_uri | string |  | No |
+| refresh_token | string |  | No |
+
+#### OpaqueObjectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpaqueObjectResponse | object |  |  |
 
 #### OutputErrorStrategy
 
@@ -14690,6 +15725,13 @@ output check fails and any configured retry attempts have been exhausted.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
+#### PaginationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
 #### ParagraphInputConfig
 
 Form input definition.
@@ -14699,6 +15741,49 @@ Form input definition.
 | default | [StringSource](#stringsource) |  | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### ParameterRule
+
+Model class for parameter rule.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default |  |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| max | number |  | No |
+| min | number |  | No |
+| name | string |  | Yes |
+| options | [ string ], <br>**Default:**  |  | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| type | [ParameterType](#parametertype) |  | Yes |
+| use_template | string |  | No |
+
+#### ParameterType
+
+Enum class for parameter type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ParameterType | string | Enum class for parameter type. |  |
+
+#### Parameters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
+| file_upload | [JSONObject](#jsonobject) |  | Yes |
+| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| opening_statement |  |  | No |
+| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
+| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
+| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
+| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
+| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
 
 #### Parser
 
@@ -15069,7 +16154,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | allowed_file_types | [ string ] |  | No |
 | allowed_file_upload_methods | [ string ] |  | No |
 | belong_to_node_id | string |  | Yes |
-| default_value | object |  | No |
+| default_value |  |  | No |
 | label | string |  | Yes |
 | max_length | integer |  | No |
 | options | [ string ] |  | No |
@@ -15090,6 +16175,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | upgrade_mode | [UpgradeMode](#upgrademode) |  | No |
 | upgrade_time_of_day | integer |  | No |
 
+#### PluginDaemonOperationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginDaemonOperationResponse |  |  |  |
+
 #### PluginDebuggingKeyResponse
 
 | Name | Type | Description | Required |
@@ -15105,6 +16196,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | current_identifier | string |  | No |
 | type | [Type](#type) |  | Yes |
 | value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
+#### PluginDynamicOptionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| options |  |  | Yes |
 
 #### PluginEndpointListResponse
 
@@ -15125,11 +16222,50 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
 
+#### PluginInstallationsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugins |  |  | Yes |
+
+#### PluginListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugins |  |  | Yes |
+| total | integer |  | Yes |
+
 #### PluginManagerModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | Yes |
+
+#### PluginManifestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| manifest |  |  | Yes |
+
+#### PluginOAuthAuthorizationUrlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorization_url | string | The URL of the authorization. | Yes |
+
+#### PluginOperationSuccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | No |
+| success | boolean |  | Yes |
+
+#### PluginPermissionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_permission | [DebugPermission](#debugpermission) |  | Yes |
+| install_permission | [InstallPermission](#installpermission) |  | Yes |
 
 #### PluginPermissionSettingsPayload
 
@@ -15137,6 +16273,37 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | debug_permission | [DebugPermission](#debugpermission) |  | No |
 | install_permission | [InstallPermission](#installpermission) |  | No |
+
+#### PluginPreferencesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
+| permission | [PluginPermissionSettingsPayload](#pluginpermissionsettingspayload) |  | Yes |
+
+#### PluginReadmeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| readme | string |  | Yes |
+
+#### PluginTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| task |  |  | Yes |
+
+#### PluginTasksResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| tasks |  |  | Yes |
+
+#### PluginVersionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| versions |  |  | Yes |
 
 #### PreProcessingRule
 
@@ -15153,6 +16320,17 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | content | string |  | Yes |
 | summary | string |  | No |
 
+#### PriceConfigResponse
+
+Serialized pricing info with codegen-safe decimal string patterns.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| currency | string |  | Yes |
+| input | string |  | Yes |
+| output | string |  | No |
+| unit | string |  | Yes |
+
 #### ProcessRule
 
 | Name | Type | Description | Required |
@@ -15167,6 +16345,113 @@ Dataset Process Rule Mode
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
+
+#### ProviderCredentialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object |  | No |
+
+#### ProviderCredentialSchema
+
+Model class for provider credential schema.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_form_schemas | [ [CredentialFormSchema](#credentialformschema) ] |  | Yes |
+
+#### ProviderCredentialValidateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| result | string, <br>**Available values:** "error", "success" | *Enum:* `"error"`, `"success"` | Yes |
+
+#### ProviderHelpEntity
+
+Model class for provider help.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| title | [I18nObject](#i18nobject) |  | Yes |
+| url | [I18nObject](#i18nobject) |  | Yes |
+
+#### ProviderModelWithStatusEntity
+
+Model class for model response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deprecated | boolean |  | No |
+| features | [ [ModelFeature](#modelfeature) ] |  | No |
+| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| has_invalid_load_balancing_configs | boolean |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| load_balancing_enabled | boolean |  | No |
+| model | string |  | Yes |
+| model_properties | object |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| status | [ModelStatus](#modelstatus) |  | Yes |
+
+#### ProviderQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| provider | string |  | Yes |
+
+#### ProviderQuotaType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderQuotaType | string |  |  |
+
+#### ProviderResponse
+
+Model class for provider response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | No |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| custom_configuration | [CustomConfigurationResponse](#customconfigurationresponse) |  | Yes |
+| description | [I18nObject](#i18nobject) |  | No |
+| help | [ProviderHelpEntity](#providerhelpentity) |  | No |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
+| preferred_provider_type | [ProviderType](#providertype) |  | Yes |
+| provider | string |  | Yes |
+| provider_credential_schema | [ProviderCredentialSchema](#providercredentialschema) |  | No |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+| system_configuration | [SystemConfigurationResponse](#systemconfigurationresponse) |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### ProviderType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderType | string |  |  |
+
+#### ProviderWithModelsDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ProviderWithModelsResponse](#providerwithmodelsresponse) ] |  | Yes |
+
+#### ProviderWithModelsResponse
+
+Model class for provider with models response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
+| provider | string |  | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+| tenant_id | string |  | Yes |
 
 #### PublishWorkflowPayload
 
@@ -15202,6 +16487,25 @@ Payload for publishing snippet workflow.
 | limit | integer |  | Yes |
 | reset_date | integer, <br>**Default:** -1 |  | Yes |
 | usage | integer |  | Yes |
+
+#### QuotaConfiguration
+
+Model class for provider quota configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| is_valid | boolean |  | Yes |
+| quota_limit | integer |  | Yes |
+| quota_type | [ProviderQuotaType](#providerquotatype) |  | Yes |
+| quota_unit | [QuotaUnit](#quotaunit) |  | Yes |
+| quota_used | integer |  | Yes |
+| restrict_models | [ [RestrictModel](#restrictmodel) ], <br>**Default:**  |  | No |
+
+#### QuotaUnit
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| QuotaUnit | string |  |  |
 
 #### RagPipelineDatasetImportPayload
 
@@ -15241,11 +16545,23 @@ Payload for publishing snippet workflow.
 | pipeline_id | string |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
+#### RagPipelineOpaqueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RagPipelineOpaqueResponse |  |  |  |
+
 #### RagPipelineRecommendedPluginQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string, <br>**Default:** all |  | No |
+
+#### RagPipelineStepParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| variables |  |  | Yes |
 
 #### RagPipelineWorkflowPublishResponse
 
@@ -15261,6 +16577,12 @@ Payload for publishing snippet workflow.
 | hash | string |  | Yes |
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
+
+#### RecommendedAppDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RecommendedAppDetailResponse | object |  |  |
 
 #### RecommendedAppInfoResponse
 
@@ -15300,6 +16622,12 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string | Language code for recommended app localization | No |
+
+#### RedirectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RedirectResponse | string |  |  |
 
 #### RedirectUrlResponse
 
@@ -15347,6 +16675,14 @@ Payload for publishing snippet workflow.
 | reranking_model_name | string |  | No |
 | reranking_provider_name | string |  | No |
 
+#### RestrictModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| base_model_name | string |  | No |
+| model | string |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+
 #### ResultResponse
 
 | Name | Type | Description | Required |
@@ -15378,6 +16714,28 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | retrieval_method | [ string ] |  | Yes |
+
+#### RetrieverResource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | integer |  | No |
+| data_source_type | string |  | No |
+| dataset_id | string |  | No |
+| dataset_name | string |  | No |
+| document_id | string |  | No |
+| document_name | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | No |
+| index_node_hash | string |  | No |
+| message_id | string |  | No |
+| position | integer |  | Yes |
+| score | number |  | No |
+| segment_id | string |  | No |
+| segment_position | integer |  | No |
+| summary | string |  | No |
+| word_count | integer |  | No |
 
 #### RosterAgentCreatePayload
 
@@ -15491,12 +16849,38 @@ Payload for publishing snippet workflow.
 | ---- | ---- | ----------- | -------- |
 | message_id | string |  | Yes |
 
+#### SavedMessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SavedMessageItem](#savedmessageitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### SavedMessageItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| created_at | integer |  | No |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| query | string |  | Yes |
+
 #### SavedMessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
+
+#### SchemaDefinitionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SchemaDefinitionsResponse |  |  |  |
 
 #### SegmentAttachmentResponse
 
@@ -15617,6 +17001,18 @@ Payload for publishing snippet workflow.
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### SimpleConversation
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| introduction | string |  | No |
+| name | string |  | Yes |
+| status | string |  | Yes |
+| updated_at | integer |  | No |
+
 #### SimpleDataResponse
 
 | Name | Type | Description | Required |
@@ -15631,6 +17027,12 @@ Payload for publishing snippet workflow.
 | is_anonymous | boolean |  | Yes |
 | session_id | string |  | No |
 | type | string |  | Yes |
+
+#### SimpleFeedback
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| rating | string |  | No |
 
 #### SimpleMessageDetail
 
@@ -15653,6 +17055,21 @@ Payload for publishing snippet workflow.
 | ---- | ---- | ----------- | -------- |
 | model_dict | [JSONValue](#jsonvalue) |  | No |
 | pre_prompt | string |  | No |
+
+#### SimpleProviderEntityResponse
+
+Simple provider entity response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| models | [ [AIModelEntityResponse](#aimodelentityresponse) ], <br>**Default:**  |  | No |
+| provider | string |  | Yes |
+| provider_name | string |  | No |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
+| tenant_id | string |  | Yes |
 
 #### SimpleResultDataResponse
 
@@ -15685,34 +17102,26 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_base_url | string |  | No |
 | chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
+| chat_color_theme_inverted | boolean |  | Yes |
 | copyright | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
 | custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
+| default_language | string |  | Yes |
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string<br>[IconType](#icontype) |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| show_workflow_steps | boolean |  | Yes |
+| title | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | Yes |
 
 #### Snippet
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | description | string |  | No |
 | graph | object |  | No |
@@ -15723,10 +17132,22 @@ Payload for publishing snippet workflow.
 | name | string |  | No |
 | tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
 | type | string |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
 | use_count | integer |  | No |
 | version | integer |  | No |
+
+#### SnippetDependencyCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SnippetDependencyCheckResponse | object |  |  |
+
+#### SnippetDraftConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| parallel_depth_limit | integer |  | Yes |
 
 #### SnippetDraftNodeRunPayload
 
@@ -15771,6 +17192,12 @@ Payload for importing snippet from DSL.
 | yaml_content | string | YAML content (required for yaml-content mode) | No |
 | yaml_url | string | YAML URL (required for yaml-url mode) | No |
 
+#### SnippetImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SnippetImportResponse | object |  |  |
+
 #### SnippetIterationNodeRunPayload
 
 Payload for running an iteration node in snippet draft workflow.
@@ -15784,7 +17211,7 @@ Payload for running an iteration node in snippet draft workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author_name | string |  | No |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | string |  | No |
 | description | string |  | No |
 | icon_info | object |  | No |
@@ -15793,7 +17220,7 @@ Payload for running an iteration node in snippet draft workflow.
 | name | string |  | No |
 | tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
 | type | string |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | string |  | No |
 | use_count | integer |  | No |
 | version | integer |  | No |
@@ -15823,11 +17250,18 @@ Payload for running a loop node in snippet draft workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_7b67ac8a4db8](#_anonymousinlinemodel_7b67ac8a4db8) ] |  | No |
+| data | [ [_AnonymousInlineModel_efd591151ea9](#_anonymousinlinemodel_efd591151ea9) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
 | total | integer |  | No |
+
+#### SnippetUseCountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+| use_count | integer |  | Yes |
 
 #### SnippetWorkflowListQuery
 
@@ -15923,13 +17357,20 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ string ] | Suggested question | Yes |
+| data | [ string ] |  | Yes |
 
 #### SwitchWorkspacePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tenant_id | string |  | Yes |
+
+#### SwitchWorkspaceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| new_tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
+| result | string |  | Yes |
 
 #### SyncDraftWorkflowPayload
 
@@ -15948,6 +17389,16 @@ Default configuration for form inputs.
 | hash | string |  | No |
 | result | string |  | No |
 | updated_at | string |  | No |
+
+#### SystemConfigurationResponse
+
+Model class for provider system configuration response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_quota_type | [ProviderQuotaType](#providerquotatype) |  | No |
+| enabled | boolean |  | Yes |
+| quota_configurations | [ [QuotaConfiguration](#quotaconfiguration) ], <br>**Default:**  |  | No |
 
 #### SystemFeatureModel
 
@@ -15973,6 +17424,16 @@ Default configuration for form inputs.
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
+
+#### SystemParameters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| audio_file_size_limit | integer |  | Yes |
+| file_size_limit | integer |  | Yes |
+| image_file_size_limit | integer |  | Yes |
+| video_file_size_limit | integer |  | Yes |
+| workflow_file_upload_limit | integer |  | Yes |
 
 #### Tag
 
@@ -16058,11 +17519,34 @@ Tag type
 | trial_credits_used | integer |  | No |
 | trial_end_reason | string |  | No |
 
+#### TenantListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| current | boolean |  | Yes |
+| id | string |  | Yes |
+| name | string |  | No |
+| plan | string |  | No |
+| status | string |  | No |
+
+#### TenantListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| workspaces | [ [TenantListItemResponse](#tenantlistitemresponse) ] |  | Yes |
+
 #### TextContentResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string |  | Yes |
+
+#### TextFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TextFileResponse | string |  |  |
 
 #### TextToAudioPayload
 
@@ -16091,11 +17575,36 @@ Tag type
 | text | string |  | No |
 | voice | string |  | No |
 
+#### TextToSpeechVoiceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TextToSpeechVoiceListResponse | array |  |  |
+
 #### TextToSpeechVoiceQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string | Language code | Yes |
+
+#### TokensPerSecondStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| tps | number |  | Yes |
+
+#### TokensPerSecondStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
+
+#### ToolOAuthClientSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolOAuthClientSchemaResponse | array |  |  |
 
 #### ToolOAuthCustomClientPayload
 
@@ -16104,11 +17613,44 @@ Tag type
 | client_params | object |  | No |
 | enable_oauth_custom_client | boolean |  | No |
 
+#### ToolOAuthCustomClientResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolOAuthCustomClientResponse | object |  |  |
+
 #### ToolParameterForm
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolParameterForm | string |  |  |
+
+#### ToolProviderListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | string |  | No |
+
+#### ToolProviderOpaqueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolProviderOpaqueResponse |  |  |  |
+
+#### TraceAppConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| created_at | string |  | No |
+| error | string |  | No |
+| has_not_configured | boolean |  | No |
+| id | string |  | No |
+| is_active | boolean |  | No |
+| result | string |  | No |
+| tracing_config | object |  | No |
+| tracing_provider | string |  | No |
+| updated_at | string |  | No |
 
 #### TraceConfigPayload
 
@@ -16129,7 +17671,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
 | api_base_url | string |  | No |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | string |  | No |
 | deleted_tools | [ [TrialDeletedTool](#trialdeletedtool) ] |  | No |
 | description | string |  | No |
@@ -16138,7 +17680,7 @@ Tag type
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| icon_url | object |  | No |
+| icon_url | string |  | No |
 | id | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | No |
@@ -16146,7 +17688,7 @@ Tag type
 | name | string |  | No |
 | site | [TrialSite](#trialsite) |  | No |
 | tags | [ [TrialTag](#trialtag) ] |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [TrialWorkflowPartial](#trialworkflowpartial) |  | No |
@@ -16159,11 +17701,11 @@ Tag type
 | annotation_reply | object |  | No |
 | chat_prompt_config | object |  | No |
 | completion_prompt_config | object |  | No |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | string |  | No |
 | dataset_configs | object |  | No |
 | dataset_query_variable | string |  | No |
-| external_data_tools | object |  | No |
+| external_data_tools | [ object ] |  | No |
 | file_upload | object |  | No |
 | model | object |  | No |
 | more_like_this | object |  | No |
@@ -16173,12 +17715,12 @@ Tag type
 | retriever_resource | object |  | No |
 | sensitive_word_avoidance | object |  | No |
 | speech_to_text | object |  | No |
-| suggested_questions | object |  | No |
+| suggested_questions | [ string ] |  | No |
 | suggested_questions_after_answer | object |  | No |
 | text_to_speech | object |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | string |  | No |
-| user_input_form | object |  | No |
+| user_input_form | [ object ] |  | No |
 
 #### TrialConversationVariable
 
@@ -16187,8 +17729,39 @@ Tag type
 | description | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
-| value | object |  | No |
+| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
 | value_type | string |  | No |
+
+#### TrialDataset
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| data_source_type | string |  | No |
+| description | string |  | No |
+| id | string |  | No |
+| indexing_technique | string |  | No |
+| name | string |  | No |
+| permission | string |  | No |
+
+#### TrialDatasetList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TrialDataset](#trialdataset) ] |  | No |
+| has_more | boolean |  | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+| total | integer |  | No |
+
+#### TrialDatasetListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ids | [ string ] | Dataset IDs | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
 
 #### TrialDeletedTool
 
@@ -16212,7 +17785,7 @@ Tag type
 | allow_file_upload_methods | [ string ] |  | No |
 | allowed_file_types | [ string ] |  | No |
 | belong_to_node_id | string |  | No |
-| default_value | object |  | No |
+| default_value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
 | label | string |  | No |
 | max_length | integer |  | No |
 | options | [ string ] |  | No |
@@ -16241,7 +17814,7 @@ Tag type
 | chat_color_theme_inverted | boolean |  | No |
 | code | string |  | No |
 | copyright | string |  | No |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | string |  | No |
 | custom_disclaimer | string |  | No |
 | customize_domain | string |  | No |
@@ -16251,12 +17824,12 @@ Tag type
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| icon_url | object |  | No |
+| icon_url | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |
 | show_workflow_steps | boolean |  | No |
 | title | string |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
@@ -16273,7 +17846,7 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | No |
@@ -16284,7 +17857,7 @@ Tag type
 | marked_name | string |  | No |
 | rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
 | tool_published | boolean |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
@@ -16292,11 +17865,19 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | object |  | No |
+| created_at | long |  | No |
 | created_by | string |  | No |
 | id | string |  | No |
-| updated_at | object |  | No |
+| updated_at | long |  | No |
 | updated_by | string |  | No |
+
+#### TriggerOAuthAuthorizeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorization_url | string |  | Yes |
+| subscription_builder |  |  | Yes |
+| subscription_builder_id | string |  | Yes |
 
 #### TriggerOAuthClientPayload
 
@@ -16304,6 +17885,24 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | client_params | object |  | No |
 | enabled | boolean |  | No |
+
+#### TriggerOAuthClientResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configured | boolean |  | Yes |
+| custom_configured | boolean |  | Yes |
+| custom_enabled | boolean |  | Yes |
+| oauth_client_schema |  |  | Yes |
+| params | object |  | Yes |
+| redirect_uri | string |  | Yes |
+| system_configured | boolean |  | Yes |
+
+#### TriggerProviderOpaqueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerProviderOpaqueResponse |  |  |  |
 
 #### TriggerSubscriptionBuilderCreatePayload
 
@@ -16331,6 +17930,15 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | Type | string |  |  |
+
+#### UnaddedModelConfiguration
+
+Model class for provider unadded model configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
 
 #### UpdateAnnotationPayload
 
@@ -16384,6 +17992,12 @@ Payload for updating a snippet.
 | video_file_size_limit | integer |  | Yes |
 | workflow_file_upload_limit | integer |  | Yes |
 
+#### UrlQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string (uri) |  | Yes |
+
 #### UrlResponse
 
 | Name | Type | Description | Required |
@@ -16412,6 +18026,19 @@ User action configuration.
 | button_style | [ButtonStyle](#buttonstyle) |  | No |
 | id | string |  | Yes |
 | title | string |  | Yes |
+
+#### UserSatisfactionRateStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| rate | number |  | Yes |
+
+#### UserSatisfactionRateStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [UserSatisfactionRateStatisticItem](#usersatisfactionratestatisticitem) ] |  | Yes |
 
 #### ValueSourceType
 
@@ -16464,6 +18091,12 @@ in form definiton, or a variable while the workflow is running.
 | options | object |  | Yes |
 | provider | string, <br>**Available values:** "firecrawl", "jinareader", "watercrawl" | *Enum:* `"firecrawl"`, `"jinareader"`, `"watercrawl"` | Yes |
 | url | string |  | Yes |
+
+#### WebsiteCrawlResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebsiteCrawlResponse | object |  |  |
 
 #### WebsiteCrawlStatusQuery
 
@@ -16593,6 +18226,19 @@ How a workflow node is bound to an Agent.
 | id | string |  | Yes |
 | trigger_metadata |  |  | No |
 | workflow_run | [WorkflowRunForArchivedLogResponse](#workflowrunforarchivedlogresponse) |  | No |
+
+#### WorkflowAverageAppInteractionStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| interactions | number |  | Yes |
+
+#### WorkflowAverageAppInteractionStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowAverageAppInteractionStatisticItem](#workflowaverageappinteractionstatisticitem) ] |  | Yes |
 
 #### WorkflowCommentAccount
 
@@ -16741,8 +18387,47 @@ How a workflow node is bound to an Agent.
 | description | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| value | object |  | Yes |
+| value |  |  | Yes |
 | value_type | string |  | Yes |
+
+#### WorkflowDailyRunsStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| runs | integer |  | Yes |
+
+#### WorkflowDailyRunsStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowDailyRunsStatisticItem](#workflowdailyrunsstatisticitem) ] |  | Yes |
+
+#### WorkflowDailyTerminalsStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| terminal_count | integer |  | Yes |
+
+#### WorkflowDailyTerminalsStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowDailyTerminalsStatisticItem](#workflowdailyterminalsstatisticitem) ] |  | Yes |
+
+#### WorkflowDailyTokenCostStatisticItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| token_count | integer |  | Yes |
+
+#### WorkflowDailyTokenCostStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkflowDailyTokenCostStatisticItem](#workflowdailytokencoststatisticitem) ] |  | Yes |
 
 #### WorkflowDraftEnvVariable
 
@@ -16775,7 +18460,7 @@ How a workflow node is bound to an Agent.
 | name | string |  | No |
 | selector | [ string ] |  | No |
 | type | string |  | No |
-| value | object |  | No |
+| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
 | value_type | string |  | No |
 | visible | boolean |  | No |
 
@@ -16797,7 +18482,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | items | [ [WorkflowDraftVariableWithoutValue](#workflowdraftvariablewithoutvalue) ] |  | No |
-| total | object |  | No |
+| total | integer |  | No |
 
 #### WorkflowDraftVariablePatchPayload
 
@@ -16834,7 +18519,7 @@ How a workflow node is bound to an Agent.
 | description | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| value | object |  | Yes |
+| value |  |  | Yes |
 | value_type | string |  | Yes |
 
 #### WorkflowExecutionStatus
@@ -16965,6 +18650,13 @@ can reuse its existing handler.
 | variable | string |  | No |
 | variable_selector | [ string<br>integer<br>number<br>boolean ] |  | No |
 
+#### WorkflowPublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| result | string |  | Yes |
+
 #### WorkflowResponse
 
 | Name | Type | Description | Required |
@@ -16984,6 +18676,14 @@ can reuse its existing handler.
 | updated_at | integer |  | Yes |
 | updated_by | [SimpleAccount](#simpleaccount) |  | No |
 | version | string |  | Yes |
+
+#### WorkflowRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | Yes |
+| result | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### WorkflowRunCountQuery
 
@@ -17182,6 +18882,19 @@ Query parameters for workflow runs.
 | ---- | ---- | ----------- | -------- |
 | workflow_tool_id | string |  | Yes |
 
+#### WorkflowToolGetQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| workflow_app_id | string |  | No |
+| workflow_tool_id | string |  | No |
+
+#### WorkflowToolListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| workflow_tool_id | string |  | Yes |
+
 #### WorkflowToolParameterConfiguration
 
 Workflow tool configuration
@@ -17252,12 +18965,44 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 
+#### WorkspaceListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| name | string |  | No |
+| status | string |  | No |
+
 #### WorkspaceListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+
+#### WorkspaceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WorkspaceListItemResponse](#workspacelistitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### WorkspaceLogoUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+
+#### WorkspaceMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### WorkspacePermissionResponse
 
@@ -17266,25 +19011,6 @@ Workflow tool configuration
 | allow_member_invite | boolean |  | Yes |
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
-
-#### _AnonymousInlineModel_7b67ac8a4db8
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | object |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | object |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
 
 #### _AnonymousInlineModel_7b8b49ca164e
 
@@ -17310,6 +19036,25 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
+
+#### _AnonymousInlineModel_efd591151ea9
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
 
 ## FastOpenAPI Preview (OpenAPI 3.1)
 
