@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { expectLoadingButton } from '@/test/button'
 import SnippetHeader from '..'
 
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
@@ -223,7 +224,7 @@ describe('SnippetHeader', () => {
       )
 
       expect(screen.getByRole('button', { name: 'snippet.exitEditing' })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /^snippet\.save$/i })).toBeDisabled()
+      expectLoadingButton(screen.getByRole('button', { name: /^snippet\.save$/i }))
       expect(screen.getByRole('button', { name: 'snippet.doNotSave' })).toBeDisabled()
     })
 

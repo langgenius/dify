@@ -3,6 +3,7 @@ import type { Query } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 import QueryInput from '../index'
 
 // Capture onChange callback so tests can trigger handleImageChange
@@ -123,8 +124,7 @@ describe('QueryInput', () => {
   it('should show loading state on submit button when loading', () => {
     render(<QueryInput {...defaultProps} loading={true} />)
     const submitButton = screen.getByRole('button', { name: /input\.testing/ })
-    expect(submitButton)!.toBeDisabled()
-    expect(submitButton)!.toHaveAttribute('aria-busy', 'true')
+    expectLoadingButton(submitButton)
     expect(submitButton.querySelector('.animate-spin'))!.toBeInTheDocument()
   })
 

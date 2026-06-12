@@ -2,6 +2,7 @@ import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { expectLoadingButton } from '@/test/button'
 import CreateSnippetDialog from '../create-snippet-dialog'
 
 let capturedKeyPressHandler: (() => void) | undefined
@@ -182,6 +183,6 @@ describe('CreateSnippetDialog', () => {
     expect(screen.getByPlaceholderText('workflow.snippet.namePlaceholder')).toBeDisabled()
     expect(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder')).toBeDisabled()
     expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'workflow.snippet.confirm' })).toBeDisabled()
+    expectLoadingButton(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
   })
 })
