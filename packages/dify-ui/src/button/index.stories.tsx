@@ -113,7 +113,7 @@ export const WithIcon: Story = {
     variant: 'primary',
     children: (
       <>
-        <span className="mr-1.5 i-heroicons-rocket-launch-20-solid h-4 w-4" />
+        <span aria-hidden className="mr-1.5 i-ri-rocket-line size-4 shrink-0" />
         Launch
       </>
     ),
