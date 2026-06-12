@@ -153,7 +153,7 @@ const MainNav = ({
     e.preventDefault()
     handleToggleDetailNavigation()
   }, {
-    ignoreInputs: true,
+    ignoreInputs: false,
   })
 
   const navItems = useMemo<MainNavItem[]>(() => [
