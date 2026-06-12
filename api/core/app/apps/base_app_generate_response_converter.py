@@ -99,10 +99,6 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
                 )
             metadata["retriever_resources"] = updated_resources
 
-        # show annotation reply
-        if "annotation_reply" in metadata:
-            del metadata["annotation_reply"]
-
         # show usage
         if "usage" in metadata:
             del metadata["usage"]
