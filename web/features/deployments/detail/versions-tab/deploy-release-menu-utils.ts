@@ -5,8 +5,8 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { TFunction } from 'i18next'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
-import { releaseDeploymentAction } from '../../release-action'
-import { isUndeployedDeploymentRow } from '../../runtime-status'
+import { releaseDeploymentAction } from '../../shared/domain/release-action'
+import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 
 export type DeployMenuRowState = 'deploy' | 'rollback' | 'current' | 'deploying'
 

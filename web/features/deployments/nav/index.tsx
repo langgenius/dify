@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Nav from '@/app/components/header/nav'
 import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../data'
+import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../shared/domain/pagination'
 
 function navItemFromListApp(app: AppInstance): NavItem {
   const id = app.id

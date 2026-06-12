@@ -11,12 +11,12 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { DeploymentStatusBadge } from '../../deployment-ui'
+import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { releaseCommit } from '../../shared/domain/release'
+import { DeploymentStatusBadge } from '../../shared/ui/deployment-status-badge'
 import {
   deploymentStatusLabelKey,
-} from '../../deployment-ui-utils'
-import { releaseCommit } from '../../release'
-import { openDeployDrawerAtom } from '../../store'
+} from '../../shared/ui/deployment-status-style'
 import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 import {
   renderActionLabel,

@@ -2,8 +2,8 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
-import { releaseCommit } from '../../release'
-import { isUndeployedDeploymentRow } from '../../runtime-status'
+import { releaseCommit } from '../../shared/domain/release'
+import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 import {
   DetailTable,
   DetailTableBody,

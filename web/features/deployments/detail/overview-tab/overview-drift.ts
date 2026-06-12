@@ -1,5 +1,5 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
-import { isUndeployedDeploymentRow } from '../../runtime-status'
+import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 
 export type Drift
   = | { kind: 'undeployed' }

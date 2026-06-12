@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../components/empty-state'
-import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../runtime-status'
+import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../shared/domain/runtime-status'
 import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
 import { NewDeploymentButton } from './deploy-tab/new-deployment-button'
 import {

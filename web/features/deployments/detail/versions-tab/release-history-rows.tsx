@@ -13,7 +13,7 @@ import { TitleTooltip } from '../../components/title-tooltip'
 import {
   formatDate,
   releaseCommit,
-} from '../../release'
+} from '../../shared/domain/release'
 import {
   DetailTable,
   DetailTableBody,

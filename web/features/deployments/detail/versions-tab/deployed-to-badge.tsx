@@ -4,10 +4,10 @@ import type { ReleaseDeployment } from './release-deployments'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import { isRuntimeDeploymentInProgress } from '../../shared/domain/runtime-status'
 import {
   deploymentStatusToneClassNames,
-} from '../../deployment-ui-utils'
-import { isRuntimeDeploymentInProgress } from '../../runtime-status'
+} from '../../shared/ui/deployment-status-style'
 
 export function DeployedToBadge({ item }: {
   item: ReleaseDeployment

@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
-import { DeploymentStatusBadge } from '../../deployment-ui'
+import { DeploymentStatusBadge } from '../../shared/ui/deployment-status-badge'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 
 type AccessStatusSectionProps = {

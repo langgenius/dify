@@ -10,10 +10,10 @@ import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
-import { CreateReleaseControl } from '../../components/create-release/control'
 import { DeploymentEmptyState } from '../../components/empty-state'
 import { TitleTooltip } from '../../components/title-tooltip'
-import { formatDate, releaseCommit } from '../../release'
+import { CreateReleaseControl } from '../../create-release'
+import { formatDate, releaseCommit } from '../../shared/domain/release'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from './card-styles'
 
 type ReleaseHeroProps = {

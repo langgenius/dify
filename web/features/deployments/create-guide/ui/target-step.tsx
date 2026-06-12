@@ -38,7 +38,7 @@ import {
   stepAtom,
   unsupportedDslNodesAtom,
 } from '@/features/deployments/create-guide/state'
-import { deploymentErrorMessage } from '@/features/deployments/error'
+import { deploymentErrorMessage } from '@/features/deployments/shared/domain/error'
 import { useRouter } from '@/next/navigation'
 import { StepShell } from './layout'
 

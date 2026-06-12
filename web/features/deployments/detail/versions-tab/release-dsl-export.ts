@@ -1,6 +1,6 @@
 import type { Release } from '@dify/contracts/enterprise/types.gen'
 import { downloadBlob } from '@/utils/download'
-import { fetchReleaseDsl } from '../../release-dsl'
+import { fetchReleaseDsl } from './release-dsl'
 
 const YAML_EXTENSION_PATTERN = /\.ya?ml$/i
 const INVALID_FILENAME_CHARS_PATTERN = /[\\/:*?"<>|]+/g

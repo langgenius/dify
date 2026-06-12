@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../../runtime-status'
-import { openDeployDrawerAtom } from '../../store'
+import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { deploymentStatusPollingInterval, hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 
 export function NewDeploymentButton({ appInstanceId }: {
   appInstanceId: string

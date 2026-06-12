@@ -3,10 +3,10 @@
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
-import { DeploymentStatusBadge } from '../../deployment-ui'
 import {
   isUndeployedDeploymentRow,
-} from '../../runtime-status'
+} from '../../shared/domain/runtime-status'
+import { DeploymentStatusBadge } from '../../shared/ui/deployment-status-badge'
 
 export function DeploymentStatusSummary({ row }: {
   row: EnvironmentDeployment

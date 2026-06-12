@@ -7,7 +7,7 @@ import type {
 import type { Getter } from 'jotai/vanilla'
 import type { EnvVarBindingSlot, EnvVarValues, EnvVarValueSelection } from '@/features/deployments/components/env-var-bindings'
 import type { RuntimeCredentialBindingSelections } from '@/features/deployments/components/runtime-credential-bindings-utils'
-import type { UnsupportedDslNode } from '@/features/deployments/error'
+import type { UnsupportedDslNode } from '@/features/deployments/shared/domain/error'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { keepPreviousData } from '@tanstack/react-query'
@@ -22,21 +22,21 @@ import {
   selectedRuntimeCredentialSelections,
 } from '@/features/deployments/components/runtime-credential-bindings-utils'
 import {
-  DEPLOYMENT_PAGE_SIZE,
-  getNextPageParamFromPagination,
-  SOURCE_APPS_PAGE_SIZE,
-} from '@/features/deployments/data'
-import {
   dslAppName,
   dslEnvVarSlots,
   encodeDslContent,
   isWorkflowDsl,
-} from '@/features/deployments/dsl'
-import { environmentMatchesIdentifier } from '@/features/deployments/environment'
-import { unsupportedDslNodeError } from '@/features/deployments/error'
-import { createDeploymentIdempotencyKey } from '@/features/deployments/idempotency'
+} from '@/features/deployments/shared/domain/dsl'
+import { unsupportedDslNodeError } from '@/features/deployments/shared/domain/error'
+import { createDeploymentIdempotencyKey } from '@/features/deployments/shared/domain/idempotency'
+import {
+  DEPLOYMENT_PAGE_SIZE,
+  getNextPageParamFromPagination,
+  SOURCE_APPS_PAGE_SIZE,
+} from '@/features/deployments/shared/domain/pagination'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
+import { environmentMatchesIdentifier } from './environment'
 
 export type GuideMethod = 'bindApp' | 'importDsl'
 export type GuideStep = 'source' | 'release' | 'target'
