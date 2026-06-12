@@ -44,6 +44,13 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
+# Upper bound for the generator's free-text inputs. Generous for prose (a
+# detailed instruction rarely passes 2k chars) while keeping the
+# planner+builder prompts well inside every mainstream context window.
+# Mirrored by the ``maxLength`` on the frontend generator textarea.
+_MAX_INSTRUCTION_LENGTH = 10_000
+
+
 class WorkflowGeneratePayload(BaseModel):
     """Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
 
@@ -318,6 +325,22 @@ class WorkflowGenerateApi(Resource):
             return {
                 "error": "Instruction is required",
                 "errors": [{"code": "EMPTY_INSTRUCTION", "detail": "Instruction is required"}],
+            }, 400
+
+        # Bound the prompt at the boundary too: an arbitrarily long
+        # instruction (or pasted document) blows the planner/builder context
+        # window and fails with an opaque provider error after two slow LLM
+        # calls. The cap matches the frontend textarea's maxLength.
+        if len(args.instruction) > _MAX_INSTRUCTION_LENGTH or len(args.ideal_output) > _MAX_INSTRUCTION_LENGTH:
+            return {
+                "error": "Instruction is too long",
+                "errors": [
+                    {
+                        "code": "INSTRUCTION_TOO_LONG",
+                        "detail": f"Instruction and ideal output must each be at most "
+                        f"{_MAX_INSTRUCTION_LENGTH} characters",
+                    }
+                ],
             }, 400
 
         try:

@@ -20,6 +20,7 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
@@ -32,6 +33,7 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
 
   return edges.some(edge => startNodeIds.includes(edge.source))
 }
+
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -39,6 +41,7 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const appDetail = useAppStore(state => state.appDetail)!
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
@@ -58,17 +61,24 @@ export const useWorkflowInit = () => {
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-      setData(res)
+      const initialData = {
+        ...res,
+        graph: getWorkflowDraftGraphForCanvas(res.graph, {
+          localStartPlaceholderNodes: nodesTemplate,
+        }),
+      }
+
+      setData(initialData)
       workflowStore.setState({
-        envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
+        envSecrets: (initialData.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
           acc[env.id] = env.value
           return acc
         }, {} as Record<string, string>),
-        environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
-        conversationVariables: res.conversation_variables || [],
+        environmentVariables: initialData.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
+        conversationVariables: initialData.conversation_variables || [],
         isWorkflowDataLoaded: true,
       })
-      setSyncWorkflowDraftHash(res.hash)
+      setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     }
     catch (error: any) {
@@ -78,19 +88,18 @@ export const useWorkflowInit = () => {
             const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
             workflowStore.setState({
               notInitialWorkflow: true,
-              showOnboarding: !isAdvancedChat,
-              shouldAutoOpenStartNodeSelector: !isAdvancedChat,
-              hasShownOnboarding: false,
+              showOnboarding: false,
+              shouldAutoOpenStartNodeSelector: false,
+              hasSelectedStartNode: false,
+              hasShownOnboarding: !isAdvancedChat,
             })
-            const nodesData = isAdvancedChat ? nodesTemplate : []
-            const edgesData = isAdvancedChat ? edgesTemplate : []
 
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
                 graph: {
-                  nodes: nodesData,
-                  edges: edgesData,
+                  nodes: isAdvancedChat ? nodesTemplate : [],
+                  edges: isAdvancedChat ? edgesTemplate : [],
                 },
                 features: {
                   retriever_resource: { enabled: true },
@@ -107,7 +116,7 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
+  }, [appDetail, getWorkflowDraftGraphForCanvas, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
     handleGetInitialWorkflowData()

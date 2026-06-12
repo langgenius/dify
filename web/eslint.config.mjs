@@ -6,6 +6,7 @@ import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
 import hyoban from 'eslint-plugin-hyoban'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
@@ -55,6 +56,10 @@ export default antfu(
     rules: {
       'react/no-unnecessary-use-prefix': 'off',
     },
+  },
+  {
+    files: [GLOB_TSX],
+    ...jsxA11y.flatConfigs.recommended,
   },
   {
     plugins: {

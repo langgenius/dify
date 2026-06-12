@@ -18,6 +18,7 @@ export const zRosterAgentUpdatePayload = z.object({
   icon_background: z.string().max(255).nullish(),
   icon_type: zAgentIconType.nullish(),
   name: z.string().min(1).max(255).nullish(),
+  role: z.string().max(255).nullish(),
 })
 
 /**
@@ -49,6 +50,18 @@ export const zAgentConfigSnapshotListResponse = z.object({
  * the current roster/workflow APIs scoped to Dify Agent.
  */
 export const zAgentKind = z.enum(['dify_agent'])
+
+/**
+ * AgentPublishedReferenceResponse
+ */
+export const zAgentPublishedReferenceResponse = z.object({
+  app_id: z.string(),
+  app_mode: z.string(),
+  app_name: z.string(),
+  node_ids: z.array(z.string()).optional(),
+  workflow_id: z.string(),
+  workflow_version: z.string(),
+})
 
 /**
  * AgentScope
@@ -89,6 +102,10 @@ export const zAgentRosterResponse = z.object({
   icon_type: zAgentIconType.nullish(),
   id: z.string(),
   name: z.string(),
+  published_node_reference_count: z.int().optional().default(0),
+  published_reference_count: z.int().optional().default(0),
+  published_references: z.array(zAgentPublishedReferenceResponse).optional(),
+  role: z.string().optional().default(''),
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
@@ -130,6 +147,10 @@ export const zAgentInviteOptionResponse = z.object({
   in_current_workflow_count: z.int().optional().default(0),
   is_in_current_workflow: z.boolean().optional().default(false),
   name: z.string(),
+  published_node_reference_count: z.int().optional().default(0),
+  published_reference_count: z.int().optional().default(0),
+  published_references: z.array(zAgentPublishedReferenceResponse).optional(),
+  role: z.string().optional().default(''),
   scope: zAgentScope,
   source: zAgentSource,
   status: zAgentStatus,
@@ -522,6 +543,7 @@ export const zAgentCliToolConfig = z.object({
   description: z.string().nullish(),
   enabled: z.boolean().optional().default(true),
   env: zAgentCliToolEnvConfig.optional(),
+  id: z.string().max(255).nullish(),
   install: z.string().nullish(),
   install_command: z.string().nullish(),
   install_commands: z.array(z.string()).optional(),
@@ -589,7 +611,7 @@ export const zAgentSoulDifyToolConfig = z.object({
         .nullable(),
     )
     .optional(),
-  tool_name: z.string().min(1).max(255),
+  tool_name: z.string().min(1).max(255).nullish(),
 })
 
 /**
@@ -669,6 +691,7 @@ export const zRosterAgentCreatePayload = z.object({
   icon_background: z.string().max(255).nullish(),
   icon_type: zAgentIconType.nullish(),
   name: z.string().min(1).max(255),
+  role: z.string().max(255).optional().default(''),
   version_note: z.string().nullish(),
 })
 
