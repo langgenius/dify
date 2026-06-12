@@ -9,7 +9,7 @@ import type {
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
@@ -236,9 +236,24 @@ const ChatWrapper = () => {
 
   const description = appData?.site.description
   const [showDescToggle, setShowDescToggle] = useState(false)
-  const handleDescRef = useCallback((node: HTMLDivElement | null) => {
-    setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
-  }, [])
+  const descRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = descRef.current
+    if (!el)
+      return
+    if (el.offsetWidth > 0) {
+      setShowDescToggle(el.scrollHeight > el.clientHeight)
+      return
+    }
+    const observer = new ResizeObserver((entries) => {
+      if (!entries[0] || entries[0].contentRect.width === 0)
+        return
+      setShowDescToggle(el.scrollHeight > el.clientHeight)
+      observer.disconnect()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [description])
 
   const descriptionNode = useMemo(() => {
     if (!description || currentConversationId || hasSent)
@@ -248,7 +263,7 @@ const ChatWrapper = () => {
         <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
           <div className={cn('p-6', isMobile && 'p-4')}>
             <div
-              ref={handleDescRef}
+              ref={descRef}
               className={cn(
                 'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
                 !descExpanded && 'line-clamp-3',
