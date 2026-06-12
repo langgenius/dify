@@ -18,7 +18,7 @@ export type ActivationResponse = {
 }
 
 export type ActivationCheckResponse = {
-  data?: ActivationCheckData
+  data?: ActivationCheckData | null
   is_valid: boolean
 }
 

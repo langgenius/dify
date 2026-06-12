@@ -10,6 +10,7 @@ from werkzeug.exceptions import (
     Forbidden,
     InternalServerError,
     NotFound,
+    TooManyRequests,
     Unauthorized,
     UnprocessableEntity,
 )
@@ -309,6 +310,7 @@ ERROR_MATRIX = [
     (ProviderModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
     (CompletionRequestError(), 400, "completion_request_error"),
     (InvokeRateLimitHttpError(), 429, "rate_limit_error"),
+    (TooManyRequests("x"), 429, "too_many_requests"),  # difyctl's classifyRateLimit keys retryability on this code
     (FileTooLargeError(), 413, "file_too_large"),
     (UnsupportedFileTypeError(), 415, "unsupported_file_type"),
     (NoFileUploadedError(), 400, "no_file_uploaded"),

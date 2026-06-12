@@ -6,7 +6,7 @@ export type ClientOptions = {
 
 export type TenantInfoResponse = {
   created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse
+  custom_config?: WorkspaceCustomConfigResponse | null
   id: string
   in_trial?: boolean | null
   name?: string | null
@@ -32,7 +32,7 @@ export type CreateSnippetPayload = {
   graph?: {
     [key: string]: unknown
   } | null
-  icon_info?: IconInfo
+  icon_info?: IconInfo | null
   input_fields?: Array<InputFieldDefinition> | null
   name: string
   type?: 'group' | 'node'
@@ -77,13 +77,15 @@ export type SnippetImportPayload = {
 
 export type UpdateSnippetPayload = {
   description?: string | null
-  icon_info?: IconInfo
+  icon_info?: IconInfo | null
   name?: string | null
 }
 
 export type AccountWithRoleList = {
   accounts: Array<AccountWithRole>
 }
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
 export type ParserPostDefault = {
   model_settings: Array<Inner>
@@ -223,7 +225,7 @@ export type ParserDeleteModels = {
 export type ParserPostModels = {
   config_from?: string | null
   credential_id?: string | null
-  load_balancing?: LoadBalancingPayload
+  load_balancing?: LoadBalancingPayload | null
   model: string
   model_type: ModelType
 }
@@ -476,7 +478,7 @@ export type McpProviderCreatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
-  identity_mode?: IdentityMode
+  identity_mode?: IdentityMode | null
   name: string
   server_identifier: string
   server_url: string
@@ -495,7 +497,7 @@ export type McpProviderUpdatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
-  identity_mode?: IdentityMode
+  identity_mode?: IdentityMode | null
   name: string
   provider_id: string
   server_identifier: string
@@ -658,8 +660,6 @@ export type Inner = {
 
 export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
-export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-
 export type LoadBalancingPayload = {
   configs?: Array<{
     [key: string]: unknown
@@ -699,8 +699,17 @@ export type PluginCategoryBuiltinToolProviderResponse = {
   allow_delete: boolean
   author: string
   description: CoreToolsEntitiesCommonEntitiesI18nObject
-  icon: unknown
-  icon_dark: unknown
+  icon:
+    | string
+    | {
+      [key: string]: string
+    }
+  icon_dark:
+    | string
+    | {
+      [key: string]: string
+    }
+    | null
   id: string
   is_team_authorization: boolean
   label: CoreToolsEntitiesCommonEntitiesI18nObject
@@ -785,25 +794,25 @@ export type ToolProviderType
     | 'workflow'
 
 export type PluginDeclaration = {
-  agent_strategy?: AgentStrategyProviderEntity
+  agent_strategy?: AgentStrategyProviderEntity | null
   author: string | null
   category: PluginCategory
   created_at: string
-  datasource?: DatasourceProviderEntity
+  datasource?: DatasourceProviderEntity | null
   description: CoreToolsEntitiesCommonEntitiesI18nObject
-  endpoint?: EndpointProviderDeclaration
+  endpoint?: EndpointProviderDeclaration | null
   icon: string
   icon_dark?: string | null
   label: CoreToolsEntitiesCommonEntitiesI18nObject
   meta: Meta
-  model?: ProviderEntity
+  model?: ProviderEntity | null
   name: string
   plugins: Plugins
   repo?: string | null
   resource: PluginResourceRequirements
   tags?: Array<string>
-  tool?: ToolProviderEntity
-  trigger?: TriggerProviderEntity
+  tool?: ToolProviderEntity | null
+  trigger?: TriggerProviderEntity | null
   verified?: boolean
   version: string
 }
@@ -820,7 +829,7 @@ export type AgentStrategyProviderEntity = {
 export type DatasourceProviderEntity = {
   credentials_schema?: Array<ProviderConfig>
   identity: DatasourceProviderIdentity
-  oauth_schema?: OAuthSchema
+  oauth_schema?: OAuthSchema | null
   provider_type: DatasourceProviderType
 }
 
@@ -837,18 +846,18 @@ export type Meta = {
 export type ProviderEntity = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
-  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  help?: ProviderHelpEntity
-  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  help?: ProviderHelpEntity | null
+  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  model_credential_schema?: ModelCredentialSchema
+  model_credential_schema?: ModelCredentialSchema | null
   models?: Array<AiModelEntity>
   position?: {
     [key: string]: Array<string>
   } | null
   provider: string
-  provider_credential_schema?: ProviderCredentialSchema
+  provider_credential_schema?: ProviderCredentialSchema | null
   provider_name?: string
   supported_model_types: Array<ModelType>
 }
@@ -863,20 +872,20 @@ export type Plugins = {
 
 export type PluginResourceRequirements = {
   memory: number
-  permission?: Permission
+  permission?: Permission | null
 }
 
 export type ToolProviderEntity = {
   credentials_schema?: Array<ProviderConfig>
   identity: ToolProviderIdentity
-  oauth_schema?: OAuthSchema
+  oauth_schema?: OAuthSchema | null
   plugin_id?: string | null
 }
 
 export type TriggerProviderEntity = {
   events?: Array<EventEntity>
   identity: TriggerProviderIdentity
-  subscription_constructor?: SubscriptionConstructor
+  subscription_constructor?: SubscriptionConstructor | null
   subscription_schema?: Array<ProviderConfig>
 }
 
@@ -891,15 +900,15 @@ export type AgentStrategyProviderIdentity = {
 }
 
 export type ProviderConfig = {
-  default?: unknown
-  help?: CoreToolsEntitiesCommonEntitiesI18nObject
-  label?: CoreToolsEntitiesCommonEntitiesI18nObject
+  default?: number | string | number | boolean | null
+  help?: CoreToolsEntitiesCommonEntitiesI18nObject | null
+  label?: CoreToolsEntitiesCommonEntitiesI18nObject | null
   multiple?: boolean | null
   name: string
   options?: Array<Option> | null
-  placeholder?: CoreToolsEntitiesCommonEntitiesI18nObject
+  placeholder?: CoreToolsEntitiesCommonEntitiesI18nObject | null
   required?: boolean
-  scope?: unknown
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
   type: CoreEntitiesProviderEntitiesBasicProviderConfigType
   url?: string | null
 }
@@ -954,11 +963,11 @@ export type AiModelEntity = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   model: string
   model_properties: {
-    [key: string]: unknown
+    [key in ModelPropertyKey]?: unknown
   }
   model_type: ModelType
   parameter_rules?: Array<ParameterRule>
-  pricing?: PriceConfig
+  pricing?: PriceConfig | null
 }
 
 export type ProviderCredentialSchema = {
@@ -966,11 +975,11 @@ export type ProviderCredentialSchema = {
 }
 
 export type Permission = {
-  endpoint?: Endpoint
-  model?: Model
-  node?: Node
-  storage?: Storage
-  tool?: Tool
+  endpoint?: Endpoint | null
+  model?: Model | null
+  node?: Node | null
+  storage?: Storage | null
+  tool?: Tool | null
 }
 
 export type ToolProviderIdentity = {
@@ -1004,7 +1013,7 @@ export type TriggerProviderIdentity = {
 
 export type SubscriptionConstructor = {
   credentials_schema?: Array<ProviderConfig>
-  oauth_schema?: OAuthSchema
+  oauth_schema?: OAuthSchema | null
   parameters?: Array<EventParameter>
 }
 
@@ -1059,7 +1068,7 @@ export type CredentialFormSchema = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   max_length?: number
   options?: Array<FormOption> | null
-  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
   required?: boolean
   show_on?: Array<FormShowOnObject>
   type: FormType
@@ -1068,7 +1077,7 @@ export type CredentialFormSchema = {
 
 export type FieldModelSchema = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
 }
 
 export type ModelFeature
@@ -1099,8 +1108,8 @@ export type ModelPropertyKey
     | 'word_limit'
 
 export type ParameterRule = {
-  default?: unknown
-  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  default?: unknown | null
+  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   max?: number | null
   min?: number | null
@@ -1154,19 +1163,19 @@ export type EventIdentity = {
 }
 
 export type EventParameter = {
-  auto_generate?: PluginParameterAutoGenerate
-  default?: unknown
-  description?: CoreToolsEntitiesCommonEntitiesI18nObject
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?: number | number | string | Array<unknown> | null
+  description?: CoreToolsEntitiesCommonEntitiesI18nObject | null
   label: CoreToolsEntitiesCommonEntitiesI18nObject
-  max?: unknown
-  min?: unknown
+  max?: number | number | null
+  min?: number | number | null
   multiple?: boolean | null
   name: string
   options?: Array<PluginParameterOption> | null
   precision?: number | null
   required?: boolean | null
   scope?: string | null
-  template?: PluginParameterTemplate
+  template?: PluginParameterTemplate | null
   type: EventParameterType
 }
 
@@ -1396,9 +1405,7 @@ export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdError
   = DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -1556,7 +1563,7 @@ export type GetWorkspacesCurrentDefaultModelData = {
   body?: never
   path?: never
   query: {
-    model_type: string
+    model_type: ModelType
   }
   url: '/workspaces/current/default-model'
 }
@@ -1923,7 +1930,7 @@ export type GetWorkspacesCurrentModelProvidersData = {
   body?: never
   path?: never
   query?: {
-    model_type?: string | null
+    model_type?: ModelType | null
   }
   url: '/workspaces/current/model-providers'
 }
@@ -1965,9 +1972,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse
@@ -2073,9 +2078,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponse
@@ -2127,9 +2130,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
@@ -2144,7 +2145,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
     config_from?: string | null
     credential_id?: string | null
     model: string
-    model_type: string
+    model_type: ModelType
   }
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }

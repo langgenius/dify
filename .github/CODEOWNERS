@@ -23,8 +23,8 @@
 /docs/ @crazywoola
 
 # CLI
-/cli/ @langgenius/maintainers
-/.github/workflows/cli-tests.yml @langgenius/maintainers
+/cli/ @GareArc
+/.github/workflows/cli-tests.yml @GareArc
 
 # Backend (default owner, more specific rules below will override)
 /api/ @QuantumGhost

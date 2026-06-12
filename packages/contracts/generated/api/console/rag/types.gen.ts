@@ -47,7 +47,7 @@ export type DatasetDetailResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
@@ -115,8 +115,8 @@ export type SimpleResultResponse = {
 
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccount | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
@@ -146,7 +146,7 @@ export type WorkflowPaginationResponse = {
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount
+  created_by?: SimpleAccount | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -161,7 +161,7 @@ export type WorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount
+  updated_by?: SimpleAccount | null
   version: string
 }
 
@@ -190,8 +190,8 @@ export type DatasourceVariablesPayload = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccount | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
   error?: string | null
@@ -238,7 +238,7 @@ export type DraftWorkflowRunPayload = {
 
 export type WorkflowDraftVariablePatchPayload = {
   name?: string | null
-  value?: unknown
+  value?: unknown | null
 }
 
 export type RagPipelineWorkflowPublishResponse = {
@@ -304,7 +304,7 @@ export type DatasetRetrievalModelResponse = {
   score_threshold_enabled: boolean
   search_method: string
   top_k: number
-  weights?: DatasetWeightedScoreResponse
+  weights?: DatasetWeightedScoreResponse | null
 }
 
 export type DatasetSummaryIndexSettingResponse = {
@@ -336,12 +336,12 @@ export type PipelineTemplateItemResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: Type
-  value: unknown
+  value: Github | Marketplace | Package
 }
 
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
+  created_by_account?: SimpleAccount | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -455,9 +455,7 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -473,9 +471,7 @@ export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponse
@@ -681,9 +677,7 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponse
@@ -1360,9 +1354,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse
