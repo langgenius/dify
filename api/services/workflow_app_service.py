@@ -38,6 +38,19 @@ class LogView:
         return getattr(self.log, name)
 
 
+def _build_workflow_log_keyword_like_values(keyword: str) -> list[str]:
+    from libs.helper import escape_like_pattern
+
+    keyword = keyword[:30]
+    like_values = [f"%{escape_like_pattern(keyword)}%"]
+
+    json_escaped_keyword = json.dumps(keyword, ensure_ascii=True)[1:-1]
+    if json_escaped_keyword != keyword:
+        like_values.append(f"%{escape_like_pattern(json_escaped_keyword)}%")
+
+    return like_values
+
+
 class WorkflowAppService:
     def get_paginate_workflow_app_logs(
         self,
@@ -90,19 +103,21 @@ class WorkflowAppService:
             # Join to workflow run for filtering when needed.
 
         if keyword:
-            from libs.helper import escape_like_pattern
-
-            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
-            escaped_keyword = escape_like_pattern(keyword[:30])
-            keyword_like_val = f"%{escaped_keyword}%"
+            keyword_like_values = _build_workflow_log_keyword_like_values(keyword)
             keyword_conditions = [
-                WorkflowRun.inputs.ilike(keyword_like_val, escape="\\"),
-                WorkflowRun.outputs.ilike(keyword_like_val, escape="\\"),
+                *[
+                    field.ilike(keyword_like_val, escape="\\")
+                    for keyword_like_val in keyword_like_values
+                    for field in (WorkflowRun.inputs, WorkflowRun.outputs)
+                ],
                 # filter keyword by end user session id if created by end user role
-                and_(
-                    WorkflowRun.created_by_role == "end_user",
-                    EndUser.session_id.ilike(keyword_like_val, escape="\\"),
-                ),
+                *[
+                    and_(
+                        WorkflowRun.created_by_role == "end_user",
+                        EndUser.session_id.ilike(keyword_like_val, escape="\\"),
+                    )
+                    for keyword_like_val in keyword_like_values
+                ],
             ]
 
             # filter keyword by workflow run id
