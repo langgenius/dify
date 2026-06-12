@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import base64
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -19,6 +20,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.mcp_tool.tool import MCPTool
+from graphon.file import File, FileTransferMethod, FileType
 
 
 def _build_mcp_tool(*, with_output_schema: bool = True) -> MCPTool:
@@ -148,6 +150,59 @@ def test_mcp_tool_handle_none_parameter_filters_empty_values():
     tool = _build_mcp_tool()
     cleaned = tool._handle_none_parameter({"a": 1, "b": None, "c": "", "d": "  ", "e": "ok"})
     assert cleaned == {"a": 1, "e": "ok"}
+
+
+def test_invoke_remote_mcp_tool_serializes_file_parameters_with_download_url():
+    tool = _build_mcp_tool()
+    file_param = File(
+        tenant_id="tenant-1",
+        type=FileType.IMAGE,
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="upload-file-id",
+        filename="receipt.jpg",
+        extension=".jpg",
+        mime_type="image/jpeg",
+        size=1234,
+        storage_key="uploads/receipt.jpg",
+    )
+
+    provider_entity = Mock()
+    provider_entity.decrypt_server_url.return_value = "https://mcp.example.com"
+    provider_entity.decrypt_headers.return_value = {}
+    provider_entity.retrieve_tokens.return_value = None
+
+    with (
+        patch.object(File, "generate_url", return_value="https://files.example.com/receipt.jpg"),
+        patch("extensions.ext_database.db", SimpleNamespace(engine=object())),
+        patch("sqlalchemy.orm.Session") as session_cls,
+        patch("services.tools.mcp_tools_manage_service.MCPToolManageService") as manage_service_cls,
+        patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls,
+    ):
+        manage_service_cls.return_value.get_provider_entity.return_value = provider_entity
+        client = client_cls.return_value.__enter__.return_value
+        client.invoke_tool.return_value = CallToolResult(content=[], _meta=None)
+
+        tool.invoke_remote_mcp_tool(
+            {
+                "file": [file_param],
+                "nested": {"attachment": file_param},
+                "prompt": "read this",
+                "empty": "",
+            },
+            user_id="user-1",
+            app_id="app-1",
+        )
+
+    session_cls.assert_called_once()
+    sent_args = client.invoke_tool.call_args.kwargs["tool_args"]
+    assert "empty" not in sent_args
+    assert sent_args["prompt"] == "read this"
+    assert sent_args["file"][0]["dify_model_identity"] == "__dify__file__"
+    assert sent_args["file"][0]["id"] is None
+    assert sent_args["file"][0]["related_id"] == "upload-file-id"
+    assert sent_args["file"][0]["url"] == "https://files.example.com/receipt.jpg"
+    assert sent_args["nested"]["attachment"]["url"] == "https://files.example.com/receipt.jpg"
 
 
 # ----- M2/M3 user-identity forwarding ---------------------------------------
