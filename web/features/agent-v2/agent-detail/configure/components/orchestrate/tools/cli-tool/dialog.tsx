@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EnvVariablesTable } from '../../advanced/env'
@@ -26,12 +27,14 @@ const createCliEnvVariable = (): EnvVariable => ({
 
 export function CliToolDialog({
   mode = 'add',
+  onDeleteCliTool,
   onSaveCliTool,
   open,
   onOpenChange,
   tool,
 }: {
   mode?: 'add' | 'edit'
+  onDeleteCliTool?: (toolId: string) => void
   onSaveCliTool: (tool: AgentCliTool) => void
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -88,13 +91,21 @@ export function CliToolDialog({
   const handleSubmit = useCallback((formValues: CliToolFormValues) => {
     const trimmedName = formValues.name?.trim() || toolName.trim()
     const trimmedInstallCommand = formValues.installCommand?.trim() || installCommand.trim()
-    const name = trimmedName || trimmedInstallCommand || t('agentDetail.configure.tools.cliTool')
+
+    if (!trimmedInstallCommand) {
+      toast.error(t('agentDetail.configure.tools.cliDialog.installCommand.required'))
+      return
+    }
+    if (!trimmedName) {
+      toast.error(t('agentDetail.configure.tools.cliDialog.name.required'))
+      return
+    }
 
     onSaveCliTool({
       ...tool,
       id: tool?.id ?? createCliToolId(),
       kind: 'cli',
-      name,
+      name: trimmedName,
       installCommand: trimmedInstallCommand,
       envVariables,
     })
@@ -107,6 +118,14 @@ export function CliToolDialog({
   const handleCancel = useCallback(() => {
     onOpenChange(false)
   }, [onOpenChange])
+
+  const handleDelete = useCallback(() => {
+    if (!tool)
+      return
+
+    onDeleteCliTool?.(tool.id)
+    onOpenChange(false)
+  }, [onDeleteCliTool, onOpenChange, tool])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -186,13 +205,23 @@ export function CliToolDialog({
               <span>{t('agentDetail.configure.tools.cliDialog.learnMore')}</span>
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button type="button" onClick={handleCancel}>
-                {tCommon('operation.cancel')}
-              </Button>
-              <Button type="submit" variant="primary">
-                {tCommon('operation.add')}
-              </Button>
+            <div className="flex shrink-0 items-center gap-3">
+              {mode === 'edit' && tool && onDeleteCliTool && (
+                <div className="flex items-center gap-3">
+                  <Button type="button" tone="destructive" onClick={handleDelete}>
+                    {tCommon('operation.remove')}
+                  </Button>
+                  <div className="h-4 w-px bg-divider-regular" aria-hidden />
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Button type="button" onClick={handleCancel}>
+                  {tCommon('operation.cancel')}
+                </Button>
+                <Button type="submit" variant="primary">
+                  {tCommon(mode === 'edit' ? 'operation.save' : 'operation.add')}
+                </Button>
+              </div>
             </div>
           </div>
         </Form>

@@ -283,6 +283,7 @@ export function AgentTools() {
         key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
         mode={editingCliTool ? 'edit' : 'add'}
         tool={editingCliTool}
+        onDeleteCliTool={deleteCliTool}
         onSaveCliTool={handleCliDialogSaveWithPromptInsert}
         open={isCliToolDialogOpen}
         onOpenChange={handleCliDialogOpenChangeWithPromptInsert}
