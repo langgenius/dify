@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
+import type { AgentTool } from '../orchestrate/tools/types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentComposerDraftAtom, agentComposerKnowledgeRetrievalsAtom, agentComposerPromptAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, agentComposerKnowledgeRetrievalsAtom, agentComposerPromptAtom, agentComposerToolsAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
@@ -82,6 +83,25 @@ vi.mock('@/service/use-tools', () => ({
   useAllMCPTools: () => ({ data: [] }),
 }))
 
+const duckDuckGoSearchAction = {
+  id: 'duckduckgo-search',
+  name: 'DuckDuckGo Search',
+  toolName: 'ddg_search',
+  description: 'Search the web.',
+}
+
+const duckDuckGoProviderTool: AgentTool = {
+  id: 'duckduckgo',
+  name: 'DuckDuckGo',
+  kind: 'provider',
+  iconClassName: 'i-simple-icons-duckduckgo',
+  credentialKey: 'agentDetail.configure.tools.credential.authOne',
+  credentialVariant: 'authorized',
+  actions: [
+    duckDuckGoSearchAction,
+  ],
+}
+
 const promptEditorDraft = {
   ...defaultAgentComposerDraft,
   skills: [
@@ -90,24 +110,7 @@ const promptEditorDraft = {
       name: 'Playwright',
     },
   ],
-  tools: [
-    {
-      id: 'duckduckgo',
-      name: 'DuckDuckGo',
-      kind: 'provider',
-      iconClassName: 'i-simple-icons-duckduckgo',
-      credentialKey: 'agentDetail.configure.tools.credential.authOne',
-      credentialVariant: 'authorized',
-      actions: [
-        {
-          id: 'duckduckgo-search',
-          name: 'DuckDuckGo Search',
-          toolName: 'ddg_search',
-          description: 'Search the web.',
-        },
-      ],
-    },
-  ],
+  tools: [duckDuckGoProviderTool],
 } satisfies typeof defaultAgentComposerDraft
 
 const renderAgentPromptEditor = (
@@ -173,6 +176,33 @@ describe('AgentPromptEditor', () => {
       ])
 
       expect(store.get(agentComposerPromptAtom)).toBe('Use [§knowledge:retrieval-1:Release Search§] and [§knowledge:retrieval-2:Keep Search§]')
+    })
+
+    it('should update CLI tool reference labels when the tool title changes', () => {
+      const store = createStore()
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentComposerDraft,
+        prompt: 'Run [§cli_tool:cli-1:Old CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]',
+        tools: [
+          { id: 'cli-1', kind: 'cli', name: 'Old CLI' },
+          duckDuckGoProviderTool,
+        ],
+      })
+
+      store.set(agentComposerToolsAtom, [
+        { id: 'cli-1', kind: 'cli', name: 'Release CLI' },
+        {
+          ...duckDuckGoProviderTool,
+          actions: [
+            {
+              ...duckDuckGoSearchAction,
+              name: 'Renamed Provider Action',
+            },
+          ],
+        },
+      ])
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Run [§cli_tool:cli-1:Release CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]')
     })
   })
 

@@ -2,6 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { ConfigureSection } from '../common/section'
+import { AgentContentModerationSettings } from './content-moderation'
 import { AgentEnvEditor } from './env'
 
 export function AgentAdvancedSettings() {
@@ -20,6 +21,7 @@ export function AgentAdvancedSettings() {
       panelContentClassName="flex flex-col rounded-lg bg-background-section"
     >
       <AgentEnvEditor />
+      <AgentContentModerationSettings />
     </ConfigureSection>
   )
 }
