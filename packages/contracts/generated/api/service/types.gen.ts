@@ -132,7 +132,7 @@ export type Condition = {
     | '≤'
     | '≥'
   name: string
-  value?: unknown
+  value?: string | Array<string> | number | number | null
 }
 
 export type ConversationListQuery = {
@@ -190,9 +190,9 @@ export type DatasetCreatePayload = {
   external_knowledge_id?: string | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name: string
-  permission?: PermissionEnum
+  permission?: PermissionEnum | null
   provider?: string
-  retrieval_model?: RetrievalModel
+  retrieval_model?: RetrievalModel | null
   summary_index_setting?: {
     [key: string]: unknown
   } | null
@@ -215,7 +215,7 @@ export type DatasetDetailResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
@@ -253,7 +253,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
@@ -365,7 +365,7 @@ export type DatasetRetrievalModelResponse = {
   score_threshold_enabled: boolean
   search_method: string
   top_k: number
-  weights?: DatasetWeightedScoreResponse
+  weights?: DatasetWeightedScoreResponse | null
 }
 
 export type DatasetSummaryIndexSettingResponse = {
@@ -395,8 +395,8 @@ export type DatasetUpdatePayload = {
   partial_member_list?: Array<{
     [key: string]: string
   }> | null
-  permission?: PermissionEnum
-  retrieval_model?: RetrievalModel
+  permission?: PermissionEnum | null
+  retrieval_model?: RetrievalModel | null
 }
 
 export type DatasetVectorSettingResponse = {
@@ -454,7 +454,7 @@ export type DocumentMetadataResponse = {
   id: string
   name: string
   type: string
-  value?: unknown
+  value?: string | number | number | boolean | null
 }
 
 export type DocumentResponse = {
@@ -511,8 +511,8 @@ export type DocumentTextCreatePayload = {
   indexing_technique?: string | null
   name: string
   original_document_id?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   text: string
 }
 
@@ -520,8 +520,8 @@ export type DocumentTextUpdate = {
   doc_form?: string
   doc_language?: string
   name?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   text?: string | null
 }
 
@@ -574,7 +574,7 @@ export type HitTestingChildChunk = {
 
 export type HitTestingDocument = {
   data_source_type: string
-  doc_metadata: unknown
+  doc_metadata: unknown | null
   doc_type: string | null
   id: string
   name: string
@@ -595,7 +595,7 @@ export type HitTestingPayload = {
     [key: string]: unknown
   } | null
   query: string
-  retrieval_model?: RetrievalModel
+  retrieval_model?: RetrievalModel | null
 }
 
 export type HitTestingQuery = {
@@ -608,7 +608,7 @@ export type HitTestingRecord = {
   score: number | null
   segment: HitTestingSegment
   summary: string | null
-  tsne_position: unknown
+  tsne_position: unknown | null
 }
 
 export type HitTestingResponse = {
@@ -685,7 +685,7 @@ export type MetadataArgs = {
 export type MetadataDetail = {
   id: string
   name: string
-  value?: unknown
+  value?: string | number | number | null
 }
 
 export type MetadataFilteringCondition = {
@@ -723,7 +723,7 @@ export type PreProcessingRule = {
 
 export type ProcessRule = {
   mode: ProcessRuleMode
-  rules?: Rule
+  rules?: Rule | null
 }
 
 export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
@@ -744,22 +744,22 @@ export type RetrievalMethod
     | 'semantic_search'
 
 export type RetrievalModel = {
-  metadata_filtering_conditions?: MetadataFilteringCondition
+  metadata_filtering_conditions?: MetadataFilteringCondition | null
   reranking_enable: boolean
   reranking_mode?: string | null
-  reranking_model?: RerankingModel
+  reranking_model?: RerankingModel | null
   score_threshold?: number | null
   score_threshold_enabled: boolean
   search_method: RetrievalMethod
   top_k: number
-  weights?: WeightModel
+  weights?: WeightModel | null
 }
 
 export type Rule = {
   parent_mode?: 'full-doc' | 'paragraph' | null
   pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation
-  subchunk_segmentation?: Segmentation
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
 }
 
 export type SegmentAttachmentResponse = {
@@ -937,8 +937,8 @@ export type WeightKeywordSetting = {
 }
 
 export type WeightModel = {
-  keyword_setting?: WeightKeywordSetting
-  vector_setting?: WeightVectorSetting
+  keyword_setting?: WeightKeywordSetting | null
+  vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
 }
 
@@ -958,13 +958,22 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccount | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
-  details?: unknown
+  details?:
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | string
+    | number
+    | number
+    | boolean
+    | null
   id: string
-  workflow_run?: WorkflowRunForLogResponse
+  workflow_run?: WorkflowRunForLogResponse | null
 }
 
 export type WorkflowLogQuery = {
@@ -980,7 +989,7 @@ export type WorkflowLogQuery = {
 
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
-  elapsed_time?: unknown
+  elapsed_time?: number | number | null
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1005,11 +1014,20 @@ export type WorkflowRunPayload = {
 
 export type WorkflowRunResponse = {
   created_at?: number | null
-  elapsed_time?: unknown
+  elapsed_time?: number | number | null
   error?: string | null
   finished_at?: number | null
   id: string
-  inputs?: unknown
+  inputs?:
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | string
+    | number
+    | number
+    | boolean
+    | null
   outputs?: {
     [key: string]: unknown
   }
@@ -1205,9 +1223,7 @@ export type DeleteAppsAnnotationsByAnnotationIdError
   = DeleteAppsAnnotationsByAnnotationIdErrors[keyof DeleteAppsAnnotationsByAnnotationIdErrors]
 
 export type DeleteAppsAnnotationsByAnnotationIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdResponse
@@ -1456,9 +1472,7 @@ export type DeleteConversationsByCIdError
   = DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
 
 export type DeleteConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteConversationsByCIdResponse
@@ -1662,9 +1676,7 @@ export type DeleteDatasetsTagsErrors = {
 export type DeleteDatasetsTagsError = DeleteDatasetsTagsErrors[keyof DeleteDatasetsTagsErrors]
 
 export type DeleteDatasetsTagsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsTagsResponse
@@ -1759,9 +1771,7 @@ export type PostDatasetsTagsBindingError
   = PostDatasetsTagsBindingErrors[keyof PostDatasetsTagsBindingErrors]
 
 export type PostDatasetsTagsBindingResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PostDatasetsTagsBindingResponse
@@ -1787,9 +1797,7 @@ export type PostDatasetsTagsUnbindingError
   = PostDatasetsTagsUnbindingErrors[keyof PostDatasetsTagsUnbindingErrors]
 
 export type PostDatasetsTagsUnbindingResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PostDatasetsTagsUnbindingResponse
@@ -1820,9 +1828,7 @@ export type DeleteDatasetsByDatasetIdError
   = DeleteDatasetsByDatasetIdErrors[keyof DeleteDatasetsByDatasetIdErrors]
 
 export type DeleteDatasetsByDatasetIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdResponse
@@ -2192,9 +2198,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError
   = DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
@@ -2388,9 +2392,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErr
   = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2548,9 +2550,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
-    204: {
-      [key: string]: never
-    }
+    204: void
   }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
@@ -2873,9 +2873,7 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError
   = DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse

@@ -36,6 +36,12 @@ export type ImportAppResult = {
   readonly leakedDependencies: readonly PluginDependency[]
 }
 
+type PluginDependencyLabelInput = {
+  readonly current_identifier?: string | null
+  readonly type?: PluginDependency['type']
+  readonly value?: unknown
+}
+
 export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps): Promise<ImportAppResult> {
   const env = deps.envLookup ?? getEnv
   const io = deps.io ?? nullStreams()
@@ -124,7 +130,7 @@ export async function runImportApp(opts: ImportAppOptions, deps: ImportAppDeps):
 
 // `value` is a loosely-typed wire object (Github | Marketplace | Package); narrow it here to
 // surface a human-readable identifier without depending on which variant the server returned.
-export function pluginDependencyLabel(dep: PluginDependency): string {
+export function pluginDependencyLabel(dep: PluginDependencyLabelInput): string {
   const value = dep.value
   if (typeof value === 'object' && value !== null) {
     const fields = value as Record<string, unknown>

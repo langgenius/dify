@@ -60,33 +60,48 @@ export const zSubscriptionModel = z.object({
  */
 export const zBillingModel = z.object({
   enabled: z.boolean().default(false),
-  subscription: zSubscriptionModel,
+  subscription: zSubscriptionModel.default({ interval: '', plan: 'sandbox' }),
 })
 
 /**
  * FeatureModel
  */
 export const zFeatureModel = z.object({
-  annotation_quota_limit: zLimitationModel,
-  api_rate_limit: zQuota,
-  apps: zLimitationModel,
-  billing: zBillingModel,
+  annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
+  api_rate_limit: zQuota.default({
+    limit: 5000,
+    reset_date: 0,
+    usage: 0,
+  }),
+  apps: zLimitationModel.default({ limit: 10, size: 0 }),
+  billing: zBillingModel.default({
+    enabled: false,
+    subscription: { interval: '', plan: 'sandbox' },
+  }),
   can_replace_logo: z.boolean().default(false),
   dataset_operator_enabled: z.boolean().default(false),
   docs_processing: z.string().default('standard'),
-  documents_upload_quota: zLimitationModel,
-  education: zEducationModel,
+  documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
+  education: zEducationModel.default({ activated: false, enabled: false }),
   human_input_email_delivery_enabled: z.boolean().default(false),
   is_allow_transfer_workspace: z.boolean().default(true),
-  knowledge_pipeline: zKnowledgePipeline,
+  knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
   knowledge_rate_limit: z.int().default(10),
-  members: zLimitationModel,
+  members: zLimitationModel.default({ limit: 1, size: 0 }),
   model_load_balancing_enabled: z.boolean().default(false),
   next_credit_reset_date: z.int().default(0),
-  trigger_event: zQuota,
-  vector_space: zLimitationModel,
+  trigger_event: zQuota.default({
+    limit: 3000,
+    reset_date: 0,
+    usage: 0,
+  }),
+  vector_space: zLimitationModel.nullable().default({ limit: 5, size: 0 }),
   webapp_copyright_enabled: z.boolean().default(false),
-  workspace_members: zLicenseLimitationModel,
+  workspace_members: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
 })
 
 /**

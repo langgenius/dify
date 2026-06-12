@@ -49,4 +49,4 @@ export const zDeleteApiKeyAuthDataSourceByBindingIdPath = z.object({
 /**
  * Binding deleted successfully
  */
-export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.record(z.string(), z.never())
+export const zDeleteApiKeyAuthDataSourceByBindingIdResponse = z.void()

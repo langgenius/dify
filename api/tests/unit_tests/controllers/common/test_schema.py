@@ -78,9 +78,9 @@ def mock_console_ns():
 
 
 def test_default_ref_template_value():
-    from controllers.common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0
+    from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0
 
-    assert DEFAULT_REF_TEMPLATE_SWAGGER_2_0 == "#/definitions/{model}"
+    assert DEFAULT_REF_TEMPLATE_OPENAPI_3_0 == "#/components/schemas/{model}"
 
 
 def test_register_schema_model_calls_namespace_schema_model():
@@ -100,7 +100,7 @@ def test_register_schema_model_calls_namespace_schema_model():
 
 
 def test_register_schema_model_passes_schema_from_pydantic():
-    from controllers.common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_model
+    from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_model
 
     namespace = MagicMock(spec=Namespace)
 
@@ -108,24 +108,24 @@ def test_register_schema_model_passes_schema_from_pydantic():
 
     schema = namespace.schema_model.call_args.args[1]
 
-    expected_schema = UserModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    expected_schema = UserModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
 
     assert schema == expected_schema
 
 
 def test_register_schema_model_promotes_nested_pydantic_definitions():
-    from controllers.common.schema import DEFAULT_REF_TEMPLATE_SWAGGER_2_0, register_schema_model
+    from controllers.common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_model
 
     namespace = MagicMock(spec=Namespace)
 
     register_schema_model(namespace, ParentModel)
 
     called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
-    parent_schema = ParentModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    parent_schema = ParentModel.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
 
     assert set(called_schemas) == {"ParentModel", "ChildModel"}
     assert "$defs" not in called_schemas["ParentModel"]
-    assert called_schemas["ParentModel"]["properties"]["child"]["$ref"] == "#/definitions/ChildModel"
+    assert called_schemas["ParentModel"]["properties"]["child"]["$ref"] == "#/components/schemas/ChildModel"
     assert called_schemas["ChildModel"] == parent_schema["$defs"]["ChildModel"]
 
 
@@ -179,7 +179,7 @@ def test_register_response_schema_model_uses_serialized_field_names():
     assert "internal_name" not in schema["properties"]
 
 
-def test_register_schema_model_flattens_simple_nullable_any_of_for_swagger_2():
+def test_register_schema_model_preserves_openapi_nullable_unions():
     from controllers.common.schema import register_schema_model
 
     namespace = MagicMock(spec=Namespace)
@@ -189,14 +189,9 @@ def test_register_schema_model_flattens_simple_nullable_any_of_for_swagger_2():
     called_schemas = {call.args[0]: call.args[1] for call in namespace.schema_model.call_args_list}
     properties = called_schemas["NullableSchemaModel"]["properties"]
 
-    assert properties["name"]["type"] == "string"
-    assert properties["name"]["x-nullable"] is True
-    assert "anyOf" not in properties["name"]
-    assert properties["tags"]["type"] == "array"
-    assert properties["tags"]["items"] == {"type": "string"}
-    assert properties["tags"]["x-nullable"] is True
-    assert properties["owner"]["$ref"] == "#/definitions/UserModel"
-    assert properties["owner"]["x-nullable"] is True
+    assert properties["name"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert properties["tags"]["anyOf"] == [{"items": {"type": "string"}, "type": "array"}, {"type": "null"}]
+    assert properties["owner"]["anyOf"] == [{"$ref": "#/components/schemas/UserModel"}, {"type": "null"}]
     assert "anyOf" in properties["ambiguous"]
 
 

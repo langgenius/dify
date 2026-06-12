@@ -11,7 +11,7 @@ export type AccountPayload = {
 }
 
 export type AccountResponse = {
-  account?: AccountPayload
+  account?: AccountPayload | null
   default_workspace_id?: string | null
   subject_email?: string | null
   subject_issuer?: string | null
@@ -36,7 +36,7 @@ export type AppDescribeQuery = {
 }
 
 export type AppDescribeResponse = {
-  info?: AppDescribeInfo
+  info?: AppDescribeInfo | null
   input_schema?: {
     [key: string]: unknown
   } | null
@@ -77,7 +77,7 @@ export type AppInfoResponse = {
 
 export type AppListQuery = {
   limit?: number
-  mode?: AppMode
+  mode?: AppMode | null
   name?: string | null
   page?: number
   tag?: string | null
@@ -177,7 +177,7 @@ export type ErrorBody = {
 }
 
 export type ErrorDetail = {
-  loc?: Array<unknown>
+  loc?: Array<string | number>
   msg: string
   type: string
 }
@@ -242,7 +242,7 @@ export type Marketplace = {
 }
 
 export type MemberActionResponse = {
-  result?: string
+  result?: 'success'
 }
 
 export type MemberInvitePayload = {
@@ -254,7 +254,7 @@ export type MemberInviteResponse = {
   email: string
   invite_url: string
   member_id: string
-  result?: string
+  result?: 'success'
   role: string
   tenant_id: string
 }
@@ -289,7 +289,7 @@ export type MessageMetadata = {
   retriever_resources?: Array<{
     [key: string]: unknown
   }>
-  usage?: UsageInfo
+  usage?: UsageInfo | null
 }
 
 export type OpenApiErrorCode
@@ -330,7 +330,7 @@ export type Package = {
 
 export type PermittedExternalAppsListQuery = {
   limit?: number
-  mode?: AppMode
+  mode?: AppMode | null
   name?: string | null
   page?: number
 }
@@ -346,7 +346,7 @@ export type PermittedExternalAppsListResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: Type
-  value: unknown
+  value: Github | Marketplace | Package
 }
 
 export type RevokeResponse = {
@@ -386,7 +386,7 @@ export type TagItem = {
 }
 
 export type TaskStopResponse = {
-  result: string
+  result: 'success'
 }
 
 export type Type = 'github' | 'marketplace' | 'package'

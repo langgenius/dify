@@ -22,7 +22,7 @@ def _load_generate_swagger_markdown_docs_module():
 
 def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_console(tmp_path, monkeypatch):
     module = _load_generate_swagger_markdown_docs_module()
-    swagger_dir = tmp_path / "openapi"
+    openapi_dir = tmp_path / "openapi"
     markdown_dir = tmp_path / "markdown"
     stale_combined_doc = markdown_dir / "api-reference.md"
     markdown_dir.mkdir()
@@ -50,23 +50,23 @@ def test_generate_markdown_docs_keeps_split_docs_and_merges_fastopenapi_into_con
     monkeypatch.setattr(module, "generate_fastopenapi_specs", write_fastopenapi_specs)
     monkeypatch.setattr(module, "_convert_spec_to_markdown", convert_spec_to_markdown)
 
-    written_paths = module.generate_markdown_docs(swagger_dir, markdown_dir)
+    written_paths = module.generate_markdown_docs(openapi_dir, markdown_dir)
 
     assert [path.name for path in written_paths] == [
-        "console-swagger.md",
-        "web-swagger.md",
-        "service-swagger.md",
-        "openapi-swagger.md",
+        "console-openapi.md",
+        "web-openapi.md",
+        "service-openapi.md",
+        "openapi-openapi.md",
     ]
     assert not stale_combined_doc.exists()
-    assert not list(swagger_dir.glob("*.json"))
+    assert not list(openapi_dir.glob("*.json"))
 
-    console_markdown = (markdown_dir / "console-swagger.md").read_text(encoding="utf-8")
-    assert "## FastOpenAPI Preview (OpenAPI 3.0)" in console_markdown
+    console_markdown = (markdown_dir / "console-openapi.md").read_text(encoding="utf-8")
+    assert "## FastOpenAPI Preview (OpenAPI 3.1)" in console_markdown
     assert "### fastopenapi-console-openapi" in console_markdown
     assert "#### Routes" in console_markdown
-    assert "FastOpenAPI Preview" not in (markdown_dir / "web-swagger.md").read_text(encoding="utf-8")
-    assert "FastOpenAPI Preview" not in (markdown_dir / "service-swagger.md").read_text(encoding="utf-8")
+    assert "FastOpenAPI Preview" not in (markdown_dir / "web-openapi.md").read_text(encoding="utf-8")
+    assert "FastOpenAPI Preview" not in (markdown_dir / "service-openapi.md").read_text(encoding="utf-8")
 
 
 def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagger_dir(tmp_path, monkeypatch):
@@ -107,39 +107,41 @@ def test_generate_markdown_docs_only_removes_generated_specs_from_separate_swagg
 
 def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path):
     module = _load_generate_swagger_markdown_docs_module()
-    spec_path = tmp_path / "console-swagger.json"
+    spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text(
         json.dumps(
             {
-                "definitions": {
-                    "FormInputConfig": {
-                        "oneOf": [
-                            {"$ref": "#/definitions/ParagraphInputConfig"},
-                            {"$ref": "#/definitions/SelectInputConfig"},
-                            {"$ref": "#/definitions/FileInputConfig"},
-                        ],
-                    },
-                    "ParagraphInputConfig": {
-                        "properties": {
-                            "default": {
-                                "anyOf": [
-                                    {"$ref": "#/definitions/StringSource"},
-                                    {"type": "null"},
-                                ],
+                "components": {
+                    "schemas": {
+                        "FormInputConfig": {
+                            "oneOf": [
+                                {"$ref": "#/components/schemas/ParagraphInputConfig"},
+                                {"$ref": "#/components/schemas/SelectInputConfig"},
+                                {"$ref": "#/components/schemas/FileInputConfig"},
+                            ],
+                        },
+                        "ParagraphInputConfig": {
+                            "properties": {
+                                "default": {
+                                    "anyOf": [
+                                        {"$ref": "#/components/schemas/StringSource"},
+                                        {"type": "null"},
+                                    ],
+                                },
+                                "output_variable_name": {"type": "string"},
                             },
-                            "output_variable_name": {"type": "string"},
                         },
-                    },
-                    "SelectInputConfig": {
-                        "properties": {
-                            "option_source": {"$ref": "#/definitions/StringListSource"},
+                        "SelectInputConfig": {
+                            "properties": {
+                                "option_source": {"$ref": "#/components/schemas/StringListSource"},
+                            },
                         },
-                    },
-                    "FileInputConfig": {
-                        "properties": {
-                            "allowed_file_types": {
-                                "type": "array",
-                                "items": {"$ref": "#/definitions/FileType"},
+                        "FileInputConfig": {
+                            "properties": {
+                                "allowed_file_types": {
+                                    "type": "array",
+                                    "items": {"$ref": "#/components/schemas/FileType"},
+                                },
                             },
                         },
                     },
@@ -188,24 +190,26 @@ def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path
     assert "| allowed_file_types | [ [FileType](#filetype) ] |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_fills_regular_definition_union_property(tmp_path):
+def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_path):
     module = _load_generate_swagger_markdown_docs_module()
-    spec_path = tmp_path / "service-swagger.json"
+    spec_path = tmp_path / "service-openapi.json"
     spec_path.write_text(
         json.dumps(
             {
-                "definitions": {
-                    "DocumentMetadataResponse": {
-                        "properties": {
-                            "id": {"type": "string"},
-                            "value": {
-                                "anyOf": [
-                                    {"type": "string"},
-                                    {"type": "integer"},
-                                    {"type": "number"},
-                                    {"type": "boolean"},
-                                    {"type": "null"},
-                                ],
+                "components": {
+                    "schemas": {
+                        "DocumentMetadataResponse": {
+                            "properties": {
+                                "id": {"type": "string"},
+                                "value": {
+                                    "anyOf": [
+                                        {"type": "string"},
+                                        {"type": "integer"},
+                                        {"type": "number"},
+                                        {"type": "boolean"},
+                                        {"type": "null"},
+                                    ],
+                                },
                             },
                         },
                     },
@@ -227,9 +231,9 @@ def test_patch_union_schema_markdown_fills_regular_definition_union_property(tmp
     assert "| value | string<br>integer<br>number<br>boolean |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path):
+def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path):
     module = _load_generate_swagger_markdown_docs_module()
-    spec_path = tmp_path / "console-swagger.json"
+    spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text("{}", encoding="utf-8")
 
     assert module._patch_union_schema_markdown("unchanged", spec_path) == "unchanged"
@@ -237,27 +241,29 @@ def test_patch_union_schema_markdown_ignores_specs_without_definitions(tmp_path)
 
 def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
     module = _load_generate_swagger_markdown_docs_module()
-    spec_path = tmp_path / "console-swagger.json"
+    spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text(
         json.dumps(
             {
-                "definitions": {
-                    "NotAMapping": [],
-                    "BrokenUnion": {
-                        "oneOf": [
-                            {},
-                            {"$ref": "#/definitions/Missing"},
-                            {"$ref": "#/definitions/NoPropertyMapping"},
-                        ],
+                "components": {
+                    "schemas": {
+                        "NotAMapping": [],
+                        "BrokenUnion": {
+                            "oneOf": [
+                                {},
+                                {"$ref": "#/components/schemas/Missing"},
+                                {"$ref": "#/components/schemas/NoPropertyMapping"},
+                            ],
+                        },
+                        "NoPropertyMapping": {"properties": []},
                     },
-                    "NoPropertyMapping": {"properties": []},
                 }
             }
         ),
         encoding="utf-8",
     )
 
-    assert module._definition_ref_name(None) is None
+    assert module._schema_ref_name(None) is None
     assert module._schema_markdown_type(None) == ""
     assert module._schema_markdown_type({"anyOf": [{"type": "null"}]}) == ""
     assert module._replace_schema_table_type("unchanged", "Definition", "field", "") == "unchanged"
@@ -280,24 +286,26 @@ def test_patch_union_schema_markdown_ignores_unrenderable_shapes(tmp_path):
 
 def test_convert_spec_to_markdown_patches_generated_union_tables(tmp_path, monkeypatch):
     module = _load_generate_swagger_markdown_docs_module()
-    spec_path = tmp_path / "console-swagger.json"
-    output_path = tmp_path / "console-swagger.md"
+    spec_path = tmp_path / "console-openapi.json"
+    output_path = tmp_path / "console-openapi.md"
     spec_path.write_text(
         json.dumps(
             {
-                "definitions": {
-                    "FormInputConfig": {
-                        "oneOf": [
-                            {"$ref": "#/definitions/ParagraphInputConfig"},
-                        ],
-                    },
-                    "ParagraphInputConfig": {
-                        "properties": {
-                            "default": {
-                                "anyOf": [
-                                    {"$ref": "#/definitions/StringSource"},
-                                    {"type": "null"},
-                                ],
+                "components": {
+                    "schemas": {
+                        "FormInputConfig": {
+                            "oneOf": [
+                                {"$ref": "#/components/schemas/ParagraphInputConfig"},
+                            ],
+                        },
+                        "ParagraphInputConfig": {
+                            "properties": {
+                                "default": {
+                                    "anyOf": [
+                                        {"$ref": "#/components/schemas/StringSource"},
+                                        {"type": "null"},
+                                    ],
+                                },
                             },
                         },
                     },

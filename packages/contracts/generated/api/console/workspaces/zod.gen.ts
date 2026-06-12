@@ -17,6 +17,20 @@ export const zSnippetImportPayload = z.object({
 })
 
 /**
+ * ModelType
+ *
+ * Enum class for model type.
+ */
+export const zModelType = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+])
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -187,6 +201,71 @@ export const zParserCredentialSwitch = z.object({
  */
 export const zParserCredentialValidate = z.object({
   credentials: z.record(z.string(), z.unknown()),
+})
+
+/**
+ * ParserDeleteModels
+ */
+export const zParserDeleteModels = z.object({
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserDeleteCredential
+ */
+export const zParserDeleteCredential = z.object({
+  credential_id: z.string(),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserCreateCredential
+ */
+export const zParserCreateCredential = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+  name: z.string().max(30).nullish(),
+})
+
+/**
+ * ParserUpdateCredential
+ */
+export const zParserUpdateCredential = z.object({
+  credential_id: z.string(),
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+  name: z.string().max(30).nullish(),
+})
+
+/**
+ * ParserSwitch
+ */
+export const zParserSwitch = z.object({
+  credential_id: z.string(),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserValidate
+ */
+export const zParserValidate = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * LoadBalancingCredentialPayload
+ */
+export const zLoadBalancingCredentialPayload = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
 })
 
 /**
@@ -433,7 +512,7 @@ export const zWorkspaceCustomConfigResponse = z.object({
  */
 export const zTenantInfoResponse = z.object({
   created_at: z.int().nullish(),
-  custom_config: zWorkspaceCustomConfigResponse.optional(),
+  custom_config: zWorkspaceCustomConfigResponse.nullish(),
   id: z.string(),
   in_trial: z.boolean().nullish(),
   name: z.string().nullish(),
@@ -465,7 +544,7 @@ export const zIconInfo = z.object({
  */
 export const zUpdateSnippetPayload = z.object({
   description: z.string().max(2000).nullish(),
-  icon_info: zIconInfo.optional(),
+  icon_info: zIconInfo.nullish(),
   name: z.string().min(1).max(255).nullish(),
 })
 
@@ -493,7 +572,7 @@ export const zInputFieldDefinition = z.object({
 export const zCreateSnippetPayload = z.object({
   description: z.string().max(2000).nullish(),
   graph: z.record(z.string(), z.unknown()).nullish(),
-  icon_info: zIconInfo.optional(),
+  icon_info: zIconInfo.nullish(),
   input_fields: z.array(zInputFieldDefinition).nullish(),
   name: z.string().min(1).max(255),
   type: z.enum(['group', 'node']).optional().default('node'),
@@ -577,99 +656,6 @@ export const zAccountWithRoleList = z.object({
 })
 
 /**
- * TenantAccountRole
- */
-export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
-
-/**
- * MemberInvitePayload
- */
-export const zMemberInvitePayload = z.object({
-  emails: z.array(z.string()).optional(),
-  language: z.string().nullish(),
-  role: zTenantAccountRole,
-})
-
-/**
- * ModelType
- *
- * Enum class for model type.
- */
-export const zModelType = z.enum([
-  'llm',
-  'moderation',
-  'rerank',
-  'speech2text',
-  'text-embedding',
-  'tts',
-])
-
-/**
- * ParserDeleteModels
- */
-export const zParserDeleteModels = z.object({
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserDeleteCredential
- */
-export const zParserDeleteCredential = z.object({
-  credential_id: z.string(),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserCreateCredential
- */
-export const zParserCreateCredential = z.object({
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-  name: z.string().max(30).nullish(),
-})
-
-/**
- * ParserUpdateCredential
- */
-export const zParserUpdateCredential = z.object({
-  credential_id: z.string(),
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-  name: z.string().max(30).nullish(),
-})
-
-/**
- * ParserSwitch
- */
-export const zParserSwitch = z.object({
-  credential_id: z.string(),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserValidate
- */
-export const zParserValidate = z.object({
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * LoadBalancingCredentialPayload
- */
-export const zLoadBalancingCredentialPayload = z.object({
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
  * Inner
  */
 export const zInner = z.object({
@@ -686,6 +672,20 @@ export const zParserPostDefault = z.object({
 })
 
 /**
+ * TenantAccountRole
+ */
+export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
+
+/**
+ * MemberInvitePayload
+ */
+export const zMemberInvitePayload = z.object({
+  emails: z.array(z.string()).optional(),
+  language: z.string().nullish(),
+  role: zTenantAccountRole,
+})
+
+/**
  * LoadBalancingPayload
  */
 export const zLoadBalancingPayload = z.object({
@@ -699,7 +699,7 @@ export const zLoadBalancingPayload = z.object({
 export const zParserPostModels = z.object({
   config_from: z.string().nullish(),
   credential_id: z.string().nullish(),
-  load_balancing: zLoadBalancingPayload.optional(),
+  load_balancing: zLoadBalancingPayload.nullish(),
   model: z.string(),
   model_type: zModelType,
 })
@@ -726,8 +726,8 @@ export const zParserPermissionChange = z.object({
  * PluginPermissionSettingsPayload
  */
 export const zPluginPermissionSettingsPayload = z.object({
-  debug_permission: zDebugPermission.optional(),
-  install_permission: zInstallPermission.optional(),
+  debug_permission: zDebugPermission.optional().default('everyone'),
+  install_permission: zInstallPermission.optional().default('everyone'),
 })
 
 /**
@@ -815,7 +815,7 @@ export const zMcpProviderCreatePayload = z.object({
   icon: z.string(),
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
-  identity_mode: zIdentityMode.optional(),
+  identity_mode: zIdentityMode.nullish(),
   name: z.string(),
   server_identifier: z.string(),
   server_url: z.string(),
@@ -831,7 +831,7 @@ export const zMcpProviderUpdatePayload = z.object({
   icon: z.string(),
   icon_background: z.string().optional().default(''),
   icon_type: z.string(),
-  identity_mode: zIdentityMode.optional(),
+  identity_mode: zIdentityMode.nullish(),
   name: z.string(),
   provider_id: z.string(),
   server_identifier: z.string(),
@@ -854,8 +854,8 @@ export const zUpgradeMode = z.enum(['all', 'exclude', 'partial'])
 export const zPluginAutoUpgradeSettingsPayload = z.object({
   exclude_plugins: z.array(z.string()).optional(),
   include_plugins: z.array(z.string()).optional(),
-  strategy_setting: zStrategySetting.optional(),
-  upgrade_mode: zUpgradeMode.optional(),
+  strategy_setting: zStrategySetting.optional().default('fix_only'),
+  upgrade_mode: zUpgradeMode.optional().default('exclude'),
   upgrade_time_of_day: z.int().optional().default(0),
 })
 
@@ -987,10 +987,7 @@ export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.objec
 /**
  * Snippet deleted successfully
  */
-export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = z.void()
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
   snippet_id: z.string(),
@@ -1052,7 +1049,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
 export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
-  model_type: z.string(),
+  model_type: zModelType,
 })
 
 /**
@@ -1104,7 +1101,7 @@ export const zPostWorkspacesCurrentEndpointsEnableResponse = zEndpointEnableResp
 
 export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
   page: z.int().gte(1),
-  page_size: z.int(),
+  page_size: z.int().gt(0),
 })
 
 /**
@@ -1114,7 +1111,7 @@ export const zGetWorkspacesCurrentEndpointsListResponse = zEndpointListResponse
 
 export const zGetWorkspacesCurrentEndpointsListPluginQuery = z.object({
   page: z.int().gte(1),
-  page_size: z.int(),
+  page_size: z.int().gt(0),
   plugin_id: z.string(),
 })
 
@@ -1216,7 +1213,7 @@ export const zPutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse = z.record
 )
 
 export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
-  model_type: z.string().nullish(),
+  model_type: zModelType.nullish(),
 })
 
 /**
@@ -1246,10 +1243,7 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath = z
 /**
  * Credential deleted successfully
  */
-export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse = z.void()
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.object({
   provider: z.string(),
@@ -1332,10 +1326,7 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsPath = z.obje
 /**
  * Model deleted successfully
  */
-export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse = z.void()
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsPath = z.object({
   provider: z.string(),
@@ -1373,10 +1364,7 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPa
 /**
  * Credential deleted successfully
  */
-export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse = z.record(
-  z.string(),
-  z.never(),
-)
+export const zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse = z.void()
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath = z.object({
   provider: z.string(),
@@ -1386,7 +1374,7 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery
   config_from: z.string().nullish(),
   credential_id: z.string().nullish(),
   model: z.string(),
-  model_type: z.string(),
+  model_type: zModelType,
 })
 
 /**
