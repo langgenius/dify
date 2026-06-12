@@ -85,8 +85,6 @@ export type AccountWithRoleList = {
   accounts: Array<AccountWithRole>
 }
 
-export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
-
 export type ParserPostDefault = {
   model_settings: Array<Inner>
 }
@@ -643,6 +641,8 @@ export type Inner = {
 
 export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
 export type LoadBalancingPayload = {
   configs?: Array<{
     [key: string]: unknown
@@ -752,12 +752,12 @@ export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
   path?: never
   query?: {
-    creators?: Array<string> | null
-    is_published?: boolean | null
-    keyword?: string | null
+    creators?: Array<string>
+    is_published?: boolean
+    keyword?: string
     limit?: number
     page?: number
-    tag_ids?: Array<string> | null
+    tag_ids?: Array<string>
   }
   url: '/workspaces/current/customized-snippets'
 }
@@ -1024,7 +1024,7 @@ export type GetWorkspacesCurrentDefaultModelData = {
   body?: never
   path?: never
   query: {
-    model_type: ModelType
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   url: '/workspaces/current/default-model'
 }
@@ -1391,7 +1391,7 @@ export type GetWorkspacesCurrentModelProvidersData = {
   body?: never
   path?: never
   query?: {
-    model_type?: ModelType | null
+    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   url: '/workspaces/current/model-providers'
 }
@@ -1445,7 +1445,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderCredentialsData = {
     provider: string
   }
   query?: {
-    credential_id?: string | null
+    credential_id?: string
   }
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
@@ -1603,10 +1603,10 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
     provider: string
   }
   query: {
-    config_from?: string | null
-    credential_id?: string | null
+    config_from?: string
+    credential_id?: string
     model: string
-    model_type: ModelType
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
@@ -2023,7 +2023,7 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
   path?: never
   query: {
     action: string
-    credential_id?: string | null
+    credential_id?: string
     parameter: string
     plugin_id: string
     provider: string

@@ -585,7 +585,7 @@ class EducationApi(Resource):
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
-    @console_ns.expect(console_ns.models[EducationAutocompleteQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
     @setup_required
     @login_required
     @account_initialization_required

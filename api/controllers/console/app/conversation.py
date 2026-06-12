@@ -9,7 +9,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -91,7 +91,7 @@ class CompletionConversationApi(Resource):
     @console_ns.doc("list_completion_conversations")
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[CompletionConversationQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(CompletionConversationQuery))
     @console_ns.response(200, "Success", console_ns.models[ConversationPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -206,7 +206,7 @@ class ChatConversationApi(Resource):
     @console_ns.doc("list_chat_conversations")
     @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatConversationQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ChatConversationQuery))
     @console_ns.response(200, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required

@@ -3,7 +3,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
@@ -41,7 +41,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @console_ns.doc("get_workflow_daily_runs_statistic")
     @console_ns.doc(description="Get workflow daily runs statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(200, "Daily runs statistics retrieved successfully")
     @get_app_model
     @setup_required
@@ -80,7 +80,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @console_ns.doc("get_workflow_daily_terminals_statistic")
     @console_ns.doc(description="Get workflow daily terminals statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(200, "Daily terminals statistics retrieved successfully")
     @get_app_model
     @setup_required
@@ -119,7 +119,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @console_ns.doc("get_workflow_daily_token_cost_statistic")
     @console_ns.doc(description="Get workflow daily token cost statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(200, "Daily token cost statistics retrieved successfully")
     @get_app_model
     @setup_required
@@ -158,7 +158,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @console_ns.doc("get_workflow_average_app_interaction_statistic")
     @console_ns.doc(description="Get workflow average app interaction statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowStatisticQuery))
     @console_ns.response(200, "Average app interaction statistics retrieved successfully")
     @setup_required
     @login_required

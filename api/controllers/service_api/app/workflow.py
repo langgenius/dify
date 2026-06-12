@@ -12,7 +12,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     CompletionRequestError,
@@ -407,7 +407,7 @@ class WorkflowTaskStopApi(Resource):
 
 @service_api_ns.route("/workflows/logs")
 class WorkflowAppLogApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowLogQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(WorkflowLogQuery))
     @service_api_ns.doc("get_workflow_logs")
     @service_api_ns.doc(description="Get workflow execution logs")
     @service_api_ns.doc(
