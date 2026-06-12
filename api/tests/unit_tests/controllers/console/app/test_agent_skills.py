@@ -216,3 +216,52 @@ def test_skill_delete_rejects_path_like_slug():
         body, status = raw(AgentSkillApi(), _USER, _APP, "a/b")
     assert status == 400
     assert body["code"] == "drive_key_invalid"
+
+
+# ── ENG-371: infer-tools endpoint ─────────────────────────────────────────────
+
+
+def test_infer_tools_returns_draft_suggestions():
+    from controllers.console.app.agent import AgentSkillInferToolsApi
+
+    raw = _raw(AgentSkillInferToolsApi.post)
+    with _json_ctx():
+        with patch(f"{_MOD}.SkillToolInferenceService") as svc:
+            svc.return_value.infer.return_value = {
+                "inferable": True,
+                "cli_tools": [{"name": "ffmpeg", "inferred_from": "audio-transcribe"}],
+                "reason": None,
+            }
+            body = raw(AgentSkillInferToolsApi(), _APP, "audio-transcribe")
+
+    assert body["inferable"] is True
+    assert svc.return_value.infer.call_args.kwargs["slug"] == "audio-transcribe"
+
+
+def test_infer_tools_maps_inference_errors():
+    from controllers.console.app.agent import AgentSkillInferToolsApi
+    from services.agent.skill_tool_inference_service import SkillToolInferenceError
+
+    raw = _raw(AgentSkillInferToolsApi.post)
+    with _json_ctx():
+        with patch(f"{_MOD}.SkillToolInferenceService") as svc:
+            svc.return_value.infer.side_effect = SkillToolInferenceError(
+                "default_model_not_configured", "no model", status_code=400
+            )
+            body, status = raw(AgentSkillInferToolsApi(), _APP, "audio-transcribe")
+    assert status == 400
+    assert body["code"] == "default_model_not_configured"
+
+
+def test_infer_tools_rejects_path_like_slug_and_unbound_app():
+    from controllers.console.app.agent import AgentSkillInferToolsApi
+
+    raw = _raw(AgentSkillInferToolsApi.post)
+    with _json_ctx():
+        body, status = raw(AgentSkillInferToolsApi(), _APP, "a/b")
+    assert (status, body["code"]) == (400, "drive_key_invalid")
+
+    app_without_agent = SimpleNamespace(tenant_id="tenant-1", bound_agent_id=None)
+    with _json_ctx():
+        body, status = raw(AgentSkillInferToolsApi(), app_without_agent, "x")
+    assert (status, body["code"]) == (400, "agent_not_bound")

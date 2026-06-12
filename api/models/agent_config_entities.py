@@ -118,6 +118,9 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     skill_md_file_id: str | None = Field(default=None, max_length=255)
     full_archive_key: str | None = Field(default=None, max_length=512)
     full_archive_file_id: str | None = Field(default=None, max_length=255)
+    # Zip member path listing from standardization (ENG-371): lets infer-tools
+    # show the model strong signals like ``scripts/*.sh`` without unpacking.
+    manifest_files: list[str] | None = None
 
 
 class AgentPermissionConfig(BaseModel):
@@ -186,6 +189,10 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     risk_accepted: bool = False
     approved: bool = False
     risk_level: AgentCliToolRiskLevel | None = None
+    # Slug of the skill an infer-tools suggestion came from (ENG-371); drives
+    # the "inferred from <skill>" badge. Plain provenance metadata — saving an
+    # inferred tool still passes every composer validation rule.
+    inferred_from: str | None = Field(default=None, max_length=255)
 
 
 class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):

@@ -17,6 +17,7 @@ from models.model import App, AppMode, UploadFile
 from services.agent.composer_service import AgentComposerService
 from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 from services.agent.skill_standardize_service import SkillStandardizeService
+from services.agent.skill_tool_inference_service import SkillToolInferenceError, SkillToolInferenceService
 from services.agent_drive_service import (
     AgentDriveError,
     AgentDriveService,
@@ -284,3 +285,28 @@ class AgentSkillApi(Resource):
         except Exception:
             logger.exception("agent drive delete failed for skill %s (soul already updated)", slug)
         return {"result": "success", "removed_keys": removed_keys, "config_version_id": config_version_id}
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/skills/<string:slug>/infer-tools")
+class AgentSkillInferToolsApi(Resource):
+    @console_ns.doc("infer_agent_skill_tools")
+    @console_ns.doc(
+        description="Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)"
+    )
+    @console_ns.doc(params={"app_id": "Application ID", "slug": "Skill slug (single path segment)"})
+    @console_ns.response(200, "Inference result (draft suggestions, nothing persisted)")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.AGENT])
+    def post(self, app_model: App, slug: str):
+        """Suggest CLI tools/env for a skill. Saving still goes through composer validation."""
+        agent_id = app_model.bound_agent_id
+        if not agent_id:
+            return {"code": "agent_not_bound", "message": "app has no bound agent"}, 400
+        if "/" in slug or not slug.strip():
+            return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
+        try:
+            return SkillToolInferenceService().infer(tenant_id=app_model.tenant_id, agent_id=agent_id, slug=slug)
+        except SkillToolInferenceError as exc:
+            return {"code": exc.code, "message": exc.message}, exc.status_code
