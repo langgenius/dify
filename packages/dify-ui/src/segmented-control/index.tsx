@@ -2,9 +2,9 @@
 
 import type { Toggle as BaseToggleNS } from '@base-ui/react/toggle'
 import type { ToggleGroup as BaseToggleGroupNS } from '@base-ui/react/toggle-group'
-import type { HTMLAttributes } from 'react'
 import { Toggle as BaseToggle } from '@base-ui/react/toggle'
 import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
+import * as React from 'react'
 import { cn } from '../cn'
 
 export type SegmentedControlProps<Value extends string = string> = Omit<BaseToggleGroupNS.Props<Value>, 'className'> & {
@@ -39,7 +39,7 @@ export function SegmentedControlItem<Value extends string = string>({
   )
 }
 
-export type SegmentedControlDividerProps = Omit<HTMLAttributes<HTMLSpanElement>, 'className'> & {
+export type SegmentedControlDividerProps = Omit<React.HTMLAttributes<HTMLSpanElement>, 'className'> & {
   className?: string
 }
 

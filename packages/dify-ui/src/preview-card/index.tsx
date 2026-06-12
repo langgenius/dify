@@ -1,8 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { Placement } from '../placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
+import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 
@@ -27,7 +27,7 @@ export const PreviewCardTrigger = BasePreviewCard.Trigger
 export const createPreviewCardHandle = BasePreviewCard.createHandle
 
 type PreviewCardContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number

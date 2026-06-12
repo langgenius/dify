@@ -1,9 +1,9 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 
 export const NumberField = BaseNumberField.Root
@@ -97,7 +97,7 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
+export type NumberFieldUnitProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
 
 export function NumberFieldUnit({
   className,
@@ -116,7 +116,7 @@ const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = HTMLAttributes<HTMLDivElement>
+export type NumberFieldControlsProps = React.HTMLAttributes<HTMLDivElement>
 
 export function NumberFieldControls({
   className,

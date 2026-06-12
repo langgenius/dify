@@ -5,8 +5,8 @@ import type {
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
-import type { ReactNode } from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
+import * as React from 'react'
 import { cn } from '../cn'
 
 type ToastData = Record<string, never>
@@ -64,11 +64,11 @@ type ToastHostProps = {
 }
 
 type ToastDismiss = (toastId?: string) => void
-type ToastCall = (title: ReactNode, options?: ToastOptions) => string
-type TypedToastCall = (title: ReactNode, options?: TypedToastOptions) => string
+type ToastCall = (title: React.ReactNode, options?: ToastOptions) => string
+type TypedToastCall = (title: React.ReactNode, options?: TypedToastOptions) => string
 
 type ToastApi = {
-  (title: ReactNode, options?: ToastOptions): string
+  (title: React.ReactNode, options?: ToastOptions): string
   success: TypedToastCall
   error: TypedToastCall
   warning: TypedToastCall

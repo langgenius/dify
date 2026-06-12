@@ -1,5 +1,6 @@
 'use client'
 
+import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 //   z-index strategy (relies on root `isolation: isolate` in layout.tsx):
 //   All @langgenius/dify-ui/* overlay primitives — z-50
 //   Toast stays one layer above overlays at z-60.
@@ -7,8 +8,7 @@
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
 
-import type { ReactNode } from 'react'
-import { Dialog as BaseDialog } from '@base-ui/react/dialog'
+import * as React from 'react'
 import { cn } from '../cn'
 
 export const Dialog = BaseDialog.Root
@@ -39,7 +39,7 @@ export function DialogCloseButton({
 }
 
 type DialogContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   className?: string
   backdropClassName?: string
   backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>

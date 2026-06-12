@@ -1,8 +1,8 @@
 'use client'
 
 import type { Checkbox as BaseCheckboxNS } from '@base-ui/react/checkbox'
-import type { HTMLAttributes } from 'react'
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox'
+import * as React from 'react'
 import { cn } from '../cn'
 
 const checkboxRootClassName = cn(
@@ -82,7 +82,7 @@ export function Checkbox({
 }
 
 export type CheckboxSkeletonProps
-  = Omit<HTMLAttributes<HTMLDivElement>, 'className'>
+  = Omit<React.HTMLAttributes<HTMLDivElement>, 'className'>
     & {
       className?: string
     }

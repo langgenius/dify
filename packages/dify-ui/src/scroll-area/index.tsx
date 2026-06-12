@@ -1,7 +1,7 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
+import * as React from 'react'
 import { cn } from '../cn'
 
 export const ScrollAreaRoot = BaseScrollArea.Root
@@ -16,7 +16,7 @@ type ScrollAreaSlotClassNames = {
 }
 
 type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: ReactNode
+  children: React.ReactNode
   orientation?: 'vertical' | 'horizontal'
   slotClassNames?: ScrollAreaSlotClassNames
   label?: string

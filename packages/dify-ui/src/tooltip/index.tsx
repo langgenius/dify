@@ -1,8 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
+import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 
@@ -32,7 +32,7 @@ export const Tooltip = BaseTooltip.Root
 export const TooltipTrigger = BaseTooltip.Trigger
 
 type TooltipContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number

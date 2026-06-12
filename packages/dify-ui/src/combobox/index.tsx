@@ -1,10 +1,10 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {
@@ -80,7 +80,7 @@ type ComboboxTriggerProps
     & VariantProps<typeof comboboxTriggerVariants>
     & {
       className?: string
-      icon?: ReactNode | false
+      icon?: React.ReactNode | false
     }
 
 export function ComboboxTrigger({
@@ -286,7 +286,7 @@ export function ComboboxIcon({
 }
 
 type ComboboxContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -365,7 +365,7 @@ export function ComboboxItem({
   )
 }
 
-export type ComboboxItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type ComboboxItemTextProps = React.HTMLAttributes<HTMLSpanElement>
 
 export function ComboboxItemText({
   className,
@@ -383,7 +383,7 @@ export function ComboboxItemIndicator({
   className,
   children,
   ...props
-}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: ReactNode }) {
+}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: React.ReactNode }) {
   return (
     <BaseCombobox.ItemIndicator
       className={cn(overlayIndicatorClassName, className)}

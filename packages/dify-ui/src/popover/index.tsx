@@ -1,8 +1,8 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
+import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 
@@ -16,7 +16,7 @@ export const PopoverDescription = BasePopover.Description
 export const createPopoverHandle = BasePopover.createHandle
 
 type PopoverContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
