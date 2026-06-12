@@ -12,7 +12,7 @@ composition-driven.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import ClassVar, cast
+from typing import ClassVar
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
@@ -41,6 +41,7 @@ from dify_agent.protocol import (
     RunComposition,
     RunLayerSpec,
     RunPurpose,
+    RuntimeLayerSpec,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
@@ -52,71 +53,10 @@ DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_SHELL_LAYER_ID = "shell"
 
-# Layer types that hold credentials in their per-run config. These are excluded
-# from the cleanup-replay composition (and from the snapshot that is sent with
-# the cleanup request) because we deliberately do not persist plaintext
-# credentials between runs.
-_CLEANUP_EXCLUDED_LAYER_TYPES: tuple[str, ...] = (
-    DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
-    DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-)
-
-
-class CleanupLayerSpec(BaseModel):
-    """One layer node replayed by an Agent backend cleanup-only run.
-
-    Cleanup composition cannot include credential-bearing plugin layers, so we
-    persist only the non-plugin layer specs together with the original config.
-    Storing the config (rather than just ``name``/``type``) means cleanup does
-    not depend on the original build-time inputs being re-derivable.
-    """
-
-    name: str
-    type: str
-    deps: dict[str, str] = Field(default_factory=dict)
-    metadata: dict[str, JsonValue] = Field(default_factory=dict)
-    config: JsonValue = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-def extract_cleanup_layer_specs(composition: RunComposition) -> list[CleanupLayerSpec]:
-    """Project the in-flight composition into the persistable cleanup spec list.
-
-    Plugin layers are intentionally dropped (their configs hold credentials and
-    the lifecycle contract says "do not include an LLM layer" during cleanup).
-    The filtered names must later drive snapshot filtering so the agenton
-    compositor's name-order check still passes for the cleanup run.
-    """
-    excluded = set(_CLEANUP_EXCLUDED_LAYER_TYPES)
-    specs: list[CleanupLayerSpec] = []
-    for layer in composition.layers:
-        if layer.type in excluded:
-            continue
-        config_value: JsonValue = None
-        if isinstance(layer.config, BaseModel):
-            config_value = layer.config.model_dump(mode="json", warnings=False)
-        else:
-            # ``RunLayerSpec.config`` is typed as ``LayerConfigInput`` which
-            # includes ``Mapping[str, object] | bytes``. In the cleanup-replay
-            # pipeline our builder only emits BaseModel-derived configs or
-            # ``None``, so the wider input alias narrows safely here.
-            config_value = cast(JsonValue, layer.config)
-        specs.append(
-            CleanupLayerSpec(
-                name=layer.name,
-                type=layer.type,
-                deps=dict(layer.deps),
-                metadata=dict(layer.metadata),
-                config=config_value,
-            )
-        )
-    return specs
-
 
 def _filter_snapshot_to_specs(
     snapshot: CompositorSessionSnapshot,
-    specs: list[CleanupLayerSpec],
+    specs: list[RuntimeLayerSpec],
 ) -> CompositorSessionSnapshot:
     """Keep only snapshot layers whose names appear in the cleanup spec list.
 
@@ -367,7 +307,7 @@ class AgentBackendRunRequestBuilder:
         self,
         *,
         session_snapshot: CompositorSessionSnapshot,
-        composition_layer_specs: list[CleanupLayerSpec],
+        runtime_layer_specs: list[RuntimeLayerSpec],
         idempotency_key: str | None = None,
         metadata: dict[str, JsonValue] | None = None,
     ) -> CreateRunRequest:
@@ -380,9 +320,9 @@ class AgentBackendRunRequestBuilder:
         composition and the snapshot before submission because their configs
         require credentials that are not persisted between runs.
         """
-        if not composition_layer_specs:
+        if not runtime_layer_specs:
             raise ValueError(
-                "build_cleanup_request requires composition_layer_specs; an empty "
+                "build_cleanup_request requires runtime_layer_specs; an empty "
                 "composition would fail the agent backend's snapshot validation."
             )
         request_metadata = dict(metadata or {})
@@ -395,9 +335,9 @@ class AgentBackendRunRequestBuilder:
                 metadata=dict(spec.metadata),
                 config=spec.config,
             )
-            for spec in composition_layer_specs
+            for spec in runtime_layer_specs
         ]
-        filtered_snapshot = _filter_snapshot_to_specs(session_snapshot, composition_layer_specs)
+        filtered_snapshot = _filter_snapshot_to_specs(session_snapshot, runtime_layer_specs)
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
             purpose="workflow_node",

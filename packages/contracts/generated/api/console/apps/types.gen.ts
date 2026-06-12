@@ -223,18 +223,28 @@ export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
-export type WorkspaceListResponse = {
-  entries?: Array<WorkspaceFileEntryResponse>
+export type SandboxListResponse = {
+  entries?: Array<SandboxFileEntryResponse>
   path: string
   truncated?: boolean
 }
 
-export type WorkspacePreviewResponse = {
+export type SandboxReadResponse = {
   binary: boolean
   path: string
-  size: number
+  size?: number | null
   text?: string | null
   truncated: boolean
+}
+
+export type AgentSandboxUploadPayload = {
+  conversation_id: string
+  path: string
+}
+
+export type SandboxUploadResponse = {
+  file: SandboxToolFileResponse
+  path: string
 }
 
 export type AnnotationReplyPayload = {
@@ -636,6 +646,11 @@ export type WorkflowRunExportResponse = {
 
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
+}
+
+export type WorkflowAgentSandboxUploadPayload = {
+  node_execution_id?: string | null
+  path: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -1198,11 +1213,16 @@ export type AgentReferencingWorkflowResponse = {
   workflow_id: string
 }
 
-export type WorkspaceFileEntryResponse = {
-  mtime: number
+export type SandboxFileEntryResponse = {
+  mtime?: number | null
   name: string
-  size: number
-  type: 'dir' | 'file' | 'symlink'
+  size?: number | null
+  type: 'dir' | 'file' | 'other' | 'symlink'
+}
+
+export type SandboxToolFileResponse = {
+  reference: string
+  transfer_method?: string
 }
 
 export type AnnotationHitHistory = {
@@ -1722,6 +1742,7 @@ export type AgentCliToolConfig = {
   description?: string | null
   enabled?: boolean
   env?: AgentCliToolEnvConfig
+  id?: string | null
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -1742,11 +1763,13 @@ export type AgentCliToolConfig = {
 
 export type AgentComposerDifyToolCandidateResponse = {
   description?: string | null
+  granularity?: string | null
   id?: string | null
   name?: string | null
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
+  tools_count?: number | null
 }
 
 export type AgentKnowledgeDatasetConfig = {
@@ -2003,7 +2026,7 @@ export type AgentSoulDifyToolConfig = {
   runtime_parameters?: {
     [key: string]: unknown
   }
-  tool_name: string
+  tool_name?: string | null
 }
 
 export type AgentCliToolAuthorizationStatus
@@ -2652,7 +2675,7 @@ export type GetAppsByAppIdAgentReferencingWorkflowsResponses = {
 export type GetAppsByAppIdAgentReferencingWorkflowsResponse
   = GetAppsByAppIdAgentReferencingWorkflowsResponses[keyof GetAppsByAppIdAgentReferencingWorkflowsResponses]
 
-export type GetAppsByAppIdAgentWorkspaceFilesData = {
+export type GetAppsByAppIdAgentSandboxFilesData = {
   body?: never
   path: {
     app_id: string
@@ -2661,17 +2684,17 @@ export type GetAppsByAppIdAgentWorkspaceFilesData = {
     conversation_id: string
     path?: string
   }
-  url: '/apps/{app_id}/agent-workspace/files'
+  url: '/apps/{app_id}/agent-sandbox/files'
 }
 
-export type GetAppsByAppIdAgentWorkspaceFilesResponses = {
-  200: WorkspaceListResponse
+export type GetAppsByAppIdAgentSandboxFilesResponses = {
+  200: SandboxListResponse
 }
 
-export type GetAppsByAppIdAgentWorkspaceFilesResponse
-  = GetAppsByAppIdAgentWorkspaceFilesResponses[keyof GetAppsByAppIdAgentWorkspaceFilesResponses]
+export type GetAppsByAppIdAgentSandboxFilesResponse
+  = GetAppsByAppIdAgentSandboxFilesResponses[keyof GetAppsByAppIdAgentSandboxFilesResponses]
 
-export type GetAppsByAppIdAgentWorkspaceFilesDownloadData = {
+export type GetAppsByAppIdAgentSandboxFilesReadData = {
   body?: never
   path: {
     app_id: string
@@ -2680,43 +2703,31 @@ export type GetAppsByAppIdAgentWorkspaceFilesDownloadData = {
     conversation_id: string
     path: string
   }
-  url: '/apps/{app_id}/agent-workspace/files/download'
+  url: '/apps/{app_id}/agent-sandbox/files/read'
 }
 
-export type GetAppsByAppIdAgentWorkspaceFilesDownloadErrors = {
-  413: {
-    [key: string]: unknown
-  }
+export type GetAppsByAppIdAgentSandboxFilesReadResponses = {
+  200: SandboxReadResponse
 }
 
-export type GetAppsByAppIdAgentWorkspaceFilesDownloadError
-  = GetAppsByAppIdAgentWorkspaceFilesDownloadErrors[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadErrors]
+export type GetAppsByAppIdAgentSandboxFilesReadResponse
+  = GetAppsByAppIdAgentSandboxFilesReadResponses[keyof GetAppsByAppIdAgentSandboxFilesReadResponses]
 
-export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponses = {
-  200: Blob | File
-}
-
-export type GetAppsByAppIdAgentWorkspaceFilesDownloadResponse
-  = GetAppsByAppIdAgentWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdAgentWorkspaceFilesDownloadResponses]
-
-export type GetAppsByAppIdAgentWorkspaceFilesPreviewData = {
-  body?: never
+export type PostAppsByAppIdAgentSandboxFilesUploadData = {
+  body: AgentSandboxUploadPayload
   path: {
     app_id: string
   }
-  query: {
-    conversation_id: string
-    path: string
-  }
-  url: '/apps/{app_id}/agent-workspace/files/preview'
+  query?: never
+  url: '/apps/{app_id}/agent-sandbox/files/upload'
 }
 
-export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponses = {
-  200: WorkspacePreviewResponse
+export type PostAppsByAppIdAgentSandboxFilesUploadResponses = {
+  200: SandboxUploadResponse
 }
 
-export type GetAppsByAppIdAgentWorkspaceFilesPreviewResponse
-  = GetAppsByAppIdAgentWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdAgentWorkspaceFilesPreviewResponses]
+export type PostAppsByAppIdAgentSandboxFilesUploadResponse
+  = PostAppsByAppIdAgentSandboxFilesUploadResponses[keyof PostAppsByAppIdAgentSandboxFilesUploadResponses]
 
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
@@ -4550,7 +4561,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse
   = GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses]
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesData = {
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesData = {
   body?: never
   path: {
     app_id: string
@@ -4561,50 +4572,17 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspace
     node_execution_id?: string
     path?: string
   }
-  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files'
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
 }
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses = {
-  200: WorkspaceListResponse
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses = {
+  200: SandboxListResponse
 }
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponse
-  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesResponses]
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadData
-  = {
-    body?: never
-    path: {
-      app_id: string
-      node_id: string
-      workflow_run_id: string
-    }
-    query: {
-      node_execution_id?: string
-      path: string
-    }
-    url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/download'
-  }
-
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors
-  = {
-    413: {
-      [key: string]: unknown
-    }
-  }
-
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadError
-  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadErrors]
-
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses
-  = {
-    200: Blob | File
-  }
-
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponse
-  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesDownloadResponses]
-
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewData = {
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData = {
   body?: never
   path: {
     app_id: string
@@ -4615,16 +4593,34 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspace
     node_execution_id?: string
     path: string
   }
-  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/preview'
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
 }
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses = {
+  200: SandboxReadResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse
+  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData = {
+  body: WorkflowAgentSandboxUploadPayload
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
+}
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses
   = {
-    200: WorkspacePreviewResponse
+    200: SandboxUploadResponse
   }
 
-export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponse
-  = GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdWorkspaceFilesPreviewResponses]
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse
+  = PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never
