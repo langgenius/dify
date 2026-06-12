@@ -10,7 +10,6 @@ const mockCreateDSLRun = vi.fn()
 const mockGetDSLRun = vi.fn()
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
-const mockDebugAndRepairDSLAgentDraftRun = vi.fn()
 const mockTrackEvent = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
@@ -68,7 +67,6 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 vi.mock('@/service/apps', () => ({
   createDSLRun: (...args: unknown[]) => mockCreateDSLRun(...args),
-  debugAndRepairDSLAgentDraftRun: (...args: unknown[]) => mockDebugAndRepairDSLAgentDraftRun(...args),
   getDSLRun: (...args: unknown[]) => mockGetDSLRun(...args),
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
   importDSLConfirm: (...args: unknown[]) => mockImportDSLConfirm(...args),
@@ -190,7 +188,7 @@ describe('CreateFromAIModal', () => {
     vi.useRealTimers()
   })
 
-  const getCreateButton = () => screen.getByRole('button', { name: /newApp\.dslAgent(Generate|Refine)AndImport/i })
+  const getCreateButton = () => screen.getByRole('button', { name: /newApp\.dslAgentImport(Workflow|Chatflow)/i })
   const buildDslRun = (overrides: Record<string, any> = {}) => ({
     id: 'run-1',
     status: 'succeeded',
@@ -272,53 +270,17 @@ describe('CreateFromAIModal', () => {
       app_mode: 'workflow',
     }))
     expect(handleSuccess).toHaveBeenCalledTimes(1)
-    expect(handleClose).not.toHaveBeenCalled()
+    expect(handleClose).toHaveBeenCalledTimes(1)
+    expect(mockGetRedirection).toHaveBeenCalledWith(true, { id: 'app-ai', mode: 'workflow' }, mockPush)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-ai')
-    expect(screen.getByText('newApp.dslAgentGeneratedYaml')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /newApp\.dslAgentExecuteAndRepair/i })).toBeEnabled()
-    expect(screen.getByRole('button', { name: /newApp\.dslAgentOpenApp/i })).toBeEnabled()
-  })
-
-  it('should open an imported app from the builder panel', async () => {
-    const handleClose = vi.fn()
-    const handleSuccess = vi.fn()
-    mockCreateDSLRun.mockResolvedValue(buildDslRun())
-    mockImportDSL.mockResolvedValue({
-      id: 'import-ai',
-      status: DSLImportStatus.COMPLETED,
-      app_id: 'app-ai',
-      app_mode: 'workflow',
-    })
-
-    render(
-      <CreateFromAIModal
-        show
-        onClose={handleClose}
-        onSuccess={handleSuccess}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
-      target: { value: 'Summarize customer support tickets.' },
-    })
-
-    await act(async () => {
-      fireEvent.click(getCreateButton())
-    })
-
-    expect(handleSuccess).toHaveBeenCalledTimes(1)
-    expect(handleClose).not.toHaveBeenCalled()
-    expect(mockGetRedirection).not.toHaveBeenCalled()
-
-    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentOpenApp/i }))
-
-    expect(handleClose).toHaveBeenCalledTimes(1)
-    expect(mockGetRedirection).toHaveBeenCalled()
+    expect(screen.queryByText('newApp.dslAgentGeneratedYaml')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /newApp\.dslAgentOpenApp/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /newApp\.dslAgentExecuteAndRepair/i })).not.toBeInTheDocument()
     expect(toastMocks.error).not.toHaveBeenCalled()
   })
 
-  it('should keep optional details inside the requirement prompt template', async () => {
+  it('should fill the requirement from example prompts and redact secrets', async () => {
     mockCreateDSLRun.mockResolvedValue(buildDslRun())
     mockImportDSL.mockResolvedValue({
       id: 'import-ai',
@@ -334,11 +296,14 @@ describe('CreateFromAIModal', () => {
       />,
     )
 
+    expect(screen.queryByRole('button', { name: /newApp\.dslAgentInsertTemplate/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentExampleRag/i }))
+    expect(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder')).toHaveValue('newApp.dslAgentExampleRagPrompt')
+
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
       target: { value: 'Build an onboarding workflow for HubSpot notes. api_key=sk-testSecret1234567890' },
     })
     expect(screen.queryByText('newApp.dslAgentGuide.trigger')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentInsertTemplate/i }))
 
     await act(async () => {
       fireEvent.click(getCreateButton())
@@ -346,151 +311,8 @@ describe('CreateFromAIModal', () => {
 
     const prompt = mockCreateDSLRun.mock.calls[0][0].prompt
     expect(prompt).toContain('Build an onboarding workflow for HubSpot notes. api_key=[redacted]')
-    expect(prompt).toContain('newApp.dslAgentPromptTemplate')
     expect(prompt).toContain('Target app type: workflow.')
     expect(prompt).not.toContain('sk-testSecret1234567890')
-  })
-
-  it('should execute and repair the imported draft app', async () => {
-    mockCreateDSLRun.mockResolvedValue(buildDslRun())
-    mockImportDSL
-      .mockResolvedValueOnce({
-        id: 'import-ai',
-        status: DSLImportStatus.COMPLETED,
-        app_id: 'app-ai',
-        app_mode: 'workflow',
-      })
-      .mockResolvedValueOnce({
-        id: 'repair-import',
-        status: DSLImportStatus.COMPLETED,
-        app_id: 'app-ai',
-        app_mode: 'workflow',
-      })
-    mockDebugAndRepairDSLAgentDraftRun
-      .mockResolvedValueOnce({
-        draft_run: {
-          mode: 'workflow',
-          event_count: 2,
-          summary: {
-            event_count: 2,
-            status: 'failed',
-            succeeded: false,
-            outputs: null,
-            node_statuses: [],
-            failed_nodes: [{ node_id: 'llm-1', error: 'bad selector' }],
-            errors: [{ message: 'bad selector' }],
-          },
-          events: [],
-        },
-        needs_repair: true,
-        repair: {
-          yaml_content: 'app: repaired',
-          changed: true,
-          input_validation: {},
-          validation: { valid: true },
-          repair: {},
-        },
-      })
-      .mockResolvedValueOnce({
-        draft_run: {
-          mode: 'workflow',
-          event_count: 3,
-          summary: {
-            event_count: 3,
-            status: 'succeeded',
-            succeeded: true,
-            outputs: { answer: 'ok' },
-            node_statuses: [],
-            failed_nodes: [],
-            errors: [],
-          },
-          events: [],
-        },
-        needs_repair: false,
-        repair: {
-          yaml_content: 'app: repaired',
-          changed: false,
-          input_validation: {},
-          validation: { valid: true },
-          repair: {},
-        },
-      })
-
-    render(
-      <CreateFromAIModal
-        show
-        onClose={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
-      target: { value: 'Build a workflow that needs runtime repair. Test input: Mock input for draft execution' },
-    })
-
-    await act(async () => {
-      fireEvent.click(getCreateButton())
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentExecuteAndRepair/i }))
-    })
-
-    expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledWith('app-ai', expect.objectContaining({
-      yaml_content: 'app: generated',
-      inputs: {
-        input: 'Build a workflow that needs runtime repair. Test input: Mock input for draft execution',
-      },
-      query: 'Build a workflow that needs runtime repair. Test input: Mock input for draft execution',
-      include_events: true,
-    }))
-    expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledWith('app-ai', expect.objectContaining({
-      yaml_content: 'app: repaired',
-      validation: { valid: true },
-    }))
-    expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledTimes(2)
-    expect(mockImportDSL).toHaveBeenLastCalledWith({
-      mode: DSLImportMode.YAML_CONTENT,
-      yaml_content: 'app: repaired',
-      app_id: 'app-ai',
-      name: 'Generated App',
-      description: 'Generated description',
-    })
-    expect(toastMocks.success).toHaveBeenCalledWith('newApp.dslAgentRepairVerifiedNotice')
-    expect(screen.getByText('newApp.dslAgentTestResultTitle')).toBeInTheDocument()
-    expect(screen.getByText('app: repaired')).toBeInTheDocument()
-  })
-
-  it('should clear builder context when starting over', async () => {
-    mockCreateDSLRun.mockResolvedValue(buildDslRun())
-    mockImportDSL.mockResolvedValue({
-      id: 'import-ai',
-      status: DSLImportStatus.COMPLETED,
-      app_id: 'app-ai',
-      app_mode: 'workflow',
-    })
-
-    render(
-      <CreateFromAIModal
-        show
-        onClose={vi.fn()}
-      />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
-      target: { value: 'Build a workflow.' },
-    })
-
-    await act(async () => {
-      fireEvent.click(getCreateButton())
-    })
-
-    expect(screen.getByText('app: generated')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentStartOver/i }))
-
-    expect(screen.queryByText('app: generated')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /newApp\.dslAgentExecuteAndRepair/i })).not.toBeInTheDocument()
-    expect(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder')).toHaveValue('')
   })
 
   it('should use the model selected from the model selector', async () => {

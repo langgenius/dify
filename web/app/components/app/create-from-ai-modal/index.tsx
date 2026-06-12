@@ -3,7 +3,6 @@
 import type { MouseEventHandler } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
-  DSLAgentDraftRepairResponse,
   DSLAgentRunResponse,
   DSLGenerateResponse,
   DSLImportResponse,
@@ -29,12 +28,11 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { createDSLRun, debugAndRepairDSLAgentDraftRun, getDSLRun, importDSL, importDSLConfirm } from '@/service/apps'
+import { createDSLRun, getDSLRun, importDSL, importDSLConfirm } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
-import ShortcutsName from '../../workflow/shortcuts-name'
 
 type CreateFromAIModalProps = {
   show: boolean
@@ -51,7 +49,6 @@ const DslAgentStage = {
   VALIDATE: 'validate',
   REPAIR: 'repair',
   IMPORT: 'import',
-  TEST: 'test',
   DEPENDENCIES: 'dependencies',
 } as const
 
@@ -73,7 +70,6 @@ const DSL_AGENT_STAGES = [
   DslAgentStage.VALIDATE,
   DslAgentStage.REPAIR,
   DslAgentStage.IMPORT,
-  DslAgentStage.TEST,
   DslAgentStage.DEPENDENCIES,
 ]
 
@@ -108,6 +104,21 @@ const APP_TYPE_OPTIONS = [
   {
     mode: AppModeEnum.ADVANCED_CHAT,
     label: 'newApp.dslAgentAppModeChatflow',
+  },
+]
+
+const PROMPT_EXAMPLES = [
+  {
+    label: 'newApp.dslAgentExampleInvoice',
+    prompt: 'newApp.dslAgentExampleInvoicePrompt',
+  },
+  {
+    label: 'newApp.dslAgentExampleRag',
+    prompt: 'newApp.dslAgentExampleRagPrompt',
+  },
+  {
+    label: 'newApp.dslAgentExampleLead',
+    prompt: 'newApp.dslAgentExampleLeadPrompt',
   },
 ]
 
@@ -188,15 +199,11 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   const [generatedResult, setGeneratedResult] = useState<DSLGenerateResponse>()
   const [generatedYaml, setGeneratedYaml] = useState('')
   const [isCreating, setIsCreating] = useState(false)
-  const [isTesting, setIsTesting] = useState(false)
   const [dslAgentStageState, setDslAgentStageState] = useState<DslAgentStageState>({ completed: [] })
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
-  const [importedApp, setImportedApp] = useState<ImportedAppState>()
   const [importedDependencies, setImportedDependencies] = useState<DSLImportResponse['leaked_dependencies']>([])
-  const [debugRepairResult, setDebugRepairResult] = useState<DSLAgentDraftRepairResponse>()
-  const [builderNotice, setBuilderNotice] = useState('')
   const { modelList, defaultModel } = useModelListAndDefaultModel(ModelTypeEnum.textGeneration)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -215,15 +222,16 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   }, [defaultModel, modelList])
 
   const activeModel = selectedModel || workspaceDefaultModel
-  const isBusy = isCreating || isTesting
+  const isBusy = isCreating
   const hasRequirement = !!aiPrompt.trim()
+  const importActionLabel = selectedAppMode === AppModeEnum.ADVANCED_CHAT
+    ? t('newApp.dslAgentImportChatflow', { ns: 'app' })
+    : t('newApp.dslAgentImportWorkflow', { ns: 'app' })
   const currentDslAgentActionLabel = useMemo(() => {
-    if (!isBusy)
-      return generatedYaml ? t('newApp.dslAgentRefineAndImport', { ns: 'app' }) : t('newApp.dslAgentGenerateAndImport', { ns: 'app' })
     if (dslAgentStageState.active)
       return t(`newApp.dslAgentStage.${dslAgentStageState.active}`, { ns: 'app' })
     return t('newApp.dslAgentWorking', { ns: 'app' })
-  }, [dslAgentStageState.active, generatedYaml, isBusy, t])
+  }, [dslAgentStageState.active, t])
 
   const manualSetupItems = useMemo<ManualSetupItem[]>(() => {
     const items: ManualSetupItem[] = []
@@ -328,24 +336,6 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
   const resetDslAgentProgress = () => {
     setDslAgentStageState({ completed: [], messages: {} })
-  }
-
-  const resetBuilderSession = () => {
-    if (isBusy)
-      return
-    setAiPrompt('')
-    setAiAppName('')
-    setSelectedAppMode(AppModeEnum.WORKFLOW)
-    setGeneratedResult(undefined)
-    setGeneratedYaml('')
-    setImportedApp(undefined)
-    setImportedDependencies([])
-    setDebugRepairResult(undefined)
-    setBuilderNotice('')
-    setVersions(undefined)
-    setImportId(undefined)
-    setShowErrorModal(false)
-    resetDslAgentProgress()
   }
 
   const getDslAgentErrorMessage = async (error: unknown) => {
@@ -468,9 +458,14 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   }
 
   const applyImportedApp = (response: DSLImportResponse) => {
-    if (response.app_id)
-      setImportedApp({ id: response.app_id, mode: response.app_mode })
+    const app = response.app_id ? { id: response.app_id, mode: response.app_mode } : undefined
     setImportedDependencies(response.leaked_dependencies || [])
+    return app
+  }
+
+  const openImportedApp = (app: ImportedAppState) => {
+    getRedirection(isCurrentWorkspaceEditor, { id: app.id, mode: app.mode }, push)
+    onClose()
   }
 
   const checkImportedAppDependencies = async (appId: string) => {
@@ -498,10 +493,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     setIsCreating(true)
     setGeneratedResult(undefined)
     setGeneratedYaml('')
-    setImportedApp(undefined)
     setImportedDependencies([])
-    setDebugRepairResult(undefined)
-    setBuilderNotice('')
     resetDslAgentProgress()
 
     // Once the app is imported, post-create steps (dependency check, redirect,
@@ -523,7 +515,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         appCreated = true
-        applyImportedApp(response)
+        const app = applyImportedApp(response)
         trackEvent('create_app_with_ai', {
           app_mode,
           has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
@@ -540,7 +532,8 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
           await checkImportedAppDependencies(app_id)
         if (onSuccess)
           onSuccess()
-        setBuilderNotice(t('newApp.dslAgentImportedNotice', { ns: 'app' }))
+        if (app)
+          openImportedApp(app)
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -579,134 +572,6 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
 
-  const handleOpenImportedApp = () => {
-    if (!importedApp)
-      return
-    getRedirection(isCurrentWorkspaceEditor, { id: importedApp.id, mode: importedApp.mode }, push)
-    onClose()
-  }
-
-  const buildDraftRunInput = () => {
-    const testInput = redactSecretLikeText(aiPrompt.trim() || 'Hello')
-    return {
-      inputs: {
-        input: testInput,
-      },
-      query: testInput,
-      include_events: true,
-    }
-  }
-
-  const insertRequirementTemplate = () => {
-    const template = t('newApp.dslAgentPromptTemplate', { ns: 'app' })
-    setAiPrompt(prev => prev.trim() ? `${prev.trim()}\n\n${template}` : template)
-  }
-
-  const runDraftRepair = (appId: string, yamlContent: string, validation?: Record<string, unknown>) => {
-    return debugAndRepairDSLAgentDraftRun(appId, {
-      ...buildDraftRunInput(),
-      yaml_content: yamlContent,
-      validation,
-    })
-  }
-
-  const executeAndRepair = async () => {
-    if (!importedApp || !generatedYaml || isBusy)
-      return
-    setIsTesting(true)
-    setDebugRepairResult(undefined)
-    setBuilderNotice('')
-    try {
-      startDslAgentStage(DslAgentStage.TEST)
-      const result = await runDraftRepair(
-        importedApp.id,
-        generatedYaml,
-        generatedResult?.metadata?.validation as Record<string, unknown> | undefined,
-      )
-      setDebugRepairResult(result)
-
-      if (!result.needs_repair) {
-        completeDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentTestPassedNotice', { ns: 'app' }))
-        setBuilderNotice(t('newApp.dslAgentTestPassedNotice', { ns: 'app' }))
-        toast.success(t('newApp.dslAgentTestPassedNotice', { ns: 'app' }))
-        return
-      }
-
-      completeDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentTestFoundIssuesNotice', { ns: 'app' }))
-      if (!result.repair.changed || !result.repair.yaml_content) {
-        failDslAgentStage(DslAgentStage.REPAIR, t('newApp.dslAgentRepairNoChangeNotice', { ns: 'app' }))
-        setBuilderNotice(t('newApp.dslAgentRepairNoChangeNotice', { ns: 'app' }))
-        return
-      }
-
-      startDslAgentStage(DslAgentStage.REPAIR)
-      setGeneratedYaml(result.repair.yaml_content)
-      setGeneratedResult(prev => prev
-        ? { ...prev, yaml_content: result.repair.yaml_content, metadata: { ...prev.metadata, validation: result.repair.validation, repair: result.repair.repair } }
-        : prev)
-      completeDslAgentStage(DslAgentStage.REPAIR, t('newApp.dslAgentRepairGeneratedNotice', { ns: 'app' }))
-
-      startDslAgentStage(DslAgentStage.IMPORT)
-      const imported = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: result.repair.yaml_content,
-        app_id: importedApp.id,
-        name: generatedResult?.name,
-        description: generatedResult?.description,
-      })
-      if (imported.status === DSLImportStatus.COMPLETED || imported.status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        applyImportedApp(imported)
-        completeDslAgentStage(DslAgentStage.IMPORT, t('newApp.dslAgentRepairImportedNotice', { ns: 'app' }))
-        setBuilderNotice(t('newApp.dslAgentRepairImportedNotice', { ns: 'app' }))
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        onSuccess?.()
-      }
-      else if (imported.status === DSLImportStatus.PENDING) {
-        setVersions({
-          importedVersion: imported.imported_dsl_version ?? '',
-          systemVersion: imported.current_dsl_version ?? '',
-        })
-        setImportId(imported.id)
-        setShowErrorModal(true)
-        return
-      }
-      else {
-        failDslAgentStage(DslAgentStage.IMPORT)
-        return
-      }
-
-      const verifiedAppId = imported.app_id || importedApp.id
-      startDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentRepairRetestNotice', { ns: 'app' }))
-      const verifyResult = await runDraftRepair(verifiedAppId, result.repair.yaml_content, result.repair.validation)
-      setDebugRepairResult(verifyResult)
-      if (!verifyResult.needs_repair) {
-        completeDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentRepairVerifiedNotice', { ns: 'app' }))
-        setBuilderNotice(t('newApp.dslAgentRepairVerifiedNotice', { ns: 'app' }))
-        toast.success(t('newApp.dslAgentRepairVerifiedNotice', { ns: 'app' }))
-        return
-      }
-
-      completeDslAgentStage(DslAgentStage.TEST, t('newApp.dslAgentRepairStillFailingNotice', { ns: 'app' }))
-      if (!verifyResult.repair.changed || !verifyResult.repair.yaml_content) {
-        failDslAgentStage(DslAgentStage.REPAIR, t('newApp.dslAgentRepairNoChangeNotice', { ns: 'app' }))
-        setBuilderNotice(t('newApp.dslAgentRepairNoChangeNotice', { ns: 'app' }))
-        return
-      }
-      setBuilderNotice(t('newApp.dslAgentRepairStillFailingNotice', { ns: 'app' }))
-    }
-    catch (error) {
-      const message = await getDslAgentErrorMessage(error)
-      failDslAgentStage(DslAgentStage.TEST, message)
-      toast.error(
-        t('newApp.dslAgentExecuteRepairFailed', { ns: 'app' }),
-        message ? { description: message } : undefined,
-      )
-    }
-    finally {
-      setIsTesting(false)
-    }
-  }
-
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (show && !isAppsFull && hasRequirement && activeModel)
       handleCreateApp()
@@ -730,14 +595,15 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
       if (status === DSLImportStatus.COMPLETED) {
         appCreated = true
-        applyImportedApp(response)
+        const app = applyImportedApp(response)
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await checkImportedAppDependencies(app_id)
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        setBuilderNotice(t('newApp.dslAgentImportedNotice', { ns: 'app' }))
         if (onSuccess)
           onSuccess()
+        if (app)
+          openImportedApp(app)
       }
       else if (status === DSLImportStatus.FAILED) {
         toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -757,10 +623,8 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   }
 
   const buttonDisabled = isAppsFull || isBusy || !hasRequirement || !activeModel
-  const executeRepairDisabled = isBusy || !importedApp || !generatedYaml
 
   const shouldShowDslAgentProgress = isCreating
-    || isTesting
     || !!generatedYaml
     || dslAgentStageState.completed.length > 0
     || !!dslAgentStageState.failed
@@ -844,24 +708,23 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 </div>
               </div>
 
-              <div>
-                <button
-                  type="button"
-                  className="flex h-8 items-center gap-1 rounded-lg px-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={insertRequirementTemplate}
-                >
-                  <span className="i-ri-add-line h-4 w-4" />
-                  {t('newApp.dslAgentInsertTemplate', { ns: 'app' })}
-                </button>
+              <div className="flex flex-wrap gap-1.5">
+                {PROMPT_EXAMPLES.map(example => (
+                  <button
+                    key={example.label}
+                    type="button"
+                    className="h-7 rounded-full bg-background-section-burn px-3 system-xs-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                    onClick={() => setAiPrompt(t(example.prompt, { ns: 'app' }))}
+                  >
+                    {t(example.label, { ns: 'app' })}
+                  </button>
+                ))}
               </div>
 
-              {!!generatedYaml && (
-                <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <div className="system-sm-semibold text-text-secondary">{t('newApp.dslAgentGeneratedYaml', { ns: 'app' })}</div>
-                    {builderNotice && <div className="system-xs-medium text-text-tertiary">{builderNotice}</div>}
-                  </div>
-                  <div className="max-h-[180px] overflow-auto rounded-lg bg-background-section-burn p-2 font-mono text-[11px] leading-4 text-text-tertiary">
+              {generatedYaml && dslAgentStageState.failed && (
+                <div className="rounded-lg border border-divider-subtle bg-background-section-burn p-3">
+                  <div className="mb-1 system-sm-semibold text-text-secondary">{t('newApp.dslAgentGeneratedYaml', { ns: 'app' })}</div>
+                  <div className="max-h-[120px] overflow-auto font-mono text-[11px] leading-4 text-text-tertiary">
                     {generatedYaml}
                   </div>
                 </div>
@@ -927,30 +790,6 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 </div>
               </div>
 
-              {debugRepairResult && (
-                <div className="rounded-lg border border-divider-subtle bg-background-section-burn p-3">
-                  <div className="mb-2 system-sm-semibold text-text-secondary">{t('newApp.dslAgentTestResultTitle', { ns: 'app' })}</div>
-                  <div className="space-y-1 system-xs-regular text-text-tertiary">
-                    <div className="flex justify-between gap-3">
-                      <span>{t('newApp.dslAgentTestStatus', { ns: 'app' })}</span>
-                      <span>{debugRepairResult.draft_run.summary.status || '-'}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span>{t('newApp.dslAgentTestEvents', { ns: 'app' })}</span>
-                      <span>{debugRepairResult.draft_run.summary.event_count}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span>{t('newApp.dslAgentTestFailedNodes', { ns: 'app' })}</span>
-                      <span>{debugRepairResult.draft_run.summary.failed_nodes.length}</span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span>{t('newApp.dslAgentRepairChanged', { ns: 'app' })}</span>
-                      <span>{debugRepairResult.repair.changed ? t('newApp.dslAgentYes', { ns: 'app' }) : t('newApp.dslAgentNo', { ns: 'app' })}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="rounded-lg border border-divider-subtle bg-background-section-burn p-3">
                 <div className="mb-1 flex items-center gap-1 system-sm-semibold text-text-secondary">
                   <span className="i-ri-shield-check-line h-4 w-4 text-text-tertiary" />
@@ -968,30 +807,17 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
             <AppsFull className="mt-0" loc="app-create-ai" />
           </div>
         )}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-6 py-5">
-          <Button disabled={isBusy} onClick={resetBuilderSession}>{t('newApp.dslAgentStartOver', { ns: 'app' })}</Button>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {importedApp && (
-              <Button disabled={executeRepairDisabled} onClick={executeAndRepair}>
-                {isTesting && <span className="mr-1 i-ri-loader-2-line h-4 w-4 animate-spin" />}
-                {t('newApp.dslAgentExecuteAndRepair', { ns: 'app' })}
-              </Button>
-            )}
-            {importedApp && (
-              <Button onClick={handleOpenImportedApp}>{t('newApp.dslAgentOpenApp', { ns: 'app' })}</Button>
-            )}
-            <Button onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button
-              disabled={buttonDisabled}
-              variant="primary"
-              onClick={handleCreateApp}
-              className="gap-1"
-            >
-              {isCreating && <span className="i-ri-loader-2-line h-4 w-4 animate-spin" />}
-              <span>{currentDslAgentActionLabel}</span>
-              {!isCreating && <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />}
-            </Button>
-          </div>
+        <div className="flex shrink-0 items-center justify-end gap-2 px-6 py-5">
+          <Button disabled={isBusy} onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+          <Button
+            disabled={buttonDisabled}
+            variant="primary"
+            onClick={handleCreateApp}
+            className="gap-1"
+          >
+            {isCreating && <span className="i-ri-loader-2-line h-4 w-4 animate-spin" />}
+            <span>{isCreating ? currentDslAgentActionLabel : importActionLabel}</span>
+          </Button>
         </div>
       </Modal>
       <Modal
