@@ -10,11 +10,11 @@ from __future__ import annotations
 from typing import Literal
 from uuid import UUID
 
+from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -31,6 +31,10 @@ from services.agent_app_sandbox_service import (
     AgentAppSandboxService,
     AgentSandboxInspectorError,
     WorkflowAgentSandboxService,
+)
+
+_NODE_EXECUTION_ID_DESCRIPTION = (
+    "Optional workflow node execution ID. When omitted, the latest active session for the node is used."
 )
 
 
@@ -53,7 +57,7 @@ class WorkflowAgentSandboxListQuery(BaseModel):
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
     node_execution_id: str | None = Field(
         default=None,
-        description="Optional workflow node execution ID. When omitted, the latest active session for the node is used.",
+        description=_NODE_EXECUTION_ID_DESCRIPTION,
     )
 
 
@@ -61,7 +65,7 @@ class WorkflowAgentSandboxFileQuery(BaseModel):
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
     node_execution_id: str | None = Field(
         default=None,
-        description="Optional workflow node execution ID. When omitted, the latest active session for the node is used.",
+        description=_NODE_EXECUTION_ID_DESCRIPTION,
     )
 
 
@@ -69,7 +73,7 @@ class WorkflowAgentSandboxUploadPayload(BaseModel):
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
     node_execution_id: str | None = Field(
         default=None,
-        description="Optional workflow node execution ID. When omitted, the latest active session for the node is used.",
+        description=_NODE_EXECUTION_ID_DESCRIPTION,
     )
 
 

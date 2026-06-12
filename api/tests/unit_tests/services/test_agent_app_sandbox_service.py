@@ -72,7 +72,9 @@ class FakeClient:
     def upload_sandbox_file_sync(self, locator, path: str) -> SandboxUploadResponse:
         self.locators.append(locator)
         self.calls.append(("upload", path))
-        return SandboxUploadResponse(path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"})
+        return SandboxUploadResponse(
+            path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
+        )
 
 
 def _stored_session() -> StoredAgentAppSession:
@@ -165,6 +167,10 @@ def _insert_workflow_session(
     updated_at: datetime | None = None,
     session_id: str = "abc1234",
 ) -> None:
+    default_runtime_layer_specs = (
+        '[{"name":"execution_context","type":"dify.execution_context","config":{"tenant_id":"tenant-1"}},'
+        '{"name":"shell","type":"dify.shell","deps":{"execution_context":"execution_context"},"config":{}}]'
+    )
     with session_factory.create_session() as session:
         row = AgentRuntimeSession(
             tenant_id="tenant-1",
@@ -179,7 +185,7 @@ def _insert_workflow_session(
             agent_config_snapshot_id="snapshot-1",
             backend_run_id=backend_run_id,
             session_snapshot=_snapshot(session_id=session_id).model_dump_json(),
-            composition_layer_specs=runtime_layer_specs or '[{"name":"execution_context","type":"dify.execution_context","config":{"tenant_id":"tenant-1"}},{"name":"shell","type":"dify.shell","deps":{"execution_context":"execution_context"},"config":{}}]',
+            composition_layer_specs=runtime_layer_specs or default_runtime_layer_specs,
             status=AgentRuntimeSessionStatus.ACTIVE,
         )
         if updated_at is not None:

@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { registerHooks } from 'node:module'
 import { dirname, resolve } from 'node:path'
-import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const thisDir = dirname(fileURLToPath(import.meta.url))
@@ -16,14 +15,12 @@ registerHooks({
   },
 })
 
-test('generated sandbox ORPC contracts import and expose sandbox surfaces', async () => {
-  const { agentSandbox, sandbox } = await import(pathToFileURL(sourcePath).href)
+const { agentSandbox, sandbox } = await import(pathToFileURL(sourcePath).href)
 
-  assert.ok(agentSandbox.files.get)
-  assert.ok(agentSandbox.files.read.get)
-  assert.ok(agentSandbox.files.upload.post)
+assert.ok(agentSandbox.files.get)
+assert.ok(agentSandbox.files.read.get)
+assert.ok(agentSandbox.files.upload.post)
 
-  assert.ok(sandbox.files.get)
-  assert.ok(sandbox.files.read.get)
-  assert.ok(sandbox.files.upload.post)
-})
+assert.ok(sandbox.files.get)
+assert.ok(sandbox.files.read.get)
+assert.ok(sandbox.files.upload.post)
