@@ -114,14 +114,7 @@ function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: str
 function workspaceNameForId(active: ActiveContext, id: string): string {
   if (id === '')
     return ''
-  const ctx = active.ctx
-  if (ctx.workspace?.id === id)
-    return ctx.workspace.name
-  for (const w of ctx.available_workspaces ?? []) {
-    if (w.id === id)
-      return w.name
-  }
-  return ''
+  return active.ctx.workspace?.id === id ? active.ctx.workspace.name : ''
 }
 
 async function runAllWorkspaces(

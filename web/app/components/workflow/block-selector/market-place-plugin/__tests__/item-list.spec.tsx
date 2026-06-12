@@ -95,7 +95,9 @@ describe('marketplace plugin selector components', () => {
 
     expect(screen.getByText('plugin.fromMarketplace')).toBeInTheDocument()
     expect(screen.getByText('Filtered Plugin')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })[0]).toHaveAttribute('href', expect.stringContaining('q=filtered'))
+    const marketplaceSearchLinks = screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })
+    expect(marketplaceSearchLinks).toHaveLength(1)
+    expect(marketplaceSearchLinks[0]).toHaveAttribute('href', expect.stringContaining('q=filtered'))
   })
 
   it('should hide the marketplace footer when requested and no filters are active', () => {

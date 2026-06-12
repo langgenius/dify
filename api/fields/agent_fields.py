@@ -41,10 +41,20 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
     created_at: int | None = None
 
 
+class AgentPublishedReferenceResponse(ResponseModel):
+    app_id: str
+    app_name: str
+    app_mode: str
+    workflow_id: str
+    workflow_version: str
+    node_ids: list[str] = Field(default_factory=list)
+
+
 class AgentRosterResponse(ResponseModel):
     id: str
     name: str
     description: str
+    role: str = ""
     icon_type: AgentIconType | None = None
     icon: str | None = None
     icon_background: str | None = None
@@ -63,6 +73,9 @@ class AgentRosterResponse(ResponseModel):
     archived_at: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
+    published_reference_count: int = 0
+    published_node_reference_count: int = 0
+    published_references: list[AgentPublishedReferenceResponse] = Field(default_factory=list)
 
 
 class AgentInviteOptionResponse(AgentRosterResponse):
