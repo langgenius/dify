@@ -125,6 +125,13 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     setDslAgentStageState({ completed: [], messages: {} })
   }
 
+  const getDslAgentErrorMessage = async (error: unknown) => {
+    const message = await parsePluginErrorMessage(error)
+    if (message.toLowerCase().includes('failed to fetch'))
+      return t('newApp.dslAgentApiUnavailable', { ns: 'app' })
+    return message
+  }
+
   const startDslAgentStage = (stage: DslAgentStage, message?: string) => {
     setDslAgentStageState(prev => ({
       active: stage,
@@ -321,7 +328,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         console.error('DSL agent post-create step failed', error)
         return
       }
-      const message = await parsePluginErrorMessage(error)
+      const message = await getDslAgentErrorMessage(error)
       failDslAgentStage(undefined, message)
       toast.error(
         t('newApp.appCreateFailed', { ns: 'app' }),
@@ -379,7 +386,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         console.error('DSL agent post-create step failed', error)
         return
       }
-      const message = await parsePluginErrorMessage(error)
+      const message = await getDslAgentErrorMessage(error)
       toast.error(
         t('newApp.appCreateFailed', { ns: 'app' }),
         message ? { description: message } : undefined,
@@ -397,22 +404,22 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   return (
     <>
       <Modal
-        className="max-w-[560px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
+        className="flex max-h-[calc(100vh-32px)] max-w-[560px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
         isShow={show}
         onClose={noop}
         overflowVisible
         highPriority
       >
-        <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
+        <div className="flex shrink-0 items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
           {t('newApp.startFromAI', { ns: 'app' })}
           <div
-            className="flex h-8 w-8 cursor-pointer items-center"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover"
             onClick={() => onClose()}
           >
             <span className="i-ri-close-line h-5 w-5 text-text-tertiary" />
           </div>
         </div>
-        <div className="px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <div className="space-y-3">
             <div>
               <div className="mb-1 system-md-semibold text-text-secondary">{t('newApp.dslAgentPrompt', { ns: 'app' })}</div>
@@ -503,7 +510,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
             <AppsFull className="mt-0" loc="app-create-ai" />
           </div>
         )}
-        <div className="flex justify-end px-6 py-5">
+        <div className="flex shrink-0 justify-end px-6 py-5">
           <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
           <Button
             disabled={buttonDisabled}

@@ -374,6 +374,31 @@ describe('CreateFromAIModal', () => {
     })
   })
 
+  it('should show an actionable message when the DSL agent API is unavailable', async () => {
+    mockCreateDSLRun.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    render(
+      <CreateFromAIModal
+        show
+        onClose={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
+      target: { value: 'Build a workflow.' },
+    })
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    expect(screen.getByText('newApp.dslAgentApiUnavailable')).toBeInTheDocument()
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      'newApp.appCreateFailed',
+      { description: 'newApp.dslAgentApiUnavailable' },
+    )
+  })
+
   it('should disable create when no model is available', () => {
     mockDefaultModel = {
       provider: {
