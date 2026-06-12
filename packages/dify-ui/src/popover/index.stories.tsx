@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Popover,
   PopoverClose,
@@ -159,7 +159,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<Placement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
@@ -208,7 +208,7 @@ export const Placements: Story = {
 }
 
 const ControlledDemo = () => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = React.useState(false)
 
   return (
     <div className="flex items-center gap-3">
