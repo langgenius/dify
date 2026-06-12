@@ -120,6 +120,7 @@ const GUIDE_FIELD_CONFIG: Array<{
   label: string
   placeholder: string
   multiline?: boolean
+  wide?: boolean
 }> = [
   {
     key: 'trigger',
@@ -136,17 +137,20 @@ const GUIDE_FIELD_CONFIG: Array<{
     label: 'newApp.dslAgentGuide.processing',
     placeholder: 'newApp.dslAgentGuide.processingPlaceholder',
     multiline: true,
+    wide: true,
   },
   {
     key: 'output',
     label: 'newApp.dslAgentGuide.output',
     placeholder: 'newApp.dslAgentGuide.outputPlaceholder',
+    wide: true,
   },
   {
     key: 'testInput',
     label: 'newApp.dslAgentGuide.testInput',
     placeholder: 'newApp.dslAgentGuide.testInputPlaceholder',
     multiline: true,
+    wide: true,
   },
 ]
 
@@ -793,7 +797,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 <div className="sm:col-span-2">
                   <div className="mb-1 system-md-semibold text-text-secondary">{t('newApp.dslAgentPrompt', { ns: 'app' })}</div>
                   <Textarea
-                    className="min-h-[96px]"
+                    className="min-h-[84px]"
                     placeholder={t('newApp.dslAgentPromptPlaceholder', { ns: 'app' }) || ''}
                     value={aiPrompt}
                     onChange={e => setAiPrompt(e.target.value)}
@@ -832,12 +836,12 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                   const value = guideFields[field.key]
                   const setValue = (nextValue: string) => setGuideFields(prev => ({ ...prev, [field.key]: nextValue }))
                   return (
-                    <div key={field.key} className="sm:col-span-2">
+                    <div key={field.key} className={field.wide ? 'sm:col-span-2' : undefined}>
                       <div className="mb-1 system-sm-semibold text-text-secondary">{t(field.label, { ns: 'app' })}</div>
                       {field.multiline
                         ? (
                             <Textarea
-                              className="min-h-[64px]"
+                              className="min-h-[56px]"
                               placeholder={t(field.placeholder, { ns: 'app' }) || ''}
                               value={value}
                               onChange={e => setValue(e.target.value)}
