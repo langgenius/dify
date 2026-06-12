@@ -247,6 +247,26 @@ export type SandboxUploadResponse = {
   path: string
 }
 
+export type AgentDriveListResponse = {
+  items?: Array<AgentDriveItemResponse>
+}
+
+export type AgentDriveDownloadResponse = {
+  url: string
+}
+
+export type AgentDrivePreviewResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentDriveFilePayload = {
+  upload_file_id: string
+}
+
 export type AnnotationReplyPayload = {
   embedding_model_name: string
   embedding_provider_name: string
@@ -1225,6 +1245,15 @@ export type SandboxToolFileResponse = {
   transfer_method?: string
 }
 
+export type AgentDriveItemResponse = {
+  created_at?: number | null
+  file_kind: string
+  hash?: string | null
+  key: string
+  mime_type?: string | null
+  size?: number | null
+}
+
 export type AnnotationHitHistory = {
   annotation_content?: string | null
   annotation_question?: string | null
@@ -1743,6 +1772,7 @@ export type AgentCliToolConfig = {
   enabled?: boolean
   env?: AgentCliToolEnvConfig
   id?: string | null
+  inferred_from?: string | null
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -1782,14 +1812,20 @@ export type AgentKnowledgeDatasetConfig = {
 export type AgentComposerSkillCandidateResponse = {
   description?: string | null
   file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
   id?: string | null
   kind?: string
+  manifest_files?: Array<string> | null
   name?: string | null
   path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
   [key: string]: unknown
 }
 
 export type AgentComposerFileCandidateResponse = {
+  drive_key?: string | null
   file_id?: string | null
   id?: string | null
   kind?: string
@@ -1991,6 +2027,7 @@ export type AgentSandboxProviderConfig = {
 }
 
 export type AgentFileRefConfig = {
+  drive_key?: string | null
   file_id?: string | null
   id?: string | null
   name?: string | null
@@ -2007,9 +2044,14 @@ export type AgentFileRefConfig = {
 export type AgentSkillRefConfig = {
   description?: string | null
   file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
   id?: string | null
+  manifest_files?: Array<string> | null
   name?: string | null
   path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
   [key: string]: unknown
 }
 
@@ -2729,6 +2771,101 @@ export type PostAppsByAppIdAgentSandboxFilesUploadResponses = {
 export type PostAppsByAppIdAgentSandboxFilesUploadResponse
   = PostAppsByAppIdAgentSandboxFilesUploadResponses[keyof PostAppsByAppIdAgentSandboxFilesUploadResponses]
 
+export type GetAppsByAppIdAgentDriveFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    node_id?: string
+    prefix?: string
+  }
+  url: '/apps/{app_id}/agent/drive/files'
+}
+
+export type GetAppsByAppIdAgentDriveFilesResponses = {
+  200: AgentDriveListResponse
+}
+
+export type GetAppsByAppIdAgentDriveFilesResponse
+  = GetAppsByAppIdAgentDriveFilesResponses[keyof GetAppsByAppIdAgentDriveFilesResponses]
+
+export type GetAppsByAppIdAgentDriveFilesDownloadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    key: string
+    node_id?: string
+  }
+  url: '/apps/{app_id}/agent/drive/files/download'
+}
+
+export type GetAppsByAppIdAgentDriveFilesDownloadResponses = {
+  200: AgentDriveDownloadResponse
+}
+
+export type GetAppsByAppIdAgentDriveFilesDownloadResponse
+  = GetAppsByAppIdAgentDriveFilesDownloadResponses[keyof GetAppsByAppIdAgentDriveFilesDownloadResponses]
+
+export type GetAppsByAppIdAgentDriveFilesPreviewData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    key: string
+    node_id?: string
+  }
+  url: '/apps/{app_id}/agent/drive/files/preview'
+}
+
+export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
+  200: AgentDrivePreviewResponse
+}
+
+export type GetAppsByAppIdAgentDriveFilesPreviewResponse
+  = GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
+
+export type DeleteAppsByAppIdAgentFilesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    key?: string
+  }
+  url: '/apps/{app_id}/agent/files'
+}
+
+export type DeleteAppsByAppIdAgentFilesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type DeleteAppsByAppIdAgentFilesResponse
+  = DeleteAppsByAppIdAgentFilesResponses[keyof DeleteAppsByAppIdAgentFilesResponses]
+
+export type PostAppsByAppIdAgentFilesData = {
+  body: AgentDriveFilePayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/files'
+}
+
+export type PostAppsByAppIdAgentFilesResponses = {
+  201: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentFilesResponse
+  = PostAppsByAppIdAgentFilesResponses[keyof PostAppsByAppIdAgentFilesResponses]
+
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
   path: {
@@ -2812,6 +2949,44 @@ export type PostAppsByAppIdAgentSkillsUploadResponses = {
 
 export type PostAppsByAppIdAgentSkillsUploadResponse
   = PostAppsByAppIdAgentSkillsUploadResponses[keyof PostAppsByAppIdAgentSkillsUploadResponses]
+
+export type DeleteAppsByAppIdAgentSkillsBySlugData = {
+  body?: never
+  path: {
+    app_id: string
+    slug: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/skills/{slug}'
+}
+
+export type DeleteAppsByAppIdAgentSkillsBySlugResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type DeleteAppsByAppIdAgentSkillsBySlugResponse
+  = DeleteAppsByAppIdAgentSkillsBySlugResponses[keyof DeleteAppsByAppIdAgentSkillsBySlugResponses]
+
+export type PostAppsByAppIdAgentSkillsBySlugInferToolsData = {
+  body?: never
+  path: {
+    app_id: string
+    slug: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/skills/{slug}/infer-tools'
+}
+
+export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponse
+  = PostAppsByAppIdAgentSkillsBySlugInferToolsResponses[keyof PostAppsByAppIdAgentSkillsBySlugInferToolsResponses]
 
 export type PostAppsByAppIdAnnotationReplyByActionData = {
   body: AnnotationReplyPayload
