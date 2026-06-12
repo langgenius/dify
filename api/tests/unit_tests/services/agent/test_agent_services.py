@@ -72,6 +72,18 @@ class FakeSession:
         self.rollbacks += 1
 
 
+def _agent_soul_with_model() -> AgentSoulConfig:
+    return AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai/openai",
+                "model_provider": "openai",
+                "model": "gpt-4o",
+            }
+        }
+    )
+
+
 def test_load_workflow_composer_returns_empty_state(monkeypatch):
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
@@ -554,20 +566,48 @@ def test_roster_list_and_invite_options(monkeypatch):
     )
     agent.created_at = created_at
     agent.updated_at = updated_at
-    version = AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1)
+    version = AgentConfigSnapshot(
+        id="version-1", agent_id="agent-1", version=1, config_snapshot=_agent_soul_with_model()
+    )
     version.created_at = version_created_at
     agent.active_config_snapshot_id = "version-1"
+    unconfigured_agent = Agent(
+        id="agent-2",
+        tenant_id="tenant-1",
+        name="Draft Agent",
+        description="",
+        role="draft",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    unconfigured_agent.active_config_snapshot_id = "version-2"
+    unconfigured_version = AgentConfigSnapshot(
+        id="version-2", agent_id="agent-2", version=1, config_snapshot=AgentSoulConfig()
+    )
     fake_session = FakeSession(
-        scalar=[1, 1, SimpleNamespace(id="workflow-1")],
-        scalars=[[agent], [agent], [SimpleNamespace(agent_id="agent-1", node_id="node-1")]],
+        scalar=[2, SimpleNamespace(id="workflow-1")],
+        scalars=[
+            [agent, unconfigured_agent],
+            [agent, unconfigured_agent],
+            [SimpleNamespace(agent_id="agent-1", node_id="node-1")],
+        ],
     )
     service = AgentRosterService(fake_session)
-    monkeypatch.setattr(service, "_load_versions_by_id", lambda version_ids: {"version-1": version})
+    monkeypatch.setattr(
+        service,
+        "_load_versions_by_id",
+        lambda version_ids: {"version-1": version, "version-2": unconfigured_version},
+    )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
 
+    assert [item["id"] for item in listed["data"]] == ["agent-1", "agent-2"]
+    assert [item["id"] for item in invited["data"]] == ["agent-1"]
+    assert invited["total"] == 1
     assert listed["data"][0]["active_config_snapshot"]["id"] == "version-1"
     assert listed["data"][0]["role"] == "researcher"
     assert listed["data"][0]["created_at"] == int(created_at.timestamp())
@@ -575,6 +615,52 @@ def test_roster_list_and_invite_options(monkeypatch):
     assert listed["data"][0]["active_config_snapshot"]["created_at"] == int(version_created_at.timestamp())
     assert invited["data"][0]["is_in_current_workflow"] is True
     assert invited["data"][0]["existing_node_ids"] == ["node-1"]
+
+
+def test_invite_options_filters_unconfigured_agents_before_pagination(monkeypatch):
+    unconfigured_agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Draft Agent",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+    )
+    configured_agent = Agent(
+        id="agent-2",
+        tenant_id="tenant-1",
+        name="Ready Agent",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-2",
+    )
+    fake_session = FakeSession(scalars=[[unconfigured_agent, configured_agent]])
+    service = AgentRosterService(fake_session)
+    monkeypatch.setattr(
+        service,
+        "_load_versions_by_id",
+        lambda version_ids: {
+            "version-1": AgentConfigSnapshot(
+                id="version-1", agent_id="agent-1", version=1, config_snapshot=AgentSoulConfig()
+            ),
+            "version-2": AgentConfigSnapshot(
+                id="version-2", agent_id="agent-2", version=1, config_snapshot=_agent_soul_with_model()
+            ),
+        },
+    )
+    monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
+
+    result = service.list_invite_options(tenant_id="tenant-1", page=1, limit=1)
+
+    assert result["total"] == 1
+    assert result["has_more"] is False
+    assert [item["id"] for item in result["data"]] == ["agent-2"]
 
 
 def test_roster_update_archive_versions_and_detail(monkeypatch):
