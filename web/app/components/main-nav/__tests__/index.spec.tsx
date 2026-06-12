@@ -748,7 +748,6 @@ describe('MainNav', () => {
       'common.userProfile.roadmap',
       'common.mainNav.help.learnDify',
       'common.userProfile.compliance',
-      'common.userProfile.contactUs',
       'common.userProfile.forum',
       'common.userProfile.community',
       'common.userProfile.github',
