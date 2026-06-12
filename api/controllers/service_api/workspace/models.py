@@ -1,17 +1,17 @@
 from flask_login import current_user
 from flask_restx import Resource
-from pydantic import RootModel
 
 from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_dataset_token
+from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from services.entities.model_provider_entities import ProviderWithModelsResponse
 from services.model_provider_service import ModelProviderService
 
 
-class ProviderWithModelsListResponse(RootModel[list[ProviderWithModelsResponse]]):
-    pass
+class ProviderWithModelsListResponse(ResponseModel):
+    data: list[ProviderWithModelsResponse]
 
 
 register_response_schema_models(service_api_ns, ProviderWithModelsListResponse)

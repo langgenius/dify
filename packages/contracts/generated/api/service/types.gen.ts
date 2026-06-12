@@ -1098,7 +1098,9 @@ export type ProviderModelWithStatusEntity = {
   status: ModelStatus
 }
 
-export type ProviderWithModelsListResponse = Array<ProviderWithModelsResponse>
+export type ProviderWithModelsListResponse = {
+  data: Array<ProviderWithModelsResponse>
+}
 
 export type ProviderWithModelsResponse = {
   icon_small?: I18nObject | null

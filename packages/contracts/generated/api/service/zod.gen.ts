@@ -1318,7 +1318,9 @@ export const zProviderWithModelsResponse = z.object({
 /**
  * ProviderWithModelsListResponse
  */
-export const zProviderWithModelsListResponse = z.array(zProviderWithModelsResponse)
+export const zProviderWithModelsListResponse = z.object({
+  data: z.array(zProviderWithModelsResponse),
+})
 
 /**
  * RerankingModel
