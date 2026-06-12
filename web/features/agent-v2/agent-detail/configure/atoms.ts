@@ -1,5 +1,5 @@
 import {
-  agentComposerConfigAtom,
+  agentComposerAppFeaturesAtom,
   agentComposerEnvVariablesAtom,
   agentComposerFilesAtom,
   agentComposerKnowledgeRetrievalsAtom,
@@ -9,12 +9,12 @@ import {
   agentComposerToolsAtom,
   agentComposerToolSettingsAtom,
   isAgentComposerDirtyAtom,
-  useConfig,
+  useAppFeatures,
   useConfigPublishPayload,
   useCurrentModel,
   useEnvVariables,
   useFiles,
-  useHydrateAgentComposerDraft,
+  useHydrateAgentSoulConfigFormState,
   useKnowledgeRetrievals,
   useModel,
   usePrompt,
@@ -26,7 +26,7 @@ import {
 
 export const agentConfigurePromptAtom = agentComposerPromptAtom
 export const agentConfigureModelAtom = agentComposerModelAtom
-export const agentConfigureConfigAtom = agentComposerConfigAtom
+export const agentConfigureAppFeaturesAtom = agentComposerAppFeaturesAtom
 export const agentConfigureSkillsAtom = agentComposerSkillsAtom
 export const agentConfigureFilesAtom = agentComposerFilesAtom
 export const agentConfigureToolsAtom = agentComposerToolsAtom
@@ -35,11 +35,11 @@ export const agentConfigureEnvVariablesAtom = agentComposerEnvVariablesAtom
 export const agentConfigureToolSettingsAtom = agentComposerToolSettingsAtom
 export const isAgentConfigureDirtyAtom = isAgentComposerDirtyAtom
 
-export const useHydrateAgentConfigureDraft = useHydrateAgentComposerDraft
+export const useHydrateAgentConfigureDraft = useHydrateAgentSoulConfigFormState
 export const useAgentConfigurePrompt = usePrompt
 export const useAgentConfigureModel = useModel
 export const useAgentConfigureCurrentModel = useCurrentModel
-export const useAgentConfigureConfig = useConfig
+export const useAgentConfigureAppFeatures = useAppFeatures
 export const useAgentConfigurePublishPayload = useConfigPublishPayload
 export const useAgentConfigureSkills = useSkills
 export const useAgentConfigureFiles = useFiles

@@ -1,12 +1,12 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { AgentComposerDraft } from './store'
+import type { AgentSoulConfigFormState } from './store'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { useState } from 'react'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from './store'
 
-function createAgentComposerStore(initialDraft?: AgentComposerDraft) {
+function createAgentComposerStore(initialDraft?: AgentSoulConfigFormState) {
   const store = createStore()
 
   if (initialDraft)
@@ -22,7 +22,7 @@ export function AgentComposerProvider({
   initialDraft,
 }: {
   children: ReactNode
-  initialDraft?: AgentComposerDraft
+  initialDraft?: AgentSoulConfigFormState
 }) {
   const [store] = useState(() => createAgentComposerStore(initialDraft))
 

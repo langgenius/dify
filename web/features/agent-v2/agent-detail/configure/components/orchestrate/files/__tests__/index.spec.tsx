@@ -2,11 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
 import { AgentFiles } from '../index'
 
 const agentFilesDraft = {
-  ...defaultAgentComposerDraft,
+  ...defaultAgentSoulConfigFormState,
   files: [
     {
       id: 'preview-image',
@@ -19,7 +19,7 @@ const agentFilesDraft = {
       icon: 'markdown',
     },
   ],
-} satisfies typeof defaultAgentComposerDraft
+} satisfies typeof defaultAgentSoulConfigFormState
 
 function renderAgentFiles() {
   const queryClient = new QueryClient()

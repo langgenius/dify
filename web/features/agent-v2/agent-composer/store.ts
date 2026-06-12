@@ -1,4 +1,4 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulAppFeaturesConfig, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../agent-detail/configure/components/data'
 import type { EnvVariable } from '../agent-detail/configure/components/orchestrate/advanced/env'
 import type { AgentSkill } from '../agent-detail/configure/components/orchestrate/skills/item'
@@ -8,10 +8,10 @@ import isEqual from 'fast-deep-equal'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
-export type AgentComposerDraft = {
+export type AgentSoulConfigFormState = {
   prompt: string
   model?: DefaultModel
-  config?: AgentSoulConfig
+  appFeatures?: AgentSoulAppFeaturesConfig
   skills: AgentSkill[]
   files: AgentFileNode[]
   tools: AgentTool[]
@@ -20,7 +20,7 @@ export type AgentComposerDraft = {
   toolSettings: Record<string, Record<string, unknown>>
 }
 
-export const defaultAgentComposerDraft: AgentComposerDraft = {
+export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
   prompt: '',
   skills: [],
   files: [],
@@ -31,8 +31,8 @@ export const defaultAgentComposerDraft: AgentComposerDraft = {
 }
 
 export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>(undefined)
-export const agentComposerOriginalDraftAtom = atom<AgentComposerDraft | undefined>(defaultAgentComposerDraft)
-export const agentComposerDraftAtom = atom<AgentComposerDraft>(defaultAgentComposerDraft)
+export const agentComposerOriginalDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
+export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(defaultAgentSoulConfigFormState)
 
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
 type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
@@ -274,7 +274,7 @@ const toConfigSnapshot = ({
   currentModel,
 }: {
   baseConfig?: AgentSoulConfig
-  draft: AgentComposerDraft
+  draft: AgentSoulConfigFormState
   currentModel?: DefaultModel
 }): AgentSoulConfig => ({
   ...baseConfig,
@@ -300,7 +300,7 @@ const toConfigSnapshot = ({
     dify_tools: toDifyToolConfigs(draft.tools, draft.toolSettings),
     cli_tools: toCliToolConfigs(draft.tools),
   },
-  app_features: draft.config?.app_features ?? baseConfig?.app_features,
+  app_features: draft.appFeatures ?? baseConfig?.app_features,
   knowledge: toKnowledgeConfig(baseConfig?.knowledge, draft.knowledgeRetrievals),
   env: toEnvConfig(draft.envVariables),
 })
@@ -325,7 +325,15 @@ export const agentComposerModelAtom = atom(
   },
 )
 
-export const agentComposerConfigAtom = atom(get => get(agentComposerDraftAtom).config)
+export const agentComposerAppFeaturesAtom = atom(
+  get => get(agentComposerDraftAtom).appFeatures,
+  (get, set, appFeatures: AgentSoulAppFeaturesConfig | undefined) => {
+    set(agentComposerDraftAtom, {
+      ...get(agentComposerDraftAtom),
+      appFeatures,
+    })
+  },
+)
 
 export const agentComposerSkillsAtom = atom(
   get => get(agentComposerDraftAtom).skills,
@@ -405,7 +413,7 @@ export const isAgentComposerDirtyAtom = atom((get) => {
   const originalDraft = get(agentComposerOriginalDraftAtom)
   const draft = get(agentComposerDraftAtom)
 
-  return !isEqual(draft, originalDraft ?? defaultAgentComposerDraft)
+  return !isEqual(draft, originalDraft ?? defaultAgentSoulConfigFormState)
 })
 
 const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
@@ -421,26 +429,26 @@ const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
   }
 }
 
-export const agentComposerDraftFromConfig = (
+export const agentSoulConfigToFormState = (
   config?: AgentSoulConfig,
-  baseDraft: AgentComposerDraft = defaultAgentComposerDraft,
-): AgentComposerDraft => ({
+  baseDraft: AgentSoulConfigFormState = defaultAgentSoulConfigFormState,
+): AgentSoulConfigFormState => ({
   ...baseDraft,
   prompt: config?.prompt?.system_prompt ?? '',
   model: toDraftModel(config),
-  config,
+  appFeatures: config?.app_features,
 })
 
 export function useHydrate({
-  defaultDraft = defaultAgentComposerDraft,
+  defaultDraft = defaultAgentSoulConfigFormState,
   instanceKey,
   draft,
   originalConfig,
   waitForDraft,
 }: {
-  defaultDraft?: AgentComposerDraft
+  defaultDraft?: AgentSoulConfigFormState
   instanceKey: string
-  draft?: AgentComposerDraft
+  draft?: AgentSoulConfigFormState
   originalConfig?: AgentSoulConfig
   waitForDraft?: boolean
 }) {
@@ -472,22 +480,22 @@ export function useHydrate({
   }, [defaultDraft, draft, instanceKey, originalConfig, setDraft, setOriginalConfig, setOriginalDraft, waitForDraft])
 }
 
-export function useHydrateAgentComposerDraft({
+export function useHydrateAgentSoulConfigFormState({
   agentId,
   activeVersionId,
-  baseDraft = defaultAgentComposerDraft,
+  baseDraft = defaultAgentSoulConfigFormState,
   config,
 }: {
   agentId: string
   activeVersionId?: string | null
-  baseDraft?: AgentComposerDraft
+  baseDraft?: AgentSoulConfigFormState
   config?: AgentSoulConfig
 }) {
   const routeKey = `${agentId}:${activeVersionId ?? 'draft'}`
   useHydrate({
     defaultDraft: baseDraft,
     instanceKey: routeKey,
-    draft: agentComposerDraftFromConfig(config, baseDraft),
+    draft: agentSoulConfigToFormState(config, baseDraft),
     originalConfig: config,
     waitForDraft: !!activeVersionId && !config,
   })
@@ -507,8 +515,8 @@ export function useCurrentModel(defaultModel?: DefaultModel) {
   return useAtomValue(agentComposerModelAtom) ?? defaultModel
 }
 
-export function useConfig() {
-  return useAtomValue(agentComposerConfigAtom)
+export function useAppFeatures() {
+  return useAtomValue(agentComposerAppFeaturesAtom)
 }
 
 export function useConfigPublishPayload({
@@ -563,7 +571,7 @@ export function useToolSettings() {
 }
 
 const omitToolSettings = (
-  toolSettings: AgentComposerDraft['toolSettings'],
+  toolSettings: AgentSoulConfigFormState['toolSettings'],
   actionIds: string[],
 ) => {
   const nextToolSettings = { ...toolSettings }

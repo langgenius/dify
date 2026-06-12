@@ -2,13 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
 import { AgentEnvEditor } from '../env'
 import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
 
 function renderAgentEnvEditor() {
   return render(
-    <AgentComposerProvider initialDraft={defaultAgentComposerDraft}>
+    <AgentComposerProvider initialDraft={defaultAgentSoulConfigFormState}>
       <AgentEnvEditor />
     </AgentComposerProvider>,
   )
