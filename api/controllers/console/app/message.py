@@ -11,7 +11,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -174,7 +174,7 @@ class ChatMessageListApi(Resource):
     @console_ns.doc("list_chat_messages")
     @console_ns.doc(description="Get chat messages for a conversation with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ChatMessagesQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ChatMessagesQuery))
     @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
     @console_ns.response(404, "Conversation not found")
     @login_required
@@ -372,7 +372,7 @@ class MessageFeedbackExportApi(Resource):
     @console_ns.doc("export_feedbacks")
     @console_ns.doc(description="Export user feedback data for Google Sheets")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[FeedbackExportQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(FeedbackExportQuery))
     @console_ns.response(200, "Feedback data exported successfully")
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(500, "Internal server error")

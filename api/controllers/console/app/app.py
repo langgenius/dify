@@ -832,7 +832,7 @@ class AppExportApi(Resource):
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
-    @console_ns.expect(console_ns.models[AppExportQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AppExportQuery))
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @get_app_model

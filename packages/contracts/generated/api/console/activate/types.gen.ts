@@ -53,9 +53,9 @@ export type GetActivateCheckData = {
   body?: never
   path?: never
   query: {
-    email?: string | null
+    email?: string
     token: string
-    workspace_id?: string | null
+    workspace_id?: string
   }
   url: '/activate/check'
 }

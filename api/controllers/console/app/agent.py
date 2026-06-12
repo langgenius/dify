@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
@@ -36,7 +36,7 @@ class AgentLogApi(Resource):
     @console_ns.doc("get_agent_logs")
     @console_ns.doc(description="Get agent execution logs for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AgentLogQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AgentLogQuery))
     @console_ns.response(
         200, "Agent logs retrieved successfully", fields.List(fields.Raw(description="Agent log entries"))
     )

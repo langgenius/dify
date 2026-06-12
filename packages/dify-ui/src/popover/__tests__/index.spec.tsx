@@ -29,6 +29,11 @@ describe('PopoverContent', () => {
       await expect.element(screen.getByRole('group', { name: 'default positioner' })).toHaveAttribute('data-side', 'bottom')
       await expect.element(screen.getByRole('group', { name: 'default positioner' })).toHaveAttribute('data-align', 'center')
       await expect.element(screen.getByRole('dialog', { name: 'default popover' })).toHaveTextContent('Default content')
+      await expect.element(screen.getByRole('dialog', { name: 'default popover' })).toHaveClass(
+        'outline-hidden',
+        'focus:outline-hidden',
+        'focus-visible:outline-hidden',
+      )
     })
 
     it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {

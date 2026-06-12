@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -156,7 +156,7 @@ class MessageFeedbackApi(WebApiResource):
 class MessageMoreLikeThisApi(WebApiResource):
     @web_ns.doc("Generate More Like This")
     @web_ns.doc(description="Generate a new completion similar to an existing message (completion apps only).")
-    @web_ns.expect(web_ns.models[MessageMoreLikeThisQuery.__name__])
+    @web_ns.doc(params=query_params_from_model(MessageMoreLikeThisQuery))
     @web_ns.doc(
         responses={
             200: "Success",

@@ -12,7 +12,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -201,7 +201,7 @@ class DeprecatedEndpointCreateApi(Resource):
 class EndpointListApi(Resource):
     @console_ns.doc("list_endpoints")
     @console_ns.doc(description="List plugin endpoints with pagination")
-    @console_ns.expect(console_ns.models[EndpointListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EndpointListQuery))
     @console_ns.response(
         200,
         "Success",
@@ -234,7 +234,7 @@ class EndpointListApi(Resource):
 class EndpointListForSinglePluginApi(Resource):
     @console_ns.doc("list_plugin_endpoints")
     @console_ns.doc(description="List endpoints for a specific plugin")
-    @console_ns.expect(console_ns.models[EndpointListForPluginQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EndpointListForPluginQuery))
     @console_ns.response(
         200,
         "Success",

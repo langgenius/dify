@@ -32,7 +32,7 @@ export const get = oc
   .input(
     z.object({
       params: zGetWebsiteCrawlStatusByJobIdPath,
-      query: zGetWebsiteCrawlStatusByJobIdQuery.optional(),
+      query: zGetWebsiteCrawlStatusByJobIdQuery,
     }),
   )
   .output(zGetWebsiteCrawlStatusByJobIdResponse)

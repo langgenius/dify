@@ -397,7 +397,7 @@ class PluginDebuggingKeyApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserList.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserList))
     @setup_required
     @login_required
     @account_initialization_required
@@ -485,7 +485,7 @@ class PluginListInstallationsFromIdsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/icon")
 class PluginIconApi(Resource):
-    @console_ns.expect(console_ns.models[ParserIcon.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserIcon))
     @setup_required
     def get(self):
         args = ParserIcon.model_validate(request.args.to_dict(flat=True))
@@ -501,7 +501,7 @@ class PluginIconApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/asset")
 class PluginAssetApi(Resource):
-    @console_ns.expect(console_ns.models[ParserAsset.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserAsset))
     @setup_required
     @login_required
     @account_initialization_required
@@ -636,7 +636,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/marketplace/pkg")
 class PluginFetchMarketplacePkgApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPluginIdentifierQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserPluginIdentifierQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -660,7 +660,7 @@ class PluginFetchMarketplacePkgApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
 class PluginFetchManifestApi(Resource):
-    @console_ns.expect(console_ns.models[ParserPluginIdentifierQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserPluginIdentifierQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -679,7 +679,7 @@ class PluginFetchManifestApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/tasks")
 class PluginFetchInstallTasksApi(Resource):
-    @console_ns.expect(console_ns.models[ParserTasks.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserTasks))
     @setup_required
     @login_required
     @account_initialization_required
@@ -868,7 +868,7 @@ class PluginFetchPermissionApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")
 class PluginFetchDynamicSelectOptionsApi(Resource):
-    @console_ns.expect(console_ns.models[ParserDynamicOptions.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserDynamicOptions))
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -1000,7 +1000,7 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/readme")
 class PluginReadmeApi(Resource):
-    @console_ns.expect(console_ns.models[ParserReadme.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserReadme))
     @setup_required
     @login_required
     @account_initialization_required

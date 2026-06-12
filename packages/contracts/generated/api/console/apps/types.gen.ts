@@ -602,15 +602,6 @@ export type WorkflowTriggerListResponse = {
   data: Array<WorkflowTriggerResponse>
 }
 
-export type WorkflowExecutionStatus
-  = | 'failed'
-    | 'partial-succeeded'
-    | 'paused'
-    | 'running'
-    | 'scheduled'
-    | 'stopped'
-    | 'succeeded'
-
 export type WorkflowAppLogPaginationResponse = {
   data: Array<WorkflowAppLogPartialResponse>
   has_more: boolean
@@ -1567,6 +1558,15 @@ export type AgentComposerImpactBindingResponse = {
   node_id: string
   workflow_id: string
 }
+
+export type WorkflowExecutionStatus
+  = | 'failed'
+    | 'partial-succeeded'
+    | 'paused'
+    | 'running'
+    | 'scheduled'
+    | 'stopped'
+    | 'succeeded'
 
 export type NodeStatus = 'failed' | 'idle' | 'ready' | 'running'
 
@@ -3320,12 +3320,12 @@ export type GetAppsByAppIdChatConversationsData = {
   }
   query?: {
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
-    end?: string | null
-    keyword?: string | null
+    end?: string
+    keyword?: string
     limit?: number
     page?: number
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
-    start?: string | null
+    start?: string
   }
   url: '/apps/{app_id}/chat-conversations'
 }
@@ -3411,7 +3411,7 @@ export type GetAppsByAppIdChatMessagesData = {
   }
   query: {
     conversation_id: string
-    first_id?: string | null
+    first_id?: string
     limit?: number
   }
   url: '/apps/{app_id}/chat-messages'
@@ -3483,11 +3483,11 @@ export type GetAppsByAppIdCompletionConversationsData = {
   }
   query?: {
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
-    end?: string | null
-    keyword?: string | null
+    end?: string
+    keyword?: string
     limit?: number
     page?: number
-    start?: string | null
+    start?: string
   }
   url: '/apps/{app_id}/completion-conversations'
 }
@@ -3690,7 +3690,7 @@ export type GetAppsByAppIdExportData = {
   }
   query?: {
     include_secret?: boolean
-    workflow_id?: string | null
+    workflow_id?: string
   }
   url: '/apps/{app_id}/export'
 }
@@ -3744,12 +3744,12 @@ export type GetAppsByAppIdFeedbacksExportData = {
     app_id: string
   }
   query?: {
-    end_date?: string | null
+    end_date?: string
     format?: 'csv' | 'json'
-    from_source?: 'admin' | 'user' | null
-    has_comment?: boolean | null
-    rating?: 'dislike' | 'like' | null
-    start_date?: string | null
+    from_source?: 'admin' | 'user'
+    has_comment?: boolean
+    rating?: 'dislike' | 'like'
+    start_date?: string
   }
   url: '/apps/{app_id}/feedbacks/export'
 }
@@ -4092,8 +4092,8 @@ export type GetAppsByAppIdStatisticsAverageResponseTimeData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/average-response-time'
 }
@@ -4113,8 +4113,8 @@ export type GetAppsByAppIdStatisticsAverageSessionInteractionsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/average-session-interactions'
 }
@@ -4134,8 +4134,8 @@ export type GetAppsByAppIdStatisticsDailyConversationsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/daily-conversations'
 }
@@ -4155,8 +4155,8 @@ export type GetAppsByAppIdStatisticsDailyEndUsersData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/daily-end-users'
 }
@@ -4176,8 +4176,8 @@ export type GetAppsByAppIdStatisticsDailyMessagesData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/daily-messages'
 }
@@ -4197,8 +4197,8 @@ export type GetAppsByAppIdStatisticsTokenCostsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/token-costs'
 }
@@ -4218,8 +4218,8 @@ export type GetAppsByAppIdStatisticsTokensPerSecondData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/tokens-per-second'
 }
@@ -4239,8 +4239,8 @@ export type GetAppsByAppIdStatisticsUserSatisfactionRateData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/statistics/user-satisfaction-rate'
 }
@@ -4498,15 +4498,22 @@ export type GetAppsByAppIdWorkflowAppLogsData = {
     app_id: string
   }
   query?: {
-    created_at__after?: string | null
-    created_at__before?: string | null
-    created_by_account?: string | null
-    created_by_end_user_session_id?: string | null
+    created_at__after?: string
+    created_at__before?: string
+    created_by_account?: string
+    created_by_end_user_session_id?: string
     detail?: boolean
-    keyword?: string | null
+    keyword?: string
     limit?: number
     page?: number
-    status?: WorkflowExecutionStatus | null
+    status?:
+      | 'failed'
+      | 'partial-succeeded'
+      | 'paused'
+      | 'running'
+      | 'scheduled'
+      | 'stopped'
+      | 'succeeded'
   }
   url: '/apps/{app_id}/workflow-app-logs'
 }
@@ -4524,15 +4531,22 @@ export type GetAppsByAppIdWorkflowArchivedLogsData = {
     app_id: string
   }
   query?: {
-    created_at__after?: string | null
-    created_at__before?: string | null
-    created_by_account?: string | null
-    created_by_end_user_session_id?: string | null
+    created_at__after?: string
+    created_at__before?: string
+    created_by_account?: string
+    created_by_end_user_session_id?: string
     detail?: boolean
-    keyword?: string | null
+    keyword?: string
     limit?: number
     page?: number
-    status?: WorkflowExecutionStatus | null
+    status?:
+      | 'failed'
+      | 'partial-succeeded'
+      | 'paused'
+      | 'running'
+      | 'scheduled'
+      | 'stopped'
+      | 'succeeded'
   }
   url: '/apps/{app_id}/workflow-archived-logs'
 }
@@ -4919,8 +4933,8 @@ export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/workflow/statistics/average-app-interactions'
 }
@@ -4940,8 +4954,8 @@ export type GetAppsByAppIdWorkflowStatisticsDailyConversationsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/workflow/statistics/daily-conversations'
 }
@@ -4961,8 +4975,8 @@ export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/workflow/statistics/daily-terminals'
 }
@@ -4982,8 +4996,8 @@ export type GetAppsByAppIdWorkflowStatisticsTokenCostsData = {
     app_id: string
   }
   query?: {
-    end?: string | null
-    start?: string | null
+    end?: string
+    start?: string
   }
   url: '/apps/{app_id}/workflow/statistics/token-costs'
 }
@@ -5006,7 +5020,7 @@ export type GetAppsByAppIdWorkflowsData = {
     limit?: number
     named_only?: boolean
     page?: number
-    user_id?: string | null
+    user_id?: string
   }
   url: '/apps/{app_id}/workflows'
 }
@@ -5043,7 +5057,7 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = 
     block_type: string
   }
   query?: {
-    q?: string | null
+    q?: string
   }
   url: '/apps/{app_id}/workflows/default-workflow-block-configs/{block_type}'
 }
@@ -5802,8 +5816,8 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
     app_id: string
   }
   query?: {
-    limit?: string
-    page?: string
+    limit?: number
+    page?: number
   }
   url: '/apps/{app_id}/workflows/draft/variables'
 }
@@ -6072,11 +6086,7 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
     app_id: string
   }
   query: {
-    credential_id?: string | null
-    datasource_type: string
-    inputs: {
-      [key: string]: unknown
-    }
+    node_id: string
   }
   url: '/apps/{app_id}/workflows/triggers/webhook'
 }

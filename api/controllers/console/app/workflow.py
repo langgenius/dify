@@ -15,6 +15,7 @@ from controllers.common.controller_schemas import DefaultBlockConfigQuery, Workf
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import NewAppResponse, SimpleResultResponse
 from controllers.common.schema import (
+    query_params_from_model,
     register_response_schema_model,
     register_response_schema_models,
     register_schema_models,
@@ -1054,7 +1055,7 @@ class DefaultBlockConfigApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "block_type": "Block type"})
     @console_ns.response(200, "Default block configuration retrieved successfully")
     @console_ns.response(404, "Block type not found")
-    @console_ns.expect(console_ns.models[DefaultBlockConfigQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(DefaultBlockConfigQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -1149,7 +1150,7 @@ class WorkflowFeaturesApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowListQuery))
     @console_ns.doc("get_all_published_workflows")
     @console_ns.doc(description="Get all published workflows for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
