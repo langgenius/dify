@@ -46,7 +46,7 @@ function RecoveryKeys({
   panelProps?: React.ComponentProps<typeof CollapsiblePanel>
 }) {
   return (
-    <>
+    <React.Fragment>
       <CollapsibleTrigger className={triggerClassName}>
         Recovery keys
         <TriggerIcon />
@@ -58,7 +58,7 @@ function RecoveryKeys({
           <div>horse-battery-staple</div>
         </div>
       </CollapsiblePanel>
-    </>
+    </React.Fragment>
   )
 }
 

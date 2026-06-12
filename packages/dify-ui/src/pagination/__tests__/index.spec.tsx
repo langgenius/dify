@@ -152,7 +152,11 @@ describe('Pagination primitive', () => {
       cancelable: true,
     }))
 
-    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toBeInTheDocument()
+    const summaryButton = screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })
+    await expect.element(summaryButton).toBeInTheDocument()
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(summaryButton.element())
+    })
   })
 
   it('cancels the page input editing mode with Escape', async () => {

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import * as React from 'react'
 
 import { Button } from '.'
 
@@ -112,10 +113,10 @@ export const WithIcon: Story = {
   args: {
     variant: 'primary',
     children: (
-      <>
+      <React.Fragment>
         <span aria-hidden className="mr-1.5 i-ri-rocket-line size-4 shrink-0" />
         Launch
-      </>
+      </React.Fragment>
     ),
   },
 }

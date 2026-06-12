@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
@@ -223,7 +223,7 @@ export function AutocompleteIcon({
 }
 
 type AutocompleteContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -302,7 +302,7 @@ export function AutocompleteItem({
   )
 }
 
-export type AutocompleteItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 export function AutocompleteItemText({
   className,
@@ -368,7 +368,7 @@ export function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLSpanElement>) {
+}: React.ComponentProps<'span'>) {
   return (
     <span
       className={cn(overlayIndicatorClassName, className)}

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
-import { useRef } from 'react'
+import * as React from 'react'
 import { toast, ToastHost } from '.'
 
 const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs transition-colors hover:bg-state-base-hover'
@@ -15,7 +14,7 @@ const ExampleCard = ({
   eyebrow: string
   title: string
   description: string
-  children: ReactNode
+  children: React.ReactNode
 }) => {
   return (
     <section className={cardClassName}>
@@ -250,7 +249,7 @@ const ActionExamples = () => {
 }
 
 const DeduplicateExamples = () => {
-  const saveCountRef = useRef(0)
+  const saveCountRef = React.useRef(0)
 
   const saveDraft = () => {
     saveCountRef.current += 1
@@ -314,7 +313,7 @@ const UpdateExamples = () => {
 
 const ToastDocsDemo = () => {
   return (
-    <>
+    <React.Fragment>
       <ToastHost />
       <div className="min-h-screen bg-background-default-subtle px-6 py-12">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
@@ -339,7 +338,7 @@ const ToastDocsDemo = () => {
           </div>
         </div>
       </div>
-    </>
+    </React.Fragment>
   )
 }
 

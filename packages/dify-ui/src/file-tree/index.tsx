@@ -1,22 +1,18 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
-import {
-  createContext,
-  useContext,
-} from 'react'
+import * as React from 'react'
 import { cn } from '../cn'
 
-const FileTreeLevelContext = createContext(1)
+const FileTreeLevelContext = React.createContext(1)
 
 function useFileTreeLevel() {
-  return useContext(FileTreeLevelContext)
+  return React.useContext(FileTreeLevelContext)
 }
 
-function getLabelText(children: ReactNode) {
+function getLabelText(children: React.ReactNode) {
   return typeof children === 'string' || typeof children === 'number'
     ? String(children)
     : undefined
@@ -201,12 +197,12 @@ export function FileTreeFile({
     'aria-current': selected ? 'true' : undefined,
     'className': fileTreeRowClassName({ className }),
     'children': (
-      <>
+      <React.Fragment>
         {renderGuides(level)}
         <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
           {children}
         </div>
-      </>
+      </React.Fragment>
     ),
   } as useRender.ElementProps<'button'>
 
@@ -272,7 +268,7 @@ export type FileTreeIconProps
   = Omit<useRender.ComponentProps<'span'>, 'children'>
     & {
       type?: FileTreeIconType
-      children?: ReactNode
+      children?: React.ReactNode
     }
 
 export function FileTreeIcon({
@@ -286,18 +282,18 @@ export function FileTreeIcon({
     'aria-hidden': true,
     'className': cn('relative flex size-5 shrink-0 items-center justify-center text-text-secondary', className),
     'children': (
-      <>
+      <React.Fragment>
         {children ?? (
           type === 'folder'
             ? (
-                <>
+                <React.Fragment>
                   <span className="size-4 i-ri-folder-line group-data-panel-open/file-tree-row:hidden" />
                   <span className="hidden size-4 text-text-accent i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
-                </>
+                </React.Fragment>
               )
             : <span className={cn('size-4', fileTreeIconClassNames[type])} />
         )}
-      </>
+      </React.Fragment>
     ),
   }
 

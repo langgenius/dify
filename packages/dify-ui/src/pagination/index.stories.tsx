@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Pagination,
   PaginationSkeleton,
@@ -15,8 +14,8 @@ function PaginationExample({
   initialPageSize?: number
   totalPages?: number
 }) {
-  const [page, setPage] = useState(initialPage)
-  const [pageSize, setPageSize] = useState(initialPageSize)
+  const [page, setPage] = React.useState(initialPage)
+  const [pageSize, setPageSize] = React.useState(initialPageSize)
 
   return (
     <Pagination
@@ -32,7 +31,7 @@ function PaginationExample({
   )
 }
 
-function PaginationDemo(props: ComponentProps<typeof PaginationExample>) {
+function PaginationDemo(props: React.ComponentProps<typeof PaginationExample>) {
   return (
     <div className="w-236 max-w-full bg-components-panel-bg px-16 py-10">
       <PaginationExample {...props} />

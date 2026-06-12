@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Dialog,
   DialogCloseButton,
@@ -95,7 +95,7 @@ export const WithoutCloseButton: Story = {
 }
 
 const ControlledDemo = () => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = React.useState(false)
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -148,7 +148,7 @@ type ApiExtensionFormValues = {
 }
 
 const FormDialogDemo = () => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = React.useState(false)
 
   return (
     <Dialog open={open} onOpenChange={setOpen} disablePointerDismissal>

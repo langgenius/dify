@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
-import type { RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import * as React from 'react'
 import {
   Autocomplete,
   AutocompleteClear,
@@ -336,12 +335,12 @@ const LimitedStatus = ({
 }
 
 const AsyncSearchDemo = () => {
-  const [searchValue, setSearchValue] = useState('')
-  const [searchResults, setSearchResults] = useState<Suggestion[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [searchValue, setSearchValue] = React.useState('')
+  const [searchResults, setSearchResults] = React.useState<Suggestion[]>([])
+  const [error, setError] = React.useState<string | null>(null)
+  const [isPending, startTransition] = React.useTransition()
   const { contains } = useAutocompleteFilter()
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
 
   const status = (() => {
     if (isPending)
@@ -419,9 +418,9 @@ const AsyncSearchDemo = () => {
 const VirtualizedSuggestionList = ({
   virtualizerRef,
 }: {
-  virtualizerRef: RefObject<StoryVirtualizer | null>
+  virtualizerRef: React.RefObject<StoryVirtualizer | null>
 }) => {
-  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const filteredItems = useAutocompleteFilteredItems<Suggestion>()
   const virtualizer = useVirtualizer({
     count: filteredItems.length,
@@ -430,7 +429,7 @@ const VirtualizedSuggestionList = ({
     overscan: 6,
   })
 
-  useEffect(() => {
+  React.useEffect(() => {
     virtualizerRef.current = virtualizer
 
     return () => {
@@ -490,7 +489,7 @@ const FuzzyHighlight = ({
   text: string
   query: string
 }) => {
-  const parts = useMemo(() => {
+  const parts = React.useMemo(() => {
     const trimmed = query.trim()
 
     if (!trimmed)
@@ -501,18 +500,18 @@ const FuzzyHighlight = ({
   }, [query, text])
 
   return (
-    <>
+    <React.Fragment>
       {parts.map((part, index) => (
         part.toLowerCase() === query.trim().toLowerCase()
           ? <mark key={`${part}-${index}`} className="bg-transparent text-text-accent">{part}</mark>
           : part
       ))}
-    </>
+    </React.Fragment>
   )
 }
 
 const FuzzyMatchingDemo = () => {
-  const [value, setValue] = useState('retr')
+  const [value, setValue] = React.useState('retr')
   const { contains } = useAutocompleteFilter({ sensitivity: 'base' })
 
   return (
@@ -702,7 +701,7 @@ export const CommandPalette: Story = {
 }
 
 const VirtualizedLongSuggestionsDemo = () => {
-  const virtualizerRef = useRef<StoryVirtualizer | null>(null)
+  const virtualizerRef = React.useRef<StoryVirtualizer | null>(null)
 
   return (
     <div className={inputWidth}>

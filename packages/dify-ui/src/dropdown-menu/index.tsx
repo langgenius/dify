@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { OverlayItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { Menu } from '@base-ui/react/menu'
@@ -89,7 +89,7 @@ export function DropdownMenuLabel({
 }
 
 type DropdownMenuContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -197,7 +197,7 @@ export function DropdownMenuSubTrigger({
 }
 
 type DropdownMenuSubContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number

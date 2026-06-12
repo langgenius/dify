@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { Button } from '../index'
@@ -174,7 +174,7 @@ describe('Button', () => {
     })
 
     it('does not submit a form when a loading submit button is clicked', async () => {
-      const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault())
+      const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault())
       const screen = await render(
         <form onSubmit={onSubmit}>
           <Button type="submit" loading>Submit</Button>
@@ -187,7 +187,7 @@ describe('Button', () => {
     })
 
     it('does not implicitly submit a form through a loading submit button', async () => {
-      const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault())
+      const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault())
       const screen = await render(
         <form onSubmit={onSubmit}>
           <label htmlFor="name">Name</label>
