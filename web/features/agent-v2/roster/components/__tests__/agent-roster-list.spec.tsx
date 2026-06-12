@@ -57,6 +57,14 @@ describe('AgentRosterList', () => {
     expect(screen.queryByText('agentV2.roster.sources.agent_app')).not.toBeInTheDocument()
   })
 
+  it('uses the Figma-aligned card title and role typography', () => {
+    renderList([createAgent()])
+
+    expect(screen.getByRole('heading', { name: 'Research Agent' })).toHaveClass('system-md-semibold')
+    expect(screen.getByText('Researcher')).toHaveClass('system-xs-regular')
+    expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
+  })
+
   it('derives the card badge from published reference count', () => {
     renderList([
       createAgent({

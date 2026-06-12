@@ -52,7 +52,7 @@ function AgentRosterSkeleton() {
       {skeletonRows.map(row => (
         <div key={row} className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3">
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-            <SkeletonRectangle className="my-0 size-12 shrink-0 animate-pulse rounded-xl" />
+            <SkeletonRectangle className="my-0 size-12 shrink-0 animate-pulse rounded-full" />
             <div className="min-w-0 flex-1 space-y-2.5 py-px">
               <SkeletonRectangle className="my-0 h-4 w-36 max-w-full animate-pulse rounded-md" />
               <SkeletonRectangle className="my-0 h-3 w-20 max-w-full animate-pulse rounded-md" />
@@ -129,17 +129,18 @@ function AgentRosterItem({
           <span aria-hidden className="shrink-0">
             <AppIcon
               size="xl"
+              rounded
               iconType={iconType}
               icon={agent.icon ?? undefined}
               background={agent.icon_background}
               imageUrl={imageUrl}
             />
           </span>
-          <div className="min-w-0 flex-1 py-px">
-            <h2 id={nameId} className="truncate system-sm-semibold text-text-secondary">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+            <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
               {agent.name}
             </h2>
-            <p className="mt-1.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+            <p className="truncate system-xs-regular text-text-tertiary">
               {agent.role}
             </p>
           </div>
@@ -207,7 +208,7 @@ function AgentRosterItem({
       </div>
       <div className="absolute top-0 right-0 flex h-5 items-start overflow-hidden">
         <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
-        <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-semibold-uppercase text-text-tertiary">
+        <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-medium-uppercase text-text-tertiary">
           {t(`roster.usageStatus.${usageStatus}`)}
         </div>
       </div>
