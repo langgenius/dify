@@ -74,6 +74,7 @@ export function CreateAgentDialog() {
             </FieldLabel>
             <FieldControl
               autoComplete="off"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- The create dialog opens from an explicit command, and the next expected action is naming the agent.
               autoFocus
               maxLength={255}
               placeholder={t('roster.createForm.namePlaceholder')}

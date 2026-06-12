@@ -1,7 +1,18 @@
+import type { RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,108 +51,115 @@ function AgentRosterAvatar({
   )
 }
 
-function AgentRosterLayeredPanel({
+function AgentRosterDrawer({
   agent,
+  open,
+  portalContainerRef,
   onClose,
 }: {
   agent: AgentRosterNodeData
+  open: boolean
+  portalContainerRef: RefObject<HTMLDivElement | null>
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const titleId = `agent-roster-panel-${agent.id}`
 
   return (
-    <section
-      role="dialog"
-      aria-modal="false"
-      aria-labelledby={titleId}
-      className="fixed top-14 bottom-1 z-40 flex flex-col overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg text-text-primary shadow-2xl shadow-shadow-shadow-5 outline-hidden"
-      style={{
-        right: 'var(--workflow-node-panel-right, 4px)',
-        width: 'var(--workflow-node-panel-width, 400px)',
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          event.stopPropagation()
+    <Drawer
+      open={open}
+      swipeDirection="right"
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen)
           onClose()
-        }
       }}
     >
-      <header className="flex shrink-0 flex-col gap-3 border-b border-divider-subtle bg-components-panel-bg py-3 pr-4 pl-3">
-        <div className="flex min-w-0 items-start justify-between">
-          <div className="flex min-w-0 flex-1 items-center gap-2 px-1 py-0.5">
-            <AgentRosterAvatar agent={agent} size="md" className="size-8" />
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <div className="flex min-w-0 items-center gap-1">
-                <h2 id={titleId} className="truncate system-sm-medium text-text-secondary">
-                  {agent.name}
-                </h2>
-                <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />
+      <DrawerPortal container={portalContainerRef}>
+        <DrawerBackdrop className="bg-transparent" />
+        <DrawerViewport>
+          <DrawerPopup
+            className="p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
+            style={{
+              right: 'var(--workflow-node-panel-right, 4px)',
+              width: 'var(--workflow-node-panel-width, 400px)',
+            }}
+          >
+            <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+              <header className="flex h-[108px] shrink-0 flex-col gap-3 border-b border-divider-subtle bg-components-panel-bg py-3 pr-4 pl-3">
+                <div className="flex h-10 min-w-0 items-start justify-between">
+                  <div className="flex h-10 min-w-0 flex-1 items-center gap-2 px-0.5 py-0.5">
+                    <AgentRosterAvatar agent={agent} size="md" className="size-9" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
+                      <div className="flex min-w-0 items-center gap-1">
+                        <DrawerTitle className="truncate system-sm-medium text-text-secondary">
+                          {agent.name}
+                        </DrawerTitle>
+                        <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />
+                      </div>
+                      <p className="truncate system-xs-regular text-text-tertiary">
+                        {agent.description}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1 py-1">
+                    <button
+                      type="button"
+                      aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
+                      className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    >
+                      <span aria-hidden className="i-ri-more-fill size-4" />
+                    </button>
+                    <div className="flex h-3.5 items-start px-1">
+                      <div className="h-full w-px bg-divider-regular" />
+                    </div>
+                    <DrawerCloseButton
+                      aria-label={t('operation.close', { ns: 'common' })}
+                      className="size-6 rounded-md"
+                    />
+                  </div>
+                </div>
+                <div className="flex h-8 gap-2 pl-1">
+                  <Link
+                    href={getAgentDetailPath(agent.id, 'configure')}
+                    className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                  >
+                    <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
+                    <span className="truncate">
+                      {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
+                    </span>
+                  </Link>
+                  <Button
+                    variant="secondary"
+                    size="medium"
+                    className="min-w-0 flex-1 gap-1.5 px-3"
+                  >
+                    <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
+                    <span className="truncate">
+                      {t(`${i18nPrefix}.roster.makeCopy`, { ns: 'workflow' })}
+                    </span>
+                  </Button>
+                </div>
+              </header>
+              <div
+                role="region"
+                aria-label={t(`${i18nPrefix}.roster.panelLabel`, { ns: 'workflow', name: agent.name })}
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+              >
+                <div className="h-full min-h-80 bg-components-panel-bg" />
               </div>
-              <p className="truncate system-xs-regular text-text-tertiary">
-                {agent.description}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1 py-1">
-            <button
-              type="button"
-              aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
-              className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="i-ri-more-fill size-4" />
-            </button>
-            <div className="flex h-3.5 items-start px-1">
-              <div className="h-full w-px bg-divider-regular" />
-            </div>
-            <button
-              type="button"
-              autoFocus
-              aria-label={t('operation.close', { ns: 'common' })}
-              className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              onClick={onClose}
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </button>
-          </div>
-        </div>
-        <div className="flex gap-2 pl-1">
-          <Link
-            href={getAgentDetailPath(agent.id, 'configure')}
-            className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
-            <span className="truncate">
-              {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
-            </span>
-          </Link>
-          <Button
-            variant="secondary"
-            size="medium"
-            className="min-w-0 flex-1 gap-1.5 px-3"
-          >
-            <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
-            <span className="truncate">
-              {t(`${i18nPrefix}.roster.makeCopy`, { ns: 'workflow' })}
-            </span>
-          </Button>
-        </div>
-      </header>
-      <div
-        role="region"
-        aria-label={t(`${i18nPrefix}.roster.panelLabel`, { ns: 'workflow', name: agent.name })}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-      >
-        <div className="h-full min-h-80 bg-components-panel-bg" />
-      </div>
-    </section>
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
+    </Drawer>
   )
 }
 
 export function AgentRosterField({
   agent,
+  portalContainerRef,
 }: {
   agent?: AgentRosterNodeData
+  portalContainerRef: RefObject<HTMLDivElement | null>
 }) {
   const { t } = useTranslation()
   const [isPanelOpen, setIsPanelOpen] = useState(false)
@@ -182,12 +200,12 @@ export function AgentRosterField({
           <span aria-hidden className="i-ri-arrow-right-line size-4" />
         </span>
       </button>
-      {isPanelOpen && (
-        <AgentRosterLayeredPanel
-          agent={agent}
-          onClose={() => setIsPanelOpen(false)}
-        />
-      )}
+      <AgentRosterDrawer
+        agent={agent}
+        open={isPanelOpen}
+        portalContainerRef={portalContainerRef}
+        onClose={() => setIsPanelOpen(false)}
+      />
     </FieldRoot>
   )
 }

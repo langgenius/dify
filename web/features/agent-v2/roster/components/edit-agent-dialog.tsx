@@ -95,6 +95,7 @@ export function EditAgentDialog({
             </FieldLabel>
             <FieldControl
               autoComplete="off"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- The edit dialog opens from an explicit command, and the name field is the primary editable control.
               autoFocus
               maxLength={255}
               onValueChange={setName}

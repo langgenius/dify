@@ -5030,14 +5030,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/blocks.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/featured-tools.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -5752,7 +5744,7 @@
       "count": 2
     },
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 4
     }
   },
   "web/app/components/workflow/nodes/_base/components/workflow-panel/last-run/index.tsx": {
@@ -5931,11 +5923,6 @@
   "web/app/components/workflow/nodes/code/use-single-run-form-params.ts": {
     "ts/no-explicit-any": {
       "count": 5
-    }
-  },
-  "web/app/components/workflow/nodes/components.ts": {
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/workflow/nodes/data-source-empty/hooks.ts": {
@@ -7108,19 +7095,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/run/agent-log/agent-log-trigger.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/run/agent-log/index.tsx": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/run/hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -7799,11 +7773,6 @@
     }
   },
   "web/service/billing.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/client.ts": {
     "no-restricted-imports": {
       "count": 1
     }
