@@ -20,6 +20,7 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
@@ -33,19 +34,6 @@ const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean 
   return edges.some(edge => startNodeIds.includes(edge.source))
 }
 
-const hasWorkflowEntryNode = (nodes: Node[] = []): boolean => {
-  return nodes.some(node => (
-    node?.data?.type === BlockEnum.Start
-    || node?.data?.type === BlockEnum.TriggerSchedule
-    || node?.data?.type === BlockEnum.TriggerWebhook
-    || node?.data?.type === BlockEnum.TriggerPlugin
-  ))
-}
-
-const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
-  return nodes.some(node => node?.data?.type === BlockEnum.StartPlaceholder)
-}
-
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {
@@ -53,6 +41,7 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const appDetail = useAppStore(state => state.appDetail)!
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
@@ -72,18 +61,12 @@ export const useWorkflowInit = () => {
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-      const shouldRestoreStartPlaceholder = appDetail.mode === AppModeEnum.WORKFLOW && !hasWorkflowEntryNode(res.graph.nodes)
-      const initialData = shouldRestoreStartPlaceholder
-        ? {
-            ...res,
-            graph: {
-              ...res.graph,
-              nodes: hasStartPlaceholderNode(res.graph.nodes)
-                ? res.graph.nodes
-                : [...nodesTemplate, ...res.graph.nodes],
-            },
-          }
-        : res
+      const initialData = {
+        ...res,
+        graph: getWorkflowDraftGraphForCanvas(res.graph, {
+          localStartPlaceholderNodes: nodesTemplate,
+        }),
+      }
 
       setData(initialData)
       workflowStore.setState({
@@ -133,7 +116,7 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
+  }, [appDetail, getWorkflowDraftGraphForCanvas, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
     handleGetInitialWorkflowData()
