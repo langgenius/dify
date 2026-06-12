@@ -104,6 +104,7 @@ export const zSystemFeatureModel = z.object({
   max_plugin_package_size: z.int().default(15728640),
   plugin_installation_permission: zPluginInstallationPermissionModel,
   plugin_manager: zPluginManagerModel,
+  rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
   webapp_auth: zWebAppAuthModel,

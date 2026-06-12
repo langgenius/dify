@@ -3,7 +3,8 @@ import type { AccountSettingTab } from '@/app/components/header/account-setting/
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useState } from 'react'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
@@ -13,15 +14,19 @@ import {
 
 } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { hasPermission } from '@/utils/permission'
+import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
 import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
+import PermissionsPage from './permissions-page'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -50,12 +55,11 @@ export default function AccountSetting({
   const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const workplaceGroupItems: GroupItem[] = (() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return []
-
     const items: GroupItem[] = [
       {
         key: ACCOUNT_SETTING_TAB.PROVIDER,
@@ -71,6 +75,23 @@ export default function AccountSetting({
       },
     ]
 
+    if (systemFeatures.rbac_enabled) {
+      items.push(
+        {
+          key: ACCOUNT_SETTING_TAB.PERMISSIONS,
+          name: t('settings.rolesAndPermissions', { ns: 'common' }),
+          icon: <span className={cn('i-ri-user-settings-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-user-settings-fill', iconClassName)} />,
+        },
+        {
+          key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
+          name: t('settings.resourceAccess', { ns: 'common' }),
+          icon: <span className={cn('i-ri-lock-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-lock-fill', iconClassName)} />,
+        },
+      )
+    }
+
     if (enableBilling) {
       items.push({
         key: ACCOUNT_SETTING_TAB.BILLING,
@@ -81,13 +102,18 @@ export default function AccountSetting({
       })
     }
 
+    if (hasPermission(workspacePermissionKeys, 'data_source.manage')) {
+      items.push(
+        {
+          key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
+          name: t('settings.dataSource', { ns: 'common' }),
+          icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+          activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
+        },
+      )
+    }
+
     items.push(
-      {
-        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-        name: t('settings.dataSource', { ns: 'common' }),
-        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
-      },
       {
         key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
         name: t('settings.apiBasedExtension', { ns: 'common' }),
@@ -131,6 +157,8 @@ export default function AccountSetting({
     },
   ]
   const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
+  const visibleActiveItem = activeItem ?? menuItems[0]!.items[0] ?? menuItems[1]!.items[0]
+  const visibleActiveMenu = visibleActiveItem?.key ?? ACCOUNT_SETTING_TAB.LANGUAGE
 
   const [searchValue, setSearchValue] = useState<string>('')
 
@@ -151,14 +179,14 @@ export default function AccountSetting({
       show
       onClose={handleClose}
     >
-      <div className="mx-auto flex h-screen max-w-[1048px]">
-        <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[224px]">
+      <div className="mx-auto flex h-screen w-full max-w-262">
+        <div className="flex w-11 shrink-0 flex-col border-r border-divider-burn pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className="mb-2">
-                  {!isCurrentWorkspaceDatasetOperator && (
+                  {menuItem.items.length !== 0 && (
                     <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
                   )}
                   <div>
@@ -168,8 +196,8 @@ export default function AccountSetting({
                           type="button"
                           key={item.key}
                           className={cn(
-                            'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
-                            activeMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
+                            'mb-0.5 flex h-9.25 w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
+                            visibleActiveMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
                           )}
                           aria-label={item.name}
                           title={item.name}
@@ -177,7 +205,7 @@ export default function AccountSetting({
                             handleTabChange(item.key)
                           }}
                         >
-                          {activeMenu === item.key ? item.activeIcon : item.icon}
+                          {visibleActiveMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className="truncate">{item.name}</div>}
                         </button>
                       ))
@@ -188,7 +216,7 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px]">
+        <div className="relative flex min-h-0 min-w-0 flex-1">
           <div className="fixed top-6 right-6 z-9999 flex flex-col items-center">
             <Button
               variant="tertiary"
@@ -202,21 +230,22 @@ export default function AccountSetting({
             <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
           </div>
           <ScrollArea
-            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            ref={containerRef}
+            className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-components-panel-bg"
             slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: 'min-h-full pb-4',
+              viewport: 'overscroll-contain overflow-x-hidden',
+              content: '!min-w-0 min-h-full w-full max-w-full overflow-x-hidden pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pt-[27px] pb-2">
-              <div className="shrink-0 title-2xl-semi-bold text-text-primary">
-                {activeItem?.name}
-                {activeItem?.description && (
-                  <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
+            <div className="sticky top-0 z-20 mx-4 mb-4.5 flex min-w-0 items-center gap-3 bg-components-panel-bg pt-6.75 pb-2 sm:mx-8">
+              <div className="min-w-0 flex-1 title-2xl-semi-bold text-text-primary">
+                {visibleActiveItem?.name}
+                {visibleActiveItem?.description && (
+                  <div className="mt-1 system-sm-regular text-text-tertiary">{visibleActiveItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
-                <div className="flex grow justify-end">
+              {visibleActiveItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
+                <div className="flex shrink-0 justify-end">
                   <SearchInput
                     className="w-52"
                     onValueChange={setSearchValue}
@@ -225,14 +254,16 @@ export default function AccountSetting({
                 </div>
               )}
             </div>
-            <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
-              {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
+            <div className="min-w-0 px-4 pt-2 sm:px-8">
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={containerRef} />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+              {visibleActiveMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>
           </ScrollArea>
         </div>

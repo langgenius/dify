@@ -85,6 +85,12 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => unknown) => selector({
+    accessControl: { canReleaseAndVersion: true },
+  }),
+}))
+
 const mockPublishedAt = vi.fn(() => null as number | null)
 const mockDraftUpdatedAt = vi.fn(() => 1700000000)
 const mockPipelineId = vi.fn(() => 'test-pipeline-id')

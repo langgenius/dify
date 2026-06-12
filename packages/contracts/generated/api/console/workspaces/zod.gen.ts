@@ -106,6 +106,15 @@ export const zEndpointUpdatePayload = z.object({
 })
 
 /**
+ * MemberInvitePayload
+ */
+export const zMemberInvitePayload = z.object({
+  emails: z.array(z.string()).optional(),
+  language: z.string().nullish(),
+  role: z.string(),
+})
+
+/**
  * OwnerTransferCheckPayload
  */
 export const zOwnerTransferCheckPayload = z.object({
@@ -566,6 +575,7 @@ export const zAccountWithRole = z.object({
   last_login_at: z.int().nullish(),
   name: z.string(),
   role: z.string(),
+  roles: z.array(z.record(z.string(), z.string())).optional(),
   status: z.string(),
 })
 
@@ -574,20 +584,6 @@ export const zAccountWithRole = z.object({
  */
 export const zAccountWithRoleList = z.object({
   accounts: z.array(zAccountWithRole),
-})
-
-/**
- * TenantAccountRole
- */
-export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
-
-/**
- * MemberInvitePayload
- */
-export const zMemberInvitePayload = z.object({
-  emails: z.array(z.string()).optional(),
-  language: z.string().nullish(),
-  role: zTenantAccountRole,
 })
 
 /**
@@ -1809,6 +1805,375 @@ export const zPostWorkspacesCurrentPluginUploadGithubResponse = z.record(z.strin
  * Success
  */
 export const zPostWorkspacesCurrentPluginUploadPkgResponse = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAccessPoliciesResponse = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentRbacAccessPoliciesResponse = z.record(z.string(), z.unknown())
+
+export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
+  policy_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
+  policy_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath = z.object({
+  policy_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath = z.object({
+  policy_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath = z.object({
+  binding_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath = z.object({
+  binding_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsPath = z.object({
+  app_id: z.string(),
+  policy_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath
+  = z.object({
+    app_id: z.string(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsPath
+  = z.object({
+    app_id: z.string(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsPath
+  = z.object({
+    dataset_id: z.string(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath
+  = z.object({
+    dataset_id: z.string(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsPath
+  = z.object({
+    dataset_id: z.string(),
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath = z.object({
+  dataset_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath = z.object({
+  member_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath = z.object({
+  member_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacMyPermissionsResponse = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolesResponse = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentRbacRolesResponse = z.record(z.string(), z.unknown())
+
+export const zDeleteWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
+  role_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
+  role_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolesByRoleIdResponse = z.record(z.string(), z.unknown())
+
+export const zPutWorkspacesCurrentRbacRolesByRoleIdPath = z.object({
+  role_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacRolesByRoleIdResponse = z.record(z.string(), z.unknown())
+
+export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath = z.object({
+  role_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath = z.object({
+  role_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath = z.object({
+  policy_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsPath
+  = z.object({
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsPath
+  = z.object({
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
+export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath
+  = z.object({
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsPath
+  = z.object({
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsPath
+  = z.object({
+    policy_id: z.string(),
+  })
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse
+  = z.record(z.string(), z.unknown())
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 /**
  * Success

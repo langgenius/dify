@@ -42,6 +42,16 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockHandleStopRun = vi.fn()

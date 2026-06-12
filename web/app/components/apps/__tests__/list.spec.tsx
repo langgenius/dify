@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
@@ -47,11 +48,15 @@ vi.mock('@/service/client', () => ({
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+let mockWorkspacePermissionKeys = ['app.create_and_management']
+let mockIsLoadingWorkspacePermissionKeys = false
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
     userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }),
 }))
 
@@ -216,8 +221,8 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../new-app-card', () => ({
-  default: (_props: { ref?: React.Ref<unknown> }) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
+  default: ({ disabled }: { disabled?: boolean, ref?: React.Ref<unknown> }) => {
+    return React.createElement('button', { 'data-testid': 'new-app-card', 'type': 'button', disabled }, 'New App Card')
   },
 }))
 
@@ -277,6 +282,8 @@ describe('List', () => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockWorkspacePermissionKeys = ['app.create_and_management']
+    mockIsLoadingWorkspacePermissionKeys = false
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
@@ -469,17 +476,19 @@ describe('List', () => {
     })
   })
 
-  describe('Non-Editor User', () => {
-    it('should not render new app card for non-editors', () => {
+  describe('Create Permission', () => {
+    it('should render disabled new app card when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
-      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+      expect(screen.getByTestId('new-app-card')).toBeDisabled()
     })
 
-    it('should not render drop DSL hint for non-editors', () => {
+    it('should not render drop DSL hint when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
@@ -499,12 +508,25 @@ describe('List', () => {
 
   describe('Local Storage Refresh', () => {
     it('should call refetch when refresh key is set in localStorage', () => {
-      localStorage.setItem('needRefreshAppList', '1')
+      const getItemSpy = vi.spyOn(localStorage, 'getItem')
+      const removeItemSpy = vi.spyOn(localStorage, 'removeItem')
+      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
 
       renderList()
 
+      expect(getItemSpy).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY)
+      expect(removeItemSpy).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY)
       expect(mockRefetch).toHaveBeenCalled()
-      expect(localStorage.getItem('needRefreshAppList')).toBeNull()
+      expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBeNull()
+    })
+
+    it('should not call refetch when refresh key is not set in localStorage', () => {
+      const removeItemSpy = vi.spyOn(localStorage, 'removeItem')
+
+      renderList()
+
+      expect(removeItemSpy).not.toHaveBeenCalled()
+      expect(mockRefetch).not.toHaveBeenCalled()
     })
   })
 

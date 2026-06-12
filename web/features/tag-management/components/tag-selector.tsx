@@ -8,8 +8,11 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
+import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
 import { TagTrigger } from './tag-trigger'
@@ -43,6 +46,7 @@ type TagSelectorProps = TagSelectorRootProps & TagSelectorContentProps & {
   targetId: string
   type: TagType
   value: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
   onTagsChange?: () => void
 }
@@ -51,6 +55,7 @@ export const TagSelector = ({
   targetId,
   type,
   value,
+  canBindOrUnbindTags,
   onOpenTagManagement = () => {},
   onTagsChange,
   placement = 'bottom-start',
@@ -66,6 +71,9 @@ export const TagSelector = ({
   const [open, setOpen] = useState(false)
   const [draftTags, setDraftTags] = useState<Tag[]>(value)
   const [inputValue, setInputValue] = useState('')
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+
   const applyTagBindingsMutation = useApplyTagBindingsMutation()
   const {
     isPending: isCreatingTag,
@@ -212,6 +220,7 @@ export const TagSelector = ({
       isItemEqualToValue={isSameTag}
     >
       <ComboboxTrigger
+        disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
           'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',

@@ -34,6 +34,7 @@ export type AppDetail = {
   id: string
   mode_compatible_with_agent: string
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   tracing?: JsonValue
   updated_at?: number | null
@@ -61,6 +62,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -94,6 +96,7 @@ export type AppDetailWithSite = {
   max_active_requests?: number | null
   mode_compatible_with_agent: string
   name: string
+  permission_keys?: Array<string>
   site?: Site
   tags?: Array<Tag>
   tracing?: JsonValue
@@ -391,6 +394,7 @@ export type ConvertToWorkflowPayload = {
 
 export type NewAppResponse = {
   new_app_id: string
+  permission_keys?: Array<string>
 }
 
 export type CopyAppPayload = {
@@ -983,6 +987,7 @@ export type AppPartial = {
   max_active_requests?: number | null
   mode_compatible_with_agent: string
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1450,6 +1455,9 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
   status: string
 }
 

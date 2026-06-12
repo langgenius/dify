@@ -6,6 +6,9 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { PluginSource } from '../../types'
 import OperationDropdown from '../operation-dropdown'
 
+let mockCanUpdate = true
+let mockCanUninstall = true
+
 const render = (ui: ReactElement) =>
   renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
 
@@ -31,6 +34,13 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenuSeparator: () => <hr data-testid="dropdown-separator" />,
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  default: () => ({
+    canUpdate: mockCanUpdate,
+    canUninstall: mockCanUninstall,
+  }),
+}))
+
 describe('OperationDropdown', () => {
   const mockOnInfo = vi.fn()
   const mockOnCheckVersion = vi.fn()
@@ -45,6 +55,8 @@ describe('OperationDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanUpdate = true
+    mockCanUninstall = true
   })
 
   describe('Rendering', () => {
@@ -84,10 +96,18 @@ describe('OperationDropdown', () => {
       expect(screen.getByText('plugin.detailPanel.operation.viewDetail')).toBeInTheDocument()
     })
 
-    it('should always render remove option', () => {
+    it('should render remove option when user can uninstall plugin', () => {
       render(<OperationDropdown {...defaultProps} />)
 
       expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
+    })
+
+    it('should not render remove option when user cannot uninstall plugin', () => {
+      mockCanUninstall = false
+
+      render(<OperationDropdown {...defaultProps} />)
+
+      expect(screen.queryByText('plugin.detailPanel.operation.remove')).not.toBeInTheDocument()
     })
 
     it('should not render info option for marketplace source', () => {

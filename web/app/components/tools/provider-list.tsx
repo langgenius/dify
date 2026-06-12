@@ -1,5 +1,6 @@
 'use client'
 import type { Collection } from './types'
+import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
@@ -17,11 +18,14 @@ import CustomCreateCard from '@/app/components/tools/provider/custom-create-card
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
+import { hasPermission } from '@/utils/permission'
 import Marketplace from './marketplace'
 import { useMarketplace } from './marketplace/hooks'
+
 import MCPList from './mcp'
 import { getToolType } from './utils'
 
@@ -31,6 +35,19 @@ const toolProviderCategorySet = new Set<string>(TOOL_PROVIDER_CATEGORY_VALUES)
 
 const isToolProviderCategory = (value: string): value is ToolProviderCategory => {
   return toolProviderCategorySet.has(value)
+}
+
+const canAccessToolProviderCategory = (
+  category: ToolProviderCategory,
+  permissions: { canManageCustomAndWorkflow: boolean, canManageMCP: boolean },
+) => {
+  if (category === 'builtin')
+    return true
+
+  if (category === 'api' || category === 'workflow')
+    return permissions.canManageCustomAndWorkflow
+
+  return permissions.canManageMCP
 }
 
 const parseAsToolProviderCategory = parseAsStringLiteral(TOOL_PROVIDER_CATEGORY_VALUES)
@@ -45,14 +62,26 @@ const ProviderList = () => {
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const [activeTab, setActiveTab] = useQueryState('category', parseAsToolProviderCategory)
+  const canManageCustomAndWorkflow = hasPermission(workspacePermissionKeys, 'tool.manage')
+  const canManageMCP = hasPermission(workspacePermissionKeys, 'mcp.manage')
+  const canAccessActiveTab = canAccessToolProviderCategory(activeTab, {
+    canManageCustomAndWorkflow,
+    canManageMCP,
+  })
+  const renderedActiveTab = canAccessActiveTab ? activeTab : 'builtin'
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
-    { value: 'api', text: t('type.custom', { ns: 'tools' }) },
-    { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
-    { value: 'mcp', text: 'MCP' },
+    ...(canManageCustomAndWorkflow
+      ? [
+          { value: 'api', text: t('type.custom', { ns: 'tools' }) },
+          { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
+        ]
+      : []),
+    ...(canManageMCP ? [{ value: 'mcp', text: 'MCP' }] : []),
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -65,7 +94,7 @@ const ProviderList = () => {
   const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
   const filteredCollectionList = useMemo(() => {
     return collectionList.filter((collection) => {
-      if (collection.type !== activeTab)
+      if (collection.type !== renderedActiveTab)
         return false
       if (tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
         return false
@@ -73,9 +102,19 @@ const ProviderList = () => {
         return Object.values(collection.label).some(value => value.toLowerCase().includes(keywords.toLowerCase()))
       return true
     })
-  }, [activeTab, tagFilterValue, keywords, collectionList])
+  }, [renderedActiveTab, tagFilterValue, keywords, collectionList])
 
   const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
+  useEffect(() => {
+    if (canAccessActiveTab)
+      return
+
+    queueMicrotask(() => {
+      void setActiveTab('builtin')
+      setCurrentProviderId(undefined)
+    })
+  }, [canAccessActiveTab, setActiveTab])
+
   const currentProvider = useMemo<Collection | undefined>(() => {
     return filteredCollectionList.find(collection => collection.id === currentProviderId)
   }, [currentProviderId, filteredCollectionList])
@@ -131,23 +170,25 @@ const ProviderList = () => {
           className="relative flex grow flex-col overflow-y-auto bg-background-body"
         >
           <div className={cn(
-            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-4 pb-2 leading-[56px]',
+            'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pt-4 pb-2 leading-14',
             currentProviderId && 'pr-6',
           )}
           >
             <TabSliderNew
-              value={activeTab}
+              value={renderedActiveTab}
               onChange={(state) => {
                 if (!isToolProviderCategory(state))
                   return
+                if (!canAccessToolProviderCategory(state, { canManageCustomAndWorkflow, canManageMCP }))
+                  return
                 setActiveTab(state)
-                if (state !== activeTab)
+                if (state !== renderedActiveTab)
                   setCurrentProviderId(undefined)
               }}
               options={options}
             />
             <div className="flex items-center gap-2">
-              {activeTab !== 'mcp' && (
+              {renderedActiveTab !== 'mcp' && (
                 <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
               )}
               <Input
@@ -160,17 +201,17 @@ const ProviderList = () => {
               />
             </div>
           </div>
-          {activeTab !== 'mcp' && (
+          {renderedActiveTab !== 'mcp' && (
             <div className={cn(
               'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-              !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+              !filteredCollectionList.length && renderedActiveTab === 'workflow' && 'grow',
             )}
             >
               {isCollectionListLoading
                 ? <ToolCardSkeletonGrid />
                 : (
                     <>
-                      {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+                      {renderedActiveTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
                       {filteredCollectionList.map(collection => (
                         <div
                           key={collection.id}
@@ -187,7 +228,7 @@ const ProviderList = () => {
                               brief: collection.description,
                               org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
                               name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
-                            } as any}
+                            } as unknown as Plugin}
                             footer={(
                               <CardMoreInfo
                                 tags={collection.labels?.map(label => getTagLabel(label)) || []}
@@ -196,16 +237,16 @@ const ProviderList = () => {
                           />
                         </div>
                       ))}
-                      {!filteredCollectionList.length && activeTab === 'workflow' && <div className="absolute top-1/2 left-1/2 -translate-1/2"><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
+                      {!filteredCollectionList.length && renderedActiveTab === 'workflow' && <div className="absolute top-1/2 left-1/2 -translate-1/2"><WorkflowToolEmpty type={getToolType(renderedActiveTab)} /></div>}
                     </>
                   )}
             </div>
           )}
-          {!isCollectionListLoading && !filteredCollectionList.length && activeTab === 'builtin' && (
+          {!isCollectionListLoading && !filteredCollectionList.length && renderedActiveTab === 'builtin' && (
             <Empty lightCard text={t('noTools', { ns: 'tools' })} className="h-[224px] shrink-0 px-12" />
           )}
           <div ref={toolListTailRef} />
-          {enable_marketplace && activeTab === 'builtin' && (
+          {enable_marketplace && renderedActiveTab === 'builtin' && (
             <Marketplace
               searchPluginText={keywords}
               filterPluginTags={tagFilterValue}
@@ -214,7 +255,7 @@ const ProviderList = () => {
               marketplaceContext={marketplaceContext}
             />
           )}
-          {activeTab === 'mcp' && (
+          {renderedActiveTab === 'mcp' && (
             <MCPList searchText={keywords} />
           )}
         </div>

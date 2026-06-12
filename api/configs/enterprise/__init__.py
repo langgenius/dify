@@ -29,6 +29,11 @@ class EnterpriseFeatureConfig(BaseSettings):
         "This helps gain runtime performance by trading off consistency.",
     )
 
+    RBAC_ENABLED: bool = Field(
+        description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
+        default=False,
+    )
+
 
 class EnterpriseTelemetryConfig(BaseSettings):
     """

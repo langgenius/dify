@@ -8,7 +8,12 @@ from pydantic import BaseModel, Field, field_validator
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
@@ -45,11 +50,12 @@ class DailyMessageStatistic(Resource):
         "Daily message statistics retrieved successfully",
         fields.List(fields.Raw(description="Daily message count data")),
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -105,11 +111,12 @@ class DailyConversationStatistic(Resource):
         "Daily conversation statistics retrieved successfully",
         fields.List(fields.Raw(description="Daily conversation count data")),
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -164,11 +171,12 @@ class DailyTerminalsStatistic(Resource):
         "Daily terminal statistics retrieved successfully",
         fields.List(fields.Raw(description="Daily terminal count data")),
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -224,11 +232,12 @@ class DailyTokenCostStatistic(Resource):
         "Daily token cost statistics retrieved successfully",
         fields.List(fields.Raw(description="Daily token cost data")),
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -290,8 +299,9 @@ class AverageSessionInteractionStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -366,11 +376,12 @@ class UserSatisfactionRateStatistic(Resource):
         "User satisfaction rate statistics retrieved successfully",
         fields.List(fields.Raw(description="User satisfaction rate data")),
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -438,8 +449,9 @@ class AverageResponseTimeStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model(mode=AppMode.COMPLETION)
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -495,11 +507,12 @@ class TokensPerSecondStatistic(Resource):
         "Tokens per second statistics retrieved successfully",
         fields.List(fields.Raw(description="Tokens per second data")),
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_monitor")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 

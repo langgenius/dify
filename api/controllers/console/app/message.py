@@ -24,6 +24,7 @@ from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDi
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -180,8 +181,9 @@ class ChatMessageListApi(Resource):
     @login_required
     @account_initialization_required
     @setup_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, app_model: App):
         args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
@@ -255,11 +257,11 @@ class MessageFeedbackApi(Resource):
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
     @console_ns.response(403, "Insufficient permissions")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         args = MessageFeedbackPayload.model_validate(console_ns.payload)
 
@@ -311,10 +313,11 @@ class MessageAnnotationCountApi(Resource):
         "Annotation count retrieved successfully",
         console_ns.models[AnnotationCountResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, app_model: App):
         count = db.session.scalar(
             select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
@@ -337,8 +340,9 @@ class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, message_id: UUID):
         message_id_str = str(message_id)
 
@@ -376,10 +380,11 @@ class MessageFeedbackExportApi(Resource):
     @console_ns.response(200, "Feedback data exported successfully")
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(500, "Internal server error")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, app_model: App):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
@@ -414,10 +419,11 @@ class MessageApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
     @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
     @console_ns.response(404, "Message not found")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, app_model: App, message_id: UUID):
         message_id_str = str(message_id)
 

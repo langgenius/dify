@@ -43,8 +43,11 @@ vi.mock('@/context/app-context', () => ({
   }),
   // Item renders useAppContextWithSelector(state => state.userProfile) for the
   // borrowed-row heuristic. Provide a minimal stub so the selector runs.
-  useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
-    selector({ userProfile: mockUserProfile }),
+  useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      userProfile: mockUserProfile,
+      workspacePermissionKeys: ['credential.manage', 'credential.use'],
+    }),
 }))
 
 vi.mock('@/hooks/use-oauth', () => ({

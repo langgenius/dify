@@ -23,6 +23,8 @@ const {
 }))
 
 let mockNodesReadOnly = false
+let mockCanComment = true
+let mockCanEdit = true
 let mockStoreState: WorkflowStoreState
 
 vi.mock('../../hooks', () => ({
@@ -52,6 +54,16 @@ vi.mock('../../store', () => ({
   useStore: (selector: (state: WorkflowStoreState) => unknown) => selector(mockStoreState),
 }))
 
+vi.mock('../../hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canComment: boolean, canEdit: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canComment: mockCanComment,
+        canEdit: mockCanEdit,
+      },
+    }),
+}))
+
 vi.mock('../add-block', () => ({
   default: () => <div data-testid="add-block" />,
 }))
@@ -74,6 +86,8 @@ describe('Control', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNodesReadOnly = false
+    mockCanComment = true
+    mockCanEdit = true
     mockStoreState = {
       controlMode: ControlMode.Pointer,
       maximizeCanvas: false,
@@ -123,8 +137,9 @@ describe('Control', () => {
       expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
     })
 
-    it('should block note creation when the workflow is read only', () => {
-      mockNodesReadOnly = true
+    it('should block note creation when editing is not allowed', () => {
+      mockCanEdit = false
+      mockCanComment = true
 
       render(<Control />)
 

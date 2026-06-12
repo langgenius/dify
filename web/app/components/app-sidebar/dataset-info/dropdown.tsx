@@ -26,6 +26,7 @@ import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/kn
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
@@ -63,8 +64,17 @@ const DropDown = ({
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: dataset?.created_by,
+    workspacePermissionKeys,
+  }), [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  const canShowOperations = datasetACLCapabilities.canEdit
+    || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canDelete
 
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
@@ -125,6 +135,9 @@ const DropDown = ({
     }
   }, [dataset.id, replace, invalidDatasetList, t])
 
+  if (!canShowOperations)
+    return null
+
   return (
     <DropdownMenu
       open={open}
@@ -146,7 +159,9 @@ const DropDown = ({
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <Menu
-          showDelete={!isCurrentWorkspaceDatasetOperator}
+          showEdit={datasetACLCapabilities.canEdit}
+          showDelete={datasetACLCapabilities.canDelete}
+          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}

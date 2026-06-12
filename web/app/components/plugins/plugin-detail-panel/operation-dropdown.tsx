@@ -10,9 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { PluginSource } from '../types'
 
 type Props = Readonly<{
@@ -43,6 +45,27 @@ const OperationDropdown: FC<Props> = ({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
+  const { canUpdate, canUninstall } = useReferenceSetting()
+
+  const dropdownOptionsCount = useMemo(() => {
+    let count = 0
+    if (source === PluginSource.github) {
+      count += 1 // Info option
+      if (canUpdate)
+        count += 1 // Check update option
+    }
+    if ((source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace) {
+      count += 1 // View detail option
+    }
+    if (canUninstall) {
+      count += 1 // Remove option
+    }
+    return count
+  }, [source, enable_marketplace, canUpdate, canUninstall])
+
+  if (dropdownOptionsCount === 0) {
+    return null
+  }
 
   return (
     <DropdownMenu>
@@ -62,7 +85,7 @@ const OperationDropdown: FC<Props> = ({
             {t('detailPanel.operation.info', { ns: 'plugin' })}
           </DropdownMenuItem>
         )}
-        {source === PluginSource.github && (
+        {source === PluginSource.github && canUpdate && (
           <DropdownMenuItem onClick={onCheckVersion}>
             {t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}
           </DropdownMenuItem>
@@ -76,9 +99,11 @@ const OperationDropdown: FC<Props> = ({
         {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
           <DropdownMenuSeparator />
         )}
-        <DropdownMenuItem variant="destructive" onClick={onRemove}>
-          {t('detailPanel.operation.remove', { ns: 'plugin' })}
-        </DropdownMenuItem>
+        {canUninstall && (
+          <DropdownMenuItem variant="destructive" onClick={onRemove}>
+            {t('detailPanel.operation.remove', { ns: 'plugin' })}
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

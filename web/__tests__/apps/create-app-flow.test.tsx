@@ -21,6 +21,7 @@ import { AppModeEnum } from '@/types/app'
 let mockIsCurrentWorkspaceEditor = true
 let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockSystemFeatures = {
   branding: { enabled: false },
   webapp_auth: { enabled: false },
@@ -51,6 +52,12 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -248,6 +255,7 @@ describe('Create App Flow', () => {
     mockIsCurrentWorkspaceEditor = true
     mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -268,11 +276,18 @@ describe('Create App Flow', () => {
       expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
-    it('should not render NewAppCard when user is not an editor', () => {
+    it('should render disabled NewAppCard when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      const startFromBlankButton = screen.getByRole('button', { name: 'app.newApp.startFromBlank' })
+
+      expect(startFromBlankButton).toBeDisabled()
+
+      fireEvent.click(startFromBlankButton)
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
     })
 
     it('should show loading state when workspace is loading', () => {

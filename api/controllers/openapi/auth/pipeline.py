@@ -60,8 +60,12 @@ class AuthPipeline:
         workspace_membership: bool = False,
         allowed_roles: frozenset[TenantAccountRole] | None = None,
     ) -> Any:
+        token_type = identity.token_type
+        if token_type is None:
+            raise Forbidden("unsupported_token_type")
+
         req_ctx = RequestContext(
-            token_type=identity.token_type,
+            token_type=token_type,
             scope=scope,
             path_params=dict(request.view_args or {}),
             workspace_membership=workspace_membership,
@@ -69,7 +73,7 @@ class AuthPipeline:
         )
 
         data = AuthData(
-            token_type=identity.token_type,
+            token_type=token_type,
             account_id=identity.account_id,
             token_hash=identity.token_hash,
             token_id=identity.token_id,
@@ -207,6 +211,8 @@ class PipelineRouter:
             raise Unauthorized("bearer required")
 
         identity = get_authenticator().authenticate(token)
+        if identity.token_type is None:
+            raise Forbidden("unsupported_token_type")
 
         if allowed_token_types is not None and identity.token_type not in allowed_token_types:
             emit_wrong_surface(

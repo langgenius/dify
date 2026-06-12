@@ -8,9 +8,11 @@ import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 
 let mockWebappAuthEnabled = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -62,8 +64,12 @@ vi.mock('use-context-selector', () => ({
 
 // Mock app context
 vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -101,7 +107,7 @@ vi.mock('@/service/explore', () => ({
   fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
     isLoading: false,
@@ -330,6 +336,15 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   api_rpm: 60,
   api_rph: 3600,
   is_demo: false,
+  permission_keys: [
+    AppACLPermission.ViewLayout,
+    AppACLPermission.TestAndRun,
+    AppACLPermission.Edit,
+    AppACLPermission.ImportExportDSL,
+    AppACLPermission.Delete,
+    AppACLPermission.AccessConfig,
+    AppACLPermission.ReleaseAndVersion,
+  ],
   ...overrides,
 } as App)
 
@@ -341,6 +356,7 @@ describe('AppCard', () => {
     vi.clearAllMocks()
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDeleteMutationPending = false
   })
 
@@ -466,7 +482,7 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
       const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')!
       fireEvent.click(card)
-      expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush)
     })
   })
 
@@ -507,6 +523,18 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+      })
+    })
+
+    it('should hide duplicate option without app.create_and_management permission', async () => {
+      mockWorkspacePermissionKeys = []
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+        expect(screen.queryByText('app.duplicate')).not.toBeInTheDocument()
       })
     })
 
@@ -694,7 +722,7 @@ describe('AppCard', () => {
   describe('Styling', () => {
     it('should have correct card container styling', () => {
       const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="h-[160px]"]')
+      const card = container.querySelector('[class*="h-40"]')
       expect(card).toBeInTheDocument()
     })
 
@@ -1571,6 +1599,36 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
       await waitFor(() => {
         expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should show access control option when only app release permission is available', async () => {
+      mockWorkspacePermissionKeys = []
+      const releaseOnlyApp = createMockApp({
+        permission_keys: [AppACLPermission.ReleaseAndVersion],
+      })
+
+      render(<AppCard app={releaseOnlyApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should hide access control option when app release permission is missing', async () => {
+      const appWithoutReleasePermission = createMockApp({
+        permission_keys: [
+          AppACLPermission.ViewLayout,
+          AppACLPermission.AccessConfig,
+        ],
+      })
+
+      render(<AppCard app={appWithoutReleasePermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
       })
     })
 

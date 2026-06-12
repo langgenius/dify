@@ -1,6 +1,7 @@
 import type { AppInfoActions } from './use-app-info-actions'
 import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { getAppACLCapabilities } from '@/utils/permission'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
@@ -79,12 +80,18 @@ export const AppInfoView = ({
   actions,
   renderDetail = true,
 }: AppInfoViewProps) => {
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const {
     appDetail,
     panelOpen,
     setPanelOpen,
   } = actions
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appDetail?.created_by || appDetail?.workflow?.created_by,
+    workspacePermissionKeys,
+  })
 
   if (!appDetail)
     return null
@@ -96,7 +103,7 @@ export const AppInfoView = ({
           appDetail={appDetail}
           expand={expand}
           onClick={() => {
-            if (isCurrentWorkspaceEditor)
+            if (appACLCapabilities.canAccessLayout)
               setPanelOpen(v => !v)
           }}
         />

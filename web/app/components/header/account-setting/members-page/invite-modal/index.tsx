@@ -1,5 +1,4 @@
 'use client'
-import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -36,7 +35,7 @@ const InviteModal = ({
   const isLimitExceeded = isLimited && (usedSize > licenseLimit.workspace_members.limit)
 
   const locale = useLocale()
-  const [role, setRole] = useState<RoleKey>('normal')
+  const [role, setRole] = useState<string>('')
 
   const [isSubmitting, {
     setTrue: setIsSubmitting,
@@ -78,7 +77,7 @@ const InviteModal = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[400px] px-8 py-6"
+        className="w-100 overflow-visible px-8 py-6"
       >
         <DialogCloseButton className="top-6 right-8" />
         <div className="mb-2 pr-8">
@@ -144,7 +143,7 @@ const InviteModal = ({
             tabIndex={0}
             className="w-full"
             onClick={handleSend}
-            disabled={!emails.length || isLimitExceeded || isSubmitting}
+            disabled={!emails.length || !role || isLimitExceeded || isSubmitting}
             variant="primary"
           >
             {t('members.sendInvite', { ns: 'common' })}

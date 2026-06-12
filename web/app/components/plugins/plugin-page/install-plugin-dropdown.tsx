@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useRef, useState } from 'react'
@@ -104,6 +103,10 @@ const InstallPluginDropdown = ({
     })
   }
 
+  if (installMethods.length === 0) {
+    return null
+  }
+
   return (
     <DropdownMenu modal={false}>
       <div className="relative">
@@ -122,9 +125,9 @@ const InstallPluginDropdown = ({
           )}
         >
           <>
-            <RiAddLine className="size-4" />
+            <span className="i-ri-add-line size-4" />
             <span className="pl-1">{t('installPlugin', { ns: 'plugin' })}</span>
-            <RiArrowDownSLine className="ml-1 size-4" />
+            <span className="ml-1 i-ri-arrow-down-s-line size-4" />
           </>
         </DropdownMenuTrigger>
         <DropdownMenuContent

@@ -23,6 +23,13 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
   ),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: '1.0.0',
+  }),
+}))
+
 vi.mock('../action', () => ({
   default: ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
     <button type="button" onClick={() => onOpenChange(!open)}>

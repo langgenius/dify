@@ -4,6 +4,7 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
 import Description from '../components/description'
 import DatasetCard from '../index'
@@ -22,10 +23,6 @@ const mockPush = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) => selector({ isCurrentWorkspaceDatasetOperator: false }),
 }))
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -53,13 +50,22 @@ vi.mock('../components/dataset-card-header', () => ({
 vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
 }))
+const renderDatasetCardTags = vi.hoisted(() => vi.fn())
+const renderOperationsDropdown = vi.hoisted(() => vi.fn())
+
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
-    <div data-testid="tag-area" onClick={onClick} />
-  ),
+  DatasetCardTags: (props: { onClick: (e: React.MouseEvent) => void, canBindOrUnbindTags?: boolean }) => {
+    renderDatasetCardTags(props)
+    return (
+      <div data-testid="tag-area" onClick={props.onClick} />
+    )
+  },
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: () => <div data-testid="operations-dropdown" />,
+  default: (props: Record<string, unknown>) => {
+    renderOperationsDropdown(props)
+    return <div data-testid="operations-dropdown" />
+  },
 }))
 
 // Factory function for DataSet mock data
@@ -84,6 +90,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   doc_form: ChunkingMode.text,
   total_available_documents: 10,
   runtime_mode: 'general',
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 } as DataSet)
 
@@ -244,13 +251,13 @@ describe('DatasetCard Component', () => {
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents')
   })
 
-  it('should not change background color on hover', () => {
+  it('should apply hover background color', () => {
     const dataset = createMockDataset()
     render(<DatasetCard dataset={dataset} />)
     const card = screen.getByText('Test Dataset').closest('[data-disable-nprogress]')
 
     expect(card).toHaveClass('bg-components-card-bg')
-    expect(card).not.toHaveClass('hover:bg-components-card-bg-alt')
+    expect(card).toHaveClass('hover:bg-components-card-bg-alt')
   })
 
   it('should navigate to hitTesting for external provider', () => {
@@ -277,5 +284,28 @@ describe('DatasetCard Component', () => {
     fireEvent.click(tagArea)
     // Tag area click should not trigger card navigation
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should allow tag binding when dataset has edit ACL permission', () => {
+    const dataset = createMockDataset({ permission_keys: [DatasetACLPermission.Edit] })
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(renderDatasetCardTags).toHaveBeenCalledWith(expect.objectContaining({
+      canBindOrUnbindTags: true,
+    }))
+  })
+
+  it('should pass dataset operations without legacy workspace-role props', () => {
+    const dataset = createMockDataset({
+      permission_keys: [DatasetACLPermission.Delete],
+    })
+    render(<DatasetCard dataset={dataset} />)
+
+    expect(renderOperationsDropdown).toHaveBeenCalledWith(expect.objectContaining({
+      dataset,
+    }))
+    expect(renderOperationsDropdown).toHaveBeenCalledWith(expect.not.objectContaining({
+      isCurrentWorkspaceDatasetOperator: expect.any(Boolean),
+    }))
   })
 })

@@ -10638,6 +10638,493 @@ Fetch dynamic options using credentials directly (for edit mode)
 | ---- | ----------- |
 | 200 | Success |
 
+### /workspaces/current/rbac/access-policies
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### POST
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/access-policies/{policy_id}
+
+#### DELETE
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/access-policies/{policy_id}/copy
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| binding_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| binding_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/bindings
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/apps/{app_id}/access-policy
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/bindings
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/datasets/{dataset_id}/access-policy
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/members/{member_id}/rbac-roles
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/my-permissions
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/role-permissions/catalog
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/role-permissions/catalog/app
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/role-permissions/catalog/dataset
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/roles
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### POST
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/roles/{role_id}
+
+#### DELETE
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/roles/{role_id}/copy
+
+#### POST
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/roles/{role_id}/members
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/apps/access-policy
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings
+
+#### PUT
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings
+
+#### GET
+##### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string |
+
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### /workspaces/current/rbac/workspace/datasets/access-policy
+
+#### GET
+##### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
 ### /workspaces/current/tool-labels
 
 #### GET
@@ -11703,6 +12190,7 @@ Get banner list
 | last_login_at | integer |  | No |
 | name | string |  | Yes |
 | role | string |  | Yes |
+| roles | [ object ] |  | No |
 | status | string |  | Yes |
 
 #### AccountWithRoleList
@@ -12814,6 +13302,7 @@ Enum class for api provider schema type.
 | id | string |  | Yes |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
 | updated_at | integer |  | No |
@@ -12842,6 +13331,7 @@ Enum class for api provider schema type.
 | max_active_requests | integer |  | No |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12959,6 +13449,7 @@ AppMCPServer Status Enum
 | max_active_requests | integer |  | No |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -13757,6 +14248,7 @@ Payload for creating a new snippet.
 | is_published | boolean |  | No |
 | name | string |  | No |
 | permission | string |  | No |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | No |
 | provider | string |  | No |
 | retrieval_model_dict | [DatasetRetrievalModel](#datasetretrievalmodel) |  | No |
@@ -13797,6 +14289,7 @@ Payload for creating a new snippet.
 | is_published | boolean |  | Yes |
 | name | string |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -13838,6 +14331,7 @@ Payload for creating a new snippet.
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -13942,6 +14436,7 @@ Payload for creating a new snippet.
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -15120,6 +15615,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
 #### ImportStatus
@@ -15476,7 +15972,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | emails | [ string ] |  | No |
 | language | string |  | No |
-| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+| role | string |  | Yes |
 
 #### MemberRoleUpdatePayload
 
@@ -15673,6 +16169,7 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | new_app_id | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 
 #### NodeIdQuery
 
@@ -17147,6 +17644,7 @@ Default configuration for form inputs.
 | max_plugin_package_size | integer |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
@@ -17321,6 +17819,7 @@ Tag type
 | mode | string |  | No |
 | model_config | [TrialAppModelConfig](#trialappmodelconfig) |  | No |
 | name | string |  | No |
+| permission_keys | [ string ] |  | No |
 | site | [TrialSite](#trialsite) |  | No |
 | tags | [ [TrialTag](#trialtag) ] |  | No |
 | updated_at | object |  | No |

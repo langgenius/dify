@@ -53,7 +53,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 
 // Mock app context - will be overridden in tests
 vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
+  useSelector: vi.fn(() => ['dataset.create_and_management', 'dataset.external.connect']),
 }))
 
 // Mock useDatasetCardState hook
@@ -158,7 +158,7 @@ describe('Datasets', () => {
 
     // Setup IntersectionObserver mock
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver)
-    vi.mocked(useAppContextSelector).mockReturnValue(true)
+    vi.mocked(useAppContextSelector).mockReturnValue(['dataset.create_and_management', 'dataset.external.connect'])
   })
 
   afterEach(() => {
@@ -173,18 +173,21 @@ describe('Datasets', () => {
 
     it('should render NewDatasetCard when user is editor', async () => {
       const { useSelector } = await import('@/context/app-context')
-      vi.mocked(useSelector).mockReturnValue(true)
+      vi.mocked(useSelector).mockReturnValue(['dataset.create_and_management', 'dataset.external.connect'])
 
       render(<Datasets {...defaultProps} />)
       expect(screen.getByText(/createDataset/)).toBeInTheDocument()
     })
 
-    it('should NOT render NewDatasetCard when user is NOT editor', async () => {
+    it('should render disabled NewDatasetCard actions when user has no dataset permissions', async () => {
       const { useSelector } = await import('@/context/app-context')
-      vi.mocked(useSelector).mockReturnValue(false)
+      vi.mocked(useSelector).mockReturnValue([])
 
       render(<Datasets {...defaultProps} />)
-      expect(screen.queryByText(/createDataset/)).not.toBeInTheDocument()
+      const createDatasetAction = screen.getByText(/createDataset/)
+      const connectDatasetAction = screen.getByText(/connectDataset/)
+      expect(createDatasetAction.closest('a')).not.toBeInTheDocument()
+      expect(connectDatasetAction.closest('a')).not.toBeInTheDocument()
     })
 
     it('should render dataset cards from data', () => {

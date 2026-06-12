@@ -5,6 +5,8 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -17,6 +19,8 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)
@@ -60,12 +64,14 @@ const ServiceApi = ({
           <Card
             apiBaseUrl={apiBaseUrl}
             onOpenSecretKeyModal={handleOpenSecretKeyModal}
+            canManageSecretKey={canManageSecretKey}
           />
         </PopoverContent>
       </Popover>
       <SecretKeyModal
         isShow={isSecretKeyModalVisible}
         onClose={handleCloseSecretKeyModal}
+        canManage={canManageSecretKey}
       />
     </div>
   )

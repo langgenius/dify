@@ -11,6 +11,12 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['app.tag.manage', 'dataset.tag.manage'],
+  }),
+}))
+
 const mockTags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
   { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },

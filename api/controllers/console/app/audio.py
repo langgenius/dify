@@ -20,7 +20,7 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
@@ -115,10 +115,10 @@ class ChatMessageTextApi(Resource):
     @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
     @console_ns.response(200, "Text to speech conversion successful")
     @console_ns.response(400, "Bad request - Invalid parameters")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @get_app_model
     def post(self, app_model: App):
         try:
             payload = TextToSpeechPayload.model_validate(console_ns.payload)
@@ -167,10 +167,11 @@ class TextModesApi(Resource):
         200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
     )
     @console_ns.response(400, "Invalid language parameter")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, app_model: App):
         try:
             args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))

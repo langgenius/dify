@@ -70,6 +70,10 @@ vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
+}))
+
 vi.mock('@/service/tools', () => ({
   createCustomCollection: vi.fn(),
 }))

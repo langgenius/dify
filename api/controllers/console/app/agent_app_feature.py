@@ -77,8 +77,8 @@ class AgentAppFeatureConfigResource(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT])
     @with_current_user
+    @get_app_model(mode=[AppMode.AGENT])
     def post(self, current_user: Account, app_model: App):
         args = AgentAppFeaturesPayload.model_validate(console_ns.payload or {})
 

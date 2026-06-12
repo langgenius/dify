@@ -6,23 +6,24 @@ import type { AppSSO } from '@/types/app'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
-import { useAppWhiteListSubjects } from '@/service/access-control'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
+import { getAppACLCapabilities } from '@/utils/permission'
 import {
   AppCardAccessControlSection,
   AppCardDialogs,
@@ -68,12 +69,19 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const queryClient = useQueryClient()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appInfo.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: appInfo.created_by || appInfo.workflow?.created_by,
+    workspacePermissionKeys,
+  }), [appInfo.created_by, appInfo.permission_keys, appInfo.workflow?.created_by, currentUserId, workspacePermissionKeys])
+  const canEditApp = appACLCapabilities.canEdit
   const shouldFetchWorkflow = appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
@@ -93,8 +101,8 @@ function AppCard({
     appInfo,
     cardType,
     currentWorkflow,
-    isCurrentWorkspaceEditor,
-    isCurrentWorkspaceManager,
+    canManageWebApp: canEditApp,
+    canManageApi: canEditApp,
     triggerModeDisabled,
   })
 
@@ -148,20 +156,19 @@ function AppCard({
       return
 
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appDetail.id] })
       setShowAccessControl(false)
     }
     catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
-  }, [appDetail, setAppDetail])
+  }, [appDetail, queryClient])
 
   const operationKeys = useMemo(() => getAppCardOperationKeys({
     cardType,
     appMode: cardState.appMode,
-    isCurrentWorkspaceEditor,
-  }), [cardState.appMode, cardType, isCurrentWorkspaceEditor])
+    canManageSettings: canEditApp,
+  }), [canEditApp, cardState.appMode, cardType])
 
   const handleLaunch = useCallback(() => {
     window.open(cardState.accessibleUrl, '_blank')
@@ -335,7 +342,7 @@ function AppCard({
               isApp={isApp}
               accessibleUrl={cardState.accessibleUrl}
               showConfirmDelete={showConfirmDelete}
-              isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+              canRegenerateUrl={canEditApp}
               genLoading={genLoading}
               onRegenerate={() => {
                 onGenCode()
@@ -356,7 +363,7 @@ function AppCard({
         </div>
         {!cardState.isMinimalState && (
           <div className="flex items-center gap-1 self-stretch p-3">
-            {!isApp && <SecretKeyButton appId={appInfo.id} />}
+            {!isApp && <SecretKeyButton appId={appInfo.id} canManage={canEditApp} />}
             <AppCardOperations
               t={t}
               operations={operations}

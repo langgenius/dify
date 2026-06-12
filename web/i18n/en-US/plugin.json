@@ -222,6 +222,7 @@
   "pluginInfoModal.repository": "Repository",
   "pluginInfoModal.title": "Plugin info",
   "privilege.admins": "Admins",
+  "privilege.configurePermissionsInSettings": "Go to Settings > Roles & Permissions to configure plugin permissions.",
   "privilege.everyone": "Everyone",
   "privilege.noone": "No one",
   "privilege.title": "Plugin Preferences",

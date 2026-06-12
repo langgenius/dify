@@ -2,10 +2,6 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  RiArrowRightUpLine,
-  RiBugLine,
-} from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -28,7 +24,7 @@ const DebugInfo: FC = () => {
   if (!info) {
     return (
       <Button className="size-full p-2 text-components-button-secondary-text" disabled>
-        <RiBugLine className="size-4" />
+        <span className="i-ri-bug-line size-4" />
       </Button>
     )
   }
@@ -38,7 +34,7 @@ const DebugInfo: FC = () => {
       <PopoverTrigger
         render={(
           <Button className="size-full p-2 text-components-button-secondary-text">
-            <RiBugLine className="size-4" />
+            <span className="i-ri-bug-line size-4" />
           </Button>
         )}
       />
@@ -57,7 +53,7 @@ const DebugInfo: FC = () => {
             className="flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only"
           >
             <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="size-3" />
+            <span className="i-ri-arrow-right-up-line size-3" />
           </a>
         </div>
         <div className="space-y-0.5">

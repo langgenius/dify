@@ -57,9 +57,9 @@ class ModelConfigResource(Resource):
     @login_required
     @edit_permission_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     @with_current_user_id
     @with_current_tenant_id
+    @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, current_tenant_id: str, current_user_id: str, app_model: App):
         """Modify app model config"""
         # validate config

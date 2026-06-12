@@ -21,6 +21,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import {
   useLangGeniusVersion,
@@ -95,6 +96,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
+
+  const { data: workspacePermissionKeysResponse, isPending: isLoadingWorkspacePermissionKeys } = useWorkspacePermissionKeys()
+  const workspacePermissionKeys = useMemo(() => {
+    return workspacePermissionKeysResponse?.workspace.permission_keys || []
+  }, [workspacePermissionKeysResponse])
 
   const mutateUserProfile = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
@@ -182,7 +188,9 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
+      isLoadingWorkspacePermissionKeys,
       isValidatingCurrentWorkspace,
+      workspacePermissionKeys,
     }}
     >
       <div className="flex h-full flex-col overflow-y-auto">

@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import delete, exists, func, select, update
+from sqlalchemy import ColumnElement, delete, exists, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -67,6 +67,7 @@ from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -235,8 +236,33 @@ class _EstimateArgs(BaseModel):
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
+        if not dify_config.RBAC_ENABLED:
+            return False
+
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
+        return "dataset.create_and_management" in workspace_permission_keys
+
+    @staticmethod
+    def get_datasets(
+        page,
+        per_page,
+        tenant_id=None,
+        user=None,
+        search=None,
+        tag_ids=None,
+        include_all=False,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
+            query = query.where(accessible_filter)
 
         if user:
             # get permitted dataset ids
@@ -246,8 +272,7 @@ class DatasetService:
                 )
             ).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
-
-            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+            if not dify_config.RBAC_ENABLED and user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
                 # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                 if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
@@ -255,34 +280,50 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                if user.current_role != TenantAccountRole.OWNER or not include_all:
-                    # show all datasets that the user has permission to access
-                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
-                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                    Dataset.id.in_(permitted_dataset_ids),
-                                ),
-                            )
-                        )
+                if dify_config.RBAC_ENABLED:
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
+                    should_show_all_datasets = include_all and can_manage_all_datasets
+                else:
+                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
+
+                if not should_show_all_datasets:
+                    if dify_config.RBAC_ENABLED:
+                        # RBAC mode: show all datasets.  Permission control is enforced
+                        # via permission_keys on each item and @rbac_permission_required decorators.
+                        pass
                     else:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
+                        # Keep legacy visibility rules when RBAC is disabled.
+                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.created_by == user.id,
+                                    ),
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                        Dataset.id.in_(permitted_dataset_ids),
+                                    ),
+                                )
                             )
-                        )
+                        else:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.created_by == user.id,
+                                    ),
+                                )
+                            )
         else:
-            # if no user, only show datasets that are shared with all team members
-            query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+            if dify_config.RBAC_ENABLED:
+                # Without an account we cannot resolve RBAC resource visibility.
+                query = query.where(sa.false())
+            else:
+                # if no user, only show datasets that are shared with all team members
+                query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
             escaped_search = helper.escape_like_pattern(search)
@@ -326,11 +367,27 @@ class DatasetService:
         return {"mode": mode, "rules": rules}
 
     @staticmethod
-    def get_datasets_by_ids(ids, tenant_id):
+    def get_datasets_by_ids(
+        ids,
+        tenant_id,
+        user=None,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
         # Check if ids is not empty to avoid WHERE false condition
         if not ids or len(ids) == 0:
             return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            requested_dataset_ids = set(ids)
+            accessible_dataset_ids = [
+                dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
+            ]
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
+            stmt = stmt.where(accessible_filter)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 

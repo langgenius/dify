@@ -16,6 +16,7 @@ import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { hasPermission } from '@/utils/permission'
 // Components
 import ExternalAPIPanel from '../external-api/external-api-panel'
 import ServiceApi from '../extra-info/service-api'
@@ -51,8 +52,9 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
 
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
@@ -77,19 +79,19 @@ const List = () => {
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
-          {
-            isCurrentWorkspaceManager && (
-              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
-            )
-          }
-          <div className="h-4 w-px bg-divider-regular" />
-          <Button
-            className="gap-0.5 shadow-xs"
-            onClick={() => setShowExternalApiPanel(true)}
-          >
-            <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
-            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
-          </Button>
+          <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
+          {canConnectExternalDataset && (
+            <>
+              <div className="h-4 w-px bg-divider-regular" />
+              <Button
+                className="gap-0.5 shadow-xs"
+                onClick={() => setShowExternalApiPanel(true)}
+              >
+                <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
+                <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
       <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />

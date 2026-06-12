@@ -18,6 +18,7 @@ import Link from '@/next/link'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
+import { hasPermission } from '@/utils/permission'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { AppTypeFilter } from './app-type-filter'
@@ -45,10 +46,11 @@ function List({
 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const { workspacePermissionKeys, isLoadingWorkspacePermissionKeys } = useAppContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { replace } = useRouter()
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -74,7 +76,7 @@ function List({
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    enabled: canCreateApp,
   })
 
   useEffect(() => {
@@ -117,7 +119,6 @@ function List({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
@@ -137,8 +138,6 @@ function List({
   }, [needRefreshAppList, refetch, setNeedRefreshAppList])
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
@@ -164,10 +163,11 @@ function List({
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+  const isNewAppCardDisabled = !canCreateApp && !isLoadingWorkspacePermissionKeys
 
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
@@ -241,15 +241,14 @@ function List({
           !hasAnyApp && 'overflow-hidden',
         )}
         >
-          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
-            <NewAppCard
-              ref={newAppCardRef}
-              isLoading={isLoadingCurrentWorkspace}
-              onSuccess={refetch}
-              selectedAppType={category}
-              className={cn(!hasAnyApp && 'z-10')}
-            />
-          )}
+          <NewAppCard
+            ref={newAppCardRef}
+            disabled={isNewAppCardDisabled}
+            isLoading={isLoadingWorkspacePermissionKeys}
+            onSuccess={refetch}
+            selectedAppType={category}
+            className={cn(!hasAnyApp && 'z-10')}
+          />
           {showSkeleton
             ? <AppCardSkeleton count={6} />
             : hasAnyApp
@@ -268,7 +267,7 @@ function List({
           )}
         </div>
 
-        {isCurrentWorkspaceEditor && (
+        {canCreateApp && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"

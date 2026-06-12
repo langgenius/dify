@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -89,11 +89,22 @@ const createDefaultCollections = () => [
 let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
 let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
+const mockUseAllToolProviders = vi.fn()
+let mockWorkspacePermissionKeys: string[] = ['tool.manage', 'mcp.manage']
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
-    data: mockCollectionData,
-    isLoading: mockIsLoadingToolProviders,
-    refetch: mockRefetch,
+  useAllToolProviders: (...args: unknown[]) => {
+    mockUseAllToolProviders(...args)
+    return {
+      data: mockCollectionData,
+      isLoading: mockIsLoadingToolProviders,
+      refetch: mockRefetch,
+    }
+  },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -237,6 +248,7 @@ describe('ProviderList', () => {
     mockCollectionData = createDefaultCollections()
     mockIsLoadingToolProviders = false
     mockCheckedInstalledData = null
+    mockWorkspacePermissionKeys = ['tool.manage', 'mcp.manage']
     Element.prototype.scrollTo = vi.fn()
   })
 
@@ -273,6 +285,52 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
       fireEvent.click(screen.getByText('tools.type.builtIn'))
       expect(screen.getByTestId('provider-detail')).toBeInTheDocument()
+    })
+
+    it('falls back to builtin tab when api category is opened without tool.manage', () => {
+      mockWorkspacePermissionKeys = ['mcp.manage']
+
+      renderProviderList({ category: 'api' })
+
+      expect(screen.queryByText('tools.type.custom')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
+      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
+    })
+
+    it('falls back to builtin tab when workflow category is opened without tool.manage', () => {
+      mockWorkspacePermissionKeys = ['mcp.manage']
+
+      renderProviderList({ category: 'workflow' })
+
+      expect(screen.queryByText('tools.type.workflow')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('card-wf-tool')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('workflow-empty')).not.toBeInTheDocument()
+      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
+    })
+
+    it('falls back to builtin tab when mcp category is opened without mcp.manage', async () => {
+      mockWorkspacePermissionKeys = ['tool.manage']
+
+      const { onUrlUpdate } = renderProviderList({ category: 'mcp' })
+
+      expect(screen.queryByText('MCP')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('mcp-list')).not.toBeInTheDocument()
+      expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      const update = onUrlUpdate.mock.calls.at(-1)![0]
+      expect(update.searchParams.has('category')).toBe(false)
+    })
+
+    it('fetches all tool providers and filters the active authorized category locally', () => {
+      renderProviderList({ category: 'workflow' })
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith()
+      expect(screen.getByTestId('card-wf-tool')).toBeInTheDocument()
+      expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
     })
   })
 

@@ -9,10 +9,13 @@ import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-la
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { formatNumber } from '@/utils/format'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import DocumentSourceIcon from './document-source-icon'
 import { renderTdValue } from './utils'
 
@@ -58,6 +61,14 @@ const DocumentTableRow = React.memo(({
   const router = useRouter()
   const searchParams = useSearchParams()
   const documentNameId = React.useId()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceCreatedBy: dataset?.created_by,
+    workspacePermissionKeys,
+  }), [dataset?.created_by, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
 
   const isFile = doc.data_source_type === DataSourceType.FILE
   const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
@@ -111,23 +122,25 @@ const DocumentTableRow = React.memo(({
               <SummaryStatus status={doc.summary_index_status} />
             </div>
           )}
-          <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <div
-                    className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-                    onClick={handleRenameClick}
-                  >
-                    <span className="i-ri-edit-line size-4 text-text-tertiary" />
-                  </div>
-                )}
-              />
-              <TooltipContent>
-                {t('list.table.rename', { ns: 'datasetDocuments' })}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          {datasetACLCapabilities.canEdit && (
+            <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <div
+                      className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                      onClick={handleRenameClick}
+                    >
+                      <span className="i-ri-edit-line size-4 text-text-tertiary" />
+                    </div>
+                  )}
+                />
+                <TooltipContent>
+                  {t('list.table.rename', { ns: 'datasetDocuments' })}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </td>
       <td>

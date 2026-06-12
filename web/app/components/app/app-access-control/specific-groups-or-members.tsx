@@ -5,7 +5,7 @@ import { RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/r
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
 import useAccessControlStore from '../../../../context/access-control-store'
 import { Infotip } from '../../base/infotip'
 import Loading from '../../base/loading'

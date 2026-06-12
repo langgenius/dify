@@ -1,18 +1,9 @@
 import type { MouseEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiAspectRatioFill,
-  RiAspectRatioLine,
-  RiCursorLine,
-  RiFunctionAddLine,
-  RiHand,
-  RiStickyNoteAddLine,
-} from '@remixicon/react'
-import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Comment } from '@/app/components/base/icons/src/public/other'
 import Divider from '../../base/divider'
 import {
   useNodesReadOnly,
@@ -20,9 +11,11 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import { useStore } from '../store'
 import {
   ControlMode,
+  WorkflowRunningStatus,
 } from '../types'
 import AddBlock from './add-block'
 import { useOperator } from './hooks'
@@ -43,12 +36,24 @@ const Control = () => {
   const { handleAddNote } = useOperator()
   const {
     nodesReadOnly,
-    getNodesReadOnly,
   } = useNodesReadOnly()
+  const canComment = useHooksStore(s => s.accessControl.canComment)
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const isRestoring = useStore(s => s.isRestoring)
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
+  const workflowOperationReadOnly = !!(
+    workflowRunningData?.result.status === WorkflowRunningStatus.Running
+    || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
+    || historyWorkflowData
+    || isRestoring
+  )
+  const notesReadOnly = !canEdit || workflowOperationReadOnly
+  const commentsReadOnly = !canComment || workflowOperationReadOnly
 
   const addNote = (e: MouseEvent<HTMLButtonElement>) => {
-    if (getNodesReadOnly())
+    if (notesReadOnly)
       return
 
     e.stopPropagation()
@@ -62,14 +67,14 @@ const Control = () => {
         <button
           type="button"
           aria-label={t('nodes.note.addNote', { ns: 'workflow' })}
-          disabled={nodesReadOnly}
+          disabled={notesReadOnly}
           className={cn(
             'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            notesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={addNote}
         >
-          <RiStickyNoteAddLine aria-hidden className="size-4" />
+          <span className="i-ri-sticky-note-add-line size-4" aria-hidden />
         </button>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
@@ -81,11 +86,11 @@ const Control = () => {
           className={cn(
             'mr-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Pointer ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleModePointer}
         >
-          <RiCursorLine aria-hidden className="size-4" />
+          <span className="i-ri-cursor-line size-4" aria-hidden />
         </button>
       </TipPopup>
       <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcut="workflow.hand-mode">
@@ -96,11 +101,11 @@ const Control = () => {
           className={cn(
             'flex size-8 cursor-pointer items-center justify-center rounded-lg',
             controlMode === ControlMode.Hand ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleModeHand}
         >
-          <RiHand aria-hidden className="size-4" />
+          <span className="i-ri-hand size-4" aria-hidden />
         </button>
       </TipPopup>
       {isCommentModeAvailable && (
@@ -108,15 +113,15 @@ const Control = () => {
           <button
             type="button"
             aria-label={t('common.commentMode', { ns: 'workflow' })}
-            disabled={nodesReadOnly}
+            disabled={commentsReadOnly}
             className={cn(
               'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
               controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+              commentsReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
             )}
             onClick={handleModeComment}
           >
-            <Comment aria-hidden className="size-4" />
+            <span className="i-custom-public-other-comment size-4" aria-hidden />
           </button>
         </TipPopup>
       )}
@@ -128,11 +133,11 @@ const Control = () => {
           disabled={nodesReadOnly}
           className={cn(
             'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleLayout}
         >
-          <RiFunctionAddLine aria-hidden className="size-4" />
+          <span className="i-ri-function-add-line size-4" aria-hidden />
         </button>
       </TipPopup>
       <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcut="workflow.toggle-maximize">
@@ -147,8 +152,8 @@ const Control = () => {
           )}
           onClick={handleToggleMaximizeCanvas}
         >
-          {maximizeCanvas && <RiAspectRatioFill aria-hidden className="size-4" />}
-          {!maximizeCanvas && <RiAspectRatioLine aria-hidden className="size-4" />}
+          {maximizeCanvas && <span className="i-ri-aspect-ratio-fill size-4" aria-hidden />}
+          {!maximizeCanvas && <span className="i-ri-aspect-ratio-line size-4" aria-hidden />}
         </button>
       </TipPopup>
       <MoreActions />

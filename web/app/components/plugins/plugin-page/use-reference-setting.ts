@@ -5,27 +5,13 @@ import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
-import { PermissionType } from '../types'
-
-const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
-  if (!permission)
-    return false
-
-  if (permission === PermissionType.noOne)
-    return false
-
-  if (permission === PermissionType.everyone)
-    return true
-
-  return isAdmin
-}
+import { hasPermission } from '@/utils/permission'
 
 const useReferenceSetting = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
+  const { langGeniusVersionInfo, workspacePermissionKeys } = useAppContext()
   const { data } = useReferenceSettings()
-  // console.log(data)
-  const { permission: permissions } = data || {}
+
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
     onSuccess: () => {
@@ -33,14 +19,30 @@ const useReferenceSetting = () => {
       toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
-  const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
+
+  const canInstallPluginByPermissionKey = hasPermission(workspacePermissionKeys, 'plugin.install')
+  const canUpdatePlugin = hasPermission(workspacePermissionKeys, ['plugin.install', 'plugin.manage'])
+  const canViewInstalledPlugins = canUpdatePlugin
+  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const canUninstall = canManagePlugin
+  const canDebugger = hasPermission(workspacePermissionKeys, 'plugin.debug')
+  const canSetPermissions = hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
+  const canSetAutoUpdate = hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
+  const canSetPreferences = canSetPermissions || canSetAutoUpdate
 
   return {
     referenceSetting: data,
     setReferenceSettings: updateReferenceSetting,
-    canManagement: hasPermission(permissions?.install_permission, isAdmin),
-    canDebugger: hasPermission(permissions?.debug_permission, isAdmin),
-    canSetPermissions: isAdmin,
+    canViewInstalledPlugins,
+    canInstall: canInstallPluginByPermissionKey,
+    canUpdate: canUpdatePlugin,
+    canManagePlugin,
+    canUninstall,
+    canDebugger,
+    canSetPermissions,
+    canSetAutoUpdate,
+    canSetPreferences,
+    currentDifyVersion: langGeniusVersionInfo.current_version,
     isUpdatePending,
   }
 }
@@ -50,11 +52,11 @@ export const useCanInstallPluginFromMarketplace = () => {
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { canManagement } = useReferenceSetting()
+  const { canInstall } = useReferenceSetting()
 
   const canInstallPluginFromMarketplace = useMemo(() => {
-    return enable_marketplace && canManagement
-  }, [enable_marketplace, canManagement])
+    return enable_marketplace && canInstall
+  }, [enable_marketplace, canInstall])
 
   return {
     canInstallPluginFromMarketplace,

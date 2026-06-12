@@ -22,9 +22,11 @@ import {
 } from '@/app/components/plugins/plugin-auth'
 import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import { hasPermission } from '@/utils/permission'
 import Configure from './configure'
 import { useDataSourceAuthUpdate } from './hooks'
 import Item from './item'
@@ -33,12 +35,21 @@ type CardProps = {
   item: DataSourceAuth
   disabled?: boolean
 }
+
+type RenamePayload = {
+  credential_id: string
+  name: string
+}
+
 const Card = ({
   item,
   disabled,
 }: CardProps) => {
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
   const {
     icon,
     label,
@@ -87,8 +98,14 @@ const Card = ({
   const handleAction = useCallback((
     action: string,
     credentialItem: DataSourceCredential,
-    renamePayload?: Record<string, any>,
+    renamePayload?: RenamePayload,
   ) => {
+    if (action === 'setDefault' && !canUseCredential)
+      return
+
+    if (['edit', 'delete', 'rename', 'change'].includes(action) && !canManageCredential)
+      return
+
     if (action === 'edit') {
       handleEdit(
         credentialItem.id,
@@ -105,19 +122,14 @@ const Card = ({
     if (action === 'setDefault')
       handleSetDefault(credentialItem.id)
 
-    if (action === 'rename')
-      handleRename(renamePayload as any)
+    if (action === 'rename' && renamePayload)
+      handleRename(renamePayload)
 
     if (action === 'change') {
       changeCredentialIdRef.current = credentialItem.id
       handleOAuth()
     }
-  }, [
-    openConfirm,
-    handleEdit,
-    handleSetDefault,
-    handleRename,
-  ])
+  }, [canUseCredential, canManageCredential, openConfirm, handleSetDefault, handleRename, handleEdit, handleOAuth])
 
   return (
     <div className="rounded-xl bg-background-section-burn">
@@ -140,6 +152,7 @@ const Card = ({
           pluginPayload={pluginPayload}
           item={item}
           onUpdate={handleAuthUpdate}
+          disabled={disabled || !canManageCredential}
         />
       </div>
       <div className="flex h-4 items-center pl-3 system-xs-medium text-text-tertiary">
@@ -155,6 +168,8 @@ const Card = ({
                   key={credentialItem.id}
                   credentialItem={credentialItem}
                   onAction={handleAction}
+                  canUseCredential={canUseCredential}
+                  canManageCredential={canManageCredential}
                 />
               ))
             }
@@ -179,7 +194,7 @@ const Card = ({
           </div>
           <AlertDialogActions>
             <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirm}>
+            <AlertDialogConfirmButton disabled={doingAction || !canManageCredential} onClick={() => canManageCredential && handleConfirm()}>
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
@@ -197,7 +212,7 @@ const Card = ({
             formSchemas={credential_schema}
             editValues={editValues}
             onRemove={handleRemove}
-            disabled={disabled || doingAction}
+            disabled={disabled || doingAction || !canManageCredential}
           />
         )
       }

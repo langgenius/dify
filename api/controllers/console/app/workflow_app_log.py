@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
@@ -175,6 +175,7 @@ class WorkflowAppLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_monitor")
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -218,6 +219,7 @@ class WorkflowArchivedLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_monitor")
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, app_model: App):
         """

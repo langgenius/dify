@@ -3,16 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppInfo from '..'
 
-let mockIsCurrentWorkspaceEditor = true
 const mockSetPanelOpen = vi.fn()
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
-  }),
-}))
 
 vi.mock('../app-info-trigger', () => ({
   default: React.memo(({ appDetail, expand, onClick }: {
@@ -48,6 +42,7 @@ const mockAppDetail: App & Partial<AppSSO> = {
   icon_url: '',
   description: '',
   use_icon_as_answer_icon: false,
+  permission_keys: [AppACLPermission.Edit],
 } as App & Partial<AppSSO>
 
 const mockUseAppInfoActions = {
@@ -75,7 +70,6 @@ vi.mock('../use-app-info-actions', () => ({
 describe('AppInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor = true
     mockUseAppInfoActions.appDetail = mockAppDetail
     mockUseAppInfoActions.panelOpen = false
     mockUseAppInfoActions.activeModal = null
@@ -107,7 +101,7 @@ describe('AppInfo', () => {
     unmount()
   })
 
-  it('should toggle panel when trigger is clicked and user is editor', async () => {
+  it('should toggle panel when trigger is clicked and app layout ACL is available', async () => {
     const user = userEvent.setup()
     render(<AppInfo expand />)
 
@@ -119,9 +113,12 @@ describe('AppInfo', () => {
     expect(updater(true)).toBe(false)
   })
 
-  it('should not toggle panel when trigger is clicked and user is not editor', async () => {
+  it('should not toggle panel when trigger is clicked and app layout ACL is missing', async () => {
     const user = userEvent.setup()
-    mockIsCurrentWorkspaceEditor = false
+    mockUseAppInfoActions.appDetail = {
+      ...mockAppDetail,
+      permission_keys: [],
+    }
     render(<AppInfo expand />)
 
     await user.click(screen.getByTestId('trigger'))

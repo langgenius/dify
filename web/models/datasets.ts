@@ -96,6 +96,8 @@ export type DataSet = {
   enable_api: boolean // Indicates if the service API is enabled
   is_multimodal: boolean // Indicates if the dataset supports multimodal
   summary_index_setting?: SummaryIndexSetting
+  /** ACL permission keys */
+  permission_keys?: string[]
 }
 
 export type ExternalAPIItem = {

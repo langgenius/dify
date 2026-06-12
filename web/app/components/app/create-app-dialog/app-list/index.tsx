@@ -26,6 +26,7 @@ import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
@@ -44,7 +45,8 @@ const Apps = ({
   onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
+  const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
@@ -139,7 +141,8 @@ const Apps = ({
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
+      if (app.app_id)
+        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push)
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -204,7 +207,7 @@ const Apps = ({
                   <AppCard
                     key={app.app_id}
                     app={app}
-                    canCreate={isCurrentWorkspaceEditor}
+                    canCreate={canCreateAppFromTemplate}
                     onCreate={() => {
                       setCurrApp(app)
                       setIsShowCreateModal(true)

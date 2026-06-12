@@ -22,14 +22,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-// Mock app context
-const mockIsCurrentWorkspaceManager = vi.fn(() => true)
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager(),
-  }),
-}))
-
 // Mock API services - only mock external services
 const mockCreateWorkflowToolProvider = vi.fn()
 const mockSaveWorkflowToolProvider = vi.fn()
@@ -140,7 +132,7 @@ const createDefaultConfigureButtonProps = (overrides = {}) => ({
   published: false,
   isLoading: false,
   outdated: false,
-  isCurrentWorkspaceManager: true,
+  canManageWorkflowTool: true,
   onConfigure: vi.fn(),
   ...overrides,
 })
@@ -177,7 +169,6 @@ const createDefaultDrawerPayload = (overrides: Partial<WorkflowToolDrawerPayload
 describe('WorkflowToolConfigureButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockWorkflowToolDetail() : undefined,
       isLoading: false,
@@ -275,9 +266,9 @@ describe('WorkflowToolConfigureButton', () => {
       })
     })
 
-    it('should render different UI for non-workspace manager', () => {
+    it('should render different UI without workflow tool manage permission', () => {
       // Arrange
-      const props = createDefaultConfigureButtonProps({ isCurrentWorkspaceManager: false })
+      const props = createDefaultConfigureButtonProps({ canManageWorkflowTool: false })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -452,9 +443,9 @@ describe('WorkflowToolConfigureButton', () => {
       })
     })
 
-    it('should disable configure button when not workspace manager', async () => {
+    it('should disable configure button without workflow tool manage permission', async () => {
       // Arrange
-      const props = createDefaultConfigureButtonProps({ published: true, isCurrentWorkspaceManager: false })
+      const props = createDefaultConfigureButtonProps({ published: true, canManageWorkflowTool: false })
 
       // Act
       render(<WorkflowToolConfigureButton {...props} />)
@@ -1535,7 +1526,6 @@ describe('MethodSelector', () => {
 describe('Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager.mockReturnValue(true)
     mockUseWorkflowToolDetailByAppID.mockImplementation((_appId: string, enabled: boolean) => ({
       data: enabled ? createMockWorkflowToolDetail() : undefined,
       isLoading: false,

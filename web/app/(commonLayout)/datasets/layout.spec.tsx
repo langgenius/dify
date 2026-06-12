@@ -5,15 +5,18 @@ import DatasetsLayout from './layout'
 
 const mockReplace = vi.fn()
 const mockUseAppContext = vi.fn()
+let mockPathname = '/datasets'
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
+  usePathname: () => mockPathname,
 }))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => mockUseAppContext(),
+  useSelector: (selector: (state: AppContextMock) => unknown) => selector(mockUseAppContext()),
 }))
 
 vi.mock('@/context/external-api-panel-context', () => ({
@@ -28,6 +31,8 @@ type AppContextMock = {
   isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   isLoadingCurrentWorkspace: boolean
+  isLoadingWorkspacePermissionKeys: boolean
+  workspacePermissionKeys: string[]
   currentWorkspace: {
     id: string
   }
@@ -37,6 +42,8 @@ const baseContext: AppContextMock = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
+  workspacePermissionKeys: [],
   currentWorkspace: {
     id: 'workspace-1',
   },
@@ -52,6 +59,7 @@ const setAppContext = (overrides: Partial<AppContextMock> = {}) => {
 describe('DatasetsLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPathname = '/datasets'
     setAppContext()
   })
 
@@ -72,10 +80,64 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect non-editor and non-dataset-operator users to /apps', async () => {
+  it('should render loading while workspace permission keys are loading', () => {
+    setAppContext({
+      isLoadingWorkspacePermissionKeys: true,
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('datasets')).not.toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should render children without a page-level dataset permission', () => {
+    setAppContext({
+      isCurrentWorkspaceEditor: true,
+      isCurrentWorkspaceDatasetOperator: true,
+      workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should render children on the dataset list route without dataset permissions', () => {
     setAppContext({
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceDatasetOperator: false,
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    '/datasets/create',
+    '/datasets/create-from-pipeline',
+  ])('should redirect direct dataset creation route to /datasets without dataset.create_and_management: %s', async (pathname) => {
+    mockPathname = pathname
+    setAppContext({
+      workspacePermissionKeys: [],
     })
 
     render((
@@ -86,14 +148,48 @@ describe('DatasetsLayout', () => {
 
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/datasets')
     })
   })
 
-  it('should render children for dataset operators', () => {
+  it('should render direct dataset creation route when workspace has dataset.create_and_management', () => {
+    mockPathname = '/datasets/create'
     setAppContext({
-      isCurrentWorkspaceEditor: false,
-      isCurrentWorkspaceDatasetOperator: true,
+      workspacePermissionKeys: ['dataset.create_and_management'],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should redirect direct external dataset connection route to /datasets without dataset.external.connect', async () => {
+    mockPathname = '/datasets/connect'
+    setAppContext({
+      workspacePermissionKeys: [],
+    })
+
+    render((
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>
+    ))
+
+    expect(screen.queryByText('datasets')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/datasets')
+    })
+  })
+
+  it('should render direct external dataset connection route when workspace has dataset.external.connect', () => {
+    mockPathname = '/datasets/connect'
+    setAppContext({
+      workspacePermissionKeys: ['dataset.external.connect'],
     })
 
     render((

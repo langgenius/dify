@@ -243,7 +243,7 @@ describe('app-publisher sections', () => {
         workflowToolAvailable={false}
         workflowToolIsLoading={false}
         workflowToolOutdated={false}
-        workflowToolIsCurrentWorkspaceManager
+        workflowToolCanManage
         workflowToolMessage="workflow-disabled"
         onConfigureWorkflowTool={vi.fn()}
       />,
@@ -282,7 +282,7 @@ describe('app-publisher sections', () => {
         workflowToolAvailable
         workflowToolIsLoading={false}
         workflowToolOutdated={false}
-        workflowToolIsCurrentWorkspaceManager
+        workflowToolCanManage
         onConfigureWorkflowTool={vi.fn()}
       />,
     )
@@ -309,7 +309,7 @@ describe('app-publisher sections', () => {
         workflowToolAvailable
         workflowToolIsLoading={false}
         workflowToolOutdated={false}
-        workflowToolIsCurrentWorkspaceManager
+        workflowToolCanManage
         onConfigureWorkflowTool={vi.fn()}
       />,
     )

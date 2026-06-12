@@ -8,6 +8,7 @@ const {
   mockExportMutateAsync,
   mockOnRefresh,
   mockIsCurrentWorkspaceEditor,
+  mockWorkspacePermissionKeys,
   mockToastError,
   mockToastSuccess,
   mockUpdateMutate,
@@ -16,6 +17,7 @@ const {
   mockDownloadBlob: vi.fn(),
   mockExportMutateAsync: vi.fn(),
   mockIsCurrentWorkspaceEditor: vi.fn(() => true),
+  mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
   mockOnRefresh: vi.fn(),
   mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
@@ -25,6 +27,7 @@ const {
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    workspacePermissionKeys: mockWorkspacePermissionKeys(),
   }),
 }))
 
@@ -105,6 +108,7 @@ describe('SnippetCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify', 'snippets.management'])
   })
 
   describe('Rendering', () => {
@@ -149,12 +153,36 @@ describe('SnippetCard', () => {
       expect(screen.queryByRole('menuitem', { name: /duplicate/i })).not.toBeInTheDocument()
     })
 
-    it('should hide operations for users without editor permission', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should hide operations for users without snippet permissions', () => {
+      mockWorkspacePermissionKeys.mockReturnValue([])
 
       render(<SnippetCard snippet={createSnippet()} />)
 
       expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+    })
+
+    it('should show edit info with create-and-modify permission without management actions', async () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+      expect(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).not.toBeInTheDocument()
+    })
+
+    it('should show delete with snippet management permission without edit info', async () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
+
+      expect(screen.queryByRole('menuitem', { name: 'snippet.menu.editInfo' })).not.toBeInTheDocument()
+      expect(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).toBeInTheDocument()
     })
 
     it('should forward tag selector actions without navigating the card link', () => {

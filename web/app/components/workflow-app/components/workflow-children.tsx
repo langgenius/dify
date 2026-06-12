@@ -15,6 +15,7 @@ import {
   useDSL,
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -72,6 +73,7 @@ const WorkflowChildren = () => {
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const showOnboarding = useStore(s => s.showOnboarding)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const setShowOnboarding = useStore(s => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore(s => s.setHasSelectedStartNode)
   const setShouldAutoOpenStartNodeSelector = useStore(s => s.setShouldAutoOpenStartNodeSelector)
@@ -170,7 +172,7 @@ const WorkflowChildren = () => {
         )
       }
       {
-        showImportDSLModal && (
+        canImportExportDSL && showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
             onBackup={exportCheck!}
@@ -179,7 +181,7 @@ const WorkflowChildren = () => {
         )
       }
       {
-        secretEnvList.length > 0 && (
+        canImportExportDSL && secretEnvList.length > 0 && (
           <DSLExportConfirmModal
             envList={secretEnvList}
             onConfirm={handleExportDSL!}

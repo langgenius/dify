@@ -4,13 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../../types'
 import CustomCreateCard from '../custom-create-card'
 
-// Mock workspace manager state
-let mockIsWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['tool.manage']
 
-// Mock useAppContext
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsWorkspaceManager,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -83,28 +81,25 @@ describe('CustomCreateCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['tool.manage']
     mockModalVisible = false
     mockCreateCustomCollection.mockResolvedValue({})
   })
 
-  // Tests for conditional rendering based on workspace manager status
-  describe('Workspace Manager Conditional Rendering', () => {
-    it('should render card when user is workspace manager', () => {
-      mockIsWorkspaceManager = true
+  describe('tool.manage Conditional Rendering', () => {
+    it('should render card when user has tool.manage', () => {
+      mockWorkspacePermissionKeys = ['tool.manage']
 
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      // Card should be visible with create text
       expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
     })
 
-    it('should not render anything when user is not workspace manager', () => {
-      mockIsWorkspaceManager = false
+    it('should not render anything when user lacks tool.manage', () => {
+      mockWorkspacePermissionKeys = []
 
       const { container } = render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      // Container should be empty (firstChild is null when nothing renders)
       expect(container.firstChild).toBeNull()
     })
   })

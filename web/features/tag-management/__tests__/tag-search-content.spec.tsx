@@ -11,6 +11,16 @@ const { onValueChangeSpy } = vi.hoisted(() => ({
   onValueChangeSpy: vi.fn(),
 }))
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
+
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   operationClear: 'common.operation.clear',
@@ -91,6 +101,7 @@ const PanelHarness = ({
 describe('TagSearchContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
   })
 
   it('renders search, selected tags, unselected tags, and management action', () => {
@@ -194,5 +205,19 @@ describe('TagSearchContent', () => {
   it('renders knowledge tags when the panel type is knowledge', () => {
     render(<PanelHarness type="knowledge" value={[]} />)
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
+  })
+
+  it('renders snippet management action with snippets management permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.management']
+
+    render(
+      <PanelHarness
+        type="snippet"
+        value={[]}
+        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: i18n.manageTags })).toBeInTheDocument()
   })
 })

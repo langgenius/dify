@@ -155,7 +155,7 @@ export type EndpointUpdatePayload = {
 export type MemberInvitePayload = {
   emails?: Array<string>
   language?: string | null
-  role: TenantAccountRole
+  role: string
 }
 
 export type OwnerTransferCheckPayload = {
@@ -630,6 +630,9 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
   status: string
 }
 
@@ -638,8 +641,6 @@ export type Inner = {
   model_type: ModelType
   provider?: string | null
 }
-
-export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
@@ -2339,6 +2340,663 @@ export type PostWorkspacesCurrentPluginUploadPkgResponses = {
 
 export type PostWorkspacesCurrentPluginUploadPkgResponse
   = PostWorkspacesCurrentPluginUploadPkgResponses[keyof PostWorkspacesCurrentPluginUploadPkgResponses]
+
+export type GetWorkspacesCurrentRbacAccessPoliciesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/access-policies'
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesResponse
+  = GetWorkspacesCurrentRbacAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesResponses]
+
+export type PostWorkspacesCurrentRbacAccessPoliciesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/access-policies'
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesResponse
+  = PostWorkspacesCurrentRbacAccessPoliciesResponses[keyof PostWorkspacesCurrentRbacAccessPoliciesResponses]
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}'
+}
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse
+  = DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}'
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse
+  = GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}'
+}
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse
+  = PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}/copy'
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse
+  = PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses[keyof PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses]
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
+  body?: never
+  path: {
+    binding_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/lock'
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse
+  = PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses]
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = {
+  body?: never
+  path: {
+    binding_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock'
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse
+  = PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses]
+
+export type PutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsData = {
+  body?: never
+  path: {
+    app_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsResponse
+  = PutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    app_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    app_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses]
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsData = {
+  body?: never
+  path: {
+    dataset_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsResponse
+  = PutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsData
+  = {
+    body?: never
+    path: {
+      dataset_id: string
+      policy_id: string
+    }
+    query?: never
+    url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings'
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    dataset_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses]
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
+  body?: never
+  path: {
+    member_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
+}
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse
+  = GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses[keyof GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses]
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
+  body?: never
+  path: {
+    member_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
+}
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse
+  = PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses[keyof PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses]
+
+export type GetWorkspacesCurrentRbacMyPermissionsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/my-permissions'
+}
+
+export type GetWorkspacesCurrentRbacMyPermissionsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacMyPermissionsResponse
+  = GetWorkspacesCurrentRbacMyPermissionsResponses[keyof GetWorkspacesCurrentRbacMyPermissionsResponses]
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponse
+  = GetWorkspacesCurrentRbacRolePermissionsCatalogResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogResponses]
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog/app'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse
+  = GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses]
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog/dataset'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse
+  = GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses]
+
+export type GetWorkspacesCurrentRbacRolesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/roles'
+}
+
+export type GetWorkspacesCurrentRbacRolesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolesResponse
+  = GetWorkspacesCurrentRbacRolesResponses[keyof GetWorkspacesCurrentRbacRolesResponses]
+
+export type PostWorkspacesCurrentRbacRolesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/roles'
+}
+
+export type PostWorkspacesCurrentRbacRolesResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentRbacRolesResponse
+  = PostWorkspacesCurrentRbacRolesResponses[keyof PostWorkspacesCurrentRbacRolesResponses]
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}'
+}
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponse
+  = DeleteWorkspacesCurrentRbacRolesByRoleIdResponses[keyof DeleteWorkspacesCurrentRbacRolesByRoleIdResponses]
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}'
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdResponse
+  = GetWorkspacesCurrentRbacRolesByRoleIdResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdResponses]
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}'
+}
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdResponse
+  = PutWorkspacesCurrentRbacRolesByRoleIdResponses[keyof PutWorkspacesCurrentRbacRolesByRoleIdResponses]
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}/copy'
+}
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse
+  = PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses[keyof PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses]
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}/members'
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponse
+  = GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses]
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse
+  = PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse
+  = GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses]
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse
+  = PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses
+  = {
+    200: {
+      [key: string]: unknown
+    }
+  }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse
+  = GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never

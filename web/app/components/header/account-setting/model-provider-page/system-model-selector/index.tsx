@@ -14,9 +14,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
+import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
@@ -60,7 +61,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
@@ -178,6 +180,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                   />
                 </div>
@@ -188,6 +191,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                   />
                 </div>
@@ -198,6 +202,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                   />
                 </div>
@@ -208,6 +213,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                   />
                 </div>
@@ -218,6 +224,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
+                    readonly={!canManagePlugin}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                   />
                 </div>
@@ -226,16 +233,16 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="flex shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button
-              className="min-w-[72px]"
+              className="min-w-18"
               onClick={() => setOpen(false)}
             >
               {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
-              className="min-w-[72px]"
+              className="min-w-18"
               variant="primary"
               onClick={handleSave}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManagePlugin}
             >
               {t('operation.save', { ns: 'common' })}
             </Button>

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiDashboard2Fill,
@@ -12,10 +11,14 @@ import {
   RiTerminalBoxLine,
   RiTerminalWindowFill,
   RiTerminalWindowLine,
+  RiUserSettingsFill,
+  RiUserSettingsLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useUnmount } from 'ahooks'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import AppSideBar from '@/app/components/app-sidebar'
@@ -23,17 +26,26 @@ import { AppInfoDetailLayer } from '@/app/components/app-sidebar/app-info'
 import { useAppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { useAppContext } from '@/context/app-context'
+import { useAppContext, useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
-import { fetchAppDetailDirect } from '@/service/apps'
+import { useAppDetail } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import s from './style.module.css'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
+}
+
+type NavigationItem = {
+  name: string
+  href: string
+  icon: NavIcon
+  selectedIcon: NavIcon
 }
 
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
@@ -46,25 +58,42 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
+  const [storedAppSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
+  const { isLoadingCurrentWorkspace, currentWorkspace, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const appInfoActions = useAppInfoActions({ resetKey: appId })
   const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
     setAppSidebarExpand: state.setAppSidebarExpand,
   })))
-  const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
-  const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
+  const {
+    data: appDetailRes,
+    error: appDetailError,
+    isLoading: isLoadingAppDetail,
+  } = useAppDetail(appId)
 
-  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
+  const appCreatedBy = appDetailRes?.created_by || appDetailRes?.workflow?.created_by
+  const appCreatorPermissionOptions = useMemo(
+    () => ({
+      currentUserId,
+      resourceCreatedBy: appCreatedBy,
+      workspacePermissionKeys,
+    }),
+    [appCreatedBy, currentUserId, workspacePermissionKeys],
+  )
+  const appACLCapabilities = useMemo(
+    () => getAppACLCapabilities(appDetailRes?.permission_keys, appCreatorPermissionOptions),
+    [appCreatorPermissionOptions, appDetailRes?.permission_keys],
+  )
+  const canAccessMonitor = appACLCapabilities.canMonitor
+  const canAccessLog = appACLCapabilities.canMonitor
+  const canAccessConfig = systemFeatures.rbac_enabled && appACLCapabilities.canAccessConfig
+
+  const getNavigationConfig = useCallback((appId: string, mode: AppModeEnum): NavigationItem[] => {
     const navConfig = [
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canAccessLayout
         ? [{
             name: t('appMenus.promptEng', { ns: 'common' }),
             href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
@@ -73,13 +102,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           }]
         : []
       ),
-      {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
-        href: `/app/${appId}/develop`,
-        icon: RiTerminalBoxLine,
-        selectedIcon: RiTerminalBoxFill,
-      },
-      ...(isCurrentWorkspaceEditor
+      ...(appACLCapabilities.canEdit
+        ? [{
+            name: t('appMenus.apiAccess', { ns: 'common' }),
+            href: `/app/${appId}/develop`,
+            icon: RiTerminalBoxLine,
+            selectedIcon: RiTerminalBoxFill,
+          }]
+        : []
+      ),
+      ...(canAccessLog
         ? [{
             name: mode !== AppModeEnum.WORKFLOW
               ? t('appMenus.logAndAnn', { ns: 'common' })
@@ -90,50 +122,90 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           }]
         : []
       ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
+      ...(canAccessMonitor
+        ? [{
+            name: t('appMenus.overview', { ns: 'common' }),
+            href: `/app/${appId}/overview`,
+            icon: RiDashboard2Line,
+            selectedIcon: RiDashboard2Fill,
+          }]
+        : []),
+      ...(canAccessConfig
+        ? [{
+            name: t('settings.appAccess', { ns: 'common' }),
+            href: `/app/${appId}/access-config`,
+            icon: RiUserSettingsLine,
+            selectedIcon: RiUserSettingsFill,
+          }]
+        : []
+      ),
     ]
     return navConfig
-  }, [t])
+  }, [appACLCapabilities, canAccessConfig, canAccessLog, canAccessMonitor, t])
+
+  const navigation = useMemo(() => {
+    if (!appDetailRes)
+      return []
+
+    return getNavigationConfig(appId, appDetailRes.mode)
+  }, [appDetailRes, appId, getNavigationConfig])
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
   useEffect(() => {
     if (appDetail) {
-      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
-      setAppSidebarExpand(isMobile ? mode : localeMode)
+      setAppSidebarExpand(isMobile ? mode : storedAppSidebarMode)
       // TODO: consider screen size and mode
       // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSidebarExpand('collapse')
     }
-  }, [appDetail, isMobile])
+  }, [appDetail, isMobile, setAppSidebarExpand, storedAppSidebarMode])
 
   useEffect(() => {
     setAppDetail()
-    setIsLoadingAppDetail(true)
-    fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
-      setAppDetailRes(res)
-    }).catch((e: any) => {
-      if (e.status === 404)
-        router.replace('/apps')
-    }).finally(() => {
-      setIsLoadingAppDetail(false)
-    })
-  }, [appId, pathname])
+  }, [appId, setAppDetail])
+
+  useEffect(() => {
+    if ((appDetailError as { status?: number } | null)?.status === 404)
+      router.replace('/apps')
+  }, [appDetailError, router])
 
   useEffect(() => {
     if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
       return
     const res = appDetailRes
     // redirection
-    const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
-      router.replace(`/app/${appId}/overview`)
+    const canAccessLayout = appACLCapabilities.canAccessLayout
+    const layoutPath = `/app/${appId}/${(res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`
+    const fallbackPath = appACLCapabilities.canEdit
+      ? `/app/${appId}/develop`
+      : canAccessLayout
+        ? layoutPath
+        : canAccessMonitor
+          ? `/app/${appId}/overview`
+          : canAccessConfig
+            ? `/app/${appId}/access-config`
+            : '/apps'
+
+    if (!canAccessLayout && (pathname.endsWith('configuration') || pathname.endsWith('workflow'))) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!appACLCapabilities.canEdit && pathname.endsWith('develop')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!canAccessLog && pathname.endsWith('logs')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!canAccessMonitor && pathname.endsWith('overview')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!canAccessConfig && pathname.endsWith('access-config')) {
+      router.replace(fallbackPath)
       return
     }
     if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
@@ -144,9 +216,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
     else {
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
     }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
+  }, [appACLCapabilities, appDetailRes, appId, canAccessConfig, canAccessLog, canAccessMonitor, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()

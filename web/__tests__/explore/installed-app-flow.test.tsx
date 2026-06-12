@@ -11,7 +11,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import InstalledApp from '@/app/components/explore/installed-app'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
-import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 
@@ -19,7 +19,7 @@ vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: vi.fn(),
 }))
 

@@ -107,14 +107,11 @@ vi.mock('../tool-item', () => ({
   ),
 }))
 
-// Mutable workspace manager state
-let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['mcp.manage']
 
-// Mock the app context
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-    isCurrentWorkspaceEditor: true,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -196,7 +193,7 @@ describe('MCPDetailContent', () => {
     mockIsFetching = false
     mockIsUpdating = false
     mockIsAuthorizing = false
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['mcp.manage']
   })
 
   describe('Rendering', () => {
@@ -229,9 +226,15 @@ describe('MCPDetailContent', () => {
 
     it('should render operation dropdown', () => {
       render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
-      // Operation dropdown trigger should be present
-      // Operation dropdown trigger should be present
-      expect(document.querySelector('button'))!.toBeInTheDocument()
+      expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
+    })
+
+    it('should render nothing when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
+
+      const { container } = render(<MCPDetailContent {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(container.firstChild).toBeNull()
     })
   })
 
@@ -459,16 +462,15 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should disable authorize button when not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+    it('should render nothing when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
       const detail = createMockDetail({ is_team_authorization: false })
-      render(
+      const { container } = render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      const authorizeBtn = screen.getByText('tools.mcp.authorize')
-      expect(authorizeBtn.closest('button'))!.toBeDisabled()
+      expect(container.firstChild).toBeNull()
     })
   })
 
@@ -750,21 +752,19 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should not call handleUpdateTools if not workspace manager', async () => {
-      mockIsCurrentWorkspaceManager = false
+    it('should render nothing without mcp.manage', async () => {
+      mockWorkspacePermissionKeys = []
       mockAuthorizeMcp.mockResolvedValue({ authorization_url: 'https://oauth.example.com' })
       const detail = createMockDetail({ is_team_authorization: false })
 
-      // OAuth callback should not trigger update for non-manager
-      // The button is disabled, so we simulate a scenario where OAuth was already started
-      render(
+      const { container } = render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      // Button should be disabled
-      const authorizeBtn = screen.getByText('tools.mcp.authorize')
-      expect(authorizeBtn.closest('button'))!.toBeDisabled()
+      expect(container.firstChild).toBeNull()
+      expect(mockAuthorizeMcp).not.toHaveBeenCalled()
+      expect(mockUpdateTools).not.toHaveBeenCalled()
     })
   })
 
@@ -795,16 +795,15 @@ describe('MCPDetailContent', () => {
       })
     })
 
-    it('should disable authorized button when not workspace manager', () => {
-      mockIsCurrentWorkspaceManager = false
+    it('should render nothing without mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
       const detail = createMockDetail({ is_team_authorization: true })
-      render(
+      const { container } = render(
         <MCPDetailContent {...defaultProps} detail={detail} />,
         { wrapper: createWrapper() },
       )
 
-      const authorizedBtn = screen.getByText('tools.auth.authorized')
-      expect(authorizedBtn.closest('button'))!.toBeDisabled()
+      expect(container.firstChild).toBeNull()
     })
   })
 

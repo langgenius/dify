@@ -965,6 +965,43 @@ class TestTenantService:
             assert mock_target_join.role == "admin"
             self._assert_database_operations_called(mock_db)
 
+    def test_create_owner_tenant_if_not_exist_rbac_enabled_assigns_owner_role(
+        self, mock_db_dependencies, mock_external_service_dependencies
+    ):
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-rbac"
+        mock_tenant.name = "RBAC User's Workspace"
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
+            patch("services.account_service.TenantService.create_tenant_member"),
+            patch(
+                "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                return_value="rbac-owner-id",
+            ),
+            patch("services.account_service.RBACService") as mock_rbac_service,
+            patch("services.account_service.tenant_was_created.send"),
+        ):
+            mock_db_dependencies["db"].session.scalar.return_value = None
+
+            TenantService.create_owner_tenant_if_not_exist(mock_account, is_setup=True)
+
+        mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+            tenant_id="tenant-rbac",
+            account_id="user-rbac",
+            member_account_id="user-rbac",
+            role_ids=["rbac-owner-id"],
+        )
+
     def test_admin_can_update_admin_member_role(self):
         """Test admin can update another non-owner member, including an admin."""
         mock_tenant = MagicMock()
@@ -1093,6 +1130,58 @@ class TestTenantService:
 
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_rbac_member_can_remove_non_owner_member(self):
+        """Test RBAC workspace.member.manage allows removing a non-owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+
+        mock_permissions = MagicMock()
+        mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+            patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=False),
+        ):
+            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_rbac_member_cannot_remove_without_permission(self):
+        """Test RBAC permission check rejects removal without workspace.member.manage."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+
+        mock_permissions = MagicMock()
+        mock_permissions.workspace = MagicMock(permission_keys=["workspace.role.manage"])
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+        ):
+            with pytest.raises(NoPermissionError):
+                TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_rbac_member_cannot_remove_owner_member(self):
+        """Test RBAC permission check rejects removing an owner member."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-456"
+        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+
+        mock_permissions = MagicMock()
+        mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+            patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
+        ):
+            with pytest.raises(NoPermissionError):
+                TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
 
 
 class TestRegisterService:
@@ -1838,6 +1927,197 @@ class TestRegisterService:
             role="normal",
             inviter=None,
         )
+
+    # ==================== RBAC Member Invitation Tests ====================
+
+    def test_invite_new_member_rbac_enabled_new_account(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """When RBAC is enabled, create the member join and replace RBAC member roles."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-789"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
+
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.dify_config") as mock_config,
+        ):
+            mock_lookup.return_value = None
+            mock_config.RBAC_ENABLED = True
+
+            mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
+                account_id="new-user-rbac", email="rbac@example.com", name="rbacuser", status="pending"
+            )
+            with (
+                patch("services.account_service.RegisterService.register") as mock_register,
+                patch("services.account_service.TenantService.check_member_permission"),
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.TenantService.switch_tenant"),
+                patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
+                patch(
+                    "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                    return_value="rbac-role-id-123",
+                ),
+                patch("services.account_service.RBACService") as mock_rbac_service,
+            ):
+                mock_register.return_value = mock_new_account
+
+                result = RegisterService.invite_new_member(
+                    tenant=mock_tenant,
+                    email="rbac@example.com",
+                    language="en-US",
+                    role="rbac-role-id-123",
+                    inviter=mock_inviter,
+                )
+
+                assert result == "rbac-token"
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_new_account, TenantAccountRole.NORMAL.value
+                )
+                mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+                    tenant_id=str(mock_tenant.id),
+                    account_id=mock_inviter.id,
+                    member_account_id=mock_new_account.id,
+                    role_ids=["rbac-role-id-123"],
+                )
+
+    def test_invite_new_member_rbac_enabled_existing_account(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-789"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
+        mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="existing-rbac", email="existing-rbac@example.com", status="pending"
+        )
+
+        mock_db_dependencies["db"].session.scalar.return_value = None
+
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.dify_config") as mock_config,
+        ):
+            mock_lookup.return_value = mock_existing_account
+            mock_config.RBAC_ENABLED = True
+
+            with (
+                patch("services.account_service.TenantService.check_member_permission"),
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
+                patch(
+                    "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                    return_value="rbac-role-id-456",
+                ),
+                patch("services.account_service.RBACService") as mock_rbac_service,
+            ):
+                result = RegisterService.invite_new_member(
+                    tenant=mock_tenant,
+                    email="existing-rbac@example.com",
+                    language="en-US",
+                    role="rbac-role-id-456",
+                    inviter=mock_inviter,
+                )
+
+                assert result == "rbac-token"
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_existing_account, TenantAccountRole.NORMAL.value
+                )
+                mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+                    tenant_id=str(mock_tenant.id),
+                    account_id=mock_inviter.id,
+                    member_account_id=mock_existing_account.id,
+                    role_ids=["rbac-role-id-456"],
+                )
+
+    def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-789"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
+        mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="existing-rbac", email="existing-rbac@example.com", status=AccountStatus.ACTIVE
+        )
+
+        mock_db_dependencies["db"].session.scalar.return_value = None
+
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.dify_config") as mock_config,
+        ):
+            mock_lookup.return_value = mock_existing_account
+            mock_config.RBAC_ENABLED = True
+
+            with (
+                patch("services.account_service.TenantService.check_member_permission"),
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch(
+                    "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                    return_value="rbac-role-id-456",
+                ),
+                patch("services.account_service.RBACService") as mock_rbac_service,
+            ):
+                with pytest.raises(AccountAlreadyInTenantError):
+                    RegisterService.invite_new_member(
+                        tenant=mock_tenant,
+                        email="existing-rbac@example.com",
+                        language="en-US",
+                        role="rbac-role-id-456",
+                        inviter=mock_inviter,
+                    )
+
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_existing_account, TenantAccountRole.NORMAL.value
+                )
+                mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+                    tenant_id=str(mock_tenant.id),
+                    account_id=mock_inviter.id,
+                    member_account_id=mock_existing_account.id,
+                    role_ids=["rbac-role-id-456"],
+                )
+                mock_task_dependencies.delay.assert_not_called()
+
+    def test_invite_new_member_rbac_disabled_uses_legacy_role(
+        self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
+    ):
+        """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
+        mock_tenant = MagicMock()
+        mock_tenant.id = "tenant-legacy"
+        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789", name="Inviter")
+
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.dify_config") as mock_config,
+        ):
+            mock_lookup.return_value = None
+            mock_config.RBAC_ENABLED = False
+
+            mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
+                account_id="legacy-user", email="legacy@example.com", name="legacyuser", status="pending"
+            )
+            with (
+                patch("services.account_service.RegisterService.register") as mock_register,
+                patch("services.account_service.TenantService.check_member_permission"),
+                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                patch("services.account_service.TenantService.switch_tenant"),
+                patch("services.account_service.RegisterService.generate_invite_token", return_value="legacy-token"),
+                patch("services.account_service.RBACService") as mock_rbac_service,
+            ):
+                mock_register.return_value = mock_new_account
+
+                result = RegisterService.invite_new_member(
+                    tenant=mock_tenant,
+                    email="legacy@example.com",
+                    language="en-US",
+                    role="editor",
+                    inviter=mock_inviter,
+                )
+
+                assert result == "legacy-token"
+                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "editor")
+                mock_rbac_service.MemberRoles.replace.assert_not_called()
 
     # ==================== Token Management Tests ====================
 

@@ -20,6 +20,7 @@ import { AppModeEnum } from '@/types/app'
 let mockIsCurrentWorkspaceEditor = true
 let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 let mockSystemFeatures = {
   branding: { enabled: false },
@@ -64,6 +65,12 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -199,6 +206,7 @@ describe('App List Browsing Flow', () => {
     mockIsCurrentWorkspaceEditor = true
     mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -287,15 +295,19 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
 
-    it('should hide NewAppCard when user is not a workspace editor', () => {
+    it('should show disabled NewAppCard when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([
         createMockApp({ name: 'Test App' }),
       ])]
 
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.newApp.startFromBlank' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'app.newApp.startFromTemplate' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'app.importDSL' })).toBeDisabled()
     })
   })
 
@@ -330,8 +342,9 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
 
-    it('should hide drag-drop hint for non-editors', () => {
+    it('should hide drag-drop hint without app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([createMockApp()])]
       renderList()
 

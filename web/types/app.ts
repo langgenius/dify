@@ -358,6 +358,8 @@ export type App = {
   app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
+  /** Creator account ID */
+  created_by?: string
   /** Timestamp of update */
   updated_at: number
   /** Web Application Configuration */
@@ -380,6 +382,8 @@ export type App = {
   has_draft_trigger?: boolean
   /** Type */
   workflow_kind?: WorkflowKind | null
+  /** ACL permission keys */
+  permission_keys?: string[]
 }
 
 export type AppSSO = {

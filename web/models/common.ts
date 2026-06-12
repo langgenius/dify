@@ -1,4 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { Role } from './access-control'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
@@ -42,6 +43,7 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   created_at?: string
   status: 'pending' | 'active' | 'banned' | 'closed'
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  roles: Role[]
 }
 
 enum ProviderName {
@@ -141,14 +143,6 @@ export enum DataSourceProvider {
   fireCrawl = 'firecrawl',
   jinaReader = 'jinareader',
   waterCrawl = 'watercrawl',
-}
-
-export type PluginProvider = {
-  tool_name: string
-  is_enabled: boolean
-  credentials: {
-    api_key: string
-  } | null
 }
 
 export type FileUploadConfigResponse = {

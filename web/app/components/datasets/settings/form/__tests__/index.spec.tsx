@@ -3,6 +3,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
 import Form from '../index'
 
@@ -21,12 +22,25 @@ const mockUserProfile = {
   avatar_url: '',
   role: 'owner',
 }
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
 
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: unknown) => unknown) => {
     const state = {
-      isCurrentWorkspaceDatasetOperator: false,
       userProfile: mockUserProfile,
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
     }
     return selector(state)
   },
@@ -98,6 +112,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
   ...overrides,
 })
 
@@ -176,7 +191,6 @@ vi.mock('@/context/provider-context', () => ({
     plan: { type: 'free' },
     enableBilling: false,
     onPlanInfoChanged: vi.fn(),
-    isCurrentWorkspaceDatasetOperator: false,
     supportRetrievalMethods: ['semantic_search', 'full_text_search', 'hybrid_search'],
   }),
 }))
@@ -236,6 +250,7 @@ describe('Form', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createMockDataset()
+    mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
   describe('Rendering', () => {
@@ -459,6 +474,15 @@ describe('Form', () => {
 
       const descriptionTextarea = screen.getByDisplayValue('Test description')
       expect(descriptionTextarea).toBeDisabled()
+    })
+
+    it('should disable save when dataset only has readonly ACL permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockDataset = createMockDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+      render(<Form />)
+
+      const saveButton = screen.getByRole('button', { name: /form\.save/i })
+      expect(saveButton).toBeDisabled()
     })
   })
 

@@ -95,6 +95,7 @@ const createAppContextValue = (): AppContextValue => ({
   useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 })
 
 describe('CustomPage', () => {

@@ -10,7 +10,10 @@ import {
   RiFileTextLine,
   RiFocus2Fill,
   RiFocus2Line,
+  RiUserSettingsFill,
+  RiUserSettingsLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
@@ -20,13 +23,15 @@ import { useStore } from '@/app/components/app/store'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -61,18 +66,32 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
   const hideHeader = eventHideHeader ?? storedHideHeader
   const { eventEmitter } = useEventEmitterContextContext()
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   eventEmitter?.useSubscription((value: EventEmitterValue) => {
     if (typeof value === 'object' && value.type === 'workflow-canvas-maximize' && typeof value.payload === 'boolean')
       setEventHideHeader(value.payload)
   })
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
+  const datasetCreatorPermissionOptions = useMemo(
+    () => ({
+      currentUserId,
+      resourceCreatedBy: datasetRes?.created_by,
+      workspacePermissionKeys,
+    }),
+    [datasetRes?.created_by, currentUserId, workspacePermissionKeys],
+  )
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(datasetRes?.permission_keys, datasetCreatorPermissionOptions),
+    [datasetCreatorPermissionOptions, datasetRes?.permission_keys],
+  )
+  const canAccessConfig = systemFeatures.rbac_enabled && datasetACLCapabilities.canAccessConfig
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
 
@@ -94,6 +113,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
         disabled: isButtonDisabledWithPipeline,
+        visible: datasetACLCapabilities.canRetrievalRecall,
       },
       {
         name: t('datasetMenus.settings', { ns: 'common' }),
@@ -101,6 +121,15 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiEqualizer2Line,
         selectedIcon: RiEqualizer2Fill,
         disabled: false,
+        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
+      },
+      {
+        name: t('settings.knowledgeBaseAccess', { ns: 'common' }),
+        href: `/datasets/${datasetId}/access-config`,
+        icon: RiUserSettingsLine,
+        selectedIcon: RiUserSettingsFill,
+        disabled: false,
+        visible: canAccessConfig,
       },
     ]
 
@@ -111,6 +140,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: PipelineLine as RemixiconComponentType,
         selectedIcon: PipelineFill as RemixiconComponentType,
         disabled: false,
+        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
       })
       baseNavigation.unshift({
         name: t('datasetMenus.documents', { ns: 'common' }),
@@ -118,11 +148,24 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
         disabled: isButtonDisabledWithPipeline,
+        visible: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse,
       })
     }
 
-    return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+    return baseNavigation.filter(item => item.visible).map(({ visible, ...item }) => item)
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities, canAccessConfig])
+
+  const fallbackPath = useMemo(() => {
+    if (datasetRes?.provider !== 'external' && (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit || datasetACLCapabilities.canUse))
+      return `/datasets/${datasetId}/documents`
+    if (datasetACLCapabilities.canRetrievalRecall)
+      return `/datasets/${datasetId}/hitTesting`
+    if (datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)
+      return `/datasets/${datasetId}/settings`
+    if (canAccessConfig)
+      return `/datasets/${datasetId}/access-config`
+    return '/datasets'
+  }, [datasetACLCapabilities, canAccessConfig, datasetId, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
@@ -137,6 +180,37 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (shouldRedirect)
       router.replace('/datasets')
   }, [router, shouldRedirect])
+
+  useEffect(() => {
+    if (!datasetRes || shouldRedirect)
+      return
+
+    const isDocumentSettingsPath = /\/documents\/[^/]+\/settings$/.test(pathname)
+    const isDatasetSettingsPath = pathname.endsWith('/settings') && !isDocumentSettingsPath
+
+    if (!datasetACLCapabilities.canRetrievalRecall && pathname.endsWith('/hitTesting')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (isDocumentSettingsPath && !datasetACLCapabilities.canEdit) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (isDatasetSettingsPath && !(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit)) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!(datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit) && pathname.endsWith('/pipeline')) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!datasetACLCapabilities.canUse && (pathname.endsWith('/documents/create') || pathname.endsWith('/documents/create-from-pipeline'))) {
+      router.replace(fallbackPath)
+      return
+    }
+    if (!canAccessConfig && pathname.endsWith('/access-config'))
+      router.replace(fallbackPath)
+  }, [datasetACLCapabilities, canAccessConfig, datasetRes, fallbackPath, pathname, router, shouldRedirect])
 
   if (!datasetRes && !error)
     return <Loading type="app" />
@@ -161,7 +235,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           <AppSideBar
             navigation={navigation}
             extraInfo={
-              !isCurrentWorkspaceDatasetOperator
+              datasetACLCapabilities.canEdit
                 ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }

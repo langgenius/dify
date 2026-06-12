@@ -98,11 +98,24 @@ class AuthContext:
     account_id: uuid.UUID | None
     client_id: str | None
     scopes: frozenset[Scope]
-    token_id: uuid.UUID
-    token_type: TokenType
     expires_at: datetime | None
     token_hash: str
+    token_id: uuid.UUID
+    token_type: TokenType | None = None
+    source: str | None = None
     verified_tenants: dict[str, bool] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        token_type = self.token_type
+        if token_type is None:
+            token_type = (
+                TokenType.OAUTH_EXTERNAL_SSO
+                if self.subject_type == SubjectType.EXTERNAL_SSO or self.source == TokenType.OAUTH_EXTERNAL_SSO
+                else TokenType.OAUTH_ACCOUNT
+            )
+            object.__setattr__(self, "token_type", token_type)
+        if self.source is None:
+            object.__setattr__(self, "source", token_type.value)
 
 
 _auth_ctx_var: ContextVar[AuthContext] = ContextVar("openapi_auth_ctx")
@@ -490,7 +503,8 @@ def check_workspace_membership(
     account_id: uuid.UUID | str,
     tenant_id: str,
     token_hash: str,
-    membership_cache: dict[str, bool],
+    membership_cache: dict[str, bool] | None = None,
+    cached_verdicts: dict[str, bool] | None = None,
 ) -> None:
     """Layer-0 enforcement core. Raises `Forbidden` on deny, returns on allow.
 
@@ -499,7 +513,8 @@ def check_workspace_membership(
     short-circuiting on EE / SSO subjects before invoking — this function
     runs the membership + active-status checks unconditionally.
     """
-    cached = membership_cache.get(tenant_id)
+    cache = membership_cache if membership_cache is not None else cached_verdicts or {}
+    cached = cache.get(tenant_id)
     if cached is True:
         return
     if cached is False:

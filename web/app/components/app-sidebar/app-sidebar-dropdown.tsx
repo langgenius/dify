@@ -6,15 +6,9 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  RiEqualizer2Line,
-  RiMenuLine,
-} from '@remixicon/react'
-import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'
 import AppInfo from './app-info'
@@ -33,7 +27,6 @@ type Props = Readonly<{
 
 const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
   const [detailExpand, setDetailExpand] = useState(false)
   const [open, setOpen] = useState(false)
@@ -59,7 +52,7 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
               background={appDetail.icon_background}
               imageUrl={appDetail.icon_url}
             />
-            <RiMenuLine className="size-4 text-text-tertiary" />
+            <span className="i-ri-menu-line size-4 text-text-tertiary" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             placement="bottom-start"
@@ -69,7 +62,7 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
             <div className={cn('w-[305px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg')}>
               <div className="p-2">
                 <div
-                  className={cn('flex flex-col gap-2 rounded-lg p-2 pb-2.5', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}
+                  className="flex cursor-pointer flex-col gap-2 rounded-lg p-2 pb-2.5 hover:bg-state-base-hover"
                   onClick={() => {
                     if (appInfoActions)
                       appInfoActions.setPanelOpen(true)
@@ -88,7 +81,7 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
                     />
                     <div className="flex items-center justify-center rounded-md p-0.5">
                       <div className="flex size-5 items-center justify-center">
-                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
+                        <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
                       </div>
                     </div>
                   </div>

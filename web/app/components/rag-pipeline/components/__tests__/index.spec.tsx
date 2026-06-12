@@ -82,6 +82,17 @@ vi.mock('@/app/components/workflow/store', () => {
   }
 })
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean, canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canImportExportDSL: true,
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
 const {
   mockHandlePaneContextmenuCancel,
   mockExportCheck,

@@ -223,6 +223,7 @@ export type DatasetDetailResponse = {
   is_published: boolean
   name: string
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -262,6 +263,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   name: string
   partial_member_list?: Array<string> | null
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse

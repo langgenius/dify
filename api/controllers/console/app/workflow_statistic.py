@@ -6,7 +6,12 @@ from sqlalchemy.orm import sessionmaker
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
 from libs.login import login_required
@@ -43,11 +48,12 @@ class WorkflowDailyRunsStatistic(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Daily runs statistics retrieved successfully")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -82,11 +88,12 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Daily terminals statistics retrieved successfully")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -121,11 +128,12 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Daily token cost statistics retrieved successfully")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 
@@ -163,8 +171,9 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
+    @rbac_permission_required("app", "app_create_and_management")
+    @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
 

@@ -117,23 +117,33 @@ describe('AppCard', () => {
         isExplore: true,
       })
 
-      const button = screen.getByText('explore.appCard.addToWorkspace')
+      const button = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
       expect(button).toBeInTheDocument()
       fireEvent.click(button)
       expect(onCreate).toHaveBeenCalledTimes(1)
     })
 
-    it('should render try button in explore mode', () => {
+    it('should render enabled try button in cloud explore mode', () => {
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.getByText('explore.appCard.try')).toBeInTheDocument()
+      const createButton = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
+      const tryButton = screen.getByRole('button', { name: 'explore.appCard.try' })
+
+      expect(tryButton).toBeEnabled()
+      expect(tryButton.parentElement).toBe(createButton.parentElement)
+      expect(createButton.parentElement).toHaveClass('grid-cols-2')
     })
 
     it('should hide try button outside cloud edition', () => {
       mockConfig.isCloudEdition = false
       renderComponent({ canCreate: true, isExplore: true })
 
-      expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
+      const createButton = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
+
+      expect(screen.queryByRole('button', { name: 'explore.appCard.try' })).not.toBeInTheDocument()
+      expect(createButton.parentElement).toHaveClass('grid-cols-1')
+      expect(createButton.parentElement).not.toHaveClass('grid-cols-2')
+      expect(onTry).not.toHaveBeenCalled()
     })
   })
 
@@ -145,10 +155,13 @@ describe('AppCard', () => {
       expect(screen.queryByText('explore.appCard.try')).not.toBeInTheDocument()
     })
 
-    it('should hide create button when canCreate is false', () => {
+    it('should keep create button visible but disabled when canCreate is false', () => {
       renderComponent({ canCreate: false, isExplore: true })
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      const button = screen.getByRole('button', { name: 'explore.appCard.addToWorkspace' })
+      expect(button).toBeDisabled()
+      fireEvent.click(button)
+      expect(onCreate).not.toHaveBeenCalled()
     })
   })
 
@@ -173,7 +186,7 @@ describe('AppCard', () => {
 
       renderComponent({ app, canCreate: true, isExplore: true })
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
 
       expect(onTry).toHaveBeenCalledWith({ appId: 'app-id', app })
     })
@@ -183,7 +196,7 @@ describe('AppCard', () => {
 
       renderComponent({ app, canCreate: true, isExplore: true })
 
-      fireEvent.click(screen.getByText('explore.appCard.try'))
+      fireEvent.click(screen.getByRole('button', { name: 'explore.appCard.try' }))
 
       expect(mockTrackEvent).toHaveBeenCalledWith('preview_template', {
         template_id: app.app_id,

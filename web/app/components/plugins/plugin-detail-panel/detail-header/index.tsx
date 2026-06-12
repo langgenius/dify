@@ -80,7 +80,7 @@ const DetailHeader = ({
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
-  const { referenceSetting } = useReferenceSetting()
+  const { referenceSetting, canUpdate } = useReferenceSetting()
 
   const {
     source,
@@ -163,7 +163,7 @@ const DetailHeader = ({
             {/* Version Picker */}
             {!!version && (
               <PluginVersionPicker
-                disabled={!isFromMarketplace || isReadmeView}
+                disabled={!isFromMarketplace || isReadmeView || !canUpdate}
                 isShow={versionPicker.isShow}
                 onShowChange={versionPicker.setIsShow}
                 pluginID={plugin_id}
@@ -208,7 +208,7 @@ const DetailHeader = ({
             )}
 
             {/* Update Button */}
-            {(hasNewVersion || isFromGitHub) && (
+            {(hasNewVersion || isFromGitHub) && canUpdate && (
               <Tooltip>
                 <TooltipTrigger
                   delay={300}

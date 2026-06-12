@@ -1,13 +1,20 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 import Operations from '../operations'
 
 const mockPush = vi.fn()
+let mockDatasetPermissionKeys: string[] = []
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+}))
+
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { permission_keys: string[] } }) => unknown) =>
+    selector({ dataset: { permission_keys: mockDatasetPermissionKeys } }),
 }))
 
 const { mockToast } = vi.hoisted(() => {
@@ -90,6 +97,11 @@ describe('Operations', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetPermissionKeys = [
+      DatasetACLPermission.Edit,
+      DatasetACLPermission.DocumentDownload,
+      DatasetACLPermission.DeleteFile,
+    ]
     mockArchive.mockResolvedValue({})
     mockUnArchive.mockResolvedValue({})
     mockEnable.mockResolvedValue({})
@@ -212,6 +224,13 @@ describe('Operations', () => {
         fireEvent.click(settingsButton!)
       })
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1/settings')
+    })
+
+    it('should hide document settings when dataset only has readonly ACL permission', () => {
+      mockDatasetPermissionKeys = [DatasetACLPermission.Readonly]
+      render(<Operations {...defaultProps} />)
+
+      expect(screen.queryByLabelText('datasetDocuments.list.action.settings')).not.toBeInTheDocument()
     })
   })
 

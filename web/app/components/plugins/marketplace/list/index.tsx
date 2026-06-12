@@ -2,6 +2,7 @@
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
 import ListWithCollection from './list-with-collection'
@@ -25,7 +26,7 @@ const List = ({
   emptyClassName,
 }: ListProps) => {
   return (
-    <>
+    <PluginInstallPermissionProviderGuard canInstallPlugin={!!showInstallButton}>
       {
         !plugins && (
           <ListWithCollection
@@ -66,7 +67,7 @@ const List = ({
           <Empty className={emptyClassName} />
         )
       }
-    </>
+    </PluginInstallPermissionProviderGuard>
   )
 }
 

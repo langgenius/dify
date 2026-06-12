@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from flask_restx import fields
-from pydantic import computed_field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import build_avatar_url, to_timestamp
@@ -56,6 +56,7 @@ class AccountWithRole(_AccountAvatar):
     last_active_at: int | None = None
     created_at: int | None = None
     role: str
+    roles: list[dict[str, str]] = Field(default_factory=list)
     status: str
 
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")

@@ -3,9 +3,11 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo, useState } from 'react'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import {
   useAllToolProviders,
 } from '@/service/use-tools'
+import { hasPermission } from '@/utils/permission'
 import NewMCPCard from './create-card'
 import MCPDetailPanel from './detail/provider-detail'
 import MCPCard from './provider-card'
@@ -18,13 +20,23 @@ const MCPList = ({
   searchText,
 }: Props) => {
   const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageMCP = hasPermission(workspacePermissionKeys, 'mcp.manage')
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
-      if (searchText)
-        return collection.type === 'mcp' && Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
-      return collection.type === 'mcp'
+      if (collection.type !== 'mcp')
+        return false
+
+      if (searchText) {
+        const names = typeof collection.name === 'string'
+          ? [collection.name]
+          : Object.values(collection.name)
+        return names.some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
+      }
+
+      return true
     }) as ToolWithProvider[]
   }, [list, searchText])
 
@@ -45,6 +57,10 @@ const MCPList = ({
     setCurrentProviderID(providerID)
     setIsTriggerAuthorize(true)
   }
+
+  if (!canManageMCP)
+    return null
+
   return (
     <>
       <div
