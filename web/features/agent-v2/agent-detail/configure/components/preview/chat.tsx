@@ -2,6 +2,7 @@
 
 import type {
   AgentCliToolConfig,
+  AgentIconType,
   AgentSoulConfig,
   AgentSoulDifyToolConfig,
 } from '@dify/contracts/api/console/agents/types.gen'
@@ -10,7 +11,10 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Inputs } from '@/models/debug'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -224,9 +228,55 @@ const buildChatConfig = ({
   }
 }
 
+function AgentPreviewChatEmptyState({
+  agentIcon,
+  agentIconBackground,
+  agentIconType,
+  agentName,
+  hasInstructions,
+}: {
+  agentIcon?: string | null
+  agentIconBackground?: string | null
+  agentIconType?: AgentIconType | null
+  agentName?: string
+  hasInstructions: boolean
+}) {
+  const { t } = useTranslation('agentV2')
+  const imageUrl = (agentIconType === 'image' || agentIconType === 'link') ? agentIcon : undefined
+  const iconType = imageUrl ? 'image' : agentIconType
+
+  return (
+    <div className="pointer-events-none absolute inset-x-12 bottom-[calc(27%+84px)] flex flex-col items-center text-center">
+      <AppIcon
+        size="xxl"
+        rounded
+        iconType={iconType}
+        icon={agentIcon ?? undefined}
+        background={agentIconBackground}
+        imageUrl={imageUrl}
+        className="bg-background-default"
+      />
+      <div className="mt-3 max-w-full truncate system-md-semibold text-text-secondary">
+        {agentName || t('agentDetail.configure.preview.empty.defaultAgentName')}
+      </div>
+      <div className="mt-4 h-px w-73 max-w-full bg-divider-subtle" />
+      <div className="mt-5 max-w-91 body-md-regular text-text-tertiary">
+        <p>{t('agentDetail.configure.preview.empty.description')}</p>
+        {!hasInstructions && (
+          <p>{t('agentDetail.configure.preview.empty.noInstructionsDescription')}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function AgentPreviewChat({
   appId,
   activeVersionId,
+  agentIcon,
+  agentIconBackground,
+  agentIconType,
+  agentName,
   agentSoulConfig,
   isConfigPending,
   clearChatList,
@@ -234,6 +284,10 @@ export function AgentPreviewChat({
 }: {
   appId?: string | null
   activeVersionId?: string | null
+  agentIcon?: string | null
+  agentIconBackground?: string | null
+  agentIconType?: AgentIconType | null
+  agentName?: string
   agentSoulConfig?: AgentSoulConfig
   isConfigPending: boolean
   clearChatList: boolean
@@ -323,14 +377,28 @@ export function AgentPreviewChat({
       isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
     )
   }, [chatList, doSend])
+  const isEmptyChat = chatList.length === 0
+  const hasInstructions = !!config.pre_prompt.trim()
 
   return (
     <Chat
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerClassName="px-3 pt-6"
-      chatFooterClassName="px-3 pt-10 pb-0"
+      chatNode={isEmptyChat && (
+        <AgentPreviewChatEmptyState
+          agentIcon={agentIcon}
+          agentIconBackground={agentIconBackground}
+          agentIconType={agentIconType}
+          agentName={agentName}
+          hasInstructions={hasInstructions}
+        />
+      )}
+      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12' : 'px-3')}
+      chatFooterClassName={cn(
+        'pb-0',
+        isEmptyChat ? '!bottom-[27%] px-12 pt-3' : 'px-3 pt-10',
+      )}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

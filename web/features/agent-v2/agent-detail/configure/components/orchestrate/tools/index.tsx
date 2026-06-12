@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTools } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
+import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentCliToolItem, CliToolDialog } from './cli-tool'
 import { AgentProviderToolItem, ProviderToolSettingsDialog } from './provider-tool'
@@ -179,20 +180,27 @@ export function AgentTools() {
           <AddToolMenu onAddCliTool={openCliToolDialog} />
         )}
       >
-        {tools.map(tool => (
-          <AgentToolItem
-            key={tool.id}
-            tool={tool}
-            isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
-            onOpenChange={open => setToolOpen(tool, open)}
-            onConfigureAction={setSettingTarget}
-            onDeleteCliTool={toolId => setTools(tools.filter(tool => tool.id !== toolId))}
-            onEditCliTool={(tool) => {
-              setEditingCliTool(tool)
-              setIsCliToolDialogOpen(true)
-            }}
-          />
-        ))}
+        {tools.length === 0
+          ? (
+              <ConfigureSectionEmpty
+                title={t('agentDetail.configure.tools.empty.title')}
+                description={t('agentDetail.configure.tools.empty.description')}
+              />
+            )
+          : tools.map(tool => (
+              <AgentToolItem
+                key={tool.id}
+                tool={tool}
+                isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
+                onOpenChange={open => setToolOpen(tool, open)}
+                onConfigureAction={setSettingTarget}
+                onDeleteCliTool={toolId => setTools(tools.filter(tool => tool.id !== toolId))}
+                onEditCliTool={(tool) => {
+                  setEditingCliTool(tool)
+                  setIsCliToolDialogOpen(true)
+                }}
+              />
+            ))}
       </ConfigureSection>
       <ProviderToolSettingsDialog
         settingTarget={settingTarget}

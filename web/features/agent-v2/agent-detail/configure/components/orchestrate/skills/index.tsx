@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFiles, useRemoveSkill, useSkills } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
+import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { getFirstAgentFileId } from '../utils'
 import { AgentSkillItem } from './item'
@@ -118,9 +119,16 @@ export function AgentSkills({
           />
         )}
       >
-        {skillsWithDetail.map(skill => (
-          <AgentSkillItem key={skill.id} skill={skill} onRemove={removeSkill} />
-        ))}
+        {skillsWithDetail.length === 0
+          ? (
+              <ConfigureSectionEmpty
+                title={t('agentDetail.configure.skills.empty.title')}
+                description={t('agentDetail.configure.skills.empty.description')}
+              />
+            )
+          : skillsWithDetail.map(skill => (
+              <AgentSkillItem key={skill.id} skill={skill} onRemove={removeSkill} />
+            ))}
       </ConfigureSection>
       <AgentSkillUploadDialog
         agentId={agentId}

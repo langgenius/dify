@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
+import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentKnowledgeRetrievalDialog } from './dialog'
 
@@ -59,9 +60,16 @@ export function AgentKnowledgeRetrieval() {
           />
         )}
       >
-        {retrievals.map(item => (
-          <AgentKnowledgeRetrievalRow key={item.id} item={item} />
-        ))}
+        {retrievals.length === 0
+          ? (
+              <ConfigureSectionEmpty
+                title={t('agentDetail.configure.knowledgeRetrieval.empty.title')}
+                description={t('agentDetail.configure.knowledgeRetrieval.empty.description')}
+              />
+            )
+          : retrievals.map(item => (
+              <AgentKnowledgeRetrievalRow key={item.id} item={item} />
+            ))}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
         open={isAddDialogOpen}

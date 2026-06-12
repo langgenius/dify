@@ -111,6 +111,10 @@ function AgentConfigurePageContent({
             <AgentPreviewChat
               appId={agentQuery.data?.app_id}
               activeVersionId={activeVersionId}
+              agentIcon={agentQuery.data?.icon}
+              agentIconBackground={agentQuery.data?.icon_background}
+              agentIconType={agentQuery.data?.icon_type}
+              agentName={agentQuery.data?.name}
               agentSoulConfig={previewAgentSoulConfig}
               isConfigPending={versionQuery.isPending}
               clearChatList={clearPreviewChat}
