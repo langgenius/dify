@@ -11,6 +11,7 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {
     loading: { control: 'boolean' },
+    focusableWhenDisabled: { control: 'boolean' },
     tone: {
       control: 'select',
       options: ['default', 'destructive'],
@@ -89,6 +90,13 @@ export const Loading: Story = {
     variant: 'primary',
     loading: true,
     children: 'Loading Button',
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+      },
+    },
   },
 }
 
