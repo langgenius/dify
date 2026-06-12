@@ -310,7 +310,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         }
 
         const isStartNodeMeta = nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
-        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
+        const isStartPlaceholderNode = node!.data.type === BlockEnum.StartPlaceholder
+        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta || isStartPlaceholderNode : true
 
         const isUnconnected = !validNodes.some(n => n.id === node!.id)
         const shouldShowError = errorMessages.length > 0 || (isUnconnected && !canSkipConnectionCheck)
@@ -337,7 +338,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     // Check for start nodes (including triggers)
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
-      if (startNodesFiltered.length === 0) {
+      const hasStartPlaceholderNode = nodes.some(node => node.data.type === BlockEnum.StartPlaceholder)
+      if (startNodesFiltered.length === 0 && !hasStartPlaceholderNode) {
         list.push({
           id: 'start-node-required',
           type: BlockEnum.Start,

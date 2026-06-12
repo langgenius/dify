@@ -14,11 +14,14 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
+from models.agent_config_entities import WorkflowNodeJobConfig
+from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import InvalidComposerConfigError
 from services.agent.roster_service import AgentRosterService
+from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.entities.agent_entities import AgentSoulConfig, ComposerSavePayload, ComposerSaveStrategy, ComposerVariant
 
 
@@ -35,6 +38,7 @@ class FakeSession:
         self._scalars = list(scalars or [])
         self._scalar = list(scalar or [])
         self.added = []
+        self.deleted = []
         self.commits = 0
         self.flushes = 0
         self.rollbacks = 0
@@ -51,6 +55,9 @@ class FakeSession:
 
     def add(self, value):
         self.added.append(value)
+
+    def delete(self, value):
+        self.deleted.append(value)
 
     def flush(self):
         self.flushes += 1
@@ -84,10 +91,18 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch):
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
-    binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="version-1")
+    binding = SimpleNamespace(
+        agent_id="agent-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        current_snapshot_id="version-1",
+    )
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
-    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: SimpleNamespace(id="agent-1"))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_agent_if_present",
+        lambda **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1"),
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
@@ -116,14 +131,22 @@ def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
 )
 def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, helper_name):
     fake_session = FakeSession()
-    binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="version-1")
+    binding = SimpleNamespace(
+        agent_id="agent-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        current_snapshot_id="version-1",
+    )
     calls = []
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
-    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: SimpleNamespace(id="agent-1"))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_agent_if_present",
+        lambda **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1"),
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
@@ -523,6 +546,7 @@ def test_roster_list_and_invite_options(monkeypatch):
         tenant_id="tenant-1",
         name="Analyst",
         description="",
+        role="researcher",
         agent_kind=AgentKind.DIFY_AGENT,
         scope=AgentScope.ROSTER,
         source=AgentSource.AGENT_APP,
@@ -539,11 +563,13 @@ def test_roster_list_and_invite_options(monkeypatch):
     )
     service = AgentRosterService(fake_session)
     monkeypatch.setattr(service, "_load_versions_by_id", lambda version_ids: {"version-1": version})
+    monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
 
     assert listed["data"][0]["active_config_snapshot"]["id"] == "version-1"
+    assert listed["data"][0]["role"] == "researcher"
     assert listed["data"][0]["created_at"] == int(created_at.timestamp())
     assert listed["data"][0]["updated_at"] == int(updated_at.timestamp())
     assert listed["data"][0]["active_config_snapshot"]["created_at"] == int(version_created_at.timestamp())
@@ -886,13 +912,19 @@ class TestListWorkflowsReferencingAppAgent:
     def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
         agent = SimpleNamespace(id="agent-1")
         bindings = [
-            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-b"),
-            SimpleNamespace(app_id="wf-app-1", workflow_id="wf-1", node_id="node-a"),
-            SimpleNamespace(app_id="wf-app-2", workflow_id="wf-2", node_id="node-a"),
+            SimpleNamespace(
+                agent_id="agent-1", app_id="wf-app-1", workflow_id="wf-1", workflow_version="v1", node_id="node-b"
+            ),
+            SimpleNamespace(
+                agent_id="agent-1", app_id="wf-app-1", workflow_id="wf-1", workflow_version="v1", node_id="node-a"
+            ),
+            SimpleNamespace(
+                agent_id="agent-1", app_id="wf-app-2", workflow_id="wf-2", workflow_version="v2", node_id="node-a"
+            ),
         ]
         apps = [
-            SimpleNamespace(id="wf-app-1", name="Beta Flow", mode="workflow"),
-            SimpleNamespace(id="wf-app-2", name="Alpha Flow", mode="advanced-chat"),
+            SimpleNamespace(id="wf-app-1", name="Beta Flow", mode="workflow", workflow_id="wf-1"),
+            SimpleNamespace(id="wf-app-2", name="Alpha Flow", mode="advanced-chat", workflow_id="wf-2"),
         ]
         # scalar -> backing agent; scalars -> bindings, then resolved apps.
         session = FakeSession(scalar=[agent], scalars=[bindings, apps])
@@ -904,6 +936,7 @@ class TestListWorkflowsReferencingAppAgent:
         beta = next(r for r in result if r["app_id"] == "wf-app-1")
         assert beta["node_ids"] == ["node-a", "node-b"]  # deduped + sorted
         assert beta["workflow_id"] == "wf-1"
+        assert beta["workflow_version"] == "v1"
 
     def test_returns_empty_when_no_backing_agent(self):
         session = FakeSession()  # scalar() -> None
@@ -920,11 +953,99 @@ class TestListWorkflowsReferencingAppAgent:
 
     def test_skips_orphaned_binding_whose_app_is_gone(self):
         agent = SimpleNamespace(id="agent-1")
-        bindings = [SimpleNamespace(app_id="wf-app-gone", workflow_id="wf-9", node_id="node-a")]
+        bindings = [
+            SimpleNamespace(
+                agent_id="agent-1", app_id="wf-app-gone", workflow_id="wf-9", workflow_version="v9", node_id="node-a"
+            )
+        ]
         session = FakeSession(scalar=[agent], scalars=[bindings, []])  # no apps resolved
         service = AgentRosterService(session)
 
         assert service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1") == []
+
+    def test_skips_historical_published_workflow_versions(self):
+        agent = SimpleNamespace(id="agent-1")
+        bindings = [
+            SimpleNamespace(
+                agent_id="agent-1", app_id="wf-app-1", workflow_id="old-wf", workflow_version="old", node_id="old"
+            ),
+            SimpleNamespace(
+                agent_id="agent-1", app_id="wf-app-1", workflow_id="current-wf", workflow_version="v2", node_id="new"
+            ),
+        ]
+        apps = [SimpleNamespace(id="wf-app-1", name="Flow", mode="workflow", workflow_id="current-wf")]
+        session = FakeSession(scalar=[agent], scalars=[bindings, apps])
+        service = AgentRosterService(session)
+
+        result = service.list_workflows_referencing_app_agent(tenant_id="tenant-1", app_id="app-1")
+
+        assert len(result) == 1
+        assert result[0]["workflow_id"] == "current-wf"
+        assert result[0]["node_ids"] == ["new"]
+
+
+class TestWorkflowAgentDraftBindingSync:
+    def test_creates_roster_binding_from_agent_node_graph(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph='{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2","agent_binding":{"binding_type":"roster_agent","agent_id":"agent-1"}}}]}',
+        )
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Agent",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="snapshot-2",
+        )
+        session = FakeSession(scalar=[agent], scalars=[[]])
+
+        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        binding = next(item for item in session.added if isinstance(item, WorkflowAgentNodeBinding))
+        assert binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+        assert binding.agent_id == "agent-1"
+        assert binding.current_snapshot_id == "snapshot-2"
+        assert binding.node_job_config_dict == WorkflowNodeJobConfig().model_dump(mode="json")
+
+    def test_deletes_draft_binding_when_agent_node_removed(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph='{"nodes":[]}',
+        )
+        stale_binding = WorkflowAgentNodeBinding(
+            id="binding-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="removed-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            node_job_config=WorkflowNodeJobConfig(),
+        )
+        session = FakeSession(scalars=[[stale_binding]])
+
+        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        assert session.deleted == [stale_binding]
 
 
 def test_dataset_rows_filters_malformed_ids(monkeypatch):

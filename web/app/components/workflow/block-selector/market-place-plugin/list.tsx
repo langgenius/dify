@@ -2,7 +2,7 @@
 import type { RefObject } from 'react'
 import type { Plugin, PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -120,21 +120,6 @@ const List = ({
             onAction={noop}
           />
         ))}
-        {hasRes && (
-          <div className="mt-2 mb-3 flex items-center justify-center space-x-2">
-            <div className="h-[2px] w-[90px] bg-linear-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
-            <Link
-              href={urlWithSearchText}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-4 shrink-0 items-center system-sm-medium text-text-accent-light-mode-only"
-            >
-              <RiSearchLine className="mr-0.5 size-3" />
-              <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
-            </Link>
-            <div className="h-[2px] w-[90px] bg-linear-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
-          </div>
-        )}
       </div>
     </>
   )

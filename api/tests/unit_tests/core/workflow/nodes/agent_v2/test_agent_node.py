@@ -8,9 +8,9 @@ from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceeded
 from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendStreamInternalEvent,
-    CleanupLayerSpec,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
+    RuntimeLayerSpec,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
@@ -118,7 +118,7 @@ class FakeSessionStore:
                 WorkflowAgentSessionScope,
                 str,
                 CompositorSessionSnapshot | None,
-                list[CleanupLayerSpec],
+                list[RuntimeLayerSpec],
             ]
         ] = []
         self.cleaned: list[tuple[WorkflowAgentSessionScope, str | None]] = []
@@ -132,9 +132,9 @@ class FakeSessionStore:
         scope: WorkflowAgentSessionScope,
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        composition_layer_specs: list[CleanupLayerSpec],
+        runtime_layer_specs: list[RuntimeLayerSpec],
     ) -> None:
-        self.saved.append((scope, backend_run_id, snapshot, list(composition_layer_specs)))
+        self.saved.append((scope, backend_run_id, snapshot, list(runtime_layer_specs)))
 
     def mark_cleaned(
         self,

@@ -91,6 +91,11 @@ import {
 } from './helpers'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
+import {
+  StartPlaceholderPanelBody,
+  StartPlaceholderPanelDescription,
+  StartPlaceholderPanelTitle,
+} from './start-placeholder-panel'
 import { TriggerSubscription } from './trigger-subscription'
 import { TabType } from './types'
 
@@ -480,6 +485,19 @@ const BasePanel: FC<BasePanelProps> = ({
   const singleRunActionLabel = isSingleRunning
     ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
     : runThisStepLabel
+  const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
+  const panelChildren = cloneElement(children as any, {
+    id,
+    data,
+    panelProps: {
+      getInputVars,
+      toVarInputs,
+      runInputData,
+      setRunInputData,
+      runResult,
+      runInputDataRef,
+    },
+  })
 
   const panelTabs = (
     <TabsList>
@@ -519,16 +537,24 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
-            <BlockIcon
-              className="mr-1 shrink-0"
-              type={data.type}
-              toolIcon={toolIcon}
-              size="md"
-            />
-            <TitleInput
-              value={data.title || ''}
-              onBlur={handleTitleBlur}
-            />
+            {!isStartPlaceholderPanel && (
+              <BlockIcon
+                className="mr-1 shrink-0"
+                type={data.type}
+                toolIcon={toolIcon}
+                size="md"
+              />
+            )}
+            {isStartPlaceholderPanel
+              ? (
+                  <StartPlaceholderPanelTitle />
+                )
+              : (
+                  <TitleInput
+                    value={data.title || ''}
+                    onBlur={handleTitleBlur}
+                  />
+                )}
             {viewingUsers.length > 0 && (
               <div className="ml-3 shrink-0">
                 <UserAvatarList
@@ -582,137 +608,147 @@ const BasePanel: FC<BasePanelProps> = ({
               </button>
             </div>
           </div>
-          <div className="p-2">
-            <DescriptionInput
-              value={data.desc || ''}
-              onChange={handleDescriptionChange}
-            />
-          </div>
-          {
-            needsToolAuth && (
-              <PluginAuth
-                className="px-4 pb-2"
-                pluginPayload={{
-                  provider: currToolCollection?.name || '',
-                  providerType: currToolCollection?.type || '',
-                  category: AuthCategory.tool,
-                  detail: currToolCollection as any,
-                }}
-              >
-                <div className="flex items-center justify-between pr-3 pl-4">
-                  {panelTabs}
-                  <AuthorizedInNode
+          {isStartPlaceholderPanel
+            ? (
+                <StartPlaceholderPanelDescription />
+              )
+            : (
+                <div className="p-2">
+                  <DescriptionInput
+                    value={data.desc || ''}
+                    onChange={handleDescriptionChange}
+                  />
+                </div>
+              )}
+          {!isStartPlaceholderPanel && (
+            <>
+              {
+                needsToolAuth && (
+                  <PluginAuth
+                    className="px-4 pb-2"
                     pluginPayload={{
                       provider: currToolCollection?.name || '',
                       providerType: currToolCollection?.type || '',
                       category: AuthCategory.tool,
                       detail: currToolCollection as any,
                     }}
-                    onAuthorizationItemClick={handleAuthorizationItemClick}
-                    credentialId={data.credential_id}
-                  />
-                </div>
-              </PluginAuth>
-            )
-          }
-          {
-            !!currentDataSource && (
-              <PluginAuthInDataSourceNode
-                onJumpToDataSourcePage={handleJumpToDataSourcePage}
-                isAuthorized={currentDataSource.is_authorized}
-              >
-                <div className="flex items-center justify-between pr-3 pl-4">
-                  {panelTabs}
-                  <AuthorizedInDataSourceNode
+                  >
+                    <div className="flex items-center justify-between pr-3 pl-4">
+                      {panelTabs}
+                      <AuthorizedInNode
+                        pluginPayload={{
+                          provider: currToolCollection?.name || '',
+                          providerType: currToolCollection?.type || '',
+                          category: AuthCategory.tool,
+                          detail: currToolCollection as any,
+                        }}
+                        onAuthorizationItemClick={handleAuthorizationItemClick}
+                        credentialId={data.credential_id}
+                      />
+                    </div>
+                  </PluginAuth>
+                )
+              }
+              {
+                !!currentDataSource && (
+                  <PluginAuthInDataSourceNode
                     onJumpToDataSourcePage={handleJumpToDataSourcePage}
-                    authorizationsNum={3}
-                  />
-                </div>
-              </PluginAuthInDataSourceNode>
-            )
-          }
-          {
-            currentTriggerPlugin && (
-              <TriggerSubscription
-                subscriptionIdSelected={data.subscription_id}
-                onSubscriptionChange={handleSubscriptionChange}
-              >
-                {panelTabs}
-              </TriggerSubscription>
-            )
-          }
-          {
-            !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-              <div className="flex items-center justify-between pr-3 pl-4">
-                {panelTabs}
-              </div>
-            )
-          }
-          <Split />
+                    isAuthorized={currentDataSource.is_authorized}
+                  >
+                    <div className="flex items-center justify-between pr-3 pl-4">
+                      {panelTabs}
+                      <AuthorizedInDataSourceNode
+                        onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                        authorizationsNum={3}
+                      />
+                    </div>
+                  </PluginAuthInDataSourceNode>
+                )
+              }
+              {
+                currentTriggerPlugin && (
+                  <TriggerSubscription
+                    subscriptionIdSelected={data.subscription_id}
+                    onSubscriptionChange={handleSubscriptionChange}
+                  >
+                    {panelTabs}
+                  </TriggerSubscription>
+                )
+              }
+              {
+                !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
+                  <div className="flex items-center justify-between pr-3 pl-4">
+                    {panelTabs}
+                  </div>
+                )
+              }
+              <Split />
+            </>
+          )}
         </div>
-        <TabsPanel value={TabType.settings} className="flex flex-1 flex-col overflow-y-auto">
-          <div>
-            {cloneElement(children as any, {
-              id,
-              data,
-              panelProps: {
-                getInputVars,
-                toVarInputs,
-                runInputData,
-                setRunInputData,
-                runResult,
-                runInputDataRef,
-              },
-            })}
-          </div>
-          <Split />
-          {
-            hasRetryNode(data.type) && (
-              <RetryOnPanel
-                id={id}
-                data={data}
-              />
-            )
-          }
-          {
-            hasErrorHandleNode(data.type) && (
-              <ErrorHandleOnPanel
-                id={id}
-                data={data}
-              />
-            )
-          }
-          {
-            !!availableNextBlocks.length && (
-              <div className="border-t-[0.5px] border-divider-regular p-4">
-                <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
-                  {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
-                </div>
-                <div className="mb-2 system-xs-regular text-text-tertiary">
-                  {t('panel.addNextStep', { ns: 'workflow' })}
-                </div>
-                <NextStep selectedNode={selectedNode} />
-              </div>
-            )
-          }
-          {readmeEntranceComponent}
-        </TabsPanel>
 
-        <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
-          <LastRun
-            appId={appDetail?.id || ''}
-            nodeId={id}
-            canSingleRun={isSupportSingleRun}
-            runningStatus={runningStatus}
-            isRunAfterSingleRun={isRunAfterSingleRun}
-            updateNodeRunningStatus={updateNodeRunningStatus}
-            onSingleRunClicked={handleSingleRun}
-            nodeInfo={nodeInfo!}
-            singleRunResult={runResult!}
-            isPaused={isPaused}
-            {...passedLogParams}
-          />
-        </TabsPanel>
+        {isStartPlaceholderPanel && (
+          <StartPlaceholderPanelBody>
+            {panelChildren}
+          </StartPlaceholderPanelBody>
+        )}
+
+        {!isStartPlaceholderPanel && (
+          <TabsPanel value={TabType.settings} className="flex flex-1 flex-col overflow-y-auto">
+            <div>
+              {panelChildren}
+            </div>
+            <Split />
+            {
+              hasRetryNode(data.type) && (
+                <RetryOnPanel
+                  id={id}
+                  data={data}
+                />
+              )
+            }
+            {
+              hasErrorHandleNode(data.type) && (
+                <ErrorHandleOnPanel
+                  id={id}
+                  data={data}
+                />
+              )
+            }
+            {
+              !!availableNextBlocks.length && (
+                <div className="border-t-[0.5px] border-divider-regular p-4">
+                  <div className="mb-1 flex items-center system-sm-semibold-uppercase text-text-secondary">
+                    {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
+                  </div>
+                  <div className="mb-2 system-xs-regular text-text-tertiary">
+                    {t('panel.addNextStep', { ns: 'workflow' })}
+                  </div>
+                  <NextStep selectedNode={selectedNode} />
+                </div>
+              )
+            }
+            {readmeEntranceComponent}
+          </TabsPanel>
+        )}
+
+        {!isStartPlaceholderPanel && (
+          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
+            <LastRun
+              appId={appDetail?.id || ''}
+              nodeId={id}
+              canSingleRun={isSupportSingleRun}
+              runningStatus={runningStatus}
+              isRunAfterSingleRun={isRunAfterSingleRun}
+              updateNodeRunningStatus={updateNodeRunningStatus}
+              onSingleRunClicked={handleSingleRun}
+              nodeInfo={nodeInfo!}
+              singleRunResult={runResult!}
+              isPaused={isPaused}
+              {...passedLogParams}
+            />
+          </TabsPanel>
+        )}
 
       </Tabs>
     </div>

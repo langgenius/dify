@@ -1076,6 +1076,7 @@ export type ModelFeature
     | 'audio'
     | 'document'
     | 'multi-tool-call'
+    | 'polling'
     | 'stream-tool-call'
     | 'structured-output'
     | 'tool-call'

@@ -1287,6 +1287,7 @@ export const zModelFeature = z.enum([
   'audio',
   'document',
   'multi-tool-call',
+  'polling',
   'stream-tool-call',
   'structured-output',
   'tool-call',
