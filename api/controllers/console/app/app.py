@@ -522,6 +522,7 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("app", "app_preview", resource_required=False)
     @enterprise_license_required
     @with_session(write=False)
     @with_current_user_id

@@ -392,6 +392,7 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required("dataset", "dataset_preview", resource_required=False)
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
@@ -563,7 +564,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required("dataset", "dataset_readonly")
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
