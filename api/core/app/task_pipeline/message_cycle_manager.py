@@ -4,7 +4,7 @@ from threading import Thread, Timer
 from typing import Union
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -34,9 +34,9 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.account import Account
 from models.enums import MessageFileBelongsTo
-from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
-from services.annotation_service import AppAnnotationService
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
 
 logger = logging.getLogger(__name__)
 
@@ -115,18 +115,19 @@ class MessageCycleManager:
 
     def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
         with flask_app.app_context():
-            # get conversation and message
-            stmt = select(Conversation).where(Conversation.id == conversation_id)
-            conversation = db.session.scalar(stmt)
+            with session_factory.create_session() as session:
+                conversation_info = session.execute(
+                    select(Conversation.mode, Conversation.app_id, App.tenant_id)
+                    .join(App, App.id == Conversation.app_id)
+                    .where(Conversation.id == conversation_id)
+                ).one_or_none()
 
-            if not conversation:
+            if not conversation_info:
                 return
 
-            if conversation.mode != AppMode.COMPLETION:
-                app_model = conversation.app
-                if not app_model:
-                    return
+            conversation_mode, app_id, tenant_id = conversation_info
 
+            if conversation_mode != AppMode.COMPLETION:
                 # generate conversation name
                 query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
                 cache_key = f"conv_name:{conversation_id}:{query_hash}"
@@ -137,16 +138,20 @@ class MessageCycleManager:
                 else:
                     try:
                         name = LLMGenerator.generate_conversation_name(
-                            app_model.tenant_id, query, conversation_id, conversation.app_id
+                            tenant_id, query, conversation_id, app_id
                         )
                         redis_client.setex(cache_key, 3600, name)
                     except Exception:
                         if dify_config.DEBUG:
                             logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                         name = query[:47] + "..." if len(query) > 50 else query
-                conversation.name = name
-                db.session.commit()
-                db.session.close()
+
+                with session_factory.create_session() as session, session.begin():
+                    session.execute(
+                        update(Conversation)
+                        .where(Conversation.id == conversation_id, Conversation.app_id == app_id)
+                        .values(name=name)
+                    )
 
     def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> MessageAnnotation | None:
         """
@@ -154,14 +159,20 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
-        if annotation:
-            account = annotation.account
+        with session_factory.create_session() as session:
+            row = session.execute(
+                select(MessageAnnotation, Account.name)
+                .outerjoin(Account, Account.id == MessageAnnotation.account_id)
+                .where(MessageAnnotation.id == event.message_annotation_id)
+            ).one_or_none()
+
+        if row:
+            annotation, account_name = row
             self._task_state.metadata.annotation_reply = AnnotationReply(
                 id=annotation.id,
                 account=AnnotationReplyAccount(
                     id=annotation.account_id,
-                    name=account.name if account else "Dify user",
+                    name=account_name or "Dify user",
                 ),
             )
 

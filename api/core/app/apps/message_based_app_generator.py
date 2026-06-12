@@ -80,6 +80,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             stream=stream,
         )
 
+        db.session.remove()
+
         try:
             return generate_task_pipeline.process()
         except ValueError as e:

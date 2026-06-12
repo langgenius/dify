@@ -155,6 +155,33 @@ class TestMessageBasedAppGeneratorExtras:
                 stream=False,
             )
 
+    def test_handle_response_removes_scoped_session_before_processing(self, monkeypatch: pytest.MonkeyPatch):
+        generator = MessageBasedAppGenerator()
+
+        class _Pipeline:
+            def __init__(self, **kwargs) -> None:
+                _ = kwargs
+
+            def process(self):
+                assert message_based_app_generator.db.session.remove.called
+                return SimpleNamespace()
+
+        monkeypatch.setattr(
+            "core.app.apps.message_based_app_generator.EasyUIBasedGenerateTaskPipeline",
+            _Pipeline,
+        )
+
+        generator._handle_response(
+            application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
+            queue_manager=SimpleNamespace(),
+            conversation=SimpleNamespace(id="conv"),
+            message=SimpleNamespace(id="msg", created_at=SimpleNamespace(timestamp=lambda: 0)),
+            user=SimpleNamespace(),
+            stream=False,
+        )
+
+        message_based_app_generator.db.session.remove.assert_called_once()
+
     def test_get_app_model_config_requires_valid_config(self, monkeypatch: pytest.MonkeyPatch):
         generator = MessageBasedAppGenerator()
         app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
