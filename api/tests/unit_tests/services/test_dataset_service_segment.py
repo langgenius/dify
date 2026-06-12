@@ -110,10 +110,11 @@ class TestSegmentServiceChildChunks:
         )
         existing_a.id = "child-a"
         existing_b.id = "child-b"
+        existing_a.index_node_hash = "old-hash"
         with (
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.uuid.uuid4", return_value="node-new"),
-            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-new"),
+            patch("services.dataset_service.helper.generate_text_hash", return_value="hash-new") as generate_text_hash,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
             patch("services.dataset_service.VectorService") as vector_service,
         ):
@@ -131,6 +132,8 @@ class TestSegmentServiceChildChunks:
 
         assert [chunk.position for chunk in result] == [1, 3]
         assert existing_a.content == "updated content"
+        assert existing_a.index_node_hash == "hash-new"
+        generate_text_hash.assert_any_call("updated content")
         assert existing_a.updated_by == account_context.id
         assert existing_a.updated_at == "now"
         mock_db.session.bulk_save_objects.assert_called_once_with([existing_a])
@@ -176,6 +179,7 @@ class TestSegmentServiceChildChunks:
             patch("services.dataset_service.current_user", SimpleNamespace(id="user-1")),
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.naive_utc_now", return_value="now"),
+            patch("services.dataset_service.helper.generate_text_hash", return_value="new-hash") as generate_text_hash,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             result = SegmentService.update_child_chunk(
@@ -184,6 +188,8 @@ class TestSegmentServiceChildChunks:
 
         assert result is child_chunk
         assert child_chunk.content == "new content"
+        assert child_chunk.index_node_hash == "new-hash"
+        generate_text_hash.assert_called_once_with("new content")
         assert child_chunk.word_count == len("new content")
         assert child_chunk.updated_by == "user-1"
         assert child_chunk.updated_at == "now"

@@ -12,6 +12,7 @@ Focuses on verifying that doc_type is properly handled in:
 import datetime
 import json
 import unittest
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -750,6 +751,17 @@ class TestWeaviateVector(unittest.TestCase):
         assert call_kwargs.kwargs["uuid"] == "fallback-uuid"
         assert call_kwargs.kwargs["vector"] is None
         assert call_kwargs.kwargs["properties"]["created_at"] == created_at.isoformat()
+
+    def test_get_uuids_prefers_valid_doc_id_metadata(self):
+        first_doc_id = str(uuid.uuid4())
+        second_doc_id = str(uuid.uuid4())
+        wv = WeaviateVector.__new__(WeaviateVector)
+        documents = [
+            Document(page_content="same child content", metadata={"doc_id": first_doc_id}),
+            Document(page_content="same child content", metadata={"doc_id": second_doc_id}),
+        ]
+
+        assert wv._get_uuids(documents) == [first_doc_id, second_doc_id]
 
     def test_is_uuid_handles_invalid_values(self):
         wv = WeaviateVector.__new__(WeaviateVector)

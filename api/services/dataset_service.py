@@ -3843,6 +3843,7 @@ class SegmentService:
                 if child_chunk:
                     if child_chunk.content != child_chunk_update_args.content:
                         child_chunk.content = child_chunk_update_args.content
+                        child_chunk.index_node_hash = helper.generate_text_hash(child_chunk.content)
                         child_chunk.word_count = len(child_chunk.content)
                         child_chunk.updated_by = current_user.id
                         child_chunk.updated_at = naive_utc_now()
@@ -3902,6 +3903,8 @@ class SegmentService:
         assert current_user is not None
 
         try:
+            if child_chunk.content != content:
+                child_chunk.index_node_hash = helper.generate_text_hash(content)
             child_chunk.content = content
             child_chunk.word_count = len(content)
             child_chunk.updated_by = current_user.id
