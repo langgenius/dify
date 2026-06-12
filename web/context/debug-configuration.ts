@@ -23,7 +23,7 @@ import type {
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
@@ -274,6 +274,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setRerankSettingModalOpen: noop,
 })
 
-export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)
+export const useDebugConfigurationContext = () => use(DebugConfigurationContext)
 
 export default DebugConfigurationContext

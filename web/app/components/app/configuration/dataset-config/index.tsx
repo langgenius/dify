@@ -14,7 +14,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -59,7 +59,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
     datasetConfigsRef,
     setDatasetConfigs,
     setRerankSettingModalOpen,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const hasData = dataSet.length > 0

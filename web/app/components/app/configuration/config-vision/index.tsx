@@ -7,7 +7,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 // import { Resolution } from '@/types/app'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Vision } from '@/app/components/base/icons/src/vender/features'
@@ -21,7 +21,7 @@ import ParamConfig from './param-config'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
-  const { isShowVisionConfig, isAllowVideoUpload, readonly } = useContext(ConfigContext)
+  const { isShowVisionConfig, isAllowVideoUpload, readonly } = use(ConfigContext)
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
 

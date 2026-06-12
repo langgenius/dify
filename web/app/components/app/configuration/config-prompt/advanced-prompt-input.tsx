@@ -14,7 +14,7 @@ import copy from 'copy-to-clipboard'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import {
   Copy,
@@ -73,7 +73,7 @@ const AdvancedPromptInput: FC<Props> = ({
     dataSets,
     showSelectDataSet,
     externalDataToolsConfig,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({

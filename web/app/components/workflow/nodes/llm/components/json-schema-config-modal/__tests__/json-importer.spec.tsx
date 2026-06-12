@@ -62,7 +62,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
 
   const PopoverTrigger = ReactModule.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
     ({ children, onClick, ...props }, ref) => {
-      const context = ReactModule.useContext(PopoverContext)
+      const context = ReactModule.use(PopoverContext)
 
       return (
         <button
@@ -98,7 +98,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     ),
     PopoverTrigger,
     PopoverContent: ({ children }: { children: React.ReactNode }) => {
-      const context = ReactModule.useContext(PopoverContext)
+      const context = ReactModule.use(PopoverContext)
       if (!context?.open)
         return null
 

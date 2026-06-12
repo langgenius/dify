@@ -23,7 +23,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
@@ -62,7 +62,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
   const [currPage, setCurrPage] = useState<number>(0)
-  const { dataset: currentDataset } = useContext(DatasetDetailContext)
+  const { dataset: currentDataset } = use(DatasetDetailContext)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canRunRetrievalRecall = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
@@ -74,6 +74,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const total = recordsRes?.total || 0
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
+
 
   const isExternal = currentDataset?.provider === 'external'
 

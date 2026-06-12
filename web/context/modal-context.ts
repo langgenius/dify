@@ -22,7 +22,7 @@ import type {
 } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, use, useContextSelector } from 'use-context-selector'
 
 export type ModalState<T> = {
   payload: T
@@ -80,7 +80,7 @@ export const ModalContext = createContext<ModalContextState>({
   setShowTriggerEventsLimitModal: noop,
 })
 
-export const useModalContext = () => useContext(ModalContext)
+export const useModalContext = () => use(ModalContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713

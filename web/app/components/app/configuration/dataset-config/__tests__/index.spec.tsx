@@ -3,7 +3,7 @@ import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
@@ -233,7 +233,7 @@ vi.mock('@/context/debug-configuration', () => ({
 }))
 
 vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(() => mockConfigContext),
+  use: vi.fn(() => mockConfigContext),
 }))
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
@@ -318,7 +318,7 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
 
 const renderDatasetConfig = (contextOverrides: Partial<typeof mockConfigContext> = {}) => {
   const mergedContext = { ...mockConfigContext, ...contextOverrides }
-  vi.mocked(useContext).mockReturnValue(mergedContext)
+  vi.mocked(use).mockReturnValue(mergedContext)
 
   return render(<DatasetConfig />)
 }
@@ -824,7 +824,7 @@ describe('DatasetConfig', () => {
     })
 
     it('should handle missing userProfile', () => {
-      vi.mocked(useContext).mockReturnValue({
+      vi.mocked(use).mockReturnValue({
         ...mockConfigContext,
         userProfile: null,
       })

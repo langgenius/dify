@@ -1,7 +1,7 @@
 'use client'
 
 import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 
 /**
  * Typed event object emitted via the shared EventEmitter.
@@ -19,4 +19,4 @@ export const EventEmitterContext = createContext<{ eventEmitter: EventEmitter<Ev
   eventEmitter: null,
 })
 
-export const useEventEmitterContextContext = () => useContext(EventEmitterContext)
+export const useEventEmitterContextContext = () => use(EventEmitterContext)

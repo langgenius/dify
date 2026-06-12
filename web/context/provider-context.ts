@@ -4,7 +4,7 @@ import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billi
 import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, use, useContextSelector } from 'use-context-selector'
 import { defaultPlan } from '@/app/components/billing/config'
 
 export type ProviderContextState = {
@@ -84,7 +84,7 @@ export const baseProviderContextValue: ProviderContextState = {
 
 export const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)
 
-export const useProviderContext = () => useContext(ProviderContext)
+export const useProviderContext = () => use(ProviderContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713

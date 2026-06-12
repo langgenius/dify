@@ -86,7 +86,7 @@ export const PopoverTrigger = ({
   onClick,
   ...props
 }: PopoverTriggerProps) => {
-  const { open, onOpenChange } = React.useContext(PopoverContext)
+  const { open, onOpenChange } = React.use(PopoverContext)
   const node = render ?? children
 
   if (React.isValidElement(node)) {
@@ -139,7 +139,7 @@ export const PopoverContent = ({
   popupProps,
   ...props
 }: PopoverContentProps) => {
-  const { open } = React.useContext(PopoverContext)
+  const { open } = React.use(PopoverContext)
 
   if (!open)
     return null

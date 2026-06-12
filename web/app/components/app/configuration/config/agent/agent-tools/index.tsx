@@ -18,7 +18,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import AppIcon from '@/app/components/base/app-icon'
@@ -41,7 +41,7 @@ type AgentToolWithMoreInfo = AgentTool & { icon: any, collection?: Collection } 
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const { readonly, modelConfig, setModelConfig } = useContext(ConfigContext)
+  const { readonly, modelConfig, setModelConfig } = use(ConfigContext)
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
