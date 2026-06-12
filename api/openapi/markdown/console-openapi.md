@@ -17250,7 +17250,7 @@ Payload for running a loop node in snippet draft workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_d84d863049b0](#_anonymousinlinemodel_d84d863049b0) ] |  | No |
+| data | [ [_AnonymousInlineModel_efd591151ea9](#_anonymousinlinemodel_efd591151ea9) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
@@ -19037,7 +19037,7 @@ Workflow tool configuration
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
 
-#### _AnonymousInlineModel_d84d863049b0
+#### _AnonymousInlineModel_efd591151ea9
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
