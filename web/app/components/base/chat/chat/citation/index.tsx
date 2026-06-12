@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { CitationItem } from '../type'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Popup from './popup'
 
@@ -46,15 +46,29 @@ const Citation: FC<CitationProps> = ({
     return prev
   }, []), [data])
 
-  useEffect(() => {
-    const containerWidth = document.querySelector(`.${containerClassName}`)!.clientWidth - 40
+  useLayoutEffect(() => {
+    if (!resources.length) {
+      setLimitNumberInOneLine(0)
+      return
+    }
+    const container = document.querySelector(`.${containerClassName}`)
+    if (!container) {
+      setLimitNumberInOneLine(resources.length)
+      return
+    }
+    const containerWidth = container.clientWidth - 40
     let totalWidth = 0
     let limit = 0
     for (let i = 0; i < resources.length; i++) {
-      totalWidth += elesRef.current[i]!.clientWidth
+      const el = elesRef.current[i]
+      if (!el) {
+        setLimitNumberInOneLine(resources.length)
+        return
+      }
+      totalWidth += el.clientWidth
 
       if (totalWidth + i * 4 > containerWidth) {
-        totalWidth -= elesRef.current[i]!.clientWidth
+        totalWidth -= el.clientWidth
 
         if (totalWidth + 34 > containerWidth)
           limit = i - 1
@@ -67,9 +81,8 @@ const Citation: FC<CitationProps> = ({
         limit = i + 1
       }
     }
-    setLimitNumberInOneLine(limit)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    setLimitNumberInOneLine(Math.max(0, limit))
+  }, [resources, containerClassName])
 
   const resourcesLength = resources.length
 
