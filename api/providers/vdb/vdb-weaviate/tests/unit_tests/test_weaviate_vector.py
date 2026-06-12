@@ -559,6 +559,7 @@ class TestWeaviateVector(unittest.TestCase):
             "doc_type": "image",
         }
         mock_obj.vector = {"default": [0.1] * 128}
+        mock_obj.metadata.score = 10.5
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]
@@ -582,6 +583,79 @@ class TestWeaviateVector(unittest.TestCase):
         assert len(docs) == 1
         assert docs[0].metadata.get("doc_type") == "image"
 
+        # Verify return_metadata includes score=True
+        assert call_kwargs.kwargs.get("return_metadata") is not None
+
+        # Verify BM25 score is extracted and stored in metadata
+        assert docs[0].metadata.get("score") == 10.5
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_extracts_bm25_score(self, mock_weaviate_module):
+        """Test that search_by_full_text extracts BM25 score from metadata and includes it in Document."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "Zabbix agent is not available", "doc_id": "segment-1"}
+        mock_obj.vector = [0.1, 0.2, 0.3]
+        mock_obj.metadata.score = 10.297276
+
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+        mock_col.query.bm25.return_value = mock_result
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="Zabbix agent is not available", top_k=1)
+
+        assert len(docs) == 1
+
+        # Verify return_metadata=MetadataQuery(score=True) is passed
+        call_kwargs = mock_col.query.bm25.call_args
+        return_metadata = call_kwargs.kwargs.get("return_metadata")
+        assert return_metadata is not None
+
+        # Verify BM25 score is in document metadata
+        assert docs[0].metadata.get("score") == pytest.approx(10.297276)
+        assert docs[0].page_content == "Zabbix agent is not available"
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_handles_none_score(self, mock_weaviate_module):
+        """Test that search_by_full_text handles None score gracefully."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "test content", "doc_id": "segment-1"}
+        mock_obj.vector = [0.1]
+        mock_obj.metadata.score = None
+
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+        mock_col.query.bm25.return_value = mock_result
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="test", top_k=1)
+
+        assert len(docs) == 1
+        # When score is None, it should not be added to metadata
+        assert "score" not in docs[0].metadata
+
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_uses_document_filter(self, mock_weaviate_module):
         mock_client = MagicMock()
@@ -594,6 +668,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_obj = MagicMock()
         mock_obj.properties = {"text": "bm25 result", "doc_id": "segment-1"}
         mock_obj.vector = [0.3, 0.4]
+        mock_obj.metadata.score = 8.5
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]
@@ -642,6 +717,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_obj = MagicMock()
         mock_obj.properties = {"text": "retry bm25 result", "doc_id": "segment-1"}
         mock_obj.vector = {"default": [0.5, 0.6]}
+        mock_obj.metadata.score = 12.0
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]
