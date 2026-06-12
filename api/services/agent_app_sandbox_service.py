@@ -11,11 +11,11 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.client import Client
 from dify_agent.protocol import RuntimeLayerSpec, SandboxLocator, build_sandbox_locator_from_layer_specs
 from pydantic import TypeAdapter
 from sqlalchemy import select
 
-from clients.agent_backend.sandbox_client import SandboxBackendClient
 from configs import dify_config
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.db.session_factory import session_factory
@@ -45,22 +45,22 @@ class AgentAppSandboxService:
         self,
         *,
         session_store: AgentAppRuntimeSessionStore | None = None,
-        client_factory: Callable[[], SandboxBackendClient] | None = None,
+        client_factory: Callable[[], Client] | None = None,
     ) -> None:
         self._session_store = session_store or AgentAppRuntimeSessionStore()
         self._client_factory = client_factory or _default_client_factory
 
     def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        return self._client_factory().list_files(locator=locator, path=path)
+        return self._client_factory().list_sandbox_files_sync(locator, path)
 
     def read_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        return self._client_factory().read_file(locator=locator, path=path)
+        return self._client_factory().read_sandbox_file_sync(locator, path)
 
     def upload_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        return self._client_factory().upload_file(locator=locator, path=path)
+        return self._client_factory().upload_sandbox_file_sync(locator, path)
 
     def _resolve_locator(self, *, tenant_id: str, app_id: str, conversation_id: str) -> SandboxLocator:
         stored = self._session_store.load_active_session_for_conversation(
@@ -84,7 +84,7 @@ class AgentAppSandboxService:
 class WorkflowAgentSandboxService:
     """List/read/upload files in a workflow Agent node sandbox."""
 
-    def __init__(self, *, client_factory: Callable[[], SandboxBackendClient] | None = None) -> None:
+    def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
 
     def list_files(
@@ -104,7 +104,7 @@ class WorkflowAgentSandboxService:
             node_id=node_id,
             node_execution_id=node_execution_id,
         )
-        return self._client_factory().list_files(locator=locator, path=path)
+        return self._client_factory().list_sandbox_files_sync(locator, path)
 
     def read_file(
         self,
@@ -123,7 +123,7 @@ class WorkflowAgentSandboxService:
             node_id=node_id,
             node_execution_id=node_execution_id,
         )
-        return self._client_factory().read_file(locator=locator, path=path)
+        return self._client_factory().read_sandbox_file_sync(locator, path)
 
     def upload_file(
         self,
@@ -142,7 +142,7 @@ class WorkflowAgentSandboxService:
             node_id=node_id,
             node_execution_id=node_execution_id,
         )
-        return self._client_factory().upload_file(locator=locator, path=path)
+        return self._client_factory().upload_sandbox_file_sync(locator, path)
 
     def _resolve_locator(
         self,
@@ -211,7 +211,7 @@ def _deserialize_runtime_layer_specs(value: str | None) -> list[RuntimeLayerSpec
     return _RUNTIME_LAYER_SPECS_ADAPTER.validate_json(value)
 
 
-def _default_client_factory() -> SandboxBackendClient:
+def _default_client_factory() -> Client:
     base_url = dify_config.AGENT_BACKEND_BASE_URL
     if not base_url:
         raise AgentSandboxInspectorError(
@@ -219,7 +219,7 @@ def _default_client_factory() -> SandboxBackendClient:
             "the sandbox file inspector is not available (agent backend not configured)",
             status_code=503,
         )
-    return SandboxBackendClient(base_url)
+    return Client(base_url=base_url)
 
 
 __all__ = ["AgentAppSandboxService", "AgentSandboxInspectorError", "WorkflowAgentSandboxService"]

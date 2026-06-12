@@ -58,17 +58,18 @@ class FakeClient:
         self.calls: list[tuple[str, str]] = []
         self.locators: list[object] = []
 
-    def list_files(self, *, locator, path: str) -> SandboxListResponse:
+    def list_sandbox_files_sync(self, locator, path: str) -> SandboxListResponse:
         self.locators.append(locator)
         self.calls.append(("list", path))
         return SandboxListResponse(path=path, entries=[], truncated=False)
 
-    def read_file(self, *, locator, path: str) -> SandboxReadResponse:
+    def read_sandbox_file_sync(self, locator, path: str, max_bytes: int = 262144) -> SandboxReadResponse:
+        del max_bytes
         self.locators.append(locator)
         self.calls.append(("read", path))
         return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
 
-    def upload_file(self, *, locator, path: str) -> SandboxUploadResponse:
+    def upload_sandbox_file_sync(self, locator, path: str) -> SandboxUploadResponse:
         self.locators.append(locator)
         self.calls.append(("upload", path))
         return SandboxUploadResponse(path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"})

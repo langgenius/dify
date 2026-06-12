@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from clients.agent_backend.errors import AgentBackendHTTPError, AgentBackendTransportError
 from controllers.console import agent_app_sandbox as module
+from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
 from dify_agent.protocol import SandboxListResponse, SandboxReadResponse, SandboxUploadResponse
 from models.model import App, AppMode, IconType
 from services.agent_app_sandbox_service import AgentSandboxInspectorError
@@ -66,14 +66,18 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
         404,
     )
     assert module._handle(
-        AgentBackendHTTPError("not found", status_code=404, detail={"code": "sandbox_path_not_found", "message": "missing"})
+        DifyAgentHTTPError(404, {"code": "sandbox_path_not_found", "message": "missing"})
     ) == ({"code": "sandbox_path_not_found", "message": "missing"}, 404)
-    assert module._handle(AgentBackendHTTPError("bad", status_code=500, detail="backend exploded")) == (
+    assert module._handle(DifyAgentHTTPError(500, "backend exploded")) == (
         {"code": "agent_backend_error", "message": "backend exploded"},
         500,
     )
-    assert module._handle(AgentBackendTransportError("connection refused")) == (
+    assert module._handle(DifyAgentTimeoutError("connection refused")) == (
         {"code": "agent_backend_unreachable", "message": "connection refused"},
+        502,
+    )
+    assert module._handle(DifyAgentClientError("transport failed")) == (
+        {"code": "agent_backend_unreachable", "message": "transport failed"},
         502,
     )
     with pytest.raises(RuntimeError):
