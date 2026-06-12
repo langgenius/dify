@@ -1318,6 +1318,39 @@ class TestAuthOrchestration:
                 auth(provider)
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
+    def test_auth_defaults_to_authorization_code_when_metadata_omits_grant_types(self, mock_discover):
+        provider = Mock(spec=MCPProviderEntity)
+        provider.decrypt_server_url.return_value = "https://api"
+        provider.id = "p1"
+        provider.tenant_id = "t1"
+        provider.redirect_url = "https://console/api/mcp/oauth/callback"
+        provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="c1")
+        provider.retrieve_tokens.return_value = None
+        provider.decrypt_credentials.return_value = {"scope": "read"}
+
+        asm = OAuthMetadata(
+            authorization_endpoint="https://auth/auth",
+            token_endpoint="https://auth/token",
+            response_types_supported=["code"],
+            grant_types_supported=None,
+        )
+        mock_discover.return_value = (asm, None, None)
+
+        with (
+            patch("core.mcp.auth.auth_flow._create_secure_redis_state", return_value="state-key"),
+            patch("core.mcp.auth.auth_flow.generate_pkce_challenge", return_value=("verifier", "challenge")),
+            patch("core.mcp.auth.auth_flow.client_credentials_flow") as mock_client_credentials,
+        ):
+            result = auth(provider)
+
+        authorization_url = result.response["authorization_url"]
+        assert authorization_url.startswith("https://auth/auth?")
+        assert "client_id=c1" in authorization_url
+        assert "state=state-key" in authorization_url
+        assert result.actions[0].action_type == AuthActionType.SAVE_CODE_VERIFIER
+        mock_client_credentials.assert_not_called()
+
+    @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     def test_auth_orchestration_authorization_code(self, mock_discover):
         provider = Mock(spec=MCPProviderEntity)
         provider.decrypt_server_url.return_value = "https://api"
