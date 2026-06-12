@@ -71,6 +71,8 @@
   "agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription": "The agent writes its own query from the prompt and available context. Nothing to set up here.",
   "agentDetail.configure.knowledgeRetrieval.dialog.query.custom": "Custom query",
   "agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription": "Write a fixed query for this retrieval source.",
+  "agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel": "Custom query text",
+  "agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder": "Type a search query",
   "agentDetail.configure.knowledgeRetrieval.dialog.query.label": "Query",
   "agentDetail.configure.knowledgeRetrieval.dialog.title": "Knowledge Retrieval · Agent decide",
   "agentDetail.configure.knowledgeRetrieval.edit": "Edit {{name}}",

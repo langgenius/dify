@@ -71,6 +71,8 @@
   "agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription": "智能体会根据提示词和可用上下文自行编写查询。无需在此设置。",
   "agentDetail.configure.knowledgeRetrieval.dialog.query.custom": "自定义查询",
   "agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription": "为此检索来源编写固定查询。",
+  "agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel": "自定义查询文本",
+  "agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder": "输入搜索查询",
   "agentDetail.configure.knowledgeRetrieval.dialog.query.label": "查询",
   "agentDetail.configure.knowledgeRetrieval.dialog.title": "知识检索 · 智能体决定",
   "agentDetail.configure.knowledgeRetrieval.edit": "编辑 {{name}}",

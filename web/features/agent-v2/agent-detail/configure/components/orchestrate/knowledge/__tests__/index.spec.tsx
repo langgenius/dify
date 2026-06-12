@@ -42,6 +42,16 @@ describe('AgentKnowledgeRetrieval', () => {
       const dialog = screen.getByRole('dialog', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
+      const titleButton = within(dialog).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
+      })
+      expect(titleButton).toBeInTheDocument()
+      expect(within(dialog).queryByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
+      })).not.toBeInTheDocument()
+
+      await user.click(titleButton)
+
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
@@ -54,7 +64,7 @@ describe('AgentKnowledgeRetrieval', () => {
       })).toBeInTheDocument()
     })
 
-    it('should update the query description when query mode changes', async () => {
+    it('should show the custom query input when query mode changes', async () => {
       const user = userEvent.setup()
       renderKnowledgeRetrieval()
 
@@ -67,7 +77,15 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
       }))
 
+      const customQueryInput = within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
+      })
+      await user.type(customQueryInput, 'release notes')
+
+      expect(customQueryInput).toHaveValue('release notes')
+      expect(within(dialog).getByPlaceholderText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder')).toBeInTheDocument()
       expect(within(dialog).getByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription')).toBeInTheDocument()
+      expect(within(dialog).queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription')).not.toBeInTheDocument()
     })
 
     it('should open the knowledge retrieval dialog from the edit button', async () => {
@@ -81,6 +99,10 @@ describe('AgentKnowledgeRetrieval', () => {
       const dialog = screen.getByRole('dialog', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
+      await user.click(within(dialog).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
+      }))
+
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')

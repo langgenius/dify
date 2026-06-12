@@ -13,7 +13,8 @@ import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
-import { AgentProviderToolItem, ProviderToolSettingsDialog } from './provider-tool'
+import { ProviderToolSettingsDialog } from './provider-tool/dialog'
+import { AgentProviderToolItem } from './provider-tool/item'
 
 function AgentToolItem({
   tool,

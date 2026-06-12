@@ -13,8 +13,9 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
@@ -28,6 +29,7 @@ import {
   MetadataFilteringModeEnum as WorkflowMetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
+import { useDocLink } from '@/context/i18n'
 import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
@@ -88,8 +90,12 @@ export function AgentKnowledgeRetrievalDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
   const [name, setName] = useState(() => initialName ?? t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
+  const [isEditingName, setIsEditingName] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>('agent')
+  const [customQuery, setCustomQuery] = useState('')
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
   const [retrievalMode, setRetrievalMode] = useState(RETRIEVE_TYPE.multiWay)
   const [multipleRetrievalConfig, setMultipleRetrievalConfig] = useState(createDefaultRetrievalConfig)
@@ -110,6 +116,14 @@ export function AgentKnowledgeRetrievalDialog({
     return intersectionBy(...datasetsWithMetadata.map(dataset => dataset.doc_metadata!), 'name')
   }, [selectedDatasets])
 
+  useEffect(() => {
+    if (!isEditingName)
+      return
+
+    nameInputRef.current?.focus()
+    nameInputRef.current?.select()
+  }, [isEditingName])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[520px] max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0">
@@ -118,12 +132,32 @@ export function AgentKnowledgeRetrievalDialog({
         </DialogTitle>
         <div className="flex items-center gap-2 px-4 pt-3">
           <KnowledgeRetrievalDialogIcon />
-          <Input
-            aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel')}
-            className="h-7 min-w-0 flex-1 rounded-md px-1 py-0 system-xl-semibold text-text-primary"
-            value={name}
-            onChange={event => setName(event.currentTarget.value)}
-          />
+          {isEditingName
+            ? (
+                <Input
+                  ref={nameInputRef}
+                  aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel')}
+                  className="h-7 min-w-0 flex-1 rounded-md px-1 py-0 system-xl-semibold text-text-primary"
+                  value={name}
+                  onBlur={() => setIsEditingName(false)}
+                  onChange={event => setName(event.currentTarget.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter')
+                      setIsEditingName(false)
+                  }}
+                />
+              )
+            : (
+                <button
+                  type="button"
+                  className="flex h-7 min-w-0 flex-1 items-center rounded-md px-1 py-0 text-left system-xl-semibold text-text-primary hover:bg-components-input-bg-hover focus-visible:border focus-visible:border-components-input-border-active focus-visible:bg-components-input-bg-active focus-visible:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                  onClick={() => setIsEditingName(true)}
+                >
+                  <span className="min-w-0 truncate">
+                    {name}
+                  </span>
+                </button>
+              )}
           <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
         </div>
 
@@ -155,9 +189,28 @@ export function AgentKnowledgeRetrievalDialog({
                 </RadioRoot>
               ))}
             </RadioGroup>
-            <p className="pt-1 system-xs-regular text-text-tertiary">
-              {t(`agentDetail.configure.knowledgeRetrieval.dialog.query.${queryMode}Description`)}
-            </p>
+            {queryMode === 'custom'
+              ? (
+                  <>
+                    <div className="pt-1">
+                      <Textarea
+                        aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel')}
+                        className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
+                        placeholder={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder')}
+                        value={customQuery}
+                        onValueChange={setCustomQuery}
+                      />
+                    </div>
+                    <p className="system-xs-regular text-text-tertiary">
+                      {t('agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription')}
+                    </p>
+                  </>
+                )
+              : (
+                  <p className="pt-1 system-xs-regular text-text-tertiary">
+                    {t('agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription')}
+                  </p>
+                )}
           </div>
 
           <div className="px-4 py-2">
@@ -174,6 +227,7 @@ export function AgentKnowledgeRetrievalDialog({
                     onRetrievalModeChange={setRetrievalMode}
                     onMultipleRetrievalConfigChange={setMultipleRetrievalConfig}
                     readonly={!selectedDatasets.length}
+                    modal
                     rerankModalOpen={rerankModelOpen}
                     onRerankModelOpenChange={setRerankModelOpen}
                     selectedDatasets={selectedDatasets}
@@ -181,6 +235,7 @@ export function AgentKnowledgeRetrievalDialog({
                   <div className="h-3 w-px bg-divider-regular" />
                   <AddKnowledge
                     selectedIds={selectedDatasets.map(dataset => dataset.id)}
+                    modal
                     onChange={setSelectedDatasets}
                   />
                 </div>
@@ -250,14 +305,14 @@ export function AgentKnowledgeRetrievalDialog({
         <div className="flex flex-col gap-2 px-4 pb-4">
           <div aria-hidden className="h-2 w-8 border-b border-divider-regular" />
           <a
-            href="https://docs.dify.ai/"
+            href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="inline-flex min-w-0 items-center gap-1 system-xs-regular text-text-tertiary hover:text-text-secondary hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-book-read-line size-3 shrink-0" />
             <span className="min-w-0 truncate">
-              {t('agentDetail.configure.knowledgeRetrieval.dialog.learnMore')}
+              {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
             </span>
           </a>
         </div>
