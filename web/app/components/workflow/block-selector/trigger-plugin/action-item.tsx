@@ -10,14 +10,14 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import { BlockEnum } from '../../types'
 
-type Props = {
+type Props = Readonly<{
   provider: TriggerWithProvider
   payload: Event
   previewCardHandle: TriggerPluginActionPreviewCardHandle
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
-}
+}>
 
 export type TriggerPluginActionPreviewPayload = {
   provider: TriggerWithProvider

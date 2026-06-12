@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "Valoare",
   "chatVariable.modal.description": "Descriere",
   "chatVariable.modal.descriptionPlaceholder": "Descrieți variabila",
+  "chatVariable.modal.descriptionTooLong": "Descrierea trebuie să aibă cel mult {{maxLength}} caractere",
   "chatVariable.modal.editInForm": "Editare în Formular",
   "chatVariable.modal.editInJSON": "Editare în JSON",
   "chatVariable.modal.editTitle": "Editare Variabilă de Conversație",

@@ -7,13 +7,13 @@ import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   collection: Collection
   tool: Tool
   isBuiltIn: boolean
   isModel: boolean
-}
+}>
 
 const ToolItem = ({
   disabled,

@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "Значення",
   "chatVariable.modal.description": "Опис",
   "chatVariable.modal.descriptionPlaceholder": "Опишіть змінну",
+  "chatVariable.modal.descriptionTooLong": "Опис має містити не більше {{maxLength}} символів",
   "chatVariable.modal.editInForm": "Редагувати у формі",
   "chatVariable.modal.editInJSON": "Редагувати в JSON",
   "chatVariable.modal.editTitle": "Редагувати змінну розмови",

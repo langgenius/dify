@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { downloadUrl } from '@/utils/download'
 
-type Props = {
+type Props = Readonly<{
   content: string
-}
+}>
 
 const prefixEmbedded = 'overview.appInfo.qrcode.title'
 

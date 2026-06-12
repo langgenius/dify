@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "Giá trị",
   "chatVariable.modal.description": "Mô tả",
   "chatVariable.modal.descriptionPlaceholder": "Mô tả biến",
+  "chatVariable.modal.descriptionTooLong": "Mô tả không được vượt quá {{maxLength}} ký tự",
   "chatVariable.modal.editInForm": "Chỉnh sửa trong Biểu mẫu",
   "chatVariable.modal.editInJSON": "Chỉnh sửa dưới dạng JSON",
   "chatVariable.modal.editTitle": "Chỉnh Sửa Biến Hội Thoại",

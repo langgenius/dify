@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "Vrednost",
   "chatVariable.modal.description": "Opis",
   "chatVariable.modal.descriptionPlaceholder": "Opisujte spremenljivko",
+  "chatVariable.modal.descriptionTooLong": "Opis ne sme presegati {{maxLength}} znakov",
   "chatVariable.modal.editInForm": "Uredi v obrazcu",
   "chatVariable.modal.editInJSON": "Uredi v JSON",
   "chatVariable.modal.editTitle": "Uredi spremenljivko pogovora",

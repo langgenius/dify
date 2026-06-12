@@ -1286,30 +1286,36 @@ dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-ai-slim" },
+    { name = "typer" },
     { name = "typing-extensions" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.2.2" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.1" },
+    { name = "grpclib", extras = ["protobuf"], marker = "extra == 'grpc'", specifier = ">=0.4.9,<0.5.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
+    { name = "jwcrypto", marker = "extra == 'server'", specifier = ">=1.5.6,<2" },
+    { name = "protobuf", marker = "extra == 'grpc'", specifier = ">=6.33.5,<7.0.0" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-slim", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
-    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.1.1" },
+    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.2.0" },
+    { name = "typer", specifier = ">=0.16.1,<0.17" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
 ]
-provides-extras = ["server"]
+provides-extras = ["grpc", "server"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.39.3" },
     { name = "coverage", extras = ["toml"], specifier = ">=7.10.7" },
+    { name = "grpcio-tools", specifier = ">=1.81.0,<2.0.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-examples", specifier = ">=0.0.18" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
@@ -1630,7 +1636,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", specifier = "==0.4.0" },
+    { name = "graphon", specifier = "==0.5.1" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -2985,7 +2991,7 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.4.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -3006,9 +3012,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/76/24/eb1e7983404dcac84816b76ea450e1bb97023e55e00c699d609340bc361e/graphon-0.4.0.tar.gz", hash = "sha256:afb0c7a58f89e09cfa585296429b4d08cd0df80b9ac54d550f88e7d76ec48ee0", size = 261812, upload-time = "2026-05-13T11:48:39.198Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a2/fa/432fa802bcb13f7f51dc323ddef92594b15333eafef181d937ffa554116e/graphon-0.5.1.tar.gz", hash = "sha256:ca38cc62ef3fbc2f3072b68235bcb41e32a6369a1753b46418c1d761c57125fe", size = 269741, upload-time = "2026-06-11T03:01:38.197Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/de/bad6b3fd1e4b4defc16e6ea106e55c44725a159f1d191a99877bce1c9931/graphon-0.4.0-py3-none-any.whl", hash = "sha256:b33f95886da823d5b1b53d663a4f5f8fa383c37740f3bd19297b8d140fcb804c", size = 372711, upload-time = "2026-05-13T11:48:37.712Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/c5/61e8634b89c320af9453083213e8be436071634dbc69cb14b5fe646763e4/graphon-0.5.1-py3-none-any.whl", hash = "sha256:70b49c244a46fb6e338905210cc895bd67584d9ab1412f6ba3cd4ed284010091", size = 381866, upload-time = "2026-06-11T03:01:36.693Z" },
 ]
 
 [[package]]
@@ -6549,7 +6555,7 @@ wheels = [
 
 [[package]]
 name = "typer"
-version = "0.20.0"
+version = "0.16.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -6557,9 +6563,9 @@ dependencies = [
     { name = "shellingham" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/28/7c85c8032b91dbe79725b6f17d2fffc595dff06a35c7a30a37bef73a1ab4/typer-0.20.0.tar.gz", hash = "sha256:1aaf6494031793e4876fb0bacfa6a912b551cf43c1e63c800df8b1a866720c37", size = 106492, upload-time = "2025-10-20T17:03:49.445Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/78/d90f616bf5f88f8710ad067c1f8705bf7618059836ca084e5bb2a0855d75/typer-0.16.1.tar.gz", hash = "sha256:d358c65a464a7a90f338e3bb7ff0c74ac081449e53884b12ba658cbd72990614", size = 102836, upload-time = "2025-08-18T19:18:22.898Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/64/7713ffe4b5983314e9d436a90d5bd4f63b6054e2aca783a3cfc44cb95bbf/typer-0.20.0-py3-none-any.whl", hash = "sha256:5b463df6793ec1dca6213a3cf4c0f03bc6e322ac5e16e13ddd622a889489784a", size = 47028, upload-time = "2025-10-20T17:03:47.617Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/76/06dbe78f39b2203d2a47d5facc5df5102d0561e2807396471b5f7c5a30a1/typer-0.16.1-py3-none-any.whl", hash = "sha256:90ee01cb02d9b8395ae21ee3368421faf21fa138cb2a541ed369c08cec5237c9", size = 46397, upload-time = "2025-08-18T19:18:21.663Z" },
 ]
 
 [[package]]

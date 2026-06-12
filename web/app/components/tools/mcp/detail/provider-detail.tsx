@@ -13,13 +13,13 @@ import {
 import * as React from 'react'
 import MCPDetailContent from './content'
 
-type Props = {
+type Props = Readonly<{
   detail?: ToolWithProvider
   onUpdate: () => void
   onHide: () => void
   isTriggerAuthorize: boolean
   onFirstCreate: () => void
-}
+}>
 
 const MCPDetailPanel: FC<Props> = ({
   detail,

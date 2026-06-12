@@ -8,11 +8,11 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { SUB_VARIABLES } from '../../constants'
 
-type Props = {
+type Props = Readonly<{
   value: string
   onChange: (value: string) => void
   className?: string
-}
+}>
 
 type SubVariableOption = {
   value: string

@@ -8,6 +8,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
@@ -19,7 +20,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useRouter,
   useSearchParams,

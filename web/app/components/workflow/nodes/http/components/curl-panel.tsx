@@ -11,12 +11,12 @@ import { useTranslation } from 'react-i18next'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 import { parseCurl } from './curl-parser'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   isShow: boolean
   onHide: () => void
   handleCurlImport: (node: HttpNodeType) => void
-}
+}>
 
 const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
   const [inputString, setInputString] = useState('')

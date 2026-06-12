@@ -10,9 +10,9 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useAppContext } from '@/context/app-context'
 import { createCustomCollection } from '@/service/tools'
 
-type Props = {
+type Props = Readonly<{
   onRefreshData: () => void
-}
+}>
 
 const Contribute = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()

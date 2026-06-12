@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "値",
   "chatVariable.modal.description": "説明",
   "chatVariable.modal.descriptionPlaceholder": "変数の説明を入力",
+  "chatVariable.modal.descriptionTooLong": "説明は {{maxLength}} 文字以内で入力してください",
   "chatVariable.modal.editInForm": "フォームで編集",
   "chatVariable.modal.editInJSON": "JSON で編集",
   "chatVariable.modal.editTitle": "会話変数を編集",

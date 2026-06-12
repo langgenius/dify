@@ -32,14 +32,14 @@ const normalizeProviderIcon = (icon?: TriggerWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: TriggerWithProvider
   hasSearchText: boolean
   previewCardHandle: TriggerPluginActionPreviewCardHandle
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
   disabled?: boolean
-}
+}>
 
 const TriggerPluginItem: FC<Props> = ({
   className,

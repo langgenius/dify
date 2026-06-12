@@ -23,7 +23,7 @@ import InputItem from './input-item'
 
 const i18nPrefix = 'nodes.http'
 
-type Props = {
+type Props = Readonly<{
   instanceId: string
   className?: string
   nodeId: string
@@ -37,7 +37,7 @@ type Props = {
   isSupportFile?: boolean
   keyNotSupportVar?: boolean
   insertVarTipToLeft?: boolean
-}
+}>
 
 const KeyValueItem: FC<Props> = ({
   instanceId,

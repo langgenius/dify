@@ -173,6 +173,7 @@ export type AgentAppComposerResponse = {
   agent: AgentComposerAgentResponse
   agent_soul: AgentSoulConfig
   save_options: Array<ComposerSaveStrategy>
+  validation?: ComposerValidationFindingsResponse
   variant: string
 }
 
@@ -193,12 +194,15 @@ export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
   capabilities?: ComposerCandidateCapabilities
+  truncated?: boolean
   variant: ComposerVariant
 }
 
 export type AgentComposerValidateResponse = {
   errors?: Array<string>
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
   result: string
+  warnings?: Array<ComposerValidationWarningResponse>
 }
 
 export type AgentAppFeaturesPayload = {
@@ -797,6 +801,7 @@ export type WorkflowAgentComposerResponse = {
   node_job: WorkflowNodeJobConfig
   save_options: Array<ComposerSaveStrategy>
   soul_lock: AgentComposerSoulLockResponse
+  validation?: ComposerValidationFindingsResponse
   variant: string
   workflow_id?: string | null
 }
@@ -1099,6 +1104,11 @@ export type ComposerSaveStrategy
     | 'save_to_current_version'
     | 'save_to_roster'
 
+export type ComposerValidationFindingsResponse = {
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  warnings?: Array<ComposerValidationWarningResponse>
+}
+
 export type ComposerBindingPayload = {
   agent_id?: string | null
   binding_type: 'inline_agent' | 'roster_agent'
@@ -1133,11 +1143,24 @@ export type AgentComposerSoulCandidatesResponse = {
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
   human_contacts?: Array<AgentHumanContactConfig>
   knowledge_datasets?: Array<AgentKnowledgeDatasetConfig>
-  skills_files?: Array<AgentSkillRefConfig>
+  skills_files?: Array<unknown>
 }
 
 export type ComposerCandidateCapabilities = {
   human_roster_available?: boolean
+}
+
+export type ComposerKnowledgePlaceholderResponse = {
+  id: string
+  placeholder_name: string
+}
+
+export type ComposerValidationWarningResponse = {
+  code: string
+  id?: string | null
+  kind?: string | null
+  message?: string | null
+  surface?: string | null
 }
 
 export type AgentFeatureToggleConfig = {
@@ -1698,6 +1721,7 @@ export type AgentCliToolConfig = {
   dangerous_command?: boolean
   description?: string | null
   enabled?: boolean
+  env?: AgentCliToolEnvConfig
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -1732,12 +1756,28 @@ export type AgentKnowledgeDatasetConfig = {
   [key: string]: unknown
 }
 
-export type AgentSkillRefConfig = {
+export type AgentComposerSkillCandidateResponse = {
   description?: string | null
   file_id?: string | null
   id?: string | null
+  kind?: string
   name?: string | null
   path?: string | null
+  [key: string]: unknown
+}
+
+export type AgentComposerFileCandidateResponse = {
+  file_id?: string | null
+  id?: string | null
+  kind?: string
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
   [key: string]: unknown
 }
 
@@ -1941,6 +1981,15 @@ export type AgentFileRefConfig = {
   [key: string]: unknown
 }
 
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  path?: string | null
+  [key: string]: unknown
+}
+
 export type AgentSoulDifyToolConfig = {
   credential_ref?: AgentSoulDifyToolCredentialRef
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
@@ -1966,6 +2015,11 @@ export type AgentCliToolAuthorizationStatus
     | 'pending'
     | 'pre_authorized'
     | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
 
 export type AgentPermissionConfig = {
   allowed?: boolean | null

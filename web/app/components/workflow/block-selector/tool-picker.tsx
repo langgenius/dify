@@ -36,7 +36,7 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 
-type Props = {
+type Props = Readonly<{
   panelClassName?: string
   disabled: boolean
   trigger: React.ReactNode
@@ -49,7 +49,7 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolPicker: FC<Props> = ({
   disabled,

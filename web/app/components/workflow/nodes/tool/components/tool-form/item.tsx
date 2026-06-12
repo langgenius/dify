@@ -54,7 +54,7 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
   return parts
 }
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
@@ -67,7 +67,7 @@ type Props = {
   onManageInputField?: () => void
   extraParams?: Record<string, any>
   providerType?: 'tool' | 'trigger'
-}
+}>
 
 const ToolFormItem: FC<Props> = ({
   readOnly,

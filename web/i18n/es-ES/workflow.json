@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "Valor",
   "chatVariable.modal.description": "Descripción",
   "chatVariable.modal.descriptionPlaceholder": "Describa la variable",
+  "chatVariable.modal.descriptionTooLong": "La descripción debe tener {{maxLength}} caracteres o menos",
   "chatVariable.modal.editInForm": "Editar en Formulario",
   "chatVariable.modal.editInJSON": "Editar en JSON",
   "chatVariable.modal.editTitle": "Editar Variable de Conversación",

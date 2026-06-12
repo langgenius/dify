@@ -91,3 +91,5 @@ class ComposerCandidatesResponse(BaseModel):
     allowed_node_job_candidates: dict[str, Any] = Field(default_factory=dict)
     allowed_soul_candidates: dict[str, Any] = Field(default_factory=dict)
     capabilities: ComposerCandidateCapabilities = Field(default_factory=ComposerCandidateCapabilities)
+    # True when any candidate list was clipped to the per-list cap (ENG-615 §3.3).
+    truncated: bool = False

@@ -34,6 +34,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
+import { ZERO } from '@/util/uuid.js'
 import {
   assertErrorEnvelope,
   assertNoAnsi,
@@ -203,7 +204,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
     // Spec 5.83: without --debug the CLI must never print a stack trace.
     // We trigger a server_5xx by querying a non-existent app id and verify
     // that no "at <FunctionName>" stack-trace lines appear in stderr.
-    const result = await fx.r(['get', 'app', '00000000-0000-0000-0000-000000000000'])
+    const result = await fx.r(['get', 'app', ZERO])
     assertNonZeroExit(result)
     // Stack trace lines look like "    at Object.xxx (/path/to/file.js:123:45)"
     expect(result.stderr).not.toMatch(/^\s+at\s+\S/m)

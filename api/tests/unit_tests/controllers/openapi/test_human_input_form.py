@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.openapi.auth.data import AuthData
 from libs.oauth_bearer import Scope, TokenType
@@ -233,3 +233,24 @@ class TestOpenApiHumanInputFormPost:
             submission_end_user_id="eu-7",
         )
         assert result == ({}, 200)
+
+    def test_post_rejects_invalid_body_with_422(self, app: Flask, bypass_pipeline):
+        """Malformed body → 422 via @accepts (was an unmapped pydantic error → 500)."""
+        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
+
+        api = OpenApiWorkflowHumanInputFormApi()
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        caller = SimpleNamespace(id="acct-42")
+
+        with app.test_request_context(
+            "/openapi/v1/apps/app-1/form/human_input/tok-1",
+            method="POST",
+            json={"inputs": {"field1": "val"}},  # missing required "action"
+        ):
+            with pytest.raises(UnprocessableEntity):
+                api.post.__wrapped__(
+                    api,
+                    app_id="app-1",
+                    form_token="tok-1",
+                    auth_data=_make_auth_data(app_model, caller, "account"),
+                )

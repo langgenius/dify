@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "मान",
   "chatVariable.modal.description": "विवरण",
   "chatVariable.modal.descriptionPlaceholder": "चर का वर्णन करें",
+  "chatVariable.modal.descriptionTooLong": "विवरण {{maxLength}} वर्णों या उससे कम का होना चाहिए",
   "chatVariable.modal.editInForm": "फॉर्म में संपादित करें",
   "chatVariable.modal.editInJSON": "JSON में संपादित करें",
   "chatVariable.modal.editTitle": "वार्तालाप चर संपादित करें",

@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package dify.agent.stub.v1;
+
+service AgentStubService {
+  rpc Connect(ConnectRequest) returns (ConnectResponse);
+  rpc CreateFileUploadRequest(FileUploadRequest) returns (FileUploadResponse);
+  rpc CreateFileDownloadRequest(FileDownloadRequest) returns (FileDownloadResponse);
+}
+
+message ConnectRequest {
+  int32 protocol_version = 1;
+  repeated string argv = 2;
+  string metadata_json = 3;
+}
+
+message ConnectResponse {
+  string connection_id = 1;
+  string status = 2;
+}
+
+message FileUploadRequest {
+  string filename = 1;
+  string mimetype = 2;
+}
+
+message FileUploadResponse {
+  string upload_url = 1;
+}
+
+message FileMapping {
+  string transfer_method = 1;
+  optional string reference = 2;
+  optional string url = 3;
+}
+
+message FileDownloadRequest {
+  FileMapping file = 1;
+}
+
+message FileDownloadResponse {
+  string filename = 1;
+  optional string mime_type = 2;
+  int64 size = 3;
+  string download_url = 4;
+}

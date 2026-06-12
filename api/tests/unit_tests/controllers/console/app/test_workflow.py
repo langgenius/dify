@@ -12,6 +12,7 @@ from flask import Flask
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException, NotFound
 
+from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from graphon.file import File, FileTransferMethod, FileType
@@ -178,6 +179,29 @@ def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.Monke
     ):
         with pytest.raises(DraftWorkflowNotSync):
             handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+
+def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def _raise(*_args, **_kwargs):
+        raise workflow_module.VariableError("description too long")
+
+    monkeypatch.setattr(workflow_module.variable_factory, "build_conversation_variable_from_mapping", _raise)
+    monkeypatch.setattr(
+        workflow_module, "WorkflowService", lambda: SimpleNamespace(sync_draft_workflow=lambda **_kwargs: None)
+    )
+
+    api = workflow_module.DraftWorkflowApi()
+    handler = inspect.unwrap(api.post)
+
+    with app.test_request_context(
+        "/apps/app/workflows/draft",
+        method="POST",
+        json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+    ):
+        with pytest.raises(InvalidArgumentError) as exc:
+            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+
+    assert exc.value.description == "description too long"
 
 
 def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -542,7 +566,6 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
     sign_avatar = Mock(return_value=signed_avatar_url)
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -596,7 +619,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api)
+        response = handler(api, "tenant-1")
 
     assert response == {
         "data": [
@@ -625,7 +648,6 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
 
 def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     app_ids = [f"wf-{index}" for index in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE + 1)]
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
@@ -647,7 +669,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api)
+        response = handler(api, "tenant-1")
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -656,7 +678,6 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
 
 
 def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(workflow_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-1"))
     accessible_app_ids = Mock(return_value=set())
     monkeypatch.setattr(
         workflow_module,
@@ -675,7 +696,7 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
         json={"app_ids": excessive_ids},
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api)
+            handler(api, "tenant-1")
 
     assert exc.value.code == 400
     assert exc.value.description is not None

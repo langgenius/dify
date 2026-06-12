@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "Değer",
   "chatVariable.modal.description": "Açıklama",
   "chatVariable.modal.descriptionPlaceholder": "Değişkeni açıklayın",
+  "chatVariable.modal.descriptionTooLong": "Açıklama {{maxLength}} karakter veya daha az olmalıdır",
   "chatVariable.modal.editInForm": "Formda düzenle",
   "chatVariable.modal.editInJSON": "JSON olarak düzenle",
   "chatVariable.modal.editTitle": "Konuşma Değişkenini Düzenle",

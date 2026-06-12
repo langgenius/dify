@@ -93,6 +93,7 @@
   "chatVariable.modal.arrayValue": "값",
   "chatVariable.modal.description": "설명",
   "chatVariable.modal.descriptionPlaceholder": "변수에 대해 설명하세요",
+  "chatVariable.modal.descriptionTooLong": "설명은 {{maxLength}}자 이하여야 합니다",
   "chatVariable.modal.editInForm": "양식에서 편집",
   "chatVariable.modal.editInJSON": "JSON 으로 편집",
   "chatVariable.modal.editTitle": "대화 변수 편집",

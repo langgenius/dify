@@ -1,4 +1,8 @@
-"""Public protocol exports shared by the Dify Agent server and clients."""
+"""Public run-protocol exports shared by the Dify Agent server and clients.
+
+Stub-specific protocol DTOs live under ``dify_agent.agent_stub.protocol`` so the
+run API package boundary stays explicit.
+"""
 
 from .schemas import (
     DIFY_AGENT_HISTORY_LAYER_ID,
@@ -10,6 +14,8 @@ from .schemas import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    DeferredToolCallPayload,
+    DeferredToolResultsPayload,
     EmptyRunEventData,
     LayerExitSignals,
     PydanticAIStreamRunEvent,
@@ -21,8 +27,6 @@ from .schemas import (
     RunEventsResponse,
     RunFailedEvent,
     RunFailedEventData,
-    RunPausedEvent,
-    RunPausedEventData,
     RunPurpose,
     RunLayerSpec,
     RunStartedEvent,
@@ -40,6 +44,8 @@ __all__ = [
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DeferredToolCallPayload",
+    "DeferredToolResultsPayload",
     "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
@@ -55,8 +61,6 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
-    "RunPausedEvent",
-    "RunPausedEventData",
     "RunPurpose",
     "RunLayerSpec",
     "RunStartedEvent",
