@@ -33,7 +33,7 @@ function RosterFilterItem({
       className="gap-1 data-pressed:text-text-secondary"
     >
       <span>{label}</span>
-      <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-[5px] border border-divider-subtle bg-components-badge-bg-dimm px-1 system-2xs-medium text-text-tertiary">
+      <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
         {count}
       </span>
     </SegmentedControlItem>

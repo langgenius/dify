@@ -45,4 +45,15 @@ describe('RosterToolbar', () => {
 
     expect(onFilterChange).toHaveBeenCalledWith('in-use')
   })
+
+  it('renders filter count badges with the compact badge style', () => {
+    renderToolbar()
+
+    expect(screen.getByText('1')).toHaveClass(
+      'min-w-4',
+      'border-divider-deep',
+      'py-0.5',
+      'system-2xs-medium-uppercase',
+    )
+  })
 })

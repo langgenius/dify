@@ -248,6 +248,8 @@
   "roster.nodeSelector.dialogLabel": "选择智能体",
   "roster.nodeSelector.manageInAgentConsole": "在智能体控制台管理",
   "roster.nodeSelector.searchPlaceholder": "搜索…",
+  "roster.references.label": "使用 {{name}} 的工作流",
+  "roster.references.trigger": "使用 {{name}} 的工作流",
   "roster.searchLabel": "搜索智能体",
   "roster.searchPlaceholder": "按名称搜索智能体…",
   "roster.sources.agent_app": "智能体应用",

@@ -248,6 +248,8 @@
   "roster.nodeSelector.dialogLabel": "Select an agent",
   "roster.nodeSelector.manageInAgentConsole": "Manage in Agent Console",
   "roster.nodeSelector.searchPlaceholder": "Search…",
+  "roster.references.label": "Workflows using {{name}}",
+  "roster.references.trigger": "Workflows using {{name}}",
   "roster.searchLabel": "Search agents",
   "roster.searchPlaceholder": "Search agents by name…",
   "roster.sources.agent_app": "Agent app",

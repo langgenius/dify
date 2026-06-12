@@ -1,6 +1,7 @@
 import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AgentRosterList } from '../agent-roster-list'
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -73,5 +74,30 @@ describe('AgentRosterList', () => {
     expect(screen.getByText('agentV2.roster.usageStatus.inUse')).toBeInTheDocument()
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.status.active')).not.toBeInTheDocument()
+  })
+
+  it('opens published workflow references from the card reference trigger', async () => {
+    const user = userEvent.setup()
+    renderList([
+      createAgent({
+        published_reference_count: 1,
+        published_references: [
+          {
+            app_id: 'workflow-app-id',
+            app_mode: 'workflow',
+            app_name: 'RFP Review Flow',
+            node_ids: ['agent-node-a'],
+            workflow_id: 'published-workflow-id',
+            workflow_version: '2026-06-12 10:00:00',
+          },
+        ],
+      }),
+    ])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.references\.trigger/ }))
+
+    const workflowLink = screen.getByRole('menuitem', { name: /RFP Review Flow/ })
+    expect(workflowLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
+    expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
   })
 })

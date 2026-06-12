@@ -1,0 +1,138 @@
+import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { EditAgentDialog } from '../edit-agent-dialog'
+
+const mutationMock = vi.hoisted(() => ({
+  isPending: false,
+  mutate: vi.fn(),
+}))
+
+vi.mock('@tanstack/react-query', () => ({
+  useMutation: () => ({
+    isPending: mutationMock.isPending,
+    mutate: mutationMock.mutate,
+  }),
+}))
+
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  __esModule: true,
+  default: ({
+    onSelect,
+    open,
+  }: {
+    onSelect: (payload: { type: 'emoji', icon: string, background: string }) => void
+    open: boolean
+  }) => open
+    ? (
+        <button
+          type="button"
+          onClick={() => onSelect({ type: 'emoji', icon: '🧠', background: '#E0F2FE' })}
+        >
+          Select brain icon
+        </button>
+      )
+    : null,
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    agents: {
+      byAgentId: {
+        patch: {
+          mutationOptions: vi.fn(() => ({})),
+        },
+      },
+    },
+  },
+}))
+
+const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterResponse => ({
+  agent_kind: 'dify_agent',
+  description: 'Find and summarize market materials.',
+  icon: '🧸',
+  icon_background: '#F5F3FF',
+  icon_type: 'emoji',
+  id: 'agent-1',
+  name: 'Research Agent',
+  published_node_reference_count: 0,
+  published_reference_count: 0,
+  published_references: [],
+  role: 'Researcher',
+  scope: 'roster',
+  source: 'agent_app',
+  status: 'active',
+  ...overrides,
+})
+
+const renderDialog = (agent = createAgent()) => {
+  const onOpenChange = vi.fn()
+
+  render(
+    <EditAgentDialog
+      agent={agent}
+      open
+      onOpenChange={onOpenChange}
+    />,
+  )
+
+  return { onOpenChange }
+}
+
+describe('EditAgentDialog', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mutationMock.isPending = false
+  })
+
+  it('submits changed roster fields without resending unchanged icon fields', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Analyst ')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Analyst',
+      },
+    }, expect.objectContaining({
+      onError: expect.any(Function),
+      onSuccess: expect.any(Function),
+    }))
+  })
+
+  it('submits selected icon fields when the roster icon changes', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    await user.click(within(dialog).getByRole('button', { name: /agentV2\.roster\.editAgent/ }))
+    await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Researcher',
+        icon_type: 'emoji',
+        icon: '🧠',
+        icon_background: '#E0F2FE',
+      },
+    }, expect.objectContaining({
+      onError: expect.any(Function),
+      onSuccess: expect.any(Function),
+    }))
+  })
+})
