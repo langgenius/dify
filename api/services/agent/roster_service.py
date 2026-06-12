@@ -21,6 +21,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -95,9 +96,8 @@ class AgentRosterService:
             "created_at": to_timestamp(version.created_at),
         }
 
-    def list_roster_agents(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
-    ) -> dict[str, Any]:
+    @staticmethod
+    def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
         stmt = select(Agent).where(
             Agent.tenant_id == tenant_id,
             Agent.scope == AgentScope.ROSTER,
@@ -108,7 +108,12 @@ class AgentRosterService:
 
             escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(Agent.name.ilike(f"%{escaped_keyword}%", escape="\\"))
-        stmt = stmt.order_by(Agent.updated_at.desc())
+        return stmt.order_by(Agent.updated_at.desc())
+
+    def list_roster_agents(
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
+    ) -> dict[str, Any]:
+        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
 
         total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
@@ -144,7 +149,26 @@ class AgentRosterService:
     def list_invite_options(
         self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
     ) -> dict[str, Any]:
-        result = self.list_roster_agents(tenant_id=tenant_id, page=page, limit=limit, keyword=keyword)
+        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
+            Agent.active_config_has_model.is_(True)
+        )
+        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
+        versions_by_id = self._load_versions_by_id(
+            [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
+        )
+        published_references_by_agent_id = self._load_published_references_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
+        data = [
+            self.serialize_agent(
+                agent,
+                versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
+                published_references_by_agent_id.get(agent.id, []),
+            )
+            for agent in agents
+        ]
         usage_by_agent_id: dict[str, list[str]] = {}
         if app_id:
             draft_workflow = self._session.scalar(
@@ -157,7 +181,7 @@ class AgentRosterService:
                 .limit(1)
             )
             if draft_workflow:
-                agent_ids = [item["id"] for item in result["data"]]
+                agent_ids = [item["id"] for item in data]
                 if agent_ids:
                     bindings = self._session.scalars(
                         select(WorkflowAgentNodeBinding).where(
@@ -170,12 +194,18 @@ class AgentRosterService:
                         if binding.agent_id:
                             usage_by_agent_id.setdefault(binding.agent_id, []).append(binding.node_id)
 
-        for item in result["data"]:
+        for item in data:
             existing_node_ids = usage_by_agent_id.get(item["id"], [])
             item["is_in_current_workflow"] = bool(existing_node_ids)
             item["in_current_workflow_count"] = len(existing_node_ids)
             item["existing_node_ids"] = existing_node_ids
-        return result
+        return {
+            "data": data,
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_more": page * limit < total,
+        }
 
     def create_roster_agent(
         self,
@@ -231,6 +261,7 @@ class AgentRosterService:
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
 
         try:
             self._session.commit()
@@ -302,6 +333,7 @@ class AgentRosterService:
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
         self._session.flush()
         return agent
 
