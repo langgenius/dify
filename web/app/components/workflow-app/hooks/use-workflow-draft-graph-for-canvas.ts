@@ -14,7 +14,7 @@ type HydrateWorkflowDraftGraphOptions = {
   localStartPlaceholderNodes?: Node[]
 }
 
-export const hasWorkflowEntryNode = (nodes: Node[] = []): boolean => {
+const hasWorkflowEntryNode = (nodes: Node[] = []): boolean => {
   return nodes.some(node => (
     node?.data?.type === BlockEnum.Start
     || node?.data?.type === BlockEnum.TriggerSchedule
@@ -23,7 +23,7 @@ export const hasWorkflowEntryNode = (nodes: Node[] = []): boolean => {
   ))
 }
 
-export const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
+const hasStartPlaceholderNode = (nodes: Node[] = []): boolean => {
   return nodes.some(node => node?.data?.type === BlockEnum.StartPlaceholder)
 }
 
