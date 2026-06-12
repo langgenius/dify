@@ -34,6 +34,9 @@ export const agentComposerOriginalConfigAtom = atom<AgentSoulConfig | undefined>
 export const agentComposerOriginalDraftAtom = atom<AgentComposerDraft | undefined>(defaultAgentComposerDraft)
 export const agentComposerDraftAtom = atom<AgentComposerDraft>(defaultAgentComposerDraft)
 
+type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
+type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
+
 const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => [
   file,
   ...flattenFileNodes(file.children ?? []),
@@ -51,6 +54,40 @@ const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file 
 }))
 
 const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const createKnowledgeReferenceToken = (id: string, label: string) => (
+  `[§knowledge:${id}${label ? `:${label}` : ''}§]`
+)
+
+const syncKnowledgeReferenceLabels = ({
+  prompt,
+  currentRetrievals,
+  nextRetrievals,
+}: {
+  prompt: string
+  currentRetrievals: AgentKnowledgeRetrievalItem[]
+  nextRetrievals: AgentKnowledgeRetrievalItem[]
+}) => {
+  const currentRetrievalById = new Map(currentRetrievals.map(retrieval => [retrieval.id, retrieval]))
+
+  return nextRetrievals.reduce((nextPrompt, nextRetrieval) => {
+    const currentRetrieval = currentRetrievalById.get(nextRetrieval.id)
+    if (!currentRetrieval)
+      return nextPrompt
+
+    const currentName = getKnowledgeRetrievalName(currentRetrieval)
+    const nextName = getKnowledgeRetrievalName(nextRetrieval)
+    if (currentName === nextName)
+      return nextPrompt
+
+    return nextPrompt.replace(
+      new RegExp(`\\[§knowledge:${escapeRegExp(nextRetrieval.id)}(?::[^§\\]]*)?§\\]`, 'g'),
+      createKnowledgeReferenceToken(nextRetrieval.id, nextName),
+    )
+  }, prompt)
+}
 
 const toKnowledgeDatasets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => knowledgeRetrievals.flatMap((item) => {
   if (item.selectedDatasets?.length) {
@@ -94,6 +131,29 @@ const toKnowledgeConfig = (
   }
 }
 
+const isToolRuntimeParameterValue = (value: unknown): value is AgentSoulToolRuntimeParameterValue => {
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    return true
+
+  if (!Array.isArray(value))
+    return false
+
+  return value.every(item => typeof item === 'string')
+    || value.every(item => typeof item === 'number')
+    || value.every(item => typeof item === 'boolean')
+}
+
+const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) => {
+  const runtimeParameters: Record<string, AgentSoulToolRuntimeParameterValue> = {}
+
+  Object.entries(settings ?? {}).forEach(([key, value]) => {
+    if (isToolRuntimeParameterValue(value))
+      runtimeParameters[key] = value
+  })
+
+  return runtimeParameters
+}
+
 const toDifyToolConfigs = (
   tools: AgentTool[],
   toolSettings: Record<string, Record<string, unknown>>,
@@ -108,7 +168,7 @@ const toDifyToolConfigs = (
     provider_id: tool.id,
     provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
-    runtime_parameters: toolSettings[action.id] ?? {},
+    runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
     credential_type: tool.credentialVariant === 'endUser' ? 'oauth2' as const : 'api-key' as const,
   }))
 })
@@ -262,8 +322,15 @@ export const agentComposerToolsAtom = atom(
 export const agentComposerKnowledgeRetrievalsAtom = atom(
   get => get(agentComposerDraftAtom).knowledgeRetrievals,
   (get, set, knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => {
+    const draft = get(agentComposerDraftAtom)
+
     set(agentComposerDraftAtom, {
-      ...get(agentComposerDraftAtom),
+      ...draft,
+      prompt: syncKnowledgeReferenceLabels({
+        prompt: draft.prompt,
+        currentRetrievals: draft.knowledgeRetrievals,
+        nextRetrievals: knowledgeRetrievals,
+      }),
       knowledgeRetrievals,
     })
   },
