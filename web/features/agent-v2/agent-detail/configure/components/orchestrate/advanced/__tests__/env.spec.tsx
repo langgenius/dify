@@ -47,32 +47,34 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('User Interactions', () => {
-    it('should not create a variable when the draft key cell is focused', async () => {
+    it('should edit the initial environment variable row directly', async () => {
       const user = userEvent.setup()
       renderAgentEnvEditor()
 
-      const draftKey = screen.getByText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
-
-      await user.click(draftKey)
-
-      expect(screen.queryByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')).not.toBeInTheDocument()
-    })
-
-    it('should create a variable when the draft value cell is edited', async () => {
-      const user = userEvent.setup()
-      renderAgentEnvEditor()
-
-      const draftValue = screen.getAllByText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder').at(-1)
-      expect(draftValue).toBeDefined()
-
-      await user.click(draftValue!)
-
+      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
       const valueInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
-      expect(valueInput).toHaveFocus()
 
+      await user.type(keyInput, 'API_KEY')
       await user.type(valueInput, 'secret-value')
 
+      expect(screen.getByDisplayValue('API_KEY')).toBeInTheDocument()
       expect(screen.getByDisplayValue('secret-value')).toBeInTheDocument()
+    })
+
+    it('should add another editable variable row from the add button', async () => {
+      const user = userEvent.setup()
+      renderAgentEnvEditor()
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add' }))
+
+      const keyInputs = screen.getAllByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      expect(keyInputs).toHaveLength(2)
+      const newKeyInput = keyInputs[1]!
+      expect(newKeyInput).toHaveFocus()
+
+      await user.type(newKeyInput, 'SECOND_KEY')
+
+      expect(screen.getByDisplayValue('SECOND_KEY')).toBeInTheDocument()
     })
 
     it('should import dotenv variables into the env table when a file is selected', async () => {

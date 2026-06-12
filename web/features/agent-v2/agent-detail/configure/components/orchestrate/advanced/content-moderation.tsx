@@ -12,10 +12,8 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import {
-  agentComposerDraftAtom,
-  useAppFeatures,
-} from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { useAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import { ConfigureSection } from '../common/section'
 

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEnvVariables } from '@/features/agent-v2/agent-composer/store'
+import { useEnvVariables } from '@/features/agent-v2/agent-composer/store-modules/env'
 import { ConfigureSection } from '../common/section'
 import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
 
@@ -377,11 +377,27 @@ export function EnvVariablesTable({
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
   const [envVariables, setEnvVariables] = useEnvVariables()
+  const [starterVariable] = useState(createEnvVariable)
   const [focusedVariable, setFocusedVariable] = useState<{ id: string, field: 'key' | 'value' }>()
   const envImportInputRef = useRef<HTMLInputElement>(null)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envImportTip = t(envImportTipKeys[getCurrentEnvImportPlatform()])
   const envEditorTableId = 'agent-configure-env-editor-table'
+  const visibleEnvVariables = envVariables.length > 0 ? envVariables : [starterVariable]
+
+  const updateVariable = (id: string, updater: (variable: EnvVariable) => EnvVariable) => {
+    const existingVariable = envVariables.find(variable => variable.id === id)
+
+    if (existingVariable) {
+      setEnvVariables(envVariables.map(variable => (
+        variable.id === id ? updater(variable) : variable
+      )))
+      return
+    }
+
+    if (id === starterVariable.id)
+      setEnvVariables([updater(starterVariable)])
+  }
 
   const addVariable = ({
     focusField = 'key',
@@ -395,7 +411,10 @@ export function AgentEnvEditor() {
       ...(scope ? { scope } : {}),
     }
 
-    setEnvVariables([...envVariables, variable])
+    setEnvVariables([
+      ...(envVariables.length > 0 ? envVariables : [starterVariable]),
+      variable,
+    ])
     setFocusedVariable({ id: variable.id, field: focusField })
   }
   const importEnvVariables = async (file: File) => {
@@ -407,19 +426,13 @@ export function AgentEnvEditor() {
     setEnvVariables([...envVariables, ...importedVariables])
   }
   const updateVariableKey = (id: string, key: string) => {
-    setEnvVariables(envVariables.map(variable => (
-      variable.id === id ? { ...variable, key } : variable
-    )))
+    updateVariable(id, variable => ({ ...variable, key }))
   }
   const updateVariableScope = (id: string, scope: EnvScope) => {
-    setEnvVariables(envVariables.map(variable => (
-      variable.id === id ? { ...variable, scope } : variable
-    )))
+    updateVariable(id, variable => ({ ...variable, scope }))
   }
   const updateVariableValue = (id: string, value: string) => {
-    setEnvVariables(envVariables.map(variable => (
-      variable.id === id ? { ...variable, value } : variable
-    )))
+    updateVariable(id, variable => ({ ...variable, value }))
   }
   const deleteVariable = (id: string) => {
     setEnvVariables(envVariables.filter(variable => variable.id !== id))
@@ -473,7 +486,7 @@ export function AgentEnvEditor() {
     >
       <EnvVariablesTable
         editable
-        envVariables={envVariables}
+        envVariables={visibleEnvVariables}
         focusedVariable={focusedVariable}
         highlightedIndex={1}
         onAdd={addVariable}
@@ -481,6 +494,7 @@ export function AgentEnvEditor() {
         onKeyChange={updateVariableKey}
         onScopeChange={updateVariableScope}
         onValueChange={updateVariableValue}
+        showDraftRow={false}
       />
     </ConfigureSection>
   )

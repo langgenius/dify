@@ -1,28 +1,16 @@
 import {
-  agentComposerAppFeaturesAtom,
-  agentComposerEnvVariablesAtom,
-  agentComposerFilesAtom,
-  agentComposerKnowledgeRetrievalsAtom,
-  agentComposerModelAtom,
-  agentComposerPromptAtom,
-  agentComposerSkillsAtom,
-  agentComposerToolsAtom,
-  agentComposerToolSettingsAtom,
   isAgentComposerDirtyAtom,
-  useAppFeatures,
   useConfigPublishPayload,
-  useCurrentModel,
-  useEnvVariables,
-  useFiles,
   useHydrateAgentSoulConfigFormState,
-  useKnowledgeRetrievals,
-  useModel,
-  usePrompt,
-  useRemoveSkill,
-  useSkills,
-  useTools,
-  useToolSettings,
 } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerAppFeaturesAtom, useAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import { agentComposerEnvVariablesAtom, useEnvVariables } from '@/features/agent-v2/agent-composer/store-modules/env'
+import { agentComposerFilesAtom, useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
+import { agentComposerKnowledgeRetrievalsAtom, useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import { agentComposerModelAtom, useCurrentModel, useModel } from '@/features/agent-v2/agent-composer/store-modules/model'
+import { agentComposerPromptAtom, usePrompt } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { agentComposerSkillsAtom, useRemoveSkill, useSkills } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { agentComposerToolsAtom, agentComposerToolSettingsAtom, useTools, useToolSettings } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 export const agentConfigurePromptAtom = agentComposerPromptAtom
 export const agentConfigureModelAtom = agentComposerModelAtom

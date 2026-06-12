@@ -6,7 +6,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
-import { useToolSettings } from '@/features/agent-v2/agent-composer/store'
+import { useToolSettings } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 const localize = (value: string) => ({
   en_US: value,
