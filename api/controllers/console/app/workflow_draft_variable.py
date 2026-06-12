@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -248,7 +248,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
-    @console_ns.expect(console_ns.models[WorkflowDraftVariableListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
     @console_ns.doc(params={"app_id": "Application ID"})

@@ -14,7 +14,12 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
@@ -495,7 +500,7 @@ register_schema_models(
 class AppListApi(Resource):
     @console_ns.doc("list_apps")
     @console_ns.doc(description="Get list of applications with pagination and filtering")
-    @console_ns.expect(console_ns.models[AppListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AppListQuery))
     @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
     @setup_required
     @login_required
@@ -737,7 +742,7 @@ class AppExportApi(Resource):
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
-    @console_ns.expect(console_ns.models[AppExportQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AppExportQuery))
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @get_app_model

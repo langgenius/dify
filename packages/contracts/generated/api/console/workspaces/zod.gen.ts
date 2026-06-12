@@ -17,20 +17,6 @@ export const zSnippetImportPayload = z.object({
 })
 
 /**
- * ModelType
- *
- * Enum class for model type.
- */
-export const zModelType = z.enum([
-  'llm',
-  'moderation',
-  'rerank',
-  'speech2text',
-  'text-embedding',
-  'tts',
-])
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -201,71 +187,6 @@ export const zParserCredentialSwitch = z.object({
  */
 export const zParserCredentialValidate = z.object({
   credentials: z.record(z.string(), z.unknown()),
-})
-
-/**
- * ParserDeleteModels
- */
-export const zParserDeleteModels = z.object({
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserDeleteCredential
- */
-export const zParserDeleteCredential = z.object({
-  credential_id: z.string(),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserCreateCredential
- */
-export const zParserCreateCredential = z.object({
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-  name: z.string().max(30).nullish(),
-})
-
-/**
- * ParserUpdateCredential
- */
-export const zParserUpdateCredential = z.object({
-  credential_id: z.string(),
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-  name: z.string().max(30).nullish(),
-})
-
-/**
- * ParserSwitch
- */
-export const zParserSwitch = z.object({
-  credential_id: z.string(),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * ParserValidate
- */
-export const zParserValidate = z.object({
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
-})
-
-/**
- * LoadBalancingCredentialPayload
- */
-export const zLoadBalancingCredentialPayload = z.object({
-  credentials: z.record(z.string(), z.unknown()),
-  model: z.string(),
-  model_type: zModelType,
 })
 
 /**
@@ -656,6 +577,99 @@ export const zAccountWithRoleList = z.object({
 })
 
 /**
+ * TenantAccountRole
+ */
+export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
+
+/**
+ * MemberInvitePayload
+ */
+export const zMemberInvitePayload = z.object({
+  emails: z.array(z.string()).optional(),
+  language: z.string().nullish(),
+  role: zTenantAccountRole,
+})
+
+/**
+ * ModelType
+ *
+ * Enum class for model type.
+ */
+export const zModelType = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+])
+
+/**
+ * ParserDeleteModels
+ */
+export const zParserDeleteModels = z.object({
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserDeleteCredential
+ */
+export const zParserDeleteCredential = z.object({
+  credential_id: z.string(),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserCreateCredential
+ */
+export const zParserCreateCredential = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+  name: z.string().max(30).nullish(),
+})
+
+/**
+ * ParserUpdateCredential
+ */
+export const zParserUpdateCredential = z.object({
+  credential_id: z.string(),
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+  name: z.string().max(30).nullish(),
+})
+
+/**
+ * ParserSwitch
+ */
+export const zParserSwitch = z.object({
+  credential_id: z.string(),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * ParserValidate
+ */
+export const zParserValidate = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
+ * LoadBalancingCredentialPayload
+ */
+export const zLoadBalancingCredentialPayload = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  model: z.string(),
+  model_type: zModelType,
+})
+
+/**
  * Inner
  */
 export const zInner = z.object({
@@ -669,20 +683,6 @@ export const zInner = z.object({
  */
 export const zParserPostDefault = z.object({
   model_settings: z.array(zInner),
-})
-
-/**
- * TenantAccountRole
- */
-export const zTenantAccountRole = z.enum(['admin', 'dataset_operator', 'editor', 'normal', 'owner'])
-
-/**
- * MemberInvitePayload
- */
-export const zMemberInvitePayload = z.object({
-  emails: z.array(z.string()).optional(),
-  language: z.string().nullish(),
-  role: zTenantAccountRole,
 })
 
 /**
@@ -941,12 +941,12 @@ export const zGetWorkspacesCurrentAgentProvidersResponse = z.array(
 )
 
 export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
-  creators: z.array(z.string()).nullish(),
-  is_published: z.boolean().nullish(),
-  keyword: z.string().nullish(),
+  creators: z.array(z.string()).optional(),
+  is_published: z.boolean().optional(),
+  keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  tag_ids: z.array(z.string()).nullish(),
+  tag_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -1049,7 +1049,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
 export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
-  model_type: zModelType,
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
 })
 
 /**
@@ -1213,7 +1213,9 @@ export const zPutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse = z.record
 )
 
 export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
-  model_type: zModelType.nullish(),
+  model_type: z
+    .enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts'])
+    .optional(),
 })
 
 /**
@@ -1250,7 +1252,7 @@ export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsPath = z.ob
 })
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCredentialsQuery = z.object({
-  credential_id: z.string().nullish(),
+  credential_id: z.string().optional(),
 })
 
 /**
@@ -1371,10 +1373,10 @@ export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath 
 })
 
 export const zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery = z.object({
-  config_from: z.string().nullish(),
-  credential_id: z.string().nullish(),
+  config_from: z.string().optional(),
+  credential_id: z.string().optional(),
   model: z.string(),
-  model_type: zModelType,
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
 })
 
 /**
@@ -1641,7 +1643,7 @@ export const zGetWorkspacesCurrentPluginMarketplacePkgResponse = z.record(z.stri
 
 export const zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery = z.object({
   action: z.string(),
-  credential_id: z.string().nullish(),
+  credential_id: z.string().optional(),
   parameter: z.string(),
   plugin_id: z.string(),
   provider: z.string(),

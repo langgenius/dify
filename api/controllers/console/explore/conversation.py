@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
@@ -44,7 +44,7 @@ register_response_schema_models(console_ns, ResultResponse)
     endpoint="installed_app_conversations",
 )
 class ConversationListApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[ConversationListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ConversationListQuery))
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app

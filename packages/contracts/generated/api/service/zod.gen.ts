@@ -1533,7 +1533,7 @@ export const zPostCompletionMessagesByTaskIdStopPath = z.object({
 export const zPostCompletionMessagesByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetConversationsQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   sort_by: z
     .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
@@ -1571,9 +1571,9 @@ export const zGetConversationsByCIdVariablesPath = z.object({
 })
 
 export const zGetConversationsByCIdVariablesQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  variable_name: z.string().min(1).max(255).nullish(),
+  variable_name: z.string().min(1).max(255).optional(),
 })
 
 /**
@@ -2226,7 +2226,7 @@ export const zGetInfoResponse = zAppInfoResponse
 
 export const zGetMessagesQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().nullish(),
+  first_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
@@ -2293,14 +2293,14 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 export const zGetWorkflowByTaskIdEventsResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkflowsLogsQuery = z.object({
-  created_at__after: z.string().nullish(),
-  created_at__before: z.string().nullish(),
-  created_by_account: z.string().nullish(),
-  created_by_end_user_session_id: z.string().nullish(),
-  keyword: z.string().nullish(),
+  created_at__after: z.string().optional(),
+  created_at__before: z.string().optional(),
+  created_by_account: z.string().optional(),
+  created_by_end_user_session_id: z.string().optional(),
+  keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z.enum(['failed', 'stopped', 'succeeded']).nullish(),
+  status: z.enum(['failed', 'stopped', 'succeeded']).optional(),
 })
 
 /**

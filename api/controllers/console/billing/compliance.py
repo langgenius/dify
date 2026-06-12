@@ -2,6 +2,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from controllers.common.schema import query_params_from_model
 from libs.helper import extract_remote_ip
 from libs.login import login_required
 from models import Account
@@ -30,7 +31,7 @@ console_ns.schema_model(
 
 @console_ns.route("/compliance/download")
 class ComplianceApi(Resource):
-    @console_ns.expect(console_ns.models[ComplianceDownloadQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ComplianceDownloadQuery))
     @console_ns.doc("download_compliance_document")
     @console_ns.doc(description="Get compliance document download link")
     @setup_required
