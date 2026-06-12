@@ -136,6 +136,7 @@ class EnterpriseService:
         tenant_id: str,
         app_id: str | None,
         audience: str,
+        user_type: str = "account",
     ) -> tuple[str, int]:
         """Mint a short-lived SSO id_token (or OAuth2 access_token) representing
         the calling Dify user, audience-scoped to the given MCP server identifier.
@@ -163,6 +164,7 @@ class EnterpriseService:
                     "tenant_id": tenant_id,
                     "app_id": app_id or "",
                     "audience": audience,
+                    "user_type": user_type,
                 },
             )
         except EnterpriseServiceError as e:
