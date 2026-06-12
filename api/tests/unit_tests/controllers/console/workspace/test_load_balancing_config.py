@@ -17,7 +17,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    vars(builtins)["MethodView"] = MethodView
 
 from models.account import TenantAccountRole
 

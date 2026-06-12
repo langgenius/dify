@@ -16,7 +16,7 @@ from werkzeug.datastructures import MultiDict
 
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    vars(builtins)["MethodView"] = MethodView
 
 
 class _ConsoleModule(ModuleType):
