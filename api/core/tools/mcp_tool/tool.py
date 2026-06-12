@@ -7,7 +7,6 @@ from collections.abc import Generator, Mapping
 from typing import Any, cast, override
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.mcp_provider import IdentityMode
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
@@ -32,11 +31,6 @@ logger = logging.getLogger(__name__)
 # stomping on the workspace-scoped Authorization header (provider OAuth /
 # user-supplied custom credentials), which would silently break those flows.
 FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Token"
-
-# invoke_from values where the caller is a console Account rather than a webapp/
-# API end-user. Mirrors core/app/apps/base_app_runner.py and
-# workflow_app_runner._resolve_user_from.
-_ACCOUNT_INVOKE_FROMS = frozenset({InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE})
 
 
 class MCPTool(Tool):
@@ -374,6 +368,7 @@ class MCPTool(Tool):
         """Return "account" for console-authenticated callers (debugger/explore),
         "end_user" for webapp / service-api / trigger callers — so the enterprise
         side routes to the console store vs the published-webapp store."""
-        if self.runtime.invoke_from in _ACCOUNT_INVOKE_FROMS:
+        invoke_from = self.runtime.invoke_from
+        if invoke_from is not None and invoke_from.runs_as_account():
             return "account"
         return "end_user"
