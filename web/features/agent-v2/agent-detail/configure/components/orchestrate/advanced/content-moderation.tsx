@@ -21,9 +21,8 @@ import { ConfigureSection } from '../common/section'
 
 const defaultModerationConfig: ModerationConfig = {
   enabled: true,
-  type: 'keywords',
+  type: 'openai_moderation',
   config: {
-    keywords: '',
     inputs_config: {
       enabled: true,
       preset_response: '',
