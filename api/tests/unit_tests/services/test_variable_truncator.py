@@ -238,6 +238,31 @@ class TestArrayTruncation:
         for item in result.value:
             assert isinstance(item, dict)
 
+    def test_size_limit_break_sets_truncated_flag(self):
+        """
+        Regression test for GH #37192 (case 1):
+        When the size budget is exhausted mid-array, the break should set truncated=True.
+        Previously the flag was left False because the break did not update it.
+        """
+        # Each integer takes ~2 bytes; target_size=12 fits [10,20,30,40] but not 50
+        t = VariableTruncator(array_element_limit=20, max_size_bytes=1000)
+        result = t._truncate_array([10, 20, 30, 40, 50], 12)
+        assert result.truncated is True
+        assert 50 not in result.value
+
+    def test_later_element_does_not_reset_truncated_flag(self):
+        """
+        Regression test for GH #37192 (case 2):
+        A later element that fits should not reset the truncated flag set by an
+        earlier truncated element.  Previously `truncated = part_result.truncated`
+        (assignment) was used instead of `truncated = truncated or part_result.truncated`
+        (accumulation).
+        """
+        t = VariableTruncator(array_element_limit=20, max_size_bytes=1000, string_length_limit=10)
+        # First element is 60 chars → truncated; second element "a" fits → should NOT reset flag
+        result = t._truncate_array(["x" * 60, "a"], 60)
+        assert result.truncated is True
+
 
 class TestObjectTruncation:
     """Test object truncation functionality."""
