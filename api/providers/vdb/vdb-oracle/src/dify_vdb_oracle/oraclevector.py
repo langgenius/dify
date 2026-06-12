@@ -54,6 +54,7 @@ ORACLE_TEXT_RESERVED_TOKENS = {
     "WITHIN",
 }
 ORACLE_TEXT_PARSER_ERROR_CODES = ("DRG-50901", "DRG-50902", "DRG-50906", "DRG-50907")
+ORACLE_IN_CLAUSE_BATCH_SIZE = 900
 
 
 class _OraclePoolParams(TypedDict, total=False):
@@ -76,6 +77,9 @@ class OracleVectorConfig(BaseModel):
     wallet_location: str | None = None
     wallet_password: str | None = None
     is_autonomous: bool = False
+    pool_min: int = 1
+    pool_max: int = 5
+    pool_increment: int = 1
 
     @model_validator(mode="before")
     @classmethod
@@ -95,6 +99,18 @@ class OracleVectorConfig(BaseModel):
             if not values.get("wallet_password"):
                 raise ValueError("wallet_password is required for autonomous database")
         return values
+
+    @model_validator(mode="after")
+    def validate_pool_config(self):
+        if self.pool_min <= 0:
+            raise ValueError("pool_min must be greater than 0")
+        if self.pool_max <= 0:
+            raise ValueError("pool_max must be greater than 0")
+        if self.pool_increment <= 0:
+            raise ValueError("pool_increment must be greater than 0")
+        if self.pool_min > self.pool_max:
+            raise ValueError("pool_min must be less than or equal to pool_max")
+        return self
 
 
 SQL_CREATE_TABLE = """
@@ -196,6 +212,50 @@ def is_oracle_text_parser_error(exc: Exception) -> bool:
     return any(code in message for code in ORACLE_TEXT_PARSER_ERROR_CODES)
 
 
+def iter_batches(values: list[str], batch_size: int = ORACLE_IN_CLAUSE_BATCH_SIZE):
+    for start in range(0, len(values), batch_size):
+        yield values[start : start + batch_size]
+
+
+def parse_metadata_json(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return dict(value)
+    if hasattr(value, "read"):
+        value = value.read()
+    if isinstance(value, bytes):
+        value = value.decode("utf-8")
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            logger.warning("Unable to parse Oracle metadata JSON: %r", value)
+            return {}
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def extract_english_text_tokens(query: str) -> list[str]:
+    try:
+        import nltk  # type: ignore
+        from nltk.corpus import stopwords  # type: ignore
+
+        try:
+            nltk.data.find("tokenizers/punkt")
+            nltk.data.find("corpora/stopwords")
+        except LookupError:
+            logger.warning("NLTK data package punkt or stopwords is unavailable; using regex token fallback.")
+            return ORACLE_TEXT_SAFE_TOKEN.findall(query)
+
+        stop_words = set(stopwords.words("english"))
+        return [token for token in nltk.word_tokenize(query) if token.casefold() not in stop_words]
+    except ImportError:
+        logger.warning("NLTK is unavailable; using regex token fallback.")
+        return ORACLE_TEXT_SAFE_TOKEN.findall(query)
+
+
 class OracleVector(BaseVector):
     def __init__(self, collection_name: str, config: OracleVectorConfig):
         super().__init__(collection_name)
@@ -248,9 +308,9 @@ class OracleVector(BaseVector):
             user=config.user,
             password=config.password,
             dsn=config.dsn,
-            min=1,
-            max=5,
-            increment=1,
+            min=config.pool_min,
+            max=config.pool_max,
+            increment=config.pool_increment,
         )
         if config.is_autonomous:
             pool_params["config_dir"] = config.config_dir
@@ -279,17 +339,17 @@ class OracleVector(BaseVector):
                 values.append(
                     (
                         doc_id,
-                        doc.page_content,
                         json.dumps(doc.metadata),
                         # array.array("f", embeddings[i]),
                         numpy.array(embeddings[i]),
+                        doc.page_content,
                     )
                 )
         if not values:
             return pks
 
         delete_sql = f"DELETE FROM {self.table_name} WHERE id = :1"
-        insert_sql = f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)"
+        insert_sql = f"INSERT INTO {self.table_name} (id, meta, embedding, text) VALUES (:1, :2, :3, :4)"
         with self._get_connection() as conn:
             conn.inputtypehandler = self.input_type_handler
             conn.outputtypehandler = self.output_type_handler
@@ -332,13 +392,14 @@ class OracleVector(BaseVector):
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         if not ids:
             return []
+        docs = []
         with self._get_connection() as conn:
             with conn.cursor() as cur:
-                placeholders = ", ".join(f":{i + 1}" for i in range(len(ids)))
-                cur.execute(f"SELECT meta, text FROM {self.table_name} WHERE id IN ({placeholders})", ids)
-                docs = []
-                for record in cur:
-                    docs.append(Document(page_content=record[1], metadata=record[0]))
+                for batch in iter_batches(ids):
+                    placeholders = ", ".join(f":{i + 1}" for i in range(len(batch)))
+                    cur.execute(f"SELECT meta, text FROM {self.table_name} WHERE id IN ({placeholders})", batch)
+                    for record in cur:
+                        docs.append(Document(page_content=record[1], metadata=parse_metadata_json(record[0])))
         return docs
 
     @override
@@ -347,8 +408,9 @@ class OracleVector(BaseVector):
             return
         with self._get_connection() as conn:
             with conn.cursor() as cur:
-                placeholders = ", ".join(f":{i + 1}" for i in range(len(ids)))
-                cur.execute(f"DELETE FROM {self.table_name} WHERE id IN ({placeholders})", ids)
+                for batch in iter_batches(ids):
+                    placeholders = ", ".join(f":{i + 1}" for i in range(len(batch)))
+                    cur.execute(f"DELETE FROM {self.table_name} WHERE id IN ({placeholders})", batch)
             conn.commit()
 
     @override
@@ -394,6 +456,7 @@ class OracleVector(BaseVector):
                 for record in cur:
                     metadata, text, distance = record
                     score = 1 - distance
+                    metadata = parse_metadata_json(metadata)
                     metadata["score"] = score
                     if score >= score_threshold:
                         docs.append(Document(page_content=text, metadata=metadata))
@@ -424,20 +487,7 @@ class OracleVector(BaseVector):
             if current_entity:
                 entities.append(current_entity)
         else:
-            # lazy import for English tokenization only
-            import nltk  # type: ignore
-            from nltk.corpus import stopwords  # type: ignore
-
-            try:
-                nltk.data.find("tokenizers/punkt")
-                nltk.data.find("corpora/stopwords")
-            except LookupError:
-                raise LookupError("Unable to find the required NLTK data package: punkt and stopwords")
-            all_tokens = nltk.word_tokenize(query)
-            stop_words = set(stopwords.words("english"))
-            for token in all_tokens:
-                if token.casefold() not in stop_words:
-                    entities.append(token)
+            entities.extend(extract_english_text_tokens(query))
 
         text_query = build_oracle_text_query(entities)
         if text_query is None:
@@ -459,7 +509,7 @@ class OracleVector(BaseVector):
 
                 try:
                     cur.execute(
-                        f"""select meta, text, embedding FROM {self.table_name}
+                        f"""select meta, text, embedding, score(1) FROM {self.table_name}
                     WHERE CONTAINS(text, :kk, 1) > 0  {where_clause}
                     order by score(1) desc fetch first {top_k} rows only""",
                         params,
@@ -471,7 +521,9 @@ class OracleVector(BaseVector):
                     raise
                 docs = []
                 for record in cur:
-                    metadata, text, embedding = record
+                    metadata, text, embedding, text_score = record
+                    metadata = parse_metadata_json(metadata)
+                    metadata["score"] = float(text_score or 0.0) / 100.0
                     docs.append(Document(page_content=text, vector=embedding, metadata=metadata))
         return docs
 
@@ -493,10 +545,10 @@ class OracleVector(BaseVector):
             with self._get_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name))
-                redis_client.set(collection_exist_cache_key, 1, ex=3600)
                 with conn.cursor() as cur:
                     cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
                 conn.commit()
+                redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
 class OracleVectorFactory(AbstractVectorFactory):
@@ -520,5 +572,8 @@ class OracleVectorFactory(AbstractVectorFactory):
                 wallet_location=dify_config.ORACLE_WALLET_LOCATION,
                 wallet_password=dify_config.ORACLE_WALLET_PASSWORD,
                 is_autonomous=dify_config.ORACLE_IS_AUTONOMOUS,
+                pool_min=getattr(dify_config, "ORACLE_POOL_MIN", 1),
+                pool_max=getattr(dify_config, "ORACLE_POOL_MAX", 5),
+                pool_increment=getattr(dify_config, "ORACLE_POOL_INCREMENT", 1),
             ),
         )
