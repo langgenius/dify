@@ -184,6 +184,8 @@ const TextGeneration: FC<Props> = ({
     )
   }
 
+  const showDescToggle = !!siteInfo.description && (siteInfo.description.includes('\n') || siteInfo.description.length > 100)
+
   return (
     <div className={cn(
       'rounded-2xl border border-components-panel-border bg-background-section-burn',
@@ -212,35 +214,42 @@ const TextGeneration: FC<Props> = ({
             />
             <div className="grow truncate system-md-semibold text-text-secondary">{siteInfo.title}</div>
           </div>
-          {siteInfo.description && (() => {
-            const showDescToggle = siteInfo.description.includes('\n') || siteInfo.description.length > 100
-            return (
-              <div>
-                <div className={cn(
-                  'relative system-xs-regular text-text-tertiary whitespace-pre-wrap break-words',
-                  !descExpanded && 'line-clamp-2',
-                  descExpanded && 'max-h-32 overflow-y-auto',
-                )}>
-                  {siteInfo.description}
-                  {!descExpanded && showDescToggle && (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
-                  )}
-                </div>
-                {showDescToggle && (
-                  <button
-                    type="button"
-                    className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                    onClick={() => setDescExpanded(v => !v)}
-                  >
-                    {descExpanded
-                      ? <><RiArrowUpSLine className="size-3" />{t('chat.collapse', { ns: 'share' })}</>
-                      : <><RiArrowDownSLine className="size-3" />{t('chat.expand', { ns: 'share' })}</>
-                    }
-                  </button>
+          {siteInfo.description && (
+            <div>
+              <div className={cn(
+                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                !descExpanded && 'line-clamp-2',
+                descExpanded && 'max-h-32 overflow-y-auto',
+              )}
+              >
+                {siteInfo.description}
+                {!descExpanded && showDescToggle && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
                 )}
               </div>
-            )
-          })()}
+              {showDescToggle && (
+                <button
+                  type="button"
+                  className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                  onClick={() => setDescExpanded(v => !v)}
+                >
+                  {descExpanded
+                    ? (
+                        <>
+                          <RiArrowUpSLine className="size-3" />
+                          {t('chat.collapse', { ns: 'share' })}
+                        </>
+                      )
+                    : (
+                        <>
+                          <RiArrowDownSLine className="size-3" />
+                          {t('chat.expand', { ns: 'share' })}
+                        </>
+                      )}
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {/* form */}
         <div className={cn(
