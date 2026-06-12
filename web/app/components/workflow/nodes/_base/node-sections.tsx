@@ -83,7 +83,7 @@ export const NodeBody = ({
 }
 
 export const NodeDescription = ({ data }: { data: NodeProps['data'] }) => {
-  if (!data.desc || data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop)
+  if (!data.desc || data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop || data.type === BlockEnum.StartPlaceholder)
     return null
 
   return (

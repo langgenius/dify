@@ -37,6 +37,7 @@ describe('useAvailableNodesMetaData', () => {
 
     expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.isUndeletable).toBe(false)
     expect(result.current.nodesMap?.[BlockEnum.End]).toBeDefined()
+    expect(result.current.nodesMap?.[BlockEnum.StartPlaceholder]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.TriggerWebhook]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.TriggerSchedule]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.TriggerPlugin]).toBeDefined()

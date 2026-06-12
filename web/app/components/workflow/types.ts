@@ -27,6 +27,7 @@ import type {
 
 export enum BlockEnum {
   Start = 'start',
+  StartPlaceholder = 'start-placeholder',
   End = 'end',
   Answer = 'answer',
   LLM = 'llm',

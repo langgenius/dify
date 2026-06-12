@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { TriggerWithProvider } from '../types'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
@@ -14,6 +14,7 @@ import { useAvailableNodesMetaData } from '../../../workflow-app/hooks'
 import useNodes from '../../store/workflow/use-nodes'
 import { BlockEnum } from '../../types'
 import AllStartBlocks from '../all-start-blocks'
+import { createPlugin } from './factories'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
@@ -49,7 +50,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/start',
+    getMarketplaceUrl: (path: string) => `https://marketplace.test${path}`,
   }
 })
 
@@ -186,7 +187,7 @@ describe('AllStartBlocks', () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
 
-      render(
+      const { container } = render(
         <AllStartBlocks
           searchText=""
           onSelect={onSelect}
@@ -196,11 +197,14 @@ describe('AllStartBlocks', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('workflow.tabs.allTriggers')).toBeInTheDocument()
+        expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
       })
 
       expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+      expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
+      expect(screen.getByText('workflow.blocks.mostCommon')).toBeInTheDocument()
       expect(screen.getByText('Provider One')).toBeInTheDocument()
+      expect(container.querySelectorAll('.bg-divider-subtle')).toHaveLength(0)
 
       await user.click(screen.getByText('workflow.blocks.start'))
       expect(onSelect).toHaveBeenCalledWith(BlockEnum.Start)
@@ -225,7 +229,150 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      expect(await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })).toHaveAttribute('href', 'https://marketplace.test/start')
+      const footer = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })
+      expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
+      expect(footer).toHaveClass('system-sm-medium', 'h-8', 'rounded-b-lg', 'bg-components-panel-bg-blur', 'text-text-accent-light-mode-only', 'shadow-lg')
+      expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
+      expect(footer.querySelector('svg')).toBeInTheDocument()
+    })
+
+    it('should keep the panel marketplace footer icon style', async () => {
+      enableMarketplaceForRender = true
+
+      render(
+        <AllStartBlocks
+          variant="panel"
+          searchText=""
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.TriggerPlugin]}
+        />,
+      )
+
+      const footer = await screen.findByRole('link', { name: /workflow\.nodes\.startPlaceholder\.browseMoreOnMarketplace/ })
+      expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
+      expect(footer).toHaveClass('flex-col')
+      expect(footer.querySelector('.w-8 .bg-divider-subtle')).toBeInTheDocument()
+      expect(footer.querySelector('.i-custom-vender-workflow-marketplace')).toBeInTheDocument()
+      expect(footer.querySelector('svg')).not.toBeInTheDocument()
+    })
+
+    it('should keep the panel divider between user input and installed triggers', async () => {
+      const { container } = render(
+        <AllStartBlocks
+          variant="panel"
+          searchText=""
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerPlugin]}
+          allowUserInputSelection
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Provider One')).toBeInTheDocument()
+      })
+
+      expect(container.querySelectorAll('.px-4.py-1 .bg-divider-subtle')).toHaveLength(1)
+    })
+
+    it('should render searched marketplace results after built-in and installed trigger options', async () => {
+      enableMarketplaceForRender = true
+      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([
+        createTriggerProvider({
+          label: { en_US: 'Start Provider', zh_Hans: 'Start Provider' },
+        }),
+      ]))
+      mockUseMarketplacePlugins.mockReturnValue(createMarketplacePluginsMock({
+        plugins: [
+          createPlugin({
+            name: 'start-marketplace',
+            label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
+          }),
+        ],
+      }))
+
+      const { container } = render(
+        <AllStartBlocks
+          searchText="start"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerPlugin]}
+          allowUserInputSelection
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Start Marketplace')).toBeInTheDocument()
+      })
+
+      const text = container.textContent || ''
+      expect(text.indexOf('workflow.blocks.start')).toBeLessThan(text.indexOf('Start Provider'))
+      expect(text.indexOf('Start Provider')).toBeLessThan(text.indexOf('Start Marketplace'))
+      expect(screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })).toHaveLength(1)
+      expect(container.querySelectorAll('.px-4.py-1 .bg-divider-subtle')).toHaveLength(1)
+    })
+
+    it('should show the user input conflict state without allowing another start selection', () => {
+      const onSelect = vi.fn()
+      enableMarketplaceForRender = true
+      mockUseNodes.mockReturnValue([
+        {
+          id: 'start',
+          data: {
+            type: BlockEnum.Start,
+          },
+        },
+      ] as never)
+
+      render(
+        <AllStartBlocks
+          searchText=""
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerPlugin]}
+          hasUserInputNode
+        />,
+      )
+
+      expect(screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip')).toBeInTheDocument()
+      expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
+      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+      expect(screen.getByText('common.operation.added')).toBeInTheDocument()
+      const footer = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/ })
+      expect(footer).toHaveClass('system-sm-medium', 'h-8', 'rounded-b-lg', 'bg-components-panel-bg-blur', 'text-text-accent-light-mode-only', 'shadow-lg')
+      expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
+      expect(footer.querySelector('svg')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('workflow.blocks.start'))
+      fireEvent.click(screen.getByText('Provider One'))
+
+      expect(onSelect).not.toHaveBeenCalled()
+    })
+
+    it('should keep user input visible but disabled when another trigger already exists', async () => {
+      const user = userEvent.setup()
+      const onSelect = vi.fn()
+
+      render(
+        <AllStartBlocks
+          searchText=""
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerSchedule]}
+          hasTriggerNode
+        />,
+      )
+
+      expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
+      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+      expect(screen.getByText('workflow.blocks.mostCommon').closest('.opacity-30')).toBeInTheDocument()
+      expect(screen.getByText('workflow.blocks.start').closest('.cursor-not-allowed')).toBeInTheDocument()
+
+      await user.hover(screen.getByText('workflow.blocks.start'))
+
+      expect(await screen.findByText('workflow.nodes.startPlaceholder.userInputConflictTip')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByText('workflow.blocks.start'))
+      expect(onSelect).not.toHaveBeenCalled()
+
+      await user.click(screen.getByText('workflow.blocks.trigger-schedule'))
+      expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerSchedule)
     })
   })
 
@@ -256,10 +403,14 @@ describe('AllStartBlocks', () => {
         })
       })
 
-      expect(screen.getByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
+      expect(screen.getByText('workflow.nodes.startPlaceholder.noTriggersFound')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'workflow.tabs.requestToCommunity' })).toHaveAttribute(
         'href',
         'https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml',
+      )
+      expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/ })).toHaveAttribute(
+        'href',
+        'https://marketplace.test/plugins/trigger',
       )
     })
   })

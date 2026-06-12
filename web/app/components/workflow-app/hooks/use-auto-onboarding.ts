@@ -12,10 +12,14 @@ export const useAutoOnboarding = () => {
       showOnboarding,
       hasShownOnboarding,
       notInitialWorkflow,
+      isWorkflowDataLoaded,
       setShowOnboarding,
       setHasShownOnboarding,
       setShouldAutoOpenStartNodeSelector,
     } = workflowStore.getState()
+
+    if (!isWorkflowDataLoaded)
+      return
 
     // Skip if already showing onboarding or it's the initial workflow creation
     if (showOnboarding || notInitialWorkflow)
