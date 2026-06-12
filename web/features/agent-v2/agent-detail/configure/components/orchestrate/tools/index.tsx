@@ -9,7 +9,8 @@ import { useTools } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
-import { AgentCliToolItem, CliToolDialog } from './cli-tool'
+import { CliToolDialog } from './cli-tool/dialog'
+import { AgentCliToolItem } from './cli-tool/item'
 import { AgentProviderToolItem, ProviderToolSettingsDialog } from './provider-tool'
 
 function AgentToolItem({

@@ -47,14 +47,16 @@ function DialogFormLabel({
 }
 
 export function AgentKnowledgeRetrievalDialog({
+  initialName,
   open,
   onOpenChange,
 }: {
+  initialName?: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('agentV2')
-  const [name, setName] = useState(() => t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
+  const [name, setName] = useState(() => initialName ?? t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
   const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>('agent')
   const [metadataMode, setMetadataMode] = useState<KnowledgeRetrievalMetadataMode>('manual')
   const queryModeLabelId = 'agent-knowledge-retrieval-query-mode-label'
