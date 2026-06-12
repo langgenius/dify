@@ -13,6 +13,7 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useLocalStorage } from '@/hooks/use-local-storage'
 import useTheme from '@/hooks/use-theme'
 import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import { ModelModeType, Theme } from '@/types/app'
@@ -34,6 +35,8 @@ const GENERATOR_VIEWS = {
 
 type GeneratorView = typeof GENERATOR_VIEWS[keyof typeof GENERATOR_VIEWS]
 
+const AUTO_GEN_MODEL_STORAGE_KEY = 'auto-gen-model'
+
 const createEmptyModel = (): Model => ({
   name: '',
   provider: '',
@@ -41,25 +44,14 @@ const createEmptyModel = (): Model => ({
   completion_params: {} as CompletionParams,
 })
 
-const getStoredModel = (): Model | null => {
-  if (typeof window === 'undefined')
-    return null
-
-  const savedModel = window.localStorage.getItem('auto-gen-model')
-
-  if (!savedModel)
-    return null
-
-  return JSON.parse(savedModel) as Model
-}
-
 const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   onApply,
   crossAxisOffset,
 }) => {
+  const [storedModel, setStoredModel] = useLocalStorage<Model>(AUTO_GEN_MODEL_STORAGE_KEY)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<GeneratorView>(GENERATOR_VIEWS.promptEditor)
-  const [model, setModel] = useState<Model | null>(() => getStoredModel())
+  const [model, setModel] = useState<Model | null>(storedModel)
   const [instruction, setInstruction] = useState('')
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
   const { theme } = useTheme()
@@ -102,8 +94,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    window.localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [resolvedModel])
+    setStoredModel(newModel)
+  }, [resolvedModel, setStoredModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     const newModel = {
@@ -111,8 +103,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    window.localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [resolvedModel])
+    setStoredModel(newModel)
+  }, [resolvedModel, setStoredModel])
 
   const { mutateAsync: generateStructuredOutputRules, isPending: isGenerating } = useGenerateStructuredOutputRules()
 
