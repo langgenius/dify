@@ -21,7 +21,7 @@ from core.tools.errors import (
 from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
-class BuiltinToolProviderController(ToolProviderController):
+class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, BuiltinTool | None]):
     tools: list[BuiltinTool]
 
     def __init__(self, **data: Any):
@@ -163,7 +163,8 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> BuiltinTool | None:
         """
         returns the tool that the provider can provide
         """

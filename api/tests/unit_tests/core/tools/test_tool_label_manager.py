@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, override
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -14,6 +14,7 @@ from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 
 # Create a mock class for testing abstract/base classes
 class _ConcreteBuiltinToolProviderController(BuiltinToolProviderController):
+    @override
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         return None
 

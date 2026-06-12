@@ -53,11 +53,3 @@ providers/vdb/vdb-vikingdb/src/dify_vdb_vikingdb/vikingdb_vector.py
 providers/vdb/vdb-vikingdb/tests/unit_tests/test_vikingdb_vector.py
 providers/vdb/vdb-weaviate/src/dify_vdb_weaviate/weaviate_vector.py
 providers/vdb/vdb-weaviate/tests/unit_tests/test_weaviate_vector.py
-core/tools/mcp_tool/provider.py
-core/tools/plugin_tool/provider.py
-core/tools/workflow_as_tool/provider.py
-extensions/storage/huawei_obs_storage.py
-libs/gmpy2_pkcs10aep_cipher.py
-services/audio_service.py
-services/document_indexing_proxy/document_indexing_task_proxy.py
-services/document_indexing_proxy/duplicate_document_indexing_task_proxy.py
