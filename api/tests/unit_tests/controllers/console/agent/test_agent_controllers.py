@@ -137,7 +137,9 @@ def account_id() -> str:
     return "account-1"
 
 
-def test_roster_list_get_parses_query_and_calls_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_roster_list_get_parses_query_and_calls_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, roster_session: SimpleNamespace
+) -> None:
     captured: dict[str, object] = {}
 
     def list_roster_agents(_self: object, **kwargs: object) -> dict[str, object]:
@@ -154,7 +156,7 @@ def test_roster_list_get_parses_query_and_calls_service(app: Flask, monkeypatch:
 
 
 def test_roster_list_post_creates_agent_and_returns_detail(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, roster_session: SimpleNamespace, account_id: str
 ) -> None:
     created_agent = SimpleNamespace(id="agent-1")
     monkeypatch.setattr(
@@ -176,7 +178,9 @@ def test_roster_list_post_creates_agent_and_returns_detail(
     assert result["agent_kind"] == "dify_agent"
 
 
-def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_invite_options_get_parses_app_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, roster_session: SimpleNamespace
+) -> None:
     captured: dict[str, object] = {}
 
     def list_invite_options(_self: object, **kwargs: object) -> dict[str, object]:
@@ -193,7 +197,7 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
 
 
 def test_roster_detail_patch_delete_and_versions_call_services(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+    app: Flask, monkeypatch: pytest.MonkeyPatch, roster_session: SimpleNamespace, account_id: str
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
