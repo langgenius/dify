@@ -7,6 +7,7 @@ import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
 import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import { cn } from '../cn'
+import { useIsoLayoutEffect } from '../internals/use-iso-layout-effect'
 import {
   NumberField,
   NumberFieldGroup,
@@ -329,6 +330,24 @@ export function PaginationPageJump({
   const pagination = usePaginationContext('PaginationPageJump')
   const [editing, setEditing] = useState(false)
   const summaryButtonRef = useRef<HTMLButtonElement | null>(null)
+  const restoreSummaryFocusRef = useRef(false)
+
+  useIsoLayoutEffect(() => {
+    if (editing || !restoreSummaryFocusRef.current)
+      return
+
+    restoreSummaryFocusRef.current = false
+
+    const summaryButton = summaryButtonRef.current
+    if (!summaryButton)
+      return
+
+    const activeElement = summaryButton.ownerDocument.activeElement
+    if (activeElement && activeElement !== summaryButton.ownerDocument.body)
+      return
+
+    summaryButton.focus({ preventScroll: true })
+  }, [editing])
 
   if (!pagination.hasPages)
     return null
@@ -367,14 +386,15 @@ export function PaginationPageJump({
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault()
+                  restoreSummaryFocusRef.current = true
                   event.currentTarget.blur()
                   return
                 }
 
                 if (event.key === 'Escape') {
                   event.preventDefault()
+                  restoreSummaryFocusRef.current = true
                   setEditing(false)
-                  requestAnimationFrame(() => summaryButtonRef.current?.focus())
                 }
               }}
             />
