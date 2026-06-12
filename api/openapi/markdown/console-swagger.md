@@ -1103,12 +1103,12 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 | 200 | Referencing workflows listed successfully | [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse) |
 | 404 | App not found |  |
 
-### /apps/{app_id}/agent-workspace/files
+### /apps/{app_id}/agent-sandbox/files
 
 #### GET
 ##### Description
 
-List a directory in an Agent App conversation's sandbox workspace (read-only)
+List a directory in an Agent App conversation sandbox
 
 ##### Parameters
 
@@ -1122,14 +1122,14 @@ List a directory in an Agent App conversation's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Listing returned | [WorkspaceListResponse](#workspacelistresponse) |
+| 200 | Listing returned | [SandboxListResponse](#sandboxlistresponse) |
 
-### /apps/{app_id}/agent-workspace/files/download
+### /apps/{app_id}/agent-sandbox/files/read
 
 #### GET
 ##### Description
 
-Download a file from an Agent App conversation's sandbox workspace (read-only)
+Read a text/binary preview file in an Agent App conversation sandbox
 
 ##### Parameters
 
@@ -1143,29 +1143,27 @@ Download a file from an Agent App conversation's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | File bytes | binary |
-| 413 | File exceeds the workspace download limit |  |
+| 200 | Preview returned | [SandboxReadResponse](#sandboxreadresponse) |
 
-### /apps/{app_id}/agent-workspace/files/preview
+### /apps/{app_id}/agent-sandbox/files/upload
 
-#### GET
+#### POST
 ##### Description
 
-Preview a text/binary file in an Agent App conversation's sandbox workspace
+Upload one Agent App sandbox file as a Dify ToolFile mapping
 
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
+| app_id | path |  | Yes | string |
+| payload | body |  | Yes | [AgentSandboxUploadPayload](#agentsandboxuploadpayload) |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Preview returned | [WorkspacePreviewResponse](#workspacepreviewresponse) |
+| 200 | Uploaded | [SandboxUploadResponse](#sandboxuploadresponse) |
 
 ### /apps/{app_id}/agent/logs
 
@@ -2737,12 +2735,12 @@ Get workflow run node execution list
 | 200 | Node executions retrieved successfully | [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse) |
 | 404 | Workflow run not found |  |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files
+### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 
 #### GET
 ##### Description
 
-List a directory in a Workflow Agent node's sandbox workspace (read-only)
+List a directory in a workflow Agent node sandbox
 
 ##### Parameters
 
@@ -2758,14 +2756,14 @@ List a directory in a Workflow Agent node's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Listing returned | [WorkspaceListResponse](#workspacelistresponse) |
+| 200 | Listing returned | [SandboxListResponse](#sandboxlistresponse) |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/download
+### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
 
 #### GET
 ##### Description
 
-Download a file from a Workflow Agent node's sandbox workspace (read-only)
+Read a text/binary preview file in a workflow Agent node sandbox
 
 ##### Parameters
 
@@ -2781,31 +2779,29 @@ Download a file from a Workflow Agent node's sandbox workspace (read-only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | File bytes | binary |
-| 413 | File exceeds the workspace download limit |  |
+| 200 | Preview returned | [SandboxReadResponse](#sandboxreadresponse) |
 
-### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/workspace/files/preview
+### /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
 
-#### GET
+#### POST
 ##### Description
 
-Preview a text/binary file in a Workflow Agent node's sandbox workspace
+Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 ##### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| node_id | path | Workflow Agent node ID | Yes | string |
-| workflow_run_id | path | Workflow run ID | Yes | string |
-| node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
+| app_id | path |  | Yes | string |
+| node_id | path |  | Yes | string |
+| workflow_run_id | path |  | Yes | string |
+| payload | body |  | Yes | [WorkflowAgentSandboxUploadPayload](#workflowagentsandboxuploadpayload) |
 
 ##### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Preview returned | [WorkspacePreviewResponse](#workspacepreviewresponse) |
+| 200 | Uploaded | [SandboxUploadResponse](#sandboxuploadresponse) |
 
 ### /apps/{app_id}/workflow/comments
 
@@ -12342,6 +12338,7 @@ composer/publish validators and skipped by runtime request builders.
 | description | string |  | No |
 | enabled | boolean |  | No |
 | env | [AgentCliToolEnvConfig](#agentclitoolenvconfig) |  | No |
+| id | string |  | No |
 | install | string |  | No |
 | install_command | string |  | No |
 | install_commands | [ string ] |  | No |
@@ -12408,11 +12405,13 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
+| granularity | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
+| tools_count | integer |  | No |
 
 #### AgentComposerFileCandidateResponse
 
@@ -12637,6 +12636,10 @@ Supported icon storage formats for Agent roster entries.
 | in_current_workflow_count | integer |  | No |
 | is_in_current_workflow | boolean |  | No |
 | name | string |  | Yes |
+| published_node_reference_count | integer |  | No |
+| published_reference_count | integer |  | No |
+| published_references | [ [AgentPublishedReferenceResponse](#agentpublishedreferenceresponse) ] |  | No |
+| role | string |  | No |
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
@@ -12744,6 +12747,17 @@ the current roster/workflow APIs scoped to Dify Agent.
 | state | string |  | No |
 | status | string |  | No |
 
+#### AgentPublishedReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_mode | string |  | Yes |
+| app_name | string |  | Yes |
+| node_ids | [ string ] |  | No |
+| workflow_id | string |  | Yes |
+| workflow_version | string |  | Yes |
+
 #### AgentReferencingWorkflowResponse
 
 | Name | Type | Description | Required |
@@ -12788,6 +12802,10 @@ the current roster/workflow APIs scoped to Dify Agent.
 | icon_type | [AgentIconType](#agenticontype) |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
+| published_node_reference_count | integer |  | No |
+| published_reference_count | integer |  | No |
+| published_references | [ [AgentPublishedReferenceResponse](#agentpublishedreferenceresponse) ] |  | No |
+| role | string |  | No |
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
@@ -12804,6 +12822,13 @@ the current roster/workflow APIs scoped to Dify Agent.
 | env | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 | image | string |  | No |
 | working_dir | string |  | No |
+
+#### AgentSandboxUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_id | string | Agent App conversation ID | Yes |
+| path | string | File path relative to the sandbox workspace | Yes |
 
 #### AgentScope
 
@@ -12899,7 +12924,7 @@ new callers should send ``plugin_id`` + ``provider`` when available.
 | provider_id | string |  | No |
 | provider_type | string |  | No |
 | runtime_parameters | object |  | No |
-| tool_name | string |  | Yes |
+| tool_name | string |  | No |
 
 #### AgentSoulDifyToolCredentialRef
 
@@ -17039,6 +17064,7 @@ Payload for publishing snippet workflow.
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
 | name | string |  | Yes |
+| role | string |  | No |
 | version_note | string |  | No |
 
 #### RosterAgentUpdatePayload
@@ -17050,6 +17076,7 @@ Payload for publishing snippet workflow.
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
 | name | string |  | No |
+| role | string |  | No |
 
 #### RosterListQuery
 
@@ -17091,6 +17118,47 @@ Payload for publishing snippet workflow.
 | ---- | ---- | ----------- | -------- |
 | instruction | string | Structured output generation instruction | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+
+#### SandboxFileEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mtime | integer |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+| type | string | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
+
+#### SandboxListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entries | [ [SandboxFileEntryResponse](#sandboxfileentryresponse) ] |  | No |
+| path | string |  | Yes |
+| truncated | boolean |  | No |
+
+#### SandboxReadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
+#### SandboxToolFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reference | string |  | Yes |
+| transfer_method | string |  | No |
+
+#### SandboxUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file | [SandboxToolFileResponse](#sandboxtoolfileresponse) |  | Yes |
+| path | string |  | Yes |
 
 #### SavedMessageCreatePayload
 
@@ -18137,6 +18205,13 @@ How a workflow node is bound to an Agent.
 | variant | string |  | Yes |
 | workflow_id | string |  | No |
 
+#### WorkflowAgentSandboxUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_execution_id | string | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No |
+| path | string | File path relative to the sandbox workspace | Yes |
+
 #### WorkflowAppLogPaginationResponse
 
 | Name | Type | Description | Required |
@@ -18847,15 +18922,6 @@ Workflow tool configuration
 | remove_webapp_brand | boolean |  | No |
 | replace_webapp_logo | string |  | No |
 
-#### WorkspaceFileEntryResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mtime | integer |  | Yes |
-| name | string |  | Yes |
-| size | integer |  | Yes |
-| type | string | *Enum:* `"dir"`, `"file"`, `"symlink"` | Yes |
-
 #### WorkspaceInfoPayload
 
 | Name | Type | Description | Required |
@@ -18869,14 +18935,6 @@ Workflow tool configuration
 | limit | integer |  | No |
 | page | integer |  | No |
 
-#### WorkspaceListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| entries | [ [WorkspaceFileEntryResponse](#workspacefileentryresponse) ] |  | No |
-| path | string |  | Yes |
-| truncated | boolean |  | No |
-
 #### WorkspacePermissionResponse
 
 | Name | Type | Description | Required |
@@ -18884,16 +18942,6 @@ Workflow tool configuration
 | allow_member_invite | boolean |  | Yes |
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
-
-#### WorkspacePreviewResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| binary | boolean |  | Yes |
-| path | string |  | Yes |
-| size | integer |  | Yes |
-| text | string |  | No |
-| truncated | boolean |  | Yes |
 
 #### _AnonymousInlineModel_7b67ac8a4db8
 

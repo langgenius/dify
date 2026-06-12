@@ -15,6 +15,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
+import { useWorkflowDraftGraphForCanvas } from '@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
@@ -50,6 +51,7 @@ const WorkflowMain = ({
   const appDetail = useAppStore(s => s.appDetail)
   const containerRef = useRef<HTMLDivElement>(null)
   const reactFlow = useReactFlow()
+  const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail?.mode)
 
   const reactFlowStore = useMemo(() => ({
     getState: () => ({
@@ -189,13 +191,8 @@ const WorkflowMain = ({
         handleWorkflowDataUpdate(response)
 
         // Update workflow canvas (nodes, edges, viewport)
-        if (response.graph) {
-          handleUpdateWorkflowCanvas({
-            nodes: response.graph.nodes || [],
-            edges: response.graph.edges || [],
-            viewport: response.graph.viewport || { x: 0, y: 0, zoom: 1 },
-          })
-        }
+        if (response.graph)
+          handleUpdateWorkflowCanvas(getWorkflowDraftGraphForCanvas(response.graph))
       }
       catch (error) {
         console.error('Failed to fetch updated workflow:', error)
@@ -203,7 +200,7 @@ const WorkflowMain = ({
     })
 
     return unsubscribe
-  }, [appId, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas, isCollaborationEnabled])
+  }, [appId, getWorkflowDraftGraphForCanvas, handleWorkflowDataUpdate, handleUpdateWorkflowCanvas, isCollaborationEnabled])
 
   // Listen for sync requests from other users (only processed by leader)
   useEffect(() => {

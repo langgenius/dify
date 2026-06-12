@@ -40,6 +40,9 @@ const useWorkflowStartRunBase = (
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    if (!startNode)
+      return
+
     const startVariables = startNode?.data.variables || []
     const fileSettings = featuresStore!.getState().features.file
     const {

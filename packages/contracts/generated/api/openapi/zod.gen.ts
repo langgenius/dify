@@ -157,6 +157,30 @@ export const zDevicePollRequest = z.object({
 })
 
 /**
+ * ErrorDetail
+ */
+export const zErrorDetail = z.object({
+  loc: z.array(z.unknown()).optional().default([]),
+  msg: z.string(),
+  type: z.string(),
+})
+
+/**
+ * ErrorBody
+ *
+ * Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
+ * generated client schema stays an open enum — old CLIs keep parsing when a
+ * future server adds a code. Formatter tests pin emitted values to the enum.
+ */
+export const zErrorBody = z.object({
+  code: z.string(),
+  details: z.array(zErrorDetail).nullish(),
+  hint: z.string().nullish(),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
  * FileResponse
  */
 export const zFileResponse = z.object({
@@ -308,6 +332,41 @@ export const zMemberListResponse = z.object({
 export const zMemberRoleUpdatePayload = z.object({
   role: z.enum(['admin', 'normal']),
 })
+
+/**
+ * OpenApiErrorCode
+ */
+export const zOpenApiErrorCode = z.enum([
+  'app_unavailable',
+  'bad_gateway',
+  'bad_request',
+  'completion_request_error',
+  'conflict',
+  'conversation_completed',
+  'file_extension_blocked',
+  'file_too_large',
+  'filename_not_exists',
+  'forbidden',
+  'internal_server_error',
+  'invalid_param',
+  'member_license_exceeded',
+  'member_limit_exceeded',
+  'method_not_allowed',
+  'model_currently_not_support',
+  'no_file_uploaded',
+  'not_acceptable',
+  'not_found',
+  'provider_not_initialize',
+  'provider_quota_exceeded',
+  'rate_limit_error',
+  'request_entity_too_large',
+  'too_many_files',
+  'too_many_requests',
+  'unauthorized',
+  'unknown',
+  'unsupported_file_type',
+  'unsupported_media_type',
+])
 
 /**
  * Package

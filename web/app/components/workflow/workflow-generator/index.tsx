@@ -37,7 +37,15 @@ import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
 const STORAGE_MODEL_KEY = 'workflow-gen-model'
-const FE_TIMEOUT_MS = 60_000
+// Hard ceiling before we abort a hung request. Generous on purpose: the
+// backend runs two sequential LLM calls and may retry a transient provider
+// error (bounded backoff) or an unparseable response (one extra call), so a
+// slow-but-succeeding generation can legitimately pass the one-minute mark.
+// Aborting work that would have landed is the worse failure mode.
+const FE_TIMEOUT_MS = 90_000
+// Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
+// keeping the limit client-side turns an opaque 400 into a visible input stop.
+const MAX_INSTRUCTION_LENGTH = 10_000
 
 // Stable default used both as the SSR/empty-storage seed for the persisted
 // model and as the merge base when patching a partial update. Module-level so
@@ -261,7 +269,9 @@ const WorkflowGeneratorModal: React.FC = () => {
       // instead of starting from scratch. The modal mounts outside the Studio's
       // ReactFlow provider, so we read the persisted draft rather than the live
       // canvas. A fetch failure (no draft saved yet) degrades gracefully to a
-      // from-scratch generation — better than blocking the user entirely.
+      // from-scratch generation — better than blocking the user entirely — but
+      // the user asked to REFINE, so tell them their draft isn't being used
+      // instead of silently generating something unrelated.
       let currentGraph: Awaited<ReturnType<typeof fetchWorkflowDraft>>['graph'] | undefined
       if (isRefine && currentAppId) {
         try {
@@ -272,6 +282,8 @@ const WorkflowGeneratorModal: React.FC = () => {
         catch {
           currentGraph = undefined
         }
+        if (!currentGraph)
+          toast.warning(t('workflowGenerator.refineDraftUnavailable'))
       }
 
       const res = await generateWorkflow({
@@ -295,6 +307,13 @@ const WorkflowGeneratorModal: React.FC = () => {
       }
       if (res.error) {
         toast.error(res.error)
+        return
+      }
+      if (!res.graph?.nodes?.length) {
+        // Defensive: a success envelope with an empty graph should never
+        // leave the backend, but if it does, an empty "version" would just
+        // pollute the selector with a blank preview.
+        toast.error(t('workflowGenerator.generateFailed'))
         return
       }
       addVersion(res)
@@ -452,6 +471,7 @@ const WorkflowGeneratorModal: React.FC = () => {
                   : t('workflowGenerator.instructionPlaceholder')}
                 value={instruction}
                 onValueChange={setInstruction}
+                maxLength={MAX_INSTRUCTION_LENGTH}
               />
 
               {/* Example prompts are create-from-scratch starters ("Summarize a

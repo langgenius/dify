@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Custom header used to carry the forwarded SSO access token. Picked to avoid
 # stomping on the workspace-scoped Authorization header (provider OAuth /
 # user-supplied custom credentials), which would silently break those flows.
-FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Access-Token"
+FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Token"
 
 # invoke_from values where the caller is a console Account rather than a webapp/
 # API end-user. Mirrors core/app/apps/base_app_runner.py and
@@ -311,7 +311,7 @@ class MCPTool(Tool):
 
         # Forwarded identity rides in a custom header so workspace-scoped
         # provider credentials (Authorization / custom Headers) keep working
-        # untouched. The MCP server is expected to read X-Dify-SSO-Access-Token
+        # untouched. The MCP server is expected to read X-Dify-SSO-Token
         # when identity forwarding is configured.
         forward_identity_active = False
         if self._forwarding_requested and user_id:
@@ -344,7 +344,7 @@ class MCPTool(Tool):
         audience: str,
     ) -> None:
         """Call the enterprise IssueMCPToken endpoint and stamp the issued
-        token into X-Dify-SSO-Access-Token.
+        token into X-Dify-SSO-Token.
 
         A custom header is used (rather than Authorization) so it composes
         with workspace-scoped provider credentials — the user may have OAuth

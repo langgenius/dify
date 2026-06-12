@@ -177,7 +177,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
 
 
 def test_inject_forwarded_identity_stamps_custom_header():
-    """The minted SSO token must be placed in X-Dify-SSO-Access-Token; the
+    """The minted SSO token must be placed in X-Dify-SSO-Token; the
     workspace-scoped Authorization header and any other custom headers must
     pass through untouched so provider credentials keep working."""
     from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER

@@ -9,7 +9,7 @@ describe('BlockIcon', () => {
 
     const iconContainer = container.firstElementChild
     expect(iconContainer).toHaveClass('w-4', 'h-4', 'bg-util-colors-blue-brand-blue-brand-500', 'extra-class')
-    expect(iconContainer?.querySelector('svg')).toBeInTheDocument()
+    expect(iconContainer?.querySelector('.i-custom-vender-workflow-user-input')).toBeInTheDocument()
   })
 
   it('normalizes protected plugin icon urls for tool-like nodes', () => {

@@ -248,6 +248,20 @@ class ComposerConfigValidator:
         tools = soul.get("tools") or {}
         cli_tools = tools.get("cli_tools")
         if isinstance(cli_tools, list):
+            # Mention references resolve `[§cli_tool:<id>§]` by id, so ids must be
+            # unique across the whole list — disabled entries included, since they
+            # stay in config and would make resolution ambiguous.
+            seen_cli_tool_ids: set[str] = set()
+            for entry in cli_tools:
+                if not isinstance(entry, dict):
+                    continue
+                raw_id = entry.get("id")
+                if isinstance(raw_id, str) and raw_id.strip():
+                    if raw_id in seen_cli_tool_ids:
+                        raise InvalidComposerConfigError(
+                            f"duplicate CLI tool id '{raw_id}': cli_tool mention references require unique ids."
+                        )
+                    seen_cli_tool_ids.add(raw_id)
             for entry in cli_tools:
                 if not isinstance(entry, dict) or entry.get("enabled") is False:
                     continue
