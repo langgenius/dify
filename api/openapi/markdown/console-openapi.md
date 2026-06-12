@@ -1042,6 +1042,96 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 | ---- | ----------- | ------ |
 | 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
+### [GET] /apps/{app_id}/agent/drive/files
+List agent drive entries (read-only inspector; one endpoint for both tabs)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/drive/files/download
+Time-limited external signed URL for one drive value (no streaming proxy)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/drive/files/preview
+Truncated text preview of one drive value (binary-safe; SKILL.md is the main case)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
+
+### [DELETE] /apps/{app_id}/agent/files
+Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| key | query | Drive key, e.g. files/sample.pdf | No | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | File removed |
+
+### [POST] /apps/{app_id}/agent/files
+**ADD FILE: commit one uploaded file into the bound agent's drive**
+
+Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 201 | File committed into the agent drive |
+
 ### [GET] /apps/{app_id}/agent/logs
 **Get agent logs**
 
@@ -1099,6 +1189,41 @@ plus its manifest. Standardizing into the agent drive is ENG-594.
 | ---- | ----------- |
 | 201 | Skill validated |
 | 400 | Invalid skill package |
+
+### [DELETE] /apps/{app_id}/agent/skills/{slug}
+Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| slug | path | Skill slug (single path segment) | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Skill removed |
+
+### [POST] /apps/{app_id}/agent/skills/{slug}/infer-tools
+**Suggest CLI tools/env for a skill**
+
+Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)
+Saving still goes through composer validation.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string |
+| slug | path | Skill slug (single path segment) | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Inference result (draft suggestions, nothing persisted) |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}
 Enable or disable annotation reply for an app
@@ -10668,6 +10793,7 @@ composer/publish validators and skipped by runtime request builders.
 | enabled | boolean, <br>**Default:** true |  | No |
 | env | [AgentCliToolEnvConfig](#agentclitoolenvconfig) |  | No |
 | id | string |  | No |
+| inferred_from | string |  | No |
 | install | string |  | No |
 | install_command | string |  | No |
 | install_commands | [ string ] |  | No |
@@ -10746,6 +10872,7 @@ Risk marker for CLI tool bootstrap commands.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| drive_key | string |  | No |
 | file_id | string |  | No |
 | id | string |  | No |
 | kind | string, <br>**Default:** file |  | No |
@@ -10788,10 +10915,15 @@ Risk marker for CLI tool bootstrap commands.
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
 | file_id | string |  | No |
+| full_archive_file_id | string |  | No |
+| full_archive_key | string |  | No |
 | id | string |  | No |
 | kind | string, <br>**Default:** skill |  | No |
+| manifest_files | [ string ] |  | No |
 | name | string |  | No |
 | path | string |  | No |
+| skill_md_file_id | string |  | No |
+| skill_md_key | string |  | No |
 
 #### AgentComposerSoulCandidatesResponse
 
@@ -10874,6 +11006,45 @@ Audit operation recorded for Agent Soul version/revision changes.
 | version | integer |  | Yes |
 | version_note | string |  | No |
 
+#### AgentDriveDownloadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
+
+#### AgentDriveFilePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file_id | string | UploadFile UUID from POST /console/api/files/upload | Yes |
+
+#### AgentDriveItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| file_kind | string |  | Yes |
+| hash | string |  | No |
+| key | string |  | Yes |
+| mime_type | string |  | No |
+| size | integer |  | No |
+
+#### AgentDriveListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AgentDriveItemResponse](#agentdriveitemresponse) ] |  | No |
+
+#### AgentDrivePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| key | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
 #### AgentEnvVariableConfig
 
 | Name | Type | Description | Required |
@@ -10897,6 +11068,7 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| drive_key | string |  | No |
 | file_id | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
@@ -11198,9 +11370,14 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
 | file_id | string |  | No |
+| full_archive_file_id | string |  | No |
+| full_archive_key | string |  | No |
 | id | string |  | No |
+| manifest_files | [ string ] |  | No |
 | name | string |  | No |
 | path | string |  | No |
+| skill_md_file_id | string |  | No |
+| skill_md_key | string |  | No |
 
 #### AgentSoulAppFeaturesConfig
 

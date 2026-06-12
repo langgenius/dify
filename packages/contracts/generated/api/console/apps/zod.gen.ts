@@ -104,6 +104,31 @@ export const zAgentSandboxUploadPayload = z.object({
 })
 
 /**
+ * AgentDriveDownloadResponse
+ */
+export const zAgentDriveDownloadResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * AgentDrivePreviewResponse
+ */
+export const zAgentDrivePreviewResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentDriveFilePayload
+ */
+export const zAgentDriveFilePayload = z.object({
+  upload_file_id: z.string(),
+})
+
+/**
  * AnnotationReplyPayload
  */
 export const zAnnotationReplyPayload = z.object({
@@ -928,6 +953,25 @@ export const zSandboxToolFileResponse = z.object({
 export const zSandboxUploadResponse = z.object({
   file: zSandboxToolFileResponse,
   path: z.string(),
+})
+
+/**
+ * AgentDriveItemResponse
+ */
+export const zAgentDriveItemResponse = z.object({
+  created_at: z.int().nullish(),
+  file_kind: z.string(),
+  hash: z.string().nullish(),
+  key: z.string(),
+  mime_type: z.string().nullish(),
+  size: z.int().nullish(),
+})
+
+/**
+ * AgentDriveListResponse
+ */
+export const zAgentDriveListResponse = z.object({
+  items: z.array(zAgentDriveItemResponse).optional(),
 })
 
 /**
@@ -1835,16 +1879,22 @@ export const zAgentKnowledgeDatasetConfig = z.object({
 export const zAgentComposerSkillCandidateResponse = z.object({
   description: z.string().nullish(),
   file_id: z.string().max(255).nullish(),
+  full_archive_file_id: z.string().max(255).nullish(),
+  full_archive_key: z.string().max(512).nullish(),
   id: z.string().max(255).nullish(),
   kind: z.literal('skill').optional().default('skill'),
+  manifest_files: z.array(z.string()).nullish(),
   name: z.string().max(255).nullish(),
   path: z.string().nullish(),
+  skill_md_file_id: z.string().max(255).nullish(),
+  skill_md_key: z.string().max(512).nullish(),
 })
 
 /**
  * AgentComposerFileCandidateResponse
  */
 export const zAgentComposerFileCandidateResponse = z.object({
+  drive_key: z.string().max(512).nullish(),
   file_id: z.string().max(255).nullish(),
   id: z.string().max(255).nullish(),
   kind: z.literal('file').optional().default('file'),
@@ -2251,6 +2301,7 @@ export const zAgentSoulSandboxConfig = z.object({
  * AgentFileRefConfig
  */
 export const zAgentFileRefConfig = z.object({
+  drive_key: z.string().max(512).nullish(),
   file_id: z.string().max(255).nullish(),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
@@ -2277,9 +2328,14 @@ export const zWorkflowNodeJobMetadata = z.object({
 export const zAgentSkillRefConfig = z.object({
   description: z.string().nullish(),
   file_id: z.string().max(255).nullish(),
+  full_archive_file_id: z.string().max(255).nullish(),
+  full_archive_key: z.string().max(512).nullish(),
   id: z.string().max(255).nullish(),
+  manifest_files: z.array(z.string()).nullish(),
   name: z.string().max(255).nullish(),
   path: z.string().nullish(),
+  skill_md_file_id: z.string().max(255).nullish(),
+  skill_md_key: z.string().max(512).nullish(),
 })
 
 /**
@@ -2375,6 +2431,7 @@ export const zAgentCliToolConfig = z.object({
   enabled: z.boolean().optional().default(true),
   env: zAgentCliToolEnvConfig.optional(),
   id: z.string().max(255).nullish(),
+  inferred_from: z.string().max(255).nullish(),
   install: z.string().nullish(),
   install_command: z.string().nullish(),
   install_commands: z.array(z.string()).optional(),
@@ -3311,6 +3368,72 @@ export const zPostAppsByAppIdAgentSandboxFilesUploadPath = z.object({
  */
 export const zPostAppsByAppIdAgentSandboxFilesUploadResponse = zSandboxUploadResponse
 
+export const zGetAppsByAppIdAgentDriveFilesPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentDriveFilesQuery = z.object({
+  node_id: z.string().optional(),
+  prefix: z.string().optional().default(''),
+})
+
+/**
+ * Drive entries
+ */
+export const zGetAppsByAppIdAgentDriveFilesResponse = zAgentDriveListResponse
+
+export const zGetAppsByAppIdAgentDriveFilesDownloadPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentDriveFilesDownloadQuery = z.object({
+  key: z.string().min(1),
+  node_id: z.string().optional(),
+})
+
+/**
+ * Signed URL
+ */
+export const zGetAppsByAppIdAgentDriveFilesDownloadResponse = zAgentDriveDownloadResponse
+
+export const zGetAppsByAppIdAgentDriveFilesPreviewPath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetAppsByAppIdAgentDriveFilesPreviewQuery = z.object({
+  key: z.string().min(1),
+  node_id: z.string().optional(),
+})
+
+/**
+ * Preview
+ */
+export const zGetAppsByAppIdAgentDriveFilesPreviewResponse = zAgentDrivePreviewResponse
+
+export const zDeleteAppsByAppIdAgentFilesPath = z.object({
+  app_id: z.string(),
+})
+
+export const zDeleteAppsByAppIdAgentFilesQuery = z.object({
+  key: z.string().optional(),
+})
+
+/**
+ * File removed
+ */
+export const zDeleteAppsByAppIdAgentFilesResponse = z.record(z.string(), z.unknown())
+
+export const zPostAppsByAppIdAgentFilesBody = zAgentDriveFilePayload
+
+export const zPostAppsByAppIdAgentFilesPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * File committed into the agent drive
+ */
+export const zPostAppsByAppIdAgentFilesResponse = z.record(z.string(), z.unknown())
+
 export const zGetAppsByAppIdAgentLogsPath = z.object({
   app_id: z.string(),
 })
@@ -3342,6 +3465,26 @@ export const zPostAppsByAppIdAgentSkillsUploadPath = z.object({
  * Skill validated
  */
 export const zPostAppsByAppIdAgentSkillsUploadResponse = z.record(z.string(), z.unknown())
+
+export const zDeleteAppsByAppIdAgentSkillsBySlugPath = z.object({
+  app_id: z.string(),
+  slug: z.string(),
+})
+
+/**
+ * Skill removed
+ */
+export const zDeleteAppsByAppIdAgentSkillsBySlugResponse = z.record(z.string(), z.unknown())
+
+export const zPostAppsByAppIdAgentSkillsBySlugInferToolsPath = z.object({
+  app_id: z.string(),
+  slug: z.string(),
+})
+
+/**
+ * Inference result (draft suggestions, nothing persisted)
+ */
+export const zPostAppsByAppIdAgentSkillsBySlugInferToolsResponse = z.record(z.string(), z.unknown())
 
 export const zPostAppsByAppIdAnnotationReplyByActionBody = zAnnotationReplyPayload
 
