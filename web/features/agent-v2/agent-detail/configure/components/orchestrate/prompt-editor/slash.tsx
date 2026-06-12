@@ -230,8 +230,8 @@ function AgentPromptKnowledgeRows({
         <AgentPromptSubmenuRow
           key={retrieval.id}
           icon="i-ri-book-open-line"
-          label={t(retrieval.nameKey)}
-          onClick={() => onSelect(createReferenceToken('knowledge', retrieval.id, t(retrieval.nameKey)))}
+          label={retrieval.name ?? (retrieval.nameKey ? t(retrieval.nameKey) : retrieval.id)}
+          onClick={() => onSelect(createReferenceToken('knowledge', retrieval.id, retrieval.name ?? (retrieval.nameKey ? t(retrieval.nameKey) : retrieval.id)))}
         />
       ))}
     </>

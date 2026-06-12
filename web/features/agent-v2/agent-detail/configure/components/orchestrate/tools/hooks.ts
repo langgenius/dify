@@ -1,0 +1,181 @@
+'use client'
+
+import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
+import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import { useCallback, useMemo, useState } from 'react'
+import { useRemoveProviderTool, useRemoveProviderToolAction, useTools } from '@/features/agent-v2/agent-composer/store'
+
+const toSelectedToolValue = (tool: AgentTool): ToolValue[] => {
+  if (tool.kind !== 'provider')
+    return []
+
+  return tool.actions.map(action => ({
+    provider_name: tool.id,
+    tool_name: action.toolName,
+    tool_label: action.name,
+    tool_description: action.description,
+  }))
+}
+
+const toProviderToolAction = (tool: ToolDefaultValue) => ({
+  id: `${tool.provider_id}:${tool.tool_name}`,
+  name: tool.tool_label || tool.title || tool.tool_name,
+  toolName: tool.tool_name,
+  description: tool.tool_description || '',
+})
+
+const getCredentialVariant = (tool: ToolDefaultValue) =>
+  tool.is_team_authorization ? 'authorized' as const : 'endUser' as const
+
+const addProviderTools = (
+  currentTools: AgentTool[],
+  selectedTools: ToolDefaultValue[],
+): AgentTool[] => {
+  if (selectedTools.length === 0)
+    return currentTools
+
+  const nextTools = [...currentTools]
+
+  selectedTools.forEach((selectedTool) => {
+    const action = toProviderToolAction(selectedTool)
+    const existingToolIndex = nextTools.findIndex(tool => tool.kind === 'provider' && tool.id === selectedTool.provider_id)
+    const existingTool = nextTools[existingToolIndex]
+
+    if (existingTool?.kind === 'provider') {
+      if (existingTool.actions.some(existingAction => existingAction.toolName === action.toolName))
+        return
+
+      nextTools[existingToolIndex] = {
+        ...existingTool,
+        actions: [...existingTool.actions, action],
+      }
+      return
+    }
+
+    nextTools.push({
+      id: selectedTool.provider_id,
+      name: selectedTool.provider_name,
+      kind: 'provider',
+      iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+      providerType: selectedTool.provider_type,
+      credentialKey: selectedTool.is_team_authorization
+        ? 'agentDetail.configure.tools.credential.authOne'
+        : 'agentDetail.configure.tools.credential.endUserOAuth',
+      credentialVariant: getCredentialVariant(selectedTool),
+      actions: [action],
+    })
+  })
+
+  return nextTools
+}
+
+export function useAgentToolsOperations() {
+  const [tools, setTools] = useTools()
+  const removeProviderTool = useRemoveProviderTool()
+  const removeProviderToolAction = useRemoveProviderToolAction()
+  const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
+  const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
+  const [isCliToolDialogOpen, setIsCliToolDialogOpen] = useState(false)
+  const [editingCliTool, setEditingCliTool] = useState<AgentCliTool | null>(null)
+
+  const setToolOpen = useCallback((tool: AgentTool, open: boolean) => {
+    if (tool.kind === 'cli')
+      return
+
+    setExpandedToolIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      if (open)
+        nextIds.add(tool.id)
+      else
+        nextIds.delete(tool.id)
+
+      return nextIds
+    })
+  }, [])
+
+  const addTools = useCallback((selectedTools: ToolDefaultValue[]) => {
+    setTools(addProviderTools(tools, selectedTools))
+  }, [setTools, tools])
+
+  const deleteCliTool = useCallback((toolId: string) => {
+    setTools(tools.filter(tool => tool.id !== toolId))
+  }, [setTools, tools])
+
+  const openCliToolDialog = useCallback(() => {
+    setEditingCliTool(null)
+    setIsCliToolDialogOpen(true)
+  }, [])
+
+  const editCliTool = useCallback((tool: AgentCliTool) => {
+    setEditingCliTool(tool)
+    setIsCliToolDialogOpen(true)
+  }, [])
+
+  const handleCliDialogSave = useCallback((tool: AgentCliTool) => {
+    if (editingCliTool)
+      setTools(tools.map(currentTool => currentTool.id === tool.id ? tool : currentTool))
+    else
+      setTools([...tools, tool])
+
+    setEditingCliTool(null)
+  }, [editingCliTool, setTools, tools])
+
+  const handleCliDialogOpenChange = useCallback((open: boolean) => {
+    if (!open)
+      setEditingCliTool(null)
+
+    setIsCliToolDialogOpen(open)
+  }, [])
+
+  const closeSettingTargetIfRemoved = useCallback((toolId: string, actionId?: string) => {
+    setSettingTarget((target) => {
+      if (!target || target.tool.id !== toolId)
+        return target
+      if (actionId && target.action.id !== actionId)
+        return target
+
+      return null
+    })
+  }, [])
+
+  const deleteProviderTool = useCallback((toolId: string) => {
+    setExpandedToolIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      nextIds.delete(toolId)
+      return nextIds
+    })
+    closeSettingTargetIfRemoved(toolId)
+    removeProviderTool(toolId)
+  }, [closeSettingTargetIfRemoved, removeProviderTool])
+
+  const deleteProviderToolAction = useCallback((toolId: string, actionId: string) => {
+    closeSettingTargetIfRemoved(toolId, actionId)
+    removeProviderToolAction(toolId, actionId)
+  }, [closeSettingTargetIfRemoved, removeProviderToolAction])
+
+  const closeProviderSettingsDialog = useCallback(() => {
+    setSettingTarget(null)
+  }, [])
+
+  const selectedTools = useMemo(() => tools.flatMap(toSelectedToolValue), [tools])
+
+  return {
+    tools,
+    selectedTools,
+    expandedToolIds,
+    settingTarget,
+    isCliToolDialogOpen,
+    editingCliTool,
+    setToolOpen,
+    setSettingTarget,
+    addTools,
+    deleteCliTool,
+    deleteProviderTool,
+    deleteProviderToolAction,
+    openCliToolDialog,
+    editCliTool,
+    handleCliDialogSave,
+    handleCliDialogOpenChange,
+    closeProviderSettingsDialog,
+  }
+}

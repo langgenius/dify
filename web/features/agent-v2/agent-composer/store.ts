@@ -50,10 +50,49 @@ const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file 
   type: file.icon,
 }))
 
-const toKnowledgeDatasets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => knowledgeRetrievals.map(item => ({
-  id: item.id,
-  name: item.nameKey,
-}))
+const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
+
+const toKnowledgeDatasets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => knowledgeRetrievals.flatMap((item) => {
+  if (item.selectedDatasets?.length) {
+    return item.selectedDatasets.map(dataset => ({
+      description: dataset.description,
+      id: dataset.id,
+      name: dataset.name,
+    }))
+  }
+
+  return [{
+    id: item.id,
+    name: getKnowledgeRetrievalName(item),
+  }]
+})
+
+const toKnowledgeConfig = (
+  baseKnowledge: AgentSoulConfig['knowledge'],
+  knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
+): AgentSoulConfig['knowledge'] => {
+  const primaryRetrieval = knowledgeRetrievals.find(retrieval =>
+    retrieval.queryMode === 'custom'
+    || retrieval.customQuery
+    || retrieval.multipleRetrievalConfig
+    || retrieval.selectedDatasets?.length,
+  ) ?? knowledgeRetrievals[0]
+  const multipleRetrievalConfig = primaryRetrieval?.multipleRetrievalConfig
+  const scoreThreshold = multipleRetrievalConfig?.score_threshold
+
+  return {
+    ...baseKnowledge,
+    datasets: toKnowledgeDatasets(knowledgeRetrievals),
+    query_mode: primaryRetrieval?.queryMode === 'custom' ? 'user_query' : 'generated_query',
+    query_config: {
+      ...baseKnowledge?.query_config,
+      query: primaryRetrieval?.queryMode === 'custom' ? primaryRetrieval.customQuery : null,
+      score_threshold: scoreThreshold,
+      score_threshold_enabled: scoreThreshold !== undefined && scoreThreshold !== null,
+      top_k: multipleRetrievalConfig?.top_k ?? baseKnowledge?.query_config?.top_k,
+    },
+  }
+}
 
 const toDifyToolConfigs = (
   tools: AgentTool[],
@@ -164,10 +203,7 @@ const toConfigSnapshot = ({
     cli_tools: toCliToolConfigs(draft.tools),
   },
   app_features: draft.config?.app_features ?? baseConfig?.app_features,
-  knowledge: {
-    ...baseConfig?.knowledge,
-    datasets: toKnowledgeDatasets(draft.knowledgeRetrievals),
-  },
+  knowledge: toKnowledgeConfig(baseConfig?.knowledge, draft.knowledgeRetrievals),
   env: toEnvConfig(draft.envVariables),
 })
 

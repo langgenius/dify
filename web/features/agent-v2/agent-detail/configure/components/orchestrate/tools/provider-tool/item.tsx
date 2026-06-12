@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentProviderTool, ToolSettingTarget } from '../types'
+import type { AgentProviderTool, AgentToolAction, ToolSettingTarget } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   CollapsiblePanel,
@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 function ProviderIcon({
@@ -47,6 +48,55 @@ function CredentialStatus({
       <span className="truncate system-xs-medium">{t(credentialKey)}</span>
       <span aria-hidden className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-3.5 text-text-tertiary" />
     </button>
+  )
+}
+
+function ProviderToolActionItem({
+  action,
+  tool,
+  onConfigureAction,
+  onRemoveAction,
+}: {
+  action: AgentToolAction
+  tool: AgentProviderTool
+  onConfigureAction: (target: ToolSettingTarget) => void
+  onRemoveAction: (actionId: string) => void
+}) {
+  const { t } = useTranslation('agentV2')
+  const handleConfigureAction = useCallback(() => {
+    onConfigureAction({ action, tool })
+  }, [action, onConfigureAction, tool])
+  const handleRemoveAction = useCallback(() => {
+    onRemoveAction(action.id)
+  }, [action.id, onRemoveAction])
+
+  return (
+    <div className="group relative flex min-h-7 items-center gap-1 rounded-md py-px pr-0 pl-1 hover:bg-state-base-hover">
+      <div className="absolute top-0 bottom-0 left-[13.5px] w-px bg-divider-regular" />
+      <div className="flex min-w-0 flex-1 items-center py-1 pl-7">
+        <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
+          {action.name}
+        </span>
+      </div>
+      <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
+        <button
+          type="button"
+          aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
+          onClick={handleConfigureAction}
+          className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+        </button>
+        <button
+          type="button"
+          aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
+          onClick={handleRemoveAction}
+          className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -115,35 +165,13 @@ export function AgentProviderToolItem({
       <CollapsiblePanel>
         <div className="flex flex-col">
           {tool.actions.map(action => (
-            <div
+            <ProviderToolActionItem
               key={action.id}
-              className="group relative flex min-h-7 items-center gap-1 rounded-md py-px pr-0 pl-1 hover:bg-state-base-hover"
-            >
-              <div className="absolute top-0 bottom-0 left-[13.5px] w-px bg-divider-regular" />
-              <div className="flex min-w-0 flex-1 items-center py-1 pl-7">
-                <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
-                  {action.name}
-                </span>
-              </div>
-              <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
-                <button
-                  type="button"
-                  aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
-                  onClick={() => onConfigureAction({ action, tool })}
-                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
-                  onClick={() => onRemoveAction(action.id)}
-                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                </button>
-              </div>
-            </div>
+              action={action}
+              tool={tool}
+              onConfigureAction={onConfigureAction}
+              onRemoveAction={onRemoveAction}
+            />
           ))}
         </div>
       </CollapsiblePanel>

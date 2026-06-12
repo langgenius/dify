@@ -55,6 +55,7 @@
   "agentDetail.configure.files.upload.success": "文件已上传。",
   "agentDetail.configure.files.upload.title": "上传文件",
   "agentDetail.configure.knowledgeRetrieval.add": "添加知识检索",
+  "agentDetail.configure.knowledgeRetrieval.defaultName": "Retrieval {{index}}",
   "agentDetail.configure.knowledgeRetrieval.dialog.knowledge.add": "添加知识",
   "agentDetail.configure.knowledgeRetrieval.dialog.knowledge.empty": "点击“+”按钮添加知识",
   "agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label": "知识",

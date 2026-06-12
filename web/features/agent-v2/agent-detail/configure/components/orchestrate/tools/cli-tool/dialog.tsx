@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EnvVariablesTable } from '../../advanced/env'
 
@@ -43,32 +43,49 @@ export function CliToolDialog({
   const [toolName, setToolName] = useState(tool?.name ?? '')
   const [envVariables, setEnvVariables] = useState<EnvVariable[]>(() => tool?.envVariables?.length ? tool.envVariables : [createCliEnvVariable()])
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setInstallCommand(tool?.installCommand ?? '')
     setToolName(tool?.name ?? '')
     setEnvVariables(tool?.envVariables?.length ? tool.envVariables : [createCliEnvVariable()])
-  }
-  const handleOpenChange = (nextOpen: boolean) => {
+  }, [tool])
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (nextOpen)
       resetForm()
 
     onOpenChange(nextOpen)
-  }
-  const updateEnvVariable = (id: string, updater: (variable: EnvVariable) => EnvVariable) => {
+  }, [onOpenChange, resetForm])
+
+  const updateEnvVariable = useCallback((id: string, updater: (variable: EnvVariable) => EnvVariable) => {
     setEnvVariables(currentVariables => currentVariables.map(variable => (
       variable.id === id ? updater(variable) : variable
     )))
-  }
-  const addEnvVariable = () => {
+  }, [])
+
+  const addEnvVariable = useCallback(() => {
     setEnvVariables(currentVariables => [...currentVariables, createCliEnvVariable()])
-  }
-  const deleteEnvVariable = (id: string) => {
+  }, [])
+
+  const deleteEnvVariable = useCallback((id: string) => {
     setEnvVariables(currentVariables => currentVariables.length > 1
       ? currentVariables.filter(variable => variable.id !== id)
       : [createCliEnvVariable()],
     )
-  }
-  const handleSubmit = (formValues: CliToolFormValues) => {
+  }, [])
+
+  const handleKeyChange = useCallback((id: string, key: string) => {
+    updateEnvVariable(id, variable => ({ ...variable, key }))
+  }, [updateEnvVariable])
+
+  const handleScopeChange = useCallback((id: string, scope: EnvScope) => {
+    updateEnvVariable(id, variable => ({ ...variable, scope }))
+  }, [updateEnvVariable])
+
+  const handleValueChange = useCallback((id: string, value: string) => {
+    updateEnvVariable(id, variable => ({ ...variable, value }))
+  }, [updateEnvVariable])
+
+  const handleSubmit = useCallback((formValues: CliToolFormValues) => {
     const trimmedName = formValues.name?.trim() || toolName.trim()
     const trimmedInstallCommand = formValues.installCommand?.trim() || installCommand.trim()
     const name = trimmedName || trimmedInstallCommand || t('agentDetail.configure.tools.cliTool')
@@ -85,7 +102,11 @@ export function CliToolDialog({
     setToolName('')
     setEnvVariables([createCliEnvVariable()])
     onOpenChange(false)
-  }
+  }, [envVariables, installCommand, onOpenChange, onSaveCliTool, t, tool, toolName])
+
+  const handleCancel = useCallback(() => {
+    onOpenChange(false)
+  }, [onOpenChange])
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -147,9 +168,9 @@ export function CliToolDialog({
                 envVariables={envVariables}
                 onAdd={addEnvVariable}
                 onDelete={deleteEnvVariable}
-                onKeyChange={(id, key) => updateEnvVariable(id, variable => ({ ...variable, key }))}
-                onScopeChange={(id, scope: EnvScope) => updateEnvVariable(id, variable => ({ ...variable, scope }))}
-                onValueChange={(id, value) => updateEnvVariable(id, variable => ({ ...variable, value }))}
+                onKeyChange={handleKeyChange}
+                onScopeChange={handleScopeChange}
+                onValueChange={handleValueChange}
                 showDraftRow={false}
                 showScope={false}
               />
@@ -166,7 +187,7 @@ export function CliToolDialog({
               <span aria-hidden className="i-ri-external-link-line size-3" />
             </a>
             <div className="flex shrink-0 items-center gap-2">
-              <Button type="button" onClick={() => onOpenChange(false)}>
+              <Button type="button" onClick={handleCancel}>
                 {tCommon('operation.cancel')}
               </Button>
               <Button type="submit" variant="primary">

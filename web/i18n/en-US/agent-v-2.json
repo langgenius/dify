@@ -55,6 +55,7 @@
   "agentDetail.configure.files.upload.success": "File uploaded.",
   "agentDetail.configure.files.upload.title": "Upload file",
   "agentDetail.configure.knowledgeRetrieval.add": "Add knowledge retrieval",
+  "agentDetail.configure.knowledgeRetrieval.defaultName": "Retrieval {{index}}",
   "agentDetail.configure.knowledgeRetrieval.dialog.knowledge.add": "Add knowledge",
   "agentDetail.configure.knowledgeRetrieval.dialog.knowledge.empty": "Click the “+” button to add knowledge",
   "agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label": "Knowledge",

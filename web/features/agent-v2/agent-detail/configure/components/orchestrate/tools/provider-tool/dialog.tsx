@@ -3,6 +3,7 @@
 import type { AgentProviderTool, ToolSettingTarget } from '../types'
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useCallback, useMemo } from 'react'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
 import { useToolSettings } from '@/features/agent-v2/agent-composer/store'
@@ -65,11 +66,25 @@ export function ProviderToolSettingsDialog({
   onClose: () => void
 }) {
   const [toolSettings, setToolSettings] = useToolSettings()
+  const collection = useMemo(() => {
+    if (!settingTarget)
+      return null
 
-  if (!settingTarget)
+    return createToolCollection(settingTarget.tool)
+  }, [settingTarget])
+  const handleSave = useCallback((value: Record<string, unknown>) => {
+    if (!settingTarget)
+      return
+
+    setToolSettings({
+      ...toolSettings,
+      [settingTarget.action.id]: value,
+    })
+    onClose()
+  }, [onClose, setToolSettings, settingTarget, toolSettings])
+
+  if (!settingTarget || !collection)
     return null
-
-  const collection = createToolCollection(settingTarget.tool)
 
   return (
     <SettingBuiltInTool
@@ -77,13 +92,7 @@ export function ProviderToolSettingsDialog({
       setting={toolSettings[settingTarget.action.id]}
       collection={collection}
       isModel={false}
-      onSave={(value) => {
-        setToolSettings({
-          ...toolSettings,
-          [settingTarget.action.id]: value,
-        })
-        onClose()
-      }}
+      onSave={handleSave}
       onHide={onClose}
     />
   )

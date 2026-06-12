@@ -1,5 +1,13 @@
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type { AgentSkill } from './orchestrate/skills/item'
+import type {
+  MetadataFilteringConditions,
+  MetadataFilteringModeEnum,
+  MultipleRetrievalConfig,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ModelConfig } from '@/app/components/workflow/types'
+import type { DataSet } from '@/models/datasets'
+import type { RETRIEVE_TYPE } from '@/types/app'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type AgentFileNode = {
@@ -38,7 +46,16 @@ export type AgentTool = AgentProviderTool | AgentCliTool
 
 export type AgentKnowledgeRetrievalItem = {
   id: string
-  nameKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
+  name?: string
+  nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
+  queryMode?: 'agent' | 'custom'
+  customQuery?: string
+  selectedDatasets?: DataSet[]
+  retrievalMode?: RETRIEVE_TYPE
+  multipleRetrievalConfig?: MultipleRetrievalConfig
+  metadataFilterMode?: MetadataFilteringModeEnum
+  metadataFilteringConditions?: MetadataFilteringConditions
+  metadataModelConfig?: ModelConfig
 }
 
 export const defaultAgentSkills: AgentSkill[] = [

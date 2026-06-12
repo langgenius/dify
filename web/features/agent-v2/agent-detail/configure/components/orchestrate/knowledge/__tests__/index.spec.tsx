@@ -3,16 +3,28 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
 import { defaultAgentConfigureDraft } from '../../../../draft'
 import { AgentKnowledgeRetrieval } from '../index'
 
-function renderKnowledgeRetrieval() {
+function PublishPayloadPreview() {
+  const payload = useConfigPublishPayload({ agentId: 'agent-1' })
+
+  return (
+    <output aria-label="publish payload">
+      {JSON.stringify(payload.config_snapshot.knowledge)}
+    </output>
+  )
+}
+
+function renderKnowledgeRetrieval({ showPublishPayload = false } = {}) {
   const queryClient = new QueryClient()
 
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={defaultAgentConfigureDraft}>
         <AgentKnowledgeRetrieval />
+        {showPublishPayload && <PublishPayloadPreview />}
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -106,6 +118,48 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
+    })
+
+    it('should save edited retrieval data into the publish config', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval({ showPublishPayload: true })
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
+      }))
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+
+      await user.click(within(dialog).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
+      }))
+      const nameInput = within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Release Search')
+      await user.click(within(dialog).getByRole('radio', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
+      }))
+      await user.type(within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
+      }), 'release notes')
+
+      const knowledgeConfig = JSON.parse(screen.getByLabelText('publish payload').textContent ?? '{}')
+      expect(knowledgeConfig).toMatchObject({
+        datasets: [
+          {
+            id: 'retrieval-1',
+            name: 'Release Search',
+          },
+        ],
+        query_config: {
+          query: 'release notes',
+          top_k: 4,
+        },
+        query_mode: 'user_query',
+      })
     })
 
     it('should remove the knowledge retrieval row from the remove button', async () => {

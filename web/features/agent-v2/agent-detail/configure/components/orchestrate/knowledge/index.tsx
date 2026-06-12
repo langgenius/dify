@@ -28,7 +28,7 @@ function AgentKnowledgeRetrievalRow({
   item: AgentKnowledgeRetrievalItem
 }) {
   const { t } = useTranslation('agentV2')
-  const itemName = t(item.nameKey)
+  const itemName = item.name ?? (item.nameKey ? t(item.nameKey) : item.id)
 
   return (
     <ConfigureSectionConfigurableItem
@@ -50,6 +50,29 @@ export function AgentKnowledgeRetrieval() {
   const knowledgeRetrievalTip = t('agentDetail.configure.knowledgeRetrieval.tip')
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
   const isDialogOpen = isAddDialogOpen || !!editingRetrieval
+  const updateRetrieval = (nextRetrieval: AgentKnowledgeRetrievalItem) => {
+    setRetrievals(retrievals.map(retrieval => retrieval.id === nextRetrieval.id ? nextRetrieval : retrieval))
+    setEditingRetrieval(nextRetrieval)
+  }
+  const getDefaultRetrievalName = (index: number) => {
+    if (index === 1)
+      return t('agentDetail.configure.knowledgeRetrieval.retrievalOne')
+    if (index === 2)
+      return t('agentDetail.configure.knowledgeRetrieval.retrievalTwo')
+
+    return t('agentDetail.configure.knowledgeRetrieval.defaultName', { index })
+  }
+  const addRetrieval = () => {
+    const nextRetrieval: AgentKnowledgeRetrievalItem = {
+      id: globalThis.crypto?.randomUUID?.() ?? `retrieval-${Date.now()}`,
+      name: getDefaultRetrievalName(retrievals.length + 1),
+      queryMode: 'agent',
+    }
+
+    setRetrievals([...retrievals, nextRetrieval])
+    setEditingRetrieval(nextRetrieval)
+    setIsAddDialogOpen(true)
+  }
 
   return (
     <>
@@ -64,10 +87,7 @@ export function AgentKnowledgeRetrieval() {
         actions={(
           <ConfigureSectionAddButton
             ariaLabel={t('agentDetail.configure.knowledgeRetrieval.add')}
-            onClick={() => {
-              setEditingRetrieval(null)
-              setIsAddDialogOpen(true)
-            }}
+            onClick={addRetrieval}
           />
         )}
       >
@@ -89,7 +109,9 @@ export function AgentKnowledgeRetrieval() {
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
         key={editingRetrieval?.id ?? 'add'}
-        initialName={editingRetrieval ? t(editingRetrieval.nameKey) : undefined}
+        item={editingRetrieval ?? undefined}
+        initialName={editingRetrieval ? (editingRetrieval.name ?? (editingRetrieval.nameKey ? t(editingRetrieval.nameKey) : editingRetrieval.id)) : undefined}
+        onItemChange={updateRetrieval}
         open={isDialogOpen}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open)

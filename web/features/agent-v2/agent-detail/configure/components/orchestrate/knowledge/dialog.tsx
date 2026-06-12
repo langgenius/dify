@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { AgentKnowledgeRetrievalItem } from '../../data'
 import type {
   MetadataFilteringCondition,
   MetadataFilteringModeEnum,
@@ -81,32 +82,54 @@ const createMetadataCondition = ({ id, name, type }: MetadataInDoc): MetadataFil
 })
 
 export function AgentKnowledgeRetrievalDialog({
+  item,
   initialName,
+  onItemChange,
   open,
   onOpenChange,
 }: {
+  item?: AgentKnowledgeRetrievalItem
   initialName?: string
+  onItemChange?: (item: AgentKnowledgeRetrievalItem) => void
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
-  const [name, setName] = useState(() => initialName ?? t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
+  const [name, setName] = useState(() => item?.name ?? initialName ?? t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
   const [isEditingName, setIsEditingName] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>('agent')
-  const [customQuery, setCustomQuery] = useState('')
-  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
-  const [retrievalMode, setRetrievalMode] = useState(RETRIEVE_TYPE.multiWay)
-  const [multipleRetrievalConfig, setMultipleRetrievalConfig] = useState(createDefaultRetrievalConfig)
+  const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>(item?.queryMode ?? 'agent')
+  const [customQuery, setCustomQuery] = useState(item?.customQuery ?? '')
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>(item?.selectedDatasets ?? [])
+  const [retrievalMode, setRetrievalMode] = useState(item?.retrievalMode ?? RETRIEVE_TYPE.multiWay)
+  const [multipleRetrievalConfig, setMultipleRetrievalConfig] = useState(item?.multipleRetrievalConfig ?? createDefaultRetrievalConfig)
   const [rerankModelOpen, setRerankModelOpen] = useState(false)
-  const [metadataFilterMode, setMetadataFilterMode] = useState<MetadataFilteringModeEnum>(WorkflowMetadataFilteringModeEnum.disabled)
-  const [metadataFilteringConditions, setMetadataFilteringConditions] = useState({
+  const [metadataFilterMode, setMetadataFilterMode] = useState<MetadataFilteringModeEnum>(item?.metadataFilterMode ?? WorkflowMetadataFilteringModeEnum.disabled)
+  const [metadataFilteringConditions, setMetadataFilteringConditions] = useState(item?.metadataFilteringConditions ?? {
     logical_operator: LogicalOperator.and,
     conditions: [] as MetadataFilteringCondition[],
   })
-  const [metadataModelConfig, setMetadataModelConfig] = useState<ModelConfig>()
+  const [metadataModelConfig, setMetadataModelConfig] = useState<ModelConfig | undefined>(item?.metadataModelConfig)
   const queryModeLabelId = 'agent-knowledge-retrieval-query-mode-label'
+  const updateItem = (patch: Partial<AgentKnowledgeRetrievalItem>) => {
+    if (!item)
+      return
+
+    onItemChange?.({
+      ...item,
+      name,
+      queryMode,
+      customQuery,
+      selectedDatasets,
+      retrievalMode,
+      multipleRetrievalConfig,
+      metadataFilterMode,
+      metadataFilteringConditions,
+      metadataModelConfig,
+      ...patch,
+    })
+  }
   const metadataList = useMemo(() => {
     const datasetsWithMetadata = selectedDatasets.filter(dataset => !!dataset.doc_metadata)
 
@@ -140,7 +163,11 @@ export function AgentKnowledgeRetrievalDialog({
                   className="h-7 min-w-0 flex-1 rounded-md px-1 py-0 system-xl-semibold text-text-primary"
                   value={name}
                   onBlur={() => setIsEditingName(false)}
-                  onChange={event => setName(event.currentTarget.value)}
+                  onChange={(event) => {
+                    const nextName = event.currentTarget.value
+                    setName(nextName)
+                    updateItem({ name: nextName })
+                  }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter')
                       setIsEditingName(false)
@@ -171,8 +198,10 @@ export function AgentKnowledgeRetrievalDialog({
               className="w-full gap-2"
               value={queryMode}
               onValueChange={(nextMode) => {
-                if (nextMode)
+                if (nextMode) {
                   setQueryMode(nextMode)
+                  updateItem({ queryMode: nextMode })
+                }
               }}
             >
               {queryModeOptions.map(mode => (
@@ -198,7 +227,10 @@ export function AgentKnowledgeRetrievalDialog({
                         className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
                         placeholder={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder')}
                         value={customQuery}
-                        onValueChange={setCustomQuery}
+                        onValueChange={(nextQuery) => {
+                          setCustomQuery(nextQuery)
+                          updateItem({ customQuery: nextQuery })
+                        }}
                       />
                     </div>
                     <p className="system-xs-regular text-text-tertiary">
@@ -224,8 +256,14 @@ export function AgentKnowledgeRetrievalDialog({
                       retrieval_mode: retrievalMode,
                       multiple_retrieval_config: multipleRetrievalConfig,
                     }}
-                    onRetrievalModeChange={setRetrievalMode}
-                    onMultipleRetrievalConfigChange={setMultipleRetrievalConfig}
+                    onRetrievalModeChange={(nextRetrievalMode) => {
+                      setRetrievalMode(nextRetrievalMode)
+                      updateItem({ retrievalMode: nextRetrievalMode })
+                    }}
+                    onMultipleRetrievalConfigChange={(nextMultipleRetrievalConfig) => {
+                      setMultipleRetrievalConfig(nextMultipleRetrievalConfig)
+                      updateItem({ multipleRetrievalConfig: nextMultipleRetrievalConfig })
+                    }}
                     readonly={!selectedDatasets.length}
                     modal
                     rerankModalOpen={rerankModelOpen}
@@ -236,7 +274,10 @@ export function AgentKnowledgeRetrievalDialog({
                   <AddKnowledge
                     selectedIds={selectedDatasets.map(dataset => dataset.id)}
                     modal
-                    onChange={setSelectedDatasets}
+                    onChange={(nextDatasets) => {
+                      setSelectedDatasets(nextDatasets)
+                      updateItem({ selectedDatasets: nextDatasets })
+                    }}
                   />
                 </div>
               )}
@@ -254,49 +295,76 @@ export function AgentKnowledgeRetrievalDialog({
               selectedDatasetsLoaded
               metadataFilterMode={metadataFilterMode}
               metadataFilteringConditions={metadataFilteringConditions}
-              handleMetadataFilterModeChange={setMetadataFilterMode}
+              handleMetadataFilterModeChange={(nextMode) => {
+                setMetadataFilterMode(nextMode)
+                updateItem({ metadataFilterMode: nextMode })
+              }}
               handleAddCondition={(metadataItem) => {
-                setMetadataFilteringConditions(current => ({
-                  ...current,
-                  conditions: [...current.conditions, createMetadataCondition(metadataItem)],
-                }))
+                setMetadataFilteringConditions((current) => {
+                  const nextConditions = {
+                    ...current,
+                    conditions: [...current.conditions, createMetadataCondition(metadataItem)],
+                  }
+                  updateItem({ metadataFilteringConditions: nextConditions })
+                  return nextConditions
+                })
               }}
               handleRemoveCondition={(conditionId) => {
-                setMetadataFilteringConditions(current => ({
-                  ...current,
-                  conditions: current.conditions.filter(condition => condition.id !== conditionId),
-                }))
+                setMetadataFilteringConditions((current) => {
+                  const nextConditions = {
+                    ...current,
+                    conditions: current.conditions.filter(condition => condition.id !== conditionId),
+                  }
+                  updateItem({ metadataFilteringConditions: nextConditions })
+                  return nextConditions
+                })
               }}
               handleToggleConditionLogicalOperator={() => {
-                setMetadataFilteringConditions(current => ({
-                  ...current,
-                  logical_operator: current.logical_operator === LogicalOperator.and
-                    ? LogicalOperator.or
-                    : LogicalOperator.and,
-                }))
+                setMetadataFilteringConditions((current) => {
+                  const nextConditions = {
+                    ...current,
+                    logical_operator: current.logical_operator === LogicalOperator.and
+                      ? LogicalOperator.or
+                      : LogicalOperator.and,
+                  }
+                  updateItem({ metadataFilteringConditions: nextConditions })
+                  return nextConditions
+                })
               }}
               handleUpdateCondition={(conditionId, nextCondition) => {
-                setMetadataFilteringConditions(current => ({
-                  ...current,
-                  conditions: current.conditions.map(condition => condition.id === conditionId ? nextCondition : condition),
-                }))
+                setMetadataFilteringConditions((current) => {
+                  const nextConditions = {
+                    ...current,
+                    conditions: current.conditions.map(condition => condition.id === conditionId ? nextCondition : condition),
+                  }
+                  updateItem({ metadataFilteringConditions: nextConditions })
+                  return nextConditions
+                })
               }}
               metadataModelConfig={metadataModelConfig}
               handleMetadataModelChange={(model) => {
-                setMetadataModelConfig(current => ({
-                  provider: model.provider,
-                  name: model.modelId,
-                  mode: model.mode ?? current?.mode ?? AppModeEnum.CHAT,
-                  completion_params: current?.completion_params ?? { temperature: 0.7 },
-                }))
+                setMetadataModelConfig((current) => {
+                  const nextMetadataModelConfig = {
+                    provider: model.provider,
+                    name: model.modelId,
+                    mode: model.mode ?? current?.mode ?? AppModeEnum.CHAT,
+                    completion_params: current?.completion_params ?? { temperature: 0.7 },
+                  }
+                  updateItem({ metadataModelConfig: nextMetadataModelConfig })
+                  return nextMetadataModelConfig
+                })
               }}
               handleMetadataCompletionParamsChange={(completionParams) => {
-                setMetadataModelConfig(current => ({
-                  provider: current?.provider ?? '',
-                  name: current?.name ?? '',
-                  mode: current?.mode ?? AppModeEnum.CHAT,
-                  completion_params: completionParams,
-                }))
+                setMetadataModelConfig((current) => {
+                  const nextMetadataModelConfig = {
+                    provider: current?.provider ?? '',
+                    name: current?.name ?? '',
+                    mode: current?.mode ?? AppModeEnum.CHAT,
+                    completion_params: completionParams,
+                  }
+                  updateItem({ metadataModelConfig: nextMetadataModelConfig })
+                  return nextMetadataModelConfig
+                })
               }}
             />
           </div>
