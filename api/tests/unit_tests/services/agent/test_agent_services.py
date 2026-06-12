@@ -1110,3 +1110,97 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     }
     assert [entry["id"] for entry in entries[1:]] == ["duckduckgo/ddg_search", "duckduckgo/ddg_news"]
     assert {entry["granularity"] for entry in entries[1:]} == {"tool"}
+
+
+# ── ENG-623 §4.4: drive-backed ref validation ────────────────────────────────
+
+
+def _drive_soul(**overrides):
+    from services.entities.agent_entities import AgentSoulConfig
+
+    base = {
+        "skills_files": {
+            "skills": [
+                {"id": "sk-1", "name": "Tender Analyzer", "skill_md_key": "tender-analyzer/SKILL.md"},
+            ],
+            "files": [{"name": "sample.pdf", "drive_key": "files/sample.pdf"}],
+        },
+    }
+    base.update(overrides)
+    return AgentSoulConfig.model_validate(base)
+
+
+def _patch_drive_keys(monkeypatch, existing_keys):
+    import services.agent.composer_service as composer_service_module
+
+    captured: dict[str, object] = {}
+
+    def fake_scalars(stmt):
+        captured["stmt"] = stmt
+        return list(existing_keys)
+
+    monkeypatch.setattr(composer_service_module.db, "session", type("S", (), {"scalars": staticmethod(fake_scalars)})())
+    return captured
+
+
+def test_drive_ref_findings_reports_missing_keys(monkeypatch):
+    _patch_drive_keys(monkeypatch, existing_keys=["tender-analyzer/SKILL.md"])
+
+    findings = AgentComposerService._drive_ref_findings(
+        tenant_id="tenant-1", agent_id="agent-1", agent_soul=_drive_soul()
+    )
+
+    assert [(f["code"], f["id"]) for f in findings] == [("file_ref_dangling", "files/sample.pdf")]
+    assert str(findings[0]["message"]).startswith("file_ref_dangling: ")
+
+
+def test_drive_ref_findings_clean_when_all_keys_exist(monkeypatch):
+    _patch_drive_keys(monkeypatch, existing_keys=["tender-analyzer/SKILL.md", "files/sample.pdf"])
+
+    assert (
+        AgentComposerService._drive_ref_findings(tenant_id="tenant-1", agent_id="agent-1", agent_soul=_drive_soul())
+        == []
+    )
+
+
+def test_drive_ref_findings_skips_refs_without_drive_keys(monkeypatch):
+    # No drive-backed ref at all -> no DB roundtrip, no findings.
+    soul = _drive_soul(
+        skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u-1"}]}
+    )
+    findings = AgentComposerService._drive_ref_findings(tenant_id="tenant-1", agent_id="agent-1", agent_soul=soul)
+    assert findings == []
+
+
+def test_require_drive_refs_resolved_raises_with_stable_code(monkeypatch):
+    from services.agent.errors import InvalidComposerConfigError
+
+    _patch_drive_keys(monkeypatch, existing_keys=[])
+
+    with pytest.raises(InvalidComposerConfigError, match="skill_ref_dangling"):
+        AgentComposerService._require_drive_refs_resolved(
+            tenant_id="tenant-1", agent_id="agent-1", agent_soul=_drive_soul()
+        )
+
+
+def test_collect_validation_findings_appends_drive_findings_with_agent_context(monkeypatch):
+    from services.entities.agent_entities import ComposerSavePayload
+
+    _patch_drive_keys(monkeypatch, existing_keys=[])
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "save_strategy": "save_to_current_version",
+            "agent_soul": _drive_soul().model_dump(mode="json"),
+        }
+    )
+
+    findings = AgentComposerService.collect_validation_findings(
+        tenant_id="tenant-1", payload=payload, agent_id="agent-1"
+    )
+
+    codes = {w["code"] for w in findings["warnings"]}
+    assert {"skill_ref_dangling", "file_ref_dangling"} <= codes
+    # without agent context the drive check is skipped entirely
+    findings_no_agent = AgentComposerService.collect_validation_findings(tenant_id="tenant-1", payload=payload)
+    assert all(w["code"] not in {"skill_ref_dangling", "file_ref_dangling"} for w in findings_no_agent["warnings"])
