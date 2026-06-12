@@ -301,31 +301,32 @@ class AppRunner:
                     queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
 
                 message = result.delta.message
-                if isinstance(message.content, str):
-                    text += message.content
-                elif isinstance(message.content, list):
-                    for content in message.content:
-                        match content:
-                            case str():
-                                text += content
-                            case TextPromptMessageContent():
-                                text += content.data
-                            case ImagePromptMessageContent():
-                                if message_id and user_id and tenant_id:
-                                    try:
-                                        self._handle_multimodal_image_content(
-                                            content=content,
-                                            message_id=message_id,
-                                            user_id=user_id,
-                                            tenant_id=tenant_id,
-                                            queue_manager=queue_manager,
-                                        )
-                                    except Exception:
-                                        _logger.exception("Failed to handle multimodal image output")
-                                else:
-                                    _logger.warning("Received multimodal output but missing required parameters")
-                            case _:
-                                text += content.data if hasattr(content, "data") else str(content)
+                match message.content:
+                    case str():
+                        text += message.content
+                    case list():
+                        for content in message.content:
+                            match content:
+                                case str():
+                                    text += content
+                                case TextPromptMessageContent():
+                                    text += content.data
+                                case ImagePromptMessageContent():
+                                    if message_id and user_id and tenant_id:
+                                        try:
+                                            self._handle_multimodal_image_content(
+                                                content=content,
+                                                message_id=message_id,
+                                                user_id=user_id,
+                                                tenant_id=tenant_id,
+                                                queue_manager=queue_manager,
+                                            )
+                                        except Exception:
+                                            _logger.exception("Failed to handle multimodal image output")
+                                    else:
+                                        _logger.warning("Received multimodal output but missing required parameters")
+                                case _:
+                                    text += content.data if hasattr(content, "data") else str(content)
 
                 if not model:
                     model = result.model

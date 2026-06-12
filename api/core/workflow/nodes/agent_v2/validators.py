@@ -322,7 +322,11 @@ class WorkflowAgentNodeValidator:
         for tool in agent_soul.tools.dify_tools:
             if not tool.enabled:
                 continue
-            exposed_name = tool.tool_name
+            # Provider-level entries (tool_name omitted = all tools of the
+            # provider) are deduped per provider here; the names they expand to
+            # are checked at runtime by the plugin tools builder.
+            provider_key = tool.provider_id or f"{tool.plugin_id}/{tool.provider}"
+            exposed_name = tool.tool_name or f"{provider_key}/*"
             if exposed_name in exposed_names:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has duplicate Dify Plugin Tool name {exposed_name}."

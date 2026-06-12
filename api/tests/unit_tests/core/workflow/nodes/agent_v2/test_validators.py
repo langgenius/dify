@@ -191,6 +191,64 @@ def test_publish_validation_rejects_missing_agent_soul_model():
         )
 
 
+def test_publish_validation_dedupes_provider_level_tool_entries():
+    """Provider-level entries (tool_name omitted = all tools of the provider)
+    dedupe per provider; one provider-level + one explicit tool entry for the
+    same provider is fine (the runtime builder reconciles those)."""
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "dify_tools": [
+                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+            ]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="duplicate Dify Plugin Tool"):
+        WorkflowAgentNodeValidator.validate_published_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
+def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
+    node_job = WorkflowNodeJobConfig.model_validate({})
+    snapshot = _snapshot()
+    snapshot.config_snapshot = AgentSoulConfig(
+        model=AgentSoulModelConfig(
+            plugin_id="langgenius/openai",
+            model_provider="openai",
+            model="gpt-test",
+        ),
+        tools={
+            "dify_tools": [
+                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "tool_name": "ddg_search",
+                    "credential_type": "unauthorized",
+                },
+            ]
+        },
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), snapshot]
+
+    WorkflowAgentNodeValidator.validate_published_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    )
+
+
 def test_publish_validation_rejects_duplicate_cli_tool_names():
     node_job = WorkflowNodeJobConfig.model_validate({})
     snapshot = _snapshot()

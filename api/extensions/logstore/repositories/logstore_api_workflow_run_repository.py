@@ -106,24 +106,26 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     # Handle datetime fields
     started_at = data.get("started_at") or data.get("created_at")
     if started_at:
-        if isinstance(started_at, str):
-            model.created_at = datetime.fromisoformat(started_at)
-        elif isinstance(started_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(started_at)
-        else:
-            model.created_at = started_at
+        match started_at:
+            case str():
+                model.created_at = datetime.fromisoformat(started_at)
+            case int() | float():
+                model.created_at = datetime.fromtimestamp(started_at)
+            case _:
+                model.created_at = started_at
     else:
         # Provide default created_at if missing
         model.created_at = datetime.now()
 
     finished_at = data.get("finished_at")
     if finished_at:
-        if isinstance(finished_at, str):
-            model.finished_at = datetime.fromisoformat(finished_at)
-        elif isinstance(finished_at, (int, float)):
-            model.finished_at = datetime.fromtimestamp(finished_at)
-        else:
-            model.finished_at = finished_at
+        match finished_at:
+            case str():
+                model.finished_at = datetime.fromisoformat(finished_at)
+            case int() | float():
+                model.finished_at = datetime.fromtimestamp(finished_at)
+            case _:
+                model.finished_at = finished_at
 
     # Compute elapsed_time from started_at and finished_at
     # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity

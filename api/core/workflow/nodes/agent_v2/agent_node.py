@@ -20,8 +20,8 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
     AgentBackendValidationError,
-    CleanupLayerSpec,
-    extract_cleanup_layer_specs,
+    RuntimeLayerSpec,
+    extract_runtime_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.workflow.system_variables import SystemVariableKey, get_system_text
@@ -255,7 +255,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     session_scope=session_scope,
                     backend_run_id=terminal_event.run_id,
                     snapshot=terminal_event.session_snapshot,
-                    composition_layer_specs=extract_cleanup_layer_specs(runtime_request.request.composition),
+                    runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
                     metadata=metadata,
                 )
                 yield PauseRequestedEvent(
@@ -293,7 +293,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 session_scope=session_scope,
                 backend_run_id=terminal_event.run_id,
                 snapshot=terminal_event.session_snapshot,
-                composition_layer_specs=extract_cleanup_layer_specs(runtime_request.request.composition),
+                runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
                 metadata=metadata,
             )
 
@@ -454,7 +454,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         session_scope: WorkflowAgentSessionScope,
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        composition_layer_specs: list[CleanupLayerSpec],
+        runtime_layer_specs: list[RuntimeLayerSpec],
         metadata: dict[str, Any],
     ) -> None:
         if self._session_store is None:
@@ -464,7 +464,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 scope=session_scope,
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
-                composition_layer_specs=composition_layer_specs,
+                runtime_layer_specs=runtime_layer_specs,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
