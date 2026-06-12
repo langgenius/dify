@@ -77,7 +77,7 @@ export function ConfigureSection({
             )}
             <CollapsibleTrigger
               aria-labelledby={labelId}
-              className="group/collapse-icon h-6 min-h-0 w-3.5 shrink-0 justify-center rounded-sm p-0 text-text-quaternary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-quaternary"
+              className="group/collapse-icon size-3.5 min-h-0 shrink-0 justify-center rounded-sm p-0 text-text-quaternary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-quaternary"
             >
               <span
                 aria-hidden="true"
