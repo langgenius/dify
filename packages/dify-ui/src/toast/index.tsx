@@ -166,12 +166,12 @@ function ToastCard({
         'after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
       )}
     >
-      <div className="relative overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+      <div className="relative h-full overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div
           aria-hidden="true"
           className={cn('absolute -inset-px bg-linear-to-r opacity-40', getToneGradientClasses(toastType))}
         />
-        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
+        <BaseToast.Content className="relative flex h-full items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
           <div className="flex shrink-0 items-center justify-center p-0.5">
             <ToastIcon type={toastType} />
           </div>
