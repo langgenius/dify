@@ -739,13 +739,6 @@ export type GetAppsByAppIdFormHumanInputByFormTokenData = {
   url: '/apps/{app_id}/form/human_input/{form_token}'
 }
 
-export type GetAppsByAppIdFormHumanInputByFormTokenErrors = {
-  default: ErrorBody
-}
-
-export type GetAppsByAppIdFormHumanInputByFormTokenError
-  = GetAppsByAppIdFormHumanInputByFormTokenErrors[keyof GetAppsByAppIdFormHumanInputByFormTokenErrors]
-
 export type GetAppsByAppIdFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }

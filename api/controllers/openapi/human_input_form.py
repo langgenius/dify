@@ -57,8 +57,8 @@ def _ensure_form_is_allowed_for_openapi(form) -> None:
 
 @openapi_ns.route("/apps/<string:app_id>/form/human_input/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
+    @openapi_ns.response(200, "Form definition", openapi_ns.models[HumanInputFormDefinitionResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
-    @returns(200, HumanInputFormDefinitionResponse, description="Form definition")
     def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()
         service = HumanInputService(db.engine)
