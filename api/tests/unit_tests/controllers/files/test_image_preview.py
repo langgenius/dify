@@ -107,7 +107,8 @@ class TestFilePreviewApi:
 
         response = get_fn("file-id")
 
-        assert response.mimetype == "application/octet-stream"
+        # Non-attachment download should keep original content type, not blanket override to octet-stream
+        assert response.mimetype == "text/plain"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
         mock_enforce.assert_called_once()
