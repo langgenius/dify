@@ -19,6 +19,7 @@ class AppInfoResponse(ResponseModel):
     tags: list[str]
     mode: str
     author_name: str | None
+    workflow_id: str | None
 
 
 register_response_schema_models(service_api_ns, AppInfoResponse)
@@ -112,4 +113,5 @@ class AppInfoApi(Resource):
             "tags": tags,
             "mode": app_model.mode,
             "author_name": app_model.author_name,
+            "workflow_id": app_model.workflow_id if app_model.mode in [AppMode.WORKFLOW.value, AppMode.ADVANCED_CHAT.value] else None,
         }

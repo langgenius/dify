@@ -59,6 +59,7 @@ export const zAppInfoResponse = z.object({
   mode: z.string(),
   name: z.string(),
   tags: z.array(z.string()),
+  workflow_id: z.string().nullable(),
 })
 
 /**
