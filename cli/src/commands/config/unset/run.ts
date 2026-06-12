@@ -10,10 +10,10 @@ export type RunConfigUnsetOptions = {
   readonly store: YamlStore
 }
 
-export function runConfigUnset(opts: RunConfigUnsetOptions): string {
-  const loaded = loadConfig(opts.store)
+export async function runConfigUnset(opts: RunConfigUnsetOptions): Promise<string> {
+  const loaded = await loadConfig(opts.store)
   const config: ConfigFile = loaded.found ? loaded.config : emptyConfig()
   const next = unsetKey(config, opts.key)
-  saveConfig(opts.store, next)
+  await saveConfig(opts.store, next)
   return `unset ${opts.key}\n`
 }

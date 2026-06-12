@@ -21,8 +21,8 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
   const reg = opts.reg
   const active = reg.requireActive()
 
-  const store = opts.store ?? getTokenStore().store
-  const bearer = store.get(tokenKey(active.host, active.email))
+  const store = opts.store ?? (await getTokenStore()).store
+  const bearer = await store.get(tokenKey(active.host, active.email))
 
   let revokeWarning = ''
   if (bearer !== '' && revokeAllowed(bearer) && opts.http !== undefined) {
@@ -34,7 +34,7 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
     }
   }
 
-  reg.forget(active, store)
+  await reg.forget(active, store)
 
   if (revokeWarning !== '')
     opts.io.err.write(revokeWarning)

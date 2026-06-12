@@ -10,9 +10,9 @@ import { runLogout } from './logout.js'
 
 class MemStore implements Store {
   readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  set<T>(key: Key<T>, value: T): void { this.entries.set(key.key, value) }
-  unset<T>(key: Key<T>): void { this.entries.delete(key.key) }
+  async get<T>(key: Key<T>): Promise<T> { return (this.entries.get(key.key) as T | undefined) ?? key.default }
+  async set<T>(key: Key<T>, value: T): Promise<void> { this.entries.set(key.key, value) }
+  async unset<T>(key: Key<T>): Promise<void> { this.entries.delete(key.key) }
 }
 
 describe('runLogout', () => {
@@ -30,34 +30,34 @@ describe('runLogout', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  function seed(store: MemStore) {
+  async function seed(store: MemStore) {
     const reg = Registry.empty('file')
     reg.upsert('h1', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
     reg.upsert('h1', 'b@x', { account: { id: '2', email: 'b@x', name: 'B' } })
     reg.setHost('h1')
     reg.setAccount('a@x')
-    reg.save()
-    store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
-    store.set({ key: 'tokens.h1.b@x', default: '' }, 'dfoa_b')
+    await reg.save()
+    await store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
+    await store.set({ key: 'tokens.h1.b@x', default: '' }, 'dfoa_b')
   }
 
   it('removes only the active context, keeps others, unsets pointers, file survives', async () => {
     const store = new MemStore()
-    seed(store)
-    await runLogout({ io: bufferStreams(), reg: Registry.load(), store })
-    const after = Registry.load()
+    await seed(store)
+    await runLogout({ io: bufferStreams(), reg: await Registry.load(), store })
+    const after = await Registry.load()
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
     expect(after?.current_host).toBeUndefined()
-    expect(store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
-    expect(store.get({ key: 'tokens.h1.b@x', default: '' })).toBe('dfoa_b')
+    expect(await store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
+    expect(await store.get({ key: 'tokens.h1.b@x', default: '' })).toBe('dfoa_b')
     const raw = await readFile(join(dir, 'hosts.yml'), 'utf8')
     expect(raw).toContain('b@x')
   })
 
   it('throws NotLoggedIn when no active context', async () => {
-    Registry.empty('file').save()
-    await expect(runLogout({ io: bufferStreams(), reg: Registry.load(), store: new MemStore() }))
+    await Registry.empty('file').save()
+    await expect(runLogout({ io: bufferStreams(), reg: await Registry.load(), store: new MemStore() }))
       .rejects
       .toThrow(/not logged in/i)
   })

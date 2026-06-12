@@ -69,18 +69,18 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
     spinner.stop()
   }
 
-  const storeBundle = opts.store ?? getTokenStore()
+  const storeBundle = opts.store ?? await getTokenStore()
   const display = bareHost(host)
   const email = accountEmail(success)
   const ctx = contextFromSuccess(success)
 
-  storeBundle.store.set(tokenKey(display, email), success.token)
+  await storeBundle.store.set(tokenKey(display, email), success.token)
 
-  const reg = Registry.load()
+  const reg = await Registry.load()
   reg.token_storage = storeBundle.mode
   reg.activate(display, email, ctx)
   applyScheme(reg, display, host)
-  reg.save()
+  await reg.save()
 
   renderLoggedIn(opts.io.out, cs, host, success)
   return reg

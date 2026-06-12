@@ -8,10 +8,10 @@ export type LoadResult
   = | { found: false }
     | { found: true, config: ConfigFile }
 
-export function loadConfig(store: YamlStore): LoadResult {
+export async function loadConfig(store: YamlStore): Promise<LoadResult> {
   let raw: Record<string, unknown> | null
   try {
-    raw = store.getTyped<Record<string, unknown>>()
+    raw = await store.getTyped<Record<string, unknown>>()
   }
   catch (err) {
     throw newError(

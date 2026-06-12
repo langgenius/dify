@@ -24,15 +24,15 @@ const noopBrowser = async (): Promise<void> => { /* skip OS open */ }
 
 class MemStore implements Store {
   readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T {
+  async get<T>(key: Key<T>): Promise<T> {
     return (this.entries.get(key.key) as T | undefined) ?? key.default
   }
 
-  set<T>(key: Key<T>, value: T): void {
+  async set<T>(key: Key<T>, value: T): Promise<void> {
     this.entries.set(key.key, value)
   }
 
-  unset<T>(key: Key<T>): void {
+  async unset<T>(key: Key<T>): Promise<void> {
     this.entries.delete(key.key)
   }
 }
@@ -76,7 +76,7 @@ describe('runLogin', () => {
     expect(active?.ctx.account.email).toBe('tester@dify.ai')
     expect(active?.ctx.workspace?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(active?.ctx.available_workspaces).toHaveLength(2)
-    expect(store.get(tokenKey(active!.host, 'tester@dify.ai'))).toBe('dfoa_test')
+    expect(await store.get(tokenKey(active!.host, 'tester@dify.ai'))).toBe('dfoa_test')
 
     const hostsRaw = await readFile(join(configDir, 'hosts.yml'), 'utf8')
     expect(hostsRaw).toContain('current_host:')
@@ -109,7 +109,7 @@ describe('runLogin', () => {
     expect(active?.ctx.external_subject?.email).toBe('sso@dify.ai')
     expect(active?.ctx.external_subject?.issuer).toBe('https://issuer.example')
     expect(active?.ctx.account.email).toBe('')
-    expect(store.get(tokenKey(active!.host, 'sso@dify.ai'))).toBe('dfoe_test')
+    expect(await store.get(tokenKey(active!.host, 'sso@dify.ai'))).toBe('dfoe_test')
     expect(io.outBuf()).toContain('external SSO')
     expect(io.outBuf()).toContain('sso@dify.ai')
   })

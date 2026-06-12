@@ -50,7 +50,7 @@ export type GetTokenStoreOptions = {
  * Business logic should always obtain the token store through this factory
  * rather than constructing one directly.
  */
-export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, mode: StorageMode } {
+export async function getTokenStore(opts: GetTokenStoreOptions = {}): Promise<{ store: Store, mode: StorageMode }> {
   const fileFactory = opts.factory?.file ?? (() => getStore(join(resolveConfigDir(), TOKENS_FILE)))
   const keyringFactory = opts.factory?.keyring ?? (() => new KeyringBasedStore(KEYRING_SERVICE))
   // DIFY_E2E_NO_KEYRING=1 forces file-based storage in E2E tests to avoid
@@ -59,9 +59,9 @@ export function getTokenStore(opts: GetTokenStoreOptions = {}): { store: Store, 
     return { store: fileFactory(), mode: 'file' }
   try {
     const k = keyringFactory()
-    k.set(PROBE_KEY, PROBE_VALUE)
-    const got = k.get(PROBE_KEY)
-    k.unset(PROBE_KEY)
+    await k.set(PROBE_KEY, PROBE_VALUE)
+    const got = await k.get(PROBE_KEY)
+    await k.unset(PROBE_KEY)
     if (got !== PROBE_VALUE)
       throw new Error('keyring round-trip mismatch')
     return { store: k, mode: 'keychain' }

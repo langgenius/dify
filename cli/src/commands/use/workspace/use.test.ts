@@ -77,7 +77,7 @@ describe('runUseWorkspace', () => {
   it('happy path: POST /switch → GET /workspaces → write hosts.yml', async () => {
     const io = bufferStreams()
     const reg = makeRegistry()
-    reg.save()
+    await reg.save()
     const active = makeActive(reg)
     const client = fakeClient({})
 
@@ -102,7 +102,7 @@ describe('runUseWorkspace', () => {
       { id: 'ws-2', name: 'Switched', role: 'normal' },
     ])
 
-    const reloaded = Registry.load()
+    const reloaded = await Registry.load()
     const reloadedActive = reloaded?.resolveActive()
     expect(reloadedActive?.ctx.workspace?.id).toBe('ws-2')
     expect(reloadedActive?.ctx.workspace?.name).toBe('Switched')
@@ -113,7 +113,7 @@ describe('runUseWorkspace', () => {
   it('hosts.yml contains no bearer after switch', async () => {
     const io = bufferStreams()
     const reg = makeRegistry()
-    reg.save()
+    await reg.save()
     const active = makeActive(reg)
     const client = fakeClient({})
 
@@ -122,7 +122,7 @@ describe('runUseWorkspace', () => {
       { reg, active, http: {} as HttpClient, io, workspacesFactory: () => client as never },
     )
 
-    const reloaded = Registry.load()
+    const reloaded = await Registry.load()
     const raw = JSON.stringify(reloaded)
     expect(raw).not.toMatch(/bearer/)
   })
@@ -132,7 +132,7 @@ describe('runUseWorkspace', () => {
     // We expect saveRegistry to record the fresh name from the server.
     const io = bufferStreams()
     const reg = makeRegistry()
-    reg.save()
+    await reg.save()
     const active = makeActive(reg)
     const client = fakeClient({})
 
@@ -141,7 +141,7 @@ describe('runUseWorkspace', () => {
       { reg, active, http: {} as HttpClient, io, workspacesFactory: () => client as never },
     )
 
-    const reloaded = Registry.load()
+    const reloaded = await Registry.load()
     const reloadedActive = reloaded?.resolveActive()
     expect(reloadedActive?.ctx.workspace?.name).toBe('Switched')
     expect(reloadedActive?.ctx.available_workspaces?.find(w => w.id === 'ws-2')?.name).toBe('Switched')
@@ -150,9 +150,9 @@ describe('runUseWorkspace', () => {
   it('does NOT mutate hosts.yml when POST /switch fails', async () => {
     const io = bufferStreams()
     const reg = makeRegistry()
-    reg.save()
+    await reg.save()
     const active = makeActive(reg)
-    const before = Registry.load()
+    const before = await Registry.load()
 
     const client = fakeClient({
       switch: () => Promise.reject(new Error('forbidden')),
@@ -172,7 +172,7 @@ describe('runUseWorkspace', () => {
     ).rejects.toThrow(/forbidden/)
 
     expect(client.list).not.toHaveBeenCalled()
-    const after = Registry.load()
+    const after = await Registry.load()
     expect(after).toEqual(before)
     const afterActive = after?.resolveActive()
     expect(afterActive?.ctx.workspace?.id).toBe('ws-1')
@@ -181,9 +181,9 @@ describe('runUseWorkspace', () => {
   it('does NOT mutate hosts.yml when GET /workspaces fails after switch', async () => {
     const io = bufferStreams()
     const reg = makeRegistry()
-    reg.save()
+    await reg.save()
     const active = makeActive(reg)
-    const before = Registry.load()
+    const before = await Registry.load()
 
     const client = fakeClient({
       list: () => Promise.reject(new Error('transient list failure')),
@@ -202,14 +202,14 @@ describe('runUseWorkspace', () => {
       ),
     ).rejects.toThrow(/transient list failure/)
 
-    const after = Registry.load()
+    const after = await Registry.load()
     expect(after).toEqual(before)
   })
 
   it('throws when server returns switch=<id> but id is missing from /workspaces list', async () => {
     const io = bufferStreams()
     const reg = makeRegistry()
-    reg.save()
+    await reg.save()
     const active = makeActive(reg)
 
     const client = fakeClient({

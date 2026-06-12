@@ -17,15 +17,15 @@ import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
 class MemStore implements Store {
   readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T {
+  async get<T>(key: Key<T>): Promise<T> {
     return (this.entries.get(key.key) as T | undefined) ?? key.default
   }
 
-  set<T>(key: Key<T>, value: T): void {
+  async set<T>(key: Key<T>, value: T): Promise<void> {
     this.entries.set(key.key, value)
   }
 
-  unset<T>(key: Key<T>): void {
+  async unset<T>(key: Key<T>): Promise<void> {
     this.entries.delete(key.key)
   }
 }
@@ -103,8 +103,8 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
-    reg.save()
+    await store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
+    await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl on desktop', all: false })
@@ -168,13 +168,13 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
-    reg.save()
+    await store.set(tokenKey(mock.url, 'tester@dify.ai'), 'dfoa_test')
+    await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-1', all: false })
     expect(store.entries.size).toBe(0)
-    const saved = Registry.load()
+    const saved = await Registry.load()
     expect(saved?.hosts[mock.url]).toBeUndefined()
   })
 

@@ -21,12 +21,12 @@ export default class Logout extends DifyCommand {
   async run(argv: string[]): Promise<void> {
     this.parse(Logout, argv)
     const io = realStreams()
-    const reg = Registry.load()
+    const reg = await Registry.load()
     const active = reg.resolveActive()
 
     let http: HttpClient | undefined
     if (active !== undefined) {
-      const bearer = getTokenStore().store.get(tokenKey(active.host, active.email))
+      const bearer = await (await getTokenStore()).store.get(tokenKey(active.host, active.email))
       if (bearer !== '') {
         http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
       }
