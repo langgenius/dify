@@ -87,7 +87,7 @@ export function Radio<Value = string>({
 }
 
 export type RadioSkeletonProps
-  = Omit<React.HTMLAttributes<HTMLDivElement>, 'className'>
+  = Omit<React.ComponentProps<'div'>, 'className'>
     & {
       className?: string
     }

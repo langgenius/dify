@@ -302,7 +302,7 @@ export function AutocompleteItem({
   )
 }
 
-export type AutocompleteItemTextProps = React.HTMLAttributes<HTMLSpanElement>
+export type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 export function AutocompleteItemText({
   className,
@@ -368,7 +368,7 @@ export function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) {
+}: React.ComponentProps<'span'>) {
   return (
     <span
       className={cn(overlayIndicatorClassName, className)}

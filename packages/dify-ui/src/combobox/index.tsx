@@ -365,7 +365,7 @@ export function ComboboxItem({
   )
 }
 
-export type ComboboxItemTextProps = React.HTMLAttributes<HTMLSpanElement>
+export type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 export function ComboboxItemText({
   className,

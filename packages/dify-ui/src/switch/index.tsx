@@ -134,7 +134,7 @@ const switchSkeletonVariants = cva(
 )
 
 export type SwitchSkeletonProps
-  = React.HTMLAttributes<HTMLDivElement>
+  = React.ComponentProps<'div'>
     & VariantProps<typeof switchSkeletonVariants>
 
 export function SwitchSkeleton({

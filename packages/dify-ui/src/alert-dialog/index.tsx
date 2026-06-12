@@ -47,7 +47,7 @@ export function AlertDialogContent({
   )
 }
 
-type AlertDialogActionsProps = React.ComponentPropsWithoutRef<'div'>
+type AlertDialogActionsProps = React.ComponentProps<'div'>
 
 export function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
   return (

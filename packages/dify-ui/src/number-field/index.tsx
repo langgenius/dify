@@ -97,7 +97,7 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = React.HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
+export type NumberFieldUnitProps = React.ComponentProps<'span'> & VariantProps<typeof numberFieldUnitVariants>
 
 export function NumberFieldUnit({
   className,
@@ -116,7 +116,7 @@ const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = React.HTMLAttributes<HTMLDivElement>
+export type NumberFieldControlsProps = React.ComponentProps<'div'>
 
 export function NumberFieldControls({
   className,

@@ -39,7 +39,7 @@ export function SegmentedControlItem<Value extends string = string>({
   )
 }
 
-export type SegmentedControlDividerProps = Omit<React.HTMLAttributes<HTMLSpanElement>, 'className'> & {
+export type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'className'> & {
   className?: string
 }
 

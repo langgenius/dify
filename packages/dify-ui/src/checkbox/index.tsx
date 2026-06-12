@@ -82,7 +82,7 @@ export function Checkbox({
 }
 
 export type CheckboxSkeletonProps
-  = Omit<React.HTMLAttributes<HTMLDivElement>, 'className'>
+  = Omit<React.ComponentProps<'div'>, 'className'>
     & {
       className?: string
     }
