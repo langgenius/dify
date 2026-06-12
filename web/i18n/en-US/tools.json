@@ -217,7 +217,7 @@
   "type.workflow": "Workflow",
   "workflowToolEmpty.description": "To use a workflow as a tool, publish it from Studio first — then it'll appear here and can be added to any app.",
   "workflowToolEmpty.goToStudio": "Go to Studio",
-  "workflowToolEmpty.learnMore": "Need help? Learn how to publish a workflow as a tool →",
+  "workflowToolEmpty.learnMore": "Need help? Learn how to publish a workflow as a tool",
   "workflowToolEmpty.step1": "Build a workflow in Studio",
   "workflowToolEmpty.step2": "Click \"Workflow as Tool\" in the Publish menu to make it available as a tool",
   "workflowToolEmpty.step3": "Come back here to manage and reuse it",

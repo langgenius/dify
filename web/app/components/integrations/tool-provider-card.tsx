@@ -63,16 +63,16 @@ function IntegrationsToolProviderCard({
         <div className="flex w-full shrink-0 items-center gap-3 px-4 pt-4 pb-2">
           <Icon src={collection.icon} size="large" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-            <div className="min-w-0 truncate system-md-semibold text-text-secondary">
+            <div className="min-w-0 truncate system-md-semibold text-text-secondary" title={title}>
               {title}
             </div>
-            <div className="h-4 truncate system-xs-regular text-text-tertiary">
+            <div className="h-4 truncate system-xs-regular text-text-tertiary" title={collection.author ? `${t('author', { ns: 'tools' })} ${collection.author}` : undefined}>
               {collection.author && `${t('author', { ns: 'tools' })} ${collection.author}`}
             </div>
           </div>
         </div>
         <div className="w-full px-4 pt-1 pb-2">
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary" title={description}>
             {description}
           </div>
         </div>
@@ -81,7 +81,7 @@ function IntegrationsToolProviderCard({
             {collection.labels?.map(label => (
               <div key={label} className="flex max-w-[120px] shrink-0 items-center gap-0.5">
                 <span className="text-text-quaternary">#</span>
-                <span className="min-w-0 truncate text-text-tertiary">{label}</span>
+                <span className="min-w-0 truncate text-text-tertiary" title={label}>{label}</span>
               </div>
             ))}
           </div>
@@ -105,11 +105,11 @@ function IntegrationsToolProviderCard({
         <Icon src={collection.icon} size="large" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
           <div className="flex min-w-0 items-center gap-1">
-            <div className="min-w-0 truncate system-md-semibold text-text-secondary">
+            <div className="min-w-0 truncate system-md-semibold text-text-secondary" title={title}>
               {title}
             </div>
           </div>
-          <div className="w-full truncate system-xs-regular text-text-tertiary">
+          <div className="w-full truncate system-xs-regular text-text-tertiary" title={description}>
             {description}
           </div>
         </div>
@@ -118,11 +118,11 @@ function IntegrationsToolProviderCard({
         <div className="flex h-4 min-w-0 shrink-0 items-center gap-0.5 system-xs-regular">
           {!!org && (
             <>
-              <div className="truncate text-text-tertiary">{org}</div>
+              <div className="truncate text-text-tertiary" title={org}>{org}</div>
               <div className="text-text-quaternary">/</div>
             </>
           )}
-          <div className="truncate text-text-tertiary">{name}</div>
+          <div className="truncate text-text-tertiary" title={name}>{name}</div>
         </div>
         {toolsCount > 0 && (
           <>

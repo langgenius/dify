@@ -217,7 +217,7 @@
   "type.workflow": "工作流",
   "workflowToolEmpty.description": "如需将工作流作为工具使用，请先在 Studio 中发布。发布后它会显示在这里，并可添加到任意应用。",
   "workflowToolEmpty.goToStudio": "前往工作室",
-  "workflowToolEmpty.learnMore": "需要帮助？了解如何将工作流发布为工具 →",
+  "workflowToolEmpty.learnMore": "需要帮助？了解如何将工作流发布为工具",
   "workflowToolEmpty.step1": "在工作室中构建工作流",
   "workflowToolEmpty.step2": "在发布菜单中点击\"发布工作流作为工具\"",
   "workflowToolEmpty.step3": "回到此页面进行管理与复用",

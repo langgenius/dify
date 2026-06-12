@@ -63,7 +63,7 @@ export function useIntegrationNav(section: IntegrationSection) {
     },
     {
       section: 'custom-tool',
-      label: t('settings.customTool', { ns: 'common' }),
+      label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
       icon: 'i-custom-vender-integrations-custom-tool',
       iconClassName: 'h-[14.5px] w-[12.5px]',
       className: 'pl-8',
@@ -104,7 +104,7 @@ export function useIntegrationNav(section: IntegrationSection) {
         }
       case 'custom-tool':
         return {
-          title: t('settings.customTool', { ns: 'common' }),
+          title: t('settings.swaggerAPIAsTool', { ns: 'common' }),
           description: t('swaggerAPIAsToolPage.description', { ns: 'common' }),
         }
       case 'workflow-tool':

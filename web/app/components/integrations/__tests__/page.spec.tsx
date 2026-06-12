@@ -418,13 +418,13 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('href', '/integrations/tools/mcp')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
     expect(screen.getByRole('link', { name: 'MCP' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'common.settings.customTool' })).toHaveAttribute('href', '/integrations/tools/api')
+    expect(screen.getByRole('link', { name: 'common.settings.swaggerAPIAsTool' })).toHaveAttribute('href', '/integrations/tools/api')
     expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' })).toHaveAttribute('href', '/integrations/tools/workflow')
     const workflowToolIcon = screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).querySelector('.i-custom-vender-integrations-workflow-as-tool')
     expect(workflowToolIcon).toBeInTheDocument()
     expect(workflowToolIcon).toHaveClass('size-4')
     expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).querySelector('.i-ri-node-tree')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).compareDocumentPosition(screen.getByRole('link', { name: 'common.settings.customTool' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(screen.getByRole('link', { name: 'workflow.common.workflowAsTool' }).compareDocumentPosition(screen.getByRole('link', { name: 'common.settings.swaggerAPIAsTool' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('uses hover-only arrows for the tools parent icon', () => {
@@ -556,7 +556,7 @@ describe('IntegrationsPage', () => {
   it('renders the custom tool header for the custom tool section', () => {
     renderIntegrationsPage({ section: 'custom-tool' })
 
-    expect(screen.getAllByText('common.settings.customTool')).toHaveLength(2)
+    expect(screen.getAllByText('common.settings.swaggerAPIAsTool')).toHaveLength(2)
     expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
@@ -725,7 +725,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('button', { name: 'plugin debug' }).parentElement).toHaveClass('w-46')
     expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveTextContent('plugin.privilege.permissions')
     expect(screen.getByRole('button', { name: 'plugin.privilege.permissions' })).toHaveClass('h-8', 'w-full', 'gap-2', 'rounded-lg', 'py-1', 'pr-1', 'pl-2', 'system-sm-medium')
-    expect(screen.queryByText('common.settings.customTool')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.settings.swaggerAPIAsTool')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'common.settings.customEndpoint' })).toHaveAttribute('href', '/integrations/custom-endpoint')
     expect(screen.getByRole('link', { name: 'plugin.categorySingle.trigger' })).toHaveAttribute('href', '/integrations/trigger')

@@ -69,6 +69,23 @@ function WorkspaceCardSkeleton({
   )
 }
 
+function WorkspaceCreditsLabel({
+  credits,
+  unit,
+}: {
+  credits: string
+  unit: string
+}) {
+  const label = `${credits} ${unit}`
+
+  return (
+    <span className="flex min-w-0 flex-1 items-baseline gap-0.5" title={label}>
+      <span className="shrink-0 system-xs-medium">{credits}</span>
+      <span className="min-w-0 truncate system-xs-regular">{unit}</span>
+    </span>
+  )
+}
+
 function WorkspaceCardTrigger({
   open,
   name,
@@ -91,11 +108,13 @@ function WorkspaceCardTrigger({
   onPlanClick: () => void
 }) {
   const { t } = useTranslation()
+  const creditsUnit = t('mainNav.workspace.creditsUnit', { ns: 'common' })
 
   return (
     <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt">
       <PopoverTrigger
         aria-label={t('mainNav.workspace.openMenu', { ns: 'common' })}
+        title={name}
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
@@ -104,7 +123,7 @@ function WorkspaceCardTrigger({
         <WorkspaceIcon name={name} className="h-6 w-6 rounded-lg" />
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
-            <span className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary">{name}</span>
+            <span className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary" title={name}>{name}</span>
             {status && <span className="flex shrink-0 items-center">{status}</span>}
           </div>
         </div>
@@ -118,12 +137,12 @@ function WorkspaceCardTrigger({
             aria-label={t('mainNav.workspace.credits', { ns: 'common', count: credits })}
           >
             <span className="i-custom-vender-main-nav-credits h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate system-xs-medium">{credits}</span>
-            <span className="shrink-0 system-xs-regular">{t('mainNav.workspace.creditsUnit', { ns: 'common' })}</span>
+            <WorkspaceCreditsLabel credits={credits} unit={creditsUnit} />
           </Link>
           {showPlanAction && (
             <button
               type="button"
+              title={planActionLabel}
               className="max-w-30 shrink-0 truncate px-1 system-xs-semibold-uppercase text-saas-dify-blue-accessible transition-colors hover:text-saas-dify-blue-static-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
               onClick={onPlanClick}
             >
@@ -160,7 +179,7 @@ function WorkspaceMenuHeader({
       <div className="rounded-xl border-[0.5px] border-components-panel-border bg-linear-to-b from-background-section-burn to-background-section pb-2">
         <div className="flex h-16 items-center gap-2 px-3">
           <div className="flex min-w-0 flex-1 flex-col items-start justify-center gap-1">
-            <PopoverTitle className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary">{name}</PopoverTitle>
+            <PopoverTitle className="w-full min-w-0 truncate text-base/5 font-medium text-text-primary" title={name}>{name}</PopoverTitle>
             {status}
           </div>
           <WorkspaceIcon name={name} className="h-9 w-9 shrink-0" />

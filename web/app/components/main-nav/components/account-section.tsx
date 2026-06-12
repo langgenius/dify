@@ -21,6 +21,7 @@ const AccountSection = ({
         <button
           type="button"
           aria-label={ariaLabel}
+          title={userProfile.name}
           className={cn(
             'text-components-main-nav-text flex min-w-0 shrink items-center rounded-full text-left transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
             compact ? 'justify-center p-1' : 'max-w-[180px] gap-3 py-1 pr-4 pl-1',
@@ -28,7 +29,7 @@ const AccountSection = ({
           )}
         >
           <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="md" className="size-7" />
-          {!compact && <span className="min-w-0 flex-1 truncate system-md-medium">{userProfile.name}</span>}
+          {!compact && <span className="min-w-0 flex-1 truncate system-md-medium" title={userProfile.name}>{userProfile.name}</span>}
         </button>
       )}
     />
