@@ -33,7 +33,7 @@ from runtime_repair import (
     repair_yaml,
 )
 from shape_normalizer import normalize_shape_yaml_text
-from validator import validate_yaml_text
+from validator import dependency_identifier_key, dependency_unique_identifier, plugin_id_from_unique_identifier, validate_yaml_text
 
 PUBLISH_MARKED_NAME_MAX_LENGTH = 20
 PUBLISH_MARKED_COMMENT_MAX_LENGTH = 100
@@ -77,6 +77,108 @@ def load_generation_context(run_dir: Path) -> dict[str, Any]:
         "plugin_evidence": read_json_or_text(run_dir / "plugin_evidence.json", {}),
         "source_context": read_json_or_text(run_dir / "source_context.json", {}),
     }
+
+
+def installed_plugin_identifiers(plugin_list: Any) -> dict[str, str]:
+    if not isinstance(plugin_list, dict):
+        return {}
+    plugins = plugin_list.get("plugins") or plugin_list.get("data")
+    if not isinstance(plugins, list):
+        return {}
+    identifiers: dict[str, str] = {}
+    for plugin in plugins:
+        if not isinstance(plugin, dict):
+            continue
+        plugin_id = str(plugin.get("plugin_id") or "").strip()
+        identifier = str(plugin.get("plugin_unique_identifier") or "").strip()
+        if plugin_id and identifier:
+            identifiers[plugin_id] = identifier
+    return identifiers
+
+
+def align_yaml_dependencies_to_installed_plugins(
+    yaml_text: str, plugin_list: Any
+) -> tuple[str, dict[str, Any]]:
+    report: dict[str, Any] = {"changed": False, "replacements": [], "errors": []}
+    installed = installed_plugin_identifiers(plugin_list)
+    if not installed:
+        return yaml_text, report
+    try:
+        data = yaml.safe_load(yaml_text)
+    except yaml.YAMLError as exc:
+        report["errors"].append({"code": "yaml_parse_failed", "message": str(exc)})
+        return yaml_text, report
+    if not isinstance(data, dict):
+        return yaml_text, report
+    dependencies = data.get("dependencies")
+    if not isinstance(dependencies, list):
+        return yaml_text, report
+
+    for dependency in dependencies:
+        if not isinstance(dependency, dict):
+            continue
+        old_identifier = dependency_unique_identifier(dependency)
+        plugin_id = plugin_id_from_unique_identifier(old_identifier)
+        installed_identifier = installed.get(plugin_id)
+        if not old_identifier or not installed_identifier or old_identifier == installed_identifier:
+            continue
+        value = dependency.get("value")
+        if not isinstance(value, dict):
+            continue
+        identifier_key = dependency_identifier_key(dependency)
+        if not identifier_key:
+            continue
+        value[identifier_key] = installed_identifier
+        report["replacements"].append(
+            {
+                "plugin_id": plugin_id,
+                "old_unique_identifier": old_identifier,
+                "current_identifier": installed_identifier,
+            }
+        )
+
+    if not report["replacements"]:
+        return yaml_text, report
+    report["changed"] = True
+    return yaml.safe_dump(data, sort_keys=False, allow_unicode=True), report
+
+
+def align_yaml_file_to_installed_plugins(
+    *,
+    client: DifyConsoleClient,
+    run_dir: Path,
+    yaml_file: Path,
+    iteration: int,
+    enabled: bool,
+) -> tuple[Path, dict[str, Any]]:
+    if not enabled:
+        return yaml_file, {"skipped": True, "reason": "installed plugin alignment disabled"}
+    try:
+        plugin_list = client.plugin_list(page=1, page_size=256)
+    except ConsoleApiError as exc:
+        return yaml_file, {
+            "skipped": True,
+            "reason": "plugin-list failed",
+            "errors": [console_error_to_dict("plugin_list", exc)],
+        }
+
+    aligned_yaml, report = align_yaml_dependencies_to_installed_plugins(yaml_file.read_text(), plugin_list)
+    report_path = run_dir / f"dependency_alignment.loop{iteration}.json"
+    write_json(report_path, report)
+    result = {
+        "skipped": False,
+        "input_yaml": str(yaml_file),
+        "artifact": str(report_path),
+        "changed": report.get("changed"),
+        "replacements": report.get("replacements", []),
+        "errors": report.get("errors", []),
+    }
+    if not report.get("changed"):
+        return yaml_file, result
+    aligned_path = run_dir / f"generated.loop{iteration}.installed_aligned.yml"
+    aligned_path.write_text(aligned_yaml)
+    result["output_yaml"] = str(aligned_path)
+    return aligned_path, result
 
 
 def draft_debug_succeeded(debug_result: dict[str, Any]) -> bool:
@@ -733,6 +835,15 @@ def run(args: argparse.Namespace) -> int:
         )
         record["shape_normalization"] = shape_record
 
+        yaml_file, installed_alignment = align_yaml_file_to_installed_plugins(
+            client=client,
+            run_dir=run_dir,
+            yaml_file=yaml_file,
+            iteration=iteration,
+            enabled=not args.no_align_installed_dependencies,
+        )
+        record["installed_dependency_alignment"] = installed_alignment
+
         pre_validation = validate_yaml_text(yaml_file.read_text()).to_dict()
         pre_validation_path = run_dir / f"validation.loop{iteration}.json"
         write_json(pre_validation_path, pre_validation)
@@ -1018,6 +1129,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-repair", action="store_true")
     parser.add_argument("--no-normalize-shape", action="store_true")
     parser.add_argument("--no-normalize-dependencies", action="store_true")
+    parser.add_argument(
+        "--no-align-installed-dependencies",
+        action="store_true",
+        help="Do not rewrite dependency identifiers to plugins already installed in the current workspace.",
+    )
     parser.add_argument("--skip-dependencies", action="store_true")
     parser.add_argument("--install-missing-dependencies", action="store_true", help="Install leaked plugin dependencies after import and before draft debug.")
     parser.add_argument("--no-wait-plugin-install", action="store_true", help="Start plugin install tasks without waiting for completion.")

@@ -10,7 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from http.cookiejar import MozillaCookieJar
+from http.cookiejar import Cookie, MozillaCookieJar
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +62,8 @@ class DifyConsoleClient:
         if cookie_jar_path and cookie_jar_path.exists():
             self.cookie_jar.load(ignore_discard=True, ignore_expires=True)
             self._harden_cookie_jar_permissions()
+        if csrf_token:
+            self._set_explicit_csrf_cookie(csrf_token)
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookie_jar))
 
     def save_cookies(self) -> None:
@@ -76,6 +78,34 @@ class DifyConsoleClient:
             self.cookie_jar_path.chmod(0o600)
         except OSError:
             pass
+
+    def _set_explicit_csrf_cookie(self, csrf_token: str) -> None:
+        parsed = urllib.parse.urlparse(self.console_base)
+        host = parsed.hostname or "localhost"
+        # http.cookiejar uses the historical `.local` suffix for single-label
+        # hosts such as localhost when matching request cookies.
+        domain = f"{host}.local" if "." not in host else host
+        self.cookie_jar.set_cookie(
+            Cookie(
+                version=0,
+                name="csrf_token",
+                value=csrf_token,
+                port=None,
+                port_specified=False,
+                domain=domain,
+                domain_specified=False,
+                domain_initial_dot=False,
+                path="/",
+                path_specified=True,
+                secure=parsed.scheme == "https",
+                expires=int(time.time()) + 7 * 24 * 60 * 60,
+                discard=False,
+                comment=None,
+                comment_url=None,
+                rest={},
+                rfc2109=False,
+            )
+        )
 
     def url(self, path: str, query: dict[str, Any] | None = None) -> str:
         path = path if path.startswith("/") else f"/{path}"

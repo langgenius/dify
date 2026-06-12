@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from console_lifecycle import (
     ConsoleApiError,
+    DifyConsoleClient,
     encode_sensitive_field,
     run_debug_draft_sequence,
     run_install_dependencies_sequence,
@@ -201,6 +204,26 @@ def assert_field_encoding() -> dict[str, Any]:
     return {"name": "field_encoding", "valid": True, "cases": sorted(cases)}
 
 
+def assert_explicit_csrf_cookie_for_localhost() -> dict[str, Any]:
+    with TemporaryDirectory() as tmp:
+        client = DifyConsoleClient(
+            console_base="http://localhost",
+            bearer_token="access-token",
+            csrf_token="csrf-token",
+            cookie_jar_path=Path(tmp) / "cookies.txt",
+        )
+        cookies = [
+            {"name": cookie.name, "value": cookie.value, "domain": cookie.domain}
+            for cookie in client.cookie_jar
+        ]
+    expected = {"name": "csrf_token", "value": "csrf-token", "domain": "localhost.local"}
+    if expected not in cookies:
+        raise AssertionError(f"expected explicit localhost csrf cookie {expected}, got {cookies}")
+    if client.current_csrf_token() != "csrf-token":
+        raise AssertionError("current_csrf_token should prefer the explicit csrf token")
+    return {"name": "explicit_csrf_cookie_for_localhost", "valid": True, "cookie": expected}
+
+
 def assert_draft_debug_run_record_fallback() -> dict[str, Any]:
     client = FakeDraftDebugClient()
     result = run_debug_draft_sequence(
@@ -277,6 +300,7 @@ def main() -> int:
                 "calls": client.calls,
                 "preflight_cases": assert_preflight(),
                 "field_encoding": assert_field_encoding(),
+                "explicit_csrf_cookie": assert_explicit_csrf_cookie_for_localhost(),
                 "draft_debug": assert_draft_debug_run_record_fallback(),
             },
             ensure_ascii=False,

@@ -152,6 +152,10 @@ def normalize_existing_dependencies(dependencies: list[Any], report: dict[str, A
         )
 
 
+def dependency_identifier_is_precise(identifier: str) -> bool:
+    return bool(identifier and (":" in identifier or "@" in identifier))
+
+
 def best_dependency_for_plugin(
     plugin_id: str,
     *,
@@ -178,6 +182,38 @@ def best_dependency_for_plugin(
         )
 
     return None, ""
+
+
+def upgrade_existing_dependencies_from_evidence(
+    dependencies: list[Any], evidence: dict[str, Any], report: dict[str, Any]
+) -> None:
+    for index, dependency in enumerate(dependencies):
+        if not isinstance(dependency, dict):
+            continue
+        identifier = dependency_unique_identifier(dependency)
+        if dependency_identifier_is_precise(identifier):
+            continue
+        plugin_id = dependency_plugin_id(dependency)
+        if not plugin_id:
+            continue
+        upgraded, source = best_dependency_for_plugin(plugin_id, evidence=evidence)
+        if upgraded is None:
+            continue
+        upgraded_identifier = dependency_unique_identifier(upgraded)
+        if not upgraded_identifier or upgraded_identifier == identifier:
+            continue
+        dependency.clear()
+        dependency.update(upgraded)
+        report["normalized"].append(
+            {
+                "index": index,
+                "type": "dependency_identifier_upgraded",
+                "plugin_id": plugin_id,
+                "old_unique_identifier": identifier,
+                "unique_identifier": upgraded_identifier,
+                "source": source,
+            }
+        )
 
 
 def add_dependency_if_missing(
@@ -245,8 +281,9 @@ def normalize_dependency_dict(
         report["errors"].append({"code": "dependencies_not_list", "message": "dependencies must be a list"})
         return data, report
 
-    normalize_existing_dependencies(dependencies, report)
     evidence = collect_dependency_evidence(plugin_evidence)
+    normalize_existing_dependencies(dependencies, report)
+    upgrade_existing_dependencies_from_evidence(dependencies, evidence, report)
     present_plugin_ids = existing_dependency_plugin_ids(dependencies)
     workflow = data.get("workflow") if isinstance(data.get("workflow"), dict) else {}
     graph = workflow.get("graph") if isinstance(workflow.get("graph"), dict) else {}

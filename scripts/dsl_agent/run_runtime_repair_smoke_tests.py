@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 from deterministic_repair import repair_yaml_text
-from runtime_repair import load_runtime_evidence
+from runtime_repair import load_runtime_evidence, preserve_existing_dependencies, stabilize_plain_scalar_colons
 from validator import validate_yaml_text
 
 
@@ -82,8 +82,79 @@ def assert_embedded_run_record_summary() -> dict[str, object]:
     }
 
 
+def assert_runtime_repair_quotes_setup_notes() -> dict[str, object]:
+    yaml_text = """app:
+  description: Generated from a natural language requirement. Setup note: configure the OpenAI model provider/plugin in the workspace before running this workflow.
+  name: smoke
+kind: app
+version: 0.6.0
+"""
+    validation = validate_yaml_text(yaml_text).to_dict()
+    if validation.get("valid"):
+        raise AssertionError("fixture should reproduce the unquoted setup note parse failure")
+
+    repaired = stabilize_plain_scalar_colons(yaml_text)
+    repaired_validation = validate_yaml_text(repaired).to_dict()
+    if repaired_validation.get("valid") or repaired_validation.get("issues", [{}])[0].get("code") == "yaml_parse_error":
+        raise AssertionError(f"setup note should parse after stabilization: {repaired_validation}\n{repaired}")
+
+    if 'description: "Generated from a natural language requirement. Setup note:' not in repaired:
+        raise AssertionError(f"expected description to be quoted: {repaired}")
+
+    return {"name": "runtime_repair_quotes_setup_notes", "valid": True}
+
+
+def assert_runtime_repair_preserves_dependencies() -> dict[str, object]:
+    previous_yaml = """app:
+  description: smoke
+  mode: workflow
+  name: smoke
+dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai
+  current_identifier: null
+kind: app
+version: 0.6.0
+workflow: {}
+"""
+    repaired_yaml = """app:
+  description: smoke
+  mode: workflow
+  name: smoke
+dependencies: []
+kind: app
+version: 0.6.0
+workflow: {}
+"""
+    preserved, report = preserve_existing_dependencies(previous_yaml, repaired_yaml)
+    if not report.get("changed"):
+        raise AssertionError(f"expected dependency preservation to change YAML: {report}")
+    if "marketplace_plugin_unique_identifier: langgenius/openai" not in preserved:
+        raise AssertionError(f"expected openai dependency to be preserved: {preserved}")
+
+    preserved_again, report_again = preserve_existing_dependencies(previous_yaml, preserved)
+    if report_again.get("changed") or preserved_again != preserved:
+        raise AssertionError(f"dependency preservation should be idempotent: {report_again}")
+
+    return {"name": "runtime_repair_preserves_dependencies", "valid": True, "preserved": report.get("preserved")}
+
+
 def main() -> int:
-    print(json.dumps({"valid": True, "cases": [assert_embedded_run_record_summary()]}, ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            {
+                "valid": True,
+                "cases": [
+                    assert_embedded_run_record_summary(),
+                    assert_runtime_repair_quotes_setup_notes(),
+                    assert_runtime_repair_preserves_dependencies(),
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 

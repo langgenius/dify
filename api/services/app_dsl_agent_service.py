@@ -511,7 +511,7 @@ class DslAgentOrchestrator:
         emit(DSL_AGENT_STAGE_SOURCE_EVIDENCE, "completed", "Source evidence collected.")
 
         emit(DSL_AGENT_STAGE_RESOLVE_DEPENDENCIES, "running", "Resolving model and plugin dependencies.")
-        dependencies, warnings = self.resolve_dependencies(plan)
+        dependencies, warnings = self.resolve_dependencies(plan, source_evidence)
         emit(DSL_AGENT_STAGE_RESOLVE_DEPENDENCIES, "completed", "Dependency resolution completed.")
 
         emit(DSL_AGENT_STAGE_GENERATE, "running", "Generating Dify DSL YAML.")
@@ -680,13 +680,19 @@ class DslAgentOrchestrator:
             }
         return evidence
 
-    def resolve_dependencies(self, plan: dict) -> tuple[list[dict], list[str]]:
+    def resolve_dependencies(self, plan: dict, source_evidence: dict | None = None) -> tuple[list[dict], list[str]]:
         plugin_id = str(plan.get("plugin_id") or "").strip()
         resolve_dependencies = bool(plan.get("resolve_dependencies", True))
         warnings: list[str] = []
         dependencies = []
         if plugin_id:
-            dependency = self._resolve_marketplace_dependency(plugin_id, resolve_dependencies, warnings)
+            package_identity = self._package_identity_from_source_evidence(plugin_id, source_evidence or {})
+            dependency = self._resolve_marketplace_dependency(
+                plugin_id,
+                resolve_dependencies,
+                warnings,
+                package_identity=package_identity,
+            )
             if dependency:
                 dependencies.append(dependency)
         return dependencies, warnings
@@ -1675,7 +1681,12 @@ class DslAgentOrchestrator:
         }
 
     def _resolve_marketplace_dependency(
-        self, plugin_id: str, resolve_dependencies: bool, warnings: list[str]
+        self,
+        plugin_id: str,
+        resolve_dependencies: bool,
+        warnings: list[str],
+        *,
+        package_identity: str = "",
     ) -> dict | None:
         if resolve_dependencies:
             try:
@@ -1685,14 +1696,30 @@ class DslAgentOrchestrator:
             except Exception:
                 warnings.append(f"Could not resolve the latest marketplace package for {plugin_id}.")
 
+        identifier = package_identity or plugin_id
         return {
             "type": "marketplace",
             "value": {
-                "marketplace_plugin_unique_identifier": plugin_id,
-                "version": None,
+                "marketplace_plugin_unique_identifier": identifier,
             },
             "current_identifier": None,
         }
+
+    def _package_identity_from_source_evidence(self, plugin_id: str, source_evidence: dict) -> str:
+        plugin_evidence = source_evidence.get("plugin_evidence") if isinstance(source_evidence, dict) else None
+        if not isinstance(plugin_evidence, dict):
+            return ""
+        for key in ("model_provider_candidates", "official_candidates"):
+            candidates = plugin_evidence.get(key)
+            if not isinstance(candidates, list):
+                continue
+            for candidate in candidates:
+                if not isinstance(candidate, dict) or candidate.get("plugin_id") != plugin_id:
+                    continue
+                package_identity = str(candidate.get("package_identity") or "").strip()
+                if package_identity:
+                    return package_identity
+        return ""
 
     def _normalize_app_name(self, app_name: str | None, prompt: str) -> str:
         value = (app_name or "").strip()

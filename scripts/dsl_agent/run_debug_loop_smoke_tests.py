@@ -9,6 +9,7 @@ from typing import Any
 
 import debug_loop
 from debug_loop import (
+    align_yaml_dependencies_to_installed_plugins,
     align_yaml_dependencies_to_current_identifiers,
     collect_workflow_app_logs,
     cleanup_created_app,
@@ -330,6 +331,37 @@ kind: app
     return {"name": "dependency_alignment", "valid": True, "replacements": report.get("replacements")}
 
 
+def assert_installed_dependency_alignment() -> dict[str, Any]:
+    yaml_text = """dependencies:
+- type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.4.2
+  current_identifier: null
+kind: app
+"""
+    plugin_list = {
+        "plugins": [
+            {
+                "plugin_id": "langgenius/openai",
+                "plugin_unique_identifier": "langgenius/openai:0.0.19@installedhash",
+            }
+        ]
+    }
+    aligned, report = align_yaml_dependencies_to_installed_plugins(yaml_text, plugin_list)
+    if not report.get("changed"):
+        raise AssertionError(f"expected installed dependency alignment to change YAML: {report}")
+    if "langgenius/openai:0.0.19@installedhash" not in aligned:
+        raise AssertionError(f"expected installed identifier in aligned YAML: {aligned}")
+    if "langgenius/openai:0.4.2" in aligned:
+        raise AssertionError(f"stale package identity remained in aligned YAML: {aligned}")
+
+    aligned_again, report_again = align_yaml_dependencies_to_installed_plugins(aligned, plugin_list)
+    if report_again.get("changed") or aligned_again != aligned:
+        raise AssertionError(f"installed dependency alignment should be idempotent: {report_again}")
+
+    return {"name": "installed_dependency_alignment", "valid": True, "replacements": report.get("replacements")}
+
+
 def assert_cleanup_created_app() -> dict[str, Any]:
     client = FakeClient()
     disabled = cleanup_created_app(client=client, app_id="app-1", initial_app_id=None, enabled=False)  # type: ignore[arg-type]
@@ -404,6 +436,7 @@ def main() -> int:
         assert_post_success_lifecycle(),
         assert_post_success_arg_validation(),
         assert_dependency_alignment(),
+        assert_installed_dependency_alignment(),
         assert_cleanup_created_app(),
         assert_collect_workflow_app_logs(),
     ]

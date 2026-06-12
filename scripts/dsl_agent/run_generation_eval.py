@@ -158,13 +158,22 @@ def debug_loop_skip_reason(case: dict[str, Any], args: argparse.Namespace) -> st
     return None
 
 
+def console_client_from_args(args: argparse.Namespace) -> DifyConsoleClient:
+    return DifyConsoleClient(
+        console_base=args.console_base,
+        bearer_token=args.bearer_token,
+        csrf_token=args.csrf_token,
+        cookie_jar_path=args.cookie_jar,
+    )
+
+
 def bootstrap_rag_dataset(case_dir: Path, args: argparse.Namespace) -> dict[str, Any] | None:
     yaml_file = case_dir / "generated.yml"
     yaml_text = yaml_file.read_text()
     if RAG_DATASET_PLACEHOLDER not in yaml_text:
         return None
 
-    client = DifyConsoleClient(console_base=args.console_base, cookie_jar_path=args.cookie_jar)
+    client = console_client_from_args(args)
     dataset_name = f"dsl-agent-rag-{int(time.time()) % 1_000_000:06d}"
     report: dict[str, Any] = {
         "ok": False,
@@ -210,7 +219,7 @@ def bootstrap_rag_dataset(case_dir: Path, args: argparse.Namespace) -> dict[str,
 
 
 def console_preflight(args: argparse.Namespace) -> dict[str, Any]:
-    client = DifyConsoleClient(console_base=args.console_base, cookie_jar_path=args.cookie_jar)
+    client = console_client_from_args(args)
     return run_preflight_sequence(client)
 
 
@@ -260,7 +269,7 @@ def cleanup_rag_dataset(dataset_bootstrap: dict[str, Any] | None, args: argparse
     dataset_id = dataset_bootstrap.get("dataset_id")
     if not isinstance(dataset_id, str) or not dataset_id:
         return {"enabled": True, "ok": False, "reason": "Dataset bootstrap report did not include dataset_id."}
-    client = DifyConsoleClient(console_base=args.console_base, cookie_jar_path=args.cookie_jar)
+    client = console_client_from_args(args)
     try:
         result = client.delete_dataset(dataset_id)
         return {"enabled": True, "ok": True, "dataset_id": dataset_id, "result": result}
@@ -387,6 +396,10 @@ def run_debug_loop_for_case(
         "--output",
         str(report_path),
     ]
+    if args.bearer_token:
+        cmd.extend(["--bearer-token", args.bearer_token])
+    if args.csrf_token:
+        cmd.extend(["--csrf-token", args.csrf_token])
     if args.install_missing_dependencies:
         cmd.append("--install-missing-dependencies")
     if args.no_wait_plugin_install:
@@ -490,7 +503,18 @@ def run_case(case: dict[str, Any], args: argparse.Namespace, service_module: Any
     if case_dir:
         case_dir.mkdir(parents=True, exist_ok=True)
         (case_dir / "generated.yml").write_text(result.yaml_content)
+        (case_dir / "request.txt").write_text(request)
         write_json(case_dir / "metadata.json", metadata)
+        plan = metadata.get("plan") if isinstance(metadata.get("plan"), dict) else {}
+        if plan:
+            write_json(case_dir / "plan.json", plan)
+        source_evidence = metadata.get("source_evidence") if isinstance(metadata.get("source_evidence"), dict) else {}
+        plugin_evidence = source_evidence.get("plugin_evidence") if isinstance(source_evidence, dict) else {}
+        if isinstance(plugin_evidence, dict) and plugin_evidence:
+            write_json(case_dir / "plugin_evidence.json", plugin_evidence)
+        source_context = source_evidence.get("source_context") if isinstance(source_evidence, dict) else {}
+        if isinstance(source_context, dict) and source_context:
+            write_json(case_dir / "source_context.json", source_context)
 
     validation = metadata.get("validation") if isinstance(metadata.get("validation"), dict) else {}
     generation = metadata.get("generation") if isinstance(metadata.get("generation"), dict) else {}
@@ -585,6 +609,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT / "generation_eval_latest")
     parser.add_argument("--debug-loop", action="store_true", help="Import generated YAML and run draft debug loop.")
     parser.add_argument("--console-base", default=DEFAULT_CONSOLE_BASE)
+    parser.add_argument("--bearer-token", help="Existing console access token for debug-loop runs.")
+    parser.add_argument("--csrf-token", help="Explicit CSRF token for debug-loop write requests.")
     parser.add_argument("--cookie-jar", type=Path, default=DEFAULT_COOKIE_JAR)
     parser.add_argument("--inputs", help="Override all case inputs with a JSON object.")
     parser.add_argument("--debug-max-loops", type=int, default=2)

@@ -720,7 +720,24 @@ def test_debug_service_runs_draft_then_repairs_from_runtime_evidence(monkeypatch
     assert runtime_evidence_calls[0]["draft_run"]["summary"]["failed_nodes"][0]["node_type"] == "code"
 
 
-def test_generate_falls_back_to_plugin_id_when_marketplace_resolution_fails(monkeypatch):
+def test_generate_falls_back_to_package_identity_when_marketplace_resolution_fails(monkeypatch):
+    class FakePluginResolver:
+        def resolve(self, request: str, limit: int = 8):
+            return {
+                "resolution_policy": ["Prefer official Dify plugins."],
+                "official_candidates": [
+                    {
+                        "plugin_id": "langgenius/anthropic",
+                        "source": "official",
+                        "package_identity": "langgenius/anthropic:0.2.0",
+                        "exact_dependency_evidence": [],
+                    }
+                ],
+                "model_provider_candidates": [],
+                "extracted_template_candidates": [],
+                "official_template_links": [],
+            }
+
     def raise_error(_plugin_ids):
         raise RuntimeError("marketplace unavailable")
 
@@ -729,6 +746,7 @@ def test_generate_falls_back_to_plugin_id_when_marketplace_resolution_fails(monk
         "generate_latest_dependencies",
         raise_error,
     )
+    monkeypatch.setattr(DslAgentOrchestrator, "_get_plugin_resolver", lambda self: FakePluginResolver())
 
     result = AppDslAgentService().generate(
         AppDslAgentGenerateArgs(
@@ -743,8 +761,7 @@ def test_generate_falls_back_to_plugin_id_when_marketplace_resolution_fails(monk
         {
             "type": "marketplace",
             "value": {
-                "marketplace_plugin_unique_identifier": "langgenius/anthropic",
-                "version": None,
+                "marketplace_plugin_unique_identifier": "langgenius/anthropic:0.2.0",
             },
             "current_identifier": None,
         }

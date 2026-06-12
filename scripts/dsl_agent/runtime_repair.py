@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import re
@@ -9,9 +10,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
 from openai import OpenAI
 
-from dependency_normalizer import normalize_yaml_text
+from dependency_normalizer import dependency_plugin_id, normalize_yaml_text
 from prompts import RUNTIME_REPAIR_SYSTEM_PROMPT, RUNTIME_REPAIR_USER_TEMPLATE
 from shape_normalizer import normalize_shape_yaml_text
 from validator import validate_yaml_text
@@ -43,6 +45,72 @@ def extract_yaml(text: str) -> str:
     if fenced:
         stripped = fenced.group(1).strip()
     return stripped + "\n"
+
+
+def stabilize_plain_scalar_colons(yaml_text: str) -> str:
+    """Quote common LLM-emitted plain scalars that contain `: ` and break YAML parsing."""
+    lines: list[str] = []
+    changed = False
+    scalar_line = re.compile(r"^(?P<prefix>\s*(?:-\s*)?[A-Za-z_][\w-]*:\s+)(?P<value>.+?)(?P<newline>\r?\n)?$")
+    for line in yaml_text.splitlines(keepends=True):
+        match = scalar_line.match(line)
+        if not match:
+            lines.append(line)
+            continue
+
+        value = match.group("value").rstrip()
+        stripped = value.strip()
+        if (
+            not stripped
+            or ": " not in stripped
+            or stripped.startswith(("'", '"', "{", "[", "|", ">", "!", "&", "*"))
+        ):
+            lines.append(line)
+            continue
+
+        newline = match.group("newline") or ""
+        lines.append(f"{match.group('prefix')}{json.dumps(stripped, ensure_ascii=False)}{newline}")
+        changed = True
+
+    return "".join(lines) if changed else yaml_text
+
+
+def preserve_existing_dependencies(previous_yaml: str, repaired_yaml: str) -> tuple[str, dict[str, Any]]:
+    report: dict[str, Any] = {"changed": False, "preserved": [], "errors": []}
+    try:
+        previous = yaml.safe_load(previous_yaml)
+        repaired = yaml.safe_load(repaired_yaml)
+    except yaml.YAMLError as exc:
+        report["errors"].append({"code": "yaml_parse_failed", "message": str(exc)})
+        return repaired_yaml, report
+
+    if not isinstance(previous, dict) or not isinstance(repaired, dict):
+        return repaired_yaml, report
+
+    previous_dependencies = previous.get("dependencies")
+    repaired_dependencies = repaired.get("dependencies")
+    if not isinstance(previous_dependencies, list):
+        return repaired_yaml, report
+    if repaired_dependencies is None:
+        repaired_dependencies = []
+        repaired["dependencies"] = repaired_dependencies
+    if not isinstance(repaired_dependencies, list):
+        return repaired_yaml, report
+
+    present_plugin_ids = {plugin_id for plugin_id in (dependency_plugin_id(item) for item in repaired_dependencies) if plugin_id}
+    for dependency in previous_dependencies:
+        plugin_id = dependency_plugin_id(dependency)
+        if not plugin_id or plugin_id in present_plugin_ids:
+            continue
+        repaired_dependencies.append(copy.deepcopy(dependency))
+        present_plugin_ids.add(plugin_id)
+        report["preserved"].append({"plugin_id": plugin_id})
+
+    if not report["preserved"]:
+        return repaired_yaml, report
+
+    report["changed"] = True
+    return yaml.safe_dump(repaired, sort_keys=False, allow_unicode=True), report
 
 
 def chat(
@@ -241,7 +309,9 @@ def repair_yaml(
         ),
         temperature=0.1,
     )
-    return extract_yaml(content)
+    stabilized_yaml = stabilize_plain_scalar_colons(extract_yaml(content))
+    preserved_yaml, _preservation_report = preserve_existing_dependencies(yaml_text, stabilized_yaml)
+    return preserved_yaml
 
 
 def default_output_path(run_dir: Path, attempt: int) -> Path:

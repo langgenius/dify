@@ -113,11 +113,40 @@ def assert_repairs_invalid_dependency_type() -> dict[str, Any]:
     }
 
 
+def assert_upgrades_bare_model_dependency() -> dict[str, Any]:
+    doc = deepcopy(llm_workflow_doc())
+    doc["dependencies"] = [
+        {
+            "current_identifier": None,
+            "type": "marketplace",
+            "value": {"marketplace_plugin_unique_identifier": "langgenius/openai"},
+        }
+    ]
+    normalized, normalizer_report = normalize_yaml_text(yaml.safe_dump(doc, sort_keys=False), plugin_evidence())
+    if OPENAI_PACKAGE_IDENTITY not in normalized:
+        raise AssertionError(f"expected bare dependency to be upgraded: {normalized}")
+    normalized_items = normalizer_report.get("normalized")
+    if not isinstance(normalized_items, list) or not any(
+        item.get("type") == "dependency_identifier_upgraded" for item in normalized_items
+    ):
+        raise AssertionError(f"expected dependency upgrade report: {normalizer_report}")
+    validation = validate_yaml_text(normalized).to_dict()
+    if not validation["valid"]:
+        raise AssertionError(f"upgraded dependency should validate; issues={validation['issues']}")
+    return {
+        "name": "bare_model_dependency_upgraded",
+        "valid": validation["valid"],
+        "issues": validation["issues"],
+        "normalizer_report": normalizer_report,
+    }
+
+
 def main() -> int:
     cases = [
         assert_normalizes("tool_dependency", base_workflow_doc(), {"langgenius/dify-gmail"}),
         assert_normalizes("model_provider_dependency", llm_workflow_doc(), {"langgenius/openai"}),
         assert_repairs_invalid_dependency_type(),
+        assert_upgrades_bare_model_dependency(),
         assert_skips_without_evidence(),
     ]
     print(json.dumps({"valid": True, "cases": cases}, ensure_ascii=False, indent=2))  # noqa: T201
