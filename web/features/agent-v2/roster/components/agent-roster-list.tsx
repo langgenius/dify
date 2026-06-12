@@ -31,8 +31,6 @@ type AgentRosterListProps = {
   onLoadMore: () => void
 }
 
-const getSourceLabelKey = (source: AgentRosterResponse['source']) => `roster.sources.${source}` as const
-
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 
 function AgentRosterSkeleton() {
@@ -95,8 +93,8 @@ function AgentRosterItem({
   const updatedAt = agent.updated_at != null
     ? formatTime(agent.updated_at, t('roster.dateTimeFormat'))
     : null
-  const sourceLabel = t(getSourceLabelKey(agent.source))
   const referenceCount = agent.published_reference_count ?? 0
+  const usageStatus = referenceCount > 0 ? 'inUse' : 'draft'
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
   const iconType = imageUrl ? 'image' : agent.icon_type
 
@@ -126,7 +124,7 @@ function AgentRosterItem({
               {agent.name}
             </h2>
             <p className="mt-1.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-              {agent.role || sourceLabel}
+              {agent.role}
             </p>
           </div>
         </div>
@@ -153,7 +151,7 @@ function AgentRosterItem({
       <div className="absolute top-0 right-0 flex h-5 items-start overflow-hidden">
         <div className="h-5 w-3 bg-background-section-burn [clip-path:polygon(0_0,100%_0,100%_100%)]" />
         <div className="flex h-5 items-center bg-background-section-burn pr-2 pl-0.5 system-2xs-semibold-uppercase text-text-tertiary">
-          {t(`roster.status.${agent.status}`)}
+          {t(`roster.usageStatus.${usageStatus}`)}
         </div>
       </div>
       <div

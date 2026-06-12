@@ -258,5 +258,7 @@
   "roster.tabs.human": "Human",
   "roster.tabsLabel": "Roster type",
   "roster.updateFailed": "Failed to update agent. Check the fields and try again.",
-  "roster.updateSuccess": "Agent updated."
+  "roster.updateSuccess": "Agent updated.",
+  "roster.usageStatus.draft": "Draft",
+  "roster.usageStatus.inUse": "In use"
 }

@@ -187,6 +187,29 @@ describe('agent/panel', () => {
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
   })
 
+  it('does not fall back to the roster agent description when role is empty', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_roster: {
+            id: 'agent-1',
+            name: 'Nadia',
+            description: 'Clarification Drafter',
+            icon: 'N',
+            icon_background: '#E9D7FE',
+            icon_type: 'emoji',
+            role: '',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('Nadia')).toBeInTheDocument()
+    expect(screen.queryByText('Clarification Drafter')).not.toBeInTheDocument()
+  })
+
   it('updates agent task and opens prompt insertion shortcuts', () => {
     render(
       <AgentV2Panel

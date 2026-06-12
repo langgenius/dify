@@ -258,5 +258,7 @@
   "roster.tabs.human": "人工成员",
   "roster.tabsLabel": "Roster 类型",
   "roster.updateFailed": "智能体更新失败。请检查字段后重试。",
-  "roster.updateSuccess": "智能体已更新。"
+  "roster.updateSuccess": "智能体已更新。",
+  "roster.usageStatus.draft": "草稿",
+  "roster.usageStatus.inUse": "使用中"
 }

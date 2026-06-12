@@ -96,7 +96,7 @@ function AgentRosterDrawer({
                         <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />
                       </div>
                       <p className="truncate system-xs-regular text-text-tertiary">
-                        {agent.role || agent.description}
+                        {agent.role}
                       </p>
                     </div>
                   </div>
@@ -193,7 +193,7 @@ export function AgentRosterField({
             {agent.name}
           </span>
           <span className="truncate system-xs-regular text-text-tertiary">
-            {agent.role || agent.description}
+            {agent.role}
           </span>
         </span>
         <span className="flex shrink-0 items-center text-text-tertiary">
