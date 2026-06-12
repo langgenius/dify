@@ -61,6 +61,7 @@ const InstallPluginDropdown = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const buttonLabel = triggerLabel ?? t('installPlugin', { ns: 'plugin' })
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -151,6 +152,8 @@ const InstallPluginDropdown = ({
             <Button
               variant={triggerVariant}
               disabled={disabled}
+              title={buttonLabel}
+              aria-label={buttonLabel}
               className={cn(
                 'size-full p-2',
                 triggerClassName,
@@ -162,7 +165,7 @@ const InstallPluginDropdown = ({
           <>
             <RiAddCircleFill className="size-4 shrink-0" />
             <span className={cn(showTriggerArrow ? 'pl-1' : 'min-w-0 flex-1 px-0.5 text-left')}>
-              {triggerLabel ?? t('installPlugin', { ns: 'plugin' })}
+              {buttonLabel}
             </span>
             {showTriggerArrow && <RiArrowDownSLine className="ml-1 size-4" />}
           </>

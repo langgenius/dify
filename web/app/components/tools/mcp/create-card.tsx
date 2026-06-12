@@ -33,6 +33,7 @@ function useMCPCreateAction({ handleCreate }: Props) {
 
 export function NewMCPButton({ handleCreate }: Props) {
   const { t } = useTranslation()
+  const addMCPServerLabel = t('mcp.create.cardTitle', { ns: 'tools' })
   const {
     create,
     isCurrentWorkspaceManager,
@@ -49,9 +50,11 @@ export function NewMCPButton({ handleCreate }: Props) {
         variant="secondary"
         className="gap-0.5 px-3!"
         onClick={() => setShowModal(true)}
+        title={addMCPServerLabel}
+        aria-label={addMCPServerLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-        {t('mcp.create.cardTitle', { ns: 'tools' })}
+        {addMCPServerLabel}
       </Button>
       {showModal && (
         <MCPModal

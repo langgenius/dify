@@ -66,7 +66,7 @@ export function IntegrationSidebarNavItem({
         <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
           {renderIcon(item.icon, item.iconClassName)}
         </span>
-        <span className="min-w-0 truncate">{item.label}</span>
+        <span className="min-w-0 truncate" title={item.label}>{item.label}</span>
       </div>
     )
   }
@@ -76,7 +76,7 @@ export function IntegrationSidebarNavItem({
       <span aria-hidden className="flex size-5 shrink-0 items-center justify-center">
         {renderIcon(icon, item.iconClassName)}
       </span>
-      <span className="min-w-0 truncate">{item.label}</span>
+      <span className="min-w-0 truncate" title={item.label}>{item.label}</span>
     </>
   )
 

@@ -157,6 +157,7 @@ export function WorkspaceSwitcher({
             type="button"
             key={workspace.id}
             aria-current={workspace.current ? 'true' : undefined}
+            title={workspace.name}
             className={cn(
               'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
               workspace.current && 'bg-state-base-hover',

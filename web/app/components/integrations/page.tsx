@@ -59,20 +59,24 @@ const DescriptionWithLearnMore = ({
   children,
   href,
   label,
-}: DescriptionWithLearnMoreProps) => (
-  <span className="inline-flex min-w-0 items-center gap-0.5">
-    <span className="truncate">{children}</span>
-    <Link
-      className="inline-flex shrink-0 items-center text-text-accent"
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      {label}
-      <span aria-hidden className="i-ri-external-link-line size-3" />
-    </Link>
-  </span>
-)
+}: DescriptionWithLearnMoreProps) => {
+  const title = typeof children === 'string' ? children : undefined
+
+  return (
+    <span className="inline-flex min-w-0 items-center gap-0.5">
+      <span className="truncate" title={title}>{children}</span>
+      <Link
+        className="inline-flex shrink-0 items-center text-text-accent"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {label}
+        <span aria-hidden className="i-ri-external-link-line size-3" />
+      </Link>
+    </span>
+  )
+}
 
 function ToolsDisclosureIcon({ className }: { className?: string }) {
   return (

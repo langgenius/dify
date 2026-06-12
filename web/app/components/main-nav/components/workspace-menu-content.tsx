@@ -25,10 +25,12 @@ export function WorkspaceMenuItemContent({
   label: ReactNode
   trailing?: ReactNode
 }) {
+  const labelTitle = typeof label === 'string' ? label : undefined
+
   return (
     <>
       <span aria-hidden className="flex h-4 w-4 shrink-0 items-center justify-center text-text-tertiary">{icon}</span>
-      <span className="min-w-0 flex-1 truncate text-left system-md-regular text-text-secondary">{label}</span>
+      <span className="min-w-0 flex-1 truncate text-left system-md-regular text-text-secondary" title={labelTitle}>{label}</span>
       {trailing && <span className="flex h-4 w-4 shrink-0 items-center justify-center">{trailing}</span>}
     </>
   )
