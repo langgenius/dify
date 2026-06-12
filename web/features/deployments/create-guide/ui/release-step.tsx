@@ -1,14 +1,17 @@
 'use client'
 
+import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
+  continueFromReleaseAtom,
   dslDefaultAppNameAtom,
   hasInstanceNameConflictAtom,
   instanceDescriptionAtom,
   instanceNameAtom,
   methodAtom,
+  releaseCanGoNextAtom,
   releaseDescriptionAtom,
   releaseNameAtom,
   selectedAppAtom,
@@ -16,11 +19,30 @@ import {
   setInstanceNameAtom,
   setReleaseDescriptionAtom,
   setReleaseNameAtom,
+  stepAtom,
 } from '@/features/deployments/create-guide/state'
+import { StepShell } from './layout'
 
 const releaseTextareaClassName = 'min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
 
-export function DeploymentInfoSection() {
+export function ReleaseStepContent() {
+  const { t } = useTranslation('deployments')
+
+  return (
+    <StepShell
+      title={t('createGuide.release.title')}
+      description={t('createGuide.release.description')}
+      hideHeader
+    >
+      <div className="flex flex-col gap-6">
+        <DeploymentInfoSection />
+        <InitialReleaseSection />
+      </div>
+    </StepShell>
+  )
+}
+
+function DeploymentInfoSection() {
   const { t } = useTranslation('deployments')
 
   return (
@@ -34,7 +56,7 @@ export function DeploymentInfoSection() {
   )
 }
 
-export function InitialReleaseSection() {
+function InitialReleaseSection() {
   const { t } = useTranslation('deployments')
 
   return (
@@ -165,5 +187,23 @@ function OptionalFieldLabel({ children, htmlFor }: {
       </label>
       <span className="system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
     </div>
+  )
+}
+
+export function ReleaseActionButtons() {
+  const { t } = useTranslation('deployments')
+  const canGoNext = useAtomValue(releaseCanGoNextAtom)
+  const setStep = useSetAtom(stepAtom)
+  const continueFromRelease = useSetAtom(continueFromReleaseAtom)
+
+  return (
+    <>
+      <Button type="button" variant="secondary" onClick={() => setStep('source')}>
+        {t('createGuide.actions.back')}
+      </Button>
+      <Button type="button" variant="primary" disabled={!canGoNext} onClick={continueFromRelease}>
+        {t('createGuide.actions.next')}
+      </Button>
+    </>
   )
 }
