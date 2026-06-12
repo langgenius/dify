@@ -208,12 +208,13 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
                     try:
-                        if isinstance(scratchpad.action.action_input, dict):
-                            final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
-                        elif isinstance(scratchpad.action.action_input, str):
-                            final_answer = scratchpad.action.action_input
-                        else:
-                            final_answer = f"{scratchpad.action.action_input}"
+                        match scratchpad.action.action_input:
+                            case dict():
+                                final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
+                            case str():
+                                final_answer = scratchpad.action.action_input
+                            case _:
+                                final_answer = f"{scratchpad.action.action_input}"
                     except TypeError:
                         final_answer = f"{scratchpad.action.action_input}"
                 else:

@@ -3,489 +3,485 @@ User-scoped programmatic API (bearer auth)
 
 ## Version: 1.0
 
-### Security
-**Bearer**  
-
-| apiKey | *API Key* |
-| ------ | --------- |
-| Description | Type: Bearer {your-api-key} |
-| In | header |
-| Name | Authorization |
+### Available authorizations
+#### Bearer (API Key Authentication)
+Type: Bearer {your-api-key}  
+**Name:** Authorization  
+**In:** header  
 
 ---
 ## openapi
 User-scoped operations
 
-### /_health
-
-#### GET
-##### Responses
+### [GET] /_health
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Health check | [HealthResponse](#healthresponse) |
+| 200 | Health check | **application/json**: [HealthResponse](#healthresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /_version
-
-#### GET
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Server version | [ServerVersionResponse](#serverversionresponse) |
-
-### /account
-
-#### GET
-##### Responses
+### [GET] /_version
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Account info | [AccountResponse](#accountresponse) |
+| 200 | Server version | **application/json**: [ServerVersionResponse](#serverversionresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /account/sessions
+### [GET] /account
+#### Responses
 
-#### GET
-##### Parameters
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Account info | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /account/sessions
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| limit | query |  | No | integer |
-| page | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 100 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Session list | [SessionListResponse](#sessionlistresponse) |
-
-### /account/sessions/self
-
-#### DELETE
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Session revoked | [RevokeResponse](#revokeresponse) |
+| 200 | Session list | **application/json**: [SessionListResponse](#sessionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /account/sessions/{session_id}
+### [DELETE] /account/sessions/self
+#### Responses
 
-#### DELETE
-##### Parameters
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Session revoked | **application/json**: [RevokeResponse](#revokeresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /account/sessions/{session_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | session_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Session revoked | [RevokeResponse](#revokeresponse) |
+| 200 | Session revoked | **application/json**: [RevokeResponse](#revokeresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps
-
-#### GET
-##### Parameters
+### [GET] /apps
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| limit | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 20 |
 | mode | query |  | No | string |
 | name | query |  | No | string |
-| page | query |  | No | integer |
+| page | query |  | No | integer, <br>**Default:** 1 |
 | tag | query |  | No | string |
 | workspace_id | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | App list | [AppListResponse](#applistresponse) |
+| 200 | App list | **application/json**: [AppListResponse](#applistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps/{app_id}/check-dependencies
-
-#### GET
-##### Parameters
+### [GET] /apps/{app_id}/check-dependencies
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked | [CheckDependenciesResult](#checkdependenciesresult) |
+| 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps/{app_id}/describe
-
-#### GET
-##### Parameters
+### [GET] /apps/{app_id}/describe
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
 | fields | query |  | No | string |
+| app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | App description | [AppDescribeResponse](#appdescriberesponse) |
+| 200 | App description | **application/json**: [AppDescribeResponse](#appdescriberesponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps/{app_id}/export
-
-#### GET
-##### Parameters
+### [GET] /apps/{app_id}/export
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
 | include_secret | query | Include encrypted secret values in the exported DSL | No | boolean |
 | workflow_id | query | Export a specific workflow version instead of the current draft | No | string |
+| app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Export successful | [AppDslExportResponse](#appdslexportresponse) |
+| 200 | Export successful | **application/json**: [AppDslExportResponse](#appdslexportresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps/{app_id}/files/upload
-
-#### POST
-##### Description
-
+### [POST] /apps/{app_id}/files/upload
 Upload a file to use as an input variable when running the app
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
+| 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
 | 400 | Bad request — no file or filename missing |  |
 | 401 | Unauthorized — invalid or expired bearer token |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type or blocked extension |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps/{app_id}/form/human_input/{form_token}
-
-#### GET
-##### Parameters
+### [GET] /apps/{app_id}/form/human_input/{form_token}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | form_token | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Form definition |
 
-#### POST
-##### Parameters
+### [POST] /apps/{app_id}/form/human_input/{form_token}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | form_token | path |  | Yes | string |
-| payload | body |  | Yes | [HumanInputFormSubmitPayload](#humaninputformsubmitpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Form submitted | [FormSubmitResponse](#formsubmitresponse) |
+| 200 | Form submitted | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /apps/{app_id}/run
-
-#### POST
-##### Parameters
+### [POST] /apps/{app_id}/run
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
-| payload | body |  | Yes | [AppRunRequest](#apprunrequest) |
 
-##### Responses
+#### Request Body
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Run result (SSE stream) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppRunRequest](#apprunrequest)<br> |
 
-### /apps/{app_id}/tasks/{task_id}/events
+#### Responses
 
-#### GET
-##### Parameters
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run result (SSE stream) |  |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/tasks/{task_id}/events
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | SSE event stream |
 
-### /apps/{app_id}/tasks/{task_id}/stop
-
-#### POST
-##### Parameters
+### [POST] /apps/{app_id}/tasks/{task_id}/stop
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Task stopped | [TaskStopResponse](#taskstopresponse) |
+| 200 | Task stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /oauth/device/approve
+### [POST] /oauth/device/approve
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DeviceMutateRequest](#devicemutaterequest)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DeviceMutateRequest](#devicemutaterequest) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Approved | [DeviceMutateResponse](#devicemutateresponse) |
-
-### /oauth/device/code
-
-#### POST
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DeviceCodeRequest](#devicecoderequest) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Device code created | [DeviceCodeResponse](#devicecoderesponse) |
+| 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
 
-### /oauth/device/deny
+### [POST] /oauth/device/code
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DeviceCodeRequest](#devicecoderequest)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DeviceMutateRequest](#devicemutaterequest) |
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Denied | [DeviceMutateResponse](#devicemutateresponse) |
+| 200 | Device code created | **application/json**: [DeviceCodeResponse](#devicecoderesponse)<br> |
 
-### /oauth/device/lookup
+### [POST] /oauth/device/deny
+#### Request Body
 
-#### GET
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DeviceMutateRequest](#devicemutaterequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+
+### [GET] /oauth/device/lookup
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | user_code | query |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Device lookup result | [DeviceLookupResponse](#devicelookupresponse) |
+| 200 | Device lookup result | **application/json**: [DeviceLookupResponse](#devicelookupresponse)<br> |
 
-### /oauth/device/token
+### [POST] /oauth/device/token
+#### Request Body
 
-#### POST
-##### Parameters
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DevicePollRequest](#devicepollrequest)<br> |
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [DevicePollRequest](#devicepollrequest) |
-
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /permitted-external-apps
-
-#### GET
-##### Parameters
+### [GET] /permitted-external-apps
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| limit | query |  | No | integer |
+| limit | query |  | No | integer, <br>**Default:** 20 |
 | mode | query |  | No | string |
 | name | query |  | No | string |
-| page | query |  | No | integer |
+| page | query |  | No | integer, <br>**Default:** 1 |
 
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Permitted external apps list | [PermittedExternalAppsListResponse](#permittedexternalappslistresponse) |
-
-### /workspaces
-
-#### GET
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workspace list | [WorkspaceListResponse](#workspacelistresponse) |
+| 200 | Permitted external apps list | **application/json**: [PermittedExternalAppsListResponse](#permittedexternalappslistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /workspaces/{workspace_id}
+### [GET] /workspaces
+#### Responses
 
-#### GET
-##### Parameters
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace list | **application/json**: [WorkspaceListResponse](#workspacelistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | workspace_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workspace detail | [WorkspaceDetailResponse](#workspacedetailresponse) |
+| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /workspaces/{workspace_id}/apps/imports
-
-#### POST
-##### Parameters
+### [POST] /workspaces/{workspace_id}/apps/imports
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | workspace_id | path |  | Yes | string |
-| payload | body |  | Yes | [AppDslImportPayload](#appdslimportpayload) |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppDslImportPayload](#appdslimportpayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import completed | [Import](#import) |
-| 202 | Import pending confirmation | [Import](#import) |
-| 400 | Import failed | [Import](#import) |
+| 200 | Import completed | **application/json**: [Import](#import)<br> |
+| 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /workspaces/{workspace_id}/apps/imports/{import_id}/confirm
-
-#### POST
-##### Parameters
+### [POST] /workspaces/{workspace_id}/apps/imports/{import_id}/confirm
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | import_id | path |  | Yes | string |
 | workspace_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import confirmed | [Import](#import) |
-| 400 | Import failed | [Import](#import) |
+| 200 | Import confirmed | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /workspaces/{workspace_id}/members
+### [GET] /workspaces/{workspace_id}/members
+#### Parameters
 
-#### GET
-##### Parameters
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Member list | **application/json**: [MemberListResponse](#memberlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/members
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | workspace_id | path |  | Yes | string |
-| limit | query |  | No | integer |
-| page | query |  | No | integer |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MemberInvitePayload](#memberinvitepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Member list | [MemberListResponse](#memberlistresponse) |
+| 201 | Member invited | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-#### POST
-##### Parameters
+### [DELETE] /workspaces/{workspace_id}/members/{member_id}
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string |
 | workspace_id | path |  | Yes | string |
-| payload | body |  | Yes | [MemberInvitePayload](#memberinvitepayload) |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Member invited | [MemberInviteResponse](#memberinviteresponse) |
+| 200 | Member removed | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /workspaces/{workspace_id}/members/{member_id}
-
-#### DELETE
-##### Parameters
+### [PUT] /workspaces/{workspace_id}/members/{member_id}/role
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | member_id | path |  | Yes | string |
 | workspace_id | path |  | Yes | string |
 
-##### Responses
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MemberRoleUpdatePayload](#memberroleupdatepayload)<br> |
+
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Member removed | [MemberActionResponse](#memberactionresponse) |
+| 200 | Role updated | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### /workspaces/{workspace_id}/members/{member_id}/role
-
-#### PUT
-##### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| member_id | path |  | Yes | string |
-| workspace_id | path |  | Yes | string |
-| payload | body |  | Yes | [MemberRoleUpdatePayload](#memberroleupdatepayload) |
-
-##### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Role updated | [MemberActionResponse](#memberactionresponse) |
-
-### /workspaces/{workspace_id}/switch
-
-#### POST
-##### Parameters
+### [POST] /workspaces/{workspace_id}/switch
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | workspace_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workspace detail | [WorkspaceDetailResponse](#workspacedetailresponse) |
+| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ---
-### Models
+### Schemas
 
 #### AccountPayload
 
@@ -504,7 +500,7 @@ Upload a file to use as an input variable when running the app
 | subject_email | string |  | No |
 | subject_issuer | string |  | No |
 | subject_type | string |  | Yes |
-| workspaces | [ [WorkspacePayload](#workspacepayload) ] |  | No |
+| workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
 #### AppDescribeInfo
 
@@ -517,7 +513,7 @@ Upload a file to use as an input variable when running the app
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | service_api_enabled | boolean |  | Yes |
-| tags | [ [TagItem](#tagitem) ] |  | No |
+| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 
 #### AppDescribeQuery
@@ -566,7 +562,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| mode | string | Import mode: yaml-content or yaml-url<br>*Enum:* `"yaml-content"`, `"yaml-url"` | Yes |
+| mode | string, <br>**Available values:** "yaml-content", "yaml-url" | Import mode: yaml-content or yaml-url<br>*Enum:* `"yaml-content"`, `"yaml-url"` | Yes |
 | name | string | Override the app name from the DSL | No |
 | yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
 | yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
@@ -580,7 +576,7 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ] |  | No |
+| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 
 #### AppListQuery
 
@@ -588,10 +584,10 @@ mode is a closed enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 | mode | [AppMode](#appmode) |  | No |
 | name | string |  | No |
-| page | integer |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 | tag | string |  | No |
 | workspace_id | string |  | Yes |
 
@@ -614,7 +610,7 @@ mode is a closed enum.
 | id | string |  | Yes |
 | mode | [AppMode](#appmode) |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ] |  | No |
+| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -629,7 +625,7 @@ mode is a closed enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate_name | boolean |  | No |
+| auto_generate_name | boolean, <br>**Default:** true |  | No |
 | conversation_id | string |  | No |
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
@@ -693,6 +689,28 @@ mode is a closed enum.
 | client_id | string |  | Yes |
 | device_code | string |  | Yes |
 
+#### ErrorBody
+
+Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
+generated client schema stays an open enum — old CLIs keep parsing when a
+future server adds a code. Formatter tests pin emitted values to the enum.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | [ [ErrorDetail](#errordetail) ] |  | No |
+| hint | string |  | No |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### ErrorDetail
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| loc | [  ], <br>**Default:**  |  | No |
+| msg | string |  | Yes |
+| type | string |  | Yes |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -752,7 +770,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string |  | No |
+| current_dsl_version | string, <br>**Default:** 0.6.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
@@ -781,14 +799,14 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | No |
+| result | string, <br>**Default:** success |  | No |
 
 #### MemberInvitePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
-| role | string | *Enum:* `"admin"`, `"normal"` | Yes |
+| role | string, <br>**Available values:** "admin", "normal" | *Enum:* `"admin"`, `"normal"` | Yes |
 
 #### MemberInviteResponse
 
@@ -797,7 +815,7 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | email | string |  | Yes |
 | invite_url | string |  | Yes |
 | member_id | string |  | Yes |
-| result | string |  | No |
+| result | string, <br>**Default:** success |  | No |
 | role | string |  | Yes |
 | tenant_id | string |  | Yes |
 
@@ -807,8 +825,8 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### MemberListResponse
 
@@ -835,14 +853,20 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| role | string | *Enum:* `"admin"`, `"normal"` | Yes |
+| role | string, <br>**Available values:** "admin", "normal" | *Enum:* `"admin"`, `"normal"` | Yes |
 
 #### MessageMetadata
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| retriever_resources | [ object ] |  | No |
+| retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
+
+#### OpenApiErrorCode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpenApiErrorCode | string |  |  |
 
 #### Package
 
@@ -857,10 +881,10 @@ Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 | mode | [AppMode](#appmode) |  | No |
 | name | string |  | No |
-| page | integer |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### PermittedExternalAppsListResponse
 
@@ -892,7 +916,7 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| edition | string | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
+| edition | string, <br>**Available values:** "CLOUD", "SELF_HOSTED" | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
 | version | string |  | Yes |
 
 #### SessionListQuery
@@ -901,8 +925,8 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | No |
-| page | integer |  | No |
+| limit | integer, <br>**Default:** 100 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
 
 #### SessionListResponse
 

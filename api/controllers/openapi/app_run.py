@@ -8,7 +8,14 @@ from contextlib import contextmanager
 from typing import Any
 
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, HTTPException, InternalServerError, NotFound, UnprocessableEntity
+from werkzeug.exceptions import (
+    BadRequest,
+    HTTPException,
+    InternalServerError,
+    NotFound,
+    TooManyRequests,
+    UnprocessableEntity,
+)
 
 import services
 from controllers.openapi import openapi_ns
@@ -29,6 +36,7 @@ from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpErr
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
+    AppInvokeQuotaExceededError,
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
@@ -71,6 +79,11 @@ def _translate_service_errors() -> Iterator[None]:
         raise ProviderQuotaExceededError()
     except ModelCurrentlyNotSupportError:
         raise ProviderModelCurrentlyNotSupportError()
+    except AppInvokeQuotaExceededError:
+        # App concurrency limit. Without this it falls through to the bare `except Exception`
+        # below and surfaces as a 500. Render as the canonical 429 (code "too_many_requests");
+        # the source message is dropped since it carries internal detail (client_id / limits).
+        raise TooManyRequests()
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description)
     except InvokeError as e:

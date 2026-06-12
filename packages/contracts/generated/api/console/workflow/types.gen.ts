@@ -18,7 +18,7 @@ export type PausedNodeResponse = {
 export type HumanInputPauseTypeResponse = {
   backstage_input_url?: string | null
   form_id: string
-  type: string
+  type: 'human_input'
 }
 
 export type GetWorkflowByWorkflowRunIdEventsData = {

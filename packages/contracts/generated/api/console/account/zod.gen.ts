@@ -21,7 +21,7 @@ export const zAccountAvatarPayload = z.object({
  */
 export const zAccount = z.object({
   avatar: z.string().nullish(),
-  avatar_url: z.string().readonly().nullable(),
+  avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
