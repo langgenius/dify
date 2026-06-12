@@ -18,7 +18,7 @@ export const zRecommendedAppInfoResponse = z.object({
  * RecommendedAppResponse
  */
 export const zRecommendedAppResponse = z.object({
-  app: zRecommendedAppInfoResponse.optional(),
+  app: zRecommendedAppInfoResponse.nullish(),
   app_id: z.string(),
   can_trial: z.boolean().nullish(),
   categories: z.array(z.string()).optional(),

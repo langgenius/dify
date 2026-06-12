@@ -8,7 +8,7 @@ import * as z from 'zod'
 export const zHumanInputPauseTypeResponse = z.object({
   backstage_input_url: z.string().nullish(),
   form_id: z.string(),
-  type: z.string(),
+  type: z.literal('human_input'),
 })
 
 /**
