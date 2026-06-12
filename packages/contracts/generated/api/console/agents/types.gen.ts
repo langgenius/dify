@@ -19,6 +19,7 @@ export type RosterAgentCreatePayload = {
   icon_background?: string | null
   icon_type?: AgentIconType
   name: string
+  role?: string
   version_note?: string | null
 }
 
@@ -37,6 +38,10 @@ export type AgentRosterResponse = {
   icon_type?: AgentIconType
   id: string
   name: string
+  published_node_reference_count?: number
+  published_reference_count?: number
+  published_references?: Array<AgentPublishedReferenceResponse>
+  role?: string
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
@@ -60,6 +65,7 @@ export type RosterAgentUpdatePayload = {
   icon_background?: string | null
   icon_type?: AgentIconType
   name?: string | null
+  role?: string | null
 }
 
 export type AgentConfigSnapshotListResponse = {
@@ -108,6 +114,15 @@ export type AgentConfigSnapshotSummaryResponse = {
 
 export type AgentKind = 'dify_agent'
 
+export type AgentPublishedReferenceResponse = {
+  app_id: string
+  app_mode: string
+  app_name: string
+  node_ids?: Array<string>
+  workflow_id: string
+  workflow_version: string
+}
+
 export type AgentScope = 'roster' | 'workflow_only'
 
 export type AgentSource = 'agent_app' | 'imported' | 'system' | 'workflow'
@@ -132,6 +147,10 @@ export type AgentInviteOptionResponse = {
   in_current_workflow_count?: number
   is_in_current_workflow?: boolean
   name: string
+  published_node_reference_count?: number
+  published_reference_count?: number
+  published_references?: Array<AgentPublishedReferenceResponse>
+  role?: string
   scope: AgentScope
   source: AgentSource
   status: AgentStatus

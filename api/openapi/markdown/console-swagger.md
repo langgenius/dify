@@ -12149,6 +12149,10 @@ Supported icon storage formats for Agent roster entries.
 | in_current_workflow_count | integer |  | No |
 | is_in_current_workflow | boolean |  | No |
 | name | string |  | Yes |
+| published_node_reference_count | integer |  | No |
+| published_reference_count | integer |  | No |
+| published_references | [ [AgentPublishedReferenceResponse](#agentpublishedreferenceresponse) ] |  | No |
+| role | string |  | No |
 | scope | [AgentScope](#agentscope) |  | Yes |
 | source | [AgentSource](#agentsource) |  | Yes |
 | status | [AgentStatus](#agentstatus) |  | Yes |
@@ -12256,6 +12260,17 @@ the current roster/workflow APIs scoped to Dify Agent.
 | state | string |  | No |
 | status | string |  | No |
 
+#### AgentPublishedReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_mode | string |  | Yes |
+| app_name | string |  | Yes |
+| node_ids | [ string ] |  | No |
+| workflow_id | string |  | Yes |
+| workflow_version | string |  | Yes |
+
 #### AgentReferencingWorkflowResponse
 
 | Name | Type | Description | Required |
@@ -12281,17 +12296,6 @@ the current roster/workflow APIs scoped to Dify Agent.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
-
-#### AgentPublishedReferenceResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-| app_mode | string |  | Yes |
-| app_name | string |  | Yes |
-| node_ids | [ string ] |  | No |
-| workflow_id | string |  | Yes |
-| workflow_version | string |  | Yes |
 
 #### AgentRosterResponse
 
