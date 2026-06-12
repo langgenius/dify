@@ -19,12 +19,13 @@ Agenton still exits ``resource_context()`` but never transitions the layer to
 ``ACTIVE``. In that failed-enter path, normal suspend/delete hooks do not run,
 so the enter hook itself must perform best-effort business compensation before
 re-raising the failure. Agent Stub env injection uses shellctl's native per-run
-``env`` argument only for user-visible ``shell.run``.
+``env`` argument for user-visible ``shell.run`` and for trusted server-owned
+fixed scripts executed through ``run_remote_script()``.
 """
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import asynccontextmanager
 import json
 import logging
@@ -60,6 +61,7 @@ _SESSION_TIME_HEX_MASK = 0xFFFFF
 _SESSION_RANDOM_HEX_LENGTH = 2
 _SESSION_ID_ATTEMPT_LIMIT = 256
 _SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
+_REMOTE_COMMAND_MAX_OUTPUT_WINDOWS = 64
 _SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
 
 1. shell_run
@@ -179,7 +181,7 @@ class ShellctlClientProtocol(Protocol):
         script: str,
         *,
         cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
+        env: dict[str, str] | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> JobResult: ...
 
@@ -273,6 +275,20 @@ class DifyShellRuntimeState(BaseModel):
             names = ", ".join(sorted(unknown_offset_job_ids))
             raise ValueError(f"job_offsets contains unknown job ids: {names}.")
         return self
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteCommandResult:
+    """Completed remote sandbox command returned to server-owned callers."""
+
+    job_id: str
+    status: str
+    done: bool
+    exit_code: int | None
+    output: str
+    offset: int
+    truncated: bool
+    output_path: str
 
 
 @dataclass(slots=True)
@@ -500,6 +516,35 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc), job_id=job_id)
 
+    async def run_remote_script(
+        self,
+        script: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        inject_agent_stub_env: bool = False,
+    ) -> RemoteCommandResult:
+        """Run one trusted server-side script inside the sandbox workspace.
+
+        The sandbox file service uses this boundary for fixed list/read/upload
+        helpers. The layer owns output paging, transient shellctl job cleanup,
+        and optional Agent Stub env injection.
+
+        Unlike model-visible ``shell.run``, this server-owned boundary does not
+        source ``.dify/env.sh``. That file is user-controlled shell config, so
+        sourcing it here would let sandbox code clobber trusted Agent Stub env
+        values before ``dify-agent file upload`` executes.
+        """
+        env = None
+        if inject_agent_stub_env:
+            env = self._build_user_shell_run_env()
+            if env is None:
+                raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
+        return await self._run_remote_job_to_completion(
+            script,
+            timeout=timeout,
+            env=env,
+        )
+
     async def _allocate_workspace(self) -> tuple[str, str]:
         """Allocate a unique ``~/workspace/<session_id>`` directory by mkdir collision checks."""
         for _attempt in range(_SESSION_ID_ATTEMPT_LIMIT):
@@ -563,6 +608,44 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._track_job_result(result)
         return _job_result_observation(result)
+
+    async def _run_remote_job_to_completion(
+        self,
+        script: str,
+        *,
+        timeout: float,
+        env: dict[str, str] | None,
+    ) -> RemoteCommandResult:
+        """Run a workspace-scoped script to completion and delete its job state."""
+        client = self._require_client()
+        job_id: str | None = None
+        try:
+            result = await client.run(script, cwd=self._require_workspace_cwd(), env=env, timeout=timeout)
+            job_id = result.job_id
+            self._track_job_result(result)
+            output_parts = [result.output]
+            truncated = result.truncated
+            windows = 1
+            while (result.truncated or not result.done) and windows < _REMOTE_COMMAND_MAX_OUTPUT_WINDOWS:
+                result = await client.wait(result.job_id, offset=self._tracked_offset(result.job_id), timeout=timeout)
+                self._track_job_result(result)
+                output_parts.append(result.output)
+                truncated = truncated or result.truncated
+                windows += 1
+            return RemoteCommandResult(
+                job_id=result.job_id,
+                status=result.status.value,
+                done=result.done,
+                exit_code=result.exit_code,
+                output="".join(output_parts),
+                offset=result.offset,
+                truncated=truncated,
+                output_path=result.output_path,
+            )
+        finally:
+            if job_id is not None:
+                await self._delete_job_best_effort(job_id)
+                self._forget_tracked_job(job_id)
 
     def _require_client(self) -> ShellctlClientProtocol:
         """Return the live client or reject tool/lifecycle use without one."""
@@ -635,30 +718,43 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     async def _delete_tracked_jobs_best_effort(self, job_ids: Sequence[str]) -> None:
         """Force-delete tracked shellctl jobs, ignoring already-missing ones."""
-        client = self._require_client()
         for job_id in _deduplicate_preserving_order(job_ids):
-            try:
-                _ = await client.delete(job_id, force=True)
-            except ShellctlClientError as exc:
-                if exc.code == "job_not_found":
-                    continue
-                logger.warning(
-                    "Failed to delete shellctl job %s for session %s: %s",
-                    job_id,
-                    self.runtime_state.session_id,
-                    exc,
-                )
-            except RuntimeError as exc:
-                logger.warning(
-                    "Failed to delete shellctl job %s for session %s: %s",
-                    job_id,
-                    self.runtime_state.session_id,
-                    exc,
-                )
+            await self._delete_job_best_effort(job_id)
 
     def _clear_tracked_jobs(self) -> None:
         self.runtime_state.job_offsets = {}
         self.runtime_state.job_ids = []
+
+    async def _delete_job_best_effort(self, job_id: str) -> None:
+        client = self._require_client()
+        try:
+            _ = await client.delete(job_id, force=True)
+        except ShellctlClientError as exc:
+            if exc.code == "job_not_found":
+                return
+            logger.warning(
+                "Failed to delete shellctl job %s for session %s: %s",
+                job_id,
+                self.runtime_state.session_id,
+                exc,
+            )
+        except RuntimeError as exc:
+            logger.warning(
+                "Failed to delete shellctl job %s for session %s: %s",
+                job_id,
+                self.runtime_state.session_id,
+                exc,
+            )
+
+    def _forget_tracked_job(self, job_id: str) -> None:
+        if job_id not in self.runtime_state.job_ids and job_id not in self.runtime_state.job_offsets:
+            return
+        job_offsets = dict(self.runtime_state.job_offsets)
+        _ = job_offsets.pop(job_id, None)
+        self.runtime_state.job_offsets = job_offsets
+        self.runtime_state.job_ids = [
+            tracked_job_id for tracked_job_id in self.runtime_state.job_ids if tracked_job_id != job_id
+        ]
 
     def _build_user_shell_run_env(self) -> dict[str, str] | None:
         """Build per-command Agent Stub env only for user-visible ``shell.run``."""
@@ -834,6 +930,7 @@ __all__ = [
     "DifyShellLayerDeps",
     "DifyShellLayer",
     "DifyShellRuntimeState",
+    "RemoteCommandResult",
     "ShellctlClientFactory",
     "ShellctlClientProtocol",
     "create_shellctl_client_factory",

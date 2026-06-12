@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentFileRefConfig,
     AgentHumanContactConfig,
@@ -102,10 +102,6 @@ class WorkflowAgentNodeValidator:
     ) -> None:
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
-        if binding.current_snapshot_id is None:
-            raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} is missing config snapshot binding."
-            )
 
         agent = session.scalar(
             select(Agent)
@@ -120,12 +116,22 @@ class WorkflowAgentNodeValidator:
                 f"Workflow Agent node {binding.node_id} references an unavailable agent."
             )
 
+        snapshot_id = (
+            agent.active_config_snapshot_id
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
+        if snapshot_id is None:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} is missing config snapshot binding."
+            )
+
         snapshot = session.scalar(
             select(AgentConfigSnapshot)
             .where(
                 AgentConfigSnapshot.tenant_id == binding.tenant_id,
                 AgentConfigSnapshot.agent_id == agent.id,
-                AgentConfigSnapshot.id == binding.current_snapshot_id,
+                AgentConfigSnapshot.id == snapshot_id,
             )
             .limit(1)
         )
