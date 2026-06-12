@@ -75,10 +75,6 @@ def _app_detail(
     return detail
 
 
-def _recommendation_detail(result: object) -> RecommendedAppPayload | None:
-    return cast("RecommendedAppPayload | None", result)
-
-
 def _mock_factory_for_apps(
     monkeypatch: pytest.MonkeyPatch,
     *,
@@ -209,26 +205,49 @@ class TestRecommendedAppServiceGetApps:
 
 
 class TestRecommendedAppServiceGetDetail:
+    @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
-    def test_success(self, mock_config: MagicMock, mock_factory_class: MagicMock) -> None:
+    def test_returns_retrieval_detail_when_trial_disabled(
+        self, mock_config: MagicMock, mock_factory_class: MagicMock, mock_feature_service: MagicMock
+    ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        expected = _app_detail(app_id="app-123", name="Productivity App", description="A great app")
+        mock_feature_service.get_system_features.return_value = SimpleNamespace(enable_trial_app=False)
+        cases: list[tuple[str, RecommendedAppPayload]] = [
+            (
+                "complex-app",
+                _app_detail(
+                    app_id="complex-app",
+                    name="Complex App",
+                    model_config={
+                        "provider": "openai",
+                        "model": "gpt-4",
+                        "parameters": {"temperature": 0.7, "max_tokens": 2000, "top_p": 1.0},
+                    },
+                    workflows=["workflow-1", "workflow-2"],
+                    tools=["tool-1", "tool-2", "tool-3"],
+                ),
+            ),
+            ("app-empty", RecommendedAppPayload()),
+        ]
 
-        mock_instance = MagicMock()
-        mock_instance.get_recommend_app_detail.return_value = expected
-        mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
+        for app_id, expected in cases:
+            mock_instance = MagicMock()
+            mock_instance.get_recommend_app_detail.return_value = expected
+            mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail("app-123"))
+            result = RecommendedAppService.get_recommend_app_detail(app_id)
 
-        assert result == expected
-        assert result is not None
-        assert result["id"] == "app-123"
-        mock_instance.get_recommend_app_detail.assert_called_once_with("app-123")
+            assert result == expected
+            mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
 
+    @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
-    def test_different_modes(self, mock_config: MagicMock, mock_factory_class: MagicMock) -> None:
+    def test_different_modes(
+        self, mock_config: MagicMock, mock_factory_class: MagicMock, mock_feature_service: MagicMock
+    ) -> None:
+        mock_feature_service.get_system_features.return_value = SimpleNamespace(enable_trial_app=False)
         for mode in ["remote", "builtin", "db"]:
             mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = mode
             detail = _app_detail(app_id="test-app", name=f"App from {mode}")
@@ -236,64 +255,11 @@ class TestRecommendedAppServiceGetDetail:
             mock_instance.get_recommend_app_detail.return_value = detail
             mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
-            result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail("test-app"))
+            result = RecommendedAppService.get_recommend_app_detail("test-app")
 
             assert result is not None
-            assert result["name"] == f"App from {mode}"
+            mock_instance.get_recommend_app_detail.assert_called_with("test-app")
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
-
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
-    @patch("services.recommended_app_service.dify_config")
-    def test_returns_none_when_not_found(self, mock_config: MagicMock, mock_factory_class: MagicMock) -> None:
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        mock_instance = MagicMock()
-        mock_instance.get_recommend_app_detail.return_value = None
-        mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
-
-        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail("nonexistent"))
-
-        assert result is None
-        mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent")
-
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
-    @patch("services.recommended_app_service.dify_config")
-    def test_returns_empty_dict(self, mock_config: MagicMock, mock_factory_class: MagicMock) -> None:
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "builtin"
-        mock_instance = MagicMock()
-        empty_detail = RecommendedAppPayload()
-        mock_instance.get_recommend_app_detail.return_value = empty_detail
-        mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
-
-        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail("app-empty"))
-
-        assert result == {}
-
-    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
-    @patch("services.recommended_app_service.dify_config")
-    def test_complex_model_config(self, mock_config: MagicMock, mock_factory_class: MagicMock) -> None:
-        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        complex_config: dict[str, object] = {
-            "provider": "openai",
-            "model": "gpt-4",
-            "parameters": {"temperature": 0.7, "max_tokens": 2000, "top_p": 1.0},
-        }
-        expected = _app_detail(
-            app_id="complex-app",
-            name="Complex App",
-            model_config=complex_config,
-            workflows=["workflow-1", "workflow-2"],
-            tools=["tool-1", "tool-2", "tool-3"],
-        )
-        mock_instance = MagicMock()
-        mock_instance.get_recommend_app_detail.return_value = expected
-        mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
-
-        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail("complex-app"))
-
-        assert result is not None
-        assert result["model_config"] == complex_config
-        assert len(result["workflows"]) == 2
-        assert len(result["tools"]) == 3
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────
@@ -376,36 +342,32 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
 
-        result = _recommendation_detail(RecommendedAppService.get_recommend_app_detail(app_id))
+        result = RecommendedAppService.get_recommend_app_detail(app_id)
         assert result is not None
+        detail_result = cast(RecommendedAppPayload, result)
 
-        assert result["id"] == app_id
-        assert result["can_trial"] is has_trial_app
+        assert detail_result["id"] == app_id
+        assert detail_result["can_trial"] is has_trial_app
 
+    @patch("services.recommended_app_service.FeatureService", autospec=True)
+    @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
+    @patch("services.recommended_app_service.dify_config")
     def test_get_detail_returns_none_when_not_found_and_trial_enabled(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        mock_config: MagicMock,
+        mock_factory_class: MagicMock,
+        mock_feature_service: MagicMock,
     ) -> None:
-        """Regression: accessing result['id'] when result is None must not crash."""
-        retrieval_instance = MagicMock()
-        retrieval_instance.get_recommend_app_detail.return_value = None
-        retrieval_factory = MagicMock(return_value=retrieval_instance)
-        monkeypatch.setattr(service_module.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "remote", raising=False)
-        monkeypatch.setattr(
-            service_module.RecommendAppRetrievalFactory,
-            "get_recommend_app_factory",
-            MagicMock(return_value=retrieval_factory),
-        )
-        monkeypatch.setattr(
-            service_module.FeatureService,
-            "get_system_features",
-            MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
-        )
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
+        mock_instance = MagicMock()
+        mock_instance.get_recommend_app_detail.return_value = None
+        mock_factory_class.get_recommend_app_factory.return_value = MagicMock(return_value=mock_instance)
 
         result = RecommendedAppService.get_recommend_app_detail("nonexistent")
 
         assert result is None
-        retrieval_instance.get_recommend_app_detail.assert_called_once_with("nonexistent")
+        mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent")
+        mock_feature_service.get_system_features.assert_not_called()
 
     def test_add_trial_app_record_increments_count_for_existing(self, db_session_with_containers: Session) -> None:
         app_id = str(uuid.uuid4())
