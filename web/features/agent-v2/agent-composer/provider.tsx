@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { AgentSoulConfigFormState } from './store'
+import type { AgentSoulConfigFormState } from './form-state'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { useState } from 'react'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from './store'

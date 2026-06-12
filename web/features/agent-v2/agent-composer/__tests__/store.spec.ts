@@ -1,6 +1,6 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
 import { describe, expect, it } from 'vitest'
-import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../store'
+import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 
 describe('agent composer store conversions', () => {
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in publish payload', () => {

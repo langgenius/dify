@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
 import { AgentEnvEditor } from '../env'
 import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
 
@@ -47,6 +47,34 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('User Interactions', () => {
+    it('should not create a variable when the draft key cell is focused', async () => {
+      const user = userEvent.setup()
+      renderAgentEnvEditor()
+
+      const draftKey = screen.getByText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+
+      await user.click(draftKey)
+
+      expect(screen.queryByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')).not.toBeInTheDocument()
+    })
+
+    it('should create a variable when the draft value cell is edited', async () => {
+      const user = userEvent.setup()
+      renderAgentEnvEditor()
+
+      const draftValue = screen.getAllByText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder').at(-1)
+      expect(draftValue).toBeDefined()
+
+      await user.click(draftValue!)
+
+      const valueInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
+      expect(valueInput).toHaveFocus()
+
+      await user.type(valueInput, 'secret-value')
+
+      expect(screen.getByDisplayValue('secret-value')).toBeInTheDocument()
+    })
+
     it('should import dotenv variables into the env table when a file is selected', async () => {
       const user = userEvent.setup()
       const { container } = renderAgentEnvEditor()

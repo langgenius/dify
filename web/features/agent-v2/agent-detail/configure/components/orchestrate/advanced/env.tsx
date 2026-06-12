@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEnvVariables } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSection } from '../common/section'
@@ -119,16 +119,26 @@ function EnvEditorCell({
 function EnvEditorInput({
   'aria-label': ariaLabel,
   placeholder,
+  shouldFocus,
   value,
   onValueChange,
 }: {
   'aria-label': string
   'placeholder': string
+  'shouldFocus'?: boolean
   'value': string
   'onValueChange': (value: string) => void
 }) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (shouldFocus)
+      inputRef.current?.focus()
+  }, [shouldFocus])
+
   return (
     <Input
+      ref={inputRef}
       aria-label={ariaLabel}
       className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none hover:bg-state-base-hover focus-visible:bg-state-base-hover"
       placeholder={placeholder}
@@ -139,6 +149,7 @@ function EnvEditorInput({
 }
 
 function EnvEditorRow({
+  autoFocusField,
   variable,
   editable = false,
   isHighlighted,
@@ -148,6 +159,7 @@ function EnvEditorRow({
   onValueChange,
   showScope = true,
 }: {
+  autoFocusField?: 'key' | 'value'
   variable: EnvVariable
   editable?: boolean
   isHighlighted?: boolean
@@ -170,6 +182,7 @@ function EnvEditorRow({
               <EnvEditorInput
                 aria-label={t('agentDetail.configure.advancedSettings.envEditor.keyColumn')}
                 placeholder={t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')}
+                shouldFocus={autoFocusField === 'key'}
                 value={variable.key}
                 onValueChange={onKeyChange ?? (() => {})}
               />
@@ -186,6 +199,7 @@ function EnvEditorRow({
               <EnvEditorInput
                 aria-label={t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
                 placeholder={t('agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')}
+                shouldFocus={autoFocusField === 'value'}
                 value={variable.value}
                 onValueChange={onValueChange ?? (() => {})}
               />
@@ -225,26 +239,48 @@ function EnvEditorRow({
 }
 
 function EnvEditorDraftRow({
+  onAdd,
   showScope = true,
 }: {
+  onAdd?: (options?: { focusField?: 'key' | 'value', scope?: EnvScope }) => void
   showScope?: boolean
 }) {
   const { t } = useTranslation('agentV2')
   const gridClassName = showScope
     ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
     : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
+  const keyPlaceholder = t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+  const valuePlaceholder = t('agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
+
+  const renderDraftPlaceholder = (label: string) => (
+    <span className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder">
+      {label}
+    </span>
+  )
+
+  const renderDraftValueCell = () => {
+    if (!onAdd)
+      return renderDraftPlaceholder(valuePlaceholder)
+
+    return (
+      <button
+        type="button"
+        aria-label={t('agentDetail.configure.advancedSettings.envEditor.add')}
+        onClick={() => onAdd({ focusField: 'value' })}
+        className="flex h-full w-full min-w-0 items-center px-3 text-left system-xs-regular text-components-input-text-placeholder hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      >
+        {valuePlaceholder}
+      </button>
+    )
+  }
 
   return (
     <div className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName)}>
       <EnvEditorCell>
-        <span className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder">
-          {t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')}
-        </span>
+        {renderDraftPlaceholder(keyPlaceholder)}
       </EnvEditorCell>
       <EnvEditorCell>
-        <span className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder">
-          {t('agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')}
-        </span>
+        {renderDraftValueCell()}
       </EnvEditorCell>
       {showScope && (
         <EnvEditorCell>
@@ -259,6 +295,7 @@ function EnvEditorDraftRow({
 export function EnvVariablesTable({
   editable = false,
   envVariables,
+  focusedVariable,
   highlightedIndex,
   onAdd,
   onDelete,
@@ -270,8 +307,9 @@ export function EnvVariablesTable({
 }: {
   editable?: boolean
   envVariables: EnvVariable[]
+  focusedVariable?: { id: string, field: 'key' | 'value' }
   highlightedIndex?: number
-  onAdd?: () => void
+  onAdd?: (options?: { focusField?: 'key' | 'value', scope?: EnvScope }) => void
   onDelete: (id: string) => void
   onKeyChange?: (id: string, key: string) => void
   onScopeChange: (id: string, scope: EnvScope) => void
@@ -309,7 +347,7 @@ export function EnvVariablesTable({
             <button
               type="button"
               aria-label={t('agentDetail.configure.advancedSettings.envEditor.add')}
-              onClick={onAdd}
+              onClick={() => onAdd()}
               className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
             >
               <span aria-hidden className="i-ri-add-line size-4" />
@@ -320,6 +358,7 @@ export function EnvVariablesTable({
       {envVariables.map((variable, index) => (
         <EnvEditorRow
           key={variable.id}
+          autoFocusField={focusedVariable?.id === variable.id ? focusedVariable.field : undefined}
           variable={variable}
           editable={editable}
           isHighlighted={index === highlightedIndex}
@@ -330,7 +369,7 @@ export function EnvVariablesTable({
           showScope={showScope}
         />
       ))}
-      {showDraftRow && <EnvEditorDraftRow showScope={showScope} />}
+      {showDraftRow && <EnvEditorDraftRow onAdd={onAdd} showScope={showScope} />}
     </div>
   )
 }
@@ -338,13 +377,26 @@ export function EnvVariablesTable({
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
   const [envVariables, setEnvVariables] = useEnvVariables()
+  const [focusedVariable, setFocusedVariable] = useState<{ id: string, field: 'key' | 'value' }>()
   const envImportInputRef = useRef<HTMLInputElement>(null)
   const envEditorTip = t('agentDetail.configure.advancedSettings.envEditor.tip')
   const envImportTip = t(envImportTipKeys[getCurrentEnvImportPlatform()])
   const envEditorTableId = 'agent-configure-env-editor-table'
 
-  const addVariable = () => {
-    setEnvVariables([...envVariables, createEnvVariable()])
+  const addVariable = ({
+    focusField = 'key',
+    scope,
+  }: {
+    focusField?: 'key' | 'value'
+    scope?: EnvScope
+  } = {}) => {
+    const variable = {
+      ...createEnvVariable(),
+      ...(scope ? { scope } : {}),
+    }
+
+    setEnvVariables([...envVariables, variable])
+    setFocusedVariable({ id: variable.id, field: focusField })
   }
   const importEnvVariables = async (file: File) => {
     const importedVariables = parseEnvVariables(await file.text()).map(createEnvVariableFromEntry)
@@ -422,6 +474,7 @@ export function AgentEnvEditor() {
       <EnvVariablesTable
         editable
         envVariables={envVariables}
+        focusedVariable={focusedVariable}
         highlightedIndex={1}
         onAdd={addVariable}
         onDelete={deleteVariable}

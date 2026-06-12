@@ -2,7 +2,7 @@
 
 import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agents/types.gen'
 import type { Features } from '@/app/components/base/features/types'
-import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
