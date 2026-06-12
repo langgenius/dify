@@ -7,7 +7,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
@@ -72,7 +72,10 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
 }) => {
   const { t } = useTranslation()
   const [descExpanded, setDescExpanded] = useState(false)
-  const showDescToggle = !!siteInfo.description && (siteInfo.description.includes('\n') || siteInfo.description.length > 100)
+  const [showDescToggle, setShowDescToggle] = useState(false)
+  const handleDescRef = useCallback((node: HTMLDivElement | null) => {
+    setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
+  }, [])
 
   return (
     <Tabs
@@ -98,11 +101,13 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         </div>
         {siteInfo.description && (
           <div>
-            <div className={cn(
-              'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
-              !descExpanded && 'line-clamp-2',
-              descExpanded && 'max-h-32 overflow-y-auto',
-            )}
+            <div
+              ref={handleDescRef}
+              className={cn(
+                'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
+                !descExpanded && 'line-clamp-3',
+                descExpanded && 'max-h-32 overflow-y-auto',
+              )}
             >
               {siteInfo.description}
               {!descExpanded && showDescToggle && (
