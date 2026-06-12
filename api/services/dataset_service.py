@@ -272,7 +272,6 @@ class DatasetService:
                 )
             ).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
-
             if not dify_config.RBAC_ENABLED and user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
                 # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
