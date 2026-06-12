@@ -27,12 +27,18 @@ QueryParamDoc = TypedDict(
         "description": NotRequired[str],
         "enum": NotRequired[list[object]],
         "default": NotRequired[object],
+        "format": NotRequired[str],
         "minimum": NotRequired[int | float],
         "maximum": NotRequired[int | float],
+        "exclusiveMinimum": NotRequired[int | float],
+        "exclusiveMaximum": NotRequired[int | float],
         "minLength": NotRequired[int],
         "maxLength": NotRequired[int],
+        "pattern": NotRequired[str],
         "minItems": NotRequired[int],
         "maxItems": NotRequired[int],
+        "uniqueItems": NotRequired[bool],
+        "multipleOf": NotRequired[int | float],
     },
 )
 
@@ -129,6 +135,7 @@ def query_params_from_model(model: type[BaseModel]) -> dict[str, QueryParamDoc]:
     """
 
     schema = model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
+    definitions = _schema_definitions(schema)
     properties = schema.get("properties", {})
     if not isinstance(properties, Mapping):
         return {}
@@ -141,7 +148,11 @@ def query_params_from_model(model: type[BaseModel]) -> dict[str, QueryParamDoc]:
         if not isinstance(name, str) or not isinstance(property_schema, Mapping):
             continue
 
-        params[name] = _query_param_from_property(property_schema, required=name in required_names)
+        params[name] = _query_param_from_property(
+            property_schema,
+            required=name in required_names,
+            definitions=definitions,
+        )
 
     return params
 
@@ -198,8 +209,18 @@ def _drop_malformed_defaulted_integer_params(model: type[BaseModel], params: dic
             params.pop(name)
 
 
-def _query_param_from_property(property_schema: Mapping[str, Any], *, required: bool) -> QueryParamDoc:
-    param_schema = _nullable_property_schema(property_schema)
+def _schema_definitions(schema: Mapping[str, Any]) -> Mapping[str, Any]:
+    definitions = schema.get("$defs")
+    return definitions if isinstance(definitions, Mapping) else {}
+
+
+def _query_param_from_property(
+    property_schema: Mapping[str, Any],
+    *,
+    required: bool,
+    definitions: Mapping[str, Any],
+) -> QueryParamDoc:
+    param_schema = _resolve_schema_ref(_nullable_property_schema(property_schema), definitions)
     param_doc: QueryParamDoc = {"in": "query", "required": required}
 
     description = param_schema.get("description")
@@ -212,9 +233,16 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
         if schema_type == "array":
             items = param_schema.get("items")
             if isinstance(items, Mapping):
-                item_type = items.get("type")
+                item_schema = _resolve_schema_ref(items, definitions)
+                item_type = item_schema.get("type")
                 if isinstance(item_type, str):
                     param_doc["items"] = {"type": item_type}
+                item_enum = item_schema.get("enum")
+                if isinstance(item_enum, list):
+                    param_doc.setdefault("items", {})["enum"] = item_enum
+                item_format = item_schema.get("format")
+                if isinstance(item_format, str):
+                    param_doc.setdefault("items", {})["format"] = item_format
 
     enum = param_schema.get("enum")
     if isinstance(enum, list):
@@ -224,6 +252,10 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     if default is not None:
         param_doc["default"] = default
 
+    schema_format = param_schema.get("format")
+    if isinstance(schema_format, str):
+        param_doc["format"] = schema_format
+
     minimum = param_schema.get("minimum")
     if isinstance(minimum, int | float):
         param_doc["minimum"] = minimum
@@ -231,6 +263,14 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     maximum = param_schema.get("maximum")
     if isinstance(maximum, int | float):
         param_doc["maximum"] = maximum
+
+    exclusive_minimum = param_schema.get("exclusiveMinimum")
+    if isinstance(exclusive_minimum, int | float):
+        param_doc["exclusiveMinimum"] = exclusive_minimum
+
+    exclusive_maximum = param_schema.get("exclusiveMaximum")
+    if isinstance(exclusive_maximum, int | float):
+        param_doc["exclusiveMaximum"] = exclusive_maximum
 
     min_length = param_schema.get("minLength")
     if isinstance(min_length, int):
@@ -240,6 +280,10 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     if isinstance(max_length, int):
         param_doc["maxLength"] = max_length
 
+    pattern = param_schema.get("pattern")
+    if isinstance(pattern, str):
+        param_doc["pattern"] = pattern
+
     min_items = param_schema.get("minItems")
     if isinstance(min_items, int):
         param_doc["minItems"] = min_items
@@ -248,7 +292,29 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     if isinstance(max_items, int):
         param_doc["maxItems"] = max_items
 
+    unique_items = param_schema.get("uniqueItems")
+    if isinstance(unique_items, bool):
+        param_doc["uniqueItems"] = unique_items
+
+    multiple_of = param_schema.get("multipleOf")
+    if isinstance(multiple_of, int | float):
+        param_doc["multipleOf"] = multiple_of
+
     return param_doc
+
+
+def _resolve_schema_ref(property_schema: Mapping[str, Any], definitions: Mapping[str, Any]) -> Mapping[str, Any]:
+    ref = property_schema.get("$ref")
+    if not isinstance(ref, str):
+        return property_schema
+
+    ref_name = ref.rsplit("/", 1)[-1]
+    resolved = definitions.get(ref_name)
+    if not isinstance(resolved, Mapping):
+        return property_schema
+
+    property_without_ref = {key: value for key, value in property_schema.items() if key != "$ref"}
+    return {**resolved, **property_without_ref}
 
 
 def _nullable_property_schema(property_schema: Mapping[str, Any]) -> Mapping[str, Any]:

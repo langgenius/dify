@@ -8,7 +8,7 @@ from pydantic import Field
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import (
@@ -283,7 +283,7 @@ class SnippetDefaultBlockConfigsApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows")
 class SnippetPublishedAllWorkflowApi(Resource):
-    @console_ns.expect(console_ns.models[SnippetWorkflowListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(SnippetWorkflowListQuery))
     @console_ns.doc("get_all_snippet_published_workflows")
     @console_ns.doc(description="Get all published workflows for a snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID"})

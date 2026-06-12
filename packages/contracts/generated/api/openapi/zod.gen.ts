@@ -678,7 +678,18 @@ export const zDeleteAccountSessionsBySessionIdResponse = zRevokeResponse
 
 export const zGetAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z.string().optional(),
+  mode: z
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'channel',
+      'chat',
+      'completion',
+      'rag-pipeline',
+      'workflow',
+    ])
+    .optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
   tag: z.string().max(100).optional(),
@@ -827,7 +838,18 @@ export const zPostOauthDeviceTokenResponse = z.record(z.string(), z.unknown())
 
 export const zGetPermittedExternalAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z.string().optional(),
+  mode: z
+    .enum([
+      'advanced-chat',
+      'agent',
+      'agent-chat',
+      'channel',
+      'chat',
+      'completion',
+      'rag-pipeline',
+      'workflow',
+    ])
+    .optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
 })

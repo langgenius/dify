@@ -6,7 +6,12 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -141,7 +146,7 @@ register_enum_models(console_ns, ModelType)
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetDefault.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserGetDefault))
     @setup_required
     @login_required
     @account_initialization_required
@@ -267,7 +272,7 @@ class ModelProviderModelApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetCredentials.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserGetCredentials))
     @setup_required
     @login_required
     @account_initialization_required
@@ -515,7 +520,7 @@ class ModelProviderModelValidateApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
-    @console_ns.expect(console_ns.models[ParserParameter.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserParameter))
     @setup_required
     @login_required
     @account_initialization_required

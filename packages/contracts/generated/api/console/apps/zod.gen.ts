@@ -395,19 +395,6 @@ export const zWorkflowTriggerListResponse = z.object({
 })
 
 /**
- * WorkflowExecutionStatus
- */
-export const zWorkflowExecutionStatus = z.enum([
-  'failed',
-  'partial-succeeded',
-  'paused',
-  'running',
-  'scheduled',
-  'stopped',
-  'succeeded',
-])
-
-/**
  * WorkflowRunExportResponse
  */
 export const zWorkflowRunExportResponse = z.object({
@@ -1429,6 +1416,19 @@ export const zAgentComposerImpactResponse = z.object({
   current_snapshot_id: z.string().nullish(),
   workflow_node_count: z.int(),
 })
+
+/**
+ * WorkflowExecutionStatus
+ */
+export const zWorkflowExecutionStatus = z.enum([
+  'failed',
+  'partial-succeeded',
+  'paused',
+  'running',
+  'scheduled',
+  'stopped',
+  'succeeded',
+])
 
 /**
  * NodeStatus
@@ -3530,8 +3530,8 @@ export const zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesPath = z.object
 })
 
 export const zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesQuery = z.object({
-  limit: z.int().optional().default(20),
-  page: z.int().optional().default(1),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
@@ -3566,15 +3566,15 @@ export const zGetAppsByAppIdChatConversationsPath = z.object({
 
 export const zGetAppsByAppIdChatConversationsQuery = z.object({
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
-  end: z.string().nullish(),
-  keyword: z.string().nullish(),
+  end: z.string().optional(),
+  keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
   sort_by: z
     .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
     .optional()
     .default('-updated_at'),
-  start: z.string().nullish(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3608,7 +3608,7 @@ export const zGetAppsByAppIdChatMessagesPath = z.object({
 
 export const zGetAppsByAppIdChatMessagesQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().nullish(),
+  first_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
@@ -3644,11 +3644,11 @@ export const zGetAppsByAppIdCompletionConversationsPath = z.object({
 
 export const zGetAppsByAppIdCompletionConversationsQuery = z.object({
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
-  end: z.string().nullish(),
-  keyword: z.string().nullish(),
+  end: z.string().optional(),
+  keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  start: z.string().nullish(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3739,7 +3739,7 @@ export const zGetAppsByAppIdExportPath = z.object({
 
 export const zGetAppsByAppIdExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.string().nullish(),
+  workflow_id: z.string().optional(),
 })
 
 /**
@@ -3763,12 +3763,12 @@ export const zGetAppsByAppIdFeedbacksExportPath = z.object({
 })
 
 export const zGetAppsByAppIdFeedbacksExportQuery = z.object({
-  end_date: z.string().nullish(),
+  end_date: z.string().optional(),
   format: z.enum(['csv', 'json']).optional().default('csv'),
-  from_source: z.enum(['admin', 'user']).nullish(),
-  has_comment: z.boolean().nullish(),
-  rating: z.enum(['dislike', 'like']).nullish(),
-  start_date: z.string().nullish(),
+  from_source: z.enum(['admin', 'user']).optional(),
+  has_comment: z.boolean().optional(),
+  rating: z.enum(['dislike', 'like']).optional(),
+  start_date: z.string().optional(),
 })
 
 /**
@@ -3913,8 +3913,8 @@ export const zGetAppsByAppIdStatisticsAverageResponseTimePath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsAverageResponseTimeQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3929,8 +3929,8 @@ export const zGetAppsByAppIdStatisticsAverageSessionInteractionsPath = z.object(
 })
 
 export const zGetAppsByAppIdStatisticsAverageSessionInteractionsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3945,8 +3945,8 @@ export const zGetAppsByAppIdStatisticsDailyConversationsPath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsDailyConversationsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3961,8 +3961,8 @@ export const zGetAppsByAppIdStatisticsDailyEndUsersPath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsDailyEndUsersQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3977,8 +3977,8 @@ export const zGetAppsByAppIdStatisticsDailyMessagesPath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsDailyMessagesQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -3993,8 +3993,8 @@ export const zGetAppsByAppIdStatisticsTokenCostsPath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsTokenCostsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4009,8 +4009,8 @@ export const zGetAppsByAppIdStatisticsTokensPerSecondPath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsTokensPerSecondQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4025,8 +4025,8 @@ export const zGetAppsByAppIdStatisticsUserSatisfactionRatePath = z.object({
 })
 
 export const zGetAppsByAppIdStatisticsUserSatisfactionRateQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4151,15 +4151,17 @@ export const zGetAppsByAppIdWorkflowAppLogsPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowAppLogsQuery = z.object({
-  created_at__after: z.iso.datetime().nullish(),
-  created_at__before: z.iso.datetime().nullish(),
-  created_by_account: z.string().nullish(),
-  created_by_end_user_session_id: z.string().nullish(),
+  created_at__after: z.iso.datetime().optional(),
+  created_at__before: z.iso.datetime().optional(),
+  created_by_account: z.string().optional(),
+  created_by_end_user_session_id: z.string().optional(),
   detail: z.boolean().optional().default(false),
-  keyword: z.string().nullish(),
+  keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: zWorkflowExecutionStatus.nullish(),
+  status: z
+    .enum(['failed', 'partial-succeeded', 'paused', 'running', 'scheduled', 'stopped', 'succeeded'])
+    .optional(),
 })
 
 /**
@@ -4172,15 +4174,17 @@ export const zGetAppsByAppIdWorkflowArchivedLogsPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowArchivedLogsQuery = z.object({
-  created_at__after: z.iso.datetime().nullish(),
-  created_at__before: z.iso.datetime().nullish(),
-  created_by_account: z.string().nullish(),
-  created_by_end_user_session_id: z.string().nullish(),
+  created_at__after: z.iso.datetime().optional(),
+  created_at__before: z.iso.datetime().optional(),
+  created_by_account: z.string().optional(),
+  created_by_end_user_session_id: z.string().optional(),
   detail: z.boolean().optional().default(false),
-  keyword: z.string().nullish(),
+  keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: zWorkflowExecutionStatus.nullish(),
+  status: z
+    .enum(['failed', 'partial-succeeded', 'paused', 'running', 'scheduled', 'stopped', 'succeeded'])
+    .optional(),
 })
 
 /**
@@ -4430,8 +4434,8 @@ export const zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsPath = z.obj
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4447,8 +4451,8 @@ export const zGetAppsByAppIdWorkflowStatisticsDailyConversationsPath = z.object(
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsDailyConversationsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4464,8 +4468,8 @@ export const zGetAppsByAppIdWorkflowStatisticsDailyTerminalsPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsDailyTerminalsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4481,8 +4485,8 @@ export const zGetAppsByAppIdWorkflowStatisticsTokenCostsPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowStatisticsTokenCostsQuery = z.object({
-  end: z.string().nullish(),
-  start: z.string().nullish(),
+  end: z.string().optional(),
+  start: z.string().optional(),
 })
 
 /**
@@ -4498,7 +4502,7 @@ export const zGetAppsByAppIdWorkflowsQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(10),
   named_only: z.boolean().optional().default(false),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  user_id: z.string().nullish(),
+  user_id: z.string().optional(),
 })
 
 /**
@@ -4524,7 +4528,7 @@ export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypePath 
 })
 
 export const zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeQuery = z.object({
-  q: z.string().nullish(),
+  q: z.string().optional(),
 })
 
 /**
@@ -4934,8 +4938,8 @@ export const zGetAppsByAppIdWorkflowsDraftVariablesPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowsDraftVariablesQuery = z.object({
-  limit: z.string().optional(),
-  page: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
+  page: z.int().gte(1).lte(100000).optional().default(1),
 })
 
 /**
@@ -5061,9 +5065,7 @@ export const zGetAppsByAppIdWorkflowsTriggersWebhookPath = z.object({
 })
 
 export const zGetAppsByAppIdWorkflowsTriggersWebhookQuery = z.object({
-  credential_id: z.string().nullish(),
-  datasource_type: z.string(),
-  inputs: z.record(z.string(), z.unknown()),
+  node_id: z.string(),
 })
 
 /**

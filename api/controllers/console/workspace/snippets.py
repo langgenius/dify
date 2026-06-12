@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
@@ -89,7 +89,7 @@ snippet_pagination_model = console_ns.model("SnippetPagination", snippet_paginat
 @console_ns.route("/workspaces/current/customized-snippets")
 class CustomizedSnippetsApi(Resource):
     @console_ns.doc("list_customized_snippets")
-    @console_ns.expect(console_ns.models.get(SnippetListQuery.__name__))
+    @console_ns.doc(params=query_params_from_model(SnippetListQuery))
     @console_ns.response(200, "Snippets retrieved successfully", snippet_pagination_model)
     @setup_required
     @login_required

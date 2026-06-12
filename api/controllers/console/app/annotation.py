@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -77,6 +77,11 @@ class AnnotationReplyStatusQuery(BaseModel):
     action: Literal["enable", "disable"]
 
 
+class AnnotationHitHistoryListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Page size")
+
+
 class AnnotationFilePayload(BaseModel):
     message_id: str = Field(..., description="Message ID")
 
@@ -99,6 +104,7 @@ register_schema_models(
     CreateAnnotationPayload,
     UpdateAnnotationPayload,
     AnnotationReplyStatusQuery,
+    AnnotationHitHistoryListQuery,
     AnnotationFilePayload,
 )
 
@@ -204,7 +210,7 @@ class AnnotationApi(Resource):
     @console_ns.doc("list_annotations")
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AnnotationListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AnnotationListQuery))
     @console_ns.response(200, "Annotations retrieved successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -424,11 +430,7 @@ class AnnotationHitHistoryListApi(Resource):
     @console_ns.doc("list_annotation_hit_histories")
     @console_ns.doc(description="Get hit histories for an annotation")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size")
-    )
+    @console_ns.doc(params=query_params_from_model(AnnotationHitHistoryListQuery))
     @console_ns.response(
         200,
         "Hit histories retrieved successfully",

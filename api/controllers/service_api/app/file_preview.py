@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import query_params_from_model, register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
@@ -38,7 +38,7 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
-    @service_api_ns.expect(service_api_ns.models[FilePreviewQuery.__name__])
+    @service_api_ns.doc(params=query_params_from_model(FilePreviewQuery))
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
     @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})
