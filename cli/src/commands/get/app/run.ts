@@ -17,7 +17,7 @@ export type GetAppOptions = {
   readonly allWorkspaces?: boolean
   readonly page?: number
   readonly limitRaw?: string
-  readonly mode?: string
+  readonly mode?: AppMode
   readonly name?: string
   readonly tag?: string
   readonly format?: string
@@ -59,7 +59,7 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
       if (opts.appId !== undefined && opts.appId !== '') {
         const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
         const wsName = workspaceNameForId(deps.active, wsId)
-        const desc = await apps.describe(opts.appId, wsId, ['info'])
+        const desc = await apps.describe(opts.appId, ['info'])
         return describeToEnvelope(desc, wsId, wsName)
       }
       const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
@@ -114,14 +114,7 @@ function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: str
 function workspaceNameForId(active: ActiveContext, id: string): string {
   if (id === '')
     return ''
-  const ctx = active.ctx
-  if (ctx.workspace?.id === id)
-    return ctx.workspace.name
-  for (const w of ctx.available_workspaces ?? []) {
-    if (w.id === id)
-      return w.name
-  }
-  return ''
+  return active.ctx.workspace?.id === id ? active.ctx.workspace.name : ''
 }
 
 async function runAllWorkspaces(

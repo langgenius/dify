@@ -14,14 +14,14 @@ import * as React from 'react'
 import Datepicker from '../base/date-picker'
 import { DataType } from '../types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   type: DataType
   value: any
   onChange: (value: any) => void
   readOnly?: boolean
-}
+}>
 
 const InputCombined: FC<Props> = ({
   className: configClassName,

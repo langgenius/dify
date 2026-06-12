@@ -1,9 +1,9 @@
 import * as React from 'react'
 import Main from '@/app/components/datasets/hit-testing'
 
-type Props = {
+type Props = Readonly<{
   params: Promise<{ datasetId: string }>
-}
+}>
 
 const HitTesting = async (props: Props) => {
   const params = await props.params

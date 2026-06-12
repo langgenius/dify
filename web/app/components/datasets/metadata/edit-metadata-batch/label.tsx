@@ -3,11 +3,11 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   isDeleted?: boolean
   className?: string
   text: string
-}
+}>
 
 const Label: FC<Props> = ({
   isDeleted,

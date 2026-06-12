@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ScrollArea,
@@ -84,7 +85,7 @@ describe('scroll-area wrapper', () => {
 
     it('should render the convenience wrapper and apply slot props', async () => {
       const screen = await render(
-        <>
+        <React.Fragment>
           <p id="installed-apps-label">Installed apps</p>
           <ScrollArea
             className="h-40 w-40"
@@ -98,7 +99,7 @@ describe('scroll-area wrapper', () => {
           >
             <div className="h-48 w-20">Scrollable content</div>
           </ScrollArea>
-        </>,
+        </React.Fragment>,
       )
 
       const viewport = screen.getByRole('region', { name: 'Installed apps' })
@@ -190,10 +191,10 @@ describe('scroll-area wrapper', () => {
         'size-full',
         'min-h-0',
         'min-w-0',
-        'outline-hidden',
-        'focus-visible:ring-1',
-        'focus-visible:ring-inset',
-        'focus-visible:ring-components-input-border-hover',
+        'focus-visible:outline-2',
+        'focus-visible:-outline-offset-1',
+        'focus-visible:outline-solid',
+        'focus-visible:outline-state-accent-solid',
         'custom-viewport-class',
       )
     })

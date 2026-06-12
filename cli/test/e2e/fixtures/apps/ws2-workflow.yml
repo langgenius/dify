@@ -1,0 +1,168 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: auto_test_workspace2
+  use_icon_as_answer_icon: false
+dependencies:
+  - current_identifier: null
+    type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/tongyi:0.1.48@966d88dc40611f067311c1c9839139ebc4b55bff471bc5e736dc3e828bc67b46
+      version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+        - .JPG
+        - .JPEG
+        - .PNG
+        - .GIF
+        - .WEBP
+        - .SVG
+      allowed_file_types:
+        - image
+      allowed_file_upload_methods:
+        - local_file
+        - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+          - local_file
+          - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: llm
+        id: 1780305524693-source-1780305526186-target
+        source: '1780305524693'
+        sourceHandle: source
+        target: '1780305526186'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: llm
+          targetType: end
+        id: 1780305526186-source-1780305600095-target
+        source: '1780305526186'
+        sourceHandle: source
+        target: '1780305600095'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          selected: false
+          title: 用户输入
+          type: start
+          variables: []
+        height: 73
+        id: '1780305524693'
+        position:
+          x: 80
+          y: 282
+        positionAbsolute:
+          x: 80
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: qwen3.6-plus
+            provider: langgenius/tongyi/tongyi
+          prompt_template:
+            - id: cd753cdd-d950-44bf-99ad-7cb19f42d5b6
+              role: system
+              text: 输出内容:hello
+          selected: false
+          title: LLM
+          type: llm
+          vision:
+            enabled: false
+        height: 88
+        id: '1780305526186'
+        position:
+          x: 382
+          y: 282
+        positionAbsolute:
+          x: 382
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          outputs:
+            - value_selector:
+                - '1780305526186'
+                - text
+              value_type: string
+              variable: x
+          selected: false
+          title: 输出
+          type: end
+        height: 88
+        id: '1780305600095'
+        position:
+          x: 684
+          y: 282
+        positionAbsolute:
+          x: 684
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+    viewport:
+      x: -153
+      y: 125
+      zoom: 1
+  rag_pipeline_variables: []

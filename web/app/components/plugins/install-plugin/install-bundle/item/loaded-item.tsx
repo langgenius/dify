@@ -9,13 +9,13 @@ import useGetIcon from '../../base/use-get-icon'
 import Version from '../../base/version'
 import usePluginInstallLimit from '../../hooks/use-install-plugin-limit'
 
-type Props = {
+type Props = Readonly<{
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: Plugin
   isFromMarketPlace?: boolean
   versionInfo: VersionProps
-}
+}>
 
 const LoadedItem: FC<Props> = ({
   checked,

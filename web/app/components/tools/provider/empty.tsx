@@ -7,10 +7,10 @@ import Link from '@/next/link'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
 
-type Props = {
+type Props = Readonly<{
   type?: ToolTypeEnum
   isAgent?: boolean
-}
+}>
 
 const getLink = (type?: ToolTypeEnum) => {
   switch (type) {

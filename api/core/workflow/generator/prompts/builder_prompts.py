@@ -12,6 +12,7 @@ examples accurate or the LLM will invent fields.
 """
 
 import json
+from collections.abc import Iterable
 from typing import Any
 
 # Per-node-type configuration cheatsheet.
@@ -22,11 +23,24 @@ from typing import Any
 # both ``WorkflowService.sync_draft_workflow``'s structural checks and the
 # runtime entity validation each node performs when the workflow runs.
 #
+# The cheatsheet is assembled DYNAMICALLY per request: the planner decides
+# which node types the workflow needs, and ``build_node_config_cheatsheet``
+# stitches together only the snippets for those types (plus the always-needed
+# wrapper / shared-field / edge-handle preamble, and the containers section
+# when an iteration / loop is planned). This keeps the builder prompt tight —
+# a 3-node summariser no longer carries the schema for 12 unrelated node
+# types — and lets each snippet document its FULL schema (e.g. a "file" start
+# variable's required ``allowed_file_types``) without bloating every prompt.
+#
 # The postprocessor in ``runner.py`` fills missing wrapper fields (``type``,
 # ``positionAbsolute``, ``width``, ``height``, ``sourcePosition`` /
 # ``targetPosition``, edge ``data.sourceType`` / ``data.targetType``), so the
 # LLM only needs to emit semantically meaningful fields.
-NODE_CONFIG_CHEATSHEET = """\
+
+# Always-included preamble: the node/edge wrapper shape and the shared
+# ``data`` fields that apply to every node type, plus the "## Per type" header
+# the per-type snippets slot under.
+_CHEATSHEET_PREAMBLE = """\
 ## Node wrapper (every node, top-level)
 
     {"id": "node1" (digits + letters only — see "Node IDs" below),
@@ -46,14 +60,26 @@ Children of iteration / loop containers additionally need
      "desc": "<one-liner>",
      "selected": false}
 
-## Per type — additional "data" fields
+## Per type — additional "data" fields (only the node types in your plan are shown)"""
 
+
+# node_type → its per-type schema snippet. Keyed by the exact ``node_type``
+# string the planner emits so ``build_node_config_cheatsheet`` can look each
+# one up directly. Iteration / loop are documented in the Containers section
+# (they are subgraphs, not leaf nodes) rather than here.
+_NODE_SNIPPETS: dict[str, str] = {
+    "start": """\
 - start:
     {"variables": [
        {"variable": "url",   "label": "URL",   "type": "text-input",
         "required": true,  "max_length": 256,  "options": []},
        {"variable": "topic", "label": "Topic", "type": "paragraph",
-        "required": false, "max_length": 4096, "options": []}
+        "required": false, "max_length": 4096, "options": []},
+       {"variable": "doc",   "label": "Document", "type": "file",
+        "required": true,
+        "allowed_file_types": ["document"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "allowed_file_extensions": []}
     ]}
     EVERY user-supplied value referenced by a downstream node
     (``{{#node-id.var#}}`` in a prompt / answer / template, or
@@ -62,19 +88,29 @@ Children of iteration / loop containers additionally need
     If the planner's ``start_inputs`` list is non-empty, use it verbatim
     (the user prompt section "Start inputs" surfaces it). Types:
     text-input | paragraph | select | number | file | file-list.
+    For a "file" or "file-list" variable you MUST also set
+    ``allowed_file_types`` to a NON-EMPTY subset of
+    ["document", "image", "audio", "video", "custom"] — it is a REQUIRED
+    field and the draft fails to load (showing "supported file types is
+    required") without it. Choose by purpose: ["document"] for text
+    extraction (PDF / Word / PPT / Markdown / …), ["image"] for vision,
+    etc. Always set ``allowed_file_upload_methods`` to
+    ["local_file", "remote_url"]. Only when you include "custom" must you
+    also set ``allowed_file_extensions`` to a non-empty list like
+    [".epub", ".rtf"]; otherwise leave it [].
     In Advanced-Chat mode ``sys.query`` and ``sys.files`` are automatic
     system variables — downstream nodes may reference them; do NOT add
-    them to ``variables``.
-
+    them to ``variables``.""",
+    "end": """\
 - end (Workflow mode only):
     {"outputs": [
         {"variable": "result", "value_selector": ["<src-node-id>", "<out-var>"]}
-    ]}
-
+    ]}""",
+    "answer": """\
 - answer (Advanced Chat mode only):
     {"variables": [],
-     "answer": "<text with {{#<src>.<var>#}} placeholders>"}
-
+     "answer": "<text with {{#<src>.<var>#}} placeholders>"}""",
+    "llm": """\
 - llm:
     {"model": {"provider": "<provider>", "name": "<model>", "mode": "chat",
                "completion_params": {"temperature": 0.7}},
@@ -100,26 +136,26 @@ Children of iteration / loop containers additionally need
             values are the translations.
             Input: {{#node1.text#}}
       * Each placeholder only resolves the variable from its source node —
-        it cannot be a Jinja template or call a function.
-
+        it cannot be a Jinja template or call a function.""",
+    "knowledge-retrieval": """\
 - knowledge-retrieval:
     {"query_variable_selector": ["<src>", "<var>"],
      "query_attachment_selector": [],
      "dataset_ids": [],
      "retrieval_mode": "multiple",
      "multiple_retrieval_config": {"top_k": 4, "score_threshold": null,
-                                   "reranking_enable": false}}
-
+                                   "reranking_enable": false}}""",
+    "code": """\
 - code  (escape hatch — only if no installed tool fits):
     {"code_language": "python3",
      "code": "def main(arg1: str) -> dict:\\n    return {'result': arg1}",
      "variables": [{"variable": "arg1", "value_selector": ["<src>", "<var>"]}],
-     "outputs": {"result": {"type": "string", "children": null}}}
-
+     "outputs": {"result": {"type": "string", "children": null}}}""",
+    "template-transform": """\
 - template-transform:
     {"template": "Hello {{ name }}",
-     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}
-
+     "variables": [{"variable": "name", "value_selector": ["<src>", "<var>"]}]}""",
+    "http-request": """\
 - http-request  (escape hatch — only if no installed tool fits):
     {"variables": [], "method": "get", "url": "https://example.com",
      "authorization": {"type": "no-auth", "config": null},
@@ -129,8 +165,8 @@ Children of iteration / loop containers additionally need
      "timeout": {"max_connect_timeout": 0, "max_read_timeout": 0,
                  "max_write_timeout": 0},
      "retry_config": {"retry_enabled": true, "max_retries": 3,
-                      "retry_interval": 100}}
-
+                      "retry_interval": 100}}""",
+    "tool": """\
 - tool  (PREFERRED for external actions when listed in Available tools):
     {"provider_id": "<provider>",            # provider portion of provider/tool
      "provider_type": "builtin",             # exact value from catalogue
@@ -144,8 +180,8 @@ Children of iteration / loop containers additionally need
     Parameter ``type`` is one of:
       "mixed"    — string template referencing variables ({{#...#}})
       "variable" — direct reference, value is ["<src>", "<var>"]
-      "constant" — literal value
-
+      "constant" — literal value""",
+    "if-else": """\
 - if-else:
     {"_targetBranches": [{"id": "true", "name": "IF"},
                          {"id": "false", "name": "ELSE"}],
@@ -158,8 +194,8 @@ Children of iteration / loop containers additionally need
                         "comparison_operator": "is",
                         "value": "<value>"}]}
      ]}
-    Source handle for downstream edges = the case_id ("true" / "false").
-
+    Source handle for downstream edges = the case_id ("true" / "false").""",
+    "question-classifier": """\
 - question-classifier:
     {"query_variable_selector": ["<src>", "<var>"],
      "model": {"provider": "<p>", "name": "<m>", "mode": "chat",
@@ -169,8 +205,8 @@ Children of iteration / loop containers additionally need
      "_targetBranches": [{"id": "1", "name": ""}, {"id": "2", "name": ""}],
      "vision": {"enabled": false},
      "instruction": ""}
-    Source handle for downstream edges = the class_id ("1" / "2" / ...).
-
+    Source handle for downstream edges = the class_id ("1" / "2" / ...).""",
+    "parameter-extractor": """\
 - parameter-extractor:
     {"query": [["<src>", "<var>"]],          # array of value_selector arrays
      "model": {"provider": "<p>", "name": "<m>", "mode": "chat",
@@ -179,8 +215,8 @@ Children of iteration / loop containers additionally need
                      "description": "<purpose>", "required": true}],
      "reasoning_mode": "prompt",
      "vision": {"enabled": false},
-     "instruction": ""}
-
+     "instruction": ""}""",
+    "document-extractor": """\
 - document-extractor:
     {"variable_selector": ["<src>", "<file-var>"],   # a file / file-list input
      "is_array_file": false}                          # true when the input is a
@@ -188,8 +224,9 @@ Children of iteration / loop containers additionally need
     Single output variable ``text``: a string when ``is_array_file`` is false,
     an array of strings (one per file) when it is true. ``variable_selector``
     MUST point at a ``start`` variable declared with type "file" / "file-list"
-    (or ``sys.files`` in Advanced-Chat mode).
-
+    (or ``sys.files`` in Advanced-Chat mode). That start variable MUST set a
+    non-empty ``allowed_file_types`` (use ["document"] for document text).""",
+    "variable-aggregator": """\
 - variable-aggregator  (merge mutually-exclusive branches into one output):
     {"output_type": "string",        # VarType of the merged value — one of
                                      # string | number | object | array[string] |
@@ -200,8 +237,8 @@ Children of iteration / loop containers additionally need
     Output variable: ``output`` (the first branch that actually ran). Place it
     after an ``if-else`` / ``question-classifier`` to rejoin paths before the
     ``end`` / ``answer`` node. Each entry of ``variables`` is a value_selector
-    array, NOT a placeholder string.
-
+    array, NOT a placeholder string.""",
+    "list-operator": """\
 - list-operator  (filter / sort / slice an array variable):
     {"variable": ["<src>", "<array-var>"],
      "filter_by": {"enabled": false, "conditions": []},
@@ -210,8 +247,12 @@ Children of iteration / loop containers additionally need
      "limit": {"enabled": false, "size": 10}}
     Enable only the sub-features you need; ``conditions`` reuse the if-else
     condition shape (key / comparison_operator / value). Outputs: ``result``
-    (the processed array), ``first_record``, ``last_record``.
+    (the processed array), ``first_record``, ``last_record``.""",
+}
 
+
+# Pulled into the cheatsheet only when an iteration / loop appears in the plan.
+_CONTAINERS_SECTION = """\
 ## Containers — iteration / loop
 
 These are SUBGRAPH nodes. To use one you MUST emit, in order:
@@ -270,16 +311,59 @@ These are SUBGRAPH nodes. To use one you MUST emit, in order:
 
 5. The container's incoming/outgoing edges connect to the container's id
    (``nodeK``), NOT to inner nodes. The first inner edge connects from
-   ``nodeKstart``.
+   ``nodeKstart``."""
 
+
+# Always-included trailer: edge handle conventions for every graph.
+_EDGE_HANDLES_SECTION = """\
 ## Edge handles
 
 - Most nodes:           sourceHandle "source", targetHandle "target".
 - if-else cases:        sourceHandle is the case_id ("true" / "false" / ...).
 - question-classifier:  sourceHandle is the class_id ("1" / "2" / ...).
 - iteration-start /     sourceHandle "source"; the edge from the *start node
-  loop-start:           is what kicks off the first inner step.
-"""
+  loop-start:           is what kicks off the first inner step."""
+
+
+# Container node types are described in ``_CONTAINERS_SECTION`` rather than as
+# leaf snippets; their presence in a plan pulls that section in.
+_CONTAINER_NODE_TYPES = frozenset({"iteration", "loop"})
+
+
+def build_node_config_cheatsheet(node_types: Iterable[str] | None = None) -> str:
+    """
+    Assemble the builder cheatsheet for exactly the node types in the plan.
+
+    ``node_types`` is the set of ``node_type`` strings the planner chose. We
+    emit the always-on preamble (wrapper / shared fields), then only the
+    per-type snippets for the requested types (``start`` is always included —
+    every graph has one), the Containers section when an iteration / loop is
+    planned, and the edge-handles trailer. Unknown / unrecognised type strings
+    are ignored (the runtime / structural validator catches genuinely bogus
+    types).
+
+    ``None`` returns the FULL cheatsheet (every snippet + containers) — used to
+    build the static back-compat constants below and as a safe fallback.
+    """
+    if node_types is None:
+        requested: set[str] = set(_NODE_SNIPPETS) | set(_CONTAINER_NODE_TYPES)
+    else:
+        requested = {str(t).strip() for t in node_types if str(t).strip()}
+        requested.add("start")  # every workflow has exactly one start node
+
+    parts: list[str] = [_CHEATSHEET_PREAMBLE]
+    # Iterate _NODE_SNIPPETS (not ``requested``) to keep a stable, readable order.
+    parts.extend(snippet for node_type, snippet in _NODE_SNIPPETS.items() if node_type in requested)
+    if requested & _CONTAINER_NODE_TYPES:
+        parts.append(_CONTAINERS_SECTION)
+    parts.append(_EDGE_HANDLES_SECTION)
+    return "\n\n".join(parts) + "\n"
+
+
+# Full cheatsheet (all node types) — retained as a module constant so callers
+# and tests that want the complete reference can import it directly. The
+# dynamic per-request prompt is built by ``get_builder_system_prompt``.
+NODE_CONFIG_CHEATSHEET = build_node_config_cheatsheet()
 
 
 _BASE_SYSTEM_PROMPT_HEAD = """You are a Dify workflow builder.
@@ -402,21 +486,24 @@ _ADVANCED_CHAT_MODE_RULES = """# Mode-specific rules — Advanced Chat (Chatflow
 """
 
 
-BUILDER_SYSTEM_PROMPT_WORKFLOW = (
-    _BASE_SYSTEM_PROMPT_HEAD
-    + _WORKFLOW_MODE_RULES
-    + _BASE_SYSTEM_PROMPT_TAIL
-    + NODE_CONFIG_CHEATSHEET
-    + _BASE_SYSTEM_PROMPT_FOOTER
-)
+def _assemble_builder_system_prompt(mode: str, node_types: Iterable[str] | None) -> str:
+    """Stitch the builder system prompt for ``mode`` around a cheatsheet built
+    for ``node_types`` (``None`` → full cheatsheet)."""
+    mode_rules = _ADVANCED_CHAT_MODE_RULES if mode == "advanced-chat" else _WORKFLOW_MODE_RULES
+    return (
+        _BASE_SYSTEM_PROMPT_HEAD
+        + mode_rules
+        + _BASE_SYSTEM_PROMPT_TAIL
+        + build_node_config_cheatsheet(node_types)
+        + _BASE_SYSTEM_PROMPT_FOOTER
+    )
 
-BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT = (
-    _BASE_SYSTEM_PROMPT_HEAD
-    + _ADVANCED_CHAT_MODE_RULES
-    + _BASE_SYSTEM_PROMPT_TAIL
-    + NODE_CONFIG_CHEATSHEET
-    + _BASE_SYSTEM_PROMPT_FOOTER
-)
+
+# Static full-cheatsheet prompts — the back-compat default returned by
+# ``get_builder_system_prompt`` when the caller doesn't pin a node-type set.
+BUILDER_SYSTEM_PROMPT_WORKFLOW = _assemble_builder_system_prompt("workflow", None)
+
+BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT = _assemble_builder_system_prompt("advanced-chat", None)
 
 
 BUILDER_USER_PROMPT = """# User instruction
@@ -439,13 +526,77 @@ Now emit the complete workflow graph JSON.
 """
 
 
+# Node wrapper fields that carry no meaning the builder needs: pure canvas /
+# selection state, plus geometry the runner's postprocess recomputes anyway.
+# Stripping them out of the refine prompt cuts its size roughly in half on
+# hand-edited graphs — fewer tokens in, and (because the builder echoes
+# untouched nodes verbatim) far fewer tokens out, which is where the latency
+# lives.
+_PRUNED_NODE_KEYS = frozenset(
+    {
+        "positionAbsolute",
+        "sourcePosition",
+        "targetPosition",
+        "selected",
+        "dragging",
+        "measured",
+    }
+)
+
+# Additionally pruned from TOP-LEVEL nodes only: the layered auto-layout
+# recomputes their position and size defaults, so the builder never needs to
+# reproduce them. Container children keep ``position`` (relative to the
+# parent, which we cannot recompute) and containers keep ``width`` /
+# ``height`` (their canvas size is real config, not a default).
+_PRUNED_TOP_LEVEL_NODE_KEYS = _PRUNED_NODE_KEYS | {"position", "width", "height"}
+
+_CONTAINER_DATA_TYPES = frozenset({"iteration", "loop"})
+
+# Edge fields the builder must echo; everything else (ids, zIndex,
+# sourceType / targetType, isInIteration / isInLoop markers) is recomputed
+# by the runner's postprocess from the node topology.
+_KEPT_EDGE_KEYS = ("source", "target", "sourceHandle", "targetHandle")
+
+
+def compact_graph_for_builder(current_graph: dict) -> dict:
+    """
+    Strip canvas noise out of a draft graph before prompt injection.
+
+    Keeps everything semantically meaningful — ids, wrapper ``type``,
+    ``parentId``, the full ``data`` config, child positions, container
+    sizes — and drops geometry / selection state the postprocess pass
+    recomputes. The builder echoes untouched nodes verbatim, so every byte
+    removed here is removed twice (prompt AND completion).
+    """
+    nodes_out: list[dict] = []
+    for node in current_graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        is_child = bool(node.get("parentId"))
+        is_container = isinstance(node.get("data"), dict) and node["data"].get("type") in _CONTAINER_DATA_TYPES
+        pruned = _PRUNED_NODE_KEYS if (is_child or is_container) else _PRUNED_TOP_LEVEL_NODE_KEYS
+        compact = {k: v for k, v in node.items() if k not in pruned}
+        if is_container:
+            # Container position is still recomputed by the layout pass.
+            compact.pop("position", None)
+        nodes_out.append(compact)
+    edges_out = [
+        {k: edge[k] for k in _KEPT_EDGE_KEYS if k in edge}
+        for edge in (current_graph.get("edges") or [])
+        if isinstance(edge, dict)
+    ]
+    return {"nodes": nodes_out, "edges": edges_out}
+
+
 def format_builder_existing_graph_section(current_graph: dict | None) -> str:
     """
-    Refine mode: give the builder the FULL existing graph JSON so it can keep
+    Refine mode: give the builder the existing graph JSON so it can keep
     every node and edge the user's change does not touch byte-for-byte — same
     ids, same config, same prompt templates. Without the full config the
     builder would regenerate untouched nodes from scratch and silently drop
-    the user's hand-tuned settings.
+    the user's hand-tuned settings. Canvas-only fields are stripped first
+    (see ``compact_graph_for_builder``) — they're recomputed in postprocess,
+    so carrying them only slows the call down.
 
     Returns an empty string in create mode (no ``current_graph``); the builder
     then behaves exactly as before, constructing the graph purely from the
@@ -453,7 +604,7 @@ def format_builder_existing_graph_section(current_graph: dict | None) -> str:
     """
     if not current_graph:
         return ""
-    graph_json = json.dumps(current_graph, ensure_ascii=False, separators=(",", ":"))
+    graph_json = json.dumps(compact_graph_for_builder(current_graph), ensure_ascii=False, separators=(",", ":"))
     return (
         "# Existing graph to refine (JSON)\n\n"
         "You are REFINING this existing graph, NOT building from scratch. Apply "
@@ -546,8 +697,16 @@ def format_plan_block(plan_nodes: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def get_builder_system_prompt(mode: str) -> str:
-    """Pick the system prompt branch for Workflow vs Advanced Chat."""
-    if mode == "advanced-chat":
-        return BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT
-    return BUILDER_SYSTEM_PROMPT_WORKFLOW
+def get_builder_system_prompt(mode: str, node_types: Iterable[str] | None = None) -> str:
+    """
+    Build the builder system prompt for ``mode``, with a cheatsheet scoped to
+    ``node_types`` (the planner's chosen node types).
+
+    When ``node_types`` is ``None`` we return the cached full-cheatsheet
+    constant (back-compat default). When the runner passes the plan's node-type
+    set we assemble a fresh prompt carrying only the relevant per-type schemas,
+    so the builder isn't handed config for node types the workflow never uses.
+    """
+    if node_types is None:
+        return BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT if mode == "advanced-chat" else BUILDER_SYSTEM_PROMPT_WORKFLOW
+    return _assemble_builder_system_prompt(mode, node_types)

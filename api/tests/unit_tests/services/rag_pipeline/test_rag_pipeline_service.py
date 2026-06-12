@@ -1,9 +1,14 @@
+import json
 import time
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.orm import sessionmaker
 
+from models import Account, Tenant
+from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin
+from models.workflow import Workflow
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
@@ -23,6 +28,89 @@ def rag_pipeline_service(mocker) -> RagPipelineService:
 
 class MockRepo:
     pass
+
+
+def _make_account(account_id: str = "u1", tenant_id: str = "t1") -> Account:
+    account = Account(name="Test User", email=f"{account_id}@example.com")
+    account.id = account_id
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = tenant_id
+    account._current_tenant = tenant
+    return account
+
+
+def _make_pipeline(
+    *,
+    pipeline_id: str = "p1",
+    tenant_id: str = "t1",
+    workflow_id: str | None = None,
+    is_published: bool = False,
+) -> Pipeline:
+    pipeline = Pipeline(tenant_id=tenant_id, name="Test Pipeline", description="test")
+    pipeline.id = pipeline_id
+    pipeline.workflow_id = workflow_id
+    pipeline.is_published = is_published
+    return pipeline
+
+
+def _make_workflow(
+    *,
+    workflow_id: str = "wf-1",
+    tenant_id: str = "t1",
+    app_id: str = "p1",
+    graph: dict[str, object] | None = None,
+    features: dict[str, object] | None = None,
+    created_by: str = "u1",
+) -> Workflow:
+    workflow = Workflow(
+        id=workflow_id,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type="workflow",
+        version="draft",
+        marked_name="",
+        marked_comment="",
+        graph=json.dumps(graph or {"nodes": []}),
+        features=json.dumps(features or {}),
+        created_by=created_by,
+        created_at=datetime(2024, 1, 1),
+        updated_by=None,
+        updated_at=datetime(2024, 1, 1),
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    return workflow
+
+
+def _make_dataset(*, dataset_id: str = "d1", pipeline_id: str = "p1", tenant_id: str = "t1") -> Dataset:
+    dataset = Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Test Dataset",
+        created_by="u1",
+    )
+    dataset.pipeline_id = pipeline_id
+    return dataset
+
+
+def _make_customized_template() -> PipelineCustomizedTemplate:
+    return PipelineCustomizedTemplate(
+        tenant_id="t1",
+        name="old",
+        description="old",
+        chunk_structure="paragraph",
+        icon={},
+        position=1,
+        yaml_content="",
+        install_count=0,
+        language="en-US",
+        created_by="u1",
+    )
+
+
+def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
+    return PipelineRecommendedPlugin(plugin_id=plugin_id, provider_name=plugin_id, type="tool", position=0, active=True)
 
 
 def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_result(mocker) -> None:
@@ -74,7 +162,7 @@ def test_get_pipeline_template_detail_uses_expected_mode(mocker, template_type: 
 
 
 def test_get_published_workflow_returns_none_when_pipeline_has_no_workflow_id(rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(workflow_id=None)
+    pipeline = _make_pipeline(workflow_id=None)
 
     result = rag_pipeline_service.get_published_workflow(pipeline)
 
@@ -82,7 +170,7 @@ def test_get_published_workflow_returns_none_when_pipeline_has_no_workflow_id(ra
 
 
 def test_get_all_published_workflow_returns_empty_for_unpublished_pipeline(rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(workflow_id=None)
+    pipeline = _make_pipeline(workflow_id=None)
     session = SimpleNamespace()
 
     workflows, has_more = rag_pipeline_service.get_all_published_workflow(
@@ -101,7 +189,7 @@ def test_get_all_published_workflow_returns_empty_for_unpublished_pipeline(rag_p
 def test_get_all_published_workflow_applies_limit_and_has_more(rag_pipeline_service) -> None:
     scalars_result = SimpleNamespace(all=lambda: ["wf1", "wf2", "wf3"])
     session = SimpleNamespace(scalars=lambda stmt: scalars_result)
-    pipeline = SimpleNamespace(id="pipeline-1", workflow_id="wf-live")
+    pipeline = _make_pipeline(pipeline_id="pipeline-1", workflow_id="wf-live")
 
     workflows, has_more = rag_pipeline_service.get_all_published_workflow(
         session=session,
@@ -133,8 +221,8 @@ def test_sync_draft_workflow_creates_new_when_none_exists(mocker, rag_pipeline_s
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.flush")
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1", workflow_id=None)
-    account = SimpleNamespace(id="u1")
+    pipeline = _make_pipeline(workflow_id=None)
+    account = _make_account()
 
     result = rag_pipeline_service.sync_draft_workflow(
         pipeline=pipeline,
@@ -153,11 +241,11 @@ def test_sync_draft_workflow_creates_new_when_none_exists(mocker, rag_pipeline_s
 def test_sync_draft_workflow_raises_on_hash_mismatch(mocker, rag_pipeline_service) -> None:
     from services.errors.app import WorkflowHashNotEqualError
 
-    existing_wf = SimpleNamespace(unique_hash="hash-old")
+    existing_wf = _make_workflow(graph={"nodes": [{"id": "old"}]})
     mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=existing_wf)
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1")
-    account = SimpleNamespace(id="u1")
+    pipeline = _make_pipeline()
+    account = _make_account()
 
     with pytest.raises(WorkflowHashNotEqualError):
         rag_pipeline_service.sync_draft_workflow(
@@ -184,8 +272,8 @@ def test_sync_draft_workflow_updates_existing(mocker, rag_pipeline_service) -> N
     mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=existing_wf)
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1")
-    account = SimpleNamespace(id="u1")
+    pipeline = _make_pipeline()
+    account = _make_account()
 
     result = rag_pipeline_service.sync_draft_workflow(
         pipeline=pipeline,
@@ -275,7 +363,7 @@ def test_get_rag_pipeline_paginate_workflow_runs_delegates(mocker, rag_pipeline_
     repo_mock.get_paginated_workflow_runs.return_value = expected
     rag_pipeline_service._workflow_run_repo = repo_mock
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1")
+    pipeline = _make_pipeline()
     result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline, {"limit": 10, "last_id": "abc"})
 
     assert result is expected
@@ -297,7 +385,7 @@ def test_get_rag_pipeline_workflow_run_delegates(mocker, rag_pipeline_service) -
     repo_mock.get_workflow_run_by_id.return_value = expected
     rag_pipeline_service._workflow_run_repo = repo_mock
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1")
+    pipeline = _make_pipeline()
     result = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline, "run-1")
 
     assert result is expected
@@ -310,14 +398,14 @@ def test_get_rag_pipeline_workflow_run_delegates(mocker, rag_pipeline_service) -
 def test_is_workflow_exist_returns_true_when_draft_exists(mocker, rag_pipeline_service) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=1)
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1")
+    pipeline = _make_pipeline()
     assert rag_pipeline_service.is_workflow_exist(pipeline) is True
 
 
 def test_is_workflow_exist_returns_false_when_no_draft(mocker, rag_pipeline_service) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=0)
 
-    pipeline = SimpleNamespace(tenant_id="t1", id="p1")
+    pipeline = _make_pipeline()
     assert rag_pipeline_service.is_workflow_exist(pipeline) is False
 
 
@@ -635,17 +723,10 @@ def test_get_second_step_parameters_success(mocker, rag_pipeline_service) -> Non
 
 
 def test_publish_customized_pipeline_template_success(mocker, rag_pipeline_service) -> None:
-    from models.dataset import Pipeline
-
     # 1. Setup mocks
-    pipeline = mocker.Mock(spec=Pipeline)
-    pipeline.id = "p1"
-    pipeline.tenant_id = "t1"
-    pipeline.workflow_id = "wf-1"
-    pipeline.is_published = True
+    pipeline = _make_pipeline(workflow_id="wf-1", is_published=True)
 
-    workflow = mocker.Mock()
-    workflow.id = "wf-1"
+    workflow = _make_workflow(workflow_id="wf-1")
 
     # Mock db itself to avoid app context errors
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
@@ -656,8 +737,8 @@ def test_publish_customized_pipeline_template_success(mocker, rag_pipeline_servi
     mock_db.session.scalar.side_effect = [None, 5]
 
     # Mock retrieve_dataset
-    dataset = mocker.Mock()
-    pipeline.retrieve_dataset.return_value = dataset
+    dataset = _make_dataset()
+    dataset.chunk_structure = "paragraph"
 
     # Mock RagPipelineDslService
     mock_dsl_service = mocker.Mock()
@@ -665,16 +746,14 @@ def test_publish_customized_pipeline_template_success(mocker, rag_pipeline_servi
     mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.RagPipelineDslService", return_value=mock_dsl_service)
 
     # Mock Session and commit
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=mocker.MagicMock())
+    session_factory = mocker.patch("services.rag_pipeline.rag_pipeline.sessionmaker")
+    session_factory.return_value.begin.return_value.__enter__.return_value.scalar.return_value = dataset
 
-    # Mock current_user
-    mock_user = mocker.Mock()
-    mock_user.id = "user-123"
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", mock_user)
+    account = _make_account(account_id="user-123")
 
     # 2. Run test
     args = {"name": "New Template", "description": "Desc", "icon_info": {"icon": "star"}, "tags": ["tag1"]}
-    rag_pipeline_service.publish_customized_pipeline_template("p1", args)
+    rag_pipeline_service.publish_customized_pipeline_template("p1", args, account, "t1")
 
     # 3. Assertions
     # Verify a new template was added to session or similar?
@@ -687,14 +766,10 @@ def test_publish_customized_pipeline_template_success(mocker, rag_pipeline_servi
 
 
 def test_get_datasource_plugins_success(mocker, rag_pipeline_service) -> None:
-    from models.dataset import Dataset, Pipeline
-
     # 1. Setup mocks
-    dataset = mocker.Mock(spec=Dataset)
-    dataset.pipeline_id = "p1"
+    dataset = _make_dataset()
 
-    pipeline = mocker.Mock(spec=Pipeline)
-    pipeline.id = "p1"
+    pipeline = _make_pipeline()
 
     workflow = mocker.Mock()
     workflow.graph_dict = {
@@ -835,15 +910,10 @@ def test_set_datasource_variables_success(mocker, rag_pipeline_service) -> None:
 
 
 def test_get_draft_workflow_success(mocker, rag_pipeline_service) -> None:
-    from models.dataset import Pipeline
-    from models.workflow import Workflow
-
     # 1. Setup mocks
-    pipeline = mocker.Mock(spec=Pipeline)
-    pipeline.id = "p1"
-    pipeline.tenant_id = "t1"
+    pipeline = _make_pipeline()
 
-    workflow = mocker.Mock(spec=Workflow)
+    workflow = _make_workflow()
 
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
     mock_db.session.scalar.return_value = workflow
@@ -856,16 +926,10 @@ def test_get_draft_workflow_success(mocker, rag_pipeline_service) -> None:
 
 
 def test_get_published_workflow_success(mocker, rag_pipeline_service) -> None:
-    from models.dataset import Pipeline
-    from models.workflow import Workflow
-
     # 1. Setup mocks
-    pipeline = mocker.Mock(spec=Pipeline)
-    pipeline.id = "p1"
-    pipeline.tenant_id = "t1"
-    pipeline.workflow_id = "wf-pub"
+    pipeline = _make_pipeline(workflow_id="wf-pub")
 
-    workflow = mocker.Mock(spec=Workflow)
+    workflow = _make_workflow(workflow_id="wf-pub")
 
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
     mock_db.session.scalar.return_value = workflow
@@ -896,8 +960,8 @@ def test_get_default_block_config_success(rag_pipeline_service) -> None:
 def test_publish_workflow_raises_when_draft_workflow_missing(mocker, rag_pipeline_service) -> None:
     session = mocker.Mock()
     session.scalar.return_value = None
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    account = SimpleNamespace(id="u1")
+    pipeline = _make_pipeline()
+    account = _make_account()
 
     with pytest.raises(ValueError, match="No valid workflow found"):
         rag_pipeline_service.publish_workflow(session=session, pipeline=pipeline, account=account)
@@ -929,8 +993,8 @@ def test_get_default_block_config_injects_http_request_filter(mocker, rag_pipeli
 
 
 def test_run_draft_workflow_node_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    account = SimpleNamespace(id="u1")
+    pipeline = _make_pipeline()
+    account = _make_account()
     mocker.patch.object(rag_pipeline_service, "get_draft_workflow", return_value=None)
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
@@ -939,8 +1003,8 @@ def test_run_draft_workflow_node_raises_when_workflow_missing(mocker, rag_pipeli
 
 def test_run_draft_workflow_node_saves_execution_and_variables(mocker, rag_pipeline_service) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.db", mocker.Mock(engine=mocker.Mock()))
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    account = SimpleNamespace(id="u1")
+    pipeline = _make_pipeline()
+    account = _make_account()
     draft_workflow = mocker.Mock(id="wf-1")
     draft_workflow.get_node_config_by_id.return_value = {"id": "node-1"}
     draft_workflow.get_enclosing_node_type_and_id.return_value = ("loop", "enclosing-node")
@@ -1163,11 +1227,11 @@ def test_get_second_step_parameters_handles_string_and_list_variable_references(
 
 
 def test_get_rag_pipeline_workflow_run_node_executions_empty_when_run_missing(mocker, rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    pipeline = _make_pipeline()
     mocker.patch.object(rag_pipeline_service, "get_rag_pipeline_workflow_run", return_value=None)
 
     result = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
-        pipeline=pipeline, run_id="run-1", user=SimpleNamespace(id="u1")
+        pipeline=pipeline, run_id="run-1", user=_make_account()
     )
 
     assert result == []
@@ -1175,14 +1239,14 @@ def test_get_rag_pipeline_workflow_run_node_executions_empty_when_run_missing(mo
 
 def test_get_rag_pipeline_workflow_run_node_executions_returns_sorted_executions(mocker, rag_pipeline_service) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.db", mocker.Mock(engine=mocker.Mock()))
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    pipeline = _make_pipeline()
     mocker.patch.object(rag_pipeline_service, "get_rag_pipeline_workflow_run", return_value=SimpleNamespace(id="run-1"))
     repo = mocker.Mock()
     repo.get_db_models_by_workflow_run.return_value = ["n1", "n2"]
     mocker.patch("services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository", return_value=repo)
 
     result = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
-        pipeline=pipeline, run_id="run-1", user=SimpleNamespace(id="u1")
+        pipeline=pipeline, run_id="run-1", user=_make_account()
     )
 
     assert result == ["n1", "n2"]
@@ -1192,7 +1256,7 @@ def test_get_recommended_plugins_returns_empty_when_no_active_plugins(mocker, ra
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
     mock_db.session.scalars.return_value.all.return_value = []
 
-    result = rag_pipeline_service.get_recommended_plugins("all")
+    result = rag_pipeline_service.get_recommended_plugins("all", _make_account(), "t1")
 
     assert result == {
         "installed_recommended_plugins": [],
@@ -1201,11 +1265,10 @@ def test_get_recommended_plugins_returns_empty_when_no_active_plugins(mocker, ra
 
 
 def test_get_recommended_plugins_returns_installed_and_uninstalled(mocker, rag_pipeline_service) -> None:
-    plugin_a = SimpleNamespace(plugin_id="plugin-a")
-    plugin_b = SimpleNamespace(plugin_id="plugin-b")
+    plugin_a = _make_recommended_plugin("plugin-a")
+    plugin_b = _make_recommended_plugin("plugin-b")
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
     mock_db.session.scalars.return_value.all.return_value = [plugin_a, plugin_b]
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
     mocker.patch(
         "services.rag_pipeline.rag_pipeline.BuiltinToolManageService.list_builtin_tools",
         return_value=[SimpleNamespace(plugin_id="plugin-a", to_dict=lambda: {"plugin_id": "plugin-a"})],
@@ -1215,7 +1278,7 @@ def test_get_recommended_plugins_returns_installed_and_uninstalled(mocker, rag_p
         return_value=[{"plugin_id": "plugin-b", "name": "Plugin B"}],
     )
 
-    result = rag_pipeline_service.get_recommended_plugins("custom")
+    result = rag_pipeline_service.get_recommended_plugins("custom", _make_account(), "t1")
 
     assert result["installed_recommended_plugins"] == [{"plugin_id": "plugin-a"}]
     assert result["uninstalled_recommended_plugins"] == [{"plugin_id": "plugin-b", "name": "Plugin B"}]
@@ -1229,8 +1292,8 @@ def test_get_node_last_run_delegates_to_repository(mocker, rag_pipeline_service)
         "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
         return_value=repo,
     )
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = SimpleNamespace(id="wf1")
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(workflow_id="wf1")
 
     result = rag_pipeline_service.get_node_last_run(pipeline, workflow, "node-1")
 
@@ -1572,15 +1635,17 @@ def test_publish_customized_pipeline_template_raises_for_missing_pipeline(mocker
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", return_value=None)
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        rag_pipeline_service.publish_customized_pipeline_template("p1", {})
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {}, _make_account(), "t1")
 
 
 def test_publish_customized_pipeline_template_raises_for_missing_workflow_id(mocker, rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id=None)
+    pipeline = _make_pipeline(workflow_id=None)
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", return_value=pipeline)
 
     with pytest.raises(ValueError, match="Pipeline workflow not found"):
-        rag_pipeline_service.publish_customized_pipeline_template("p1", {"name": "template-name"})
+        rag_pipeline_service.publish_customized_pipeline_template(
+            "p1", {"name": "template-name"}, _make_account(), "t1"
+        )
 
 
 def test_get_pipeline_raises_when_dataset_missing(mocker, rag_pipeline_service) -> None:
@@ -1630,13 +1695,12 @@ def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker) -> None:
 
 
 def test_update_customized_pipeline_template_commits_when_name_empty(mocker) -> None:
-    template = SimpleNamespace(name="old", description="old", icon={}, updated_by=None)
+    template = _make_customized_template()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=template)
     commit = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
 
     info = PipelineTemplateInfoEntity(name="", description="updated", icon_info=IconInfo(icon="i"))
-    result = RagPipelineService.update_customized_pipeline_template("tpl-1", info)
+    result = RagPipelineService.update_customized_pipeline_template("tpl-1", info, _make_account(), "t1")
 
     assert result.description == "updated"
     commit.assert_called_once()
@@ -1644,7 +1708,7 @@ def test_update_customized_pipeline_template_commits_when_name_empty(mocker) -> 
 
 def test_get_all_published_workflow_without_filters_has_no_more(rag_pipeline_service) -> None:
     session = SimpleNamespace(scalars=lambda stmt: SimpleNamespace(all=lambda: ["wf1"]))
-    pipeline = SimpleNamespace(id="p1", workflow_id="wf-live")
+    pipeline = _make_pipeline(workflow_id="wf-live")
 
     workflows, has_more = rag_pipeline_service.get_all_published_workflow(
         session=session,
@@ -1856,38 +1920,34 @@ def test_run_free_workflow_node_delegates_to_handle_result(mocker, rag_pipeline_
 
 
 def test_publish_customized_pipeline_template_raises_when_workflow_missing(mocker, rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id="wf-1")
+    pipeline = _make_pipeline(workflow_id="wf-1")
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", side_effect=[pipeline, None])
 
     with pytest.raises(ValueError, match="Workflow not found"):
-        rag_pipeline_service.publish_customized_pipeline_template("p1", {})
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {}, _make_account(), "t1")
 
 
 def test_publish_customized_pipeline_template_raises_when_dataset_missing(mocker, rag_pipeline_service) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1", workflow_id="wf-1")
-    workflow = SimpleNamespace(id="wf-1")
+    pipeline = _make_pipeline(workflow_id="wf-1")
+    workflow = _make_workflow(workflow_id="wf-1")
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
     mock_db.engine = mocker.Mock()
     mock_db.session.get.side_effect = [pipeline, workflow]
-    session_ctx = mocker.MagicMock()
-    session_ctx.__enter__.return_value = SimpleNamespace()
-    session_ctx.__exit__.return_value = False
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
-    pipeline.retrieve_dataset = lambda session: None
+    session_factory = mocker.patch("services.rag_pipeline.rag_pipeline.sessionmaker")
+    session_factory.return_value.begin.return_value.__enter__.return_value.scalar.return_value = None
 
     with pytest.raises(ValueError, match="Dataset not found"):
-        rag_pipeline_service.publish_customized_pipeline_template("p1", {})
+        rag_pipeline_service.publish_customized_pipeline_template("p1", {}, _make_account(), "t1")
 
 
 def test_get_recommended_plugins_skips_manifest_when_missing(mocker, rag_pipeline_service) -> None:
-    plugin = SimpleNamespace(plugin_id="plugin-a")
+    plugin = _make_recommended_plugin("plugin-a")
     mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
     mock_db.session.scalars.return_value.all.return_value = [plugin]
-    mocker.patch("services.rag_pipeline.rag_pipeline.current_user", SimpleNamespace(id="u1", current_tenant_id="t1"))
     mocker.patch("services.rag_pipeline.rag_pipeline.BuiltinToolManageService.list_builtin_tools", return_value=[])
     mocker.patch("services.rag_pipeline.rag_pipeline.marketplace.batch_fetch_plugin_by_ids", return_value=[])
 
-    result = rag_pipeline_service.get_recommended_plugins("all")
+    result = rag_pipeline_service.get_recommended_plugins("all", _make_account(), "t1")
 
     assert result["installed_recommended_plugins"] == []
     assert result["uninstalled_recommended_plugins"] == []
@@ -1918,8 +1978,8 @@ def test_retry_error_document_raises_when_workflow_missing(mocker, rag_pipeline_
 
 
 def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(mocker, rag_pipeline_service) -> None:
-    dataset = SimpleNamespace(pipeline_id="p1")
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    dataset = _make_dataset()
+    pipeline = _make_pipeline()
     workflow = SimpleNamespace(
         graph_dict={"nodes": [{"id": "n1", "data": {"type": "start"}}]}, rag_pipeline_variables=[]
     )
@@ -2079,8 +2139,8 @@ def test_set_datasource_variables_raises_when_workflow_missing(mocker, rag_pipel
 
 
 def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(mocker, rag_pipeline_service) -> None:
-    dataset = SimpleNamespace(pipeline_id="p1")
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    dataset = _make_dataset()
+    pipeline = _make_pipeline()
     workflow = SimpleNamespace(
         graph_dict={"nodes": [{"id": "n1", "data": {"type": "datasource", "datasource_parameters": {}}}]},
         rag_pipeline_variables=[{"variable": "v1", "belong_to_node_id": "shared"}],
@@ -2097,8 +2157,8 @@ def test_get_datasource_plugins_handles_empty_datasource_data_and_non_published(
 
 
 def test_get_datasource_plugins_extracts_user_inputs_and_credentials(mocker, rag_pipeline_service) -> None:
-    dataset = SimpleNamespace(pipeline_id="p1")
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    dataset = _make_dataset()
+    pipeline = _make_pipeline()
     workflow = SimpleNamespace(
         graph_dict={
             "nodes": [
@@ -2139,8 +2199,8 @@ def test_get_datasource_plugins_extracts_user_inputs_and_credentials(mocker, rag
 
 
 def test_get_pipeline_returns_pipeline_when_found(mocker, rag_pipeline_service) -> None:
-    dataset = SimpleNamespace(pipeline_id="p1")
-    pipeline = SimpleNamespace(id="p1")
+    dataset = _make_dataset()
+    pipeline = _make_pipeline()
     mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", side_effect=[dataset, pipeline])
 
     result = rag_pipeline_service.get_pipeline("t1", "d1")

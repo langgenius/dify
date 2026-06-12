@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -155,7 +156,7 @@ class TestSupabaseStorage:
         assert "test-bucket" in [call[0][0] for call in mock_client.storage.from_.call_args_list if call[0]]
         mock_client.storage.from_().download.assert_called_with("test.txt")
 
-    def test_download_writes_bytes_to_disk(self, storage_with_mock_client, tmp_path):
+    def test_download_writes_bytes_to_disk(self, storage_with_mock_client, tmp_path: Path):
         """Test download writes expected bytes to disk."""
         storage, mock_client = storage_with_mock_client
 

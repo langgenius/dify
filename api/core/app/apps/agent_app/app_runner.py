@@ -23,6 +23,7 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
+    extract_runtime_layer_specs,
 )
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
@@ -127,7 +128,12 @@ class AgentAppRunner:
 
         answer = self._extract_answer(terminal.output)
         self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
-        self._save_session(scope=scope, backend_run_id=terminal.run_id, snapshot=terminal.session_snapshot)
+        self._save_session(
+            scope=scope,
+            backend_run_id=terminal.run_id,
+            snapshot=terminal.session_snapshot,
+            runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
+        )
 
     def _consume_stream(self, run_id: str, *, queue_manager: AppQueueManager):
         terminal = None
@@ -165,9 +171,21 @@ class AgentAppRunner:
         # task pipeline streams the chunk over SSE and persists the message.
         publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
 
-    def _save_session(self, *, scope: AgentAppSessionScope, backend_run_id: str, snapshot: Any) -> None:
+    def _save_session(
+        self,
+        *,
+        scope: AgentAppSessionScope,
+        backend_run_id: str,
+        snapshot: Any,
+        runtime_layer_specs: Any,
+    ) -> None:
         try:
-            self._session_store.save_active_snapshot(scope=scope, backend_run_id=backend_run_id, snapshot=snapshot)
+            self._session_store.save_active_snapshot(
+                scope=scope,
+                backend_run_id=backend_run_id,
+                snapshot=snapshot,
+                runtime_layer_specs=runtime_layer_specs,
+            )
         except Exception:
             logger.warning(
                 "Failed to persist Agent App conversation session snapshot: "

@@ -73,7 +73,7 @@ const sliderThumbClassName = cn(
   'border-components-slider-knob-border bg-components-slider-knob shadow-sm',
   'transition-[background-color,border-color,box-shadow,opacity] motion-reduce:transition-none',
   'hover:bg-components-slider-knob-hover',
-  'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-components-input-border-hover has-[:focus-visible]:ring-offset-0',
+  'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-state-accent-solid has-[:focus-visible]:ring-offset-0',
   'active:shadow-md',
   'group-data-disabled/slider:border-components-slider-knob-border group-data-disabled/slider:bg-components-slider-knob-disabled group-data-disabled/slider:shadow-none',
 )

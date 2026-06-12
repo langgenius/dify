@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
@@ -80,7 +80,7 @@ type ComboboxTriggerProps
     & VariantProps<typeof comboboxTriggerVariants>
     & {
       className?: string
-      icon?: ReactNode | false
+      icon?: React.ReactNode | false
     }
 
 export function ComboboxTrigger({
@@ -198,7 +198,7 @@ const comboboxControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
     'group-data-readonly/combobox:hidden',
@@ -286,7 +286,7 @@ export function ComboboxIcon({
 }
 
 type ComboboxContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -365,7 +365,7 @@ export function ComboboxItem({
   )
 }
 
-export type ComboboxItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 export function ComboboxItemText({
   className,
@@ -383,7 +383,7 @@ export function ComboboxItemIndicator({
   className,
   children,
   ...props
-}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: ReactNode }) {
+}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: React.ReactNode }) {
   return (
     <BaseCombobox.ItemIndicator
       className={cn(overlayIndicatorClassName, className)}
@@ -488,7 +488,7 @@ export function ComboboxChipRemove({
     <BaseCombobox.ChipRemove
       type={type}
       aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Remove selected item')}
-      className={cn('flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active', className)}
+      className={cn('flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid', className)}
       {...props}
     >
       {children ?? <span className="i-ri-close-line size-3" aria-hidden="true" />}

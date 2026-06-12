@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Checkbox } from '../../checkbox'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
@@ -10,7 +10,7 @@ const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElem
 describe('CheckboxGroup', () => {
   it('should manage selected values and parent mixed state', async () => {
     function PermissionsDemo() {
-      const [value, setValue] = useState(['read'])
+      const [value, setValue] = React.useState(['read'])
 
       return (
         <CheckboxGroup value={value} onValueChange={setValue} allValues={['read', 'write']}>

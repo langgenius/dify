@@ -1,15 +1,15 @@
-from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask, Response, g
-from flask_login import UserMixin
 from pytest_mock import MockerFixture
+from werkzeug.exceptions import Unauthorized
 
 import libs.login as login_module
 from extensions.ext_login import DifyLoginManager
 from libs.login import current_user
-from models.account import Account
+from models.account import Account, Tenant
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def protected_view():
     return _protected_view
 
 
-class MockUser(UserMixin):
+class MockUser:
     """Mock user class for testing."""
 
     def __init__(self, id: str, is_authenticated: bool = True):
@@ -33,6 +33,22 @@ class MockUser(UserMixin):
     @property
     def is_authenticated(self) -> bool:
         return self._is_authenticated
+
+
+class LoginManagerStub:
+    def __init__(self, unauthorized_response: Response) -> None:
+        self._unauthorized_response = unauthorized_response
+
+    def unauthorized(self) -> Response:
+        return self._unauthorized_response
+
+
+def _login_manager(app: Flask) -> DifyLoginManager:
+    return cast(DifyLoginManager, app.__dict__["login_manager"])
+
+
+def _unauthorized_mock(app: Flask) -> MagicMock:
+    return cast(MagicMock, _login_manager(app).unauthorized)
 
 
 @pytest.fixture
@@ -95,7 +111,7 @@ class TestLoginRequired:
 
         assert result == "Protected content"
         resolve_user.assert_called_once_with()
-        login_app.login_manager.unauthorized.assert_not_called()
+        _unauthorized_mock(login_app).assert_not_called()
 
     @pytest.mark.parametrize(
         ("resolved_user", "description"),
@@ -120,11 +136,11 @@ class TestLoginRequired:
         with login_app.test_request_context():
             result = protected_view()
 
-        assert result is login_app.login_manager.unauthorized.return_value, description
+        assert result is _unauthorized_mock(login_app).return_value, description
         assert isinstance(result, Response)
         assert result.status_code == 401
         resolve_user.assert_called_once_with()
-        login_app.login_manager.unauthorized.assert_called_once_with()
+        _unauthorized_mock(login_app).assert_called_once_with()
         csrf_check.assert_not_called()
 
     def test_unauthorized_access_propagates_response_object(
@@ -138,9 +154,7 @@ class TestLoginRequired:
         """Test that unauthorized responses are propagated as Flask Response objects."""
         resolve_user = resolve_current_user(None)
         response = Response("Unauthorized", status=401, content_type="application/json")
-        mocker.patch.object(
-            login_module, "_get_login_manager", return_value=SimpleNamespace(unauthorized=lambda: response)
-        )
+        mocker.patch.object(login_module, "_get_login_manager", return_value=LoginManagerStub(response))
 
         with login_app.test_request_context():
             result = protected_view()
@@ -177,7 +191,7 @@ class TestLoginRequired:
         assert result == "Protected content"
         resolve_user.assert_not_called()
         csrf_check.assert_not_called()
-        login_app.login_manager.unauthorized.assert_not_called()
+        _unauthorized_mock(login_app).assert_not_called()
 
 
 class TestGetUser:
@@ -191,6 +205,7 @@ class TestGetUser:
             g._login_user = mock_user
             user = login_module._get_user()
             assert user == mock_user
+            assert user is not None
             assert user.id == "test_user"
 
     def test_get_user_loads_user_if_not_in_g(self, login_app: Flask, mocker: MockerFixture):
@@ -201,7 +216,7 @@ class TestGetUser:
             g._login_user = mock_user
 
         load_user = mocker.patch.object(
-            login_app.login_manager,
+            _login_manager(login_app),
             "load_user_from_request_context",
             side_effect=load_user_from_request_context,
         )
@@ -244,7 +259,9 @@ class TestCurrentAccountWithTenant:
 
     def test_returns_account_and_tenant_id(self, mocker: MockerFixture):
         account = Account(name="Test User", email="test@example.com")
-        account._current_tenant = SimpleNamespace(id="tenant-123")
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = "tenant-123"
+        account._current_tenant = tenant
         current_user_proxy = mocker.Mock()
         current_user_proxy._get_current_object.return_value = account
         mocker.patch.object(login_module, "current_user", new=current_user_proxy)
@@ -267,3 +284,58 @@ class TestCurrentAccountWithTenant:
 
         with pytest.raises(AssertionError, match="tenant information should be loaded"):
             login_module.current_account_with_tenant()
+
+
+class TestCurrentAccountWithTenantOptional:
+    """Test cases for optional current account resolution."""
+
+    def test_returns_account_and_tenant_id_for_authenticated_account(self, mocker: MockerFixture) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = "tenant-123"
+        account._current_tenant = tenant
+        mocker.patch.object(login_module, "_resolve_current_user", return_value=account)
+
+        user, tenant_id = login_module.current_account_with_tenant_optional()
+
+        assert user is account
+        assert tenant_id == "tenant-123"
+
+    def test_returns_none_pair_when_request_loader_raises_unauthorized(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(login_module, "_resolve_current_user", side_effect=Unauthorized())
+
+        user, tenant_id = login_module.current_account_with_tenant_optional()
+
+        assert user is None
+        assert tenant_id is None
+
+    def test_returns_none_pair_when_resolved_user_is_not_account(self, mocker: MockerFixture) -> None:
+        mocker.patch.object(login_module, "_resolve_current_user", return_value=MockUser("end-user"))
+
+        user, tenant_id = login_module.current_account_with_tenant_optional()
+
+        assert user is None
+        assert tenant_id is None
+
+
+class TestResolveTenantIdFallback:
+    """Test cases for tenant-only fallback helper."""
+
+    def test_returns_provided_tenant_id_without_current_user_lookup(self, mocker: MockerFixture) -> None:
+        current_account_with_tenant = mocker.patch.object(login_module, "current_account_with_tenant")
+
+        tenant_id = login_module.resolve_tenant_id_fallback("tenant-123")
+
+        assert tenant_id == "tenant-123"
+        current_account_with_tenant.assert_not_called()
+
+    def test_falls_back_to_current_account_tenant(self, mocker: MockerFixture) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = "tenant-123"
+        account._current_tenant = tenant
+        mocker.patch.object(login_module, "current_account_with_tenant", return_value=(account, tenant.id))
+
+        tenant_id = login_module.resolve_tenant_id_fallback()
+
+        assert tenant_id == "tenant-123"

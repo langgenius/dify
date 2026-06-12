@@ -38,7 +38,7 @@ import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
 
-type Props = {
+type Props = Readonly<{
   userMetadata: MetadataItemWithValueLength[]
   builtInMetadata: BuiltInMetadataItem[]
   isBuiltInEnabled: boolean
@@ -47,7 +47,7 @@ type Props = {
   onAdd: (payload: BuiltInMetadataItem) => void
   onRename: (payload: MetadataItemWithValueLength) => void
   onRemove: (metaDataId: string) => void
-}
+}>
 
 type ItemProps = {
   readonly?: boolean

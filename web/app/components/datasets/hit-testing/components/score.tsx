@@ -4,8 +4,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
 type Props = {
-  value: number | null
-  besideChunkName?: boolean
+  readonly value: number | null
+  readonly besideChunkName?: boolean
 }
 
 const Score: FC<Props> = ({

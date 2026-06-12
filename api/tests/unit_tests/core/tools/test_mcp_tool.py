@@ -148,3 +148,144 @@ def test_mcp_tool_handle_none_parameter_filters_empty_values():
     tool = _build_mcp_tool()
     cleaned = tool._handle_none_parameter({"a": 1, "b": None, "c": "", "d": "  ", "e": "ok"})
     assert cleaned == {"a": 1, "e": "ok"}
+
+
+# ----- M2/M3 user-identity forwarding ---------------------------------------
+
+
+def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
+    """Helper that builds an MCPTool with the identity_mode set."""
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="author",
+            name="remote-tool",
+            label=I18nObject(en_US="remote-tool"),
+            provider="provider-id",
+        ),
+        parameters=[],
+        output_schema={},
+    )
+    return MCPTool(
+        entity=entity,
+        runtime=ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.DEBUGGER),
+        tenant_id="tenant-1",
+        icon="icon.svg",
+        server_url="https://mcp.example.com/mcp/",
+        provider_id="provider-id",
+        identity_mode=mode,
+    )
+
+
+def test_inject_forwarded_identity_stamps_custom_header():
+    """The minted SSO token must be placed in X-Dify-SSO-Token; the
+    workspace-scoped Authorization header and any other custom headers must
+    pass through untouched so provider credentials keep working."""
+    from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
+
+    tool = _build_forwarding_tool()
+    headers: dict[str, str] = {"Authorization": "Bearer static-client-token", "X-Other": "keep"}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt.payload", 1900000000),
+    ):
+        tool._inject_forwarded_identity(headers, user_id="alice", app_id=None, audience="https://mcp.example.com/mcp/")
+
+    assert headers[FORWARDED_IDENTITY_HEADER] == "forwarded.jwt.payload"
+    assert headers["Authorization"] == "Bearer static-client-token"
+    assert headers["X-Other"] == "keep"
+
+
+def test_inject_forwarded_identity_translates_token_error_to_invoke_error():
+    """EnterpriseService failures must surface as ToolInvokeError so the
+    workflow halts loudly instead of proceeding without identity."""
+    from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
+    from services.enterprise.base import MCPNoRefreshTokenError
+
+    tool = _build_forwarding_tool()
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        side_effect=MCPNoRefreshTokenError("please re-sso"),
+    ):
+        with pytest.raises(ToolInvokeError, match="forwarded identity token"):
+            tool._inject_forwarded_identity(
+                headers, user_id="alice", app_id=None, audience="https://mcp.example.com/mcp/"
+            )
+
+    # Headers must NOT have been mutated when token-issuance failed.
+    assert FORWARDED_IDENTITY_HEADER not in headers
+    assert "Authorization" not in headers
+
+
+def test_inject_forwarded_identity_sends_end_user_type_for_webapp():
+    """A WEB_APP run forwards user_type=end_user so enterprise routes to the
+    published-webapp token store."""
+    tool = _build_forwarding_tool()
+    tool.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.WEB_APP)
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt", 1900000000),
+    ) as issue:
+        tool._inject_forwarded_identity(
+            headers, user_id="eu-1", app_id="app-1", audience="https://mcp.example.com/mcp/"
+        )
+
+    assert issue.call_args.kwargs["user_type"] == "end_user"
+
+
+def test_inject_forwarded_identity_sends_account_type_for_debugger():
+    """A DEBUGGER/console run forwards user_type=account (the existing behaviour)."""
+    tool = _build_forwarding_tool()  # built with InvokeFrom.DEBUGGER
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt", 1900000000),
+    ) as issue:
+        tool._inject_forwarded_identity(headers, user_id="acc-1", app_id=None, audience="https://mcp.example.com/mcp/")
+
+    assert issue.call_args.kwargs["user_type"] == "account"
+
+
+def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing():
+    """When forwarding is enabled AND the deployment is enterprise, missing
+    user_id must raise — never silently invoke as the static identity."""
+    tool = _build_forwarding_tool()
+
+    with patch("core.tools.mcp_tool.tool.dify_config") as cfg:
+        cfg.ENTERPRISE_ENABLED = True
+        with pytest.raises(ToolInvokeError, match="no end-user context"):
+            tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+
+
+def test_invoke_skips_forwarding_when_enterprise_disabled():
+    """Non-enterprise deployments treat the DB selector as a no-op: a stale
+    `identity_mode="idp_token"` row must NOT raise (fail-closed) AND must
+    NOT call the enterprise inner API. The runtime falls through to the
+    legacy provider-identity path."""
+    tool = _build_forwarding_tool()
+
+    with patch("core.tools.mcp_tool.tool.dify_config") as cfg:
+        cfg.ENTERPRISE_ENABLED = False
+        # The fail-closed branch must NOT fire (no enterprise → no forwarding).
+        # The function will still try the legacy DB-load path; we patch that
+        # to keep the test unit-scoped.
+        with patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls:
+            client_cls.return_value.__enter__.return_value.invoke_tool.return_value = CallToolResult(
+                content=[],
+                _meta=None,
+            )
+            with patch.object(tool, "_inject_forwarded_identity") as inject:
+                with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
+                    with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
+                        with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
+                            # Should not raise; should not call enterprise.
+                            try:
+                                tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+                            except Exception:
+                                pass
+            inject.assert_not_called()

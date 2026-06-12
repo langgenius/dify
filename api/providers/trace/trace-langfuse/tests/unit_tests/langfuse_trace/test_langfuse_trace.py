@@ -2,6 +2,7 @@ import collections
 import logging
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock
 
 import pytest
@@ -738,6 +739,7 @@ def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypat
     node.status = "succeeded"
 
     class BadDict(collections.UserDict):
+        @override
         def get(self, key, default=None):
             if key == "usage":
                 raise Exception("Usage extraction failed")

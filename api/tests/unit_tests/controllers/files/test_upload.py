@@ -6,6 +6,7 @@ import pytest
 from werkzeug.exceptions import Forbidden
 
 import controllers.files.upload as module
+from core.workflow.file_reference import build_file_reference
 
 
 def unwrap(func):
@@ -85,6 +86,7 @@ class TestPluginUploadFileApi:
 
         assert status_code == 201
         assert result["id"] == "file-id"
+        assert result["reference"] == build_file_reference(record_id="file-id")
         assert result["preview_url"] == "signed-url"
 
     def test_missing_file(self):

@@ -36,7 +36,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-local-storage', () => ({
+vi.mock('foxact/use-local-storage', () => ({
   useSetLocalStorage: () => setEducationVerifyingMock,
 }))
 

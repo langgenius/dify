@@ -10,7 +10,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from werkzeug.exceptions import NotFound
+from flask import Flask
+from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.openapi.auth.data import AuthData
 from libs.oauth_bearer import Scope, TokenType
@@ -30,7 +31,7 @@ def _make_auth_data(app_model, caller, caller_kind):
 
 
 class TestOpenApiHumanInputFormGet:
-    def test_get_success(self, app, bypass_pipeline, monkeypatch):
+    def test_get_success(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         definition = SimpleNamespace(
@@ -74,7 +75,7 @@ class TestOpenApiHumanInputFormGet:
         assert payload["user_actions"] == [{"id": "submit", "title": "Submit"}]
         service_mock.ensure_form_active.assert_called_once_with(form)
 
-    def test_get_form_not_found(self, app, bypass_pipeline, monkeypatch):
+    def test_get_form_not_found(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         service_mock = Mock()
@@ -96,7 +97,7 @@ class TestOpenApiHumanInputFormGet:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_get_form_wrong_app(self, app, bypass_pipeline, monkeypatch):
+    def test_get_form_wrong_app(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = SimpleNamespace(
@@ -121,7 +122,7 @@ class TestOpenApiHumanInputFormGet:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_get_form_wrong_surface(self, app, bypass_pipeline, monkeypatch):
+    def test_get_form_wrong_surface(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = SimpleNamespace(
@@ -159,7 +160,7 @@ class TestOpenApiHumanInputFormPost:
             expiration_time=datetime(2099, 1, 1, tzinfo=UTC),
         )
 
-    def test_post_account_caller_uses_user_id(self, app, bypass_pipeline, monkeypatch):
+    def test_post_account_caller_uses_user_id(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = self._make_form()
@@ -196,7 +197,7 @@ class TestOpenApiHumanInputFormPost:
         )
         assert result == ({}, 200)
 
-    def test_post_end_user_caller_uses_end_user_id(self, app, bypass_pipeline, monkeypatch):
+    def test_post_end_user_caller_uses_end_user_id(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
 
         form = self._make_form()
@@ -232,3 +233,24 @@ class TestOpenApiHumanInputFormPost:
             submission_end_user_id="eu-7",
         )
         assert result == ({}, 200)
+
+    def test_post_rejects_invalid_body_with_422(self, app: Flask, bypass_pipeline):
+        """Malformed body → 422 via @accepts (was an unmapped pydantic error → 500)."""
+        from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormApi
+
+        api = OpenApiWorkflowHumanInputFormApi()
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        caller = SimpleNamespace(id="acct-42")
+
+        with app.test_request_context(
+            "/openapi/v1/apps/app-1/form/human_input/tok-1",
+            method="POST",
+            json={"inputs": {"field1": "val"}},  # missing required "action"
+        ):
+            with pytest.raises(UnprocessableEntity):
+                api.post.__wrapped__(
+                    api,
+                    app_id="app-1",
+                    form_token="tok-1",
+                    auth_data=_make_auth_data(app_model, caller, "account"),
+                )

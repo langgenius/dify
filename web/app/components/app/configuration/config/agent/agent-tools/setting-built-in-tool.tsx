@@ -37,7 +37,7 @@ import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 
-type Props = {
+type Props = Readonly<{
   showBackButton?: boolean
   collection: Collection | ToolWithProvider
   isBuiltIn?: boolean
@@ -49,7 +49,7 @@ type Props = {
   onSave?: (value: Record<string, any>) => void
   credentialId?: string
   onAuthorizationItemClick?: (id: string) => void
-}
+}>
 
 const SettingBuiltInTool: FC<Props> = ({
   showBackButton = false,

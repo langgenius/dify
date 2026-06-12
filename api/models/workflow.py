@@ -1688,7 +1688,7 @@ class WorkflowDraftVariable(Base):
                     tenant_id=tenant_id,
                 )
             case list() if value:
-                value_list = cast(list[Any], value)
+                value_list = value
                 first: Any = value_list[0]
                 if not maybe_file_object(first):
                     return cast(Any, value)
@@ -1742,7 +1742,7 @@ class WorkflowDraftVariable(Base):
                 normalized_file.pop("tenant_id", None)
                 return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
             case list() if value:
-                value_list = cast(list[Any], value)
+                value_list = value
                 first: Any = value_list[0]
                 if not maybe_file_object(first):
                     return cast(Any, value)
@@ -1861,6 +1861,8 @@ class WorkflowDraftVariable(Base):
         variable.file_id = file_id
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
         variable.node_execution_id = node_execution_id
+        variable.visible = True
+        variable.is_default_value = False
         return variable
 
     @classmethod

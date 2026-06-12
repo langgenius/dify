@@ -18,7 +18,7 @@ import yaml
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
+from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -748,6 +748,9 @@ class MigrationImportService:
                     headers=mcp_data.get("headers") if isinstance(mcp_data.get("headers"), dict) else {},
                     configuration=configuration,
                     authentication=authentication,
+                    # Re-import must not silently reset forwarding: preserve the
+                    # stored mode (update_provider now defaults to OFF when omitted).
+                    identity_mode=IdentityMode(existing.identity_mode),
                 )
                 db.session.commit()
                 status = "updated"

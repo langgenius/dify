@@ -43,23 +43,29 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category         | Subpath                                                                                                                                                                        | Notes                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| Actions          | `./button`                                                                                                                                                                     | Design-system CTA primitive with `cva` variants.       |
-| Controls         | `./segmented-control`                                                                                                                                                          | SegmentedControl for mode, filter, and view selection. |
-| Display          | `./kbd`                                                                                                                                                                        | Keyboard input and shortcut keycap primitives.         |
-| Feedback         | `./meter`, `./toast`                                                                                                                                                           | Meter is inline status; Toast owns the `z-60` layer.   |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.   |
-| Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.        |
-| Media            | `./avatar`                                                                                                                                                                     | Avatar root, image, and fallback primitives.           |
-| Navigation       | `./pagination`, `./tabs`                                                                                                                                                       | Pagination for page navigation; Tabs for panels.       |
-| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      | Portalled. See [Overlay & portal contract] below.      |
-| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     | Search input, searchable picker, and closed picker.    |
+| Category         | Subpath                                                                                                                                                                        | Notes                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                                     | Design-system CTA primitive with `cva` variants.                                                      |
+| Controls         | `./segmented-control`                                                                                                                                                          | SegmentedControl for mode, filter, and view selection.                                                |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                                       | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
+| Feedback         | `./meter`, `./toast`                                                                                                                                                           | Meter is inline status; Toast owns the `z-60` layer.                                                  |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
+| Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.                                                       |
+| Media            | `./avatar`                                                                                                                                                                     | Avatar root, image, and fallback primitives.                                                          |
+| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                        | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      | Portalled. See [Overlay & portal contract] below.                                                     |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     | Search input, searchable picker, and closed picker.                                                   |
 
 Utilities:
 
 - `./cn` — `clsx` + `tailwind-merge` wrapper. Use this for conditional class composition.
 - `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and project utilities/components. Import it once from the app root.
+
+## Button loading and disabled contract
+
+`Button` keeps normal `disabled` controls native-disabled by default so unavailable actions are removed from the keyboard focus order.
+
+When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loading represents an action that has already been triggered and is temporarily pending, so the button remains focusable while Base UI still suppresses click, pointer, keyboard activation, and submit-button activation. Pass `focusableWhenDisabled={false}` only when a loading button should use native disabled behavior.
 
 ## Segmented control contract
 

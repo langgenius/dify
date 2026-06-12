@@ -14,13 +14,13 @@ const LIMIT_SIZE_MIN = 1
 const LIMIT_SIZE_MAX = 20
 const LIMIT_SIZE_DEFAULT = 10
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   config: Limit
   onChange: (limit: Limit) => void
   canSetRoleName?: boolean
-}
+}>
 
 const LIMIT_DEFAULT: Limit = {
   enabled: false,

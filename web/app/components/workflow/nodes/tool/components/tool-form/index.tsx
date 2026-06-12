@@ -6,7 +6,7 @@ import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import ToolFormItem from './item'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
@@ -19,7 +19,7 @@ type Props = {
   showManageInputField?: boolean
   onManageInputField?: () => void
   extraParams?: Record<string, any>
-}
+}>
 
 const ToolForm: FC<Props> = ({
   readOnly,

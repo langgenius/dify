@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useId, useState } from 'react'
+import * as React from 'react'
 import {
   NumberField,
   NumberFieldControls,
@@ -67,8 +67,8 @@ const DemoField = ({
   widthClassName,
   formatValue,
 }: DemoFieldProps) => {
-  const inputId = useId()
-  const [value, setValue] = useState<number | null>(defaultValue ?? null)
+  const inputId = React.useId()
+  const [value, setValue] = React.useState<number | null>(defaultValue ?? null)
 
   return (
     <div className={cn('flex w-full max-w-80 flex-col gap-2', widthClassName)}>
