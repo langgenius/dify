@@ -147,7 +147,7 @@ def extract_parent_trace_context_from_args(args: Mapping[str, Any]) -> dict[str,
     match parent_trace_context:
         case ParentTraceContext():
             context = parent_trace_context
-        case _ if isinstance(parent_trace_context, Mapping):
+        case Mapping():
             try:
                 context = ParentTraceContext.model_validate(parent_trace_context)
             except ValidationError:
