@@ -56,6 +56,7 @@ from models import Account, App, Conversation, EndUser, Message, Workflow, Workf
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
+from services.errors.message import MessageNotExistsError
 from services.workflow_draft_variable_service import (
     DraftVarLoader,
     WorkflowDraftVariableService,
@@ -616,8 +617,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         with preserve_flask_contexts(flask_app, context_vars=context):
             # get conversation and message
-            conversation = self._get_conversation(conversation_id)
-            message = self._get_message(message_id)
+            try:
+                conversation = self._get_conversation(conversation_id)
+                message = self._get_message(message_id)
+            except (ConversationNotExistsError, MessageNotExistsError) as e:
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                return
 
             with Session(db.engine, expire_on_commit=False) as session:
                 workflow = session.scalar(
