@@ -2,9 +2,9 @@
 
 import type { Toggle as BaseToggleNS } from '@base-ui/react/toggle'
 import type { ToggleGroup as BaseToggleGroupNS } from '@base-ui/react/toggle-group'
+import type * as React from 'react'
 import { Toggle as BaseToggle } from '@base-ui/react/toggle'
 import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
-import * as React from 'react'
 import { cn } from '../cn'
 
 export type SegmentedControlProps<Value extends string = string> = Omit<BaseToggleGroupNS.Props<Value>, 'className'> & {

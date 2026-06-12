@@ -1,9 +1,9 @@
 'use client'
 
+import type * as React from 'react'
 import type { OverlayItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
-import * as React from 'react'
 import { cn } from '../cn'
 import {
   overlayDestructiveClassName,

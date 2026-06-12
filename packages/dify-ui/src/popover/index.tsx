@@ -1,8 +1,8 @@
 'use client'
 
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
-import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 

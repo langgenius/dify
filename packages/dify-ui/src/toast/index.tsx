@@ -5,8 +5,8 @@ import type {
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
+import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
-import * as React from 'react'
 import { cn } from '../cn'
 
 type ToastData = Record<string, never>

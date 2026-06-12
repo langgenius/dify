@@ -1,10 +1,10 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {

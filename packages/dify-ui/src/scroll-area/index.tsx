@@ -1,7 +1,7 @@
 'use client'
 
+import type * as React from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
-import * as React from 'react'
 import { cn } from '../cn'
 
 export const ScrollAreaRoot = BaseScrollArea.Root

@@ -1,8 +1,8 @@
 'use client'
 
 import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
+import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
-import * as React from 'react'
 import { cn } from '../cn'
 
 const radioRootClassName = cn(

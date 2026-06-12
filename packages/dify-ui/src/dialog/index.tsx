@@ -1,15 +1,15 @@
 'use client'
 
+import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
+import { cn } from '../cn'
+
 //   z-index strategy (relies on root `isolation: isolate` in layout.tsx):
 //   All @langgenius/dify-ui/* overlay primitives — z-50
 //   Toast stays one layer above overlays at z-60.
 //   Overlays share the same z-index; DOM order handles stacking when multiple are open.
 //   This ensures overlays inside a Dialog (e.g. a Tooltip on a dialog button) render
 //   above the dialog backdrop instead of being clipped by it.
-
-import * as React from 'react'
-import { cn } from '../cn'
 
 export const Dialog = BaseDialog.Root
 export const DialogTrigger = BaseDialog.Trigger

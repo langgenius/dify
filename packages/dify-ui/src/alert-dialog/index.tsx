@@ -1,8 +1,8 @@
 'use client'
 
+import type * as React from 'react'
 import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
-import * as React from 'react'
 import { Button } from '../button'
 import { cn } from '../cn'
 

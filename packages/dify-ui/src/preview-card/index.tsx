@@ -1,8 +1,8 @@
 'use client'
 
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
-import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 

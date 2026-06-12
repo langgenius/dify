@@ -2,9 +2,9 @@
 
 import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
-import * as React from 'react'
 import { cn } from '../cn'
 
 const textareaVariants = cva(

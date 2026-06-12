@@ -1,7 +1,7 @@
 'use client'
 
+import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
-import * as React from 'react'
 import { cn } from '../cn'
 
 export const Drawer = BaseDrawer.Root
