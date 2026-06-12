@@ -3,6 +3,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateReleaseFormApi } from '../state'
 import {
@@ -20,6 +21,11 @@ function hasReleaseNameRequiredError(errors: unknown[]) {
 export function ReleaseMetadataFields() {
   const { t } = useTranslation('deployments')
   const form = useCreateReleaseFormApi()
+  const releaseNameInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    releaseNameInputRef.current?.focus()
+  }, [])
 
   return (
     <>
@@ -37,6 +43,7 @@ export function ReleaseMetadataFields() {
               {t('versions.releaseNameLabel')}
             </label>
             <Input
+              ref={releaseNameInputRef}
               id="release-name"
               name="releaseName"
               placeholder={t('versions.releaseNamePlaceholder')}
@@ -47,7 +54,6 @@ export function ReleaseMetadataFields() {
               aria-describedby={hasReleaseNameRequiredError(field.state.meta.errors) ? 'release-name-error' : undefined}
               onBlur={field.handleBlur}
               onChange={event => field.handleChange(event.target.value)}
-              autoFocus
               className="h-9"
             />
             {hasReleaseNameRequiredError(field.state.meta.errors) && (

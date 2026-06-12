@@ -24,7 +24,7 @@ import {
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { generateApiTokenName } from './api-token-name'
@@ -46,6 +46,7 @@ export function ApiKeyGenerateMenu({
 }) {
   const { t } = useTranslation('deployments')
   const nameInputId = useId()
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>()
   const [draftName, setDraftName] = useState('')
@@ -57,6 +58,11 @@ export function ApiKeyGenerateMenu({
     : undefined
   const disabled = selectableEnvironments.length === 0
   const isCreating = generateApiKey.isPending
+
+  useEffect(() => {
+    if (createDialogOpen)
+      nameInputRef.current?.focus()
+  }, [createDialogOpen])
 
   function resetCreateDialog() {
     setCreateDialogOpen(false)
@@ -161,10 +167,10 @@ export function ApiKeyGenerateMenu({
                   {t('access.api.nameLabel')}
                 </label>
                 <Input
+                  ref={nameInputRef}
                   id={nameInputId}
                   value={draftName}
                   disabled={isCreating}
-                  autoFocus
                   aria-invalid={nameError || undefined}
                   aria-describedby={nameError ? `${nameInputId}-error` : undefined}
                   placeholder={t('access.api.namePlaceholder')}

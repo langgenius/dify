@@ -68,6 +68,7 @@ export function DeploymentRowActions({ appInstanceId, envId, row }: {
 
   return (
     <div
+      role="presentation"
       className="flex shrink-0 items-center"
       onClick={e => e.stopPropagation()}
       onKeyDown={e => e.stopPropagation()}

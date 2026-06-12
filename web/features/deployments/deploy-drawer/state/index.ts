@@ -146,7 +146,7 @@ export const deploySelectedEnvironmentIdAtom = atom((get) => {
   return get(selectedEnvIdAtom) ?? config.lockedEnvId ?? config.environments[0]?.id
 })
 
-export const deploySelectedEnvironmentAtom = atom((get) => {
+const deploySelectedEnvironmentAtom = atom((get) => {
   const config = formConfig(get)
   const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
   return selectedEnvironmentId
@@ -188,7 +188,7 @@ export const deployHasSelectedEnvironmentAtom = atom((get) => {
   return Boolean(get(deploySelectedEnvironmentAtom))
 })
 
-export const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
+const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
   const hasSelectedEnvironment = get(deployHasSelectedEnvironmentAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
   const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
@@ -238,7 +238,7 @@ export const deployHasBindingOptionsErrorAtom = atom((get) => {
   return get(releaseDeploymentOptionsQueryAtom).isError
 })
 
-export const deployIsBindingOptionsReadyAtom = atom((get) => {
+const deployIsBindingOptionsReadyAtom = atom((get) => {
   const deploymentOptionsQuery = get(releaseDeploymentOptionsQueryAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
 
@@ -302,17 +302,17 @@ export const deploySelectedBindingsAtom = atom((get) => {
   return selectedRuntimeCredentialSelections(get(deployBindingSlotsAtom), get(manualBindingsAtom))
 })
 
-export const deployDeploymentCredentialsAtom = atom((get) => {
+const deployDeploymentCredentialsAtom = atom((get) => {
   return selectedDeploymentRuntimeCredentials(get(deployBindingSlotsAtom), get(deploySelectedBindingsAtom))
 })
 
-export const deployDeploymentEnvVarsAtom = atom((get) => {
+const deployDeploymentEnvVarsAtom = atom((get) => {
   const envVarValues = get(deployEnvVarValuesAtom)
 
   return get(deployEnvVarSlotsAtom).flatMap(slot => deployEnvVarInput(slot, envVarValues[slot.key]))
 })
 
-export const deployRequiredBindingsReadyAtom = atom((get) => {
+const deployRequiredBindingsReadyAtom = atom((get) => {
   const selectedBindings = get(deploySelectedBindingsAtom)
 
   return get(deployBindingSlotsAtom).every(slot =>
@@ -320,7 +320,7 @@ export const deployRequiredBindingsReadyAtom = atom((get) => {
   )
 })
 
-export const deployRequiredEnvVarsReadyAtom = atom((get) => {
+const deployRequiredEnvVarsReadyAtom = atom((get) => {
   const envVarValues = get(deployEnvVarValuesAtom)
 
   return get(deployEnvVarSlotsAtom).every(slot =>

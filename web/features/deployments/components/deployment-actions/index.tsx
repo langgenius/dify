@@ -54,6 +54,7 @@ export function DeploymentActionsMenu({
 
   return (
     <div
+      role="presentation"
       className={className}
       onClick={event => event.stopPropagation()}
       onKeyDown={event => event.stopPropagation()}

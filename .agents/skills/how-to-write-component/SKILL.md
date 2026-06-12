@@ -123,4 +123,6 @@ Use this as the decision guide for React/TypeScript component structure. Existin
 ## Navigation And Performance
 
 - Prefer `Link` for normal navigation. Use router APIs only for command-flow side effects such as mutation success, guarded redirects, or form submission.
+- Before reaching for `memo`, first try moving changing state down to the smallest component that actually uses it so unrelated sibling trees stay untouched.
+- If changing state must wrap other content, lift the unchanged content up and pass it as `children` so the stateful wrapper can update without React visiting that subtree.
 - Avoid `memo`, `useMemo`, and `useCallback` unless there is a clear performance reason.
