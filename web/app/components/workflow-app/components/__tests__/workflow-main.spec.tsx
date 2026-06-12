@@ -94,12 +94,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: { mode: string } }) => T) => selector({
-    appDetail: { mode: 'workflow' },
-  }),
-}))
-
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
     getNodes: () => [],
