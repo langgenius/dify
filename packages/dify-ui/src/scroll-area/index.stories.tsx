@@ -17,7 +17,7 @@ const meta = {
     layout: 'padded',
     docs: {
       description: {
-        component: 'Compound scroll container built on Base UI Scroll Area. The examples mirror the upstream anatomy and focus patterns while applying Dify UI tokens, panel surfaces, and scrollbar spacing.',
+        component: 'Compound scroll container built on Base UI Scroll Area. The examples mirror the upstream anatomy and focus patterns while applying Dify UI tokens, panel surfaces, and scrollbar spacing. Base UI ScrollArea.Content defaults to min-width: fit-content, so vertical-only regions that should truncate long content must set min-width: 0 on the content slot.',
       },
     },
   },
@@ -68,6 +68,19 @@ const articleParagraphs = [
   'Vernacular architecture is building done outside any academic tradition, and without professional guidance. It is not a particular architectural movement or style, but rather a broad category, encompassing a wide range and variety of building types, with differing methods of construction, from around the world, both historical and extant and classical and modern.',
   'This type of architecture usually serves immediate, local needs, is constrained by the materials available in its particular region, and reflects local traditions and cultural practices. The study of vernacular architecture does not examine formally schooled architects, but instead the design skills and tradition of local builders.',
   'A scroll area follows the same principle in an interface. The viewport owns scrolling, the content stays inside its measured width, and the scrollbar remains a visual affordance rather than a second layout system.',
+] as const
+
+const fileRows = [
+  'agent-roster-skill-detail-dialog-preview-image.png',
+  'workflow-agent-binding-source-of-truth-summary.md',
+  'very-long-file-name-that-should-truncate-inside-a-vertical-scroll-area-without-creating-horizontal-scroll.json',
+  'runtime-output-schema.ts',
+  'knowledge-retrieval-notes.md',
+  'composer-draft-original-state-diffing-notes.md',
+  'generated-contract-console-query-options.ts',
+  'agent-v2-workflow-node-config-schema.json',
+  'selected-file-highlight-behavior.spec.tsx',
+  'scroll-area-content-min-width-regression.md',
 ] as const
 
 const gridCells = Array.from({ length: 100 }, (_, index) => index + 1)
@@ -164,6 +177,39 @@ export const Vertical: Story = {
                     {paragraph}
                   </p>
                 ))
+              ))}
+            </VerticalContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar className={scrollbarClassName}>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollAreaRoot>
+      </div>
+    </StorySection>
+  ),
+}
+
+export const VerticalTruncation: Story = {
+  render: () => (
+    <StorySection
+      eyebrow="Vertical"
+      title="Constrained content width"
+      description="Use width constraints plus minWidth: 0 on ScrollArea.Content when a vertical-only list should keep vertical scrolling while truncating long labels instead of creating horizontal scroll."
+    >
+      <div className={cn(panelClassName, 'h-48 w-full max-w-80')}>
+        <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
+          <ScrollAreaViewport aria-label="Vertical file list" role="region" className={viewportClassName}>
+            <VerticalContent className="flex flex-col gap-0.5 p-2">
+              {fileRows.map(file => (
+                <div
+                  key={file}
+                  className="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-text-secondary hover:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-file-text-line size-4 shrink-0" />
+                  <span className="min-w-0 truncate system-sm-regular" title={file}>
+                    {file}
+                  </span>
+                </div>
               ))}
             </VerticalContent>
           </ScrollAreaViewport>
