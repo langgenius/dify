@@ -6,7 +6,8 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload
-from controllers.common.schema import register_schema_model
+from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -33,6 +34,8 @@ from services.errors.audio import (
 
 logger = logging.getLogger(__name__)
 
+register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTranscriptResponse)
+
 
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):
@@ -47,6 +50,11 @@ class AudioApi(Resource):
             415: "Unsupported audio type",
             500: "Internal server error",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Audio successfully transcribed",
+        service_api_ns.models[AudioTranscriptResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
     def post(self, app_model: App, end_user: EndUser):
@@ -101,6 +109,11 @@ class TextApi(Resource):
             401: "Unauthorized - invalid API token",
             500: "Internal server error",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Text successfully converted to audio",
+        service_api_ns.models[AudioBinaryResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):

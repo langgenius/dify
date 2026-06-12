@@ -6,14 +6,14 @@ from typing import Any, NotRequired, TypedDict
 
 from flask import abort, request
 from flask_restx import Resource, fields
-from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator
+from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
-from controllers.common.fields import NewAppResponse, SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
 from controllers.common.schema import (
     query_params_from_model,
     register_response_schema_model,
@@ -99,16 +99,20 @@ class SyncDraftWorkflowPayload(BaseModel):
     graph: dict[str, Any]
     features: dict[str, Any]
     hash: str | None = None
-    environment_variables: list[dict[str, Any]] = Field(default_factory=list)
-    conversation_variables: list[dict[str, Any]] = Field(default_factory=list)
+    environment_variables: list[dict[str, Any]] = Field(
+        default_factory=list,
+    )
+    conversation_variables: list[dict[str, Any]] = Field(
+        default_factory=list,
+    )
 
 
 class BaseWorkflowRunPayload(BaseModel):
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
     query: str = ""
     conversation_id: str | None = None
     parent_message_id: str | None = None
@@ -122,11 +126,11 @@ class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
 
 
 class IterationNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class LoopNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class DraftWorkflowRunPayload(BaseWorkflowRunPayload):
@@ -151,7 +155,10 @@ class ConvertToWorkflowPayload(BaseModel):
 
 
 class WorkflowFeaturesPayload(BaseModel):
-    features: dict[str, Any] = Field(..., description="Workflow feature configuration")
+    features: dict[str, Any] = Field(
+        ...,
+        description="Workflow feature configuration",
+    )
 
 
 class WorkflowOnlineUsersPayload(BaseModel):
@@ -167,7 +174,7 @@ class WorkflowConversationVariableResponse(ResponseModel):
     id: str
     name: str
     value_type: str
-    value: Any = Field(json_schema_extra={"type": "object"})
+    value: Any
     description: str
 
     @field_validator("value_type", mode="before")
@@ -186,7 +193,7 @@ class PipelineVariableResponse(ResponseModel):
     max_length: int | None = None
     required: bool
     unit: str | None = None
-    default_value: Any = Field(default=None, json_schema_extra={"type": "object"})
+    default_value: Any = Field(default=None)
     options: list[str] | None = None
     placeholder: str | None = None
     tooltips: str | None = None
@@ -203,14 +210,18 @@ class WorkflowEnvironmentVariableResponse(ResponseModel):
     value_type: str
     id: str
     name: str
-    value: Any = Field(json_schema_extra={"type": "object"})
+    value: Any
     description: str
 
 
 class WorkflowResponse(ResponseModel):
     id: str
-    graph: dict[str, Any] = Field(validation_alias=AliasChoices("graph_dict", "graph"))
-    features: dict[str, Any] = Field(validation_alias=AliasChoices("features_dict", "features"))
+    graph: dict[str, Any] = Field(
+        validation_alias=AliasChoices("graph_dict", "graph"),
+    )
+    features: dict[str, Any] = Field(
+        validation_alias=AliasChoices("features_dict", "features"),
+    )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
     version: str
     marked_name: str
@@ -267,6 +278,46 @@ class WorkflowOnlineUsersResponse(ResponseModel):
     data: list[WorkflowOnlineUsersByApp]
 
 
+class WorkflowPublishResponse(ResponseModel):
+    result: str
+    created_at: int
+
+
+class WorkflowRestoreResponse(ResponseModel):
+    result: str
+    hash: str
+    updated_at: int
+
+
+class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
+    root: list[dict[str, Any]]
+
+
+class DefaultBlockConfigResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
+class HumanInputFormPreviewResponse(ResponseModel):
+    form_id: str
+    node_id: str
+    node_title: str
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    actions: list[dict[str, Any]] = Field(default_factory=list)
+    display_in_ui: bool | None = None
+    form_token: str | None = None
+    resolved_default_values: dict[str, Any] = Field(default_factory=dict)
+    expiration_time: int | None = None
+
+
+class HumanInputFormSubmitResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
+class EmptyObjectResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 class DraftWorkflowTriggerRunPayload(BaseModel):
     node_id: str
 
@@ -304,6 +355,14 @@ register_response_schema_models(
     WorkflowOnlineUser,
     WorkflowOnlineUsersByApp,
     WorkflowOnlineUsersResponse,
+    WorkflowPublishResponse,
+    WorkflowRestoreResponse,
+    DefaultBlockConfigsResponse,
+    DefaultBlockConfigResponse,
+    HumanInputFormPreviewResponse,
+    HumanInputFormSubmitResponse,
+    EmptyObjectResponse,
+    GeneratedAppResponse,
     NewAppResponse,
     SimpleResultResponse,
 )
@@ -475,7 +534,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @console_ns.doc(description="Run draft workflow for advanced chat application")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunPayload.__name__])
-    @console_ns.response(200, "Workflow run started successfully")
+    @console_ns.response(200, "Workflow run started successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -520,7 +579,11 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @console_ns.doc(description="Run draft workflow iteration node for advanced chat")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[IterationNodeRunPayload.__name__])
-    @console_ns.response(200, "Iteration node run started successfully")
+    @console_ns.response(
+        200,
+        "Iteration node run started successfully",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
@@ -558,7 +621,11 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @console_ns.doc(description="Run draft workflow iteration node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[IterationNodeRunPayload.__name__])
-    @console_ns.response(200, "Workflow iteration node run started successfully")
+    @console_ns.response(
+        200,
+        "Workflow iteration node run started successfully",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
@@ -596,7 +663,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @console_ns.doc(description="Run draft workflow loop node for advanced chat")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[LoopNodeRunPayload.__name__])
-    @console_ns.response(200, "Loop node run started successfully")
+    @console_ns.response(200, "Loop node run started successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
@@ -634,7 +701,11 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @console_ns.doc(description="Run draft workflow loop node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[LoopNodeRunPayload.__name__])
-    @console_ns.response(200, "Workflow loop node run started successfully")
+    @console_ns.response(
+        200,
+        "Workflow loop node run started successfully",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
     @setup_required
@@ -674,7 +745,10 @@ class HumanInputFormPreviewPayload(BaseModel):
 
 
 class HumanInputFormSubmitPayload(BaseModel):
-    form_inputs: dict[str, Any] = Field(..., description="Values the user provides for the form's own fields")
+    form_inputs: dict[str, Any] = Field(
+        ...,
+        description="Values the user provides for the form's own fields",
+    )
     inputs: dict[str, Any] = Field(
         ...,
         description="Values used to fill missing upstream variables referenced in form_content",
@@ -704,6 +778,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc(description="Get human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
+    @console_ns.response(200, "Human input form preview", console_ns.models[HumanInputFormPreviewResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -733,6 +808,11 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
     @console_ns.doc(description="Submit human input form preview for advanced chat workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.response(
+        200,
+        "Human input form submission result",
+        console_ns.models[HumanInputFormSubmitResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -762,6 +842,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
     @console_ns.doc(description="Get human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputFormPreviewPayload.__name__])
+    @console_ns.response(200, "Human input form preview", console_ns.models[HumanInputFormPreviewResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -791,6 +872,11 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
     @console_ns.doc(description="Submit human input form preview for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputFormSubmitPayload.__name__])
+    @console_ns.response(
+        200,
+        "Human input form submission result",
+        console_ns.models[HumanInputFormSubmitResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -820,6 +906,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
     @console_ns.doc(description="Test human input delivery for workflow")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models[HumanInputDeliveryTestPayload.__name__])
+    @console_ns.response(200, "Human input delivery test result", console_ns.models[EmptyObjectResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -848,7 +935,11 @@ class DraftWorkflowRunApi(Resource):
     @console_ns.doc(description="Run draft workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
-    @console_ns.response(200, "Draft workflow run started successfully")
+    @console_ns.response(
+        200,
+        "Draft workflow run started successfully",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
@@ -990,6 +1081,7 @@ class PublishedWorkflowApi(Resource):
         return dump_response(WorkflowResponse, workflow)
 
     @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
+    @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1033,7 +1125,11 @@ class DefaultBlockConfigsApi(Resource):
     @console_ns.doc("get_default_block_configs")
     @console_ns.doc(description="Get default block configurations for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Default block configurations retrieved successfully")
+    @console_ns.response(
+        200,
+        "Default block configurations retrieved successfully",
+        console_ns.models[DefaultBlockConfigsResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1053,7 +1149,11 @@ class DefaultBlockConfigApi(Resource):
     @console_ns.doc("get_default_block_config")
     @console_ns.doc(description="Get default block configuration by type")
     @console_ns.doc(params={"app_id": "Application ID", "block_type": "Block type"})
-    @console_ns.response(200, "Default block configuration retrieved successfully")
+    @console_ns.response(
+        200,
+        "Default block configuration retrieved successfully",
+        console_ns.models[DefaultBlockConfigResponse.__name__],
+    )
     @console_ns.response(404, "Block type not found")
     @console_ns.doc(params=query_params_from_model(DefaultBlockConfigQuery))
     @setup_required
@@ -1205,7 +1305,7 @@ class DraftWorkflowRestoreApi(Resource):
     @console_ns.doc("restore_workflow_to_draft")
     @console_ns.doc(description="Restore a published workflow version into the draft workflow")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Published workflow ID"})
-    @console_ns.response(200, "Workflow restored successfully")
+    @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
     @console_ns.response(400, "Source workflow must be published")
     @console_ns.response(404, "Workflow not found")
     @setup_required
@@ -1290,6 +1390,7 @@ class WorkflowByIdApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @edit_permission_required
+    @console_ns.response(204, "Workflow deleted successfully")
     def delete(self, app_model: App, workflow_id: str):
         """
         Delete workflow
@@ -1361,7 +1462,11 @@ class DraftWorkflowTriggerRunApi(Resource):
             },
         )
     )
-    @console_ns.response(200, "Trigger event received and workflow executed successfully")
+    @console_ns.response(
+        200,
+        "Trigger event received and workflow executed successfully",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1425,7 +1530,11 @@ class DraftWorkflowTriggerNodeApi(Resource):
     @console_ns.doc("poll_draft_workflow_trigger_node")
     @console_ns.doc(description="Poll for trigger events and execute single node when event arrives")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Trigger event received and node executed successfully")
+    @console_ns.response(
+        200,
+        "Trigger event received and node executed successfully",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1505,7 +1614,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @console_ns.doc(description="Full workflow debug when the start node is a trigger")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
-    @console_ns.response(200, "Workflow executed successfully")
+    @console_ns.response(200, "Workflow executed successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required

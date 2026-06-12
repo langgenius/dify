@@ -36,7 +36,7 @@ export const zTagBasePayload = z.object({
 
 export const zGetTagsQuery = z.object({
   keyword: z.string().optional(),
-  type: z.string().optional(),
+  type: z.enum(['', 'app', 'knowledge', 'snippet']).optional().default(''),
 })
 
 /**

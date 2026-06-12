@@ -3,19 +3,26 @@ from typing import Any
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, RootModel
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
-from controllers.common.schema import register_schema_model
+from controllers.common.fields import GeneratedAppResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_model,
+    register_schema_models,
+)
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.base import ResponseModel
 from libs import helper
 from libs.login import current_user
 from models import Account
@@ -38,8 +45,50 @@ class DatasourceNodeRunPayload(BaseModel):
     is_published: bool
 
 
+class DatasourcePluginsQuery(BaseModel):
+    is_published: bool = True
+
+
+class DatasourceCredentialInfoResponse(ResponseModel):
+    id: str | None = None
+    name: str | None = None
+    type: str | None = None
+    is_default: bool | None = None
+
+
+class DatasourcePluginResponse(ResponseModel):
+    node_id: str | None = None
+    plugin_id: str | None = None
+    provider_name: str | None = None
+    datasource_type: str | None = None
+    title: str | None = None
+    user_input_variables: list[dict[str, Any]] = Field(default_factory=list)
+    credentials: list[DatasourceCredentialInfoResponse]
+
+
+class DatasourcePluginListResponse(RootModel[list[DatasourcePluginResponse]]):
+    pass
+
+
+class PipelineUploadFileResponse(ResponseModel):
+    id: str
+    name: str
+    size: int
+    extension: str
+    mime_type: str | None = None
+    created_by: str
+    created_at: str | None = None
+
+
 register_schema_model(service_api_ns, DatasourceNodeRunPayload)
 register_schema_model(service_api_ns, PipelineRunApiEntity)
+register_schema_models(service_api_ns, DatasourcePluginsQuery)
+register_response_schema_models(
+    service_api_ns,
+    DatasourcePluginListResponse,
+    GeneratedAppResponse,
+    PipelineUploadFileResponse,
+)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/pipeline/datasource-plugins")
@@ -53,17 +102,17 @@ class DatasourcePluginsApi(DatasetApiResource):
             "dataset_id": "Dataset ID",
         }
     )
-    @service_api_ns.doc(
-        params={
-            "is_published": "Whether to get published or draft datasource plugins "
-            "(true for published, false for draft, default: true)"
-        }
-    )
+    @service_api_ns.doc(params=query_params_from_model(DatasourcePluginsQuery))
     @service_api_ns.doc(
         responses={
             200: "Datasource plugins retrieved successfully",
             401: "Unauthorized - invalid API token",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Datasource plugins retrieved successfully",
+        service_api_ns.models[DatasourcePluginListResponse.__name__],
     )
     def get(self, tenant_id: str, dataset_id: UUID):
         """Resource for getting datasource plugins."""
@@ -96,21 +145,17 @@ class DatasourceNodeRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.doc(
-        body={
-            "inputs": "User input variables",
-            "datasource_type": "Datasource type, e.g. online_document",
-            "credential_id": "Credential ID",
-            "is_published": "Whether to get published or draft datasource plugins "
-            "(true for published, false for draft, default: true)",
-        }
-    )
-    @service_api_ns.doc(
         responses={
             200: "Datasource node run successfully",
             401: "Unauthorized - invalid API token",
         }
     )
     @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
+    @service_api_ns.response(
+        200,
+        "Datasource node run successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
+    )
     def post(self, tenant_id: str, dataset_id: UUID, node_id: str):
         """Resource for getting datasource plugins."""
         dataset_id_str = str(dataset_id)
@@ -158,23 +203,17 @@ class PipelineRunApi(DatasetApiResource):
         }
     )
     @service_api_ns.doc(
-        body={
-            "inputs": "User input variables",
-            "datasource_type": "Datasource type, e.g. online_document",
-            "datasource_info_list": "Datasource info list",
-            "start_node_id": "Start node ID",
-            "is_published": "Whether to get published or draft datasource plugins "
-            "(true for published, false for draft, default: true)",
-            "streaming": "Whether to stream the response(streaming or blocking), default: streaming",
-        }
-    )
-    @service_api_ns.doc(
         responses={
             200: "Pipeline run successfully",
             401: "Unauthorized - invalid API token",
         }
     )
     @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
+    @service_api_ns.response(
+        200,
+        "Pipeline run successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
+    )
     def post(self, tenant_id: str, dataset_id: UUID):
         """Resource for running a rag pipeline."""
         dataset_id_str = str(dataset_id)
@@ -219,6 +258,11 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
             413: "File too large",
             415: "Unsupported file type",
         }
+    )
+    @service_api_ns.response(
+        201,
+        "File uploaded successfully",
+        service_api_ns.models[PipelineUploadFileResponse.__name__],
     )
     def post(self, tenant_id: str):
         """Upload a file for use in conversations.

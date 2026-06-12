@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -95,12 +95,7 @@ class TagListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.doc(
-        params={
-            "type": 'Tag type filter. Can be "knowledge", "app", or "snippet".',
-            "keyword": "Search keyword for tag name.",
-        }
-    )
+    @console_ns.doc(params=query_params_from_model(TagListQueryParam))
     @console_ns.doc(responses={200: ("Success", [console_ns.models[TagResponse.__name__]])})
     @with_current_tenant_id
     def get(self, current_tenant_id: str):

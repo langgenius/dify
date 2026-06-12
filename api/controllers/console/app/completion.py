@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -64,8 +64,14 @@ class BaseMessagePayload(BaseModel):
     # Soul, so no override ``model_config`` is sent; chat / agent-chat / completion
     # debugging still pass it. Optional here, required in practice by those modes
     # downstream when their config is built from args.
-    model_config_data: dict[str, Any] = Field(default_factory=dict, alias="model_config")
-    files: list[Any] | None = Field(default=None, description="Uploaded files")
+    model_config_data: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="model_config",
+    )
+    files: list[Any] | None = Field(
+        default=None,
+        description="Uploaded files",
+    )
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
 
@@ -88,7 +94,7 @@ class ChatMessagePayload(BaseMessagePayload):
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 # define completion message api for user
@@ -98,7 +104,7 @@ class CompletionMessageApi(Resource):
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
-    @console_ns.response(200, "Completion generated successfully")
+    @console_ns.response(200, "Completion generated successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App not found")
     @setup_required
@@ -170,7 +176,7 @@ class ChatMessageApi(Resource):
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully")
+    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App or conversation not found")
     @setup_required

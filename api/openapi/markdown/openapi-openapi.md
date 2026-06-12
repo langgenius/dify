@@ -172,9 +172,9 @@ Upload a file to use as an input variable when running the app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Form definition |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form definition | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 
 ### [POST] /apps/{app_id}/form/human_input/{form_token}
 #### Parameters
@@ -215,7 +215,7 @@ Upload a file to use as an input variable when running the app
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Run result (SSE stream) |  |
+| 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/tasks/{task_id}/events
@@ -223,14 +223,16 @@ Upload a file to use as an input variable when running the app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
+| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
 | app_id | path |  | Yes | string |
 | task_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | SSE event stream |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 
 ### [POST] /apps/{app_id}/tasks/{task_id}/stop
 #### Parameters
@@ -308,9 +310,9 @@ Upload a file to use as an input variable when running the app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
 
 ### [GET] /permitted-external-apps
 #### Parameters
@@ -689,6 +691,20 @@ mode is a closed enum.
 | client_id | string |  | Yes |
 | device_code | string |  | Yes |
 
+#### DeviceTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account | [AccountPayload](#accountpayload) |  | No |
+| default_workspace_id | string |  | No |
+| expires_at | string |  | Yes |
+| subject_email | string |  | No |
+| subject_issuer | string |  | No |
+| subject_type | string, <br>**Available values:** "account", "external_sso" | *Enum:* `"account"`, `"external_sso"` | Yes |
+| token | string |  | Yes |
+| token_id | string |  | Yes |
+| workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
+
 #### ErrorBody
 
 Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
@@ -710,6 +726,12 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 | loc | [  ], <br>**Default:**  |  | No |
 | msg | string |  | Yes |
 | type | string |  | Yes |
+
+#### EventStreamResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EventStreamResponse | string |  |  |
 
 #### FileResponse
 
@@ -756,6 +778,16 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ok | boolean |  | Yes |
+
+#### HumanInputFormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | No |
+| form_content | string |  | Yes |
+| inputs | [ object ] |  | No |
+| resolved_default_values | object |  | Yes |
+| user_actions | [ object ] |  | No |
 
 #### HumanInputFormSubmitPayload
 

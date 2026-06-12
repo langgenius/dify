@@ -27,7 +27,7 @@ export type GetTagsData = {
   path?: never
   query?: {
     keyword?: string
-    type?: string
+    type?: '' | 'app' | 'knowledge' | 'snippet'
   }
   url: '/tags'
 }

@@ -18,6 +18,7 @@ from werkzeug.exceptions import (
 )
 
 import services
+from controllers.common.fields import EventStreamResponse
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
@@ -136,7 +137,7 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
     @auth_router.guard(scope=Scope.APPS_RUN)
-    @openapi_ns.response(200, "Run result (SSE stream)")
+    @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
     def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
         app_model, caller, caller_kind = auth_data.require_app_context()

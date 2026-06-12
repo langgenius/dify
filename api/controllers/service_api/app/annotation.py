@@ -6,12 +6,13 @@ from flask_restx import Resource
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field, TypeAdapter
 
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import Annotation, AnnotationList
+from fields.base import ResponseModel
 from models.model import App
 from services.annotation_service import (
     AppAnnotationService,
@@ -38,6 +39,12 @@ class AnnotationListQuery(BaseModel):
     keyword: str = Field(default="", description="Keyword to search annotations")
 
 
+class AnnotationJobStatusResponse(ResponseModel):
+    job_id: str
+    job_status: str
+    error_msg: str | None = None
+
+
 register_schema_models(
     service_api_ns,
     AnnotationCreatePayload,
@@ -46,6 +53,7 @@ register_schema_models(
     Annotation,
     AnnotationList,
 )
+register_response_schema_models(service_api_ns, AnnotationJobStatusResponse)
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
@@ -59,6 +67,11 @@ class AnnotationReplyActionApi(Resource):
             200: "Action completed successfully",
             401: "Unauthorized - invalid API token",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Action completed successfully",
+        service_api_ns.models[AnnotationJobStatusResponse.__name__],
     )
     @validate_app_token
     def post(self, app_model: App, action: Literal["enable", "disable"]):
@@ -88,6 +101,11 @@ class AnnotationReplyActionStatusApi(Resource):
             401: "Unauthorized - invalid API token",
             404: "Job not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Job status retrieved successfully",
+        service_api_ns.models[AnnotationJobStatusResponse.__name__],
     )
     @validate_app_token
     def get(self, app_model: App, job_id: UUID, action: str):

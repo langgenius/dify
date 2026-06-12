@@ -10,7 +10,7 @@ from sqlalchemy import exists, func, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload as _MessageFeedbackPayloadBase
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -166,7 +166,7 @@ register_schema_models(
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse, TextFileResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
@@ -373,7 +373,11 @@ class MessageFeedbackExportApi(Resource):
     @console_ns.doc(description="Export user feedback data for Google Sheets")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(FeedbackExportQuery))
-    @console_ns.response(200, "Feedback data exported successfully")
+    @console_ns.response(
+        200,
+        "Feedback data exported successfully",
+        console_ns.models[TextFileResponse.__name__],
+    )
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(500, "Internal server error")
     @get_app_model

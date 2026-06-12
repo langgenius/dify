@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -24,6 +24,7 @@ from fields.annotation_fields import (
     AnnotationHitHistoryList,
     AnnotationList,
 )
+from fields.base import ResponseModel
 from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import (
@@ -56,7 +57,10 @@ class CreateAnnotationPayload(BaseModel):
     question: str | None = Field(default=None, description="Question text")
     answer: str | None = Field(default=None, description="Answer text")
     content: str | None = Field(default=None, description="Content text")
-    annotation_reply: dict[str, Any] | None = Field(default=None, description="Annotation reply data")
+    annotation_reply: dict[str, Any] | None = Field(
+        default=None,
+        description="Annotation reply data",
+    )
 
     @field_validator("message_id")
     @classmethod
@@ -70,7 +74,7 @@ class UpdateAnnotationPayload(BaseModel):
     question: str | None = None
     answer: str | None = None
     content: str | None = None
-    annotation_reply: dict[str, Any] | None = None
+    annotation_reply: dict[str, Any] | None = Field(default=None)
 
 
 class AnnotationReplyStatusQuery(BaseModel):
@@ -91,6 +95,25 @@ class AnnotationFilePayload(BaseModel):
         return uuid_value(value)
 
 
+class AnnotationJobStatusResponse(ResponseModel):
+    job_id: str | None = None
+    job_status: str | None = None
+    error_msg: str | None = None
+    record_count: int | None = None
+
+
+class AnnotationEmbeddingModelResponse(ResponseModel):
+    embedding_provider_name: str | None = None
+    embedding_model_name: str | None = None
+
+
+class AnnotationSettingResponse(ResponseModel):
+    id: str | None = None
+    enabled: bool
+    score_threshold: float | None = None
+    embedding_model: AnnotationEmbeddingModelResponse | None = None
+
+
 register_schema_models(
     console_ns,
     Annotation,
@@ -107,6 +130,16 @@ register_schema_models(
     AnnotationHitHistoryListQuery,
     AnnotationFilePayload,
 )
+register_response_schema_models(
+    console_ns,
+    Annotation,
+    AnnotationList,
+    AnnotationExportList,
+    AnnotationHitHistory,
+    AnnotationHitHistoryList,
+    AnnotationJobStatusResponse,
+    AnnotationSettingResponse,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
@@ -115,7 +148,7 @@ class AnnotationReplyActionApi(Resource):
     @console_ns.doc(description="Enable or disable annotation reply for an app")
     @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
     @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
-    @console_ns.response(200, "Action completed successfully")
+    @console_ns.response(200, "Action completed successfully", console_ns.models[AnnotationJobStatusResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -142,7 +175,11 @@ class AppAnnotationSettingDetailApi(Resource):
     @console_ns.doc("get_annotation_setting")
     @console_ns.doc(description="Get annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Annotation settings retrieved successfully")
+    @console_ns.response(
+        200,
+        "Annotation settings retrieved successfully",
+        console_ns.models[AnnotationSettingResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -159,7 +196,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @console_ns.doc(description="Update annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
     @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
-    @console_ns.response(200, "Settings updated successfully")
+    @console_ns.response(200, "Settings updated successfully", console_ns.models[AnnotationSettingResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -182,7 +219,11 @@ class AnnotationReplyActionStatusApi(Resource):
     @console_ns.doc("get_annotation_reply_action_status")
     @console_ns.doc(description="Get status of annotation reply action job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
-    @console_ns.response(200, "Job status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Job status retrieved successfully",
+        console_ns.models[AnnotationJobStatusResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -211,7 +252,7 @@ class AnnotationApi(Resource):
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params=query_params_from_model(AnnotationListQuery))
-    @console_ns.response(200, "Annotations retrieved successfully")
+    @console_ns.response(200, "Annotations retrieved successfully", console_ns.models[AnnotationList.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -263,6 +304,7 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @console_ns.response(204, "Annotations deleted successfully")
     def delete(self, app_id: UUID):
 
         # Use request.args.getlist to get annotation_ids array directly
@@ -341,6 +383,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
         AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
         return "", 204
@@ -351,7 +394,11 @@ class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Batch import started successfully")
+    @console_ns.response(
+        200,
+        "Batch import started successfully",
+        console_ns.models[AnnotationJobStatusResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "No file uploaded or too many files")
     @console_ns.response(413, "File too large")
@@ -404,7 +451,11 @@ class AnnotationBatchImportStatusApi(Resource):
     @console_ns.doc("get_batch_import_status")
     @console_ns.doc(description="Get status of batch import job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
-    @console_ns.response(200, "Job status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Job status retrieved successfully",
+        console_ns.models[AnnotationJobStatusResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required

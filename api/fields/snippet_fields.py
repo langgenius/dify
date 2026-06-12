@@ -1,7 +1,16 @@
+from typing import override
+
 from flask_restx import fields
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
+
+
+class OpaqueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "object"}
+
 
 tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
 
@@ -14,7 +23,7 @@ snippet_list_fields = {
     "version": fields.Integer,
     "use_count": fields.Integer,
     "is_published": fields.Boolean,
-    "icon_info": fields.Raw,
+    "icon_info": OpaqueRawField,
     "tags": fields.List(fields.Nested(tag_fields)),
     "created_by": fields.String,
     "author_name": fields.String,
@@ -32,9 +41,9 @@ snippet_fields = {
     "version": fields.Integer,
     "use_count": fields.Integer,
     "is_published": fields.Boolean,
-    "icon_info": fields.Raw,
-    "graph": fields.Raw(attribute="graph_dict"),
-    "input_fields": fields.Raw(attribute="input_fields_list"),
+    "icon_info": OpaqueRawField,
+    "graph": OpaqueRawField(attribute="graph_dict"),
+    "input_fields": OpaqueRawField(attribute="input_fields_list"),
     "tags": fields.List(fields.Nested(tag_fields)),
     "created_by": fields.Nested(simple_account_fields, attribute="created_by_account", allow_null=True),
     "created_at": TimestampField,

@@ -76,7 +76,7 @@ class CreateSnippetPayload(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     type: Literal["node", "group"] = "node"
     icon_info: IconInfo | None = None
-    graph: dict[str, Any] | None = None
+    graph: dict[str, Any] | None = Field(default=None)
     input_fields: list[InputFieldDefinition] | None = Field(default_factory=list)
 
 
@@ -97,7 +97,7 @@ class SnippetDraftSyncPayload(BaseModel):
         default=None,
         description="Ignored. Snippet workflows do not persist conversation variables.",
     )
-    input_fields: list[dict[str, Any]] | None = None
+    input_fields: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetWorkflowListQuery(BaseModel):
@@ -118,7 +118,7 @@ class SnippetDraftRunPayload(BaseModel):
     """Payload for running snippet draft workflow."""
 
     inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetDraftNodeRunPayload(BaseModel):
@@ -126,25 +126,25 @@ class SnippetDraftNodeRunPayload(BaseModel):
 
     inputs: dict[str, Any]
     query: str = ""
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetIterationNodeRunPayload(BaseModel):
     """Payload for running an iteration node in snippet draft workflow."""
 
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class SnippetLoopNodeRunPayload(BaseModel):
     """Payload for running a loop node in snippet draft workflow."""
 
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
-    knowledge_base_setting: dict[str, Any] | None = None
+    knowledge_base_setting: dict[str, Any] | None = Field(default=None)
 
 
 class SnippetImportPayload(BaseModel):

@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
+from fields.base import ResponseModel
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
@@ -58,8 +59,24 @@ class EmailRegisterResetPayload(BaseModel):
         return validate_timezone_string(value)
 
 
+class EmailRegisterTokenPairResponse(ResponseModel):
+    access_token: str
+    refresh_token: str
+    csrf_token: str
+
+
+class EmailRegisterResetResponse(ResponseModel):
+    result: str
+    data: EmailRegisterTokenPairResponse
+
+
 register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
-register_response_schema_models(console_ns, SimpleResultDataResponse, VerificationTokenResponse)
+register_response_schema_models(
+    console_ns,
+    SimpleResultDataResponse,
+    VerificationTokenResponse,
+    EmailRegisterResetResponse,
+)
 
 
 @console_ns.route("/email-register/send-email")
@@ -67,6 +84,7 @@ class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.expect(console_ns.models[EmailRegisterSendPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
@@ -92,6 +110,7 @@ class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.expect(console_ns.models[EmailRegisterValidityPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     def post(self):
         args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
@@ -133,6 +152,8 @@ class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
     def post(self):
         args = EmailRegisterResetPayload.model_validate(console_ns.payload)
 

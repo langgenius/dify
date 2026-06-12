@@ -27,7 +27,6 @@ import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
 import { login } from './login/orpc.gen'
 import { logout } from './logout/orpc.gen'
-import { mcp } from './mcp/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
@@ -79,7 +78,6 @@ export const contract = {
   instructionGenerate,
   login,
   logout,
-  mcp,
   notification,
   notion,
   oauth,

@@ -23,6 +23,7 @@ import {
   zGetAppsByAppIdFormHumanInputByFormTokenPath,
   zGetAppsByAppIdFormHumanInputByFormTokenResponse,
   zGetAppsByAppIdTasksByTaskIdEventsPath,
+  zGetAppsByAppIdTasksByTaskIdEventsQuery,
   zGetAppsByAppIdTasksByTaskIdEventsResponse,
   zGetAppsQuery,
   zGetAppsResponse,
@@ -236,16 +237,8 @@ export const files = {
   upload,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdFormHumanInputByFormToken',
@@ -284,16 +277,8 @@ export const form = {
   humanInput,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdRun',
@@ -307,23 +292,20 @@ export const run = {
   post: post3,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdTasksByTaskIdEvents',
     path: '/apps/{app_id}/tasks/{task_id}/events',
     tags: ['openapi'],
   })
-  .input(z.object({ params: zGetAppsByAppIdTasksByTaskIdEventsPath }))
+  .input(
+    z.object({
+      params: zGetAppsByAppIdTasksByTaskIdEventsPath,
+      query: zGetAppsByAppIdTasksByTaskIdEventsQuery.optional(),
+    }),
+  )
   .output(zGetAppsByAppIdTasksByTaskIdEventsResponse)
 
 export const events = {
@@ -440,16 +422,8 @@ export const lookup = {
   get: get11,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postOauthDeviceToken',
