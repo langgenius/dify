@@ -7,7 +7,6 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -43,13 +42,12 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class OpaqueRawField(fields.Raw):
     @override
     def schema(self) -> dict[str, object]:
-        return {"type": "object", **_OPAQUE_JSON_SCHEMA}
+        return {"type": "object"}
 
 
 class WorkflowDraftVariableListQuery(BaseModel):
@@ -59,14 +57,13 @@ class WorkflowDraftVariableListQuery(BaseModel):
 
 class WorkflowDraftVariableUpdatePayload(BaseModel):
     name: str | None = Field(default=None, description="Variable name")
-    value: Any | None = Field(default=None, description="Variable value", json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    value: Any | None = Field(default=None, description="Variable value")
 
 
 class ConversationVariableUpdatePayload(BaseModel):
     conversation_variables: list[dict[str, Any]] = Field(
         ...,
         description="Conversation variables for the draft workflow",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -74,7 +71,6 @@ class EnvironmentVariableUpdatePayload(BaseModel):
     environment_variables: list[dict[str, Any]] = Field(
         ...,
         description="Environment variables for the draft workflow",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -85,7 +81,7 @@ class EnvironmentVariableItemResponse(ResponseModel):
     description: str | None = None
     selector: list[str]
     value_type: str
-    value: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    value: Any
     edited: bool
     visible: bool
     editable: bool

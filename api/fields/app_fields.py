@@ -2,12 +2,9 @@ import json
 from typing import override
 
 from flask_restx import fields
-from pydantic.json_schema import JsonDict
 
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class JsonStringField(fields.Raw):
@@ -24,7 +21,7 @@ class JsonStringField(fields.Raw):
 class OpaqueRawField(fields.Raw):
     @override
     def schema(self) -> dict[str, object]:
-        return {"type": "object", **_OPAQUE_JSON_SCHEMA}
+        return {"type": "object"}
 
 
 app_detail_kernel_fields = {

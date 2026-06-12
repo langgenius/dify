@@ -3,7 +3,6 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
-from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -20,8 +19,6 @@ from services.agent.skill_standardize_service import SkillStandardizeService
 from services.agent_drive_service import AgentDriveError
 from services.agent_service import AgentService
 from services.file_service import FileService
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class AgentLogQuery(BaseModel):
@@ -50,33 +47,33 @@ class AgentToolCallResponse(ResponseModel):
     time_cost: float | int
     tool_name: str
     tool_label: str
-    tool_input: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    tool_output: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    tool_parameters: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    tool_icon: Any = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    tool_input: dict[str, Any]
+    tool_output: dict[str, Any]
+    tool_parameters: dict[str, Any]
+    tool_icon: Any = Field(default=None)
 
 
 class AgentIterationLogResponse(ResponseModel):
     tokens: int
     tool_calls: list[AgentToolCallResponse]
-    tool_raw: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    tool_raw: dict[str, Any]
     thought: str | None = None
     created_at: str
-    files: list[Any] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[Any] = Field(default_factory=list)
 
 
 class AgentLogResponse(ResponseModel):
     meta: AgentLogMetaResponse
     iterations: list[AgentIterationLogResponse]
-    files: list[Any] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[Any] = Field(default_factory=list)
 
 
 class AgentSkillUploadResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 class AgentSkillStandardizeResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 register_schema_models(console_ns, AgentLogQuery)

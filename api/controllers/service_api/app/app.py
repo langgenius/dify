@@ -2,7 +2,6 @@ from typing import Any, cast
 
 from flask_restx import Resource
 from pydantic import Field
-from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
@@ -14,8 +13,6 @@ from fields.base import ResponseModel
 from models.model import App, AppMode
 from services.app_service import AppService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class AppInfoResponse(ResponseModel):
     name: str
@@ -26,7 +23,7 @@ class AppInfoResponse(ResponseModel):
 
 
 class AppMetaResponse(ResponseModel):
-    tool_icons: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    tool_icons: dict[str, Any] = Field(default_factory=dict)
 
 
 register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)

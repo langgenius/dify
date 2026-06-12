@@ -5,7 +5,6 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -25,15 +24,12 @@ from libs.login import login_required
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class MCPServerCreatePayload(BaseModel):
     description: str | None = Field(default=None, description="Server description")
     parameters: dict[str, Any] = Field(
         ...,
         description="Server parameters configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -43,7 +39,6 @@ class MCPServerUpdatePayload(BaseModel):
     parameters: dict[str, Any] = Field(
         ...,
         description="Server parameters configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     status: str | None = Field(default=None, description="Server status")
 
@@ -54,7 +49,7 @@ class AppMCPServerResponse(ResponseModel):
     server_code: str
     description: str
     status: AppMCPServerStatus
-    parameters: dict[str, Any] | list[Any] | str = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    parameters: dict[str, Any] | list[Any] | str
     created_at: int | None = None
     updated_at: int | None = None
 

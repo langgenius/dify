@@ -1,6 +1,5 @@
 from flask_restx import Resource
-from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
+from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -18,13 +17,11 @@ from libs.login import login_required
 from models import Account, TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class LoadBalancingCredentialPayload(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict[str, object] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, object]
 
 
 class LoadBalancingCredentialValidateResponse(ResponseModel):

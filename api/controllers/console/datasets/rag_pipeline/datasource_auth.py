@@ -3,7 +3,6 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -28,12 +27,10 @@ from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class DatasourceCredentialPayload(BaseModel):
     name: str | None = Field(default=None, max_length=100)
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
 
 
 class DatasourceCredentialDeletePayload(BaseModel):
@@ -43,11 +40,11 @@ class DatasourceCredentialDeletePayload(BaseModel):
 class DatasourceCredentialUpdatePayload(BaseModel):
     credential_id: str
     name: str | None = Field(default=None, max_length=100)
-    credentials: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any] | None = Field(default=None)
 
 
 class DatasourceCustomClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    client_params: dict[str, Any] | None = Field(default=None)
     enable_oauth_custom_client: bool | None = None
 
 
@@ -72,7 +69,7 @@ class DatasourceOAuthCallbackQuery(BaseModel):
 
 
 class DatasourceCredentialsResponse(ResponseModel):
-    result: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    result: Any
 
 
 register_schema_models(

@@ -3,7 +3,6 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -16,8 +15,6 @@ from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class TraceProviderQuery(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
@@ -28,7 +25,6 @@ class TraceConfigPayload(BaseModel):
     tracing_config: dict[str, Any] = Field(
         ...,
         description="Tracing configuration data",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -39,7 +35,7 @@ class TraceAppConfigResponse(ResponseModel):
     id: str | None = None
     app_id: str | None = None
     tracing_provider: str | None = None
-    tracing_config: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    tracing_config: dict[str, Any] | None = Field(default=None)
     is_active: bool | None = None
     created_at: str | None = None
     updated_at: str | None = None

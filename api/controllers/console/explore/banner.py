@@ -3,7 +3,6 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Namespace, Resource
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
@@ -14,8 +13,6 @@ from fields.base import ResponseModel
 from models.enums import BannerStatus
 from models.model import ExporleBanner
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class BannerListQuery(BaseModel):
     language: str = Field(default="en-US", description="Banner language")
@@ -23,7 +20,7 @@ class BannerListQuery(BaseModel):
 
 class BannerResponse(ResponseModel):
     id: str
-    content: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    content: Any
     link: str | None = None
     sort: int
     status: str

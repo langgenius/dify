@@ -3,7 +3,6 @@ from typing import Any, Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleDataResponse
@@ -31,8 +30,6 @@ from models import App
 from services.workflow_generator_service import WorkflowGeneratorService
 from services.workflow_service import WorkflowService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class InstructionGeneratePayload(BaseModel):
     flow_id: str = Field(..., description="Workflow/Flow ID")
@@ -44,7 +41,6 @@ class InstructionGeneratePayload(BaseModel):
         ...,
         alias="model_config",
         description="Model configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     ideal_output: str = Field(default="", description="Expected ideal output")
 
@@ -75,17 +71,15 @@ class WorkflowGeneratePayload(BaseModel):
         ...,
         alias="model_config",
         description="Model configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     current_graph: dict | None = Field(
         default=None,
         description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
 class GeneratorResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 register_enum_models(console_ns, LLMMode)

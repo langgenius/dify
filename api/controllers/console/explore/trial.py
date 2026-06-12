@@ -4,7 +4,6 @@ from typing import Any, Literal, cast
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -102,8 +101,6 @@ from services.recommended_app_service import RecommendedAppService
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
 workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
@@ -148,14 +145,14 @@ dataset_list_model = get_or_create_model(
 
 
 class WorkflowRunRequest(BaseModel):
-    inputs: dict = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    files: list | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict
+    files: list | None = Field(default=None)
 
 
 class ChatRequest(BaseModel):
-    inputs: dict = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict
     query: str
-    files: list | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list | None = Field(default=None)
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = "explore_app"
@@ -169,9 +166,9 @@ class TextToSpeechRequest(BaseModel):
 
 
 class CompletionRequest(BaseModel):
-    inputs: dict = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict
     query: str = ""
-    files: list | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = "explore_app"
 

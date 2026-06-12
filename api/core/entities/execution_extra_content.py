@@ -4,12 +4,9 @@ from collections.abc import Mapping, Sequence
 from typing import Any, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
-from pydantic.json_schema import JsonDict
 
 from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class HumanInputFormDefinition(BaseModel):
@@ -25,7 +22,7 @@ class HumanInputFormDefinition(BaseModel):
 
     # `form_token` is `None` if the corresponding form has been submitted.
     form_token: str | None = None
-    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
     expiration_time: int
 
 

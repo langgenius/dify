@@ -13,7 +13,6 @@ from uuid import UUID
 
 from flask import request, send_file
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -68,8 +67,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.file_service import FileService
 from services.summary_index_service import SummaryIndexService
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class DocumentTextCreatePayload(BaseModel):
@@ -167,10 +164,10 @@ class DocumentDetailResponse(ResponseModel):
     id: str
     position: int | None = None
     data_source_type: str | None = None
-    data_source_info: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    data_source_info: dict[str, Any] | None = Field(default=None)
     dataset_process_rule_id: str | None = None
-    dataset_process_rule: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    document_process_rule: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    dataset_process_rule: dict[str, Any] | None = Field(default=None)
+    document_process_rule: dict[str, Any] | None = Field(default=None)
     name: str | None = None
     created_from: str | None = None
     created_by: str | None = None

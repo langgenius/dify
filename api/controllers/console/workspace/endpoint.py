@@ -11,7 +11,6 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
@@ -27,12 +26,10 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class EndpointCreatePayload(BaseModel):
     plugin_unique_identifier: str
-    settings: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    settings: dict[str, Any]
     name: str = Field(min_length=1)
 
 
@@ -41,12 +38,12 @@ class EndpointIdPayload(BaseModel):
 
 
 class EndpointUpdatePayload(BaseModel):
-    settings: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    settings: dict[str, Any]
     name: str = Field(min_length=1)
 
 
 class LegacyEndpointUpdatePayload(EndpointIdPayload):
-    settings: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    settings: dict[str, Any]
     name: str = Field(min_length=1)
 
 
@@ -66,14 +63,12 @@ class EndpointCreateResponse(BaseModel):
 class EndpointListResponse(BaseModel):
     endpoints: list[dict[str, Any]] = Field(
         description="Endpoint information",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
 class PluginEndpointListResponse(BaseModel):
     endpoints: list[dict[str, Any]] = Field(
         description="Endpoint information",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 

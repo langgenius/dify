@@ -5,7 +5,6 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy import func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -49,8 +48,6 @@ from services.api_token_service import ApiTokenCache
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 def _validate_indexing_technique(value: str | None) -> str | None:
@@ -98,13 +95,13 @@ class DatasetUpdatePayload(BaseModel):
     indexing_technique: str | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    summary_index_setting: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    retrieval_model: dict[str, Any] | None = Field(default=None)
+    summary_index_setting: dict[str, Any] | None = Field(default=None)
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
-    icon_info: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    icon_info: dict[str, Any] | None = Field(default=None)
     is_multimodal: bool | None = False
 
     @field_validator("indexing_technique")
@@ -114,8 +111,8 @@ class DatasetUpdatePayload(BaseModel):
 
 
 class IndexingEstimatePayload(BaseModel):
-    info_list: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    process_rule: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    info_list: dict[str, Any]
+    process_rule: dict[str, Any]
     indexing_technique: str
     doc_form: str = "text_model"
     dataset_id: str | None = None

@@ -3,7 +3,6 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -46,8 +45,6 @@ from services.tag_service import (
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
@@ -60,7 +57,7 @@ class DatasetCreatePayload(BaseModel):
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    summary_index_setting: dict | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    summary_index_setting: dict | None = Field(default=None)
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -72,7 +69,7 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model_provider: str | None = None
     retrieval_model: RetrievalModel | None = None
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
 

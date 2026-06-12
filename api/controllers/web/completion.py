@@ -2,7 +2,6 @@ import logging
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -37,8 +36,6 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None) -> bool:
     """Agent App runtime is SSE-only until backend blocking runs are supported."""
@@ -52,13 +49,11 @@ def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None
 class CompletionMessagePayload(BaseModel):
     inputs: dict[str, Any] = Field(
         description="Input variables for the completion",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     query: str = Field(default="", description="Query text for completion")
     files: list[dict[str, Any]] | None = Field(
         default=None,
         description="Files to be processed",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     response_mode: Literal["blocking", "streaming"] | None = Field(
         default=None, description="Response mode: blocking or streaming"
@@ -69,13 +64,11 @@ class CompletionMessagePayload(BaseModel):
 class ChatMessagePayload(BaseModel):
     inputs: dict[str, Any] = Field(
         description="Input variables for the chat",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     query: str = Field(description="User query/message")
     files: list[dict[str, Any]] | None = Field(
         default=None,
         description="Files to be processed",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     response_mode: Literal["blocking", "streaming"] | None = Field(
         default=None, description="Response mode: blocking or streaming"

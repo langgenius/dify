@@ -4,7 +4,6 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import InternalServerError
 
 import services
@@ -37,7 +36,6 @@ from services.errors.audio import (
 )
 
 logger = logging.getLogger(__name__)
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class TextToSpeechPayload(BaseModel):
@@ -56,7 +54,7 @@ class AudioTranscriptResponse(BaseModel):
 
 
 class TextToSpeechVoiceListResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: list[dict[str, Any]]
 
 
 register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)

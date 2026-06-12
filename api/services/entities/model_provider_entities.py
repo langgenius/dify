@@ -4,7 +4,6 @@ from enum import StrEnum
 from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from pydantic.json_schema import JsonDict
 
 from configs import dify_config
 from core.entities.model_entities import (
@@ -34,7 +33,6 @@ from graphon.model_runtime.entities.provider_entities import (
 )
 from models.provider import ProviderType
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 _DECIMAL_STRING_PATTERN = r"^(?![-+.]*$)[+-]?0*\d*\.?\d*$"
 CodegenSafeDecimal = Annotated[Decimal, Field(json_schema_extra={"pattern": _DECIMAL_STRING_PATTERN})]
 
@@ -157,7 +155,7 @@ class AIModelEntityResponse(BaseModel):
     model_type: ModelType
     features: list[ModelFeature] | None = None
     fetch_from: FetchFrom
-    model_properties: dict[ModelPropertyKey, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    model_properties: dict[ModelPropertyKey, Any]
     deprecated: bool = False
     parameter_rules: list[ParameterRule] = []
     pricing: PriceConfigResponse | None = None

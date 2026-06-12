@@ -2,7 +2,6 @@ from typing import Any, cast
 
 from flask_restx import fields, marshal, marshal_with
 from pydantic import Field
-from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
@@ -17,16 +16,14 @@ from models.account import TenantStatus
 from models.model import App, EndUser, Site
 from services.feature_service import FeatureService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class AppSiteModelConfigResponse(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    suggested_questions_after_answer: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    more_like_this: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    model: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    user_input_form: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    suggested_questions: Any
+    suggested_questions_after_answer: Any
+    more_like_this: Any
+    model: Any
+    user_input_form: Any
     pre_prompt: str | None = None
 
 
@@ -56,7 +53,7 @@ class AppSiteInfoResponse(ResponseModel):
     model_config_: AppSiteModelConfigResponse | None = Field(default=None, alias="model_config")
     plan: str | None = None
     can_replace_logo: bool
-    custom_config: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    custom_config: dict[str, Any] | None = Field(default=None)
 
 
 register_response_schema_models(web_ns, AppSiteInfoResponse)

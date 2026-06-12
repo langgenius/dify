@@ -4,15 +4,12 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import Field, field_validator, model_validator
-from pydantic.json_schema import JsonDict
 
 from fields.base import ResponseModel
 from graphon.file import File
 from libs.helper import to_timestamp
 
 type JSONValue = Any
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class MessageFile(ResponseModel):
@@ -37,7 +34,7 @@ class MessageFile(ResponseModel):
 class SimpleConversation(ResponseModel):
     id: str
     name: str
-    inputs: dict[str, JSONValue] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, JSONValue]
     status: str
     introduction: str | None = None
     created_at: int | None = None
@@ -114,7 +111,7 @@ class AgentThought(ResponseModel):
     position: int
     thought: str | None = None
     tool: str | None = None
-    tool_labels: JSONValue = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    tool_labels: JSONValue
     tool_input: str | None = None
     created_at: int | None = None
     observation: str | None = None
@@ -135,9 +132,9 @@ class AgentThought(ResponseModel):
 class MessageDetail(ResponseModel):
     id: str
     conversation_id: str
-    inputs: dict[str, JSONValue] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, JSONValue]
     query: str
-    message: JSONValue = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    message: JSONValue
     message_tokens: int
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     answer_tokens: int
@@ -152,7 +149,7 @@ class MessageDetail(ResponseModel):
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
     message_files: list[MessageFile]
-    metadata: JSONValue = Field(validation_alias="message_metadata_dict", json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    metadata: JSONValue = Field(validation_alias="message_metadata_dict")
     status: str
     error: str | None = None
     parent_message_id: str | None = None
@@ -182,24 +179,23 @@ class StatusCount(ResponseModel):
 
 class ModelConfig(ResponseModel):
     opening_statement: str | None = None
-    suggested_questions: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    model: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    user_input_form: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    suggested_questions: JSONValue | None = Field(default=None)
+    model: JSONValue | None = Field(default=None)
+    user_input_form: JSONValue | None = Field(default=None)
     pre_prompt: str | None = None
-    agent_mode: JSONValue | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    agent_mode: JSONValue | None = Field(default=None)
 
 
 class SimpleModelConfig(ResponseModel):
     model: JSONValue | None = Field(
         default=None,
         validation_alias="model_dict",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     pre_prompt: str | None = None
 
 
 class SimpleMessageDetail(ResponseModel):
-    inputs: dict[str, JSONValue] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, JSONValue]
     query: str
     message: str
     answer: str

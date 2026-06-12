@@ -3,7 +3,6 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 
 from controllers.common.schema import (
     DEFAULT_REF_TEMPLATE_OPENAPI_3_0,
@@ -16,8 +15,6 @@ from fields.base import ResponseModel
 from libs.login import login_required
 from services.advanced_prompt_template_service import AdvancedPromptTemplateArgs, AdvancedPromptTemplateService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class AdvancedPromptTemplateQuery(BaseModel):
     app_mode: str = Field(..., description="Application mode")
@@ -27,8 +24,8 @@ class AdvancedPromptTemplateQuery(BaseModel):
 
 
 class AdvancedPromptTemplateResponse(ResponseModel):
-    chat_prompt_config: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    completion_prompt_config: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    chat_prompt_config: dict[str, Any] | None = Field(default=None)
+    completion_prompt_config: dict[str, Any] | None = Field(default=None)
 
 
 console_ns.schema_model(

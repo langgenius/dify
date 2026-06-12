@@ -1,18 +1,15 @@
 from typing import override
 
 from flask_restx import fields
-from pydantic.json_schema import JsonDict
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class OpaqueRawField(fields.Raw):
     @override
     def schema(self) -> dict[str, object]:
-        return {"type": "object", **_OPAQUE_JSON_SCHEMA}
+        return {"type": "object"}
 
 
 tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}

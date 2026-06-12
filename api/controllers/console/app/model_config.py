@@ -4,7 +4,6 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -27,8 +26,6 @@ from libs.login import login_required
 from models.model import App, AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class ModelConfigRequest(BaseModel):
     provider: str | None = Field(default=None, description="Model provider")
@@ -36,44 +33,36 @@ class ModelConfigRequest(BaseModel):
     configs: dict[str, Any] | None = Field(
         default=None,
         description="Model configuration parameters",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     opening_statement: str | None = Field(default=None, description="Opening statement")
     suggested_questions: list[str] | None = Field(default=None, description="Suggested questions")
     more_like_this: dict[str, Any] | None = Field(
         default=None,
         description="More like this configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     speech_to_text: dict[str, Any] | None = Field(
         default=None,
         description="Speech to text configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     text_to_speech: dict[str, Any] | None = Field(
         default=None,
         description="Text to speech configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     retrieval_model: dict[str, Any] | None = Field(
         default=None,
         description="Retrieval model configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     tools: list[dict[str, Any]] | None = Field(
         default=None,
         description="Available tools",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     dataset_configs: dict[str, Any] | None = Field(
         default=None,
         description="Dataset configurations",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     agent_mode: dict[str, Any] | None = Field(
         default=None,
         description="Agent mode configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 

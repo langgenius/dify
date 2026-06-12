@@ -39,12 +39,12 @@ class HumanInputUploadTokenResponse(BaseModel):
 
 
 class HumanInputFormDefinitionResponse(BaseModel):
-    form_content: Any = Field(json_schema_extra={"x-dify-opaque": True})
-    inputs: Any = Field(json_schema_extra={"x-dify-opaque": True})
+    form_content: Any
+    inputs: Any
     resolved_default_values: dict[str, str]
-    user_actions: Any = Field(json_schema_extra={"x-dify-opaque": True})
+    user_actions: Any
     expiration_time: int
-    site: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    site: dict[str, Any] | None = Field(default=None)
 
 
 class HumanInputFormSubmitResponse(BaseModel):

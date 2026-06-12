@@ -5,7 +5,6 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
@@ -36,8 +35,6 @@ from models.account import Account, TenantPluginAutoUpgradeStrategy, TenantPlugi
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ParserList(BaseModel):
@@ -122,7 +119,7 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
     action: str
     parameter: str
     credential_id: str
-    credentials: Mapping[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: Mapping[str, Any]
 
 
 class PluginPermissionSettingsPayload(BaseModel):
@@ -161,32 +158,32 @@ class PluginDebuggingKeyResponse(ResponseModel):
 
 
 class PluginDaemonOperationResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 class PluginListResponse(ResponseModel):
-    plugins: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    plugins: Any
     total: int
 
 
 class PluginVersionsResponse(ResponseModel):
-    versions: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    versions: Any
 
 
 class PluginInstallationsResponse(ResponseModel):
-    plugins: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    plugins: Any
 
 
 class PluginManifestResponse(ResponseModel):
-    manifest: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    manifest: Any
 
 
 class PluginTasksResponse(ResponseModel):
-    tasks: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    tasks: Any
 
 
 class PluginTaskResponse(ResponseModel):
-    task: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    task: Any
 
 
 class PluginPermissionResponse(ResponseModel):
@@ -195,7 +192,7 @@ class PluginPermissionResponse(ResponseModel):
 
 
 class PluginDynamicOptionsResponse(ResponseModel):
-    options: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    options: Any
 
 
 class PluginOperationSuccessResponse(ResponseModel):

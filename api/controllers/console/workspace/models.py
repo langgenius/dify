@@ -4,7 +4,6 @@ from typing import Any, cast
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
@@ -39,8 +38,6 @@ from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class ParserGetDefault(BaseModel):
     model_type: ModelType
@@ -62,7 +59,7 @@ class ParserDeleteModels(BaseModel):
 
 
 class LoadBalancingPayload(BaseModel):
-    configs: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    configs: list[dict[str, Any]] | None = Field(default=None)
     enabled: bool | None = None
 
 
@@ -102,12 +99,12 @@ class ParserCredentialBase(BaseModel):
 
 class ParserCreateCredential(ParserCredentialBase):
     name: str | None = Field(default=None, max_length=30)
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
 
 
 class ParserUpdateCredential(ParserCredentialBase):
     credential_id: str
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
 
     @field_validator("credential_id")
@@ -149,11 +146,11 @@ class ProviderWithModelsDataResponse(ResponseModel):
 
 class ModelCredentialLoadBalancingResponse(ResponseModel):
     enabled: bool
-    configs: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    configs: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ModelCredentialResponse(ResponseModel):
-    credentials: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any] = Field(default_factory=dict)
     current_credential_id: str | None = None
     current_credential_name: str | None = None
     load_balancing: ModelCredentialLoadBalancingResponse
@@ -536,7 +533,7 @@ class ModelProviderModelDisableApi(Resource):
 class ParserValidate(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
 
 
 register_schema_models(console_ns, ParserSwitch, ParserValidate)

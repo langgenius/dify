@@ -7,7 +7,6 @@ from typing import Any, NotRequired, TypedDict
 from flask import abort, request
 from flask_restx import Resource, fields
 from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -86,7 +85,6 @@ RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE = "source workflow must be pub
 MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS = 1000
 WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE = 50
 ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class EnvironmentVariableResponseDict(TypedDict):
@@ -98,25 +96,23 @@ class EnvironmentVariableResponseDict(TypedDict):
 
 
 class SyncDraftWorkflowPayload(BaseModel):
-    graph: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    features: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    graph: dict[str, Any]
+    features: dict[str, Any]
     hash: str | None = None
     environment_variables: list[dict[str, Any]] = Field(
         default_factory=list,
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     conversation_variables: list[dict[str, Any]] = Field(
         default_factory=list,
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
 class BaseWorkflowRunPayload(BaseModel):
-    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
-    inputs: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any] | None = Field(default=None)
     query: str = ""
     conversation_id: str | None = None
     parent_message_id: str | None = None
@@ -130,19 +126,19 @@ class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
 
 
 class IterationNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class LoopNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class DraftWorkflowRunPayload(BaseWorkflowRunPayload):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
 
 
 class DraftWorkflowNodeRunPayload(BaseWorkflowRunPayload):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     query: str = ""
 
 
@@ -162,7 +158,6 @@ class WorkflowFeaturesPayload(BaseModel):
     features: dict[str, Any] = Field(
         ...,
         description="Workflow feature configuration",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -179,7 +174,7 @@ class WorkflowConversationVariableResponse(ResponseModel):
     id: str
     name: str
     value_type: str
-    value: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    value: Any
     description: str
 
     @field_validator("value_type", mode="before")
@@ -198,7 +193,7 @@ class PipelineVariableResponse(ResponseModel):
     max_length: int | None = None
     required: bool
     unit: str | None = None
-    default_value: Any = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    default_value: Any = Field(default=None)
     options: list[str] | None = None
     placeholder: str | None = None
     tooltips: str | None = None
@@ -215,7 +210,7 @@ class WorkflowEnvironmentVariableResponse(ResponseModel):
     value_type: str
     id: str
     name: str
-    value: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    value: Any
     description: str
 
 
@@ -223,11 +218,9 @@ class WorkflowResponse(ResponseModel):
     id: str
     graph: dict[str, Any] = Field(
         validation_alias=AliasChoices("graph_dict", "graph"),
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     features: dict[str, Any] = Field(
         validation_alias=AliasChoices("features_dict", "features"),
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     hash: str = Field(validation_alias=AliasChoices("unique_hash", "hash"))
     version: str
@@ -297,11 +290,11 @@ class WorkflowRestoreResponse(ResponseModel):
 
 
 class DefaultBlockConfigsResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: list[dict[str, Any]]
 
 
 class DefaultBlockConfigResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 class HumanInputFormPreviewResponse(ResponseModel):
@@ -309,20 +302,20 @@ class HumanInputFormPreviewResponse(ResponseModel):
     node_id: str
     node_title: str
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    actions: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    actions: list[dict[str, Any]] = Field(default_factory=list)
     display_in_ui: bool | None = None
     form_token: str | None = None
-    resolved_default_values: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    resolved_default_values: dict[str, Any] = Field(default_factory=dict)
     expiration_time: int | None = None
 
 
 class HumanInputFormSubmitResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 class EmptyObjectResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 class DraftWorkflowTriggerRunPayload(BaseModel):
@@ -748,7 +741,6 @@ class HumanInputFormPreviewPayload(BaseModel):
     inputs: dict[str, Any] = Field(
         default_factory=dict,
         description="Values used to fill missing upstream variables referenced in form_content",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -756,12 +748,10 @@ class HumanInputFormSubmitPayload(BaseModel):
     form_inputs: dict[str, Any] = Field(
         ...,
         description="Values the user provides for the form's own fields",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     inputs: dict[str, Any] = Field(
         ...,
         description="Values used to fill missing upstream variables referenced in form_content",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     action: str = Field(..., description="Selected action ID")
 
@@ -771,7 +761,6 @@ class HumanInputDeliveryTestPayload(BaseModel):
     inputs: dict[str, Any] = Field(
         default_factory=dict,
         description="Values used to fill missing upstream variables referenced in form_content",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 

@@ -4,7 +4,6 @@ from typing import Any
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
@@ -36,8 +35,6 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 logger: logging.Logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class PipelineTemplateListQuery(BaseModel):
     type: str = Field(default="built-in", description="Template source: built-in or customized")
@@ -51,7 +48,7 @@ class PipelineTemplateDetailQuery(BaseModel):
 class PipelineTemplateItemResponse(ResponseModel):
     id: str
     name: str
-    icon: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    icon: dict[str, Any]
     description: str
     position: int
     chunk_structure: str
@@ -66,11 +63,11 @@ class PipelineTemplateListResponse(ResponseModel):
 class PipelineTemplateDetailResponse(ResponseModel):
     id: str
     name: str
-    icon_info: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    icon_info: dict[str, Any]
     description: str
     chunk_structure: str
     export_data: str
-    graph: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    graph: dict[str, Any]
     created_by: str | None = None
 
 
@@ -79,7 +76,6 @@ class CustomizedPipelineTemplatePayload(BaseModel):
     description: str = Field(default="", max_length=400)
     icon_info: dict[str, object] = Field(
         default_factory=lambda: IconInfo(icon="").model_dump(),
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 

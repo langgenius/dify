@@ -6,7 +6,6 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -66,36 +65,34 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class DraftWorkflowSyncPayload(BaseModel):
-    graph: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    graph: dict[str, Any]
     hash: str | None = None
-    environment_variables: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    conversation_variables: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    rag_pipeline_variables: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    features: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    environment_variables: list[dict[str, Any]] | None = Field(default=None)
+    conversation_variables: list[dict[str, Any]] | None = Field(default=None)
+    rag_pipeline_variables: list[dict[str, Any]] | None = Field(default=None)
+    features: dict[str, Any] | None = Field(default=None)
 
 
 class NodeRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class NodeRunRequiredPayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
 
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     datasource_type: str
     credential_id: str | None = None
 
 
 class DraftWorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     datasource_type: str
-    datasource_info_list: list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    datasource_info_list: list[dict[str, Any]]
     start_node_id: str
 
 
@@ -116,7 +113,7 @@ class WorkflowRunQuery(BaseModel):
 
 class DatasourceVariablesPayload(BaseModel):
     datasource_type: str
-    datasource_info: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    datasource_info: dict[str, Any]
     start_node_id: str
     start_node_title: str
 
@@ -137,11 +134,11 @@ class RagPipelineWorkflowPublishResponse(ResponseModel):
 
 
 class RagPipelineOpaqueResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 class RagPipelineStepParametersResponse(ResponseModel):
-    variables: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    variables: Any
 
 
 register_schema_models(

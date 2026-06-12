@@ -2,7 +2,6 @@ from enum import StrEnum, auto
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.entities import MetadataFilteringCondition
@@ -11,8 +10,6 @@ from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from graphon.variables.input_entities import VariableEntity as WorkflowVariableEntity
 from models.model import AppMode
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class ModelConfigEntity(BaseModel):
@@ -118,7 +115,7 @@ class ModelConfig(BaseModel):
     provider: str
     name: str
     mode: LLMMode
-    completion_params: dict[str, Any] = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    completion_params: dict[str, Any] = Field(default_factory=dict)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):

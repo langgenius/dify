@@ -7,7 +7,6 @@ from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
@@ -51,8 +50,6 @@ from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class WorkflowRunPayload(WorkflowRunPayloadBase):
@@ -100,8 +97,8 @@ class WorkflowRunResponse(ResponseModel):
     id: str
     workflow_id: str
     status: str
-    inputs: dict | list | str | int | float | bool | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    outputs: dict = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict | list | str | int | float | bool | None = Field(default=None)
+    outputs: dict = Field(default_factory=dict)
     error: str | None = None
     total_steps: int | None = None
     total_tokens: int | None = None
@@ -142,7 +139,7 @@ class WorkflowRunForLogResponse(ResponseModel):
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
-    details: dict | list | str | int | float | bool | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    details: dict | list | str | int | float | bool | None = Field(default=None)
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = None

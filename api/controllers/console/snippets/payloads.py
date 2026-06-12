@@ -2,9 +2,6 @@ import uuid
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SnippetListQuery(BaseModel):
@@ -79,7 +76,7 @@ class CreateSnippetPayload(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     type: Literal["node", "group"] = "node"
     icon_info: IconInfo | None = None
-    graph: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    graph: dict[str, Any] | None = Field(default=None)
     input_fields: list[InputFieldDefinition] | None = Field(default_factory=list)
 
 
@@ -94,14 +91,13 @@ class UpdateSnippetPayload(BaseModel):
 class SnippetDraftSyncPayload(BaseModel):
     """Payload for syncing snippet draft workflow."""
 
-    graph: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    graph: dict[str, Any]
     hash: str | None = None
     conversation_variables: list[dict[str, Any]] | None = Field(
         default=None,
         description="Ignored. Snippet workflows do not persist conversation variables.",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
-    input_fields: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    input_fields: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetWorkflowListQuery(BaseModel):
@@ -121,34 +117,34 @@ class WorkflowRunQuery(BaseModel):
 class SnippetDraftRunPayload(BaseModel):
     """Payload for running snippet draft workflow."""
 
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetDraftNodeRunPayload(BaseModel):
     """Payload for running a single node in snippet draft workflow."""
 
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     query: str = ""
-    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetIterationNodeRunPayload(BaseModel):
     """Payload for running an iteration node in snippet draft workflow."""
 
-    inputs: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class SnippetLoopNodeRunPayload(BaseModel):
     """Payload for running a loop node in snippet draft workflow."""
 
-    inputs: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
-    knowledge_base_setting: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    knowledge_base_setting: dict[str, Any] | None = Field(default=None)
 
 
 class SnippetImportPayload(BaseModel):

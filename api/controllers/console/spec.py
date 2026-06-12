@@ -2,8 +2,7 @@ import logging
 from typing import Any
 
 from flask_restx import Resource
-from pydantic import Field, RootModel
-from pydantic.json_schema import JsonDict
+from pydantic import RootModel
 
 from controllers.common.schema import register_response_schema_models
 from controllers.console.wraps import (
@@ -16,11 +15,10 @@ from libs.login import login_required
 from . import console_ns
 
 logger = logging.getLogger(__name__)
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SchemaDefinitionsResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 register_response_schema_models(console_ns, SchemaDefinitionsResponse)

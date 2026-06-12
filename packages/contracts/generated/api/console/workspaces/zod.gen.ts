@@ -783,7 +783,7 @@ export const zSnippet = z.object({
   version: z.int().optional(),
 })
 
-export const zAnonymousInlineModelD84D863049B0 = z.object({
+export const zAnonymousInlineModelEfd591151Ea9 = z.object({
   author_name: z.string().optional(),
   created_at: z.coerce
     .bigint()
@@ -817,7 +817,7 @@ export const zAnonymousInlineModelD84D863049B0 = z.object({
 })
 
 export const zSnippetPagination = z.object({
-  data: z.array(zAnonymousInlineModelD84D863049B0).optional(),
+  data: z.array(zAnonymousInlineModelEfd591151Ea9).optional(),
   has_more: z.boolean().optional(),
   limit: z.int().optional(),
   page: z.int().optional(),

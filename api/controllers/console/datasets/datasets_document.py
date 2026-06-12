@@ -11,7 +11,6 @@ import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -75,8 +74,6 @@ from ..wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +146,7 @@ class DocumentWithSegmentsListResponse(ResponseModel):
 
 
 class OpaqueObjectResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 register_schema_models(

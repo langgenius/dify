@@ -9,8 +9,7 @@ from typing import Any
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
-from pydantic import Field, RootModel
-from pydantic.json_schema import JsonDict
+from pydantic import RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -44,15 +43,13 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class ConsoleHumanInputFormDefinitionResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 class ConsoleHumanInputFormSubmitResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 register_schema_models(console_ns, HumanInputFormSubmitPayload)

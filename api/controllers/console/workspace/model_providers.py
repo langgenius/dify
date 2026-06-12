@@ -4,7 +4,6 @@ from typing import Any, Literal
 from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import BinaryFileResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -27,8 +26,6 @@ from services.billing_service import BillingService
 from services.entities.model_provider_entities import ProviderResponse
 from services.model_provider_service import ModelProviderService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
@@ -46,13 +43,13 @@ class ParserCredentialId(BaseModel):
 
 
 class ParserCredentialCreate(BaseModel):
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
 
 
 class ParserCredentialUpdate(BaseModel):
     credential_id: str
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
 
     @field_validator("credential_id")
@@ -80,7 +77,7 @@ class ParserCredentialSwitch(BaseModel):
 
 
 class ParserCredentialValidate(BaseModel):
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
 
 
 class ParserPreferredProviderType(BaseModel):
@@ -92,7 +89,7 @@ class ModelProviderListResponse(ResponseModel):
 
 
 class ProviderCredentialResponse(ResponseModel):
-    credentials: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any] | None = Field(default=None)
 
 
 class ProviderCredentialValidateResponse(ResponseModel):

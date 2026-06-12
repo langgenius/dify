@@ -2,7 +2,6 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -14,13 +13,11 @@ from .. import console_ns
 from ..auth.error import ApiKeyAuthFailedError
 from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required, with_current_tenant_id
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class ApiKeyAuthBindingPayload(BaseModel):
     category: str = Field(...)
     provider: str = Field(...)
-    credentials: dict = Field(..., json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict = Field(...)
 
 
 class ApiKeyAuthDataSourceItem(ResponseModel):

@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, HttpUrl, RootModel, field_validator, model_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
@@ -49,8 +48,6 @@ from services.tools.workflow_tools_manage_service import WorkflowToolManageServi
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 def is_valid_url(url: str) -> bool:
     if not url:
@@ -72,7 +69,7 @@ class BuiltinToolCredentialDeletePayload(BaseModel):
 
 
 class BuiltinToolAddPayload(BaseModel):
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
     name: str | None = Field(default=None, max_length=30)
     type: CredentialType
     visibility: str | None = None
@@ -80,16 +77,16 @@ class BuiltinToolAddPayload(BaseModel):
 
 class BuiltinToolUpdatePayload(BaseModel):
     credential_id: str
-    credentials: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any] | None = Field(default=None)
     name: str | None = Field(default=None, max_length=30)
 
 
 class ApiToolProviderBasePayload(BaseModel):
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
     schema_type: ApiProviderSchemaType
     schema_: str = Field(alias="schema")
     provider: str
-    icon: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    icon: dict[str, Any]
     privacy_policy: str | None = None
     labels: list[str] | None = None
     custom_disclaimer: str = ""
@@ -129,8 +126,8 @@ class ApiToolSchemaPayload(BaseModel):
 class ApiToolTestPayload(BaseModel):
     tool_name: str
     provider_name: str | None = None
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    parameters: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
+    parameters: dict[str, Any]
     schema_type: ApiProviderSchemaType
     schema_: str = Field(alias="schema")
 
@@ -139,7 +136,7 @@ class WorkflowToolBasePayload(BaseModel):
     name: str
     label: str
     description: str
-    icon: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    icon: dict[str, Any]
     parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
     privacy_policy: str | None = ""
     labels: list[str] | None = None
@@ -209,7 +206,7 @@ class BuiltinProviderDefaultCredentialPayload(BaseModel):
 
 
 class ToolOAuthCustomClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    client_params: dict[str, Any] | None = Field(default=None)
     enable_oauth_custom_client: bool | None = True
 
 
@@ -220,9 +217,9 @@ class MCPProviderBasePayload(BaseModel):
     icon_type: str
     icon_background: str = ""
     server_identifier: str
-    configuration: dict[str, Any] | None = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    headers: dict[str, Any] | None = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    authentication: dict[str, Any] | None = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    configuration: dict[str, Any] | None = Field(default_factory=dict)
+    headers: dict[str, Any] | None = Field(default_factory=dict)
+    authentication: dict[str, Any] | None = Field(default_factory=dict)
     # None means "leave unchanged" on update; the controller resolves it to a
     # concrete IdentityMode before calling the service (see _resolve_identity_mode).
     identity_mode: IdentityMode | None = None
@@ -272,15 +269,15 @@ class MCPCallbackQuery(BaseModel):
 
 
 class ToolOAuthCustomClientResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 class ToolOAuthClientSchemaResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: list[dict[str, Any]]
 
 
 class ToolProviderOpaqueResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 register_schema_models(

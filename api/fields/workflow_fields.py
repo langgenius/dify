@@ -1,7 +1,6 @@
 from typing import override
 
 from flask_restx import fields
-from pydantic.json_schema import JsonDict
 
 from core.helper import encrypter
 from fields.member_fields import simple_account_fields
@@ -11,19 +10,18 @@ from libs.helper import TimestampField
 from ._value_type_serializer import serialize_value_type
 
 ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class OpaqueRawField(fields.Raw):
     @override
     def schema(self) -> dict[str, object]:
-        return {"type": "object", **_OPAQUE_JSON_SCHEMA}
+        return {"type": "object"}
 
 
 class EnvironmentVariableField(fields.Raw):
     @override
     def schema(self) -> dict[str, object]:
-        return {"type": "object", **_OPAQUE_JSON_SCHEMA}
+        return {"type": "object"}
 
     @override
     def format(self, value):

@@ -5,14 +5,12 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from pydantic.json_schema import JsonDict
 
 from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class UsageInfo(BaseModel):
@@ -89,12 +87,8 @@ class AppDescribeInfo(AppInfoResponse):
 
 class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
-    # `parameters` (the app-config blob) and `input_schema` (a Draft 2020-12 JSON Schema derived
-    # per-app) are deliberately open JSON, not under-annotated. The `x-dify-opaque` marker tells the
-    # contract generator's readiness detector to treat them as intentional, so the route is not
-    # flagged "annotations incomplete". CLI/web consume them as opaque objects either way.
-    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
-    input_schema: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    parameters: dict[str, Any] | None = Field(default=None)
+    input_schema: dict[str, Any] | None = Field(default=None)
 
 
 class ChatMessageResponse(BaseModel):
@@ -304,9 +298,9 @@ class AppListQuery(BaseModel):
 
 
 class AppRunRequest(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     query: str | None = None
-    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
@@ -487,7 +481,7 @@ class FormSubmitResponse(BaseModel):
 
 class HumanInputFormDefinitionResponse(BaseModel):
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
     resolved_default_values: dict[str, str]
-    user_actions: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
     expiration_time: int | None = None

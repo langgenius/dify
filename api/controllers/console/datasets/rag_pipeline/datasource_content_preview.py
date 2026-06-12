@@ -3,8 +3,7 @@ from typing import Any
 from flask_restx import (  # type: ignore
     Resource,  # type: ignore
 )
-from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
+from pydantic import BaseModel, RootModel
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -15,17 +14,15 @@ from models import Account
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class Parser(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     datasource_type: str
     credential_id: str | None = None
 
 
 class DataSourceContentPreviewResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 register_schema_models(console_ns, Parser)

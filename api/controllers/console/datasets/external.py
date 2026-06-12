@@ -4,7 +4,6 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -47,8 +46,6 @@ from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetT
 
 register_response_schema_models(console_ns, UsageCountResponse)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 def _build_dataset_detail_model():
     keyword_setting_model = get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
@@ -90,7 +87,7 @@ except KeyError:
 
 class ExternalKnowledgeApiPayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
-    settings: dict[str, object] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    settings: dict[str, object]
 
 
 class ExternalDatasetCreatePayload(BaseModel):
@@ -98,15 +95,14 @@ class ExternalDatasetCreatePayload(BaseModel):
     external_knowledge_id: str
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = Field(None, max_length=400)
-    external_retrieval_model: dict[str, object] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    external_retrieval_model: dict[str, object] | None = Field(default=None)
 
 
 class ExternalHitTestingPayload(BaseModel):
     query: str
-    external_retrieval_model: dict[str, object] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    external_retrieval_model: dict[str, object] | None = Field(default=None)
     metadata_filtering_conditions: dict[str, object] | None = Field(
         default=None,
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -132,7 +128,7 @@ class ExternalKnowledgeApiResponse(ResponseModel):
     tenant_id: str
     name: str
     description: str
-    settings: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    settings: dict[str, Any] | None = Field(default=None)
     dataset_bindings: list[ExternalKnowledgeDatasetBindingResponse] = Field(default_factory=list)
     created_by: str
     created_at: str
@@ -147,7 +143,7 @@ class ExternalKnowledgeApiListResponse(ResponseModel):
 
 
 class ExternalRetrievalTestResponse(RootModel[dict[str, Any] | list[dict[str, Any]]]):
-    root: dict[str, Any] | list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any] | list[dict[str, Any]]
 
 
 register_schema_models(

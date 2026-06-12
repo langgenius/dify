@@ -1,8 +1,7 @@
 from typing import Any
 
 from flask_restx import Resource
-from pydantic import Field, RootModel
-from pydantic.json_schema import JsonDict
+from pydantic import RootModel
 
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
@@ -17,15 +16,13 @@ from libs.login import login_required
 from models import Account
 from services.agent_service import AgentService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class AgentProviderListResponse(RootModel[list[dict[str, Any]]]):
-    root: list[dict[str, Any]] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: list[dict[str, Any]]
 
 
 class AgentProviderResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 register_response_schema_models(console_ns, AgentProviderListResponse, AgentProviderResponse)

@@ -4,7 +4,6 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -21,8 +20,6 @@ from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class SubscriptionQuery(BaseModel):
     plan: Literal[CloudPlan.PROFESSIONAL, CloudPlan.TEAM] = Field(..., description="Subscription plan")
@@ -34,7 +31,7 @@ class PartnerTenantsPayload(BaseModel):
 
 
 class BillingResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: dict[str, Any]
 
 
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)

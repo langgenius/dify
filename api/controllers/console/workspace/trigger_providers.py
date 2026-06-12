@@ -4,7 +4,6 @@ from typing import Any
 from flask import make_response, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, model_validator
-from pydantic.json_schema import JsonDict
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -38,22 +37,20 @@ from ..wraps import (
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class TriggerSubscriptionBuilderCreatePayload(BaseModel):
     credential_type: str = CredentialType.UNAUTHORIZED
 
 
 class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
-    credentials: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    credentials: dict[str, Any]
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     name: str | None = None
-    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    properties: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
-    credentials: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    parameters: dict[str, Any] | None = Field(default=None)
+    properties: dict[str, Any] | None = Field(default=None)
+    credentials: dict[str, Any] | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_at_least_one_field(self):
@@ -63,28 +60,28 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
 
 
 class TriggerOAuthClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    client_params: dict[str, Any] | None = Field(default=None)
     enabled: bool | None = None
 
 
 class TriggerOAuthAuthorizeResponse(BaseModel):
     authorization_url: str
     subscription_builder_id: str
-    subscription_builder: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    subscription_builder: Any
 
 
 class TriggerOAuthClientResponse(BaseModel):
     configured: bool
     system_configured: bool
     custom_configured: bool
-    oauth_client_schema: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    oauth_client_schema: Any
     custom_enabled: bool
     redirect_uri: str
-    params: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    params: dict[str, Any]
 
 
 class TriggerProviderOpaqueResponse(RootModel[Any]):
-    root: Any = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    root: Any
 
 
 register_schema_models(

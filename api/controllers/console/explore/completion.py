@@ -3,7 +3,6 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -41,21 +40,19 @@ from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class CompletionMessageExplorePayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     query: str = ""
-    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[dict[str, Any]] | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="explore_app")
 
 
 class ChatMessagePayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     query: str
-    files: list[dict[str, Any]] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = Field(default="explore_app")

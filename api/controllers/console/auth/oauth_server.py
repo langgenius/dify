@@ -5,8 +5,7 @@ from typing import Any, Concatenate
 from flask import jsonify, request
 from flask.typing import ResponseReturnValue
 from flask_restx import Resource
-from pydantic import BaseModel, Field
-from pydantic.json_schema import JsonDict
+from pydantic import BaseModel
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -18,8 +17,6 @@ from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
 from .. import console_ns
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class OAuthClientPayload(BaseModel):
@@ -42,7 +39,7 @@ class OAuthTokenRequest(BaseModel):
 
 class OAuthProviderAppResponse(BaseModel):
     app_icon: str
-    app_label: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    app_label: dict[str, Any]
     scope: str
 
 

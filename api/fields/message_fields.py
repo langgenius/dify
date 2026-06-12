@@ -4,7 +4,6 @@ from datetime import datetime
 from uuid import uuid4
 
 from pydantic import Field, field_validator
-from pydantic.json_schema import JsonDict
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from fields.base import ResponseModel
@@ -13,8 +12,6 @@ from graphon.file import File
 from libs.helper import to_timestamp
 
 type JSONValueType = JSONValue
-
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
 
 
 class SimpleFeedback(ResponseModel):
@@ -50,7 +47,7 @@ class MessageListItem(ResponseModel):
     id: str
     conversation_id: str
     parent_message_id: str | None = None
-    inputs: dict[str, JSONValueType] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, JSONValueType]
     query: str
     answer: str = Field(validation_alias="re_sign_file_url_answer")
     feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
@@ -77,7 +74,6 @@ class WebMessageListItem(MessageListItem):
     metadata: JSONValueType | None = Field(
         default=None,
         validation_alias="message_metadata_dict",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
 
@@ -95,7 +91,7 @@ class WebMessageInfiniteScrollPagination(ResponseModel):
 
 class SavedMessageItem(ResponseModel):
     id: str
-    inputs: dict[str, JSONValueType] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, JSONValueType]
     query: str
     answer: str
     message_files: list[MessageFile]

@@ -4,7 +4,6 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, RootModel
-from pydantic.json_schema import JsonDict
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -38,11 +37,9 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class DatasourceNodeRunPayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     datasource_type: str
     credential_id: str | None = None
     is_published: bool
@@ -65,7 +62,7 @@ class DatasourcePluginResponse(ResponseModel):
     provider_name: str | None = None
     datasource_type: str | None = None
     title: str | None = None
-    user_input_variables: list[dict[str, Any]] = Field(default_factory=list, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    user_input_variables: list[dict[str, Any]] = Field(default_factory=list)
     credentials: list[DatasourceCredentialInfoResponse]
 
 

@@ -42,7 +42,6 @@ class AppMetaResponse(BaseModel):
     tool_icons: dict[str, Any] = Field(
         default_factory=dict,
         description="Tool icon metadata keyed by tool name",
-        json_schema_extra={"x-dify-opaque": True},
     )
 
 

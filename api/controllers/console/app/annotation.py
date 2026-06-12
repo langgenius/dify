@@ -4,7 +4,6 @@ from uuid import UUID
 from flask import abort, make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
-from pydantic.json_schema import JsonDict
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -36,8 +35,6 @@ from services.annotation_service import (
     UpsertAnnotationArgs,
 )
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 class AnnotationReplyPayload(BaseModel):
     score_threshold: float = Field(..., description="Score threshold for annotation matching")
@@ -63,7 +60,6 @@ class CreateAnnotationPayload(BaseModel):
     annotation_reply: dict[str, Any] | None = Field(
         default=None,
         description="Annotation reply data",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
 
     @field_validator("message_id")
@@ -78,7 +74,7 @@ class UpdateAnnotationPayload(BaseModel):
     question: str | None = None
     answer: str | None = None
     content: str | None = None
-    annotation_reply: dict[str, Any] | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    annotation_reply: dict[str, Any] | None = Field(default=None)
 
 
 class AnnotationReplyStatusQuery(BaseModel):

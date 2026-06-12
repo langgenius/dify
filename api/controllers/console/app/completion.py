@@ -4,7 +4,6 @@ from typing import Any, Literal
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from pydantic.json_schema import JsonDict
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -47,8 +46,6 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
-_OPAQUE_JSON_SCHEMA: JsonDict = {"x-dify-opaque": True}
-
 
 def _resolve_debugger_chat_streaming(
     *, app_mode: AppMode, response_mode: str, response_mode_provided: bool = True
@@ -62,7 +59,7 @@ def _resolve_debugger_chat_streaming(
 
 
 class BaseMessagePayload(BaseModel):
-    inputs: dict[str, Any] = Field(json_schema_extra=_OPAQUE_JSON_SCHEMA)
+    inputs: dict[str, Any]
     # Agent Apps (AppMode.AGENT) derive their model + prompt from the bound Agent
     # Soul, so no override ``model_config`` is sent; chat / agent-chat / completion
     # debugging still pass it. Optional here, required in practice by those modes
@@ -70,12 +67,10 @@ class BaseMessagePayload(BaseModel):
     model_config_data: dict[str, Any] = Field(
         default_factory=dict,
         alias="model_config",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     files: list[Any] | None = Field(
         default=None,
         description="Uploaded files",
-        json_schema_extra=_OPAQUE_JSON_SCHEMA,
     )
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
