@@ -18,6 +18,7 @@ from fields.agent_fields import (
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
+    AgentPublishedReferenceResponse,
     AgentRosterListResponse,
     AgentRosterResponse,
 )
@@ -48,6 +49,7 @@ register_response_schema_models(
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
+    AgentPublishedReferenceResponse,
     AgentRosterListResponse,
     AgentRosterResponse,
 )
