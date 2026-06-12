@@ -99,9 +99,7 @@ class WorkflowRunResponse(ResponseModel):
     id: str
     workflow_id: str
     status: str
-    inputs: dict | list | str | int | float | bool | None = Field(
-        default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA
-    )
+    inputs: dict | list | str | int | float | bool | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     outputs: dict = Field(default_factory=dict, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     error: str | None = None
     total_steps: int | None = None
@@ -143,9 +141,7 @@ class WorkflowRunForLogResponse(ResponseModel):
 class WorkflowAppLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForLogResponse | None = None
-    details: dict | list | str | int | float | bool | None = Field(
-        default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA
-    )
+    details: dict | list | str | int | float | bool | None = Field(default=None, json_schema_extra=_OPAQUE_JSON_SCHEMA)
     created_from: str | None = None
     created_by_role: str | None = None
     created_by_account: SimpleAccount | None = None
