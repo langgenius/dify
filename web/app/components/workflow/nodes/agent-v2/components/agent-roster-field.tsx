@@ -5,7 +5,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
-  DrawerBackdrop,
   DrawerCloseButton,
   DrawerContent,
   DrawerPopup,
@@ -67,6 +66,8 @@ function AgentRosterDrawer({
   return (
     <Drawer
       open={open}
+      modal={false}
+      disablePointerDismissal
       swipeDirection="right"
       onOpenChange={(nextOpen) => {
         if (!nextOpen)
@@ -74,10 +75,9 @@ function AgentRosterDrawer({
       }}
     >
       <DrawerPortal container={portalContainerRef}>
-        <DrawerBackdrop className="bg-transparent" />
-        <DrawerViewport>
+        <DrawerViewport className="pointer-events-none">
           <DrawerPopup
-            className="p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
+            className="pointer-events-auto p-0 data-[swipe-direction=right]:top-14 data-[swipe-direction=right]:bottom-1 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle data-[swipe-direction=right]:shadow-2xl data-[swipe-direction=right]:shadow-shadow-shadow-5"
             style={{
               right: 'var(--workflow-node-panel-right, 4px)',
               width: 'var(--workflow-node-panel-width, 400px)',
