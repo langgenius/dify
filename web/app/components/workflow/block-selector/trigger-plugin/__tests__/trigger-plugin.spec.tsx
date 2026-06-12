@@ -116,6 +116,33 @@ describe('trigger plugin selector components', () => {
     }))
   })
 
+  it('should select trigger plugin action items from the keyboard', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const provider = createTriggerProvider()
+    const event = createEvent('on_created', 'On Created')
+
+    render(
+      <TriggerPluginActionItem
+        provider={provider}
+        payload={event}
+        previewCardHandle={createPreviewCardHandle()}
+        onSelect={onSelect}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'On Created' })
+    await user.tab()
+    expect(action).toHaveFocus()
+
+    await user.keyboard('{Enter}')
+
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
+      event_name: 'on_created',
+      event_label: 'On Created',
+    }))
+  })
+
   it('should expand providers and select workflow trigger providers directly', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
@@ -135,6 +162,9 @@ describe('trigger plugin selector components', () => {
     )
 
     await user.click(screen.getByText('Trigger Provider'))
+
+    expect(screen.getByLabelText('workflow.tabs.allTriggers')).toHaveClass('max-h-[240px]', 'overscroll-contain')
+
     await user.click(screen.getByText('Second Event'))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
@@ -161,6 +191,34 @@ describe('trigger plugin selector components', () => {
       provider_type: CollectionType.workflow,
       event_name: 'workflow_event',
     }))
+  })
+
+  it('should expand trigger providers from the keyboard', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+
+    render(
+      <TriggerPluginItem
+        payload={createTriggerProvider({
+          events: [
+            createEvent('first', 'First Event'),
+            createEvent('second', 'Second Event'),
+          ],
+        })}
+        hasSearchText={false}
+        previewCardHandle={createPreviewCardHandle()}
+        onSelect={onSelect}
+      />,
+    )
+
+    const provider = screen.getByRole('button', { name: /Trigger Provider/ })
+    await user.tab()
+    expect(provider).toHaveFocus()
+
+    await user.keyboard(' ')
+
+    expect(screen.getByRole('region', { name: 'workflow.tabs.allTriggers' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Second Event' })).toBeInTheDocument()
   })
 
   it('should filter trigger plugins and report whether content exists', async () => {
