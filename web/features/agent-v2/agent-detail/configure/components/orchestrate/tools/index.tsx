@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -130,11 +130,10 @@ function AddToolMenu({
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
-  const [isToolPickerOpen, setIsToolPickerOpen] = useState(false)
+  const [view, setView] = useState<'menu' | 'tool-picker'>('menu')
 
   const openToolPicker = useCallback(() => {
-    setOpen(false)
-    setIsToolPickerOpen(true)
+    setView('tool-picker')
   }, [])
 
   const openCliToolDialog = useCallback(() => {
@@ -142,30 +141,19 @@ function AddToolMenu({
     onAddCliTool()
   }, [onAddCliTool])
 
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (nextOpen)
+      setView('menu')
+  }, [])
+
   const handleSelectTool = useCallback((tool: ToolDefaultValue) => {
     onAddTools([tool])
   }, [onAddTools])
 
-  if (isToolPickerOpen) {
-    return (
-      <ToolPicker
-        trigger={<ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.tools.add')} />}
-        placement="bottom-end"
-        offset={4}
-        panelClassName="w-[400px] overflow-hidden"
-        isShow={isToolPickerOpen}
-        onShowChange={setIsToolPickerOpen}
-        disabled={false}
-        supportAddCustomTool
-        selectedTools={selectedTools}
-        onSelect={handleSelectTool}
-        onSelectMultiple={onAddTools}
-      />
-    )
-  }
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={(
           <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.tools.add')} />
@@ -174,21 +162,38 @@ function AddToolMenu({
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-[280px] p-1 backdrop-blur-[5px] bg-components-panel-bg-blur shadow-lg"
+        popupClassName={view === 'menu'
+          ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
+          : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'}
       >
-        <AddToolMenuItem
-          iconClassName="i-ri-box-3-line"
-          label={t('agentDetail.configure.tools.addMenu.tool.label')}
-          description={t('agentDetail.configure.tools.addMenu.tool.description')}
-          onClick={openToolPicker}
-        />
-        <AddToolMenuItem
-          iconClassName="i-ri-terminal-box-line"
-          label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
-          badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
-          description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
-          onClick={openCliToolDialog}
-        />
+        {view === 'menu'
+          ? (
+              <>
+                <AddToolMenuItem
+                  iconClassName="i-ri-box-3-line"
+                  label={t('agentDetail.configure.tools.addMenu.tool.label')}
+                  description={t('agentDetail.configure.tools.addMenu.tool.description')}
+                  onClick={openToolPicker}
+                />
+                <AddToolMenuItem
+                  iconClassName="i-ri-terminal-box-line"
+                  label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
+                  badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
+                  description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
+                  onClick={openCliToolDialog}
+                />
+              </>
+            )
+          : (
+              <ToolPickerContent
+                focusSearchOnMount
+                panelClassName="w-full"
+                supportAddCustomTool
+                selectedTools={selectedTools}
+                onSelect={handleSelectTool}
+                onSelectMultiple={onAddTools}
+              />
+            )}
       </PopoverContent>
     </Popover>
   )

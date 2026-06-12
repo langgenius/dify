@@ -5,6 +5,14 @@ import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provid
 import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentTools } from '../index'
 
+vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
+  ToolPickerContent: () => (
+    <div>
+      Mock tool picker
+    </div>
+  ),
+}))
+
 const agentToolsDraft = {
   ...defaultAgentComposerDraft,
   tools: [
@@ -83,6 +91,23 @@ describe('AgentTools', () => {
       expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
       expect(screen.queryByText('DuckDuckGo Search')).not.toBeInTheDocument()
       expect(screen.getByText('Lark CLI')).toBeInTheDocument()
+    })
+
+    it('should keep the add trigger mounted while the tool picker is open', async () => {
+      const user = userEvent.setup()
+      renderAgentTools()
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.add',
+      }))
+      await user.click(screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
+      }))
+
+      expect(screen.getByText('Mock tool picker')).toBeInTheDocument()
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.add',
+      })).toBeInTheDocument()
     })
   })
 })
