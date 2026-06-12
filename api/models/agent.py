@@ -131,11 +131,20 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
         Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
+        Index(
+            "agent_tenant_invitable_idx",
+            "tenant_id",
+            "scope",
+            "status",
+            "active_config_has_model",
+            "updated_at",
+        ),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     icon_type: Mapped[AgentIconType | None] = mapped_column(EnumText(AgentIconType, length=32), nullable=True)
     icon: Mapped[str | None] = mapped_column(
         String(255),
@@ -152,6 +161,9 @@ class Agent(DefaultFieldsMixin, Base):
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    active_config_has_model: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
     status: Mapped[AgentStatus] = mapped_column(
         EnumText(AgentStatus, length=32), nullable=False, default=AgentStatus.ACTIVE
     )
@@ -372,10 +384,9 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
     node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    # JSON-encoded list of cleanup layer specs ({name, type, deps, config}).
-    # Drives Agent backend cleanup-only runs: the agenton compositor rejects a
-    # session snapshot whose layer names do not match the cleanup composition,
-    # so we replay the same layer graph (minus credential-bearing plugin layers).
+    # JSON-encoded list of non-sensitive runtime layer specs ({name, type, deps,
+    # config}). The persisted schema keeps its original name because the sandbox
+    # refactor intentionally avoids a storage migration.
     composition_layer_specs: Mapped[str] = mapped_column(LongText, nullable=False, server_default="[]")
     # Conversation-owner column (NULL for workflow owner).
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)

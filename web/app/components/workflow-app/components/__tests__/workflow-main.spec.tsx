@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { BlockEnum } from '@/app/components/workflow/types'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -88,6 +89,12 @@ vi.mock('@/app/components/workflow/store', () => ({
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
     }),
+  }),
+}))
+
+vi.mock('@/app/components/app/store', () => ({
+  useStore: <T,>(selector: (state: { appDetail: { mode: string } }) => T) => selector({
+    appDetail: { mode: 'workflow' },
   }),
 }))
 
@@ -257,6 +264,18 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
+  }),
+}))
+
+vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
+  useWorkflowDraftGraphForCanvas: () => ({
+    getWorkflowDraftGraphForCanvas: (graph?: { nodes?: unknown[], edges?: unknown[], viewport?: unknown }) => ({
+      nodes: graph?.nodes?.length
+        ? graph.nodes
+        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+      edges: graph?.edges || [],
+      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
+    }),
   }),
 }))
 
@@ -457,6 +476,38 @@ describe('WorkflowMain', () => {
         nodes: [{ id: 'n-1' }],
         edges: [{ id: 'e-1' }],
         viewport: { x: 3, y: 4, zoom: 1.2 },
+      })
+    })
+  })
+
+  it('restores a local start placeholder for empty collaboration workflow updates', async () => {
+    collaborationRuntime.isEnabled = true
+    mockFetchWorkflowDraft.mockResolvedValue({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [],
+      graph: {
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    })
+
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+
+    await collaborationListeners.workflowUpdate?.()
+
+    await waitFor(() => {
+      expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
+        nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
       })
     })
   })

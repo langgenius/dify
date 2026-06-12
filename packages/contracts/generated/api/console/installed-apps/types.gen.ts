@@ -143,9 +143,7 @@ export type DeleteInstalledAppsByInstalledAppIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteInstalledAppsByInstalledAppIdResponse
@@ -288,9 +286,7 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse
@@ -510,9 +506,7 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse

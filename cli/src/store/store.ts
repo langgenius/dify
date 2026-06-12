@@ -21,7 +21,8 @@ export type Store = {
   unset: <T>(key: Key<T>) => void
 }
 
-export type StorageMode = 'keychain' | 'file'
+export const STORAGE_MODES = ['keychain', 'file'] as const
+export type StorageMode = typeof STORAGE_MODES[number]
 
 abstract class FileBasedStore implements Store {
   filePath: string

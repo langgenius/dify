@@ -3,31 +3,22 @@ Public APIs for web applications including file uploads, chat interactions, and 
 
 ## Version: 1.0
 
-### Security
-**Bearer**  
-
-| apiKey | *API Key* |
-| ------ | --------- |
-| Description | Type: Bearer {your-api-key} |
-| In | header |
-| Name | Authorization |
+### Available authorizations
+#### Bearer (API Key Authentication)
+Type: Bearer {your-api-key}  
+**Name:** Authorization  
+**In:** header  
 
 ---
 ## web
 Web application API operations
 
-### /audio-to-text
-
-#### POST
-##### Summary
-
-Convert audio to text
-
-##### Description
+### [POST] /audio-to-text
+**Convert audio to text**
 
 Convert audio file to text using speech-to-text service.
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -39,20 +30,16 @@ Convert audio file to text using speech-to-text service.
 | 415 | Unsupported audio type |
 | 500 | Internal Server Error |
 
-### /chat-messages
-
-#### POST
-##### Description
-
+### [POST] /chat-messages
 Create a chat message for conversational applications.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ChatMessagePayload](#chatmessagepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ChatMessagePayload](#chatmessagepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -63,44 +50,36 @@ Create a chat message for conversational applications.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-### /chat-messages/{task_id}/stop
-
-#### POST
-##### Description
-
+### [POST] /chat-messages/{task_id}/stop
 Stop a running chat message task.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Task ID to stop | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Task Not Found |  |
 | 500 | Internal Server Error |  |
 
-### /completion-messages
-
-#### POST
-##### Description
-
+### [POST] /completion-messages
 Create a completion message for text generation applications.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [CompletionMessagePayload](#completionmessagepayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [CompletionMessagePayload](#completionmessagepayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -111,47 +90,39 @@ Create a completion message for text generation applications.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-### /completion-messages/{task_id}/stop
-
-#### POST
-##### Description
-
+### [POST] /completion-messages/{task_id}/stop
 Stop a running completion message task.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Task ID to stop | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Task Not Found |  |
 | 500 | Internal Server Error |  |
 
-### /conversations
-
-#### GET
-##### Description
-
+### [GET] /conversations
 Retrieve paginated list of conversations for a chat application.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | last_id | query | Last conversation ID for pagination | No | string |
-| limit | query | Number of conversations to return (1-100) | No | integer |
-| pinned | query | Filter by pinned status | No | string |
-| sort_by | query | Sort order | No | string |
+| limit | query | Number of conversations to return (1-100) | No | integer, <br>**Default:** 20 |
+| pinned | query | Filter by pinned status | No | string, <br>**Available values:** "false", "true" |
+| sort_by | query | Sort order | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -162,20 +133,16 @@ Retrieve paginated list of conversations for a chat application.
 | 404 | App Not Found or Not a Chat App |
 | 500 | Internal Server Error |
 
-### /conversations/{c_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /conversations/{c_id}
 Delete a specific conversation.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path | Conversation UUID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -186,14 +153,10 @@ Delete a specific conversation.
 | 404 | Conversation Not Found or Not a Chat App |
 | 500 | Internal Server Error |
 
-### /conversations/{c_id}/name
-
-#### POST
-##### Description
-
+### [POST] /conversations/{c_id}/name
 Rename a specific conversation with a custom name or auto-generate one.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
@@ -201,7 +164,7 @@ Rename a specific conversation with a custom name or auto-generate one.
 | auto_generate | query | Auto-generate conversation name | No | boolean |
 | name | query | New conversation name | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -212,105 +175,83 @@ Rename a specific conversation with a custom name or auto-generate one.
 | 404 | Conversation Not Found or Not a Chat App |
 | 500 | Internal Server Error |
 
-### /conversations/{c_id}/pin
-
-#### PATCH
-##### Description
-
+### [PATCH] /conversations/{c_id}/pin
 Pin a specific conversation to keep it at the top of the list.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path | Conversation UUID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation pinned successfully | [ResultResponse](#resultresponse) |
+| 200 | Conversation pinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Conversation Not Found or Not a Chat App |  |
 | 500 | Internal Server Error |  |
 
-### /conversations/{c_id}/unpin
-
-#### PATCH
-##### Description
-
+### [PATCH] /conversations/{c_id}/unpin
 Unpin a specific conversation to remove it from the top of the list.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | c_id | path | Conversation UUID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation unpinned successfully | [ResultResponse](#resultresponse) |
+| 200 | Conversation unpinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Conversation Not Found or Not a Chat App |  |
 | 500 | Internal Server Error |  |
 
-### /email-code-login
-
-#### POST
-##### Description
-
+### [POST] /email-code-login
 Send email verification code for login
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EmailCodeLoginSendPayload](#emailcodeloginsendpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailCodeLoginSendPayload](#emailcodeloginsendpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Email code sent successfully | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Email code sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 | 400 | Bad request - invalid email format |  |
 | 404 | Account not found |  |
 
-### /email-code-login/validity
-
-#### POST
-##### Description
-
+### [POST] /email-code-login/validity
 Verify email code and complete login
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [EmailCodeLoginVerifyPayload](#emailcodeloginverifypayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EmailCodeLoginVerifyPayload](#emailcodeloginverifypayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Email code verified and login successful | [AccessTokenResultResponse](#accesstokenresultresponse) |
+| 200 | Email code verified and login successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
 | 400 | Bad request - invalid code or token |  |
 | 401 | Invalid token or expired code |  |
 | 404 | Account not found |  |
 
-### /files/upload
-
-#### POST
-##### Summary
-
-Upload a file for use in web applications
-
-##### Description
+### [POST] /files/upload
+**Upload a file for use in web applications**
 
 Upload a file for use in web applications
 Accepts file uploads for use within web applications, supporting
@@ -335,109 +276,87 @@ Raises:
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
+| 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
 | 400 | Bad request - invalid file or parameters |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
 
-### /forgot-password
-
-#### POST
-##### Description
-
+### [POST] /forgot-password
 Send password reset email
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ForgotPasswordSendPayload](#forgotpasswordsendpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ForgotPasswordSendPayload](#forgotpasswordsendpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Password reset email sent successfully | [SimpleResultDataResponse](#simpleresultdataresponse) |
+| 200 | Password reset email sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 | 400 | Bad request - invalid email format |  |
 | 404 | Account not found |  |
 | 429 | Too many requests - rate limit exceeded |  |
 
-### /forgot-password/resets
-
-#### POST
-##### Description
-
+### [POST] /forgot-password/resets
 Reset user password with verification token
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ForgotPasswordResetPayload](#forgotpasswordresetpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ForgotPasswordResetPayload](#forgotpasswordresetpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Password reset successfully | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Password reset successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad request - invalid parameters or password mismatch |  |
 | 401 | Invalid or expired token |  |
 | 404 | Account not found |  |
 
-### /forgot-password/validity
-
-#### POST
-##### Description
-
+### [POST] /forgot-password/validity
 Verify password reset token validity
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [ForgotPasswordCheckPayload](#forgotpasswordcheckpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ForgotPasswordCheckPayload](#forgotpasswordcheckpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Token is valid | [VerificationTokenResponse](#verificationtokenresponse) |
+| 200 | Token is valid | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
 | 400 | Bad request - invalid token format |  |
 | 401 | Invalid or expired token |  |
 
-### /form/human_input/{form_token}
-
-#### GET
-##### Summary
-
-Get human input form definition by token
-
-##### Description
+### [GET] /form/human_input/{form_token}
+**Get human input form definition by token**
 
 GET /api/form/human_input/<form_token>
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-#### POST
-##### Summary
-
-Submit human input form by token
-
-##### Description
+### [POST] /form/human_input/{form_token}
+**Submit human input form by token**
 
 POST /api/form/human_input/<form_token>
 
@@ -449,124 +368,96 @@ Request body:
     "action": "Approve"
 }
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /form/human_input/{form_token}/upload-token
-
-#### POST
-##### Summary
-
-Issue an upload token for a human input form
-
-##### Description
+### [POST] /form/human_input/{form_token}/upload-token
+**Issue an upload token for a human input form**
 
 POST /api/form/human_input/<form_token>/upload-token
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
-### /human-input-forms/files
+### [POST] /human-input-forms/files
+**Upload one local file or remote URL file for a HITL human input form**
 
-#### POST
-##### Summary
-
-Upload one local file or remote URL file for a HITL human input form
-
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | File uploaded successfully | [FileResponse](#fileresponse) |
+| 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
 
-### /login
-
-#### POST
-##### Summary
-
-Authenticate user and login
-
-##### Description
+### [POST] /login
+**Authenticate user and login**
 
 Authenticate user for web application access
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [LoginPayload](#loginpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [LoginPayload](#loginpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authentication successful | [AccessTokenResultResponse](#accesstokenresultresponse) |
+| 200 | Authentication successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
 | 400 | Bad request - invalid email or password format |  |
 | 401 | Authentication failed - email or password mismatch |  |
 | 403 | Account banned or login disabled |  |
 | 404 | Account not found |  |
 
-### /login/status
-
-#### GET
-##### Description
-
+### [GET] /login/status
 Check login status
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Login status | [LoginStatusResponse](#loginstatusresponse) |
+| 200 | Login status | **application/json**: [LoginStatusResponse](#loginstatusresponse)<br> |
 | 401 | Login status |  |
 
-### /logout
-
-#### POST
-##### Description
-
+### [POST] /logout
 Logout user from web application
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Logout successful | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Logout successful | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
-### /messages
-
-#### GET
-##### Description
-
+### [GET] /messages
 Retrieve paginated list of messages from a conversation in a chat application.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | conversation_id | query | Conversation UUID | Yes | string |
 | first_id | query | First message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer |
+| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -577,47 +468,39 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | 404 | Conversation Not Found or Not a Chat App |
 | 500 | Internal Server Error |
 
-### /messages/{message_id}/feedbacks
-
-#### POST
-##### Description
-
+### [POST] /messages/{message_id}/feedbacks
 Submit feedback (like/dislike) for a specific message.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | path | Message UUID | Yes | string |
 | content | query | Feedback content | No | string |
-| rating | query | Feedback rating | No | string |
+| rating | query | Feedback rating | No | string, <br>**Available values:** "dislike", "like" |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Feedback submitted successfully | [ResultResponse](#resultresponse) |
+| 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Message Not Found |  |
 | 500 | Internal Server Error |  |
 
-### /messages/{message_id}/more-like-this
-
-#### GET
-##### Description
-
+### [GET] /messages/{message_id}/more-like-this
 Generate a new completion similar to an existing message (completion apps only).
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| response_mode | query | Response mode | Yes | string, <br>**Available values:** "blocking", "streaming" |
 | message_id | path |  | Yes | string |
-| payload | body |  | Yes | [MessageMoreLikeThisQuery](#messagemorelikethisquery) |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -628,42 +511,32 @@ Generate a new completion similar to an existing message (completion apps only).
 | 404 | Message Not Found |
 | 500 | Internal Server Error |
 
-### /messages/{message_id}/suggested-questions
-
-#### GET
-##### Description
-
+### [GET] /messages/{message_id}/suggested-questions
 Get suggested follow-up questions after a message (chat apps only).
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | path | Message UUID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SuggestedQuestionsResponse](#suggestedquestionsresponse) |
+| 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
 | 400 | Bad Request - Not a chat app or feature disabled |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Message Not Found or Conversation Not Found |  |
 | 500 | Internal Server Error |  |
 
-### /meta
-
-#### GET
-##### Summary
-
-Get app meta
-
-##### Description
+### [GET] /meta
+**Get app meta**
 
 Retrieve the metadata for a specific app.
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -674,18 +547,12 @@ Retrieve the metadata for a specific app.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-### /parameters
-
-#### GET
-##### Summary
-
-Retrieve app parameters
-
-##### Description
+### [GET] /parameters
+**Retrieve app parameters**
 
 Retrieve the parameters for a specific app.
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -696,14 +563,10 @@ Retrieve the parameters for a specific app.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-### /passport
-
-#### GET
-##### Description
-
+### [GET] /passport
 Get authentication passport for web application access
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -711,14 +574,8 @@ Get authentication passport for web application access
 | 401 | Unauthorized - missing app code or invalid authentication |
 | 404 | Application or user not found |
 
-### /remote-files/upload
-
-#### POST
-##### Summary
-
-Upload a file from a remote URL
-
-##### Description
+### [POST] /remote-files/upload
+**Upload a file from a remote URL**
 
 Upload a file from a remote URL
 Downloads a file from the provided remote URL and uploads it
@@ -740,24 +597,18 @@ Raises:
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Remote file uploaded successfully | [FileWithSignedUrl](#filewithsignedurl) |
+| 201 | Remote file uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
 | 400 | Bad request - invalid URL or parameters |  |
 | 413 | File too large |  |
 | 415 | Unsupported file type |  |
 | 500 | Failed to fetch remote file |  |
 
-### /remote-files/{url}
-
-#### GET
-##### Summary
-
-Get information about a remote file
-
-##### Description
+### [GET] /remote-files/{url}
+**Get information about a remote file**
 
 Get information about a remote file
 Retrieves basic information about a file located at a remote URL,
@@ -774,36 +625,32 @@ Returns:
 Raises:
     HTTPException: If the remote file cannot be accessed
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | url | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Remote file information retrieved successfully | [RemoteFileInfo](#remotefileinfo) |
+| 200 | Remote file information retrieved successfully | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
 | 400 | Bad request - invalid URL |  |
 | 404 | Remote file not found |  |
 | 500 | Failed to fetch remote file |  |
 
-### /saved-messages
-
-#### GET
-##### Description
-
+### [GET] /saved-messages
 Retrieve paginated list of saved messages for a completion application.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | last_id | query | Last message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer |
+| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -814,42 +661,36 @@ Retrieve paginated list of saved messages for a completion application.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-#### POST
-##### Description
-
+### [POST] /saved-messages
 Save a specific message for later reference.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | query | Message UUID to save | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Message saved successfully | [ResultResponse](#resultresponse) |
+| 200 | Message saved successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request - Not a completion app |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
 | 404 | Message Not Found |  |
 | 500 | Internal Server Error |  |
 
-### /saved-messages/{message_id}
-
-#### DELETE
-##### Description
-
+### [DELETE] /saved-messages/{message_id}
 Remove a message from saved messages.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | path | Message UUID to delete | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -860,18 +701,12 @@ Remove a message from saved messages.
 | 404 | Message Not Found |
 | 500 | Internal Server Error |
 
-### /site
-
-#### GET
-##### Summary
-
-Retrieve app site info
-
-##### Description
+### [GET] /site
+**Retrieve app site info**
 
 Retrieve app site information and configuration.
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -882,14 +717,8 @@ Retrieve app site information and configuration.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-### /system-features
-
-#### GET
-##### Summary
-
-Get system feature flags and configuration
-
-##### Description
+### [GET] /system-features
+**Get system feature flags and configuration**
 
 Get system feature flags and configuration
 Returns the current system feature flags and configuration
@@ -908,31 +737,25 @@ Authentication would create circular dependency (can't authenticate without weba
 
 Only non-sensitive configuration data should be returned by this endpoint.
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System features retrieved successfully | [SystemFeatureModel](#systemfeaturemodel) |
+| 200 | System features retrieved successfully | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
 | 500 | Internal server error |  |
 
-### /text-to-audio
-
-#### POST
-##### Summary
-
-Convert text to audio
-
-##### Description
+### [POST] /text-to-audio
+**Convert text to audio**
 
 Convert text to audio using text-to-speech service.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [TextToAudioPayload](#texttoaudiopayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [TextToAudioPayload](#texttoaudiopayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -942,68 +765,54 @@ Convert text to audio using text-to-speech service.
 | 403 | Forbidden |
 | 500 | Internal Server Error |
 
-### /webapp/access-mode
-
-#### GET
-##### Description
-
+### [GET] /webapp/access-mode
 Retrieve the access mode for a web application (public or restricted).
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | appCode | query | Application code | No | string |
 | appId | query | Application ID | No | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [AccessModeResponse](#accessmoderesponse) |
+| 200 | Success | **application/json**: [AccessModeResponse](#accessmoderesponse)<br> |
 | 400 | Bad Request |  |
 | 500 | Internal Server Error |  |
 
-### /webapp/permission
-
-#### GET
-##### Description
-
+### [GET] /webapp/permission
 Check if user has permission to access a web application.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | appId | query | Application ID | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [BooleanResultResponse](#booleanresultresponse) |
+| 200 | Success | **application/json**: [BooleanResultResponse](#booleanresultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 500 | Internal Server Error |  |
 
-### /workflows/run
-
-#### POST
-##### Summary
-
-Run workflow
-
-##### Description
+### [POST] /workflows/run
+**Run workflow**
 
 Execute a workflow with provided inputs and files.
 
-##### Parameters
+#### Request Body
 
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| payload | body |  | Yes | [WorkflowRunPayload](#workflowrunpayload) |
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
@@ -1014,28 +823,22 @@ Execute a workflow with provided inputs and files.
 | 404 | App Not Found |
 | 500 | Internal Server Error |
 
-### /workflows/tasks/{task_id}/stop
-
-#### POST
-##### Summary
-
-Stop workflow task
-
-##### Description
+### [POST] /workflows/tasks/{task_id}/stop
+**Stop workflow task**
 
 Stop a running workflow task.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Task ID to stop | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | [SimpleResultResponse](#simpleresultresponse) |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
@@ -1046,33 +849,27 @@ Stop a running workflow task.
 ## default
 Default namespace
 
-### /workflow/{task_id}/events
-
-#### GET
-##### Summary
-
-Get workflow execution events stream after resume
-
-##### Description
+### [GET] /workflow/{task_id}/events
+**Get workflow execution events stream after resume**
 
 GET /api/workflow/<task_id>/events
 
 Returns Server-Sent Events stream.
 
-##### Parameters
+#### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path |  | Yes | string |
 
-##### Responses
+#### Responses
 
 | Code | Description |
 | ---- | ----------- |
 | 200 | Success |
 
 ---
-### Models
+### Schemas
 
 #### AccessModeResponse
 
@@ -1125,8 +922,8 @@ Returns Server-Sent Events stream.
 | inputs | object | Input variables for the chat | Yes |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode | string | Response mode: blocking or streaming<br>*Enum:* `"blocking"`, `"streaming"` | No |
-| retriever_from | string | Source of retriever | No |
+| response_mode | string | Response mode: blocking or streaming | No |
+| retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### CompletionMessagePayload
 
@@ -1135,17 +932,17 @@ Returns Server-Sent Events stream.
 | files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode | string | Response mode: blocking or streaming<br>*Enum:* `"blocking"`, `"streaming"` | No |
-| retriever_from | string | Source of retriever | No |
+| response_mode | string | Response mode: blocking or streaming | No |
+| retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### ConversationListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 | pinned | boolean |  | No |
-| sort_by | string | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | *Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
 #### ConversationRenamePayload
 
@@ -1231,7 +1028,7 @@ Parsed multipart form fields for HITL uploads.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| url | string (uri) | Remote file URL | No |
+| url | string | Remote file URL | No |
 
 #### HumanInputUploadTokenResponse
 
@@ -1285,7 +1082,7 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
-| rating | string | *Enum:* `"dislike"`, `"like"` | No |
+| rating | string |  | No |
 
 #### MessageListQuery
 
@@ -1293,13 +1090,13 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation UUID | Yes |
 | first_id | string | First message ID for pagination | No |
-| limit | integer | Number of messages to return (1-100) | No |
+| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
 
 #### MessageMoreLikeThisQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| response_mode | string | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 
 #### PluginInstallationPermissionModel
 
@@ -1350,7 +1147,7 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
-| limit | integer |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
 
 #### SimpleResultDataResponse
 
@@ -1376,11 +1173,11 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
-| enable_change_email | boolean |  | Yes |
-| enable_collaboration_mode | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
@@ -1389,7 +1186,7 @@ Parsed multipart form fields for HITL uploads.
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
 | license | [LicenseModel](#licensemodel) |  | Yes |
-| max_plugin_package_size | integer |  | Yes |
+| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |

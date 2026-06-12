@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 
 from extensions.ext_database import db
@@ -26,6 +26,7 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.workflow import Workflow
+from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError, AgentVersionNotFoundError
 from services.entities.agent_entities import (
@@ -74,10 +75,15 @@ class AgentComposerService:
             return cls._empty_workflow_state(app_id=app_id, workflow_id=workflow.id, node_id=node_id)
 
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
+        version_id = (
+            agent.active_config_snapshot_id
+            if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
         version = cls._get_version_if_present(
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
-            version_id=binding.current_snapshot_id,
+            version_id=version_id,
         )
         return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
 
@@ -129,10 +135,15 @@ class AgentComposerService:
 
         db.session.commit()
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
+        version_id = (
+            agent.active_config_snapshot_id
+            if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
         version = cls._get_version_if_present(
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
-            version_id=binding.current_snapshot_id,
+            version_id=version_id,
         )
         state = cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
         state["validation"] = cls.collect_validation_findings(tenant_id=tenant_id, payload=payload)
@@ -219,6 +230,7 @@ class AgentComposerService:
                 version_note=payload.version_note,
             )
             agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         else:
             current_snapshot = cls._require_version(
                 tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
@@ -231,6 +243,7 @@ class AgentComposerService:
                 version_note=payload.version_note,
             )
             agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
             agent.updated_by = account_id
 
         db.session.commit()
@@ -489,11 +502,26 @@ class AgentComposerService:
 
     @classmethod
     def calculate_impact(cls, *, tenant_id: str, current_snapshot_id: str) -> dict[str, Any]:
+        snapshot = db.session.scalar(
+            select(AgentConfigSnapshot)
+            .where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.id == current_snapshot_id,
+            )
+            .limit(1)
+        )
+        agent_id = snapshot.agent_id if snapshot else None
+        predicates = [WorkflowAgentNodeBinding.current_snapshot_id == current_snapshot_id]
+        if agent_id:
+            predicates.append(
+                (WorkflowAgentNodeBinding.agent_id == agent_id)
+                & (WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT)
+            )
         bindings = list(
             db.session.scalars(
                 select(WorkflowAgentNodeBinding).where(
                     WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    WorkflowAgentNodeBinding.current_snapshot_id == current_snapshot_id,
+                    or_(*predicates),
                 )
             ).all()
         )
@@ -580,6 +608,7 @@ class AgentComposerService:
         )
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         if payload.node_job is not None:
@@ -609,6 +638,7 @@ class AgentComposerService:
         )
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         binding.updated_by = account_id
@@ -728,6 +758,7 @@ class AgentComposerService:
             version_note=None,
         )
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
         return agent
 
     @classmethod
@@ -767,6 +798,7 @@ class AgentComposerService:
             version_note=version_note,
         )
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
         return agent
 
     @classmethod
@@ -1003,7 +1035,7 @@ class AgentComposerService:
                 "id": binding.id,
                 "binding_type": binding.binding_type.value,
                 "agent_id": binding.agent_id,
-                "current_snapshot_id": binding.current_snapshot_id,
+                "current_snapshot_id": version.id if version else binding.current_snapshot_id,
                 "workflow_id": binding.workflow_id,
                 "node_id": binding.node_id,
             },
@@ -1022,10 +1054,8 @@ class AgentComposerService:
             # this is the same list (so callers don't need to special-case).
             "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
-            "impact_summary": cls.calculate_impact(
-                tenant_id=binding.tenant_id, current_snapshot_id=binding.current_snapshot_id
-            )
-            if binding.current_snapshot_id
+            "impact_summary": cls.calculate_impact(tenant_id=binding.tenant_id, current_snapshot_id=version.id)
+            if version
             else None,
         }
 

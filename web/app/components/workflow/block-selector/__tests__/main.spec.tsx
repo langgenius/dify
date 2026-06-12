@@ -7,7 +7,7 @@ import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum } from '../../types'
 import NodeSelector from '../main'
-import { BlockClassificationEnum } from '../types'
+import { BlockClassificationEnum, TabsEnum } from '../types'
 
 vi.mock('reactflow', () => ({
   useStoreApi: () => ({
@@ -22,6 +22,22 @@ vi.mock('@/service/use-plugins', () => ({
     plugins: [],
     isLoading: false,
   }),
+  useFeaturedTriggersRecommendations: () => ({
+    plugins: [],
+    isLoading: false,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+  useMarketplacePlugins: () => ({
+    plugins: [],
+    queryPluginsWithDebounced: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -45,13 +61,18 @@ const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   checkValid: () => ({ isValid: true }),
 })
 
-const renderNodeSelector = (ui: ReactElement) => {
+type RenderNodeSelectorOptions = Parameters<typeof renderWorkflowComponent>[1]
+
+const renderNodeSelector = (ui: ReactElement, options?: RenderNodeSelectorOptions) => {
   return renderWorkflowComponent(ui, {
+    ...options,
     hooksStoreProps: {
+      ...options?.hooksStoreProps,
       configsMap: {
         flowId: 'app-1',
         flowType: FlowType.appFlow,
         fileSettings: {} as never,
+        ...options?.hooksStoreProps?.configsMap,
 
       },
     },
@@ -229,5 +250,69 @@ describe('NodeSelector', () => {
 
     expect(trigger.closest('[aria-haspopup="dialog"]')).toBe(trigger)
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('disables the start tab with a setup tooltip when an unconfigured start node is on the canvas', async () => {
+    const user = userEvent.setup()
+
+    renderNodeSelector(
+      <NodeSelector
+        open
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start]}
+        showStartTab
+        defaultActiveTab={TabsEnum.Start}
+      />,
+      {
+        initialStoreState: {
+          nodes: [
+            {
+              id: 'start-placeholder',
+              data: {
+                type: BlockEnum.StartPlaceholder,
+              },
+            },
+          ] as never,
+        },
+      },
+    )
+
+    await user.hover(screen.getByText('workflow.tabs.start'))
+
+    expect(await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.dify.ai/en/use-dify/nodes/trigger/overview',
+    )
+    expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
+  })
+
+  it('keeps the start tab enabled when a configured user input start node is on the canvas', () => {
+    renderNodeSelector(
+      <NodeSelector
+        open
+        onSelect={vi.fn()}
+        blocks={[createBlock(BlockEnum.LLM, 'LLM')]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.Start, BlockEnum.TriggerPlugin]}
+        showStartTab
+        defaultActiveTab={TabsEnum.Start}
+      />,
+      {
+        initialStoreState: {
+          nodes: [
+            {
+              id: 'start',
+              data: {
+                type: BlockEnum.Start,
+              },
+            },
+          ] as never,
+        },
+      },
+    )
+
+    expect(screen.getByText('workflow.tabs.start')).toHaveAttribute('aria-disabled', 'false')
+    expect(screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip')).toBeInTheDocument()
   })
 })
