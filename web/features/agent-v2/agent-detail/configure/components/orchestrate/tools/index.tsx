@@ -1,342 +1,132 @@
 'use client'
 
-import type { Tool, ToolParameter } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  CollapsiblePanel,
-  CollapsibleRoot,
-  CollapsibleTrigger,
-} from '@langgenius/dify-ui/collapsible'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { CollectionType } from '@/app/components/tools/types'
-import { useTools, useToolSettings } from '@/features/agent-v2/agent-composer/store'
+import { useTools } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
-
-type AgentToolBase = {
-  id: string
-  name: string
-}
-
-type AgentToolAction = {
-  id: string
-  name: string
-  toolName: string
-  description: string
-}
-
-type AgentProviderTool = AgentToolBase & {
-  kind: 'provider'
-  iconClassName: string
-  credentialKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
-  credentialVariant: 'authorized' | 'endUser'
-  actions: AgentToolAction[]
-}
-
-type AgentCliTool = AgentToolBase & {
-  kind: 'cli'
-  action?: 'preAuthorize'
-}
-
-export type AgentTool = AgentProviderTool | AgentCliTool
-
-type ToolSettingTarget = {
-  action: AgentToolAction
-  tool: AgentProviderTool
-}
-
-const localize = (value: string) => ({
-  en_US: value,
-  zh_Hans: value,
-})
-
-const mockSettingParameter = (name: string): ToolParameter => ({
-  name,
-  label: localize(name === 'used_in_agent_nodes' ? 'Used in Agent nodes' : 'Query'),
-  human_description: localize(name === 'used_in_agent_nodes'
-    ? 'Whether this tool can be used by agent nodes.'
-    : 'The input query passed to this tool.'),
-  type: name === 'used_in_agent_nodes' ? 'boolean' : 'string',
-  form: name === 'used_in_agent_nodes' ? 'form' : 'llm',
-  llm_description: name === 'used_in_agent_nodes'
-    ? 'Whether this tool can be used by agent nodes.'
-    : 'Search query or URL input for the tool.',
-  required: name !== 'used_in_agent_nodes',
-  multiple: false,
-  default: '',
-})
-
-const createToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
-  id: tool.id,
-  name: tool.id,
-  author: tool.name,
-  description: localize(`${tool.name} tools`),
-  icon: '',
-  label: localize(tool.name),
-  type: CollectionType.builtIn,
-  team_credentials: {},
-  is_team_authorization: true,
-  allow_delete: false,
-  labels: [],
-  meta: {
-    version: '0.0.0',
-  },
-  tools: tool.actions.map<Tool>(action => ({
-    name: action.toolName,
-    author: tool.name,
-    label: localize(action.name),
-    description: localize(action.description),
-    parameters: [
-      mockSettingParameter('used_in_agent_nodes'),
-      mockSettingParameter('query'),
-    ],
-    labels: [],
-    output_schema: {},
-  })),
-}) as ToolWithProvider
-
-function ProviderIcon({
-  iconClassName,
-}: {
-  iconClassName: string
-}) {
-  return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge">
-      <span aria-hidden className={cn('size-3.5', iconClassName)} />
-    </span>
-  )
-}
-
-function CliIcon() {
-  return (
-    <span className="flex size-5 shrink-0 items-center justify-center rounded-md border border-divider-regular bg-text-tertiary p-1 text-text-primary-on-surface">
-      <span aria-hidden className="i-ri-terminal-box-line size-3.5" />
-    </span>
-  )
-}
-
-function AgentToolAddDropdown() {
-  const { t } = useTranslation('agentV2')
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={(
-          <ConfigureSectionAddButton
-            ariaLabel={t('agentDetail.configure.tools.add')}
-            className="data-popup-open:bg-state-base-hover"
-          />
-        )}
-      />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[280px] p-1">
-        <DropdownMenuItem className="mx-0 h-auto min-h-[66px] w-full items-start gap-2 rounded-lg py-2 pr-3 pl-2">
-          <span aria-hidden className="i-custom-vender-plugin-box-sparkle-fill size-4 shrink-0 text-text-secondary" />
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="system-sm-semibold text-text-secondary">
-              {t('agentDetail.configure.tools.addMenu.tool.label')}
-            </span>
-            <span className="system-xs-regular text-text-tertiary">
-              {t('agentDetail.configure.tools.addMenu.tool.description')}
-            </span>
-          </span>
-        </DropdownMenuItem>
-        <DropdownMenuItem className="mx-0 h-auto min-h-[82px] w-full items-start gap-2 rounded-lg py-2 pr-3 pl-2">
-          <span aria-hidden className="i-ri-terminal-box-line size-4 shrink-0 text-text-secondary" />
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="flex min-w-0 items-center gap-1">
-              <span className="shrink-0 system-sm-semibold text-text-secondary">
-                {t('agentDetail.configure.tools.addMenu.cliTool.label')}
-              </span>
-              <span className="min-w-0 shrink rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-center system-2xs-medium-uppercase text-text-tertiary">
-                {t('agentDetail.configure.tools.addMenu.cliTool.badge')}
-              </span>
-            </span>
-            <span className="system-xs-regular text-text-tertiary">
-              {t('agentDetail.configure.tools.addMenu.cliTool.description')}
-            </span>
-          </span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function CredentialStatus({
-  credentialKey,
-  variant,
-}: {
-  credentialKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
-  variant: AgentProviderTool['credentialVariant']
-}) {
-  const { t } = useTranslation('agentV2')
-
-  return (
-    <button
-      type="button"
-      className="flex shrink-0 items-center justify-center rounded-md px-1.5 py-1 text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-    >
-      {variant === 'authorized'
-        ? <span aria-hidden className="mr-1 size-2 rounded-[3px] border border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg shadow-status-indicator-green-shadow" />
-        : <span aria-hidden className="mr-1 i-ri-user-settings-line size-3.5 text-text-secondary" />}
-      <span className="truncate system-xs-medium">{t(credentialKey)}</span>
-      <span aria-hidden className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-3.5 text-text-tertiary" />
-    </button>
-  )
-}
-
-function AgentProviderToolItem({
-  tool,
-  isExpanded,
-  onOpenChange,
-  onConfigureAction,
-}: {
-  tool: AgentProviderTool
-  isExpanded: boolean
-  onOpenChange: (open: boolean) => void
-  onConfigureAction: (target: ToolSettingTarget) => void
-}) {
-  const { t } = useTranslation('agentV2')
-
-  return (
-    <CollapsibleRoot
-      open={isExpanded}
-      onOpenChange={onOpenChange}
-      className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
-    >
-      <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-        <CollapsibleTrigger
-          className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
-        >
-          <ProviderIcon iconClassName={tool.iconClassName} />
-          <span className="flex min-w-0 items-center">
-            <span className="min-w-0 truncate system-sm-medium text-text-primary">
-              {tool.name}
-            </span>
-            <span
-              aria-hidden
-              className={cn(
-                'i-custom-vender-solid-arrows-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open:rotate-0 motion-reduce:transition-none',
-              )}
-            />
-          </span>
-        </CollapsibleTrigger>
-        <CredentialStatus credentialKey={tool.credentialKey} variant={tool.credentialVariant} />
-      </div>
-
-      <CollapsiblePanel>
-        <div className="flex flex-col">
-          {tool.actions.map(action => (
-            <div
-              key={action.id}
-              className="group relative flex min-h-7 items-center gap-1 rounded-md py-px pr-0 pl-1 hover:bg-state-base-hover"
-            >
-              <div className="absolute top-0 bottom-0 left-[13.5px] w-px bg-divider-regular" />
-              <div className="flex min-w-0 flex-1 items-center py-1 pl-7">
-                <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
-                  {action.name}
-                </span>
-              </div>
-              <div className="hidden shrink-0 items-center gap-1 px-0.5 group-focus-within:flex group-hover:flex">
-                <button
-                  type="button"
-                  aria-label={t('agentDetail.configure.tools.editAction', { name: action.name })}
-                  onClick={() => onConfigureAction({ action, tool })}
-                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
-                  className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CollapsiblePanel>
-    </CollapsibleRoot>
-  )
-}
-
-function AgentCliToolItem({
-  tool,
-}: {
-  tool: AgentCliTool
-}) {
-  const { t } = useTranslation('agentV2')
-
-  return (
-    <div className="flex min-h-8 items-center gap-1 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1.5 pr-2 pl-2 shadow-xs shadow-shadow-shadow-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2 pr-1">
-        <CliIcon />
-        <span className="min-w-0 truncate system-sm-medium text-text-primary">
-          {tool.name}
-        </span>
-      </div>
-      {tool.action === 'preAuthorize'
-        ? (
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                className="flex items-center justify-center rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                <span aria-hidden className="mr-1 i-ri-key-2-line size-3.5" />
-                <span className="system-xs-medium">{t('agentDetail.configure.tools.preAuthorize')}</span>
-              </button>
-              <button
-                type="button"
-                aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
-                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                <span aria-hidden className="i-ri-more-fill size-4" />
-              </button>
-            </div>
-          )
-        : (
-            <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-              {t('agentDetail.configure.tools.cliTool')}
-            </span>
-          )}
-    </div>
-  )
-}
+import { AgentCliToolItem, CliToolDialog } from './cli-tool'
+import { AgentProviderToolItem, ProviderToolSettingsDialog } from './provider-tool'
 
 function AgentToolItem({
   tool,
   isExpanded,
   onOpenChange,
   onConfigureAction,
+  onDeleteCliTool,
+  onEditCliTool,
 }: {
   tool: AgentTool
   isExpanded: boolean
   onOpenChange: (open: boolean) => void
   onConfigureAction: (target: ToolSettingTarget) => void
+  onDeleteCliTool: (toolId: string) => void
+  onEditCliTool: (tool: AgentCliTool) => void
 }) {
   if (tool.kind === 'provider')
     return <AgentProviderToolItem tool={tool} isExpanded={isExpanded} onOpenChange={onOpenChange} onConfigureAction={onConfigureAction} />
 
-  return <AgentCliToolItem tool={tool} />
+  return (
+    <AgentCliToolItem
+      tool={tool}
+      onDelete={() => onDeleteCliTool(tool.id)}
+      onEdit={() => onEditCliTool(tool)}
+    />
+  )
+}
+
+function AddToolMenuItem({
+  badge,
+  description,
+  iconClassName,
+  label,
+  onClick,
+}: {
+  badge?: string
+  description: string
+  iconClassName: string
+  label: string
+  onClick?: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-start gap-2 rounded-lg py-2 pr-3 pl-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+    >
+      <span aria-hidden className={cn('mt-0.5 size-4 shrink-0 text-text-secondary', iconClassName)} />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="truncate system-sm-semibold text-text-secondary">
+            {label}
+          </span>
+          {badge && (
+            <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {badge}
+            </span>
+          )}
+        </span>
+        <span className="system-xs-regular text-text-tertiary">
+          {description}
+        </span>
+      </span>
+    </button>
+  )
+}
+
+function AddToolMenu({
+  onAddCliTool,
+}: {
+  onAddCliTool: () => void
+}) {
+  const { t } = useTranslation('agentV2')
+  const [open, setOpen] = useState(false)
+
+  const openCliToolDialog = () => {
+    setOpen(false)
+    onAddCliTool()
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.tools.add')} />
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={4}
+        popupClassName="w-[280px] p-1 backdrop-blur-[5px] bg-components-panel-bg-blur shadow-lg"
+      >
+        <AddToolMenuItem
+          iconClassName="i-ri-box-3-line"
+          label={t('agentDetail.configure.tools.addMenu.tool.label')}
+          description={t('agentDetail.configure.tools.addMenu.tool.description')}
+          onClick={() => setOpen(false)}
+        />
+        <AddToolMenuItem
+          iconClassName="i-ri-terminal-box-line"
+          label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
+          badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
+          description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
+          onClick={openCliToolDialog}
+        />
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
-  const [tools] = useTools()
-  const [toolSettings, setToolSettings] = useToolSettings()
+  const [tools, setTools] = useTools()
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
   const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
+  const [isCliToolDialogOpen, setIsCliToolDialogOpen] = useState(false)
+  const [editingCliTool, setEditingCliTool] = useState<AgentCliTool | null>(null)
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
   const setToolOpen = (tool: AgentTool, open: boolean) => {
@@ -353,8 +143,27 @@ export function AgentTools() {
       return nextIds
     })
   }
-  const currentSettingCollection = settingTarget ? createToolCollection(settingTarget.tool) : null
-  const currentSettingValue = settingTarget ? toolSettings[settingTarget.action.id] : undefined
+  const openCliToolDialog = () => {
+    setEditingCliTool(null)
+    setIsCliToolDialogOpen(true)
+  }
+  const updateCliTool = (nextTool: AgentCliTool) => {
+    setTools(tools.map(tool => tool.id === nextTool.id ? nextTool : tool))
+  }
+  const handleCliDialogSave = (tool: AgentCliTool) => {
+    if (editingCliTool)
+      updateCliTool(tool)
+    else
+      setTools([...tools, tool])
+
+    setEditingCliTool(null)
+  }
+  const handleCliDialogOpenChange = (open: boolean) => {
+    if (!open)
+      setEditingCliTool(null)
+
+    setIsCliToolDialogOpen(open)
+  }
 
   return (
     <>
@@ -367,7 +176,7 @@ export function AgentTools() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={(
-          <AgentToolAddDropdown />
+          <AddToolMenu onAddCliTool={openCliToolDialog} />
         )}
       >
         {tools.map(tool => (
@@ -377,25 +186,26 @@ export function AgentTools() {
             isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
             onOpenChange={open => setToolOpen(tool, open)}
             onConfigureAction={setSettingTarget}
+            onDeleteCliTool={toolId => setTools(tools.filter(tool => tool.id !== toolId))}
+            onEditCliTool={(tool) => {
+              setEditingCliTool(tool)
+              setIsCliToolDialogOpen(true)
+            }}
           />
         ))}
       </ConfigureSection>
-      {settingTarget && currentSettingCollection && (
-        <SettingBuiltInTool
-          toolName={settingTarget.action.toolName}
-          setting={currentSettingValue}
-          collection={currentSettingCollection}
-          isModel={false}
-          onSave={(value) => {
-            setToolSettings({
-              ...toolSettings,
-              [settingTarget.action.id]: value,
-            })
-            setSettingTarget(null)
-          }}
-          onHide={() => setSettingTarget(null)}
-        />
-      )}
+      <ProviderToolSettingsDialog
+        settingTarget={settingTarget}
+        onClose={() => setSettingTarget(null)}
+      />
+      <CliToolDialog
+        key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
+        mode={editingCliTool ? 'edit' : 'add'}
+        tool={editingCliTool}
+        onSaveCliTool={handleCliDialogSave}
+        open={isCliToolDialogOpen}
+        onOpenChange={handleCliDialogOpenChange}
+      />
     </>
   )
 }

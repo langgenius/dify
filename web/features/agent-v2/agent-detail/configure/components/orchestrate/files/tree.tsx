@@ -22,6 +22,7 @@ type AgentFileTreeFolderOpenStrategy = (context: {
 }) => boolean
 
 type AgentFileTreeRenderFile = (context: {
+  depth: number
   file: AgentFileNode
   selected: boolean
   children: ReactNode
@@ -76,6 +77,7 @@ function AgentFileTreeRows({
     return (
       <Fragment key={file.id}>
         {renderFile({
+          depth,
           file,
           selected: file.id === selectedFileId,
           children,

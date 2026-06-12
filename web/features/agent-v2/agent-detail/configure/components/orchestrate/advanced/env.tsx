@@ -2,6 +2,7 @@
 
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { useEnvVariables } from '@/features/agent-v2/agent-composer/store'
@@ -76,30 +77,85 @@ function EnvEditorCell({
   )
 }
 
+function EnvEditorInput({
+  'aria-label': ariaLabel,
+  placeholder,
+  value,
+  onValueChange,
+}: {
+  'aria-label': string
+  'placeholder': string
+  'value': string
+  'onValueChange': (value: string) => void
+}) {
+  return (
+    <Input
+      aria-label={ariaLabel}
+      className="h-full rounded-none bg-transparent px-3 py-0 system-xs-regular text-text-secondary shadow-none hover:bg-state-base-hover focus-visible:bg-state-base-hover"
+      placeholder={placeholder}
+      value={value}
+      onValueChange={onValueChange}
+    />
+  )
+}
+
 function EnvEditorRow({
   variable,
+  editable = false,
   isHighlighted,
   onDelete,
+  onKeyChange,
   onScopeChange,
+  onValueChange,
+  showScope = true,
 }: {
   variable: EnvVariable
+  editable?: boolean
   isHighlighted?: boolean
   onDelete: () => void
+  onKeyChange?: (key: string) => void
   onScopeChange: (scope: EnvScope) => void
+  onValueChange?: (value: string) => void
+  showScope?: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const gridClassName = showScope
+    ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
+    : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
 
   return (
-    <div className={cn('grid min-h-7 grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px] border-t border-divider-subtle', isHighlighted && 'bg-background-default-hover')}>
+    <div className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName, isHighlighted && 'bg-background-default-hover')}>
       <EnvEditorCell>
-        <span className={cn('min-w-0 truncate px-3 system-xs-regular text-text-secondary', isHighlighted && 'text-text-primary')}>
-          {variable.key}
-        </span>
+        {editable
+          ? (
+              <EnvEditorInput
+                aria-label={t('agentDetail.configure.advancedSettings.envEditor.keyColumn')}
+                placeholder={t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')}
+                value={variable.key}
+                onValueChange={onKeyChange ?? (() => {})}
+              />
+            )
+          : (
+              <span className={cn('min-w-0 truncate px-3 system-xs-regular text-text-secondary', isHighlighted && 'text-text-primary')}>
+                {variable.key}
+              </span>
+            )}
       </EnvEditorCell>
       <EnvEditorCell>
-        <span className="min-w-0 truncate px-3 system-xs-regular text-text-secondary">
-          {variable.value}
-        </span>
+        {editable
+          ? (
+              <EnvEditorInput
+                aria-label={t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
+                placeholder={t('agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')}
+                value={variable.value}
+                onValueChange={onValueChange ?? (() => {})}
+              />
+            )
+          : (
+              <span className="min-w-0 truncate px-3 system-xs-regular text-text-secondary">
+                {variable.value}
+              </span>
+            )}
         {variable.masked && (
           <button
             type="button"
@@ -110,13 +166,15 @@ function EnvEditorRow({
           </button>
         )}
       </EnvEditorCell>
-      <EnvEditorCell>
-        <EnvEditorScope scope={variable.scope} onChange={onScopeChange} />
-      </EnvEditorCell>
+      {showScope && (
+        <EnvEditorCell>
+          <EnvEditorScope scope={variable.scope} onChange={onScopeChange} />
+        </EnvEditorCell>
+      )}
       <EnvEditorCell className="justify-center">
         <button
           type="button"
-          aria-label={t('agentDetail.configure.advancedSettings.envEditor.deleteVariable', { key: variable.key })}
+          aria-label={t('agentDetail.configure.advancedSettings.envEditor.deleteVariable', { key: variable.key || t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder') })}
           onClick={onDelete}
           className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
@@ -127,11 +185,18 @@ function EnvEditorRow({
   )
 }
 
-function EnvEditorDraftRow() {
+function EnvEditorDraftRow({
+  showScope = true,
+}: {
+  showScope?: boolean
+}) {
   const { t } = useTranslation('agentV2')
+  const gridClassName = showScope
+    ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
+    : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
 
   return (
-    <div className="grid min-h-7 grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px] border-t border-divider-subtle">
+    <div className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName)}>
       <EnvEditorCell>
         <span className="min-w-0 truncate px-3 system-xs-regular text-components-input-text-placeholder">
           {t('agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')}
@@ -142,10 +207,91 @@ function EnvEditorDraftRow() {
           {t('agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')}
         </span>
       </EnvEditorCell>
-      <EnvEditorCell>
-        <EnvEditorScope scope="plain" />
-      </EnvEditorCell>
+      {showScope && (
+        <EnvEditorCell>
+          <EnvEditorScope scope="plain" />
+        </EnvEditorCell>
+      )}
       <EnvEditorCell />
+    </div>
+  )
+}
+
+export function EnvVariablesTable({
+  editable = false,
+  envVariables,
+  highlightedIndex,
+  onAdd,
+  onDelete,
+  onKeyChange,
+  onScopeChange,
+  onValueChange,
+  showDraftRow = true,
+  showScope = true,
+}: {
+  editable?: boolean
+  envVariables: EnvVariable[]
+  highlightedIndex?: number
+  onAdd?: () => void
+  onDelete: (id: string) => void
+  onKeyChange?: (id: string, key: string) => void
+  onScopeChange: (id: string, scope: EnvScope) => void
+  onValueChange?: (id: string, value: string) => void
+  showDraftRow?: boolean
+  showScope?: boolean
+}) {
+  const { t } = useTranslation('agentV2')
+  const gridClassName = showScope
+    ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
+    : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3">
+      <div className={cn('grid min-h-7 text-text-tertiary', gridClassName)}>
+        <EnvEditorCell>
+          <span className="px-3 system-xs-medium-uppercase">
+            {t('agentDetail.configure.advancedSettings.envEditor.keyColumn')}
+          </span>
+        </EnvEditorCell>
+        <EnvEditorCell>
+          <span className="px-3 system-xs-medium-uppercase">
+            {t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
+          </span>
+        </EnvEditorCell>
+        {showScope && (
+          <EnvEditorCell>
+            <span className="px-3 system-xs-medium-uppercase">
+              {t('agentDetail.configure.advancedSettings.envEditor.scopeColumn')}
+            </span>
+          </EnvEditorCell>
+        )}
+        <EnvEditorCell className="justify-center">
+          {onAdd && (
+            <button
+              type="button"
+              aria-label={t('agentDetail.configure.advancedSettings.envEditor.add')}
+              onClick={onAdd}
+              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <span aria-hidden className="i-ri-add-line size-4" />
+            </button>
+          )}
+        </EnvEditorCell>
+      </div>
+      {envVariables.map((variable, index) => (
+        <EnvEditorRow
+          key={variable.id}
+          variable={variable}
+          editable={editable}
+          isHighlighted={index === highlightedIndex}
+          onDelete={() => onDelete(variable.id)}
+          onKeyChange={key => onKeyChange?.(variable.id, key)}
+          onScopeChange={scope => onScopeChange(variable.id, scope)}
+          onValueChange={value => onValueChange?.(variable.id, value)}
+          showScope={showScope}
+        />
+      ))}
+      {showDraftRow && <EnvEditorDraftRow showScope={showScope} />}
     </div>
   )
 }
@@ -189,36 +335,12 @@ export function AgentEnvEditor() {
         </>
       )}
     >
-      <div className="overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3">
-        <div className="grid min-h-7 grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px] text-text-tertiary">
-          <EnvEditorCell>
-            <span className="px-3 system-xs-medium-uppercase">
-              {t('agentDetail.configure.advancedSettings.envEditor.keyColumn')}
-            </span>
-          </EnvEditorCell>
-          <EnvEditorCell>
-            <span className="px-3 system-xs-medium-uppercase">
-              {t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
-            </span>
-          </EnvEditorCell>
-          <EnvEditorCell>
-            <span className="px-3 system-xs-medium-uppercase">
-              {t('agentDetail.configure.advancedSettings.envEditor.scopeColumn')}
-            </span>
-          </EnvEditorCell>
-          <EnvEditorCell />
-        </div>
-        {envVariables.map((variable, index) => (
-          <EnvEditorRow
-            key={variable.id}
-            variable={variable}
-            isHighlighted={index === 1}
-            onDelete={() => deleteVariable(variable.id)}
-            onScopeChange={scope => updateVariableScope(variable.id, scope)}
-          />
-        ))}
-        <EnvEditorDraftRow />
-      </div>
+      <EnvVariablesTable
+        envVariables={envVariables}
+        highlightedIndex={1}
+        onDelete={deleteVariable}
+        onScopeChange={updateVariableScope}
+      />
     </ConfigureSection>
   )
 }

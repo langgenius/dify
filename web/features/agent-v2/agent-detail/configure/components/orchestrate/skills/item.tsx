@@ -25,12 +25,12 @@ export function AgentSkillItem({
 
   return (
     <Dialog>
-      <div className="group flex h-8 items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3 hover:bg-state-base-hover hover:shadow-sm">
+      <div className="group flex h-8 items-center gap-1 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-1 pr-1 pl-2 shadow-xs shadow-shadow-shadow-3 focus-within:bg-components-panel-on-panel-item-bg-hover focus-within:shadow-sm hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm has-[[data-agent-skill-remove-button]:focus-visible]:border-state-destructive-border! has-[[data-agent-skill-remove-button]:focus-visible]:bg-state-destructive-hover! has-[[data-agent-skill-remove-button]:focus-visible]:shadow-xs! has-[[data-agent-skill-remove-button]:hover]:border-state-destructive-border! has-[[data-agent-skill-remove-button]:hover]:bg-state-destructive-hover! has-[[data-agent-skill-remove-button]:hover]:shadow-xs!">
         <DialogTrigger
           render={(
             <button
               type="button"
-              className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-l-lg px-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
+              className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-1 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
             />
           )}
         >
@@ -39,16 +39,19 @@ export function AgentSkillItem({
             {skill.name}
           </span>
         </DialogTrigger>
-        <div className="relative mr-1 flex h-5 w-8 shrink-0 items-center justify-center">
+        <div className="hidden shrink-0 items-center justify-center rounded-md p-0.5 group-focus-within:flex group-hover:flex">
           <button
             type="button"
+            data-agent-skill-remove-button
             aria-label={t('agentDetail.configure.skills.remove', { name: skill.name })}
             onClick={() => onRemove(skill.id)}
-            className="peer pointer-events-none absolute z-10 flex size-5 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            <span aria-hidden className="i-ri-delete-bin-line size-3.5" />
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
           </button>
-          <span className="system-xs-regular text-text-tertiary group-hover:invisible peer-focus-visible:invisible">
+        </div>
+        <div className="flex shrink-0 items-center justify-center group-focus-within:hidden group-hover:hidden">
+          <span className="system-xs-regular text-text-tertiary">
             {t('agentDetail.configure.skills.itemType')}
           </span>
         </div>

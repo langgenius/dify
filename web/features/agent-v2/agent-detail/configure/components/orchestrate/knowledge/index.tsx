@@ -1,10 +1,12 @@
 'use client'
 
 import type { AgentKnowledgeRetrievalItem } from '../../data'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSection } from '../common/section'
+import { AgentKnowledgeRetrievalDialog } from './dialog'
 
 function KnowledgeRetrievalIcon() {
   return (
@@ -36,25 +38,35 @@ function AgentKnowledgeRetrievalRow({
 export function AgentKnowledgeRetrieval() {
   const { t } = useTranslation('agentV2')
   const [retrievals] = useKnowledgeRetrievals()
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const knowledgeRetrievalTip = t('agentDetail.configure.knowledgeRetrieval.tip')
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
 
   return (
-    <ConfigureSection
-      label={t('agentDetail.configure.knowledgeRetrieval.label')}
-      labelId="agent-configure-knowledge-retrieval-label"
-      panelId={retrievalListId}
-      tip={knowledgeRetrievalTip}
-      tipAriaLabel={knowledgeRetrievalTip}
-      rootClassName="border-b border-divider-subtle pt-4"
-      panelContentClassName="flex flex-col gap-1 pb-4"
-      actions={(
-        <ConfigureSectionAddButton ariaLabel={t('agentDetail.configure.knowledgeRetrieval.add')} />
-      )}
-    >
-      {retrievals.map(item => (
-        <AgentKnowledgeRetrievalRow key={item.id} item={item} />
-      ))}
-    </ConfigureSection>
+    <>
+      <ConfigureSection
+        label={t('agentDetail.configure.knowledgeRetrieval.label')}
+        labelId="agent-configure-knowledge-retrieval-label"
+        panelId={retrievalListId}
+        tip={knowledgeRetrievalTip}
+        tipAriaLabel={knowledgeRetrievalTip}
+        rootClassName="border-b border-divider-subtle pt-4"
+        panelContentClassName="flex flex-col gap-1 pb-4"
+        actions={(
+          <ConfigureSectionAddButton
+            ariaLabel={t('agentDetail.configure.knowledgeRetrieval.add')}
+            onClick={() => setIsAddDialogOpen(true)}
+          />
+        )}
+      >
+        {retrievals.map(item => (
+          <AgentKnowledgeRetrievalRow key={item.id} item={item} />
+        ))}
+      </ConfigureSection>
+      <AgentKnowledgeRetrievalDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
+    </>
   )
 }

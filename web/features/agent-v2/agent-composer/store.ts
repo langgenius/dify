@@ -2,7 +2,7 @@ import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.g
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../agent-detail/configure/components/data'
 import type { EnvVariable } from '../agent-detail/configure/components/orchestrate/advanced/env'
 import type { AgentSkill } from '../agent-detail/configure/components/orchestrate/skills/item'
-import type { AgentTool } from '../agent-detail/configure/components/orchestrate/tools'
+import type { AgentTool } from '../agent-detail/configure/components/orchestrate/tools/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import isEqual from 'fast-deep-equal'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -78,8 +78,32 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
   if (tool.kind !== 'cli')
     return []
 
+  const envVariables = tool.envVariables ?? []
+
   return [{
     enabled: true,
+    env: {
+      variables: envVariables
+        .filter(variable => variable.scope === 'plain')
+        .map(variable => ({
+          id: variable.id,
+          key: variable.key,
+          name: variable.key,
+          value: variable.value,
+          variable: variable.key,
+        })),
+      secret_refs: envVariables
+        .filter(variable => variable.scope === 'secret')
+        .map(variable => ({
+          id: variable.id,
+          key: variable.key,
+          name: variable.key,
+          ref: variable.id,
+          variable: variable.key,
+        })),
+    },
+    install_command: tool.installCommand,
+    install_commands: tool.installCommand ? [tool.installCommand] : [],
     name: tool.name,
     tool_name: tool.id,
     pre_authorized: tool.action === 'preAuthorize',
