@@ -21,6 +21,7 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -96,16 +97,6 @@ class AgentRosterService:
         }
 
     @staticmethod
-    def _is_invitable_workflow_agent_version(version: AgentConfigSnapshot | None) -> bool:
-        if version is None:
-            return False
-        try:
-            agent_soul = AgentSoulConfig.model_validate(version.config_snapshot_dict)
-        except (TypeError, ValueError):
-            return False
-        return agent_soul.model is not None
-
-    @staticmethod
     def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
         stmt = select(Agent).where(
             Agent.tenant_id == tenant_id,
@@ -158,23 +149,17 @@ class AgentRosterService:
     def list_invite_options(
         self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
     ) -> dict[str, Any]:
-        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
-        agents = list(self._session.scalars(stmt).all())
+        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
+            Agent.active_config_has_model.is_(True)
+        )
+        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
         versions_by_id = self._load_versions_by_id(
             [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
         )
-        invitable_agents = [
-            agent
-            for agent in agents
-            if self._is_invitable_workflow_agent_version(
-                versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None
-            )
-        ]
-        total = len(invitable_agents)
-        page_agents = invitable_agents[(page - 1) * limit : page * limit]
         published_references_by_agent_id = self._load_published_references_by_agent_id(
             tenant_id=tenant_id,
-            agent_ids=[agent.id for agent in page_agents],
+            agent_ids=[agent.id for agent in agents],
         )
         data = [
             self.serialize_agent(
@@ -182,7 +167,7 @@ class AgentRosterService:
                 versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
                 published_references_by_agent_id.get(agent.id, []),
             )
-            for agent in page_agents
+            for agent in agents
         ]
         usage_by_agent_id: dict[str, list[str]] = {}
         if app_id:
@@ -276,6 +261,7 @@ class AgentRosterService:
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
 
         try:
             self._session.commit()
@@ -347,6 +333,7 @@ class AgentRosterService:
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
         self._session.flush()
         return agent
 
