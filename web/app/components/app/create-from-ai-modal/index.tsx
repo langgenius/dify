@@ -89,14 +89,6 @@ const DSL_AGENT_RUN_STAGE_MAP: Record<string, DslAgentStage> = {
   repair: DslAgentStage.REPAIR,
 }
 
-type BuilderGuideFields = {
-  trigger: string
-  dataSource: string
-  processing: string
-  output: string
-  testInput: string
-}
-
 type ImportedAppState = {
   id: string
   mode: DSLImportResponse['app_mode']
@@ -108,69 +100,18 @@ type ManualSetupItem = {
   description: string
 }
 
-const EMPTY_GUIDE_FIELDS: BuilderGuideFields = {
-  trigger: '',
-  dataSource: '',
-  processing: '',
-  output: '',
-  testInput: '',
-}
-
 const APP_TYPE_OPTIONS = [
   {
     mode: AppModeEnum.WORKFLOW,
-    label: 'newApp.dslAgentAppType.workflow',
+    label: 'newApp.dslAgentAppModeWorkflow',
   },
   {
     mode: AppModeEnum.ADVANCED_CHAT,
-    label: 'newApp.dslAgentAppType.chatflow',
-  },
-]
-
-const GUIDE_FIELD_CONFIG: Array<{
-  key: keyof BuilderGuideFields
-  label: string
-  placeholder: string
-  multiline?: boolean
-  wide?: boolean
-}> = [
-  {
-    key: 'trigger',
-    label: 'newApp.dslAgentGuide.trigger',
-    placeholder: 'newApp.dslAgentGuide.triggerPlaceholder',
-  },
-  {
-    key: 'dataSource',
-    label: 'newApp.dslAgentGuide.dataSource',
-    placeholder: 'newApp.dslAgentGuide.dataSourcePlaceholder',
-  },
-  {
-    key: 'processing',
-    label: 'newApp.dslAgentGuide.processing',
-    placeholder: 'newApp.dslAgentGuide.processingPlaceholder',
-    multiline: true,
-    wide: true,
-  },
-  {
-    key: 'output',
-    label: 'newApp.dslAgentGuide.output',
-    placeholder: 'newApp.dslAgentGuide.outputPlaceholder',
-    wide: true,
-  },
-  {
-    key: 'testInput',
-    label: 'newApp.dslAgentGuide.testInput',
-    placeholder: 'newApp.dslAgentGuide.testInputPlaceholder',
-    multiline: true,
-    wide: true,
+    label: 'newApp.dslAgentAppModeChatflow',
   },
 ]
 
 const sleep = (timeout: number) => new Promise(resolve => setTimeout(resolve, timeout))
-
-const hasGuideFields = (fields: BuilderGuideFields) => {
-  return Object.values(fields).some(value => value.trim())
-}
 
 const compactYamlForPrompt = (yaml: string) => {
   const trimmed = yaml.trim()
@@ -189,31 +130,15 @@ const redactSecretLikeText = (value: string) => {
 
 const buildStructuredRequirement = (
   basePrompt: string,
-  guideFields: BuilderGuideFields,
   appMode: AppModeEnum,
   currentYaml?: string,
 ) => {
   const sections: string[] = []
   const prompt = basePrompt.trim()
   if (prompt)
-    sections.push(prompt)
+    sections.push(redactSecretLikeText(prompt))
 
   sections.push(`Target app type: ${appMode}.`)
-
-  const fieldEntries = [
-    ['Trigger', guideFields.trigger],
-    ['Data source', guideFields.dataSource],
-    ['Processing', guideFields.processing],
-    ['Output', guideFields.output],
-    ['Credentials/Test input', redactSecretLikeText(guideFields.testInput)],
-  ].filter(([, value]) => value.trim())
-
-  if (fieldEntries.length) {
-    sections.push([
-      'Guided workflow requirements:',
-      ...fieldEntries.map(([label, value]) => `- ${label}: ${value.trim()}`),
-    ].join('\n'))
-  }
 
   if (currentYaml?.trim()) {
     sections.push([
@@ -259,8 +184,6 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   const [aiPrompt, setAiPrompt] = useState('')
   const [aiAppName, setAiAppName] = useState('')
   const [selectedAppMode, setSelectedAppMode] = useState<AppModeEnum>(AppModeEnum.WORKFLOW)
-  const [guideFields, setGuideFields] = useState<BuilderGuideFields>(EMPTY_GUIDE_FIELDS)
-  const [showGuideFields, setShowGuideFields] = useState(false)
   const [selectedModel, setSelectedModel] = useState<DefaultModel>()
   const [generatedResult, setGeneratedResult] = useState<DSLGenerateResponse>()
   const [generatedYaml, setGeneratedYaml] = useState('')
@@ -293,7 +216,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
   const activeModel = selectedModel || workspaceDefaultModel
   const isBusy = isCreating || isTesting
-  const hasRequirement = !!aiPrompt.trim() || hasGuideFields(guideFields)
+  const hasRequirement = !!aiPrompt.trim()
   const currentDslAgentActionLabel = useMemo(() => {
     if (!isBusy)
       return generatedYaml ? t('newApp.dslAgentRefineAndImport', { ns: 'app' }) : t('newApp.dslAgentGenerateAndImport', { ns: 'app' })
@@ -342,20 +265,34 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     }
 
     const lowerYaml = generatedYaml.toLowerCase()
-    if (guideFields.dataSource.trim() || lowerYaml.includes('knowledge-retrieval') || lowerYaml.includes('dataset_ids')) {
+    const promptLower = aiPrompt.toLowerCase()
+    if (
+      lowerYaml.includes('knowledge-retrieval')
+      || lowerYaml.includes('dataset_ids')
+      || promptLower.includes('dataset')
+      || promptLower.includes('knowledge')
+      || promptLower.includes('file')
+      || promptLower.includes('data source')
+      || promptLower.includes('数据')
+      || promptLower.includes('知识库')
+      || promptLower.includes('文件')
+    ) {
       addItem(
         'dataset',
         t('newApp.dslAgentChecklist.dataset', { ns: 'app' }),
-        guideFields.dataSource.trim() || t('newApp.dslAgentChecklist.datasetDetail', { ns: 'app' }),
+        t('newApp.dslAgentChecklist.datasetDetail', { ns: 'app' }),
       )
     }
-    const testInputLower = guideFields.testInput.toLowerCase()
     if (
       lowerYaml.includes('credential')
       || lowerYaml.includes('api_key')
-      || testInputLower.includes('credential')
-      || testInputLower.includes('api key')
-      || testInputLower.includes('oauth')
+      || promptLower.includes('credential')
+      || promptLower.includes('api key')
+      || promptLower.includes('oauth')
+      || promptLower.includes('token')
+      || promptLower.includes('secret')
+      || promptLower.includes('凭据')
+      || promptLower.includes('密钥')
     ) {
       addItem(
         'credential',
@@ -370,11 +307,11 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
         t('newApp.dslAgentChecklist.environmentDetail', { ns: 'app' }),
       )
     }
-    if (guideFields.testInput.trim()) {
+    if (promptLower.includes('test input') || promptLower.includes('mock input') || promptLower.includes('测试输入')) {
       addItem(
         'test-input',
         t('newApp.dslAgentChecklist.testInput', { ns: 'app' }),
-        guideFields.testInput.trim(),
+        t('newApp.dslAgentChecklist.testInputDetail', { ns: 'app' }),
       )
     }
 
@@ -387,7 +324,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     }
 
     return items
-  }, [activeModel, generatedResult, generatedYaml, guideFields, importedDependencies, t])
+  }, [activeModel, aiPrompt, generatedResult, generatedYaml, importedDependencies, t])
 
   const resetDslAgentProgress = () => {
     setDslAgentStageState({ completed: [], messages: {} })
@@ -399,8 +336,6 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
     setAiPrompt('')
     setAiAppName('')
     setSelectedAppMode(AppModeEnum.WORKFLOW)
-    setGuideFields(EMPTY_GUIDE_FIELDS)
-    setShowGuideFields(false)
     setGeneratedResult(undefined)
     setGeneratedYaml('')
     setImportedApp(undefined)
@@ -508,7 +443,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
 
   const createAndPollDslAgentRun = async () => {
     startDslAgentStage(DslAgentStage.PLAN)
-    const prompt = buildStructuredRequirement(aiPrompt.trim(), guideFields, selectedAppMode, generatedYaml)
+    const prompt = buildStructuredRequirement(aiPrompt.trim(), selectedAppMode, generatedYaml)
     let run = await createDSLRun({
       prompt,
       app_name: aiAppName.trim() || undefined,
@@ -652,7 +587,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
   }
 
   const buildDraftRunInput = () => {
-    const testInput = redactSecretLikeText(guideFields.testInput.trim() || aiPrompt.trim() || 'Hello')
+    const testInput = redactSecretLikeText(aiPrompt.trim() || 'Hello')
     return {
       inputs: {
         input: testInput,
@@ -660,6 +595,11 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
       query: testInput,
       include_events: true,
     }
+  }
+
+  const insertRequirementTemplate = () => {
+    const template = t('newApp.dslAgentPromptTemplate', { ns: 'app' })
+    setAiPrompt(prev => prev.trim() ? `${prev.trim()}\n\n${template}` : template)
   }
 
   const runDraftRepair = (appId: string, yamlContent: string, validation?: Record<string, unknown>) => {
@@ -848,7 +788,7 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <div className="mb-1 system-md-semibold text-text-secondary">{t('newApp.dslAgentAppType', { ns: 'app' })}</div>
+                  <div className="mb-1 system-md-semibold text-text-secondary">{t('newApp.dslAgentAppMode', { ns: 'app' })}</div>
                   <div className="grid w-full grid-cols-2 rounded-lg bg-background-section-burn p-1">
                     {APP_TYPE_OPTIONS.map(option => (
                       <button
@@ -908,40 +848,11 @@ const CreateFromAIModal = ({ show, onSuccess, onClose }: CreateFromAIModalProps)
                 <button
                   type="button"
                   className="flex h-8 items-center gap-1 rounded-lg px-2 system-sm-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => setShowGuideFields(prev => !prev)}
+                  onClick={insertRequirementTemplate}
                 >
-                  <span className={cn('i-ri-arrow-right-s-line h-4 w-4 transition-transform', showGuideFields && 'rotate-90')} />
-                  {t(showGuideFields ? 'newApp.dslAgentHideDetails' : 'newApp.dslAgentAddDetails', { ns: 'app' })}
+                  <span className="i-ri-add-line h-4 w-4" />
+                  {t('newApp.dslAgentInsertTemplate', { ns: 'app' })}
                 </button>
-                {showGuideFields && (
-                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                    {GUIDE_FIELD_CONFIG.map((field) => {
-                      const value = guideFields[field.key]
-                      const setValue = (nextValue: string) => setGuideFields(prev => ({ ...prev, [field.key]: nextValue }))
-                      return (
-                        <div key={field.key} className={field.wide ? 'sm:col-span-2' : undefined}>
-                          <div className="mb-1 system-sm-semibold text-text-secondary">{t(field.label, { ns: 'app' })}</div>
-                          {field.multiline
-                            ? (
-                                <Textarea
-                                  className="min-h-[56px]"
-                                  placeholder={t(field.placeholder, { ns: 'app' }) || ''}
-                                  value={value}
-                                  onChange={e => setValue(e.target.value)}
-                                />
-                              )
-                            : (
-                                <Input
-                                  placeholder={t(field.placeholder, { ns: 'app' }) || ''}
-                                  value={value}
-                                  onChange={e => setValue(e.target.value)}
-                                />
-                              )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
               </div>
 
               {!!generatedYaml && (

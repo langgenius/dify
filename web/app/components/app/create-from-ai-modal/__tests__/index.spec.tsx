@@ -318,7 +318,7 @@ describe('CreateFromAIModal', () => {
     expect(toastMocks.error).not.toHaveBeenCalled()
   })
 
-  it('should compose guided fields into the DSL agent prompt', async () => {
+  it('should keep optional details inside the requirement prompt template', async () => {
     mockCreateDSLRun.mockResolvedValue(buildDslRun())
     mockImportDSL.mockResolvedValue({
       id: 'import-ai',
@@ -335,38 +335,19 @@ describe('CreateFromAIModal', () => {
     )
 
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
-      target: { value: 'Build an onboarding workflow.' },
+      target: { value: 'Build an onboarding workflow for HubSpot notes. api_key=sk-testSecret1234567890' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAddDetails/i }))
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.triggerPlaceholder'), {
-      target: { value: 'Manual run from sales team' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.dataSourcePlaceholder'), {
-      target: { value: 'HubSpot company notes' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.processingPlaceholder'), {
-      target: { value: 'Extract pain points and classify urgency' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.outputPlaceholder'), {
-      target: { value: 'Structured customer brief' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.testInputPlaceholder'), {
-      target: { value: 'Mock account: ACME api_key=sk-testSecret1234567890' },
-    })
+    expect(screen.queryByText('newApp.dslAgentGuide.trigger')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentInsertTemplate/i }))
 
     await act(async () => {
       fireEvent.click(getCreateButton())
     })
 
     const prompt = mockCreateDSLRun.mock.calls[0][0].prompt
-    expect(prompt).toContain('Build an onboarding workflow.')
+    expect(prompt).toContain('Build an onboarding workflow for HubSpot notes. api_key=[redacted]')
+    expect(prompt).toContain('newApp.dslAgentPromptTemplate')
     expect(prompt).toContain('Target app type: workflow.')
-    expect(prompt).toContain('Guided workflow requirements:')
-    expect(prompt).toContain('- Trigger: Manual run from sales team')
-    expect(prompt).toContain('- Data source: HubSpot company notes')
-    expect(prompt).toContain('- Processing: Extract pain points and classify urgency')
-    expect(prompt).toContain('- Output: Structured customer brief')
-    expect(prompt).toContain('- Credentials/Test input: Mock account: ACME api_key=[redacted]')
     expect(prompt).not.toContain('sk-testSecret1234567890')
   })
 
@@ -443,11 +424,7 @@ describe('CreateFromAIModal', () => {
     )
 
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
-      target: { value: 'Build a workflow that needs runtime repair.' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAddDetails/i }))
-    fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentGuide.testInputPlaceholder'), {
-      target: { value: 'Mock input for draft execution' },
+      target: { value: 'Build a workflow that needs runtime repair. Test input: Mock input for draft execution' },
     })
 
     await act(async () => {
@@ -461,9 +438,9 @@ describe('CreateFromAIModal', () => {
     expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledWith('app-ai', expect.objectContaining({
       yaml_content: 'app: generated',
       inputs: {
-        input: 'Mock input for draft execution',
+        input: 'Build a workflow that needs runtime repair. Test input: Mock input for draft execution',
       },
-      query: 'Mock input for draft execution',
+      query: 'Build a workflow that needs runtime repair. Test input: Mock input for draft execution',
       include_events: true,
     }))
     expect(mockDebugAndRepairDSLAgentDraftRun).toHaveBeenCalledWith('app-ai', expect.objectContaining({
@@ -563,7 +540,7 @@ describe('CreateFromAIModal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAppType\.chatflow/i }))
+    fireEvent.click(screen.getByRole('button', { name: /newApp\.dslAgentAppModeChatflow/i }))
     fireEvent.change(screen.getByPlaceholderText('newApp.dslAgentPromptPlaceholder'), {
       target: { value: 'Build a chatflow that answers support questions.' },
     })
