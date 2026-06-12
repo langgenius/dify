@@ -100,8 +100,6 @@ function AgentRosterItem({
   const { formatTime } = useTimestamp()
   const nameId = useId()
   const descriptionId = useId()
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
-  const [isReferencesMenuOpen, setIsReferencesMenuOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const updatedAt = agent.updated_at != null
@@ -153,13 +151,10 @@ function AgentRosterItem({
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
             {hasPublishedReferences
               ? (
-                  <DropdownMenu modal={false} open={isReferencesMenuOpen} onOpenChange={setIsReferencesMenuOpen}>
+                  <DropdownMenu modal={false}>
                     <DropdownMenuTrigger
                       aria-label={t('roster.references.trigger', { name: agent.name, count: referenceCount })}
-                      className={cn(
-                        '-ml-1 flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                        isReferencesMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-                      )}
+                      className="-ml-1 flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
                     >
                       <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
                       <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
@@ -212,20 +207,12 @@ function AgentRosterItem({
         </div>
       </div>
       <div
-        className={cn(
-          'absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
-          isOperationsMenuOpen
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
-        )}
+        className="pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100"
       >
-        <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             aria-label={t('roster.moreActions', { name: agent.name })}
-            className={cn(
-              'flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-              isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-            )}
+            className="flex size-8 cursor-pointer items-center justify-center rounded-lg p-1.5 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
           >
             <span className="sr-only">{t('roster.moreActions', { name: agent.name })}</span>
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
