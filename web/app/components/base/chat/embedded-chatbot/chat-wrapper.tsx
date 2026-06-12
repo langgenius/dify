@@ -180,6 +180,14 @@ const ChatWrapper = () => {
     }
   }, [])
 
+  const [hasSent, setHasSent] = useState(false)
+  const [prevConversationId, setPrevConversationId] = useState(currentConversationId)
+  if (prevConversationId !== currentConversationId) {
+    setPrevConversationId(currentConversationId)
+    if (!currentConversationId)
+      setHasSent(false)
+  }
+
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     if (!currentConversationId)
       setHasSent(true)
@@ -225,12 +233,6 @@ const ChatWrapper = () => {
   const isTryApp = appSourceType === AppSourceType.tryApp
   const [collapsed, setCollapsed] = useState(!!currentConversationId && !isTryApp) // try app always use the new chat
   const [descExpanded, setDescExpanded] = useState(false)
-  const [hasSent, setHasSent] = useState(false)
-
-  useEffect(() => {
-    if (!currentConversationId)
-      setHasSent(false)
-  }, [currentConversationId])
 
   const description = appData?.site.description
   const showDescToggle = !!description && (description.includes('\n') || description.length > 100)
@@ -243,10 +245,11 @@ const ChatWrapper = () => {
         <div className="w-full max-w-[672px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
           <div className={cn('p-6', isMobile && 'p-4')}>
             <div className={cn(
-              'relative system-xs-regular text-text-tertiary whitespace-pre-wrap break-words',
+              'relative system-xs-regular break-words whitespace-pre-wrap text-text-tertiary',
               !descExpanded && 'line-clamp-2',
               descExpanded && 'max-h-32 overflow-y-auto',
-            )}>
+            )}
+            >
               {description}
               {!descExpanded && showDescToggle && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
@@ -259,9 +262,18 @@ const ChatWrapper = () => {
                 onClick={() => setDescExpanded(v => !v)}
               >
                 {descExpanded
-                  ? <><RiArrowUpSLine className="size-3" />{t('chat.collapse', { ns: 'share' })}</>
-                  : <><RiArrowDownSLine className="size-3" />{t('chat.expand', { ns: 'share' })}</>
-                }
+                  ? (
+                      <>
+                        <RiArrowUpSLine className="size-3" />
+                        {t('chat.collapse', { ns: 'share' })}
+                      </>
+                    )
+                  : (
+                      <>
+                        <RiArrowDownSLine className="size-3" />
+                        {t('chat.expand', { ns: 'share' })}
+                      </>
+                    )}
               </button>
             )}
           </div>
@@ -367,12 +379,12 @@ const ChatWrapper = () => {
       onStopResponding={handleStop}
       onHumanInputFormSubmit={handleSubmitHumanInputForm}
       chatNode={(
-          <>
-            {descriptionNode}
-            {chatNode}
-            {welcome}
-          </>
-        )}
+        <>
+          {descriptionNode}
+          {chatNode}
+          {welcome}
+        </>
+      )}
       allToolIcons={appMeta?.tool_icons || {}}
       disableFeedback={disableFeedback}
       onFeedback={handleFeedback}
