@@ -36,7 +36,7 @@ class EndUserService:
             )
 
     @classmethod
-    def get_or_create_end_user(cls, app_model: App, user_id: str | None = None) -> EndUser:
+    def get_or_create_end_user(cls, app_model: App, user_id: str = "") -> EndUser:
         """
         Get or create an end user for a given app.
         """
@@ -45,7 +45,7 @@ class EndUserService:
 
     @classmethod
     def get_or_create_end_user_by_type(
-        cls, type: InvokeFrom, tenant_id: str, app_id: str, user_id: str | None = None
+        cls, type: InvokeFrom, tenant_id: str, app_id: str, user_id: str = ""
     ) -> EndUser:
         """
         Get or create an end user for a given app and type.

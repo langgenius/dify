@@ -99,9 +99,9 @@ class OAuthLogin(Resource):
             return {"error": "Invalid provider"}, 400
 
         auth_url = oauth_provider.get_authorization_url(
-            invite_token=invite_token,
-            timezone=timezone,
-            language=language,
+            invite_token=invite_token or "",
+            timezone=timezone or "",
+            language=language or "",
         )
         return redirect(auth_url)
 

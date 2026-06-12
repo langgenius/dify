@@ -126,7 +126,7 @@ class TestEndUserServiceGetOrCreateEndUser:
         app = factory.create_app_and_account(db_session_with_containers)
 
         # Act
-        result = EndUserService.get_or_create_end_user(app_model=app, user_id=None)
+        result = EndUserService.get_or_create_end_user(app_model=app, user_id="")
 
         # Assert
         assert result.session_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
@@ -286,7 +286,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             type=InvokeFrom.SERVICE_API,
             tenant_id=tenant_id,
             app_id=app_id,
-            user_id=None,
+            user_id="",
         )
 
         # Assert

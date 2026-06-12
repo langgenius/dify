@@ -106,7 +106,7 @@ class TagListApi(Resource):
     def get(self, current_tenant_id: str):
         raw_args = request.args.to_dict()
         param = TagListQueryParam.model_validate(raw_args)
-        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
+        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword or "")
 
         serialized_tags = [
             TagResponse.model_validate(tag, from_attributes=True).model_dump(mode="json") for tag in tags
