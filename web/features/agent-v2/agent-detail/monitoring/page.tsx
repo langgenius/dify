@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentAccessSource } from '../access/access-sources'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
@@ -114,7 +115,12 @@ export function AgentMonitoringPage({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 pt-2 pb-3">
+      <ScrollArea
+        className="min-h-0 flex-1 overflow-hidden"
+        slotClassNames={{
+          content: 'px-6 pt-2 pb-3',
+        }}
+      >
         <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
           {metrics.map(metric => (
             <AgentMonitoringChart
@@ -130,7 +136,7 @@ export function AgentMonitoringPage({
             />
           ))}
         </div>
-      </div>
+      </ScrollArea>
     </section>
   )
 }
