@@ -329,7 +329,14 @@ def summarize_stream_events(events: list[dict[str, Any]]) -> dict[str, Any]:
             if run_id and not summary["workflow_run_id"]:
                 summary["workflow_run_id"] = run_id
 
-        if name == "workflow_finished":
+        is_workflow_finished = name == "workflow_finished" or (
+            not name
+            and isinstance(data, dict)
+            and "status" in data
+            and ("outputs" in data or "error" in data or "elapsed_time" in data or "total_steps" in data)
+        )
+
+        if is_workflow_finished:
             status = data.get("status")
             summary["status"] = status
             summary["outputs"] = data.get("outputs")

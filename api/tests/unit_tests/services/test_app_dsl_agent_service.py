@@ -540,6 +540,23 @@ def test_format_stream_result_extracts_workflow_runtime_errors():
     assert result["events"][0]["sse_event"] == "workflow_started"
 
 
+def test_format_stream_result_summarizes_blocking_draft_run_payload():
+    raw = (
+        'data: {"task_id": "task-1", "workflow_run_id": "run-1", '
+        '"data": {"id": "run-1", "status": "succeeded", '
+        '"outputs": {"answer": "ok"}, "error": null, "elapsed_time": 1.2, "total_steps": 4}}\n\n'
+    )
+
+    result = format_stream_result(raw, include_events=True)
+
+    assert result["event_count"] == 1
+    assert result["summary"]["task_id"] == "task-1"
+    assert result["summary"]["workflow_run_id"] == "run-1"
+    assert result["summary"]["status"] == "succeeded"
+    assert result["summary"]["succeeded"] is True
+    assert result["summary"]["outputs"] == {"answer": "ok"}
+
+
 def test_debug_service_runs_draft_workflow_and_summarizes_sse(monkeypatch):
     from models.model import AppMode
     from services.app_generate_service import AppGenerateService
