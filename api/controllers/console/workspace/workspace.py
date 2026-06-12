@@ -96,6 +96,76 @@ class TenantInfoResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class TenantListItemResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    plan: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+    current: bool
+
+    @field_validator("plan", "status", mode="before")
+    @classmethod
+    def _normalize_enum_like(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None):
+        return to_timestamp(value)
+
+
+class TenantListResponse(ResponseModel):
+    workspaces: list[TenantListItemResponse]
+
+
+class WorkspaceListItemResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None):
+        return to_timestamp(value)
+
+
+class WorkspaceListResponse(ResponseModel):
+    data: list[WorkspaceListItemResponse]
+    has_more: bool
+    limit: int
+    page: int
+    total: int
+
+
+class SwitchWorkspaceResponse(ResponseModel):
+    result: str
+    new_tenant: TenantInfoResponse
+
+
+class WorkspaceMutationResponse(ResponseModel):
+    result: str
+    tenant: TenantInfoResponse
+
+
+class WorkspaceLogoUploadResponse(ResponseModel):
+    id: str
+
+
 class WorkspacePermissionResponse(ResponseModel):
     workspace_id: str
     allow_member_invite: bool
@@ -112,6 +182,11 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     TenantInfoResponse,
+    TenantListResponse,
+    WorkspaceListResponse,
+    SwitchWorkspaceResponse,
+    WorkspaceMutationResponse,
+    WorkspaceLogoUploadResponse,
     WorkspaceCustomConfigResponse,
     WorkspacePermissionResponse,
 )
@@ -152,6 +227,7 @@ workspace_fields = {"id": fields.String, "name": fields.String, "status": fields
 
 @console_ns.route("/workspaces")
 class TenantListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TenantListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -202,6 +278,7 @@ class TenantListApi(Resource):
 @console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkspaceListQuery))
+    @console_ns.response(200, "Success", console_ns.models[WorkspaceListResponse.__name__])
     @setup_required
     @admin_required
     def get(self):
@@ -256,6 +333,7 @@ class TenantApi(Resource):
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[SwitchWorkspacePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -280,6 +358,7 @@ class SwitchWorkspaceApi(Resource):
 @console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceCustomConfigPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[WorkspaceMutationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -307,6 +386,7 @@ class CustomConfigWorkspaceApi(Resource):
 
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
+    @console_ns.response(201, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -348,6 +428,7 @@ class WebappLogoWorkspaceApi(Resource):
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceInfoPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[WorkspaceMutationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

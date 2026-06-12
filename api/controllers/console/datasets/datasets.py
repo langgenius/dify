@@ -95,13 +95,13 @@ class DatasetUpdatePayload(BaseModel):
     indexing_technique: str | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    retrieval_model: dict[str, Any] | None = None
-    summary_index_setting: dict[str, Any] | None = None
+    retrieval_model: dict[str, Any] | None = Field(default=None)
+    summary_index_setting: dict[str, Any] | None = Field(default=None)
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
-    icon_info: dict[str, Any] | None = None
+    icon_info: dict[str, Any] | None = Field(default=None)
     is_multimodal: bool | None = False
 
     @field_validator("indexing_technique")

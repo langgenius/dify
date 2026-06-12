@@ -35,10 +35,10 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Feedbacks retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Feedbacks retrieved successfully | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
 
 ### [POST] /apps/annotation-reply/{action}
 **Enable or disable annotation reply feature**
@@ -57,10 +57,10 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Action completed successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Action completed successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get the status of an annotation reply action job**
@@ -74,11 +74,11 @@ Returns paginated list of all feedback submitted for messages in this app.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Job status retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Job not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Job not found |  |
 
 ### [GET] /apps/annotations
 **List annotations for the application**
@@ -164,14 +164,14 @@ Accepts an audio file upload and returns the transcribed text.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Audio successfully transcribed |
-| 400 | Bad request - no audio or invalid audio |
-| 401 | Unauthorized - invalid API token |
-| 413 | Audio file too large |
-| 415 | Unsupported audio type |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Audio successfully transcribed | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
+| 400 | Bad request - no audio or invalid audio |  |
+| 401 | Unauthorized - invalid API token |  |
+| 413 | Audio file too large |  |
+| 415 | Unsupported audio type |  |
+| 500 | Internal server error |  |
 
 ### [POST] /chat-messages
 **Send a message in a chat conversation**
@@ -188,14 +188,14 @@ Supports conversation management and both blocking and streaming response modes.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Message sent successfully |
-| 400 | Bad request - invalid parameters or workflow issues |
-| 401 | Unauthorized - invalid API token |
-| 404 | Conversation or workflow not found |
-| 429 | Rate limit exceeded |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Message sent successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad request - invalid parameters or workflow issues |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Conversation or workflow not found |  |
+| 429 | Rate limit exceeded |  |
+| 500 | Internal server error |  |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop a running chat message generation**
@@ -229,13 +229,13 @@ Supports both blocking and streaming response modes.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Completion created successfully |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
-| 404 | Conversation not found |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Completion created successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Conversation not found |  |
+| 500 | Internal server error |  |
 
 ### [POST] /completion-messages/{task_id}/stop
 **Stop a running completion task**
@@ -270,11 +270,11 @@ Supports pagination using last_id and limit parameters.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Conversations retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Last conversation not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversations retrieved successfully | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Last conversation not found |  |
 
 ### [DELETE] /conversations/{c_id}
 **Delete a specific conversation**
@@ -310,11 +310,11 @@ Supports pagination using last_id and limit parameters.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Conversation renamed successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Conversation not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Conversation not found |  |
 
 ### [GET] /conversations/{c_id}/variables
 **List all variables for a conversation**
@@ -417,13 +417,13 @@ Accepts a single file upload via multipart/form-data.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 201 | File uploaded successfully |
-| 400 | Bad request - no file or invalid file |
-| 401 | Unauthorized - invalid API token |
-| 413 | File too large |
-| 415 | Unsupported file type |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | **application/json**: [PipelineUploadFileResponse](#pipelineuploadfileresponse)<br> |
+| 400 | Bad request - no file or invalid file |  |
+| 401 | Unauthorized - invalid API token |  |
+| 413 | File too large |  |
+| 415 | Unsupported file type |  |
 
 ### [DELETE] /datasets/tags
 **Delete a knowledge type tag**
@@ -726,12 +726,12 @@ Download selected uploaded documents as a single ZIP archive
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | ZIP archive generated successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Document or dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | ZIP archive generated successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Document or dataset not found |  |
 
 ### [POST] /datasets/{dataset_id}/documents/metadata
 **Update metadata for multiple documents**
@@ -780,6 +780,12 @@ Raises:
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string |
 | dataset_id | path | Dataset ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentStatusPayload](#documentstatuspayload)<br> |
 
 #### Responses
 
@@ -839,15 +845,16 @@ Get a specific document by ID
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path | Dataset ID | Yes | string |
 | document_id | path | Document ID | Yes | string |
+| metadata | query | Metadata response mode | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Document retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Document not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Document retrieved successfully | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - insufficient permissions |  |
+| 404 | Document not found |  |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}
 Update an existing document by uploading a file
@@ -1351,15 +1358,15 @@ List all datasource plugins for a rag pipeline
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| is_published | query | Whether to get published or draft datasource plugins (true for published, false for draft, default: true) | No | string |
+| is_published | query |  | No | boolean, <br>**Default:** true |
 | dataset_id | path |  | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Datasource plugins retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Datasource plugins retrieved successfully | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
 
 ### [POST] /datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run
 **Resource for getting datasource plugins**
@@ -1373,12 +1380,18 @@ Run a datasource node for a rag pipeline
 | dataset_id | path |  | Yes | string |
 | node_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceNodeRunPayload](#datasourcenoderunpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Datasource node run successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Datasource node run successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Resource for running a rag pipeline**
@@ -1391,12 +1404,18 @@ Run a datasource node for a rag pipeline
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PipelineRunApiEntity](#pipelinerunapientity)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Pipeline run successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Pipeline run successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
 
 ### [POST] /datasets/{dataset_id}/retrieve
 **Perform hit testing on a dataset**
@@ -1495,12 +1514,12 @@ Files can only be accessed if they belong to messages within the requesting app'
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | File retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - file access denied |
-| 404 | File not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | File retrieved successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - file access denied |  |
+| 404 | File not found |  |
 
 ### [GET] /form/human_input/{form_token}
 Get a paused human input form by token
@@ -1513,12 +1532,12 @@ Get a paused human input form by token
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Form retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Form not found |
-| 412 | Form already submitted or expired |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Form not found |  |
+| 412 | Form already submitted or expired |  |
 
 ### [POST] /form/human_input/{form_token}
 Submit a paused human input form by token
@@ -1537,13 +1556,13 @@ Submit a paused human input form by token
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Form submitted successfully |
-| 400 | Bad request - invalid submission data |
-| 401 | Unauthorized - invalid API token |
-| 404 | Form not found |
-| 412 | Form already submitted or expired |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| 400 | Bad request - invalid submission data |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Form not found |  |
+| 412 | Form already submitted or expired |  |
 
 ### [GET] /info
 **Get app information**
@@ -1575,11 +1594,11 @@ Retrieves messages with pagination support using first_id.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Messages retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Conversation or first message not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Messages retrieved successfully | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Conversation or first message not found |  |
 
 ### [POST] /messages/{message_id}/feedbacks
 **Submit feedback for a message**
@@ -1637,11 +1656,11 @@ Returns metadata about the application including configuration and settings.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Metadata retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Application not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Metadata retrieved successfully | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Application not found |  |
 
 ### [GET] /parameters
 **Retrieve app parameters**
@@ -1651,11 +1670,11 @@ Returns the input form parameters and configuration for the application.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Parameters retrieved successfully |
-| 401 | Unauthorized - invalid API token |
-| 404 | Application not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Parameters retrieved successfully | **application/json**: [Parameters](#parameters)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Application not found |  |
 
 ### [GET] /site
 **Retrieve app site info**
@@ -1685,12 +1704,12 @@ Converts the provided text to audio using the specified voice.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Text successfully converted to audio |
-| 400 | Bad request - invalid parameters |
-| 401 | Unauthorized - invalid API token |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Text successfully converted to audio | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| 400 | Bad request - invalid parameters |  |
+| 401 | Unauthorized - invalid API token |  |
+| 500 | Internal server error |  |
 
 ### [GET] /workflow/{task_id}/events
 Get workflow execution events stream after resume
@@ -1700,17 +1719,17 @@ Get workflow execution events stream after resume
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | task_id | path | Workflow run ID | Yes | string |
-| continue_on_pause | query | Whether to keep the stream open across workflow_paused events,specify `"true"` to keep the stream open for `workflow_paused` events. | No | string |
-| include_state_snapshot | query | Whether to replay from persisted state snapshot, specify `"true"` to include a status snapshot of executed nodes | No | string |
-| user | query | End user identifier (query param) | No | string |
+| continue_on_pause | query | Keep the stream open across workflow_paused events | No | boolean |
+| include_state_snapshot | query | Replay from persisted state snapshot | No | boolean |
+| user | query | End user identifier | Yes | string |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | SSE event stream |
-| 401 | Unauthorized - invalid API token |
-| 404 | Workflow run not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Workflow run not found |  |
 
 ### [GET] /workflows/logs
 **Get workflow app logs**
@@ -1753,14 +1772,14 @@ Supports both blocking and streaming response modes.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow executed successfully |
-| 400 | Bad request - invalid parameters or workflow issues |
-| 401 | Unauthorized - invalid API token |
-| 404 | Workflow not found |
-| 429 | Rate limit exceeded |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad request - invalid parameters or workflow issues |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Workflow not found |  |
+| 429 | Rate limit exceeded |  |
+| 500 | Internal server error |  |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get a workflow task running detail**
@@ -1819,14 +1838,14 @@ Executes a specific workflow version identified by its ID.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow executed successfully |
-| 400 | Bad request - invalid parameters or workflow issues |
-| 401 | Unauthorized - invalid API token |
-| 404 | Workflow not found |
-| 429 | Rate limit exceeded |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad request - invalid parameters or workflow issues |  |
+| 401 | Unauthorized - invalid API token |  |
+| 404 | Workflow not found |  |
+| 429 | Rate limit exceeded |  |
+| 500 | Internal server error |  |
 
 ### [GET] /workspaces/current/models/model-types/{model_type}
 **Get available models by model type**
@@ -1842,13 +1861,29 @@ Returns a list of available models for the specified model type.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Models retrieved successfully |
-| 401 | Unauthorized - invalid API token |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Models retrieved successfully | **application/json**: [ProviderWithModelsListResponse](#providerwithmodelslistresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
 
 ---
 ### Schemas
+
+#### AgentThought
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chain_id | string |  | No |
+| created_at | integer |  | No |
+| files | [ string ] |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| observation | string |  | No |
+| position | integer |  | Yes |
+| thought | string |  | No |
+| tool | string |  | No |
+| tool_input | string |  | No |
+| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
 
 #### Annotation
 
@@ -1866,6 +1901,14 @@ Returns a list of available models for the specified model type.
 | ---- | ---- | ----------- | -------- |
 | answer | string | Annotation answer | Yes |
 | question | string | Annotation question | Yes |
+
+#### AnnotationJobStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_msg | string |  | No |
+| job_id | string |  | Yes |
+| job_status | string |  | Yes |
 
 #### AnnotationList
 
@@ -1893,6 +1936,28 @@ Returns a list of available models for the specified model type.
 | embedding_provider_name | string | Embedding provider name | Yes |
 | score_threshold | number | Score threshold for annotation matching | Yes |
 
+#### AppFeedbackListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AppFeedbackResponse](#appfeedbackresponse) ] |  | Yes |
+
+#### AppFeedbackResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| content | string |  | No |
+| conversation_id | string |  | Yes |
+| created_at | string |  | Yes |
+| from_account_id | string |  | No |
+| from_end_user_id | string |  | No |
+| from_source | string |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| rating | string |  | Yes |
+| updated_at | string |  | Yes |
+
 #### AppInfoResponse
 
 | Name | Type | Description | Required |
@@ -1902,6 +1967,38 @@ Returns a list of available models for the specified model type.
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | tags | [ string ] |  | Yes |
+
+#### AppMetaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| tool_icons | object |  | No |
+
+#### AudioBinaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioBinaryResponse | string |  |  |
+
+#### AudioTranscriptResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
+
+#### ButtonStyle
+
+Button styles for user actions.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ButtonStyle | string | Button styles for user actions. |  |
 
 #### ChatRequestPayload
 
@@ -1987,6 +2084,14 @@ Condition detail
 | name | string |  | Yes |
 | value | string<br>[ string ]<br>integer<br>number |  | No |
 
+#### ConversationInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SimpleConversation](#simpleconversation) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
 #### ConversationListQuery
 
 | Name | Type | Description | Required |
@@ -2035,6 +2140,14 @@ Condition detail
 | last_id | string | Last variable ID for pagination | No |
 | limit | integer, <br>**Default:** 20 | Number of variables to return | No |
 | variable_name | string | Filter variables by name | No |
+
+#### CustomConfigurationStatus
+
+Enum class for custom configuration status.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CustomConfigurationStatus | string | Enum class for custom configuration status. |  |
 
 #### DatasetBoundTagListResponse
 
@@ -2319,6 +2432,15 @@ Condition detail
 | vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
 | weight_type | string |  | No |
 
+#### DatasourceCredentialInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| is_default | boolean |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
 #### DatasourceNodeRunPayload
 
 | Name | Type | Description | Required |
@@ -2327,6 +2449,30 @@ Condition detail
 | datasource_type | string |  | Yes |
 | inputs | object |  | Yes |
 | is_published | boolean |  | Yes |
+
+#### DatasourcePluginListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasourcePluginListResponse | array |  |  |
+
+#### DatasourcePluginResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | Yes |
+| datasource_type | string |  | No |
+| node_id | string |  | No |
+| plugin_id | string |  | No |
+| provider_name | string |  | No |
+| title | string |  | No |
+| user_input_variables | [ object ] |  | No |
+
+#### DatasourcePluginsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| is_published | boolean, <br>**Default:** true |  | No |
 
 #### DocumentAndBatchResponse
 
@@ -2342,6 +2488,48 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | document_ids | [ string (uuid) ] |  | Yes |
+
+#### DocumentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | No |
+| average_segment_length | number |  | No |
+| completed_at | integer |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| created_from | string |  | No |
+| data_source_info | object |  | No |
+| data_source_type | string |  | No |
+| dataset_process_rule | object |  | No |
+| dataset_process_rule_id | string |  | No |
+| disabled_at | integer |  | No |
+| disabled_by | string |  | No |
+| display_status | string |  | No |
+| doc_form | string |  | No |
+| doc_language | string |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_type | string |  | No |
+| document_process_rule | object |  | No |
+| enabled | boolean |  | No |
+| error | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | Yes |
+| indexing_latency | number |  | No |
+| indexing_status | string |  | No |
+| name | string |  | No |
+| need_summary | boolean |  | No |
+| position | integer |  | No |
+| segment_count | integer |  | No |
+| summary_index_status | string |  | No |
+| tokens | integer |  | No |
+| updated_at | integer |  | No |
+
+#### DocumentGetQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metadata | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all | Metadata response mode<br>*Enum:* `"all"`, `"only"`, `"without"` | No |
 
 #### DocumentListQuery
 
@@ -2414,6 +2602,12 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 
+#### DocumentStatusPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_ids | [ string ] | Document IDs to update | No |
+
 #### DocumentStatusResponse
 
 | Name | Type | Description | Required |
@@ -2478,12 +2672,53 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
 
+#### EventStreamResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EventStreamResponse | string |  |  |
+
+#### ExecutionContentType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExecutionContentType | string |  |  |
+
 #### FeedbackListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 | Number of feedbacks per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
+
+#### FetchFrom
+
+Enum class for fetch from.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FetchFrom | string | Enum class for fetch from. |  |
+
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| number_limits | integer |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
 
 #### FilePreviewQuery
 
@@ -2510,6 +2745,30 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileTransferMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTransferMethod | string |  |  |
+
+#### FileType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileType | string |  |  |
+
+#### FormInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
+
+#### GeneratedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GeneratedAppResponse |  |  |  |
 
 #### HitTestingChildChunk
 
@@ -2602,12 +2861,72 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | tokens | integer |  | Yes |
 | word_count | integer |  | Yes |
 
+#### HumanInputContent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_definition | [HumanInputFormDefinition](#humaninputformdefinition) |  | No |
+| form_submission_data | [HumanInputFormSubmissionData](#humaninputformsubmissiondata) |  | No |
+| submitted | boolean |  | Yes |
+| type | [ExecutionContentType](#executioncontenttype) |  | No |
+| workflow_run_id | string |  | Yes |
+
+#### HumanInputFormDefinition
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | Yes |
+| form_content | string |  | Yes |
+| form_id | string |  | Yes |
+| form_token | string |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| resolved_default_values | object |  | No |
+
+#### HumanInputFormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | No |
+| form_content | string |  | Yes |
+| inputs | [ object ] |  | No |
+| resolved_default_values | object |  | Yes |
+| user_actions | [ object ] |  | No |
+
+#### HumanInputFormSubmissionData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action_id | string |  | Yes |
+| action_text | string |  | Yes |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| rendered_content | string |  | Yes |
+| submitted_data | object |  | No |
+
 #### HumanInputFormSubmitPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string |  | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
+
+#### HumanInputFormSubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### I18nObject
+
+Model class for i18n object.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| zh_Hans | string |  | No |
 
 #### IndexInfoResponse
 
@@ -2616,6 +2935,24 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | api_version | string |  | Yes |
 | server_version | string |  | Yes |
 | welcome | string |  | Yes |
+
+#### JSONObject
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONObject | object |  |  |
+
+#### JSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+
+#### JSONValueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONValueType |  |  |  |
 
 #### JsonValue
 
@@ -2644,6 +2981,47 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | ---- | ---- | ----------- | -------- |
 | content | string |  | No |
 | rating | string |  | No |
+
+#### MessageFile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| belongs_to | string |  | No |
+| filename | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| size | integer |  | No |
+| transfer_method | string |  | Yes |
+| type | string |  | Yes |
+| upload_file_id | string |  | No |
+| url | string |  | No |
+
+#### MessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [MessageListItem](#messagelistitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### MessageListItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| error | string |  | No |
+| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
+| status | string |  | Yes |
 
 #### MessageListQuery
 
@@ -2691,6 +3069,65 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 
+#### ModelFeature
+
+Enum class for llm feature.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelFeature | string | Enum class for llm feature. |  |
+
+#### ModelPropertyKey
+
+Enum class for model property key.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelPropertyKey | string | Enum class for model property key. |  |
+
+#### ModelStatus
+
+Enum class for model status.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelStatus | string | Enum class for model status. |  |
+
+#### ModelType
+
+Enum class for model type.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelType | string | Enum class for model type. |  |
+
+#### ParagraphInputConfig
+
+Form input definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [StringSource](#stringsource) |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### Parameters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
+| file_upload | [JSONObject](#jsonobject) |  | Yes |
+| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| opening_statement |  |  | No |
+| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
+| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
+| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
+| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
+| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+
 #### PermissionEnum
 
 Shared permission levels for resources (datasets, credentials, etc.)
@@ -2709,6 +3146,18 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | is_published | boolean |  | Yes |
 | response_mode | string |  | Yes |
 | start_node_id | string |  | Yes |
+
+#### PipelineUploadFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | string |  | No |
+| created_by | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | Yes |
 
 #### PreProcessingRule
 
@@ -2731,6 +3180,43 @@ Dataset Process Rule Mode
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
+
+#### ProviderModelWithStatusEntity
+
+Model class for model response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deprecated | boolean |  | No |
+| features | [ [ModelFeature](#modelfeature) ] |  | No |
+| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| has_invalid_load_balancing_configs | boolean |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| load_balancing_enabled | boolean |  | No |
+| model | string |  | Yes |
+| model_properties | object |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| status | [ModelStatus](#modelstatus) |  | Yes |
+
+#### ProviderWithModelsListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ProviderWithModelsResponse](#providerwithmodelsresponse) ] |  | Yes |
+
+#### ProviderWithModelsResponse
+
+Model class for provider with models response.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon_small | [I18nObject](#i18nobject) |  | No |
+| icon_small_dark | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
+| provider | string |  | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+| tenant_id | string |  | Yes |
 
 #### RerankingModel
 
@@ -2764,6 +3250,28 @@ Dataset Process Rule Mode
 | search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
 | top_k | integer |  | Yes |
 | weights | [WeightModel](#weightmodel) |  | No |
+
+#### RetrieverResource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | integer |  | No |
+| data_source_type | string |  | No |
+| dataset_id | string |  | No |
+| dataset_name | string |  | No |
+| document_id | string |  | No |
+| document_name | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | No |
+| index_node_hash | string |  | No |
+| message_id | string |  | No |
+| position | integer |  | Yes |
+| score | number |  | No |
+| segment_id | string |  | No |
+| segment_position | integer |  | No |
+| summary | string |  | No |
+| word_count | integer |  | No |
 
 #### Rule
 
@@ -2893,6 +3401,14 @@ Dataset Process Rule Mode
 | separator | string, <br>**Default:** 
  |  | No |
 
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### SimpleAccount
 
 | Name | Type | Description | Required |
@@ -2900,6 +3416,18 @@ Dataset Process Rule Mode
 | email | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
+
+#### SimpleConversation
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| introduction | string |  | No |
+| name | string |  | Yes |
+| status | string |  | Yes |
+| updated_at | integer |  | No |
 
 #### SimpleEndUser
 
@@ -2909,6 +3437,12 @@ Dataset Process Rule Mode
 | is_anonymous | boolean |  | Yes |
 | session_id | string |  | No |
 | type | string |  | Yes |
+
+#### SimpleFeedback
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| rating | string |  | No |
 
 #### SimpleResultResponse
 
@@ -2941,6 +3475,34 @@ Dataset Process Rule Mode
 | show_workflow_steps | boolean |  | Yes |
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
+
+#### StringListSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | [ string ] |  | No |
+
+#### StringSource
+
+Default configuration for form inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | No |
+
+#### SystemParameters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| audio_file_size_limit | integer |  | Yes |
+| file_size_limit | integer |  | Yes |
+| image_file_size_limit | integer |  | Yes |
+| video_file_size_limit | integer |  | Yes |
+| workflow_file_upload_limit | integer |  | Yes |
 
 #### TagBindingPayload
 
@@ -2993,6 +3555,25 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | ---- | ---- | ----------- | -------- |
 | url | string |  | Yes |
 
+#### UserActionConfig
+
+User action configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | No |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
+#### ValueSourceType
+
+ValueSourceType records whether the value comes from a static setting
+in form definiton, or a variable while the workflow is running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+
 #### WeightKeywordSetting
 
 | Name | Type | Description | Required |
@@ -3037,6 +3618,14 @@ Accept the legacy single-tag Service API payload while exposing a normalized tag
 | details | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | id | string |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
+
+#### WorkflowEventsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| continue_on_pause | boolean | Keep the stream open across workflow_paused events | No |
+| include_state_snapshot | boolean | Replay from persisted state snapshot | No |
+| user | string | End user identifier | Yes |
 
 #### WorkflowLogQuery
 

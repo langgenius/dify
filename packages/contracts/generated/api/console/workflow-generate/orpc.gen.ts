@@ -7,16 +7,10 @@ import { zPostWorkflowGenerateBody, zPostWorkflowGenerateResponse } from './zod.
 
 /**
  * Generate a Dify workflow graph from natural language
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generate a Dify workflow graph from natural language\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Generate a Dify workflow graph from natural language',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postWorkflowGenerate',

@@ -10,7 +10,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -134,6 +134,13 @@ register_schema_models(
     ConversationVariableResponse,
     ConversationVariableInfiniteScrollPaginationResponse,
 )
+register_response_schema_models(
+    service_api_ns,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
+    ConversationVariableResponse,
+    ConversationVariableInfiniteScrollPaginationResponse,
+)
 
 
 @service_api_ns.route("/conversations")
@@ -147,6 +154,11 @@ class ConversationApi(Resource):
             401: "Unauthorized - invalid API token",
             404: "Last conversation not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Conversations retrieved successfully",
+        service_api_ns.models[ConversationInfiniteScrollPagination.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser):
@@ -223,6 +235,11 @@ class ConversationRenameApi(Resource):
             401: "Unauthorized - invalid API token",
             404: "Conversation not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Conversation renamed successfully",
+        service_api_ns.models[SimpleConversation.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser, c_id: UUID):

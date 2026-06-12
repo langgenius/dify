@@ -14,7 +14,7 @@ from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
-from ..common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, register_schema_models
+from ..common.schema import DEFAULT_REF_TEMPLATE_OPENAPI_3_0, query_params_from_model, register_schema_models
 from . import console_ns
 from .wraps import account_initialization_required, setup_required, with_current_tenant_id
 
@@ -60,7 +60,13 @@ class APIBasedExtensionResponse(ResponseModel):
         return to_timestamp(value)
 
 
-register_schema_models(console_ns, APIBasedExtensionPayload, CodeBasedExtensionResponse, APIBasedExtensionResponse)
+register_schema_models(
+    console_ns,
+    CodeBasedExtensionQuery,
+    APIBasedExtensionPayload,
+    CodeBasedExtensionResponse,
+    APIBasedExtensionResponse,
+)
 console_ns.schema_model(
     "APIBasedExtensionListResponse",
     TypeAdapter(list[APIBasedExtensionResponse]).json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
@@ -90,7 +96,7 @@ def _serialize_saved_api_based_extension(extension: APIBasedExtension, api_key: 
 class CodeBasedExtensionAPI(Resource):
     @console_ns.doc("get_code_based_extension")
     @console_ns.doc(description="Get code-based extension data by module name")
-    @console_ns.doc(params={"module": "Extension module name"})
+    @console_ns.doc(params=query_params_from_model(CodeBasedExtensionQuery))
     @console_ns.response(
         200,
         "Success",

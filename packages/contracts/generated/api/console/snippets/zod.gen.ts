@@ -3,6 +3,18 @@
 import * as z from 'zod'
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * DefaultBlockConfigsResponse
+ */
+export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
+
+/**
  * SnippetDraftSyncPayload
  *
  * Payload for syncing snippet draft workflow.
@@ -12,6 +24,22 @@ export const zSnippetDraftSyncPayload = z.object({
   graph: z.record(z.string(), z.unknown()),
   hash: z.string().nullish(),
   input_fields: z.array(z.record(z.string(), z.unknown())).nullish(),
+})
+
+/**
+ * WorkflowRestoreResponse
+ */
+export const zWorkflowRestoreResponse = z.object({
+  hash: z.string(),
+  result: z.string(),
+  updated_at: z.int(),
+})
+
+/**
+ * SnippetDraftConfigResponse
+ */
+export const zSnippetDraftConfigResponse = z.object({
+  parallel_depth_limit: z.int(),
 })
 
 /**
@@ -62,7 +90,16 @@ export const zWorkflowDraftVariable = z.object({
   name: z.string().optional(),
   selector: z.array(z.string()).optional(),
   type: z.string().optional(),
-  value: z.record(z.string(), z.unknown()).optional(),
+  value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
   value_type: z.string().optional(),
   visible: z.boolean().optional(),
 })
@@ -86,6 +123,14 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
  */
 export const zPublishWorkflowPayload = z.object({
   knowledge_base_setting: z.record(z.string(), z.unknown()).nullish(),
+})
+
+/**
+ * WorkflowPublishResponse
+ */
+export const zWorkflowPublishResponse = z.object({
+  created_at: z.int(),
+  result: z.string(),
 })
 
 /**
@@ -197,7 +242,7 @@ export const zWorkflowConversationVariableResponse = z.object({
   description: z.string(),
   id: z.string(),
   name: z.string(),
-  value: z.record(z.string(), z.unknown()),
+  value: z.unknown(),
   value_type: z.string(),
 })
 
@@ -208,7 +253,7 @@ export const zWorkflowEnvironmentVariableResponse = z.object({
   description: z.string(),
   id: z.string(),
   name: z.string(),
-  value: z.record(z.string(), z.unknown()),
+  value: z.unknown(),
   value_type: z.string(),
 })
 
@@ -220,7 +265,7 @@ export const zPipelineVariableResponse = z.object({
   allowed_file_types: z.array(z.string()).nullish(),
   allowed_file_upload_methods: z.array(z.string()).nullish(),
   belong_to_node_id: z.string(),
-  default_value: z.record(z.string(), z.unknown()).optional(),
+  default_value: z.unknown().optional(),
   label: z.string(),
   max_length: z.int().nullish(),
   options: z.array(z.string()).nullish(),
@@ -285,6 +330,45 @@ export const zWorkflowPaginationResponse = z.object({
   page: z.int(),
 })
 
+/**
+ * EnvironmentVariableItemResponse
+ */
+export const zEnvironmentVariableItemResponse = z.object({
+  description: z.string().nullish(),
+  editable: z.boolean(),
+  edited: z.boolean(),
+  id: z.string(),
+  name: z.string(),
+  selector: z.array(z.string()),
+  type: z.string(),
+  value: z.unknown(),
+  value_type: z.string(),
+  visible: z.boolean(),
+})
+
+/**
+ * EnvironmentVariableListResponse
+ */
+export const zEnvironmentVariableListResponse = z.object({
+  items: z.array(zEnvironmentVariableItemResponse),
+})
+
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zJsonValue
+
 export const zWorkflowDraftVariableWithoutValue = z.object({
   description: z.string().optional(),
   edited: z.boolean().optional(),
@@ -299,11 +383,16 @@ export const zWorkflowDraftVariableWithoutValue = z.object({
 
 export const zWorkflowDraftVariableListWithoutValue = z.object({
   items: z.array(zWorkflowDraftVariableWithoutValue).optional(),
-  total: z.record(z.string(), z.unknown()).optional(),
+  total: z.int().optional(),
 })
 
 export const zGetSnippetsBySnippetIdWorkflowRunsPath = z.object({
   snippet_id: z.string(),
+})
+
+export const zGetSnippetsBySnippetIdWorkflowRunsQuery = z.object({
+  last_id: z.string().optional(),
+  limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
 /**
@@ -319,10 +408,7 @@ export const zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopPath = z.objec
 /**
  * Task stopped successfully
  */
-export const zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath = z.object({
   run_id: z.string(),
@@ -366,10 +452,8 @@ export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath = z
 /**
  * Default block configs retrieved successfully
  */
-export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse
+  = zDefaultBlockConfigsResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftPath = z.object({
   snippet_id: z.string(),
@@ -389,7 +473,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftPath = z.object({
 /**
  * Draft workflow synced successfully
  */
-export const zPostSnippetsBySnippetIdWorkflowsDraftResponse = z.record(z.string(), z.unknown())
+export const zPostSnippetsBySnippetIdWorkflowsDraftResponse = zWorkflowRestoreResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftConfigPath = z.object({
   snippet_id: z.string(),
@@ -398,7 +482,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftConfigPath = z.object({
 /**
  * Draft config retrieved successfully
  */
-export const zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse = z.record(z.string(), z.unknown())
+export const zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse = zSnippetDraftConfigResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesPath = z.object({
   snippet_id: z.string(),
@@ -417,10 +501,8 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesPath = z.o
 /**
  * Environment variables retrieved successfully
  */
-export const zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse
+  = zEnvironmentVariableListResponse
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunBody
   = zSnippetIterationNodeRunPayload
@@ -433,10 +515,8 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunPath
 /**
  * Iteration node run started successfully (SSE stream)
  */
-export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse
+  = zGeneratedAppResponse
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunBody
   = zSnippetLoopNodeRunPayload
@@ -449,10 +529,8 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.
 /**
  * Loop node run started successfully (SSE stream)
  */
-export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse
+  = zGeneratedAppResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
   node_id: z.string(),
@@ -509,7 +587,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftRunPath = z.object({
 /**
  * Draft workflow run started successfully (SSE stream)
  */
-export const zPostSnippetsBySnippetIdWorkflowsDraftRunResponse = z.record(z.string(), z.unknown())
+export const zPostSnippetsBySnippetIdWorkflowsDraftRunResponse = zGeneratedAppResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesPath = z.object({
   snippet_id: z.string(),
@@ -608,7 +686,7 @@ export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
 /**
  * Workflow published successfully
  */
-export const zPostSnippetsBySnippetIdWorkflowsPublishResponse = z.record(z.string(), z.unknown())
+export const zPostSnippetsBySnippetIdWorkflowsPublishResponse = zWorkflowPublishResponse
 
 export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath = z.object({
   snippet_id: z.string(),
@@ -618,7 +696,4 @@ export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath = z.object
 /**
  * Workflow restored successfully
  */
-export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse = zWorkflowRestoreResponse

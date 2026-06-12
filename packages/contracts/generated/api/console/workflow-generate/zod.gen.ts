@@ -3,6 +3,11 @@
 import * as z from 'zod'
 
 /**
+ * GeneratorResponse
+ */
+export const zGeneratorResponse = z.unknown()
+
+/**
  * LLMMode
  *
  * Enum class for large language model mode.
@@ -41,4 +46,4 @@ export const zPostWorkflowGenerateBody = zWorkflowGeneratePayload
 /**
  * Workflow graph generated successfully
  */
-export const zPostWorkflowGenerateResponse = z.record(z.string(), z.unknown())
+export const zPostWorkflowGenerateResponse = zGeneratorResponse

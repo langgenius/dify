@@ -10,13 +10,13 @@ from uuid import UUID
 import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
-from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
+from controllers.common.fields import BinaryFileResponse, SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from core.errors.error import (
@@ -145,6 +145,10 @@ class DocumentWithSegmentsListResponse(ResponseModel):
     page: int
 
 
+class OpaqueObjectResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 register_schema_models(
     console_ns,
     KnowledgeConfig,
@@ -158,6 +162,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    BinaryFileResponse,
     SimpleResultMessageResponse,
     SimpleResultResponse,
     UrlResponse,
@@ -167,6 +172,7 @@ register_response_schema_models(
     DocumentWithSegmentsResponse,
     DatasetAndDocumentResponse,
     DocumentWithSegmentsListResponse,
+    OpaqueObjectResponse,
 )
 
 
@@ -216,7 +222,7 @@ class GetProcessRuleApi(Resource):
     @console_ns.doc("get_process_rule")
     @console_ns.doc(description="Get dataset document processing rules")
     @console_ns.doc(params={"document_id": "Document ID (optional)"})
-    @console_ns.response(200, "Process rules retrieved successfully")
+    @console_ns.response(200, "Process rules retrieved successfully", console_ns.models[OpaqueObjectResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -537,7 +543,11 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @console_ns.doc("estimate_document_indexing")
     @console_ns.doc(description="Estimate document indexing cost")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @console_ns.response(200, "Indexing estimate calculated successfully")
+    @console_ns.response(
+        200,
+        "Indexing estimate calculated successfully",
+        console_ns.models[OpaqueObjectResponse.__name__],
+    )
     @console_ns.response(404, "Document not found")
     @console_ns.response(400, "Document already finished")
     @setup_required
@@ -606,6 +616,11 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(DocumentResource):
+    @console_ns.response(
+        200,
+        "Batch indexing estimate calculated successfully",
+        console_ns.models[OpaqueObjectResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -824,7 +839,7 @@ class DocumentApi(DocumentResource):
             "metadata": "Metadata inclusion (all/only/without)",
         }
     )
-    @console_ns.response(200, "Document retrieved successfully")
+    @console_ns.response(200, "Document retrieved successfully", console_ns.models[OpaqueObjectResponse.__name__])
     @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
@@ -966,6 +981,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
 
     @console_ns.doc("download_dataset_documents_as_zip")
     @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
+    @console_ns.response(200, "ZIP archive generated successfully", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1324,6 +1340,11 @@ class WebsiteDocumentSyncApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
 class DocumentPipelineExecutionLogApi(DocumentResource):
+    @console_ns.response(
+        200,
+        "Document pipeline execution log retrieved successfully",
+        console_ns.models[OpaqueObjectResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -1464,7 +1485,7 @@ class DocumentSummaryStatusApi(DocumentResource):
     @console_ns.doc("get_document_summary_status")
     @console_ns.doc(description="Get summary index generation status for a document")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @console_ns.response(200, "Summary status retrieved successfully")
+    @console_ns.response(200, "Summary status retrieved successfully", console_ns.models[OpaqueObjectResponse.__name__])
     @console_ns.response(404, "Document not found")
     @setup_required
     @login_required

@@ -30,6 +30,7 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 
+from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -62,6 +63,7 @@ _STREAM_HARD_TIMEOUT_TICKS = 1800  # 30 min
 
 register_response_schema_models(
     console_ns,
+    EventStreamResponse,
     CheckResultView,
     NodeOutputView,
     NodeOutputsView,
@@ -327,7 +329,11 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Workflow run node output event stream")
+    @console_ns.response(
+        200,
+        "Workflow run node output event stream",
+        console_ns.models[EventStreamResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required
@@ -424,7 +430,11 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
-    @console_ns.response(200, "Workflow run node output event stream")
+    @console_ns.response(
+        200,
+        "Workflow run node output event stream",
+        console_ns.models[EventStreamResponse.__name__],
+    )
     @console_ns.response(404, "Workflow run not found")
     @setup_required
     @login_required

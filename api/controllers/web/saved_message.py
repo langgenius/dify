@@ -5,7 +5,7 @@ from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
@@ -16,24 +16,14 @@ from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
 register_schema_models(web_ns, SavedMessageListQuery, SavedMessageCreatePayload)
-register_response_schema_models(web_ns, ResultResponse)
+register_response_schema_models(web_ns, ResultResponse, SavedMessageInfiniteScrollPagination)
 
 
 @web_ns.route("/saved-messages")
 class SavedMessageListApi(WebApiResource):
     @web_ns.doc("Get Saved Messages")
     @web_ns.doc(description="Retrieve paginated list of saved messages for a completion application.")
-    @web_ns.doc(
-        params={
-            "last_id": {"description": "Last message ID for pagination", "type": "string", "required": False},
-            "limit": {
-                "description": "Number of messages to return (1-100)",
-                "type": "integer",
-                "required": False,
-                "default": 20,
-            },
-        }
-    )
+    @web_ns.doc(params=query_params_from_model(SavedMessageListQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -44,6 +34,7 @@ class SavedMessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     def get(self, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -78,6 +69,7 @@ class SavedMessageListApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Message saved successfully", web_ns.models[ResultResponse.__name__])
+    @web_ns.expect(web_ns.models[SavedMessageCreatePayload.__name__])
     def post(self, app_model: App, end_user: EndUser):
         if app_model.mode != "completion":
             raise NotCompletionAppError()

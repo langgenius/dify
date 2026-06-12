@@ -7,8 +7,9 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from controllers.common.fields import BinaryFileResponse
 from controllers.common.file_response import enforce_download_for_html
-from controllers.common.schema import query_params_from_model, register_schema_model
+from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
@@ -27,6 +28,7 @@ class FilePreviewQuery(BaseModel):
 
 
 register_schema_model(service_api_ns, FilePreviewQuery)
+register_response_schema_model(service_api_ns, BinaryFileResponse)
 
 
 @service_api_ns.route("/files/<uuid:file_id>/preview")
@@ -49,6 +51,11 @@ class FilePreviewApi(Resource):
             403: "Forbidden - file access denied",
             404: "File not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "File retrieved successfully",
+        service_api_ns.models[BinaryFileResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, file_id: UUID):

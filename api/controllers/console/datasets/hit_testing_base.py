@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class HitTestingPayload(BaseModel):
     query: str = Field(max_length=250)
     retrieval_model: RetrievalModel | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None)
     attachment_ids: list[str] | None = None
 
 

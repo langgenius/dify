@@ -4,11 +4,14 @@ from typing import Any
 
 from flask import make_response, request
 from flask_restx import Resource
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
+from controllers.common.fields import AccessTokenData
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
@@ -19,12 +22,21 @@ from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 
 
+class PassportQuery(BaseModel):
+    user_id: str | None = Field(default=None, description="End user session ID")
+
+
+register_schema_models(web_ns, PassportQuery)
+register_response_schema_models(web_ns, AccessTokenData)
+
+
 @web_ns.route("/passport")
 class PassportResource(Resource):
     """Base resource for passport."""
 
     @web_ns.doc("get_passport")
     @web_ns.doc(description="Get authentication passport for web application access")
+    @web_ns.doc(params=query_params_from_model(PassportQuery))
     @web_ns.doc(
         responses={
             200: "Passport retrieved successfully",
@@ -32,6 +44,7 @@ class PassportResource(Resource):
             404: "Application or user not found",
         }
     )
+    @web_ns.response(200, "Passport retrieved successfully", web_ns.models[AccessTokenData.__name__])
     def get(self):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get(HEADER_NAME_APP_CODE)

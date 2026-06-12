@@ -74,7 +74,9 @@ class PipelineTemplateDetailResponse(ResponseModel):
 class CustomizedPipelineTemplatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40)
     description: str = Field(default="", max_length=400)
-    icon_info: dict[str, object] = Field(default_factory=lambda: IconInfo(icon="").model_dump())
+    icon_info: dict[str, object] = Field(
+        default_factory=lambda: IconInfo(icon="").model_dump(),
+    )
 
 
 register_schema_models(
