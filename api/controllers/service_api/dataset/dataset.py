@@ -575,8 +575,8 @@ class DocumentStatusApi(DatasetApiResource):
         DatasetService.check_dataset_model_setting(dataset)
 
         # Get document IDs from request body
-        payload = DocumentStatusPayload.model_validate(request.get_json() or {})
-        document_ids = payload.document_ids
+        data = request.get_json()
+        document_ids = data.get("document_ids", [])
 
         try:
             DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)

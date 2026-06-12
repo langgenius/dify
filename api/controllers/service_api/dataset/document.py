@@ -12,7 +12,7 @@ from typing import Any, Literal, Self
 from uuid import UUID
 
 from flask import request, send_file
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -926,11 +926,7 @@ class DocumentApi(DatasetApiResource):
         if document.tenant_id != str(tenant_id):
             raise Forbidden("No permission.")
 
-        try:
-            query = DocumentGetQuery.model_validate(request.args.to_dict(flat=True))
-        except ValidationError as exc:
-            raise InvalidMetadataError(f"Invalid metadata value: {request.args.get('metadata')}") from exc
-        metadata = query.metadata
+        metadata = request.args.get("metadata", "all")
         if metadata not in self.METADATA_CHOICES:
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
 

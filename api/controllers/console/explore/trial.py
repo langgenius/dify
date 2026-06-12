@@ -355,7 +355,7 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return SuggestedQuestionsResponse(data=questions).model_dump(mode="json")
+        return {"data": questions}
 
 
 class TrialChatAudioApi(TrialAppResource):
