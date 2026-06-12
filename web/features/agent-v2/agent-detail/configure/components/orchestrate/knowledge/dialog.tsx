@@ -1,21 +1,38 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import type {
+  MetadataFilteringCondition,
+  MetadataFilteringModeEnum,
+  MultipleRetrievalConfig,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ModelConfig } from '@/app/components/workflow/types'
+import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { useState } from 'react'
+import { intersectionBy } from 'es-toolkit/compat'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
+import DatasetList from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-list'
+import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
+import RetrievalConfig from '@/app/components/workflow/nodes/knowledge-retrieval/components/retrieval-config'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringVariableType,
+  MetadataFilteringModeEnum as WorkflowMetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { DATASET_DEFAULT } from '@/config'
+import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
-type KnowledgeRetrievalMetadataMode = 'manual' | 'disabled' | 'automatic'
 
 const queryModeOptions: KnowledgeRetrievalQueryMode[] = ['agent', 'custom']
-const metadataModeOptions: KnowledgeRetrievalMetadataMode[] = ['manual', 'disabled', 'automatic']
 
 const optionCardClassName = cn(
   'flex h-8 flex-1 items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 text-center system-sm-regular text-text-secondary transition-colors',
@@ -46,6 +63,21 @@ function DialogFormLabel({
   )
 }
 
+const createDefaultRetrievalConfig = (): MultipleRetrievalConfig => ({
+  top_k: DATASET_DEFAULT.top_k,
+  score_threshold: null,
+  reranking_enable: false,
+})
+
+const createMetadataCondition = ({ id, name, type }: MetadataInDoc): MetadataFilteringCondition => ({
+  id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+  metadata_id: id,
+  name,
+  comparison_operator: type === MetadataFilteringVariableType.number
+    ? ComparisonOperator.equal
+    : ComparisonOperator.is,
+})
+
 export function AgentKnowledgeRetrievalDialog({
   initialName,
   open,
@@ -58,8 +90,25 @@ export function AgentKnowledgeRetrievalDialog({
   const { t } = useTranslation('agentV2')
   const [name, setName] = useState(() => initialName ?? t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
   const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>('agent')
-  const [metadataMode, setMetadataMode] = useState<KnowledgeRetrievalMetadataMode>('manual')
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
+  const [retrievalMode, setRetrievalMode] = useState(RETRIEVE_TYPE.multiWay)
+  const [multipleRetrievalConfig, setMultipleRetrievalConfig] = useState(createDefaultRetrievalConfig)
+  const [rerankModelOpen, setRerankModelOpen] = useState(false)
+  const [metadataFilterMode, setMetadataFilterMode] = useState<MetadataFilteringModeEnum>(WorkflowMetadataFilteringModeEnum.disabled)
+  const [metadataFilteringConditions, setMetadataFilteringConditions] = useState({
+    logical_operator: LogicalOperator.and,
+    conditions: [] as MetadataFilteringCondition[],
+  })
+  const [metadataModelConfig, setMetadataModelConfig] = useState<ModelConfig>()
   const queryModeLabelId = 'agent-knowledge-retrieval-query-mode-label'
+  const metadataList = useMemo(() => {
+    const datasetsWithMetadata = selectedDatasets.filter(dataset => !!dataset.doc_metadata)
+
+    if (datasetsWithMetadata.length === 0)
+      return []
+
+    return intersectionBy(...datasetsWithMetadata.map(dataset => dataset.doc_metadata!), 'name')
+  }, [selectedDatasets])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,82 +160,90 @@ export function AgentKnowledgeRetrievalDialog({
             </p>
           </div>
 
-          <div className="flex flex-col gap-1 px-4 py-2">
-            <div className="flex items-center gap-2">
-              <DialogFormLabel>
-                {t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label')}
-              </DialogFormLabel>
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="small"
-                  disabled
-                  className="h-6 gap-1 px-1.5"
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line size-3.5" />
-                  <span className="px-0.5 system-xs-medium">
-                    {t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.retrievalSetting')}
-                  </span>
-                </Button>
-                <span aria-hidden className="h-3 w-px bg-divider-regular" />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="small"
-                  aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.add')}
-                  className="size-6 px-0"
-                >
-                  <span aria-hidden className="i-ri-add-line size-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex min-h-10 items-center justify-center rounded-[10px] bg-background-section p-3 text-center system-xs-regular text-text-tertiary">
-              {t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.empty')}
-            </div>
+          <div className="px-4 py-2">
+            <Field
+              title={t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label')}
+              required
+              operations={(
+                <div className="flex items-center space-x-1">
+                  <RetrievalConfig
+                    payload={{
+                      retrieval_mode: retrievalMode,
+                      multiple_retrieval_config: multipleRetrievalConfig,
+                    }}
+                    onRetrievalModeChange={setRetrievalMode}
+                    onMultipleRetrievalConfigChange={setMultipleRetrievalConfig}
+                    readonly={!selectedDatasets.length}
+                    rerankModalOpen={rerankModelOpen}
+                    onRerankModelOpenChange={setRerankModelOpen}
+                    selectedDatasets={selectedDatasets}
+                  />
+                  <div className="h-3 w-px bg-divider-regular" />
+                  <AddKnowledge
+                    selectedIds={selectedDatasets.map(dataset => dataset.id)}
+                    onChange={setSelectedDatasets}
+                  />
+                </div>
+              )}
+            >
+              <DatasetList
+                list={selectedDatasets}
+                onChange={setSelectedDatasets}
+              />
+            </Field>
           </div>
 
-          <div className="flex items-center gap-1 px-4 py-2">
-            <div className="flex min-w-0 flex-1 items-center gap-1">
-              <DialogFormLabel>
-                {t('agentDetail.configure.knowledgeRetrieval.dialog.metadata.label')}
-              </DialogFormLabel>
-              <span aria-hidden className="i-ri-question-line size-3.5 shrink-0 text-text-quaternary" />
-            </div>
-            <Select
-              value={metadataMode}
-              onValueChange={(nextMode) => {
-                if (nextMode)
-                  setMetadataMode(nextMode as KnowledgeRetrievalMetadataMode)
+          <div className="py-2">
+            <MetadataFilter
+              metadataList={metadataList}
+              selectedDatasetsLoaded
+              metadataFilterMode={metadataFilterMode}
+              metadataFilteringConditions={metadataFilteringConditions}
+              handleMetadataFilterModeChange={setMetadataFilterMode}
+              handleAddCondition={(metadataItem) => {
+                setMetadataFilteringConditions(current => ({
+                  ...current,
+                  conditions: [...current.conditions, createMetadataCondition(metadataItem)],
+                }))
               }}
-            >
-              <SelectTrigger
-                aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.metadata.modeLabel')}
-                size="small"
-                className="w-fit border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs"
-              >
-                {t(`agentDetail.configure.knowledgeRetrieval.dialog.metadata.${metadataMode}`)}
-              </SelectTrigger>
-              <SelectContent popupClassName="min-w-30">
-                {metadataModeOptions.map(mode => (
-                  <SelectItem key={mode} value={mode}>
-                    <SelectItemText>
-                      {t(`agentDetail.configure.knowledgeRetrieval.dialog.metadata.${mode}`)}
-                    </SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="button" variant="secondary" size="small" className="h-6 gap-1 px-1.5">
-              <span aria-hidden className="i-ri-filter-3-line size-3.5" />
-              <span className="system-xs-medium">
-                {t('agentDetail.configure.knowledgeRetrieval.dialog.metadata.conditions')}
-              </span>
-              <span className="flex min-w-4 items-center justify-center rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
-                2
-              </span>
-            </Button>
+              handleRemoveCondition={(conditionId) => {
+                setMetadataFilteringConditions(current => ({
+                  ...current,
+                  conditions: current.conditions.filter(condition => condition.id !== conditionId),
+                }))
+              }}
+              handleToggleConditionLogicalOperator={() => {
+                setMetadataFilteringConditions(current => ({
+                  ...current,
+                  logical_operator: current.logical_operator === LogicalOperator.and
+                    ? LogicalOperator.or
+                    : LogicalOperator.and,
+                }))
+              }}
+              handleUpdateCondition={(conditionId, nextCondition) => {
+                setMetadataFilteringConditions(current => ({
+                  ...current,
+                  conditions: current.conditions.map(condition => condition.id === conditionId ? nextCondition : condition),
+                }))
+              }}
+              metadataModelConfig={metadataModelConfig}
+              handleMetadataModelChange={(model) => {
+                setMetadataModelConfig(current => ({
+                  provider: model.provider,
+                  name: model.modelId,
+                  mode: model.mode ?? current?.mode ?? AppModeEnum.CHAT,
+                  completion_params: current?.completion_params ?? { temperature: 0.7 },
+                }))
+              }}
+              handleMetadataCompletionParamsChange={(completionParams) => {
+                setMetadataModelConfig(current => ({
+                  provider: current?.provider ?? '',
+                  name: current?.name ?? '',
+                  mode: current?.mode ?? AppModeEnum.CHAT,
+                  completion_params: completionParams,
+                }))
+              }}
+            />
           </div>
         </div>
 

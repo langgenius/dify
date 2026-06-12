@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import { useTools } from '@/features/agent-v2/agent-composer/store'
+import { useRemoveProviderTool, useRemoveProviderToolAction, useTools } from '@/features/agent-v2/agent-composer/store'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -21,6 +21,8 @@ function AgentToolItem({
   onOpenChange,
   onConfigureAction,
   onDeleteCliTool,
+  onDeleteProviderTool,
+  onDeleteProviderToolAction,
   onEditCliTool,
 }: {
   tool: AgentTool
@@ -28,10 +30,22 @@ function AgentToolItem({
   onOpenChange: (open: boolean) => void
   onConfigureAction: (target: ToolSettingTarget) => void
   onDeleteCliTool: (toolId: string) => void
+  onDeleteProviderTool: (toolId: string) => void
+  onDeleteProviderToolAction: (toolId: string, actionId: string) => void
   onEditCliTool: (tool: AgentCliTool) => void
 }) {
-  if (tool.kind === 'provider')
-    return <AgentProviderToolItem tool={tool} isExpanded={isExpanded} onOpenChange={onOpenChange} onConfigureAction={onConfigureAction} />
+  if (tool.kind === 'provider') {
+    return (
+      <AgentProviderToolItem
+        tool={tool}
+        isExpanded={isExpanded}
+        onOpenChange={onOpenChange}
+        onConfigureAction={onConfigureAction}
+        onRemoveAction={actionId => onDeleteProviderToolAction(tool.id, actionId)}
+        onRemoveProvider={() => onDeleteProviderTool(tool.id)}
+      />
+    )
+  }
 
   return (
     <AgentCliToolItem
@@ -219,6 +233,8 @@ const addProviderTools = (
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
   const [tools, setTools] = useTools()
+  const removeProviderTool = useRemoveProviderTool()
+  const removeProviderToolAction = useRemoveProviderToolAction()
   const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
   const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
   const [isCliToolDialogOpen, setIsCliToolDialogOpen] = useState(false)
@@ -260,6 +276,29 @@ export function AgentTools() {
 
     setIsCliToolDialogOpen(open)
   }
+  const closeSettingTargetIfRemoved = (toolId: string, actionId?: string) => {
+    setSettingTarget((target) => {
+      if (!target || target.tool.id !== toolId)
+        return target
+      if (actionId && target.action.id !== actionId)
+        return target
+
+      return null
+    })
+  }
+  const deleteProviderTool = (toolId: string) => {
+    setExpandedToolIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      nextIds.delete(toolId)
+      return nextIds
+    })
+    closeSettingTargetIfRemoved(toolId)
+    removeProviderTool(toolId)
+  }
+  const deleteProviderToolAction = (toolId: string, actionId: string) => {
+    closeSettingTargetIfRemoved(toolId, actionId)
+    removeProviderToolAction(toolId, actionId)
+  }
   const selectedTools = tools.flatMap(toSelectedToolValue)
 
   return (
@@ -295,6 +334,8 @@ export function AgentTools() {
                 onOpenChange={open => setToolOpen(tool, open)}
                 onConfigureAction={setSettingTarget}
                 onDeleteCliTool={toolId => setTools(tools.filter(tool => tool.id !== toolId))}
+                onDeleteProviderTool={deleteProviderTool}
+                onDeleteProviderToolAction={deleteProviderToolAction}
                 onEditCliTool={(tool) => {
                   setEditingCliTool(tool)
                   setIsCliToolDialogOpen(true)

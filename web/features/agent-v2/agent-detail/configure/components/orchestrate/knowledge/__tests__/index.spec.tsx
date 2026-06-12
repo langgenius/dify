@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -6,10 +7,14 @@ import { defaultAgentConfigureDraft } from '../../../../draft'
 import { AgentKnowledgeRetrieval } from '../index'
 
 function renderKnowledgeRetrieval() {
+  const queryClient = new QueryClient()
+
   return render(
-    <AgentComposerProvider initialDraft={defaultAgentConfigureDraft}>
-      <AgentKnowledgeRetrieval />
-    </AgentComposerProvider>,
+    <QueryClientProvider client={queryClient}>
+      <AgentComposerProvider initialDraft={defaultAgentConfigureDraft}>
+        <AgentKnowledgeRetrieval />
+      </AgentComposerProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -40,9 +45,12 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
-      expect(within(dialog).getByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.empty')).toBeInTheDocument()
+      expect(within(dialog).getByText('appDebug.datasetConfig.knowledgeTip')).toBeInTheDocument()
       expect(within(dialog).getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.metadata.conditions 2',
+        name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
+      })).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', {
+        name: 'workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title',
       })).toBeInTheDocument()
     })
 

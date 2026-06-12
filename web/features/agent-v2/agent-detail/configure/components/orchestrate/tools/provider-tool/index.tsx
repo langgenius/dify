@@ -9,6 +9,12 @@ import {
   CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
@@ -104,11 +110,15 @@ export function AgentProviderToolItem({
   isExpanded,
   onOpenChange,
   onConfigureAction,
+  onRemoveAction,
+  onRemoveProvider,
 }: {
   tool: AgentProviderTool
   isExpanded: boolean
   onOpenChange: (open: boolean) => void
   onConfigureAction: (target: ToolSettingTarget) => void
+  onRemoveAction: (actionId: string) => void
+  onRemoveProvider: () => void
 }) {
   const { t } = useTranslation('agentV2')
 
@@ -135,6 +145,25 @@ export function AgentProviderToolItem({
             />
           </span>
         </CollapsibleTrigger>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger
+            aria-label={t('agentDetail.configure.tools.moreActions', { name: tool.name })}
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+          >
+            <span className="sr-only">{t('agentDetail.configure.tools.moreActions', { name: tool.name })}</span>
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+            <DropdownMenuItem
+              variant="destructive"
+              className="gap-2"
+              onClick={onRemoveProvider}
+            >
+              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+              <span>{t('agentDetail.configure.tools.removeProvider')}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <CredentialStatus credentialKey={tool.credentialKey} variant={tool.credentialVariant} />
       </div>
 
@@ -163,6 +192,7 @@ export function AgentProviderToolItem({
                 <button
                   type="button"
                   aria-label={t('agentDetail.configure.tools.removeAction', { name: action.name })}
+                  onClick={() => onRemoveAction(action.id)}
                   className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 >
                   <span aria-hidden className="i-ri-delete-bin-line size-4" />

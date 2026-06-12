@@ -414,6 +414,58 @@ export function useToolSettings() {
   return [toolSettings, setToolSettings] as const
 }
 
+const omitToolSettings = (
+  toolSettings: AgentComposerDraft['toolSettings'],
+  actionIds: string[],
+) => {
+  const nextToolSettings = { ...toolSettings }
+
+  actionIds.forEach((actionId) => {
+    delete nextToolSettings[actionId]
+  })
+
+  return nextToolSettings
+}
+
+export function useRemoveProviderTool() {
+  const setDraft = useSetAtom(agentComposerDraftAtom)
+
+  return useCallback((toolId: string) => {
+    setDraft((draft) => {
+      const toolToRemove = draft.tools.find(tool => tool.kind === 'provider' && tool.id === toolId)
+      const actionIds = toolToRemove?.kind === 'provider'
+        ? toolToRemove.actions.map(action => action.id)
+        : []
+
+      return {
+        ...draft,
+        tools: draft.tools.filter(tool => tool.id !== toolId),
+        toolSettings: omitToolSettings(draft.toolSettings, actionIds),
+      }
+    })
+  }, [setDraft])
+}
+
+export function useRemoveProviderToolAction() {
+  const setDraft = useSetAtom(agentComposerDraftAtom)
+
+  return useCallback((toolId: string, actionId: string) => {
+    setDraft(draft => ({
+      ...draft,
+      tools: draft.tools.flatMap((tool) => {
+        if (tool.kind !== 'provider' || tool.id !== toolId)
+          return [tool]
+
+        const nextActions = tool.actions.filter(action => action.id !== actionId)
+        return nextActions.length > 0
+          ? [{ ...tool, actions: nextActions }]
+          : []
+      }),
+      toolSettings: omitToolSettings(draft.toolSettings, [actionId]),
+    }))
+  }, [setDraft])
+}
+
 export function useRemoveSkill() {
   const setDraft = useSetAtom(agentComposerDraftAtom)
   return useCallback((skillId: string) => {

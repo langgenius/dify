@@ -162,6 +162,7 @@
   "agentDetail.configure.tools.pluginType": "Plugin",
   "agentDetail.configure.tools.preAuthorize": "Pre-authorize",
   "agentDetail.configure.tools.removeAction": "Remove {{name}}",
+  "agentDetail.configure.tools.removeProvider": "Remove all tools",
   "agentDetail.configure.tools.tip": "Tools this agent can call while orchestrating tasks.",
   "agentDetail.configure.tools.toggle": "Toggle tools",
   "agentDetail.documentTitle": "Agent",
