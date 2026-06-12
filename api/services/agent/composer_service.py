@@ -26,6 +26,7 @@ from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
 from models.workflow import Workflow
+from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import AgentNameConflictError, AgentNotFoundError, AgentVersionNotFoundError
 from services.entities.agent_entities import (
@@ -229,6 +230,7 @@ class AgentComposerService:
                 version_note=payload.version_note,
             )
             agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         else:
             current_snapshot = cls._require_version(
                 tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
@@ -241,6 +243,7 @@ class AgentComposerService:
                 version_note=payload.version_note,
             )
             agent.active_config_snapshot_id = version.id
+            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
             agent.updated_by = account_id
 
         db.session.commit()
@@ -605,6 +608,7 @@ class AgentComposerService:
         )
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         if payload.node_job is not None:
@@ -634,6 +638,7 @@ class AgentComposerService:
         )
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         binding.updated_by = account_id
@@ -753,6 +758,7 @@ class AgentComposerService:
             version_note=None,
         )
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
         return agent
 
     @classmethod
@@ -792,6 +798,7 @@ class AgentComposerService:
             version_note=version_note,
         )
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
         return agent
 
     @classmethod
