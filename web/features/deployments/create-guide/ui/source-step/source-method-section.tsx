@@ -8,7 +8,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
 import { methodAtom, selectMethodAtom } from '@/features/deployments/create-guide/state'
-import { StepShell } from '../shell/layout'
+import { StepShell } from '../layout'
 
 function SourceMethodCard({ value, icon, title, description, badge }: {
   value: GuideMethod

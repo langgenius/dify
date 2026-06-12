@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { CreateDeploymentGuideProvider } from './state/provider'
-import { CreateDeploymentGuideShell } from './ui/shell/guide-shell'
+import { CreateDeploymentGuideShell } from './ui/shell'
 
 export function CreateDeploymentGuide() {
   const { t } = useTranslation('deployments')

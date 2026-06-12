@@ -3,9 +3,14 @@
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import { dslFileAtom, selectDslFileAtom } from '@/features/deployments/create-guide/state'
-import { StepShell } from '../../shell/layout'
-import { DslReadStatus } from './read-status'
+import {
+  dslFileAtom,
+  dslReadErrorAtom,
+  dslUnsupportedModeAtom,
+  isReadingDslAtom,
+  selectDslFileAtom,
+} from '@/features/deployments/create-guide/state'
+import { StepShell } from '../layout'
 
 export function DslUploadSection() {
   const { t } = useTranslation('deployments')
@@ -30,5 +35,32 @@ export function DslUploadSection() {
         <DslReadStatus />
       </div>
     </StepShell>
+  )
+}
+
+function DslReadStatus() {
+  const { t } = useTranslation('deployments')
+  const isReadingDsl = useAtomValue(isReadingDslAtom)
+  const dslReadError = useAtomValue(dslReadErrorAtom)
+  const dslUnsupportedMode = useAtomValue(dslUnsupportedModeAtom)
+
+  return (
+    <>
+      {isReadingDsl && (
+        <div className="system-xs-regular text-text-tertiary">
+          {t('createGuide.dsl.reading')}
+        </div>
+      )}
+      {dslReadError && (
+        <div className="system-xs-regular text-text-destructive">
+          {t('createGuide.dsl.readFailed')}
+        </div>
+      )}
+      {dslUnsupportedMode && (
+        <div role="alert" className="system-xs-regular text-text-destructive">
+          {t('createGuide.dsl.unsupportedMode')}
+        </div>
+      )}
+    </>
   )
 }

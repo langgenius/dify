@@ -12,7 +12,7 @@ import {
   selectBindingAtom,
   unsupportedDslNodesAtom,
 } from '@/features/deployments/create-guide/state'
-import { TargetBindingSkeleton } from '../skeletons'
+import { TargetBindingSkeleton } from './skeletons'
 
 export function TargetBindingSection() {
   const { t } = useTranslation('deployments')

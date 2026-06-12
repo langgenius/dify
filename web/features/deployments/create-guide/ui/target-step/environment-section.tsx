@@ -13,7 +13,7 @@ import {
   effectiveSelectedEnvironmentIdAtom,
   selectedEnvironmentIdAtom,
 } from '@/features/deployments/create-guide/state'
-import { TargetEnvironmentSkeleton } from '../skeletons'
+import { TargetEnvironmentSkeleton } from './skeletons'
 
 function EnvironmentOptionRow({ environment }: {
   environment: Environment
