@@ -9,6 +9,7 @@ import { collaborationManager } from '@/app/components/workflow/collaboration/co
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { postWithKeepalive } from '@/service/fetch'
@@ -32,7 +33,13 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
-    const nodes = getNodes().filter(node => !node.data?._isTempNode)
+    const allNodes = getNodes()
+    const nodes = allNodes.filter(node => !node.data?._isTempNode && node.data?.type !== BlockEnum.StartPlaceholder)
+    const skippedNodeIds = new Set(
+      allNodes
+        .filter(node => node.data?._isTempNode || node.data?.type === BlockEnum.StartPlaceholder)
+        .map(node => node.id),
+    )
     const [x, y, zoom] = transform
     const {
       appId,
@@ -54,7 +61,7 @@ export const useNodesSyncDraft = () => {
         })
       })
     })
-    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
+    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp && !skippedNodeIds.has(edge.source) && !skippedNodeIds.has(edge.target)), (draft) => {
       draft.forEach((edge) => {
         Object.keys(edge.data).forEach((key) => {
           if (key.startsWith('_'))

@@ -14,6 +14,7 @@ const mockWorkflowStoreSetState = vi.fn()
 const mockWorkflowStoreGetState = vi.fn()
 const mockFetchNodesDefaultConfigs = vi.fn()
 const mockFetchPublishedWorkflow = vi.fn()
+const mockSyncWorkflowDraft = vi.fn()
 
 let appStoreState: {
   appDetail: {
@@ -43,7 +44,12 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('../use-workflow-template', () => ({
-  useWorkflowTemplate: () => ({ nodes: [], edges: [] }),
+  useWorkflowTemplate: () => ({
+    nodes: appStoreState.appDetail.mode === 'workflow'
+      ? [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }]
+      : [{ id: 'start', data: { type: BlockEnum.Start } }],
+    edges: [],
+  }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -55,7 +61,6 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 const mockFetchWorkflowDraft = vi.fn()
-const mockSyncWorkflowDraft = vi.fn()
 
 vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: (...args: unknown[]) => mockFetchWorkflowDraft(...args),
@@ -71,13 +76,17 @@ const notExistError = () => ({
 
 const draftResponse = {
   id: 'draft-id',
-  graph: { nodes: [], edges: [] },
+  graph: {
+    nodes: [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+    edges: [],
+  },
   hash: 'server-hash',
   created_at: 0,
   created_by: { id: '', name: '', email: '' },
   updated_at: 1,
   updated_by: { id: '', name: '', email: '' },
   tool_published: false,
+  features: { retriever_resource: { enabled: true } },
   environment_variables: [],
   conversation_variables: [],
   version: '1',
@@ -85,7 +94,7 @@ const draftResponse = {
   marked_comment: '',
 }
 
-describe('useWorkflowInit — hash fix (draft_workflow_not_exist)', () => {
+describe('useWorkflowInit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appStoreState = {
@@ -103,32 +112,115 @@ describe('useWorkflowInit — hash fix (draft_workflow_not_exist)', () => {
     mockFetchPublishedWorkflow.mockResolvedValue({ created_at: 0, graph: { nodes: [], edges: [] } })
     mockFetchWorkflowDraft
       .mockRejectedValueOnce(notExistError())
-      .mockResolvedValueOnce(draftResponse)
-    mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
+    mockSyncWorkflowDraft.mockReset()
   })
 
-  it('should call setSyncWorkflowDraftHash with hash returned by syncWorkflowDraft', async () => {
-    renderHook(() => useWorkflowInit())
-    await waitFor(() => expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash'))
-  })
-
-  it('should store hash BEFORE making the recursive fetchWorkflowDraft call', async () => {
-    const order: string[] = []
-    mockSetSyncWorkflowDraftHash.mockImplementation((h: string) => order.push(`hash:${h}`))
+  it('should create an empty backend draft and restore a local start placeholder when the workflow draft does not exist', async () => {
     mockFetchWorkflowDraft
       .mockReset()
       .mockRejectedValueOnce(notExistError())
-      .mockImplementationOnce(async () => {
-        order.push('fetch:2')
-        return draftResponse
+      .mockResolvedValueOnce({
+        ...draftResponse,
+        graph: { nodes: [], edges: [] },
+        hash: 'new-workflow-hash',
       })
+    mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.graph.nodes).toEqual([
+        { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+      ])
+    })
+
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
+      showOnboarding: false,
+      shouldAutoOpenStartNodeSelector: false,
+      hasSelectedStartNode: false,
+      hasShownOnboarding: true,
+    }))
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({
+        graph: {
+          nodes: [],
+          edges: [],
+        },
+      }),
+    }))
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-workflow-hash')
+  })
+
+  it('should keep creating the first backend draft for advanced chat apps', async () => {
+    appStoreState = {
+      appDetail: { id: 'app-1', name: 'Test', mode: 'advanced-chat' },
+    }
+    mockFetchWorkflowDraft
+      .mockReset()
+      .mockRejectedValueOnce(notExistError())
+      .mockResolvedValueOnce(draftResponse)
     mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new-hash', updated_at: 1 })
 
     renderHook(() => useWorkflowInit())
 
-    await waitFor(() => expect(order).toContain('fetch:2'))
-    expect(order).toContain('hash:new-hash')
-    expect(order.indexOf('hash:new-hash')).toBeLessThan(order.indexOf('fetch:2'))
+    await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
+      params: expect.objectContaining({
+        graph: {
+          nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+          edges: [],
+        },
+      }),
+    })))
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
+      showOnboarding: false,
+      shouldAutoOpenStartNodeSelector: false,
+      hasShownOnboarding: false,
+    }))
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+  })
+
+  it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+      ...draftResponse,
+      graph: { nodes: [], edges: [] },
+      hash: 'empty-draft-hash',
+    })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.graph.nodes).toEqual([
+        { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+      ])
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('empty-draft-hash')
+  })
+
+  it('should preserve existing draft nodes when restoring the local start placeholder', async () => {
+    const existingNode = { id: 'llm', data: { type: BlockEnum.LLM } }
+    const existingEdge = { source: 'llm', target: 'answer' }
+    mockFetchWorkflowDraft.mockReset().mockResolvedValue({
+      ...draftResponse,
+      graph: {
+        nodes: [existingNode],
+        edges: [existingEdge],
+      },
+    })
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.data?.graph.nodes).toEqual([
+        { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+        existingNode,
+      ])
+    })
+
+    expect(result.current.data?.graph.edges).toEqual([existingEdge])
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
   })
 
   it('should hydrate draft state, preload defaults, and derive published workflow metadata on success', async () => {
