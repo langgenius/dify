@@ -12,7 +12,8 @@ const varsAppendStartNodeKeys = ['query', 'files']
 const useInspectVarsCrud = () => {
   const partOfNodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
   const configsMap = useHooksStore(s => s.configsMap)
-  const shouldSkipSharedVariableQueries = configsMap?.flowType === FlowType.ragPipeline || configsMap?.flowType === FlowType.snippet
+  const shouldSkipSharedVariableQueries = configsMap?.flowType === FlowType.ragPipeline
+    || configsMap?.flowType === FlowType.snippet
   const variableFlowId = shouldSkipSharedVariableQueries ? '' : configsMap?.flowId
   const { data: conversationVars } = useConversationVarValues(configsMap?.flowType, variableFlowId)
   const { data: allSystemVars } = useSysVarValues(configsMap?.flowType, variableFlowId)

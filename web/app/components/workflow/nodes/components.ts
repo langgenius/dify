@@ -40,6 +40,8 @@ import ParameterExtractorNode from './parameter-extractor/node'
 import ParameterExtractorPanel from './parameter-extractor/panel'
 import QuestionClassifierNode from './question-classifier/node'
 import QuestionClassifierPanel from './question-classifier/panel'
+import StartPlaceholderNode from './start-placeholder/node'
+import StartPlaceholderPanel from './start-placeholder/panel'
 import StartNode from './start/node'
 import StartPanel from './start/panel'
 import TemplateTransformNode from './template-transform/node'
@@ -75,6 +77,7 @@ function WorkflowAgentPanel(props: WorkflowAgentPanelProps) {
 
 export const NodeComponentMap = {
   [BlockEnum.Start]: StartNode,
+  [BlockEnum.StartPlaceholder]: StartPlaceholderNode,
   [BlockEnum.End]: EndNode,
   [BlockEnum.Answer]: AnswerNode,
   [BlockEnum.LLM]: LLMNode,
@@ -105,6 +108,7 @@ export const NodeComponentMap = {
 
 export const PanelComponentMap = {
   [BlockEnum.Start]: StartPanel,
+  [BlockEnum.StartPlaceholder]: StartPlaceholderPanel,
   [BlockEnum.End]: EndPanel,
   [BlockEnum.Answer]: AnswerPanel,
   [BlockEnum.LLM]: LLMPanel,

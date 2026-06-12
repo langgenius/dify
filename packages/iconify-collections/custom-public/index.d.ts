@@ -1,4 +1,4 @@
-export type IconifyJSON = {
+export interface IconifyJSON {
   prefix: string
   icons: Record<string, IconifyIcon>
   aliases?: Record<string, IconifyAlias>
@@ -7,7 +7,7 @@ export type IconifyJSON = {
   lastModified?: number
 }
 
-export type IconifyIcon = {
+export interface IconifyIcon {
   body: string
   left?: number
   top?: number
@@ -18,11 +18,11 @@ export type IconifyIcon = {
   vFlip?: boolean
 }
 
-export type IconifyAlias = {
+export interface IconifyAlias extends Omit<IconifyIcon, 'body'> {
   parent: string
-} & Omit<IconifyIcon, 'body'>
+}
 
-export type IconifyInfo = {
+export interface IconifyInfo {
   prefix: string
   name: string
   total: number
@@ -40,11 +40,11 @@ export type IconifyInfo = {
   palette?: boolean
 }
 
-export type IconifyMetaData = {
+export interface IconifyMetaData {
   [key: string]: unknown
 }
 
-export type IconifyChars = {
+export interface IconifyChars {
   [key: string]: string
 }
 
@@ -52,3 +52,4 @@ export declare const icons: IconifyJSON
 export declare const info: IconifyInfo
 export declare const metadata: IconifyMetaData
 export declare const chars: IconifyChars
+
