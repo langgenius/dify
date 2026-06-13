@@ -88,12 +88,12 @@ export const exportAppConfig = ({ appID, include = false, workflowID }: { appID:
   return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
 }
 
-export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode, yaml_content?: string, yaml_url?: string, app_id?: string, name?: string, description?: string, icon_type?: AppIconType, icon?: string, icon_background?: string }): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>('apps/imports', { body: { mode, yaml_content, yaml_url, app_id, name, description, icon, icon_type, icon_background } })
+export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode, yaml_content?: string, yaml_url?: string, app_id?: string, name?: string, description?: string, icon_type?: AppIconType, icon?: string, icon_background?: string }, { silent }: { silent?: boolean } = {}): Promise<DSLImportResponse> => {
+  return post<DSLImportResponse>('apps/imports', { body: { mode, yaml_content, yaml_url, app_id, name, description, icon, icon_type, icon_background } }, { silent })
 }
 
-export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<DSLImportResponse> => {
-  return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
+export const importDSLConfirm = ({ import_id }: { import_id: string }, { silent }: { silent?: boolean } = {}): Promise<DSLImportResponse> => {
+  return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} }, { silent })
 }
 
 export const switchApp = ({ appID, name, icon_type, icon, icon_background }: { appID: string, name: string, icon_type: AppIconType, icon: string, icon_background?: string | null }): Promise<{ new_app_id: string }> => {

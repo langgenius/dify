@@ -220,7 +220,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSL).toHaveBeenCalledWith({
       mode: DSLImportMode.YAML_URL,
       yaml_url: 'https://example.com/app.yml',
-    })
+    }, { silent: true })
     expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload', appMode: AppModeEnum.CHAT })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
@@ -256,7 +256,7 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSL).toHaveBeenCalledWith({
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: 'app: demo',
-    })
+    }, { silent: true })
   })
 
   it('should remove the current file and keep the create shortcut guarded', async () => {
@@ -326,7 +326,7 @@ describe('CreateFromDSLModal', () => {
 
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
-    })
+    }, { silent: true })
     expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload', appMode: AppModeEnum.WORKFLOW })
   })
 
@@ -465,7 +465,7 @@ describe('CreateFromDSLModal', () => {
       expect(mockImportDSL).toHaveBeenCalledWith({
         mode: DSLImportMode.YAML_URL,
         yaml_url: 'https://example.com/app.yml',
-      })
+      }, { silent: true })
     })
 
     mockPlanUsage = 1
