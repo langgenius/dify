@@ -14,7 +14,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import AgentFileRefConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -1413,6 +1413,54 @@ def test_remove_drive_refs_drops_file_by_key(monkeypatch):
 
     assert version_id == "snap-2"
     assert [f.drive_key for f in captured["agent_soul"].skills_files.files] == ["files/keep.pdf"]
+
+
+def test_add_drive_file_ref_adds_or_replaces_file_and_versions(monkeypatch):
+    soul_dict = {
+        "skills_files": {
+            "skills": [],
+            "files": [
+                {"name": "old.pdf", "drive_key": "files/old.pdf"},
+                {"name": "stale.pdf", "drive_key": "files/new.pdf"},
+            ],
+        }
+    }
+    agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    version_id = AgentComposerService.add_drive_file_ref(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="acc-1",
+        file_ref=AgentFileRefConfig(name="new.pdf", file_id="uf-1", drive_key="files/new.pdf", type="application/pdf"),
+    )
+
+    assert version_id == "snap-2"
+    assert agent.active_config_snapshot_id == "snap-2"
+    assert [f.drive_key for f in captured["agent_soul"].skills_files.files] == ["files/old.pdf", "files/new.pdf"]
+    assert captured["agent_soul"].skills_files.files[-1].name == "new.pdf"
+    assert "new.pdf" in str(captured["version_note"])
+    assert committed.get("committed") is True
+
+
+def test_add_drive_file_ref_syncs_workflow_binding_snapshot(monkeypatch):
+    binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="snap-1", updated_by=None)
+    _patch_remove_drive_refs_env(monkeypatch, soul_dict={"skills_files": {"skills": [], "files": []}})
+    monkeypatch.setattr(
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: binding))
+
+    AgentComposerService.add_drive_file_ref(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="acc-1",
+        file_ref=AgentFileRefConfig(name="new.pdf", file_id="uf-1", drive_key="files/new.pdf"),
+        app_id="app-1",
+        node_id="agent-node-1",
+    )
+
+    assert binding.current_snapshot_id == "snap-2"
+    assert binding.updated_by == "acc-1"
 
 
 def test_remove_drive_refs_requires_exactly_one_scope():

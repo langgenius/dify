@@ -21,6 +21,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import (
+    AgentFileRefConfig,
     DeclaredOutputConfig,
 )
 from models.agent_config_entities import (
@@ -316,6 +317,8 @@ class AgentComposerService:
         account_id: str,
         skill_slug: str | None = None,
         file_key: str | None = None,
+        app_id: str | None = None,
+        node_id: str | None = None,
     ) -> str | None:
         """Drop the soul refs backed by a drive skill/file before the drive rows go.
 
@@ -368,6 +371,66 @@ class AgentComposerService:
         )
         agent.active_config_snapshot_id = version.id
         agent.updated_by = account_id
+        cls._sync_draft_binding_snapshot(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            node_id=node_id,
+            agent_id=agent_id,
+            snapshot_id=version.id,
+            account_id=account_id,
+        )
+        db.session.commit()
+        return version.id
+
+    @classmethod
+    def add_drive_file_ref(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        file_ref: AgentFileRefConfig,
+        app_id: str | None = None,
+        node_id: str | None = None,
+    ) -> str | None:
+        """Add or replace one drive-backed file ref in the active Agent Soul.
+
+        ``POST /agent/files`` is an ADD FILE user action, not just a low-level
+        drive commit. The committed file must be present in ``skills_files.files``
+        because runtime ``dify.drive`` is built from the active Agent Soul.
+        """
+        if not file_ref.drive_key:
+            raise ValueError("file_ref.drive_key is required")
+        agent = db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        if agent is None or not agent.active_config_snapshot_id:
+            return None
+        current_snapshot = cls._require_version(
+            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
+        )
+        agent_soul = AgentSoulConfig.model_validate(current_snapshot.config_snapshot_dict)
+        kept_files = [item for item in agent_soul.skills_files.files if item.drive_key != file_ref.drive_key]
+        kept_files.append(file_ref)
+        agent_soul.skills_files.files = kept_files
+
+        display = file_ref.name or file_ref.drive_key
+        version = cls._update_current_version(
+            current_snapshot=current_snapshot,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+            version_note=f"Added file '{display}' to the drive.",
+        )
+        agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.updated_by = account_id
+        cls._sync_draft_binding_snapshot(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            node_id=node_id,
+            agent_id=agent_id,
+            snapshot_id=version.id,
+            account_id=account_id,
+        )
         db.session.commit()
         return version.id
 
@@ -395,6 +458,30 @@ class AgentComposerService:
             return None
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
         return binding.agent_id if binding else None
+
+    @classmethod
+    def _sync_draft_binding_snapshot(
+        cls,
+        *,
+        tenant_id: str,
+        app_id: str | None,
+        node_id: str | None,
+        agent_id: str,
+        snapshot_id: str,
+        account_id: str,
+    ) -> None:
+        """Keep workflow node bindings on the new active snapshot after direct drive edits."""
+        if not app_id or not node_id:
+            return
+        try:
+            workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
+        except ValueError:
+            return
+        binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
+        if binding is None or binding.agent_id != agent_id:
+            return
+        binding.current_snapshot_id = snapshot_id
+        binding.updated_by = account_id
 
     @classmethod
     def _drive_ref_findings(

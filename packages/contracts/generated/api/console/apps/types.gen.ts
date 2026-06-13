@@ -263,8 +263,30 @@ export type AgentDrivePreviewResponse = {
   truncated: boolean
 }
 
+export type AgentDriveDeleteResponse = {
+  config_version_id?: string | null
+  removed_keys?: Array<string>
+  result: string
+}
+
 export type AgentDriveFilePayload = {
   upload_file_id: string
+}
+
+export type AgentDriveFileCommitResponse = {
+  config_version_id?: string | null
+  file: AgentDriveFileResponse
+}
+
+export type AgentSkillUploadResponse = {
+  manifest: SkillManifest
+  skill: AgentSkillRefConfig
+}
+
+export type SkillToolInferenceResult = {
+  cli_tools?: Array<CliToolSuggestion>
+  inferable: boolean
+  reason?: string | null
 }
 
 export type AnnotationReplyPayload = {
@@ -1275,6 +1297,46 @@ export type AgentDriveItemResponse = {
   size?: number | null
 }
 
+export type AgentDriveFileResponse = {
+  drive_key: string
+  file_id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type SkillManifest = {
+  description: string
+  entry_path: string
+  files: Array<string>
+  hash: string
+  name: string
+  size: number
+}
+
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
+  id?: string | null
+  manifest_files?: Array<string> | null
+  name?: string | null
+  path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
+  [key: string]: unknown
+}
+
+export type CliToolSuggestion = {
+  command?: string
+  description?: string
+  env_suggestions?: Array<EnvSuggestion>
+  inferred_from?: string
+  install_commands?: Array<string>
+  name: string
+}
+
 export type AnnotationHitHistory = {
   annotation_content?: string | null
   annotation_question?: string | null
@@ -1860,6 +1922,12 @@ export type AgentModerationProviderConfig = {
   [key: string]: unknown
 }
 
+export type EnvSuggestion = {
+  key: string
+  reason?: string
+  secret_likely?: boolean
+}
+
 export type SimpleModelConfig = {
   model_dict?: JsonValue | null
   pre_prompt?: string | null
@@ -2068,20 +2136,6 @@ export type AgentFileRefConfig = {
   type?: string | null
   upload_file_id?: string | null
   url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
   [key: string]: unknown
 }
 
@@ -2882,16 +2936,15 @@ export type DeleteAppsByAppIdAgentFilesData = {
   path: {
     app_id: string
   }
-  query?: {
-    key?: string
+  query: {
+    key: string
+    node_id?: string
   }
   url: '/apps/{app_id}/agent/files'
 }
 
 export type DeleteAppsByAppIdAgentFilesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentDriveDeleteResponse
 }
 
 export type DeleteAppsByAppIdAgentFilesResponse
@@ -2902,14 +2955,14 @@ export type PostAppsByAppIdAgentFilesData = {
   path: {
     app_id: string
   }
-  query?: never
+  query?: {
+    node_id?: string
+  }
   url: '/apps/{app_id}/agent/files'
 }
 
 export type PostAppsByAppIdAgentFilesResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: AgentDriveFileCommitResponse
 }
 
 export type PostAppsByAppIdAgentFilesResponse
@@ -2950,7 +3003,9 @@ export type PostAppsByAppIdAgentSkillsStandardizeData = {
   path: {
     app_id: string
   }
-  query?: never
+  query?: {
+    node_id?: string
+  }
   url: '/apps/{app_id}/agent/skills/standardize'
 }
 
@@ -2964,9 +3019,7 @@ export type PostAppsByAppIdAgentSkillsStandardizeError
   = PostAppsByAppIdAgentSkillsStandardizeErrors[keyof PostAppsByAppIdAgentSkillsStandardizeErrors]
 
 export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: AgentSkillUploadResponse
 }
 
 export type PostAppsByAppIdAgentSkillsStandardizeResponse
@@ -2991,9 +3044,7 @@ export type PostAppsByAppIdAgentSkillsUploadError
   = PostAppsByAppIdAgentSkillsUploadErrors[keyof PostAppsByAppIdAgentSkillsUploadErrors]
 
 export type PostAppsByAppIdAgentSkillsUploadResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: AgentSkillUploadResponse
 }
 
 export type PostAppsByAppIdAgentSkillsUploadResponse
@@ -3005,14 +3056,14 @@ export type DeleteAppsByAppIdAgentSkillsBySlugData = {
     app_id: string
     slug: string
   }
-  query?: never
+  query?: {
+    node_id?: string
+  }
   url: '/apps/{app_id}/agent/skills/{slug}'
 }
 
 export type DeleteAppsByAppIdAgentSkillsBySlugResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentDriveDeleteResponse
 }
 
 export type DeleteAppsByAppIdAgentSkillsBySlugResponse
@@ -3024,14 +3075,14 @@ export type PostAppsByAppIdAgentSkillsBySlugInferToolsData = {
     app_id: string
     slug: string
   }
-  query?: never
+  query?: {
+    node_id?: string
+  }
   url: '/apps/{app_id}/agent/skills/{slug}/infer-tools'
 }
 
 export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SkillToolInferenceResult
 }
 
 export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponse

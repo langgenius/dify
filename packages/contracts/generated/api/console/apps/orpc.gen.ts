@@ -8,6 +8,7 @@ import {
   zDeleteAppsByAppIdAgentFilesQuery,
   zDeleteAppsByAppIdAgentFilesResponse,
   zDeleteAppsByAppIdAgentSkillsBySlugPath,
+  zDeleteAppsByAppIdAgentSkillsBySlugQuery,
   zDeleteAppsByAppIdAgentSkillsBySlugResponse,
   zDeleteAppsByAppIdAnnotationsByAnnotationIdPath,
   zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse,
@@ -279,13 +280,16 @@ import {
   zPostAppsByAppIdAgentFeaturesResponse,
   zPostAppsByAppIdAgentFilesBody,
   zPostAppsByAppIdAgentFilesPath,
+  zPostAppsByAppIdAgentFilesQuery,
   zPostAppsByAppIdAgentFilesResponse,
   zPostAppsByAppIdAgentSandboxFilesUploadBody,
   zPostAppsByAppIdAgentSandboxFilesUploadPath,
   zPostAppsByAppIdAgentSandboxFilesUploadResponse,
   zPostAppsByAppIdAgentSkillsBySlugInferToolsPath,
+  zPostAppsByAppIdAgentSkillsBySlugInferToolsQuery,
   zPostAppsByAppIdAgentSkillsBySlugInferToolsResponse,
   zPostAppsByAppIdAgentSkillsStandardizePath,
+  zPostAppsByAppIdAgentSkillsStandardizeQuery,
   zPostAppsByAppIdAgentSkillsStandardizeResponse,
   zPostAppsByAppIdAgentSkillsUploadPath,
   zPostAppsByAppIdAgentSkillsUploadResponse,
@@ -1080,16 +1084,10 @@ export const drive = {
 
 /**
  * Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const delete_ = oc
   .route({
-    deprecated: true,
-    description:
-      'Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAgentFiles',
@@ -1099,7 +1097,7 @@ export const delete_ = oc
   .input(
     z.object({
       params: zDeleteAppsByAppIdAgentFilesPath,
-      query: zDeleteAppsByAppIdAgentFilesQuery.optional(),
+      query: zDeleteAppsByAppIdAgentFilesQuery,
     }),
   )
   .output(zDeleteAppsByAppIdAgentFilesResponse)
@@ -1108,16 +1106,10 @@ export const delete_ = oc
  * ADD FILE: commit one uploaded file into the bound agent's drive
  *
  * Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post12 = oc
   .route({
-    deprecated: true,
-    description:
-      'Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentFiles',
@@ -1126,7 +1118,13 @@ export const post12 = oc
     summary: 'ADD FILE: commit one uploaded file into the bound agent\'s drive',
     tags: ['console'],
   })
-  .input(z.object({ body: zPostAppsByAppIdAgentFilesBody, params: zPostAppsByAppIdAgentFilesPath }))
+  .input(
+    z.object({
+      body: zPostAppsByAppIdAgentFilesBody,
+      params: zPostAppsByAppIdAgentFilesPath,
+      query: zPostAppsByAppIdAgentFilesQuery.optional(),
+    }),
+  )
   .output(zPostAppsByAppIdAgentFilesResponse)
 
 export const files3 = {
@@ -1166,16 +1164,10 @@ export const logs = {
  * Upload a Skill, validate it, and standardize it into the app agent's drive
  *
  * Validate + standardize a Skill into the agent drive (ENG-594)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Validate + standardize a Skill into the agent drive (ENG-594)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Validate + standardize a Skill into the agent drive (ENG-594)',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentSkillsStandardize',
@@ -1184,7 +1176,12 @@ export const post13 = oc
     summary: 'Upload a Skill, validate it, and standardize it into the app agent\'s drive',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAppsByAppIdAgentSkillsStandardizePath }))
+  .input(
+    z.object({
+      params: zPostAppsByAppIdAgentSkillsStandardizePath,
+      query: zPostAppsByAppIdAgentSkillsStandardizeQuery.optional(),
+    }),
+  )
   .output(zPostAppsByAppIdAgentSkillsStandardizeResponse)
 
 export const standardize = {
@@ -1197,16 +1194,11 @@ export const standardize = {
  * Upload + validate a Skill package (.zip/.skill) and extract its manifest
  * Returns a validated skill ref (to bind into the Agent soul config on save)
  * plus its manifest. Standardizing into the agent drive is ENG-594.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post14 = oc
   .route({
-    deprecated: true,
     description:
-      'Upload + validate a Skill package (.zip/.skill) and extract its manifest\nReturns a validated skill ref (to bind into the Agent soul config on save)\nplus its manifest. Standardizing into the agent drive is ENG-594.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Upload + validate a Skill package (.zip/.skill) and extract its manifest\nReturns a validated skill ref (to bind into the Agent soul config on save)\nplus its manifest. Standardizing into the agent drive is ENG-594.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentSkillsUpload',
@@ -1227,16 +1219,11 @@ export const upload2 = {
  *
  * Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)
  * Saving still goes through composer validation.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post15 = oc
   .route({
-    deprecated: true,
     description:
-      'Infer CLI tool + ENV suggestions from a standardized skill\'s SKILL.md (draft only, ENG-371)\nSaving still goes through composer validation.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Infer CLI tool + ENV suggestions from a standardized skill\'s SKILL.md (draft only, ENG-371)\nSaving still goes through composer validation.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentSkillsBySlugInferTools',
@@ -1244,7 +1231,12 @@ export const post15 = oc
     summary: 'Suggest CLI tools/env for a skill',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAppsByAppIdAgentSkillsBySlugInferToolsPath }))
+  .input(
+    z.object({
+      params: zPostAppsByAppIdAgentSkillsBySlugInferToolsPath,
+      query: zPostAppsByAppIdAgentSkillsBySlugInferToolsQuery.optional(),
+    }),
+  )
   .output(zPostAppsByAppIdAgentSkillsBySlugInferToolsResponse)
 
 export const inferTools = {
@@ -1253,23 +1245,23 @@ export const inferTools = {
 
 /**
  * Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const delete2 = oc
   .route({
-    deprecated: true,
     description:
-      'Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAgentSkillsBySlug',
     path: '/apps/{app_id}/agent/skills/{slug}',
     tags: ['console'],
   })
-  .input(z.object({ params: zDeleteAppsByAppIdAgentSkillsBySlugPath }))
+  .input(
+    z.object({
+      params: zDeleteAppsByAppIdAgentSkillsBySlugPath,
+      query: zDeleteAppsByAppIdAgentSkillsBySlugQuery.optional(),
+    }),
+  )
   .output(zDeleteAppsByAppIdAgentSkillsBySlugResponse)
 
 export const bySlug = {
