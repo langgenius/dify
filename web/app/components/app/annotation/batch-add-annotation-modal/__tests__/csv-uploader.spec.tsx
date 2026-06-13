@@ -52,7 +52,10 @@ describe('CSVUploader', () => {
 
   it('should open the file picker when clicking browse', () => {
     const clickSpy = vi.spyOn(HTMLInputElement.prototype, 'click')
-    renderComponent()
+    const { container } = renderComponent()
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+
+    expect(fileInput).toHaveAttribute('accept', '.csv,.jsonl')
 
     fireEvent.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.browse' }))
 
@@ -142,5 +145,13 @@ describe('CSVUploader', () => {
 
     expect(updateFile).toHaveBeenCalledWith()
     expect(valueSetter).toHaveBeenCalledWith('')
+  })
+
+  it('should render selected jsonl file details', () => {
+    const file = new File(['{"question":"q","answer":"a"}'], 'annotations.jsonl', { type: 'application/jsonl' })
+    renderComponent({ file })
+
+    expect(screen.getByText('annotations')).toBeInTheDocument()
+    expect(screen.getByText('.jsonl')).toBeInTheDocument()
   })
 })

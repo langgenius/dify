@@ -36,15 +36,19 @@ const BatchModal: FC<IBatchModalProps> = ({
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
   const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
-  const [currentCSV, setCurrentCSV] = useState<File>()
-  const handleFile = (file?: File) => setCurrentCSV(file)
+  const [currentFile, setCurrentFile] = useState<File>()
+  const handleFile = (file?: File) => setCurrentFile(file)
 
   useEffect(() => {
     if (!isShow)
-      setCurrentCSV(undefined)
+      setCurrentFile(undefined)
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const getRunErrorMessage = (message?: string) => {
+    const runError = t('batchModal.runError', { ns: 'appAnnotation' })
+    return message ? `${runError}: ${message}` : `${runError}`
+  }
   const checkProcess = async (jobID: string) => {
     try {
       const res = await checkAnnotationBatchImportProgress({ jobID, appId })
@@ -52,38 +56,43 @@ const BatchModal: FC<IBatchModalProps> = ({
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
-        toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}`)
+        toast.error(getRunErrorMessage(res.error_msg))
       if (res.job_status === ProcessStatus.COMPLETED) {
         toast.success(`${t('batchModal.completed', { ns: 'appAnnotation' })}`)
         onAdded()
         onCancel()
       }
     }
-    catch (e: any) {
-      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+    catch (e: unknown) {
+      toast.error(getRunErrorMessage(e instanceof Error ? e.message : undefined))
     }
   }
 
-  const runBatch = async (csv: File) => {
+  const runBatch = async (file: File) => {
     const formData = new FormData()
-    formData.append('file', csv)
+    formData.append('file', file)
     try {
       const res = await annotationBatchImport({
         url: `/apps/${appId}/annotations/batch-import`,
         body: formData,
       })
+      if (res.error_msg || !res.job_id || !res.job_status) {
+        setImportStatus(ProcessStatus.ERROR)
+        toast.error(getRunErrorMessage(res.error_msg))
+        return
+      }
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
     }
-    catch (e: any) {
-      toast.error(`${t('batchModal.runError', { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+    catch (e: unknown) {
+      toast.error(getRunErrorMessage(e instanceof Error ? e.message : undefined))
     }
   }
 
   const handleSend = () => {
-    if (!currentCSV)
+    if (!currentFile)
       return
-    runBatch(currentCSV)
+    runBatch(currentFile)
   }
 
   return (
@@ -100,7 +109,7 @@ const BatchModal: FC<IBatchModalProps> = ({
           <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </button>
         <CSVUploader
-          file={currentCSV}
+          file={currentFile}
           updateFile={handleFile}
         />
         <CSVDownloader />
@@ -118,7 +127,7 @@ const BatchModal: FC<IBatchModalProps> = ({
           <Button
             variant="primary"
             onClick={handleSend}
-            disabled={isAnnotationFull || !currentCSV}
+            disabled={isAnnotationFull || !currentFile}
             loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}
           >
             {t('batchModal.run', { ns: 'appAnnotation' })}
