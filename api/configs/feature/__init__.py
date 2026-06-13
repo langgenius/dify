@@ -834,11 +834,6 @@ class WorkflowNodeExecutionConfig(BaseSettings):
         default=100,
     )
 
-    WORKFLOW_NODE_EXECUTION_STORAGE: str = Field(
-        default="rdbms",
-        description="Storage backend for WorkflowNodeExecution. Options: 'rdbms', 'hybrid'",
-    )
-
 
 class RepositoryConfig(BaseSettings):
     """
@@ -846,18 +841,12 @@ class RepositoryConfig(BaseSettings):
     """
 
     CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowExecution. Options: "
-        "'core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository' (default), "
-        "'core.repositories.celery_workflow_execution_repository.CeleryWorkflowExecutionRepository'",
+        description="Repository implementation for WorkflowExecution. Specify as a module path.",
         default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
     )
 
     CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
-        description="Repository implementation for WorkflowNodeExecution. Options: "
-        "'core.repositories.sqlalchemy_workflow_node_execution_repository."
-        "SQLAlchemyWorkflowNodeExecutionRepository' (default), "
-        "'core.repositories.celery_workflow_node_execution_repository."
-        "CeleryWorkflowNodeExecutionRepository'",
+        description="Repository implementation for WorkflowNodeExecution. Specify as a module path.",
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
     )
 

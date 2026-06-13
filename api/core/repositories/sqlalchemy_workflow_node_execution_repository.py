@@ -37,6 +37,10 @@ from models.model import UploadFile
 from models.workflow import WorkflowNodeExecutionOffload
 from services.file_service import FileService
 from services.variable_truncator import VariableTruncator
+from tasks.workflow_node_execution_tasks import (
+    save_workflow_node_execution_data_task,
+    save_workflow_node_execution_task,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +63,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     This implementation also includes an in-memory cache for node executions to improve
     performance by reducing database queries.
     """
+
+    _use_async_persistence: bool
 
     def __init__(
         self,
@@ -109,6 +115,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # Initialize FileService for handling offloaded data
         self._file_service = FileService(session_factory)
+        self._use_async_persistence = False
+
+    def set_async_persistence(self, enabled: bool) -> None:
+        """
+        Configure whether save operations should be queued through Celery.
+
+        Debug executions keep this disabled so node data is readable immediately. Non-debug
+        app executions enable it from the workflow persistence layer.
+        """
+        self._use_async_persistence = enabled
 
     def _create_truncator(self) -> VariableTruncator:
         return VariableTruncator(
@@ -338,6 +354,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Only the final call contains the complete inputs and outputs payloads, so earlier invocations
         # must tolerate missing data without attempting to offload variables.
 
+        if self._use_async_persistence:
+            self._queue_async_save(execution)
+            return
+
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
 
@@ -403,6 +423,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution):
+        if self._use_async_persistence:
+            self._queue_async_save_execution_data(execution)
+            return
+
         domain_model = execution
         with self._session_factory(expire_on_commit=False) as session:
             query = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel)).where(
@@ -459,6 +483,40 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         with self._session_factory() as session, session.begin():
             session.merge(db_model)
             session.flush()
+
+    def _queue_async_save(self, execution: WorkflowNodeExecution) -> None:
+        if not self._triggered_from:
+            raise ValueError("triggered_from is required in repository constructor")
+        if not self._creator_user_id:
+            raise ValueError("created_by is required in repository constructor")
+        if not self._creator_user_role:
+            raise ValueError("created_by_role is required in repository constructor")
+
+        save_workflow_node_execution_task.delay(
+            execution_data=execution.model_dump(),
+            tenant_id=self._tenant_id,
+            app_id=self._app_id or "",
+            triggered_from=self._triggered_from.value,
+            creator_user_id=self._creator_user_id,
+            creator_user_role=self._creator_user_role.value,
+        )
+
+    def _queue_async_save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+        if not self._triggered_from:
+            raise ValueError("triggered_from is required in repository constructor")
+        if not self._creator_user_id:
+            raise ValueError("created_by is required in repository constructor")
+        if not self._creator_user_role:
+            raise ValueError("created_by_role is required in repository constructor")
+
+        save_workflow_node_execution_data_task.delay(
+            execution_data=execution.model_dump(),
+            tenant_id=self._tenant_id,
+            app_id=self._app_id or "",
+            triggered_from=self._triggered_from.value,
+            creator_user_id=self._creator_user_id,
+            creator_user_role=self._creator_user_role.value,
+        )
 
     def get_db_models_by_workflow_run(
         self,
