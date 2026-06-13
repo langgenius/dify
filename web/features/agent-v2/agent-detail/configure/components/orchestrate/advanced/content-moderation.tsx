@@ -5,15 +5,13 @@ import type { Features } from '@/app/components/base/features/types'
 import type { ModerationConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import { useAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import { useAppFeatures, useSetAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import { ConfigureSection } from '../common/section'
 
@@ -32,7 +30,7 @@ function AgentContentModerationSettingsContent() {
   const { t } = useTranslation()
   const locale = useLocale()
   const featuresStore = useFeaturesStore()
-  const setDraft = useSetAtom(agentComposerDraftAtom)
+  const setAppFeatures = useSetAppFeatures()
   const { setShowModerationSettingModal } = useModalContext()
   const moderation = useFeatures(state => state.features.moderation)
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
@@ -50,14 +48,11 @@ function AgentContentModerationSettingsContent() {
       ...store.features,
       moderation: nextModeration,
     })
-    setDraft(draft => ({
-      ...draft,
-      appFeatures: {
-        ...draft.appFeatures,
-        sensitive_word_avoidance: nextModeration as AgentSoulAppFeaturesConfig['sensitive_word_avoidance'],
-      },
+    setAppFeatures(appFeatures => ({
+      ...appFeatures,
+      sensitive_word_avoidance: nextModeration as AgentSoulAppFeaturesConfig['sensitive_word_avoidance'],
     }))
-  }, [featuresStore, setDraft])
+  }, [featuresStore, setAppFeatures])
 
   const openSettings = useCallback((payload: ModerationConfig = moderation as ModerationConfig) => {
     setShowModerationSettingModal({

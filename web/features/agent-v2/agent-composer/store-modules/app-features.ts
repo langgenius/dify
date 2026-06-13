@@ -1,6 +1,6 @@
 import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agents/types.gen'
 import type { DraftFieldUpdate } from './utils'
-import { atom, useAtomValue } from 'jotai'
+import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
@@ -18,4 +18,8 @@ export const agentComposerAppFeaturesAtom = atom(
 
 export function useAppFeatures() {
   return useAtomValue(agentComposerAppFeaturesAtom)
+}
+
+export function useSetAppFeatures() {
+  return useSetAtom(agentComposerAppFeaturesAtom)
 }

@@ -2,14 +2,12 @@
 
 import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agents/types.gen'
 import type { Features } from '@/app/components/base/features/types'
-import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { useSetAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { Resolution, TransferMethod } from '@/types/app'
 
 type AgentChatFeaturesPanelProps = {
@@ -80,17 +78,14 @@ function AgentChatFeaturesPanelContent({
 }: AgentChatFeaturesPanelProps) {
   const { t } = useTranslation('agentV2')
   const featuresStore = useFeaturesStore()
-  const setDraft = useSetAtom(agentComposerDraftAtom)
+  const setAppFeatures = useSetAppFeatures()
   const handleChange = useCallback(() => {
     const features = featuresStore?.getState().features
     if (!features)
       return
 
-    setDraft((draft: AgentSoulConfigFormState) => ({
-      ...draft,
-      appFeatures: toAppFeatures(features, draft.appFeatures ?? appFeatures),
-    }))
-  }, [appFeatures, featuresStore, setDraft])
+    setAppFeatures(currentAppFeatures => toAppFeatures(features, currentAppFeatures ?? appFeatures))
+  }, [appFeatures, featuresStore, setAppFeatures])
 
   return (
     <NewFeaturePanel
