@@ -131,6 +131,7 @@ class AgentDriveService:
                     "mime_type": row.mime_type,
                     "file_kind": row.file_kind.value,
                     "file_id": row.file_id,
+                    "created_at": int(row.created_at.timestamp()) if row.created_at else None,
                 }
                 if include_download_url:
                     item["download_url"] = self._resolve_download_url(
@@ -168,6 +169,52 @@ class AgentDriveService:
         for storage_key in pending_storage_deletes:
             self._delete_storage(storage_key)
         return committed
+
+    def delete(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        prefix: str | None = None,
+        key: str | None = None,
+    ) -> list[str]:
+        """Delete drive entries by exact ``key`` or by ``prefix`` (ENG-625 D5).
+
+        Drive-owned values get their backing record + storage object cleaned via
+        the same ``_cleanup_value`` path commit-overwrite uses; shared values only
+        lose the KV row. Idempotent: deleting nothing returns ``[]``.
+        """
+        if (prefix is None) == (key is None):
+            raise AgentDriveError("invalid_delete_scope", "delete requires exactly one of prefix or key")
+        removed_keys: list[str] = []
+        pending_storage_deletes: list[str] = []
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            stmt = select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+            )
+            if key is not None:
+                stmt = stmt.where(AgentDriveFile.key == normalize_drive_key(key))
+            else:
+                stmt = stmt.where(AgentDriveFile.key.startswith(normalize_drive_key(prefix or "")))
+            rows = list(session.scalars(stmt))
+            for row in rows:
+                if row.value_owned_by_drive:
+                    self._cleanup_value(
+                        session,
+                        tenant_id=tenant_id,
+                        file_kind=row.file_kind,
+                        file_id=row.file_id,
+                        exclude_row_id=row.id,
+                        pending_storage_deletes=pending_storage_deletes,
+                    )
+                removed_keys.append(row.key)
+                session.delete(row)
+            session.commit()
+        for storage_key in pending_storage_deletes:
+            self._delete_storage(storage_key)
+        return removed_keys
 
     def _commit_one(
         self,
@@ -338,7 +385,12 @@ class AgentDriveService:
             logger.warning("failed to delete drive storage object %s", storage_key, exc_info=True)
 
     @staticmethod
-    def _resolve_download_url(*, tenant_id: str, file_kind: AgentDriveFileKind, file_id: str) -> str | None:
+    def _resolve_download_url(
+        *, tenant_id: str, file_kind: AgentDriveFileKind, file_id: str, for_external: bool = False
+    ) -> str | None:
+        """Signed URL for a drive value. ``for_external`` selects the audience:
+        the inner manifest hands agents *internal* URLs, while the console
+        inspector must hand browsers *external* ones — never mix the two."""
         if file_kind == AgentDriveFileKind.TOOL_FILE:
             mapping: dict[str, Any] = {"transfer_method": "tool_file", "tool_file_id": file_id}
         else:
@@ -349,9 +401,85 @@ class AgentDriveService:
             # No FileAccessScope bound -> drive-owned: the builders still filter by
             # tenant_id, so resolution is tenant-scoped without user-level checks.
             file = file_factory.build_from_mapping(mapping=mapping, tenant_id=tenant_id, access_controller=controller)
-            return runtime.resolve_file_url(file=file, for_external=False)
+            return runtime.resolve_file_url(file=file, for_external=for_external)
         except ValueError:
             return None
+
+    # ── console drive inspector (ENG-624) ────────────────────────────────────
+
+    # SKILL.md is the primary preview use case; 64 KiB covers it with headroom
+    # while keeping the console payload bounded.
+    PREVIEW_MAX_BYTES = 64 * 1024
+
+    def _require_row(self, session: Session, *, tenant_id: str, agent_id: str, key: str) -> AgentDriveFile:
+        row = session.scalar(
+            select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+                AgentDriveFile.key == normalize_drive_key(key),
+            )
+        )
+        if row is None:
+            raise AgentDriveError("drive_key_not_found", "no drive entry for this key", status_code=404)
+        return row
+
+    def _storage_key_for_row(self, session: Session, *, tenant_id: str, row: AgentDriveFile) -> str:
+        if row.file_kind == AgentDriveFileKind.TOOL_FILE:
+            tool_file = session.scalar(
+                select(ToolFile).where(ToolFile.id == row.file_id, ToolFile.tenant_id == tenant_id)
+            )
+            if tool_file is None:
+                raise AgentDriveError("drive_key_not_found", "drive value record is missing", status_code=404)
+            return tool_file.file_key
+        upload_file = session.scalar(
+            select(UploadFile).where(UploadFile.id == row.file_id, UploadFile.tenant_id == tenant_id)
+        )
+        if upload_file is None:
+            raise AgentDriveError("drive_key_not_found", "drive value record is missing", status_code=404)
+        return upload_file.key
+
+    def preview(self, *, tenant_id: str, agent_id: str, key: str) -> dict[str, Any]:
+        """Truncated text preview of one drive value (binary-safe, never 500s on size)."""
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+            storage_key = self._storage_key_for_row(session, tenant_id=tenant_id, row=row)
+            size = row.size
+
+        data = bytearray()
+        for chunk in storage.load_stream(storage_key):
+            data.extend(chunk)
+            if len(data) > self.PREVIEW_MAX_BYTES:
+                break
+        truncated = len(data) > self.PREVIEW_MAX_BYTES
+        sample = bytes(data[: self.PREVIEW_MAX_BYTES])
+        # Same semantics as the sandbox read endpoint: NUL or undecodable -> binary.
+        if b"\x00" in sample:
+            return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
+        try:
+            text = sample.decode("utf-8")
+        except UnicodeDecodeError:
+            if truncated:
+                # A multi-byte char may sit on the cut point; retry without the tail.
+                try:
+                    text = sample[:-3].decode("utf-8", errors="strict")
+                except UnicodeDecodeError:
+                    return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
+            else:
+                return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
+        return {"key": row.key, "size": size, "truncated": truncated, "binary": False, "text": text}
+
+    def download_url(self, *, tenant_id: str, agent_id: str, key: str) -> str:
+        """External signed URL for a browser download of one drive value."""
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+            url = self._resolve_download_url(
+                tenant_id=tenant_id, file_kind=row.file_kind, file_id=row.file_id, for_external=True
+            )
+        if url is None:
+            raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)
+        return url
 
 
 __all__ = [
