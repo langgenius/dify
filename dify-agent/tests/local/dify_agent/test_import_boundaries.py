@@ -79,6 +79,7 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         blocked_imports=[
             "anthropic",
             "dify_agent.adapters.llm",
+            "dify_agent.layers.drive.layer",
             "dify_agent.layers.execution_context.layer",
             "dify_agent.layers.ask_human.layer",
             "dify_agent.layers.dify_plugin.llm_layer",
@@ -98,6 +99,7 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         ],
         imports=[
             "dify_agent.protocol",
+            "dify_agent.layers.drive",
             "dify_agent.layers.execution_context",
             "dify_agent.layers.ask_human",
             "dify_agent.layers.dify_plugin",
@@ -106,6 +108,7 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         ],
         assertions=[
             "assert hasattr(dify_agent_protocol, 'PydanticAIStreamRunEvent')",
+            "assert dify_agent_layers_drive.__all__ == ['DIFY_DRIVE_LAYER_TYPE_ID', 'DifyDriveFileConfig', 'DifyDriveLayerConfig', 'DifyDriveSkillConfig']",
             "assert dify_agent_layers_execution_context.__all__ == ['DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID', 'DifyExecutionContextAgentMode', 'DifyExecutionContextInvokeFrom', 'DifyExecutionContextLayerConfig', 'DifyExecutionContextUserFrom']",
             "assert dify_agent_layers_ask_human.__all__ == ['AskHumanAction', 'AskHumanActionStyle', 'AskHumanField', 'AskHumanFieldType', 'AskHumanFileField', 'AskHumanFileListField', 'AskHumanParagraphField', 'AskHumanResultStatus', 'AskHumanSelectField', 'AskHumanSelectOption', 'AskHumanSelectedAction', 'AskHumanToolArgs', 'AskHumanToolResult', 'AskHumanUrgency', 'DEFAULT_ASK_HUMAN_TOOL_DESCRIPTION', 'DIFY_ASK_HUMAN_LAYER_TYPE_ID', 'DifyAskHumanLayerConfig']",
             "assert dify_agent_layers_dify_plugin.__all__ == ['DIFY_PLUGIN_LLM_LAYER_TYPE_ID', 'DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID', 'DifyPluginCredentialValue', 'DifyPluginLLMLayerConfig', 'DifyPluginToolCredentialType', 'DifyPluginToolConfig', 'DifyPluginToolOption', 'DifyPluginToolParameter', 'DifyPluginToolParameterForm', 'DifyPluginToolParameterType', 'DifyPluginToolsLayerConfig', 'DifyPluginToolValue']",

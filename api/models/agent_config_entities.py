@@ -99,6 +99,10 @@ class AgentFileRefConfig(AgentFlexibleConfig):
     transfer_method: str | None = Field(default=None, max_length=64)
     url: str | None = None
     remote_url: str | None = None
+    # Drive key once the file is committed to the agent drive ("files/<name>",
+    # ENG-625). Files without it are plain upload references and stay invisible
+    # to the runtime drive manifest.
+    drive_key: str | None = Field(default=None, max_length=512)
 
 
 class AgentSkillRefConfig(AgentFlexibleConfig):
@@ -107,6 +111,16 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     description: str | None = None
     file_id: str | None = Field(default=None, max_length=255)
     path: str | None = None
+    # Standardization outputs (ENG-594) — previously riding along via
+    # ``extra="allow"``, promoted to the explicit schema because the runtime
+    # drive manifest (ENG-623) keys off them.
+    skill_md_key: str | None = Field(default=None, max_length=512)
+    skill_md_file_id: str | None = Field(default=None, max_length=255)
+    full_archive_key: str | None = Field(default=None, max_length=512)
+    full_archive_file_id: str | None = Field(default=None, max_length=255)
+    # Zip member path listing from standardization (ENG-371): lets infer-tools
+    # show the model strong signals like ``scripts/*.sh`` without unpacking.
+    manifest_files: list[str] | None = None
 
 
 class AgentPermissionConfig(BaseModel):
@@ -175,6 +189,10 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     risk_accepted: bool = False
     approved: bool = False
     risk_level: AgentCliToolRiskLevel | None = None
+    # Slug of the skill an infer-tools suggestion came from (ENG-371); drives
+    # the "inferred from <skill>" badge. Plain provenance metadata — saving an
+    # inferred tool still passes every composer validation rule.
+    inferred_from: str | None = Field(default=None, max_length=255)
 
 
 class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):

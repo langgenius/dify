@@ -6,6 +6,7 @@ state-free Dify structured output layer, the optional Dify ask-human layer, the
 Dify execution-context layer, the stateful Dify shell layer, and the Dify
 plugin business-layer family:
 
+- ``dify.drive`` for the inert Skills & Files drive declaration,
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
 - ``dify.shell`` for shellctl-backed shell job control,
 - ``dify.plugin.llm`` for plugin-backed model selection, and
@@ -37,6 +38,7 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
@@ -83,6 +85,10 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
+        # Inert declaration layer: makes ``dify.drive`` a known type id so runs
+        # carrying the Skills & Files manifest never fail before the consumption
+        # work (ENG-387) lands. Deliberately contributes no prompt and no tools.
+        LayerProvider.from_layer_type(DifyDriveLayer),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,
             create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
