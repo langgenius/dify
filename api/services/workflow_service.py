@@ -1562,6 +1562,25 @@ class WorkflowService:
             if node_type == BuiltinNodeTypes.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 
+    def get_variable_reference_warning(self, graph: Mapping[str, Any]) -> str | None:
+        """
+        Return a human-readable warning if the graph has unsafe cross-branch variable
+        references, or None if it is clean.
+
+        This is advisory only: a node reading the output of another node that may be
+        skipped on the path reaching it (e.g. an unselected if-else / question-classifier
+        branch) fails at runtime with the chat stuck on "caching variables" (issue
+        #34358). It is surfaced as a non-blocking reminder so existing graphs that happen
+        to contain such a pattern are NOT prevented from publishing or running.
+        """
+        from services.workflow_variable_reference_validator import (
+            format_variable_reference_errors,
+            validate_variable_references,
+        )
+
+        issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
+
     def validate_features_structure(self, app_model: App, features: dict[str, Any]):
         match app_model.mode:
             case AppMode.ADVANCED_CHAT:
