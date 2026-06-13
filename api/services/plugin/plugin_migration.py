@@ -413,8 +413,8 @@ class PluginMigration:
                 plugin_not_exist: list[str] = []
                 # get plugin unique identifier
                 for plugin_id in plugin_ids:
-                    unique_identifier = plugins.get(plugin_id)
-                    if unique_identifier:
+                    unique_identifier = plugins["plugins"].get(plugin_id)
+                    if not unique_identifier:
                         plugin_not_exist.append(plugin_id)
 
                 if plugin_not_exist:
