@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Saiba mais",
   "nTo1RetrievalLegacyLinkText": "A recuperação N-para-1 será oficialmente descontinuada em setembro.",
   "noExternalKnowledge": "Ainda não existe uma API de conhecimento externo, clique aqui para criar",
+  "pageTitle.connectExternalKnowledgeBase": "Conectar base de conhecimento externa",
   "parentMode.fullDoc": "Documento completo",
   "parentMode.paragraph": "Parágrafo",
   "partialEnabled_one": "Total de {{count}} documentos, {{num}} disponíveis",

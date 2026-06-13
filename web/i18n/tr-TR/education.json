@@ -51,6 +51,7 @@
   "notice.stillInEducation.expired": "Şimdi yeniden doğrulayın, böylece yaklaşan akademik yıl için yeni bir kupon alın. Bu kuponu hesabınıza ekleyeceğiz ve sonraki yükseltme için kullanabilirsiniz.",
   "notice.stillInEducation.isAboutToExpire": "Şimdi yeniden doğrulayın ve gelecek akademik yıl için yeni bir kupon alın. Bu, hesabınıza kaydedilecek ve bir sonraki yenilemenizde kullanıma hazır olacak.",
   "notice.stillInEducation.title": "Hala eğitimde misin?",
+  "pageTitle.verification": "Eğitim doğrulaması",
   "planNotSupportEducationDiscount": "Eğitim fiyatlandırması için uygun değil",
   "rejectContent": "Maalesef, Eğitim Doğrulama statüsüne uygun değilsiniz ve bu nedenle bu e-posta adresini kullanıyorsanız Dify Profesyonel Planı için özel %100 kuponu alamazsınız.",
   "rejectTitle": "Dify Eğitim Doğrulamanız Rededildi",

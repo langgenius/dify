@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Bilgi Oluştur",
   "creation.errorTip": "Bilgi Bankası oluşturulamadı",
   "creation.importDSL": "DSL dosyasından içe aktarma",
+  "creation.pageTitle": "Bilgi işlem hattı oluştur",
   "creation.successTip": "Başarıyla bir Bilgi Bankası oluşturuldu",
   "deletePipeline.content": "İşlem hattı şablonunun silinmesi geri alınamaz.",
   "deletePipeline.title": "Bu işlem hattı şablonunu sildiğinizden emin misiniz?",

@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "تعرف على المزيد",
   "nTo1RetrievalLegacyLinkText": " سيتم إيقاف الاسترجاع من N إلى 1 رسميًا في سبتمبر.",
   "noExternalKnowledge": "لا توجد واجهة برمجة تطبيقات معرفة خارجية حتى الآن، انقر هنا لإنشاء",
+  "pageTitle.connectExternalKnowledgeBase": "ربط قاعدة معرفة خارجية",
   "parentMode.fullDoc": "مستند كامل",
   "parentMode.paragraph": "فقرة",
   "partialEnabled_one": "إجمالي {{count}} مستند، {{num}} متاح",

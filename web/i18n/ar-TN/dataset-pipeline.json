@@ -27,6 +27,7 @@
   "creation.createKnowledge": "إنشاء المعرفة",
   "creation.errorTip": "فشل إنشاء قاعدة المعرفة",
   "creation.importDSL": "استيراد من ملف DSL",
+  "creation.pageTitle": "إنشاء مسار معرفة",
   "creation.successTip": "تم إنشاء قاعدة المعرفة بنجاح",
   "deletePipeline.content": "حذف قالب سير العمل لا رجعة فيه.",
   "deletePipeline.title": "هل أنت متأكد من حذف قالب سير العمل هذا؟",

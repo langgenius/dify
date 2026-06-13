@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Создание знаний",
   "creation.errorTip": "Не удалось создать базу знаний",
   "creation.importDSL": "Импорт из файла DSL",
+  "creation.pageTitle": "Создать конвейер знаний",
   "creation.successTip": "Успешно создали базу знаний",
   "deletePipeline.content": "Удаление шаблона конвейера является необратимым.",
   "deletePipeline.title": "Вы уверены, что удалите этот шаблон воронки продаж?",

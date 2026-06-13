@@ -1,5 +1,6 @@
 export const GENERATED_IGNORES = [
   'storybook-static/',
+  '.vinext/',
   '.next/',
   'next/',
   'next-env.d.ts',

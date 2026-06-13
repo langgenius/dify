@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Pelajari lebih lanjut",
   "nTo1RetrievalLegacyLinkText": "Pengambilan N-to-1 akan secara resmi tidak digunakan lagi pada bulan September.",
   "noExternalKnowledge": "Belum ada API Pengetahuan Eksternal, klik di sini untuk membuat",
+  "pageTitle.connectExternalKnowledgeBase": "Hubungkan Basis Pengetahuan Eksternal",
   "parentMode.fullDoc": "Dokumen lengkap",
   "parentMode.paragraph": "Paragraf",
   "partialEnabled_one": "Total {{count}} dokumen, {{num}} tersedia",

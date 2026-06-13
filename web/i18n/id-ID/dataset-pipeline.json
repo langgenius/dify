@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Ciptakan Pengetahuan",
   "creation.errorTip": "Gagal membuat Basis Pengetahuan",
   "creation.importDSL": "Mengimpor dari file DSL",
+  "creation.pageTitle": "Buat Pipeline Pengetahuan",
   "creation.successTip": "Berhasil membuat Basis Pengetahuan",
   "deletePipeline.content": "Menghapus templat alur tidak dapat diubah.",
   "deletePipeline.title": "Apakah Anda yakin akan menghapus templat alur ini?",

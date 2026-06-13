@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Дізнатися більше",
   "nTo1RetrievalLegacyLinkText": "N-до-1 пошук буде офіційно застарілим у вересні.",
   "noExternalKnowledge": "API зовнішніх знань поки що не існує, натисніть тут, щоб створити",
+  "pageTitle.connectExternalKnowledgeBase": "Підключити зовнішню базу знань",
   "parentMode.fullDoc": "Повний документ",
   "parentMode.paragraph": "Абзац",
   "partialEnabled_one": "Всього {{count}} документів, доступно {{num}}",

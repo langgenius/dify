@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Daha fazla bilgi edin",
   "nTo1RetrievalLegacyLinkText": "N-1 geri alma Eylül ayında resmi olarak kullanımdan kaldırılacaktır.",
   "noExternalKnowledge": "Henüz Harici Bilgi API'si yok, oluşturmak için buraya tıklayın",
+  "pageTitle.connectExternalKnowledgeBase": "Harici bilgi tabanını bağla",
   "parentMode.fullDoc": "Tam doküman",
   "parentMode.paragraph": "Paragraf",
   "partialEnabled_one": "Toplam {{count}} belge, {{num}} mevcut",

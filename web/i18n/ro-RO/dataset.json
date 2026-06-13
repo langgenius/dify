@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Află mai multe",
   "nTo1RetrievalLegacyLinkText": "Recuperarea N-la-1 va fi oficial depreciată în septembrie.",
   "noExternalKnowledge": "Nu există încă un API de cunoștințe externe, faceți clic aici pentru a crea",
+  "pageTitle.connectExternalKnowledgeBase": "Conectează baza de cunoștințe externă",
   "parentMode.fullDoc": "Documentar complet",
   "parentMode.paragraph": "Paragraf",
   "partialEnabled_one": "Total de {{count}} documente, {{num}} disponibile",

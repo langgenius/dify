@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "了解更多",
   "nTo1RetrievalLegacyLinkText": "9 月 1 日起我们将不再提供此能力。",
   "noExternalKnowledge": "还没有外部知识库 API，点击此处创建",
+  "pageTitle.connectExternalKnowledgeBase": "连接外部知识库",
   "parentMode.fullDoc": "全文",
   "parentMode.paragraph": "段落",
   "partialEnabled_one": "共计 {{count}} 个文档, {{num}} 可用",

@@ -51,6 +51,7 @@
   "notice.stillInEducation.expired": "今すぐ再認証して、次の学年度向けの教育クーポンを取得してください。クーポンはあなたのアカウントに追加され、次回のアップグレード時にご利用いただけます。",
   "notice.stillInEducation.isAboutToExpire": "今すぐ再認証して、次の学年度向けの教育クーポンを取得してください。クーポンは個人のアカウントに保存され、次回の更新時に使用できます。",
   "notice.stillInEducation.title": "まだ在学中ですか？",
+  "pageTitle.verification": "教育認証",
   "planNotSupportEducationDiscount": "教育価格の対象外",
   "rejectContent": "申し訳ございませんが、このメールアドレスでは 教育認証 の資格を取得できず、Dify プロフェッショナルプランの 100％割引クーポン を受け取ることはできません。",
   "rejectTitle": "Dify 教育認証が拒否されました",

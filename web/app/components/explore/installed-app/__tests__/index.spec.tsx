@@ -3,6 +3,7 @@ import type { InstalledApp as InstalledAppType } from '@/models/explore'
 import { render, screen, waitFor } from '@testing-library/react'
 
 import { useWebAppStore } from '@/context/web-app-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
@@ -11,6 +12,9 @@ import InstalledApp from '../index'
 
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
+}))
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
 }))
 vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: vi.fn(),
@@ -361,6 +365,20 @@ describe('InstalledApp', () => {
   })
 
   describe('Effects', () => {
+    it('should set document title to installed app name', () => {
+      render(<InstalledApp id="installed-app-123" />)
+
+      expect(useDocumentTitle).toHaveBeenCalledWith('Test App')
+    })
+
+    it('should not set document title when installedApp is not found', () => {
+      setupMocks([])
+
+      render(<InstalledApp id="nonexistent-app" />)
+
+      expect(useDocumentTitle).not.toHaveBeenCalled()
+    })
+
     it('should update app info when installedApp is available', async () => {
       render(<InstalledApp id="installed-app-123" />)
 

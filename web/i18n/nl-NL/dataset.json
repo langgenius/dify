@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Learn more",
   "nTo1RetrievalLegacyLinkText": " N-to-1 retrieval will be officially deprecated in September.",
   "noExternalKnowledge": "There is no External Knowledge API yet, click here to create",
+  "pageTitle.connectExternalKnowledgeBase": "Externe kennisbank verbinden",
   "parentMode.fullDoc": "Full-doc",
   "parentMode.paragraph": "Paragraph",
   "partialEnabled_one": "Total of {{count}} document, {{num}} available",

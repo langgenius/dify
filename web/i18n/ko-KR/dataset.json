@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "자세히 알아보기",
   "nTo1RetrievalLegacyLinkText": "N-대 -1 검색은 9 월에 공식적으로 더 이상 사용되지 않습니다.",
   "noExternalKnowledge": "아직 외부 지식 API 가 없으므로 여기를 클릭하여 생성하십시오.",
+  "pageTitle.connectExternalKnowledgeBase": "외부 지식 베이스 연결",
   "parentMode.fullDoc": "전체 문서",
   "parentMode.paragraph": "단락",
   "partialEnabled_one": "총 {{count}}개의 문서 중 {{num}}개 사용 가능",

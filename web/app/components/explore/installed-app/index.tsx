@@ -7,10 +7,21 @@ import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
 import Loading from '@/app/components/base/loading'
 import TextGenerationApp from '@/app/components/share/text-generation'
 import { useWebAppStore } from '@/context/web-app-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import AppUnavailable from '../../base/app-unavailable'
+
+const InstalledAppDocumentTitle = ({
+  title,
+}: {
+  title: string
+}) => {
+  useDocumentTitle(title)
+
+  return null
+}
 
 const InstalledApp = ({
   id,
@@ -19,6 +30,10 @@ const InstalledApp = ({
 }) => {
   const { data, isPending: isPendingInstalledApps, isFetching: isFetchingInstalledApps } = useGetInstalledApps()
   const installedApp = data?.installed_apps?.find(item => item.id === id)
+  const installedAppDocumentTitle = installedApp
+    ? <InstalledAppDocumentTitle title={installedApp.app.name} />
+    : null
+
   const updateAppInfo = useWebAppStore(s => s.updateAppInfo)
   const updateWebAppAccessMode = useWebAppStore(s => s.updateWebAppAccessMode)
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
@@ -64,37 +79,52 @@ const InstalledApp = ({
 
   if (appParamsError) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={appParamsError.message} />
-      </div>
+      <>
+        {installedAppDocumentTitle}
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable unknownReason={appParamsError.message} />
+        </div>
+      </>
     )
   }
   if (appMetaError) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={appMetaError.message} />
-      </div>
+      <>
+        {installedAppDocumentTitle}
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable unknownReason={appMetaError.message} />
+        </div>
+      </>
     )
   }
   if (useCanAccessAppError) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={useCanAccessAppError.message} />
-      </div>
+      <>
+        {installedAppDocumentTitle}
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable unknownReason={useCanAccessAppError.message} />
+        </div>
+      </>
     )
   }
   if (webAppAccessModeError) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <AppUnavailable unknownReason={webAppAccessModeError.message} />
-      </div>
+      <>
+        {installedAppDocumentTitle}
+        <div className="flex h-full items-center justify-center">
+          <AppUnavailable unknownReason={webAppAccessModeError.message} />
+        </div>
+      </>
     )
   }
   if (userCanAccessApp && !userCanAccessApp.result) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-y-2">
-        <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
-      </div>
+      <>
+        {installedAppDocumentTitle}
+        <div className="flex h-full flex-col items-center justify-center gap-y-2">
+          <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
+        </div>
+      </>
     )
   }
   if (
@@ -103,9 +133,12 @@ const InstalledApp = ({
     || (installedApp && (isPendingAppParams || isPendingAppMeta || isPendingWebAppAccessMode))
   ) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loading />
-      </div>
+      <>
+        {installedAppDocumentTitle}
+        <div className="flex h-full items-center justify-center">
+          <Loading />
+        </div>
+      </>
     )
   }
   if (!installedApp) {
@@ -116,17 +149,20 @@ const InstalledApp = ({
     )
   }
   return (
-    <div className="h-full bg-background-default py-2 pr-2 pl-0 sm:p-2">
-      {installedApp?.app.mode !== AppModeEnum.COMPLETION && installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
-        <ChatWithHistory installedAppInfo={installedApp} className="overflow-hidden rounded-2xl shadow-md" />
-      )}
-      {installedApp?.app.mode === AppModeEnum.COMPLETION && (
-        <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />
-      )}
-      {installedApp?.app.mode === AppModeEnum.WORKFLOW && (
-        <TextGenerationApp isWorkflow isInstalledApp installedAppInfo={installedApp} />
-      )}
-    </div>
+    <>
+      {installedAppDocumentTitle}
+      <div className="h-full bg-background-default py-2 pr-2 pl-0 sm:p-2">
+        {installedApp?.app.mode !== AppModeEnum.COMPLETION && installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
+          <ChatWithHistory installedAppInfo={installedApp} className="overflow-hidden rounded-2xl shadow-md" />
+        )}
+        {installedApp?.app.mode === AppModeEnum.COMPLETION && (
+          <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />
+        )}
+        {installedApp?.app.mode === AppModeEnum.WORKFLOW && (
+          <TextGenerationApp isWorkflow isInstalledApp installedAppInfo={installedApp} />
+        )}
+      </div>
+    </>
   )
 }
 export default React.memo(InstalledApp)

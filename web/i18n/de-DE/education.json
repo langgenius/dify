@@ -51,6 +51,7 @@
   "notice.stillInEducation.expired": "Überprüfen Sie jetzt erneut, um einen neuen Gutschein für das kommende akademische Jahr zu erhalten. Wir fügen ihn Ihrem Konto hinzu und Sie können ihn für das nächste Upgrade verwenden.",
   "notice.stillInEducation.isAboutToExpire": "Überprüfen Sie jetzt erneut, um einen neuen Gutschein für das kommende Studienjahr zu erhalten. Er wird in Ihrem Konto gespeichert und ist bereit zur Nutzung bei Ihrer nächsten Verlängerung.",
   "notice.stillInEducation.title": "Immer noch in der Ausbildung?",
+  "pageTitle.verification": "Bildungsverifizierung",
   "planNotSupportEducationDiscount": "Nicht für Bildungspreise berechtigt",
   "rejectContent": "Leider sind Sie nicht für den Status \"Education Verified\" berechtigt und können daher den exklusiven 100%-Gutschein für den Dify Professional Plan nicht erhalten, wenn Sie diese E-Mail-Adresse verwenden.",
   "rejectTitle": "Ihre Dify-Ausbildungsüberprüfung wurde abgelehnt.",

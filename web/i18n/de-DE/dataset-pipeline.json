@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Wissen schaffen",
   "creation.errorTip": "Fehler beim Erstellen einer Wissensdatenbank",
   "creation.importDSL": "Importieren aus einer DSL-Datei",
+  "creation.pageTitle": "Knowledge Pipeline erstellen",
   "creation.successTip": "Erfolgreich eine Wissensdatenbank erstellt",
   "deletePipeline.content": "Das Löschen der Pipelinevorlage kann nicht rückgängig gemacht werden.",
   "deletePipeline.title": "Sind Sie sicher, dass Sie diese Pipeline-Vorlage löschen möchten?",

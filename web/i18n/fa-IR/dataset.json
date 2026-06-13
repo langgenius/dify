@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "بیشتر بدانید",
   "nTo1RetrievalLegacyLinkText": " بازیابی N-to-1 از سپتامبر به طور رسمی منسوخ خواهد شد.",
   "noExternalKnowledge": "هنوز هیچ API دانش خارجی وجود ندارد، برای ایجاد اینجا را کلیک کنید",
+  "pageTitle.connectExternalKnowledgeBase": "اتصال به پایگاه دانش خارجی",
   "parentMode.fullDoc": "مستند کامل",
   "parentMode.paragraph": "پاراگراف",
   "partialEnabled_one": "مجموعاً {{count}} سند، {{num}} موجود",
