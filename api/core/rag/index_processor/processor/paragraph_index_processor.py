@@ -1,5 +1,6 @@
 """Paragraph index processor."""
 
+from sqlalchemy.orm import scoped_session
 import logging
 import re
 import uuid
@@ -411,11 +412,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if supports_vision:
             # First, try to get images from SegmentAttachmentBinding (preferred method)
             if segment_id:
-                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id)
+                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id, db.session)
 
             # If no images from attachments, fall back to extracting from text
             if not image_files:
-                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text)
+                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, db.session)
 
         # Build prompt messages
         prompt_messages = []
@@ -469,7 +470,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return summary_content, usage
 
     @staticmethod
-    def _extract_images_from_text(tenant_id: str, text: str) -> list[File]:
+    def _extract_images_from_text(tenant_id: str, text: str, session: scoped_session) -> list[File]:
         """
         Extract images from markdown text and convert them to File objects.
 
@@ -518,7 +519,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.scalars(
+        upload_files = session.scalars(
             select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
         ).all()
 
@@ -549,7 +550,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return file_objects
 
     @staticmethod
-    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str) -> list[File]:
+    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str, session: scoped_session) -> list[File]:
         """
         Extract images from SegmentAttachmentBinding table (preferred method).
         This matches how DatasetRetrieval gets segment attachments.
@@ -564,7 +565,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         from sqlalchemy import select
 
         # Query attachments from SegmentAttachmentBinding table
-        attachments_with_bindings = db.session.execute(
+        attachments_with_bindings = session.execute(
             select(SegmentAttachmentBinding, UploadFile)
             .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
             .where(
