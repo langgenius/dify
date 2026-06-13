@@ -6,7 +6,7 @@ export type ClientOptions = {
 
 export type TenantInfoResponse = {
   created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse
+  custom_config?: WorkspaceCustomConfigResponse | null
   id: string
   in_trial?: boolean | null
   name?: string | null

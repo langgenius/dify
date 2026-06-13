@@ -211,12 +211,13 @@ class SSETransport:
         except queue.Empty:
             raise ValueError("failed to get endpoint URL")
 
-        if isinstance(status, _StatusReady):
-            return status.endpoint_url
-        elif isinstance(status, _StatusError):
-            raise status.exc
-        else:
-            raise ValueError("failed to get endpoint URL")
+        match status:
+            case _StatusReady():
+                return status.endpoint_url
+            case _StatusError():
+                raise status.exc
+            case _:
+                raise ValueError("failed to get endpoint URL")
 
     def connect(
         self,

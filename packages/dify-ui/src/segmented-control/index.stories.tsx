@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import {
   SegmentedControl,
   SegmentedControlDivider,
@@ -35,10 +35,10 @@ const Icon = () => (
 )
 
 const Item = () => (
-  <>
+  <React.Fragment>
     <Icon />
     <span className="px-0.5">Item</span>
-  </>
+  </React.Fragment>
 )
 
 function SegmentedControlExample({
@@ -93,7 +93,7 @@ function SpecPanel({
   children,
 }: {
   className?: string
-  children: ReactNode
+  children: React.ReactNode
 }) {
   return (
     <div className={className}>

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import * as React from 'react'
 
 import { Button } from '.'
 
@@ -11,6 +12,7 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {
     loading: { control: 'boolean' },
+    focusableWhenDisabled: { control: 'boolean' },
     tone: {
       control: 'select',
       options: ['default', 'destructive'],
@@ -90,6 +92,13 @@ export const Loading: Story = {
     loading: true,
     children: 'Loading Button',
   },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+      },
+    },
+  },
 }
 
 export const Destructive: Story = {
@@ -104,10 +113,10 @@ export const WithIcon: Story = {
   args: {
     variant: 'primary',
     children: (
-      <>
-        <span className="mr-1.5 i-heroicons-rocket-launch-20-solid h-4 w-4" />
+      <React.Fragment>
+        <span aria-hidden className="mr-1.5 i-ri-rocket-line size-4 shrink-0" />
         Launch
-      </>
+      </React.Fragment>
     ),
   },
 }

@@ -4,9 +4,9 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AUTO_UPDATE_MODE } from './types'
 
-type Props = {
+type Props = Readonly<{
   updateMode: AUTO_UPDATE_MODE
-}
+}>
 
 const NoPluginSelected: FC<Props> = ({
   updateMode,

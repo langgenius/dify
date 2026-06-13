@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -84,8 +84,8 @@ export const NonDestructive: Story = {
 }
 
 const ControlledDemo = () => {
-  const [open, setOpen] = useState(false)
-  const [count, setCount] = useState(0)
+  const [open, setOpen] = React.useState(false)
+  const [count, setCount] = React.useState(0)
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -130,8 +130,8 @@ export const Controlled: Story = {
 }
 
 const LoadingConfirmDemo = () => {
-  const [pending, setPending] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [pending, setPending] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
 
   const handleConfirm = () => {
     setPending(true)

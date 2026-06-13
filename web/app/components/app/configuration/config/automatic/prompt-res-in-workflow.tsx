@@ -7,10 +7,10 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import PromptRes from './prompt-res'
 
-type Props = {
+type Props = Readonly<{
   value: string
   nodeId: string
-}
+}>
 
 const PromptResInWorkflow: FC<Props> = ({
   value,

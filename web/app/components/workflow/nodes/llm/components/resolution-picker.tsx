@@ -8,10 +8,10 @@ import { Resolution } from '@/types/app'
 
 const i18nPrefix = 'nodes.llm'
 
-type Props = {
+type Props = Readonly<{
   value: Resolution
   onChange: (value: Resolution) => void
-}
+}>
 
 const ResolutionPicker: FC<Props> = ({
   value,

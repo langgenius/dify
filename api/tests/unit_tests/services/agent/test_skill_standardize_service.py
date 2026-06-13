@@ -75,3 +75,6 @@ def test_standardize_creates_two_drive_owned_toolfiles_and_commits():
     assert skill["full_archive_file_id"] == "zip-tool-file"
     assert skill["skill_md_file_id"] == "md-tool-file"
     assert skill["skill_md_key"] == "pdf-toolkit/SKILL.md"
+    # ENG-371: zip member listing persisted for infer-tools signals
+    assert "SKILL.md" in skill["manifest_files"]
+    assert "scripts/run.py" in skill["manifest_files"]

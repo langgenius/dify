@@ -330,9 +330,9 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "node", "install_commands": ["apt-get install -y nodejs"]},
-        {"name": "python", "install_commands": ["pip install pytest"]},
-        {"name": None, "install_commands": ["apk add git"]},
+        {"name": "node", "install_commands": ["apt-get install -y nodejs"], "env": [], "secret_refs": []},
+        {"name": "python", "install_commands": ["pip install pytest"], "env": [], "secret_refs": []},
+        {"name": None, "install_commands": ["apk add git"], "env": [], "secret_refs": []},
     ]
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
@@ -353,7 +353,9 @@ def test_build_shell_layer_config_maps_typed_command_field():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_disabled_cli_tools():
@@ -371,7 +373,9 @@ def test_build_shell_layer_config_skips_disabled_cli_tools():
 
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
-    assert config["cli_tools"] == [{"name": "jq", "install_commands": ["apt-get install -y jq"]}]
+    assert config["cli_tools"] == [
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []}
+    ]
 
 
 def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools():
@@ -397,8 +401,43 @@ def test_build_shell_layer_config_skips_unauthorized_or_unacknowledged_cli_tools
     config = build_shell_layer_config(agent_soul).model_dump(mode="json")
 
     assert config["cli_tools"] == [
-        {"name": "jq", "install_commands": ["apt-get install -y jq"]},
-        {"name": "accepted-risk", "install_commands": ["curl https://example.test/install.sh | sh"]},
+        {"name": "jq", "install_commands": ["apt-get install -y jq"], "env": [], "secret_refs": []},
+        {
+            "name": "accepted-risk",
+            "install_commands": ["curl https://example.test/install.sh | sh"],
+            "env": [],
+            "secret_refs": [],
+        },
+    ]
+
+
+def test_build_shell_layer_config_maps_cli_tool_scoped_env():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {
+                        "name": "github",
+                        "command": "apt-get install -y gh",
+                        "env": {
+                            "variables": [{"name": "GH_HOST", "value": "github.com"}],
+                            "secret_refs": [{"name": "GITHUB_TOKEN", "credential_id": "credential-1"}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {
+            "name": "github",
+            "install_commands": ["apt-get install -y gh"],
+            "env": [{"name": "GH_HOST", "value": "github.com"}],
+            "secret_refs": [{"name": "GITHUB_TOKEN", "ref": "credential-1"}],
+        }
     ]
 
 
@@ -636,3 +675,124 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     # the value still rides the Workflow context block, not the job prompt
     assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
     assert "[§" not in json.dumps(dumped["composition"]["layers"][:3])
+
+
+# ── ENG-623: dify.drive declaration layer ─────────────────────────────────────
+
+
+def _soul_with_drive_skill() -> AgentSoulConfig:
+    return AgentSoulConfig(
+        prompt={"system_prompt": "You are careful."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        skills_files={
+            "skills": [
+                {
+                    "id": "abc123",
+                    "name": "Tender Analyzer",
+                    "description": "Parses RFPs.",
+                    "skill_md_key": "tender-analyzer/SKILL.md",
+                    "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                },
+                {"id": "legacy", "name": "Legacy Skill"},  # pre-standardization: no drive key
+            ],
+            "files": [
+                {"name": "sample.pdf", "drive_key": "files/sample.pdf", "type": "application/pdf"},
+                {"name": "plain-upload.pdf", "file_id": "upload-1"},  # not drive-backed
+            ],
+        },
+    )
+
+
+def test_build_drive_layer_config_catalogs_only_drive_backed_refs():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), agent_id="agent-1")
+
+    assert config is not None
+    assert config.drive_ref == "agent-agent-1"
+    assert [skill.skill_md_key for skill in config.skills] == ["tender-analyzer/SKILL.md"]
+    assert config.skills[0].archive_key == "tender-analyzer/.DIFY-SKILL-FULL.zip"
+    assert [file.key for file in config.files] == ["files/sample.pdf"]
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+    assert "Legacy Skill" in warnings[0]["message"]
+
+
+def test_build_drive_layer_config_skips_when_nothing_configured():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    soul = AgentSoulConfig(
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test")
+    )
+    assert build_drive_layer_config(soul, agent_id="agent-1") == (None, [])
+
+
+def test_build_drive_layer_config_requires_agent_identity():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), agent_id=None)
+
+    assert config is None
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+
+
+def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch: pytest.MonkeyPatch):
+    """Contract test: locks the dify.drive composition shape against cross-package drift."""
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+    )
+    context = _context()
+    context.snapshot.config_snapshot = _soul_with_drive_skill()
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
+    assert "drive" in layer_names
+    # injected right after execution_context, before history/llm
+    assert layer_names.index("drive") == layer_names.index("execution_context") + 1
+    drive = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "drive")
+    assert drive["type"] == "dify.drive"
+    assert drive["config"]["drive_ref"] == "agent-agent-1"
+    assert drive["config"]["skills"] == [
+        {
+            "name": "Tender Analyzer",
+            "description": "Parses RFPs.",
+            "skill_md_key": "tender-analyzer/SKILL.md",
+            "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+        }
+    ]
+    assert drive["config"]["files"] == [
+        {"name": "sample.pdf", "key": "files/sample.pdf", "size": None, "mime_type": "application/pdf"}
+    ]
+    # the dangling legacy ref degraded to a warning instead of failing the run
+    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
+    assert any(w["code"] == "skill_ref_dangling" for w in warnings)
+    # the drive layer is non-sensitive and must survive into persistable specs
+    from dify_agent.protocol import extract_runtime_layer_specs
+
+    specs = extract_runtime_layer_specs(result.request.composition)
+    assert any(spec.name == "drive" and spec.type == "dify.drive" for spec in specs)
+
+
+def test_workflow_run_request_has_no_drive_layer_when_flag_disabled():
+    context = _context()
+    context.snapshot.config_snapshot = _soul_with_drive_skill()
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert all(layer["name"] != "drive" for layer in dumped["composition"]["layers"])
+    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
+    assert any(w["code"] == "drive_manifest_disabled" for w in warnings)
+
+
+def test_build_drive_layer_config_all_refs_dangling_yields_no_config():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+
+    soul = AgentSoulConfig(
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u1"}]},
+    )
+    config, warnings = build_drive_layer_config(soul, agent_id="agent-1")
+    assert config is None
+    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]

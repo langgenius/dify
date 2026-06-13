@@ -1,28 +1,10 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '@/store/dir'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { describe, expect, it } from 'vitest'
 import { getConfigurationStore } from '@/store/manager'
 import { runConfigView } from './run'
 
 describe('runConfigView', () => {
-  let dir: string
-  let prevConfigDir: string | undefined
-
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-view-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-
-  afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-view-')
 
   it('text format: empty config returns empty string', () => {
     const out = runConfigView({ store: getConfigurationStore() })

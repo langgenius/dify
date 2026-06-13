@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Checkbox,
   CheckboxSkeleton,
@@ -42,8 +41,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function CheckboxDemo(args: Partial<ComponentProps<typeof Checkbox>>) {
-  const [checked, setChecked] = useState(args.checked ?? false)
+function CheckboxDemo(args: Partial<React.ComponentProps<typeof Checkbox>>) {
+  const [checked, setChecked] = React.useState(args.checked ?? false)
 
   return (
     <label className="flex items-center gap-2 system-sm-medium text-text-secondary">

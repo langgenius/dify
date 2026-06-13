@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { StatusDotSize, StatusDotStatus } from '.'
-import { Fragment } from 'react'
+import * as React from 'react'
 import { StatusDot, StatusDotSkeleton } from '.'
 
 const statuses: StatusDotStatus[] = ['success', 'warning', 'error', 'normal', 'disabled']
@@ -39,14 +39,14 @@ export const Matrix: Story = {
       <div className="system-xs-medium text-text-tertiary">Small</div>
       <div className="system-xs-medium text-text-tertiary">Medium</div>
       {statuses.map(status => (
-        <Fragment key={status}>
+        <React.Fragment key={status}>
           <div className="system-xs-semibold-uppercase text-text-secondary">
             {status}
           </div>
           {sizes.map(size => (
             <StatusDot key={`${status}-${size}`} status={status} size={size} />
           ))}
-        </Fragment>
+        </React.Fragment>
       ))}
     </div>
   ),

@@ -61,6 +61,7 @@ class ComposerSavePayload(BaseModel):
 class RosterAgentCreatePayload(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
+    role: str = Field(default="", max_length=255)
     icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)
@@ -71,6 +72,7 @@ class RosterAgentCreatePayload(BaseModel):
 class RosterAgentUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
+    role: str | None = Field(default=None, max_length=255)
     icon_type: AgentIconType | None = None
     icon: str | None = Field(default=None, max_length=255)
     icon_background: str | None = Field(default=None, max_length=255)

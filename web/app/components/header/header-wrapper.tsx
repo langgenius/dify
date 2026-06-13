@@ -1,10 +1,10 @@
 'use client'
 import type { EventEmitterValue } from '@/context/event-emitter'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname } from '@/next/navigation'
 import s from './index.module.css'
 
