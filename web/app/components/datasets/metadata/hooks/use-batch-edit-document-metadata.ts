@@ -7,12 +7,12 @@ import { useMemo } from 'react'
 import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import { UpdateType } from '../types'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   docList: SimpleDocumentDetail[]
   selectedDocumentIds?: string[]
   onUpdate: () => void
-}
+}>
 const useBatchEditDocumentMetadata = ({ datasetId, docList, selectedDocumentIds, onUpdate }: Props) => {
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
   const metaDataList: MetadataItemWithValue[][] = (() => {

@@ -4,11 +4,11 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RowStruct } from '@/app/components/base/icons/src/public/other'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   crawledNum: number
   totalNum: number
-}
+}>
 
 const Crawling: FC<Props> = ({
   className = '',

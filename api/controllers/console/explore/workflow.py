@@ -3,7 +3,7 @@ import logging
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -36,12 +36,13 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 register_schema_model(console_ns, WorkflowRunPayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp):
         """

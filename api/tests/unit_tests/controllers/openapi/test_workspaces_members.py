@@ -29,9 +29,10 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound, UnprocessableEntity
+from werkzeug.exceptions import BadRequest, NotFound, UnprocessableEntity
 
 from controllers.openapi import bp as openapi_bp
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import MemberInvitePayload, MemberRoleUpdatePayload
 from controllers.openapi.workspaces import (
     WorkspaceMemberApi,
@@ -507,11 +508,7 @@ def _invite_request(app, ws_id: str, acct_id: uuid.UUID):
 
 
 def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
-    """SaaS billing plan member cap → 403 with `members.limit_exceeded`.
-
-    Verifies the envelope shape the CLI error-mapper relies on (code +
-    message + hint on the wire body).
-    """
+    """SaaS billing plan member cap → MemberLimitExceeded (403)."""
     ws_id = str(uuid.uuid4())
     acct_id = uuid.uuid4()
     api = WorkspaceMembersApi()
@@ -538,18 +535,14 @@ def test_invite_blocked_by_saas_members_cap(app, bypass_pipeline, monkeypatch):
 
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(Forbidden) as exc_info:
+        with pytest.raises(MemberLimitExceeded):
             api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
-    body = exc_info.value.response.json
-    assert body["code"] == "members.limit_exceeded"
-    assert "Subscription member limit" in body["message"]
-    assert body["hint"]
     invite_mock.assert_not_called()
 
 
 def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, monkeypatch):
-    """EE License workspace_members cap → 403 with `workspace_members.license_exceeded`.
+    """EE License workspace_members cap → MemberLicenseExceeded (403).
 
     Note: billing.enabled is False (EE without SaaS billing); only the
     license cap fires.
@@ -584,13 +577,9 @@ def test_invite_blocked_by_ee_workspace_members_license(app, bypass_pipeline, mo
 
     with _invite_request(app, ws_id, acct_id):
         _seed(_auth_ctx(account_id=acct_id))
-        with pytest.raises(Forbidden) as exc_info:
+        with pytest.raises(MemberLicenseExceeded):
             api.post.__wrapped__(api, workspace_id=ws_id, auth_data=_auth_data(acct_id))
 
-    body = exc_info.value.response.json
-    assert body["code"] == "workspace_members.license_exceeded"
-    assert "license" in body["message"].lower()
-    assert body["hint"]
     invite_mock.assert_not_called()
 
 

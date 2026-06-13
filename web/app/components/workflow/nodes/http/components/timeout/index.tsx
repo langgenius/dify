@@ -8,12 +8,12 @@ import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   payload: TimeoutPayloadType
   onChange: (payload: TimeoutPayloadType) => void
-}
+}>
 
 const i18nPrefix = 'nodes.http'
 

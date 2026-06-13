@@ -19,9 +19,9 @@ import EndpointCard from './endpoint-card'
 import EndpointModal from './endpoint-modal'
 import { NAME_FIELD } from './utils'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 const EndpointList = ({ detail }: Props) => {
   const { t } = useTranslation()
   const docLink = useDocLink()

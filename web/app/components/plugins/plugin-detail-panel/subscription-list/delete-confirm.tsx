@@ -14,13 +14,13 @@ import Input from '@/app/components/base/input'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'
 
-type Props = {
+type Props = Readonly<{
   onClose: (deleted: boolean) => void
   isShow: boolean
   currentId: string
   currentName: string
   workflowsInUse: number
-}
+}>
 
 const tPrefix = 'subscription.list.item.actions.deleteConfirm'
 

@@ -1,10 +1,18 @@
 import type { FetchContext } from './types.js'
 
 export const RETRY_METHODS = ['GET', 'PUT', 'DELETE'] as const
-export const RETRY_STATUS_CODES = [408, 413, 429, 500, 502, 503, 504] as const
+// 429 is intentionally absent — it has a dedicated branch in execute(). shouldRetry covers
+// transport errors / 408 / 413 / 5xx only.
+export const RETRY_STATUS_CODES = [408, 413, 500, 502, 503, 504] as const
 
 const RETRY_METHODS_SET: ReadonlySet<string> = new Set(RETRY_METHODS)
 const RETRY_STATUS_SET: ReadonlySet<number> = new Set(RETRY_STATUS_CODES)
+
+// GET/PUT/DELETE are idempotent — safe to auto-retry. The 429 branch reuses this to decide which
+// methods may wait-and-retry a throttle without risking a double-run.
+export function isIdempotentRetryMethod(method: string): boolean {
+  return RETRY_METHODS_SET.has(method)
+}
 
 export function shouldRetry(target: Response | unknown, ctx: FetchContext): boolean {
   if (!RETRY_METHODS_SET.has(ctx.options.method))

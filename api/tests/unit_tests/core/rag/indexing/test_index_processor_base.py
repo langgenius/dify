@@ -9,7 +9,6 @@ from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
@@ -52,17 +51,6 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     def format_preview(self, chunks):
         return super().format_preview(chunks)
 
-    @override
-    def retrieve(self, retrieval_method, query, dataset, top_k, score_threshold, reranking_model):
-        return super().retrieve(
-            retrieval_method=retrieval_method,
-            query=query,
-            dataset=dataset,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            reranking_model=reranking_model,
-        )
-
 
 class TestBaseIndexProcessor:
     @pytest.fixture
@@ -75,7 +63,7 @@ class TestBaseIndexProcessor:
         with pytest.raises(NotImplementedError):
             processor.transform([])
         with pytest.raises(NotImplementedError):
-            processor.generate_summary_preview("tenant", [PreviewDetail(content="c")], {})
+            processor.generate_summary_preview("tenant", [PreviewDetail(content="c")], {"enable": False})
         with pytest.raises(NotImplementedError):
             processor.load(Mock(), [])
         with pytest.raises(NotImplementedError):
@@ -84,8 +72,6 @@ class TestBaseIndexProcessor:
             processor.index(Mock(), Mock(), {})
         with pytest.raises(NotImplementedError):
             processor.format_preview([])
-        with pytest.raises(NotImplementedError):
-            processor.retrieve(RetrievalMethod.SEMANTIC_SEARCH, "q", Mock(), 3, 0.5, {})
 
     def test_get_splitter_validates_custom_length(self, processor: _ForwardingBaseIndexProcessor) -> None:
         with patch(

@@ -14,7 +14,12 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
@@ -204,6 +209,11 @@ class AppTracePayload(BaseModel):
         if info.data.get("enabled") and not value:
             raise ValueError("tracing_provider is required when enabled is True")
         return value
+
+
+class AppTraceResponse(ResponseModel):
+    enabled: bool
+    tracing_provider: str | None = None
 
 
 type JSONValue = Any
@@ -447,7 +457,7 @@ class AppExportResponse(ResponseModel):
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
-register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, AppTraceResponse, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -495,7 +505,7 @@ register_schema_models(
 class AppListApi(Resource):
     @console_ns.doc("list_apps")
     @console_ns.doc(description="Get list of applications with pagination and filtering")
-    @console_ns.expect(console_ns.models[AppListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AppListQuery))
     @console_ns.response(200, "Success", console_ns.models[AppPagination.__name__])
     @setup_required
     @login_required
@@ -737,7 +747,7 @@ class AppExportApi(Resource):
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
-    @console_ns.expect(console_ns.models[AppExportQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(AppExportQuery))
     @console_ns.response(200, "App exported successfully", console_ns.models[AppExportResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @get_app_model
@@ -812,7 +822,7 @@ class AppIconApi(Resource):
     @console_ns.doc(description="Update application icon")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppIconPayload.__name__])
-    @console_ns.response(200, "Icon updated successfully")
+    @console_ns.response(200, "Icon updated successfully", console_ns.models[AppDetail.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -882,7 +892,11 @@ class AppTraceApi(Resource):
     @console_ns.doc("get_app_trace")
     @console_ns.doc(description="Get app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Trace configuration retrieved successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration retrieved successfully",
+        console_ns.models[AppTraceResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required

@@ -26,7 +26,7 @@ import { PluginSource } from '../types'
 
 const i18nPrefix = 'action'
 
-type Props = {
+type Props = Readonly<{
   author: string
   installationId: string
   pluginUniqueIdentifier: string
@@ -38,7 +38,7 @@ type Props = {
   isShowDelete: boolean
   onDelete: () => void
   meta?: MetaData
-}
+}>
 const Action: FC<Props> = ({
   author,
   installationId,

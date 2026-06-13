@@ -1,4 +1,4 @@
-import type { AppDescribeResponse, AppListResponse } from '@dify/contracts/api/openapi/types.gen'
+import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
 import { createOpenApiClient } from '@/http/orpc'
@@ -7,7 +7,7 @@ export type ListQuery = {
   readonly workspaceId: string
   readonly page?: number
   readonly limit?: number
-  readonly mode?: string
+  readonly mode?: AppMode | ''
   readonly name?: string
   readonly tag?: string
 }

@@ -1,6 +1,7 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 
 // ==================== Imports (after mocks) ====================
 
@@ -408,7 +409,7 @@ describe('Action Component', () => {
 
       // Assert - Loading state
       await waitFor(() => {
-        expect(getDeleteConfirmButton())!.toBeDisabled()
+        expectLoadingButton(getDeleteConfirmButton())
       })
 
       // Resolve and check modal closes
@@ -865,7 +866,7 @@ describe('Action Component', () => {
 
       // The confirm button should be disabled during deletion
       // The confirm button should be disabled during deletion
-      expect(getDeleteConfirmButton())!.toBeDisabled()
+      expectLoadingButton(getDeleteConfirmButton())
 
       // Resolve the deletion
       resolveFirst!({ success: true })
