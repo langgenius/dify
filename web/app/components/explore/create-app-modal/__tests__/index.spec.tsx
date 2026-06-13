@@ -5,6 +5,7 @@ import * as React from 'react'
 import { createMockPlan, createMockPlanTotal, createMockPlanUsage } from '@/__mocks__/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import { AppModeEnum } from '@/types/app'
+import { MAX_APP_DESCRIPTION_LENGTH, MAX_APP_NAME_LENGTH } from '../constants'
 import CreateAppModal from '../index'
 
 const hotkeyMocks = vi.hoisted(() => ({
@@ -185,6 +186,13 @@ describe('CreateAppModal', () => {
       await setup({ appName: '   ' })
 
       expect(screen.getByRole('button', { name: /common\.operation\.create/ }))!.toBeDisabled()
+    })
+
+    it('should limit app name and description input lengths', async () => {
+      await setup()
+
+      expect(screen.getByPlaceholderText('app.newApp.appNamePlaceholder')).toHaveAttribute('maxlength', String(MAX_APP_NAME_LENGTH))
+      expect(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder')).toHaveAttribute('maxlength', String(MAX_APP_DESCRIPTION_LENGTH))
     })
   })
 
@@ -454,6 +462,24 @@ describe('CreateAppModal', () => {
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
       expect(onConfirm.mock.calls[0]![0]).toMatchObject({ description: 'Updated description' })
+    })
+
+    it('should truncate overlong name and description before submitting', async () => {
+      const { onConfirm } = await setup({ appName: 'Short', appDescription: '' })
+      const longName = 'n'.repeat(MAX_APP_NAME_LENGTH + 10)
+      const longDescription = 'd'.repeat(MAX_APP_DESCRIPTION_LENGTH + 10)
+
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), { target: { value: longName } })
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), { target: { value: longDescription } })
+
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      await act(async () => {
+        vi.advanceTimersByTime(300)
+      })
+
+      const payload = onConfirm.mock.calls[0]![0]
+      expect(payload.name).toHaveLength(MAX_APP_NAME_LENGTH)
+      expect(payload.description).toHaveLength(MAX_APP_DESCRIPTION_LENGTH)
     })
 
     it('should omit icon_background when submitting with image icon', async () => {

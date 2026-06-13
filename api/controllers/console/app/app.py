@@ -43,6 +43,12 @@ from fields.base import ResponseModel
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import build_icon_url, to_timestamp
 from libs.login import login_required
+from libs.validators import (
+    MAX_APP_DESCRIPTION_LENGTH,
+    MAX_APP_ICON_LENGTH,
+    MAX_APP_NAME_LENGTH,
+    validate_app_name,
+)
 from models import Account, App, DatasetPermissionEnum, Workflow
 from models.model import IconType
 from services.app_dsl_service import AppDslService
@@ -148,32 +154,61 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 
 
 class CreateAppPayload(BaseModel):
-    name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
+    name: str = Field(..., min_length=1, max_length=MAX_APP_NAME_LENGTH, description="App name")
+    description: str | None = Field(
+        default=None, description="App description (max 400 chars)", max_length=MAX_APP_DESCRIPTION_LENGTH
+    )
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"] = Field(
         ..., description="App mode"
     )
     icon_type: IconType | None = Field(default=None, description="Icon type")
-    icon: str | None = Field(default=None, description="Icon")
-    icon_background: str | None = Field(default=None, description="Icon background color")
+    icon: str | None = Field(default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon")
+    icon_background: str | None = Field(
+        default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon background color"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return validate_app_name(value)
 
 
 class UpdateAppPayload(BaseModel):
-    name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
+    name: str = Field(..., min_length=1, max_length=MAX_APP_NAME_LENGTH, description="App name")
+    description: str | None = Field(
+        default=None, description="App description (max 400 chars)", max_length=MAX_APP_DESCRIPTION_LENGTH
+    )
     icon_type: IconType | None = Field(default=None, description="Icon type")
-    icon: str | None = Field(default=None, description="Icon")
-    icon_background: str | None = Field(default=None, description="Icon background color")
+    icon: str | None = Field(default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon")
+    icon_background: str | None = Field(
+        default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon background color"
+    )
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return validate_app_name(value)
+
 
 class CopyAppPayload(BaseModel):
-    name: str | None = Field(default=None, description="Name for the copied app")
-    description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
+    name: str | None = Field(default=None, max_length=MAX_APP_NAME_LENGTH, description="Name for the copied app")
+    description: str | None = Field(
+        default=None, description="Description for the copied app", max_length=MAX_APP_DESCRIPTION_LENGTH
+    )
     icon_type: IconType | None = Field(default=None, description="Icon type")
-    icon: str | None = Field(default=None, description="Icon")
-    icon_background: str | None = Field(default=None, description="Icon background color")
+    icon: str | None = Field(default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon")
+    icon_background: str | None = Field(
+        default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon background color"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return validate_app_name(value)
 
 
 class AppExportQuery(BaseModel):
@@ -182,13 +217,20 @@ class AppExportQuery(BaseModel):
 
 
 class AppNamePayload(BaseModel):
-    name: str = Field(..., min_length=1, description="Name to check")
+    name: str = Field(..., min_length=1, max_length=MAX_APP_NAME_LENGTH, description="Name to check")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return validate_app_name(value)
 
 
 class AppIconPayload(BaseModel):
-    icon: str | None = Field(default=None, description="Icon data")
+    icon: str | None = Field(default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon data")
     icon_type: IconType | None = Field(default=None, description="Icon type")
-    icon_background: str | None = Field(default=None, description="Icon background color")
+    icon_background: str | None = Field(
+        default=None, max_length=MAX_APP_ICON_LENGTH, description="Icon background color"
+    )
 
 
 class AppSiteStatusPayload(BaseModel):
@@ -404,6 +446,7 @@ class AppDetail(ResponseModel):
     name: str
     description: str | None = None
     mode: str = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: str | None = None
     icon: str | None = None
     icon_background: str | None = None
     enable_site: bool
@@ -423,6 +466,11 @@ class AppDetail(ResponseModel):
     access_mode: str | None = None
     tags: list[Tag] = Field(default_factory=list)
 
+    @computed_field(return_type=str | None)  # type: ignore
+    @property
+    def icon_url(self) -> str | None:
+        return build_icon_url(self.icon_type, self.icon)
+
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
@@ -430,18 +478,12 @@ class AppDetail(ResponseModel):
 
 
 class AppDetailWithSite(AppDetail):
-    icon_type: str | None = None
     api_base_url: str | None = None
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
-
-    @computed_field(return_type=str | None)  # type: ignore
-    @property
-    def icon_url(self) -> str | None:
-        return build_icon_url(self.icon_type, self.icon)
 
 
 class AppPagination(ResponseModel):
