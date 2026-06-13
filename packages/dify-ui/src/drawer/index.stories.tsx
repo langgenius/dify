@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { DrawerRootSnapPoint } from '.'
+import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import * as React from 'react'
 import {
   createDrawerHandle,
@@ -314,7 +315,7 @@ function SnapPointsDemo() {
         <DrawerViewport className="flex touch-none items-end justify-center">
           <DrawerPopup
             className={cn(
-              'relative overflow-visible! touch-none',
+              'relative overflow-visible touch-none',
               '[--bleed:3rem] [--top-margin:1rem]',
               'pb-[max(0px,calc(var(--drawer-snap-point-offset,0px)_+_var(--drawer-swipe-movement-y,0px)))]',
               'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-(--bleed) after:bg-inherit after:content-[""]',
@@ -1031,7 +1032,7 @@ export const InstantRightPanel: Story = {
       </DrawerTrigger>
       <DrawerPortal>
         <DrawerViewport className="pointer-events-none">
-          <DrawerPopup className="pointer-events-auto data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:duration-0 data-starting-style:data-[swipe-direction=right]:transform-[translateX(0)] data-ending-style:duration-0 data-ending-style:data-[swipe-direction=right]:transform-[translateX(0)] data-swiping:shadow-none">
+          <BaseDrawer.Popup className="pointer-events-auto fixed inset-y-0 right-0 z-50 flex h-dvh w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-l-2xl border-[0.5px] border-r-0 border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl outline-hidden touch-none transition-none motion-reduce:transition-none data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(0)] data-ending-style:data-[swipe-direction=right]:transform-[translateX(0)] data-swiping:select-none data-swiping:shadow-none">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                 <div className="min-w-0">
@@ -1053,7 +1054,7 @@ export const InstantRightPanel: Story = {
                 <DrawerClose className={primaryCloseClassName}>Close</DrawerClose>
               </div>
             </DrawerContent>
-          </DrawerPopup>
+          </BaseDrawer.Popup>
         </DrawerViewport>
       </DrawerPortal>
     </Drawer>
