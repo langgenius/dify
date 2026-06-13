@@ -57,6 +57,7 @@ describe('PluginTaskList', () => {
     onClearAll: vi.fn(),
     onClearErrors: vi.fn(),
     onClearSingle: vi.fn(),
+    onStopAll: vi.fn(),
   }
 
   beforeEach(() => {
@@ -180,42 +181,26 @@ describe('PluginTaskList', () => {
   })
 
   describe('Running section', () => {
-    it('should not render clear buttons for running plugins', () => {
+    it('should render stop all button for running plugins', () => {
       render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
 
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
+      expect(screen.getByRole('button', { name: /plugin\.task\.stopAll/ })).toBeInTheDocument()
       expect(screen.queryByText(/plugin\.task\.clearAll/)).not.toBeInTheDocument()
+    })
+
+    it('should call onStopAll when stop all button is clicked', () => {
+      const onStopAll = vi.fn()
+      render(
+        <PluginTaskList
+          {...defaultProps}
+          runningPlugins={runningPlugins}
+          onStopAll={onStopAll}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.task\.stopAll/ }))
+
+      expect(onStopAll).toHaveBeenCalledTimes(1)
     })
 
     it('should show installing hint as status text', () => {
