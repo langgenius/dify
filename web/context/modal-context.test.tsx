@@ -32,8 +32,8 @@ vi.mock('@/app/components/header/account-setting', () => ({
   ),
 }))
 
-vi.mock('foxact/use-local-storage', () => ({
-  useSetLocalStorage: () => mockSetEducationVerifying,
+vi.mock('@/context/education.storage', () => ({
+  useSetEducationVerifying: () => mockSetEducationVerifying,
 }))
 
 const mockUseProviderContext = vi.fn()

@@ -30,15 +30,14 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useSetNeedRefreshAppList } from '@/context/app-list.storage'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
@@ -224,7 +223,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const onConfirmDelete = useCallback(async () => {
     try {

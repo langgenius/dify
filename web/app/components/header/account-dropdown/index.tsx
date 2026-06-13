@@ -5,7 +5,6 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
@@ -14,6 +13,7 @@ import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useSetEducationExpiredHasNoticed, useSetEducationReverifyHasNoticed, useSetEducationReverifyPrevExpireAt } from '@/context/education.storage'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -27,10 +27,6 @@ import GithubStar from '../github-star'
 import Compliance from './compliance'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 import Support from './support'
-
-const EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY = 'education-reverify-prev-expire-at'
-const EDUCATION_REVERIFY_HAS_NOTICED_KEY = 'education-reverify-has-noticed'
-const EDUCATION_EXPIRED_HAS_NOTICED_KEY = 'education-expired-has-noticed'
 
 type AccountMenuRouteItemProps = {
   href: string
@@ -121,9 +117,9 @@ export default function AppSelector() {
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
-  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
-  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
+  const clearEducationReverifyPrevExpireAt = useSetEducationReverifyPrevExpireAt()
+  const clearEducationReverifyHasNoticed = useSetEducationReverifyHasNoticed()
+  const clearEducationExpiredHasNoticed = useSetEducationExpiredHasNoticed()
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {

@@ -8,14 +8,13 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useDebounceFn } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useSetNeedRefreshAppList } from '@/context/app-list.storage'
 import { useProviderContext } from '@/context/provider-context'
 import {
   DSLImportMode,
@@ -55,7 +54,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()

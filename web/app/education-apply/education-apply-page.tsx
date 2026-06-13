@@ -8,13 +8,12 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useAppContext } from '@/context/app-context'
+import { useSetEducationVerifying } from '@/context/education.storage'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
@@ -63,7 +62,7 @@ const EducationApplyAgeContent = () => {
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
-  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
+  const setEducationVerifying = useSetEducationVerifying()
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')

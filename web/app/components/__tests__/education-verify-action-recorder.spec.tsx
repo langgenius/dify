@@ -12,8 +12,8 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-vi.mock('foxact/use-local-storage', () => ({
-  useSetLocalStorage: () => setEducationVerifyingMock,
+vi.mock('@/context/education.storage', () => ({
+  useSetEducationVerifying: () => setEducationVerifyingMock,
 }))
 
 const mockUseSearchParams = vi.mocked(useSearchParams)
