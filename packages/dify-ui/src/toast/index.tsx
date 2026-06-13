@@ -5,7 +5,7 @@ import type {
   ToastManagerUpdateOptions,
   ToastObject,
 } from '@base-ui/react/toast'
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { cn } from '../cn'
 
@@ -64,11 +64,11 @@ type ToastHostProps = {
 }
 
 type ToastDismiss = (toastId?: string) => void
-type ToastCall = (title: ReactNode, options?: ToastOptions) => string
-type TypedToastCall = (title: ReactNode, options?: TypedToastOptions) => string
+type ToastCall = (title: React.ReactNode, options?: ToastOptions) => string
+type TypedToastCall = (title: React.ReactNode, options?: TypedToastOptions) => string
 
 type ToastApi = {
-  (title: ReactNode, options?: ToastOptions): string
+  (title: React.ReactNode, options?: ToastOptions): string
   success: TypedToastCall
   error: TypedToastCall
   warning: TypedToastCall
@@ -166,12 +166,12 @@ function ToastCard({
         'after:pointer-events-auto after:absolute after:top-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-[\'\']',
       )}
     >
-      <div className="relative overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+      <div className="relative h-full overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
         <div
           aria-hidden="true"
           className={cn('absolute -inset-px bg-linear-to-r opacity-40', getToneGradientClasses(toastType))}
         />
-        <BaseToast.Content className="relative flex items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
+        <BaseToast.Content className="relative flex h-full items-start gap-1 overflow-hidden p-3 transition-opacity duration-200 data-behind:opacity-0 data-expanded:opacity-100 motion-reduce:transition-none">
           <div className="flex shrink-0 items-center justify-center p-0.5">
             <ToastIcon type={toastType} />
           </div>

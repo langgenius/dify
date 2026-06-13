@@ -42,6 +42,7 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    DeviceTokenResponse,
     WorkspacePayload,
 )
 from extensions.ext_database import db
@@ -130,6 +131,7 @@ class OAuthDeviceTokenApi(Resource):
     """RFC 8628 poll."""
 
     @openapi_ns.expect(openapi_ns.models[DevicePollRequest.__name__])
+    @openapi_ns.response(200, "Device token", openapi_ns.models[DeviceTokenResponse.__name__])
     def post(self):
         payload = _validate_json(DevicePollRequest)
         device_code = payload.device_code

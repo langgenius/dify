@@ -1,7 +1,8 @@
 import logging
+from typing import Any
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
@@ -71,7 +72,49 @@ class AgentDriveDeleteFileQuery(AgentDriveMutationQuery):
     key: str = Field(min_length=1, description="Drive key, e.g. files/sample.pdf")
 
 
+class AgentLogMetaResponse(ResponseModel):
+    status: str
+    executor: str
+    start_time: str
+    elapsed_time: float | None = None
+    total_tokens: int
+    agent_mode: str
+    iterations: int
+
+
+class AgentToolCallResponse(ResponseModel):
+    status: str
+    error: str | None = None
+    time_cost: float | int
+    tool_name: str
+    tool_label: str
+    tool_input: dict[str, Any]
+    tool_output: dict[str, Any]
+    tool_parameters: dict[str, Any]
+    tool_icon: Any = Field(default=None)
+
+
+class AgentIterationLogResponse(ResponseModel):
+    tokens: int
+    tool_calls: list[AgentToolCallResponse]
+    tool_raw: dict[str, Any]
+    thought: str | None = None
+    created_at: str
+    files: list[Any] = Field(default_factory=list)
+
+
+class AgentLogResponse(ResponseModel):
+    meta: AgentLogMetaResponse
+    iterations: list[AgentIterationLogResponse]
+    files: list[Any] = Field(default_factory=list)
+
+
 class AgentSkillUploadResponse(ResponseModel):
+    skill: AgentSkillRefConfig
+    manifest: SkillManifest
+
+
+class AgentSkillStandardizeResponse(ResponseModel):
     skill: AgentSkillRefConfig
     manifest: SkillManifest
 
@@ -101,6 +144,8 @@ register_response_schema_models(
     AgentDriveDeleteResponse,
     AgentDriveFileCommitResponse,
     AgentDriveFileResponse,
+    AgentLogResponse,
+    AgentSkillStandardizeResponse,
     AgentSkillUploadResponse,
     SkillToolInferenceResult,
 )
@@ -123,10 +168,8 @@ class AgentLogApi(Resource):
     @console_ns.doc("get_agent_logs")
     @console_ns.doc(description="Get agent execution logs for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AgentLogQuery.__name__])
-    @console_ns.response(
-        200, "Agent logs retrieved successfully", fields.List(fields.Raw(description="Agent log entries"))
-    )
+    @console_ns.doc(params=query_params_from_model(AgentLogQuery))
+    @console_ns.response(200, "Agent logs retrieved successfully", console_ns.models[AgentLogResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -184,7 +227,11 @@ class AgentSkillStandardizeApi(Resource):
     @console_ns.doc("standardize_agent_skill")
     @console_ns.doc(description="Validate + standardize a Skill into the agent drive (ENG-594)")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentDriveMutationQuery)})
-    @console_ns.response(201, "Skill standardized into drive", console_ns.models[AgentSkillUploadResponse.__name__])
+    @console_ns.response(
+        201,
+        "Skill standardized into drive",
+        console_ns.models[AgentSkillStandardizeResponse.__name__],
+    )
     @console_ns.response(400, "Invalid skill package or no bound agent")
     @setup_required
     @login_required

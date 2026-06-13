@@ -1,5 +1,7 @@
 """OpenAPI JSON rendering tests for Flask-RESTX API blueprints."""
 
+from collections.abc import Iterator
+
 import pytest
 from flask import Flask
 
@@ -29,6 +31,17 @@ def _parameters_by_name(operation: dict[str, object]) -> dict[str, dict[str, obj
         if isinstance(name, str):
             result[name] = parameter
     return result
+
+
+def _get_operations(payload: dict[str, object]) -> Iterator[tuple[str, dict[str, object]]]:
+    paths = payload["paths"]
+    assert isinstance(paths, dict)
+    for path, path_item in paths.items():
+        if not isinstance(path, str) or not isinstance(path_item, dict):
+            continue
+        operation = path_item.get("get")
+        if isinstance(operation, dict):
+            yield path, operation
 
 
 def _multipart_form_schema(operation: dict[str, object]) -> dict[str, object]:
@@ -93,6 +106,8 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
         assert isinstance(payload["components"]["schemas"], dict)
         missing_refs = _schema_refs(payload) - set(payload["components"]["schemas"])
         assert not missing_refs
+        get_request_body_paths = [path for path, operation in _get_operations(payload) if "requestBody" in operation]
+        assert not get_request_body_paths
 
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
