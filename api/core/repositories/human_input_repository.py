@@ -288,24 +288,25 @@ class HumanInputFormRepositoryImpl:
             channel_payload=delivery_method.model_dump_json(),
         )
         recipients: list[HumanInputFormRecipient] = []
-        if isinstance(delivery_method, InteractiveSurfaceDeliveryMethod):
-            recipient_model = HumanInputFormRecipient(
-                form_id=form_id,
-                delivery_id=delivery_id,
-                recipient_type=RecipientType.STANDALONE_WEB_APP,
-                recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
-            )
-            recipients.append(recipient_model)
-        elif isinstance(delivery_method, EmailDeliveryMethod):
-            email_recipients_config = delivery_method.config.recipients
-            recipients.extend(
-                self._build_email_recipients(
-                    session=session,
+        match delivery_method:
+            case InteractiveSurfaceDeliveryMethod():
+                recipient_model = HumanInputFormRecipient(
                     form_id=form_id,
                     delivery_id=delivery_id,
-                    recipients_config=email_recipients_config,
+                    recipient_type=RecipientType.STANDALONE_WEB_APP,
+                    recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
                 )
-            )
+                recipients.append(recipient_model)
+            case EmailDeliveryMethod():
+                email_recipients_config = delivery_method.config.recipients
+                recipients.extend(
+                    self._build_email_recipients(
+                        session=session,
+                        form_id=form_id,
+                        delivery_id=delivery_id,
+                        recipients_config=email_recipients_config,
+                    )
+                )
 
         return _DeliveryAndRecipients(delivery=delivery_model, recipients=recipients)
 

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Select,
   SelectContent,
@@ -263,7 +263,7 @@ export const ReadOnly: Story = {
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = useState<string | null>('balanced')
+  const [value, setValue] = React.useState<string | null>('balanced')
 
   return (
     <div className="flex flex-col items-start gap-3">

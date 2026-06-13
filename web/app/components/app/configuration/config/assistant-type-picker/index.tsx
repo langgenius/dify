@@ -21,7 +21,7 @@ import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communic
 import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 import AgentSetting from '../agent/agent-setting'
 
-type Props = {
+type Props = Readonly<{
   value: string
   disabled: boolean
   onChange: (value: string) => void
@@ -29,7 +29,7 @@ type Props = {
   isChatModel: boolean
   agentConfig?: AgentConfig
   onAgentSettingChange: (payload: AgentConfig) => void
-}
+}>
 
 type ItemProps = {
   text: string

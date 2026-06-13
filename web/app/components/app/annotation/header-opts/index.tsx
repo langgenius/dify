@@ -29,12 +29,12 @@ import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-mo
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
 
-type Props = {
+type Props = Readonly<{
   appId: string
   onAdd: (payload: AnnotationItemBasic) => void
   onAdded: () => void
   controlUpdateList: number
-}
+}>
 
 type OperationsMenuProps = {
   list: AnnotationItemBasic[]

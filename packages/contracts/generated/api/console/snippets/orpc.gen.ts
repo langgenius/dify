@@ -15,6 +15,7 @@ import {
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath,
   zGetSnippetsBySnippetIdWorkflowRunsByRunIdResponse,
   zGetSnippetsBySnippetIdWorkflowRunsPath,
+  zGetSnippetsBySnippetIdWorkflowRunsQuery,
   zGetSnippetsBySnippetIdWorkflowRunsResponse,
   zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath,
   zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse,
@@ -76,16 +77,11 @@ import {
  *
  * Uses both the legacy stop flag mechanism and the graph engine
  * command channel for backward compatibility.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
     description:
-      'Uses both the legacy stop flag mechanism and the graph engine\ncommand channel for backward compatibility.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Uses both the legacy stop flag mechanism and the graph engine\ncommand channel for backward compatibility.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStop',
@@ -159,7 +155,12 @@ export const get3 = oc
     summary: 'List workflow runs for snippet',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowRunsPath }))
+  .input(
+    z.object({
+      params: zGetSnippetsBySnippetIdWorkflowRunsPath,
+      query: zGetSnippetsBySnippetIdWorkflowRunsQuery.optional(),
+    }),
+  )
   .output(zGetSnippetsBySnippetIdWorkflowRunsResponse)
 
 export const workflowRuns = {
@@ -170,16 +171,9 @@ export const workflowRuns = {
 
 /**
  * Get default block configurations for snippet workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigs',
@@ -196,16 +190,9 @@ export const defaultWorkflowBlockConfigs = {
 
 /**
  * Get snippet draft workflow configuration limits
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftConfig',
@@ -222,16 +209,11 @@ export const config = {
 
 /**
  * Conversation variables are not used in snippet workflows; returns an empty list for API parity
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get6 = oc
   .route({
-    deprecated: true,
     description:
-      'Conversation variables are not used in snippet workflows; returns an empty list for API parity\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Conversation variables are not used in snippet workflows; returns an empty list for API parity',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftConversationVariables',
@@ -247,16 +229,10 @@ export const conversationVariables = {
 
 /**
  * Get environment variables from snippet draft workflow graph
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get environment variables from snippet draft workflow graph\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get environment variables from snippet draft workflow graph',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftEnvironmentVariables',
@@ -276,16 +252,11 @@ export const environmentVariables = {
  * Run draft workflow iteration node for snippet
  * Iteration nodes execute their internal sub-graph multiple times over an input list.
  * Returns an SSE event stream with iteration progress and results.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post2 = oc
   .route({
-    deprecated: true,
     description:
-      'Run draft workflow iteration node for snippet\nIteration nodes execute their internal sub-graph multiple times over an input list.\nReturns an SSE event stream with iteration progress and results.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Run draft workflow iteration node for snippet\nIteration nodes execute their internal sub-graph multiple times over an input list.\nReturns an SSE event stream with iteration progress and results.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRun',
@@ -323,16 +294,11 @@ export const iteration = {
  * Run draft workflow loop node for snippet
  * Loop nodes execute their internal sub-graph repeatedly until a condition is met.
  * Returns an SSE event stream with loop progress and results.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post3 = oc
   .route({
-    deprecated: true,
     description:
-      'Run draft workflow loop node for snippet\nLoop nodes execute their internal sub-graph repeatedly until a condition is met.\nReturns an SSE event stream with loop progress and results.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Run draft workflow loop node for snippet\nLoop nodes execute their internal sub-graph repeatedly until a condition is met.\nReturns an SSE event stream with loop progress and results.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRun',
@@ -395,16 +361,11 @@ export const lastRun = {
  * Run a single node in snippet draft workflow (single-step debugging)
  * Executes a specific node with provided inputs for single-step debugging.
  * Returns the node execution result including status, outputs, and timing.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post4 = oc
   .route({
-    deprecated: true,
     description:
-      'Run a single node in snippet draft workflow (single-step debugging)\nExecutes a specific node with provided inputs for single-step debugging.\nReturns the node execution result including status, outputs, and timing.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Run a single node in snippet draft workflow (single-step debugging)\nExecutes a specific node with provided inputs for single-step debugging.\nReturns the node execution result including status, outputs, and timing.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRun',
@@ -442,16 +403,10 @@ export const delete_ = oc
 
 /**
  * Get variables for a specific node (snippet draft workflow)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get9 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get variables for a specific node (snippet draft workflow)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get variables for a specific node (snippet draft workflow)',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariables',
@@ -481,16 +436,11 @@ export const nodes3 = {
  *
  * Executes the snippet's draft workflow with the provided inputs
  * and returns an SSE event stream with execution progress and results.
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post5 = oc
   .route({
-    deprecated: true,
     description:
-      'Executes the snippet\'s draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Executes the snippet\'s draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftRun',
@@ -512,16 +462,11 @@ export const run4 = {
 
 /**
  * System variables are not used in snippet workflows; returns an empty list for API parity
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get10 = oc
   .route({
-    deprecated: true,
     description:
-      'System variables are not used in snippet workflows; returns an empty list for API parity\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'System variables are not used in snippet workflows; returns an empty list for API parity',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftSystemVariables',
@@ -537,16 +482,10 @@ export const systemVariables = {
 
 /**
  * Reset a draft workflow variable to its default value (snippet scope)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const put = oc
   .route({
-    deprecated: true,
-    description:
-      'Reset a draft workflow variable to its default value (snippet scope)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Reset a draft workflow variable to its default value (snippet scope)',
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdReset',
@@ -578,16 +517,10 @@ export const delete2 = oc
 
 /**
  * Get a specific draft workflow variable (snippet scope)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get11 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get a specific draft workflow variable (snippet scope)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get a specific draft workflow variable (snippet scope)',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftVariablesByVariableId',
@@ -599,16 +532,10 @@ export const get11 = oc
 
 /**
  * Update a draft workflow variable (snippet scope)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const patch = oc
   .route({
-    deprecated: true,
-    description:
-      'Update a draft workflow variable (snippet scope)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Update a draft workflow variable (snippet scope)',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableId',
@@ -648,16 +575,10 @@ export const delete3 = oc
 
 /**
  * List draft workflow variables without values (paginated, snippet scope)
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get12 = oc
   .route({
-    deprecated: true,
-    description:
-      'List draft workflow variables without values (paginated, snippet scope)\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'List draft workflow variables without values (paginated, snippet scope)',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraftVariables',
@@ -680,16 +601,9 @@ export const variables2 = {
 
 /**
  * Get draft workflow for snippet
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get13 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsDraft',
@@ -702,16 +616,9 @@ export const get13 = oc
 
 /**
  * Sync draft workflow for snippet
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post6 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraft',
@@ -743,16 +650,9 @@ export const draft = {
 
 /**
  * Get published workflow for snippet
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get14 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflowsPublish',
@@ -765,16 +665,9 @@ export const get14 = oc
 
 /**
  * Publish snippet workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post7 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsPublish',
@@ -799,16 +692,10 @@ export const publish = {
  * Restore a published snippet workflow version into the draft workflow
  *
  * Restore a published snippet workflow version into the draft workflow
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post8 = oc
   .route({
-    deprecated: true,
-    description:
-      'Restore a published snippet workflow version into the draft workflow\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Restore a published snippet workflow version into the draft workflow',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsByWorkflowIdRestore',
@@ -831,16 +718,10 @@ export const byWorkflowId = {
  * Get all published workflow versions for snippet
  *
  * Get all published workflows for a snippet
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get15 = oc
   .route({
-    deprecated: true,
-    description:
-      'Get all published workflows for a snippet\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Get all published workflows for a snippet',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSnippetsBySnippetIdWorkflows',

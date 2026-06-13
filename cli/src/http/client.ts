@@ -15,7 +15,8 @@ import { buildBody } from './body.js'
 import { classifyResponse } from './error-mapper.js'
 import { classifyTransport, logRequest, logResponse, setBearer, setUserAgent } from './hooks.js'
 import { proxyDispatcher } from './proxy.js'
-import { backoffDelay, shouldRetry } from './retry.js'
+import { classifyRateLimit, MAX_HONORED_WAIT_MS, RATE_LIMIT_MAX_ATTEMPTS, rateLimitDelayMs } from './rate-limit.js'
+import { backoffDelay, isIdempotentRetryMethod, shouldRetry } from './retry.js'
 import { redactBearer } from './sanitize.js'
 import { appendSearchParams, joinURL } from './url.js'
 
@@ -133,6 +134,7 @@ function buildRequest(state: ClientState, path: string, opts: RequestOptions, th
     timeoutMs: effectiveTimeoutMs,
     retryAttempts: effectiveRetryAttempts,
     throwOnError,
+    retryOnRateLimit: opts.retryOnRateLimit ?? false,
   }
   return { request, resolved, effectiveTimeoutMs, userSignal: opts.signal }
 }
@@ -204,6 +206,37 @@ async function execute(
 
     const res = ctx.response
     if (!res.ok) {
+      // 429 has its own policy. The server self-describes via the ErrorBody `code`: a
+      // "too_many_requests" throttle waits-and-retries on idempotent methods (or opted-in POSTs)
+      // honoring Retry-After; quota / unrecognized 429s surface immediately rather than burning
+      // retries. Surfacing reuses the shared classifyResponse so the body parses to ErrorBody.
+      if (res.status === 429) {
+        const decision = await classifyRateLimit(res.clone())
+        const canRetry
+          = decision.retryable
+            && attempt < effectiveRetryAttempts
+            && (decision.retryAfterMs === undefined || decision.retryAfterMs <= MAX_HONORED_WAIT_MS)
+            && (isIdempotentRetryMethod(method) || (method === 'POST' && resolved.retryOnRateLimit))
+        if (canRetry) {
+          const delay = rateLimitDelayMs(decision, attempt + 1)
+          state.logger?.({ phase: 'retry', method, url: redactBearer(ctx.request.url), status: 429, attempt: attempt + 1, delayMs: delay })
+          await res.body?.cancel().catch(() => {})
+          if (delay > 0)
+            await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+
+        ctx.error = await classifyResponse(ctx.request, res)
+        await runHooks(state.hooks.onResponseError, ctx)
+        if (throwOnError) {
+          const finalErr = ctx.error
+          if (finalErr instanceof Error && typeof Error.captureStackTrace === 'function')
+            Error.captureStackTrace(finalErr, execute)
+          throw finalErr
+        }
+        return res
+      }
+
       if (attempt < effectiveRetryAttempts && shouldRetry(res, ctx)) {
         state.logger?.({ phase: 'retry', method, url: redactBearer(ctx.request.url), attempt: attempt + 1 })
         // Drain the discarded error body so undici can release the socket back to its
@@ -259,10 +292,18 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
   const streamFetch = (path: string, callOpts?: RequestOptions): Promise<Response> => {
     // SSE bodies must not be aborted by a request-level timeout — `0` is the buildRequest
     // sentinel for "no timeout" and also overrides the client default.
+    //
+    // A stream normally never retries (a mid-stream replay would double-send). When the caller
+    // opts into 429 retry, allow a bounded budget: the 429 admission rejection arrives as a plain
+    // body before the stream opens, and execute()'s 429 branch is the only path that fires for a
+    // POST — shouldRetry still rejects POST for transport / 5xx, so nothing else replays.
+    const retryAttempts = callOpts?.retryOnRateLimit === true
+      ? (callOpts.retryAttempts ?? RATE_LIMIT_MAX_ATTEMPTS)
+      : 0
     const finalOpts: RequestOptions = {
       ...callOpts,
       method: callOpts?.method ?? 'GET',
-      retryAttempts: 0,
+      retryAttempts,
       timeoutMs: 0,
     }
     const built = buildRequest(state, path, finalOpts, false)
@@ -284,6 +325,7 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
       timeoutMs: state.defaultTimeoutMs,
       retryAttempts: state.defaultRetryAttempts,
       throwOnError: false,
+      retryOnRateLimit: false,
     }
     const userSignal = init?.signal ?? req.signal
     return execute(state, req, resolved, state.defaultTimeoutMs, userSignal)

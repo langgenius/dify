@@ -31,7 +31,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: ToolWithProvider
   previewCardHandle: ToolActionPreviewCardHandle
@@ -42,7 +42,7 @@ type Props = {
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   isShowLetterIndex?: boolean
-}
+}>
 
 const Tool: FC<Props> = ({
   className,

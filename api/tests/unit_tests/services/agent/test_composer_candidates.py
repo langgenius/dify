@@ -123,7 +123,10 @@ def _soul() -> AgentSoulConfig:
                 "files": [{"id": "f-1", "name": "qna_report.pdf"}],
             },
             "tools": {
-                "cli_tools": [{"name": "ffmpeg"}, {"name": "disabled-one", "enabled": False}],
+                "cli_tools": [
+                    {"id": "ct-1", "name": "ffmpeg"},
+                    {"id": "ct-2", "name": "disabled-one", "enabled": False},
+                ],
             },
             "knowledge": {"datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}]},
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
@@ -143,6 +146,8 @@ def test_soul_candidates_lists_configured_items_only():
     assert truncated is False
     assert [item["kind"] for item in lists["skills_files"]] == ["skill", "file"]
     assert [item["name"] for item in lists["cli_tools"]] == ["ffmpeg"]
+    # the stable mention id flows through so the frontend can mint [§cli_tool:<id>§]
+    assert [item["id"] for item in lists["cli_tools"]] == ["ct-1"]
     # enriched from DB; dangling dataset kept with missing flag (placeholder, 0522)
     knowledge = {item["id"]: item for item in lists["knowledge_datasets"]}
     assert knowledge["ds-1"]["name"] == "产品手册"

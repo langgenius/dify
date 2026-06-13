@@ -5,9 +5,9 @@ import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
 import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
 
-type Props = {
+type Props = Readonly<{
   payload: GlobalVariable
-}
+}>
 
 const Item = ({
   payload,

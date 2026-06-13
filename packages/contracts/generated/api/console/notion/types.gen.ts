@@ -21,7 +21,7 @@ export type NotionIntegrateWorkspaceResponse = {
 
 export type NotionIntegratePageResponse = {
   is_bound: boolean
-  page_icon: DataSourceIntegrateIconResponse
+  page_icon: DataSourceIntegrateIconResponse | null
   page_id: string
   page_name: string
   parent_id: string | null

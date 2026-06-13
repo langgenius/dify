@@ -22,14 +22,14 @@ import InstallMulti from './install-multi'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   allPlugins: Dependency[]
   onStartToInstall?: () => void
   onInstalled: (plugins: Plugin[], installStatus: InstallStatus[]) => void
   onCancel: () => void
   isFromMarketPlace?: boolean
   isHideButton?: boolean
-}
+}>
 
 const Install: FC<Props> = ({
   allPlugins,

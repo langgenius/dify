@@ -76,7 +76,7 @@ afterEach(async () => {
 })
 
 // mock custom clipboard hook - wraps writeTextToClipboard with fallback
-vi.mock('@/hooks/use-clipboard', () => ({
+vi.mock('foxact/use-clipboard', () => ({
   useClipboard: () => ({
     copy: vi.fn(),
     copied: false,
