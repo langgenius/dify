@@ -1,10 +1,11 @@
 """Paragraph index processor."""
 
-from sqlalchemy.orm import scoped_session
 import logging
 import re
 import uuid
 from typing import Any, TypedDict, cast, override
+
+from sqlalchemy.orm import scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -412,7 +413,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if supports_vision:
             # First, try to get images from SegmentAttachmentBinding (preferred method)
             if segment_id:
-                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id, db.session)
+                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
+                    tenant_id, segment_id, db.session
+                )
 
             # If no images from attachments, fall back to extracting from text
             if not image_files:
@@ -550,7 +553,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return file_objects
 
     @staticmethod
-    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str, session: scoped_session) -> list[File]:
+    def _extract_images_from_segment_attachments(
+        tenant_id: str, segment_id: str, session: scoped_session
+    ) -> list[File]:
         """
         Extract images from SegmentAttachmentBinding table (preferred method).
         This matches how DatasetRetrieval gets segment attachments.
