@@ -60,7 +60,7 @@ def stream_topic_events(
 
 def _normalize_terminal_events(terminal_events: Iterable[str | StreamEvent] | None) -> set[str]:
     if terminal_events is None:
-        return {StreamEvent.WORKFLOW_FINISHED.value, StreamEvent.WORKFLOW_PAUSED.value}
+        return {StreamEvent.WORKFLOW_FINISHED.value, StreamEvent.WORKFLOW_PAUSED.value, StreamEvent.ERROR.value}
     values: set[str] = set()
     for item in terminal_events:
         if isinstance(item, StreamEvent):
