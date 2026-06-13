@@ -235,23 +235,20 @@ export const Positions: Story = {
             <DrawerPopup className="-mb-12 touch-auto data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
               <div className={handleClassName} />
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-12">
-                <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-                  <div className="min-w-0">
-                    <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
-                      Bottom sheet
-                    </DrawerTitle>
-                    <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                      This drawer uses the default swipeDirection="down" bottom sheet behavior.
-                    </DrawerDescription>
-                  </div>
-                  <DrawerCloseButton className="shrink-0" />
+                <div className="mx-auto w-full max-w-lg px-6 pt-6 pb-4 text-center">
+                  <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
+                    Bottom sheet
+                  </DrawerTitle>
+                  <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
+                    This drawer uses the default swipeDirection="down" bottom sheet behavior.
+                  </DrawerDescription>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                <div className="mx-auto min-h-0 w-full max-w-128 flex-1 overflow-y-auto px-6 pb-6">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-sm/5 text-text-secondary">
                     The drag handle sits at the top because the sheet dismisses downward.
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+                <div className="flex shrink-0 items-center justify-center gap-2 px-6 py-4">
                   <DrawerClose className={primaryCloseClassName}>Close</DrawerClose>
                 </div>
               </DrawerContent>
@@ -268,23 +265,20 @@ export const Positions: Story = {
           <DrawerViewport className="flex items-start justify-center">
             <DrawerPopup className="-mt-12 touch-auto data-[swipe-direction=up]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=up]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%_+_3rem_-_2px))] data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(-100%_+_3rem_-_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pt-12">
-                <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-                  <div className="min-w-0">
-                    <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
-                      Top sheet
-                    </DrawerTitle>
-                    <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                      This drawer is positioned with swipeDirection="up" and dismisses upward.
-                    </DrawerDescription>
-                  </div>
-                  <DrawerCloseButton className="shrink-0" />
+                <div className="mx-auto w-full max-w-128 px-6 pt-6 pb-4 text-center">
+                  <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
+                    Top sheet
+                  </DrawerTitle>
+                  <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
+                    This drawer is positioned with swipeDirection="up" and dismisses upward.
+                  </DrawerDescription>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                <div className="mx-auto min-h-0 w-full max-w-128 flex-1 overflow-y-auto px-6 pb-6">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-sm/5 text-text-secondary">
                     The drag handle sits at the bottom because the sheet dismisses upward.
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+                <div className="flex shrink-0 items-center justify-center gap-2 px-6 py-4">
                   <DrawerClose className={primaryCloseClassName}>Close</DrawerClose>
                 </div>
               </DrawerContent>
@@ -397,8 +391,8 @@ export const NestedDrawers: Story = {
           >
             <div data-nested-handle className={cn(handleClassName, 'transition-opacity duration-200')} />
             <DrawerContent data-nested-content className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200">
-              <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-                <div className="min-w-0">
+              <div className="shrink-0 px-6 pt-6 pb-4 text-center">
+                <div className="mx-auto max-w-96">
                   <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
                     Account
                   </DrawerTitle>
@@ -406,7 +400,6 @@ export const NestedDrawers: Story = {
                     Open nested drawers from inside a drawer while the parent remains in the stack.
                   </DrawerDescription>
                 </div>
-                <DrawerCloseButton className="shrink-0" />
               </div>
               <div className="min-h-0 flex-1 px-6 pb-6" />
               <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
@@ -435,16 +428,15 @@ export const NestedDrawers: Story = {
                       >
                         <div data-nested-handle className={cn(handleClassName, 'transition-opacity duration-200')} />
                         <DrawerContent data-nested-content className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200">
-                          <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-                            <div className="min-w-0">
+                          <div className="shrink-0 px-6 pt-6 pb-4 text-center">
+                            <div className="mx-auto max-w-96">
                               <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
                                 Security
                               </DrawerTitle>
                               <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                                Nested drawers keep their own title, close button, and focus scope.
+                                Nested drawers keep their own title, footer action, and focus scope.
                               </DrawerDescription>
                             </div>
-                            <DrawerCloseButton className="shrink-0" />
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                             <ul className="grid gap-2 text-sm text-text-secondary">
@@ -479,8 +471,8 @@ export const NestedDrawers: Story = {
                                   >
                                     <div data-nested-handle className={cn(handleClassName, 'transition-opacity duration-200')} />
                                     <DrawerContent data-nested-content className="flex min-h-0 flex-1 flex-col p-0 pb-12 transition-opacity duration-200">
-                                      <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-                                        <div className="min-w-0">
+                                      <div className="shrink-0 px-6 pt-6 pb-4 text-center">
+                                        <div className="mx-auto max-w-96">
                                           <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
                                             Advanced
                                           </DrawerTitle>
@@ -488,7 +480,6 @@ export const NestedDrawers: Story = {
                                             The stack uses Base UI nested drawer data attributes for visual treatment.
                                           </DrawerDescription>
                                         </div>
-                                        <DrawerCloseButton className="shrink-0" />
                                       </div>
                                       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                                         <label className="grid gap-1 text-sm font-medium text-text-secondary" htmlFor="device-name">
@@ -545,19 +536,20 @@ function IndentEffectDemo() {
                 <DrawerPopup className="absolute -mb-12 touch-auto data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
                   <div className={handleClassName} />
                   <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-12">
-                    <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
-                      <div className="min-w-0">
-                        <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
-                          Notifications
-                        </DrawerTitle>
-                        <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                          The indented shell uses DrawerProvider, DrawerIndentBackground, and DrawerIndent.
-                        </DrawerDescription>
-                      </div>
-                      <DrawerCloseButton className="shrink-0" />
+                    <div className="mx-auto w-full max-w-96 px-6 pt-6 pb-4 text-center">
+                      <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
+                        Notifications
+                      </DrawerTitle>
+                      <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
+                        The indented shell uses DrawerProvider, DrawerIndentBackground, and DrawerIndent.
+                      </DrawerDescription>
                     </div>
-                    <div className="min-h-0 flex-1" />
-                    <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+                    <div className="mx-auto min-h-0 w-full max-w-96 flex-1 px-6 pb-4">
+                      <div className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-4 text-center text-sm/5 text-text-secondary">
+                        The app shell scales behind this sheet while the drawer stays inside the local portal container.
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center justify-center gap-2 px-6 py-4">
                       <DrawerClose className={primaryCloseClassName}>Close</DrawerClose>
                     </div>
                   </DrawerContent>
@@ -663,9 +655,8 @@ export const MobileNavigation: Story = {
                   <nav aria-label="Mobile navigation" className="flex min-h-0 flex-1 flex-col">
                     <div className={handleClassName} />
                     <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                      <div className="flex items-center justify-between px-6 py-4">
+                      <div className="px-6 py-4 text-center">
                         <DrawerTitle className="text-lg/6 font-semibold text-text-primary">Menu</DrawerTitle>
-                        <DrawerCloseButton aria-label="Close menu" />
                       </div>
                       <DrawerDescription className="sr-only">
                         Scroll the navigation list and swipe down from the top to dismiss.
@@ -690,6 +681,9 @@ export const MobileNavigation: Story = {
                             </li>
                           ))}
                         </ul>
+                      </div>
+                      <div className="flex shrink-0 justify-center border-t-[0.5px] border-divider-subtle px-6 py-4">
+                        <DrawerClose className={textCloseClassName}>Close menu</DrawerClose>
                       </div>
                     </DrawerContent>
                   </nav>
@@ -775,43 +769,46 @@ function ActionSheetDemo() {
       </DrawerTrigger>
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
-        <DrawerViewport>
-          <DrawerPopup className="pointer-events-none flex gap-3 px-4 pb-[calc(1rem_+_env(safe-area-inset-bottom,0))] data-[swipe-direction=down]:max-h-[80dvh] data-[swipe-direction=down]:max-w-80">
-            <DrawerContent className="pointer-events-auto overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg p-0 pb-0 shadow-xl">
-              <DrawerTitle className="sr-only">App actions</DrawerTitle>
-              <DrawerDescription className="sr-only">
-                Choose an action for Customer support assistant.
-              </DrawerDescription>
-              <ul className="m-0 list-none divide-y divide-divider-subtle p-0" aria-label="App actions">
-                {actionItems.map(([label, description]) => (
-                  <li key={label}>
-                    <DrawerClose
-                      type="button"
-                      className="flex w-full flex-col items-start gap-0.5 bg-transparent px-4 py-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                    >
-                      <span className="text-sm font-medium text-text-secondary">{label}</span>
-                      <span className="text-xs text-text-tertiary">{description}</span>
-                    </DrawerClose>
-                  </li>
-                ))}
-              </ul>
+        <DrawerViewport className="flex items-end justify-center">
+          <DrawerPopup className="-mb-12 touch-auto overflow-visible border-none bg-transparent px-4 pb-[calc(1rem_+_env(safe-area-inset-bottom,0px)_+_3rem)] shadow-none data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+            <div className={handleClassName} />
+            <DrawerContent className="min-h-0 flex-none overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg p-0 pb-0 shadow-xl">
+              <div>
+                <DrawerTitle className="sr-only">App actions</DrawerTitle>
+                <DrawerDescription className="sr-only">
+                  Choose an action for Customer support assistant.
+                </DrawerDescription>
+                <ul className="m-0 list-none divide-y divide-divider-subtle p-0" aria-label="App actions">
+                  {actionItems.map(([label, description]) => (
+                    <li key={label}>
+                      <DrawerClose
+                        type="button"
+                        className="flex w-full flex-col items-start gap-0.5 bg-transparent px-4 py-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      >
+                        <span className="text-sm font-medium text-text-secondary">{label}</span>
+                        <span className="text-xs text-text-tertiary">{description}</span>
+                      </DrawerClose>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="border-t-[0.5px] border-divider-subtle">
+                <DrawerClose
+                  type="button"
+                  className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-components-button-destructive-secondary-text outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  Delete app
+                </DrawerClose>
+              </div>
+              <div className="border-t-[0.5px] border-divider-subtle">
+                <DrawerClose
+                  type="button"
+                  className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  Cancel
+                </DrawerClose>
+              </div>
             </DrawerContent>
-            <div className="pointer-events-auto overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl">
-              <DrawerClose
-                type="button"
-                className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-components-button-destructive-secondary-text outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              >
-                Delete app
-              </DrawerClose>
-            </div>
-            <div className="pointer-events-auto overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl">
-              <DrawerClose
-                type="button"
-                className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              >
-                Cancel
-              </DrawerClose>
-            </div>
           </DrawerPopup>
         </DrawerViewport>
       </DrawerPortal>
@@ -907,31 +904,75 @@ export const StackingAndAnimations: Story = {
   render: () => (
     <Drawer swipeDirection="right">
       <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
-        Open animated drawer
+        Open animated stack
       </DrawerTrigger>
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport>
-          <DrawerPopup className="data-starting-style:opacity-0 data-ending-style:opacity-0 data-swiping:shadow-none">
+          <DrawerPopup className="data-starting-style:opacity-0 data-ending-style:opacity-0 data-swiping:shadow-none data-nested-drawer-open:brightness-95">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                 <div className="min-w-0">
                   <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
-                    Animation states
+                    Animated stack
                   </DrawerTitle>
                   <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                    Dify's DrawerPopup responds to Base UI starting, ending, swiping, and nested data attributes.
+                    Open a nested drawer to see Base UI stack state, backdrop opacity, and swipe transition styles.
                   </DrawerDescription>
                 </div>
                 <DrawerCloseButton className="shrink-0" />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-                <div className="grid gap-2">
-                  {['data-starting-style', 'data-ending-style', 'data-swiping', 'data-nested-drawer-open'].map(attribute => (
-                    <div key={attribute} className="rounded-xl bg-background-section-burn px-3 py-2 font-mono text-xs text-text-secondary">
-                      {attribute}
+                <div className="grid gap-3">
+                  <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
+                    The parent drawer dims while the nested drawer is frontmost. Drag the panel edge to see the swiping state remove the heavy shadow.
+                  </div>
+                  <Drawer>
+                    <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
+                      Open nested animation
+                    </DrawerTrigger>
+                    <DrawerPortal>
+                      <DrawerViewport>
+                        <DrawerPopup className="data-starting-style:opacity-0 data-ending-style:opacity-0 data-swiping:shadow-none">
+                          <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                            <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
+                              <div className="min-w-0">
+                                <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
+                                  Nested animation
+                                </DrawerTitle>
+                                <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
+                                  This front drawer uses the same Dify popup tokens with Base UI entering, ending, and swiping data attributes.
+                                </DrawerDescription>
+                              </div>
+                              <DrawerCloseButton className="shrink-0" />
+                            </div>
+                            <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                              <div className="rounded-xl bg-background-section-burn p-3 text-sm/5 text-text-secondary">
+                                Close this drawer to watch focus and visual stacking return to the parent drawer.
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+                              <DrawerClose className={primaryCloseClassName}>Close nested</DrawerClose>
+                            </div>
+                          </DrawerContent>
+                        </DrawerPopup>
+                      </DrawerViewport>
+                    </DrawerPortal>
+                  </Drawer>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-background-section-burn px-3 py-2 font-mono text-xs text-text-secondary">
+                      data-starting-style
                     </div>
-                  ))}
+                    <div className="rounded-xl bg-background-section-burn px-3 py-2 font-mono text-xs text-text-secondary">
+                      data-ending-style
+                    </div>
+                    <div className="rounded-xl bg-background-section-burn px-3 py-2 font-mono text-xs text-text-secondary">
+                      data-swiping
+                    </div>
+                    <div className="rounded-xl bg-background-section-burn px-3 py-2 font-mono text-xs text-text-secondary">
+                      data-nested-drawer-open
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
