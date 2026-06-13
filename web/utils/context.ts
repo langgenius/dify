@@ -44,6 +44,6 @@ type CreateCtxReturn<T> = [Provider<T>, () => T, Context<T>] & {
 export const createCtx = createCreateCtxFunction(use, createContext)
 
 export const createSelectorCtx = createCreateCtxFunction(
-  selector.useContext as UseContextImpl,
+  selector.use as UseContextImpl,
   selector.createContext as typeof createContext,
 )

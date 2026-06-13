@@ -7,7 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum } from '@/types/app'
@@ -45,7 +45,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   showHiddenField,
   supportFile,
 }) => {
-  const { modelConfig } = useContext(ConfigContext)
+  const { modelConfig } = use(ConfigContext)
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(() => normalizeSelectDefaultValue(payload || getNewVarInWorkflow('') as any))
   const { type, options, max_length } = tempPayload

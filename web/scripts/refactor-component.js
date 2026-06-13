@@ -31,7 +31,7 @@ class RefactorAnalyzer extends ComponentAnalyzer {
     const memoCount = (code.match(/useMemo\s*\(/g) || []).length
     const conditionalBlocks = this.countConditionalBlocks(code)
     const nestedTernaries = this.countNestedTernaries(code)
-    const hasContext = code.includes('useContext') || code.includes('createContext')
+    const hasContext = code.includes('use') || code.includes('createContext')
     const hasReducer = code.includes('useReducer')
     const hasModals = this.countModals(code)
 
@@ -118,7 +118,7 @@ Usage:               ${analysis.usageCount} reference${analysis.usageCount !== 1
   ${analysis.hasEffects ? '✓' : '✗'} Side effects (useEffect)
   ${analysis.hasCallbacks ? '✓' : '✗'} Callbacks (useCallback)
   ${analysis.hasMemo ? '✓' : '✗'} Memoization (useMemo)
-  ${analysis.hasContext ? '✓' : '✗'} Context (useContext/createContext)
+  ${analysis.hasContext ? '✓' : '✗'} Context (use/createContext)
   ${analysis.hasEvents ? '✓' : '✗'} Event handlers
   ${analysis.hasRouter ? '✓' : '✗'} Next.js routing
   ${analysis.hasAPI ? '✓' : '✗'} API calls

@@ -2,7 +2,7 @@
 
 import type { ModelAndParameter } from '../types'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 
 export type DebugWithMultipleModelContextType = {
   multipleModelConfigs: ModelAndParameter[]
@@ -17,4 +17,4 @@ export const DebugWithMultipleModelContext = createContext<DebugWithMultipleMode
   onDebugWithMultipleModelChange: noop,
 })
 
-export const useDebugWithMultipleModelContext = () => useContext(DebugWithMultipleModelContext)
+export const useDebugWithMultipleModelContext = () => use(DebugWithMultipleModelContext)

@@ -23,7 +23,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
@@ -65,7 +65,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const total = recordsRes?.total || 0
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
 
-  const { dataset: currentDataset } = useContext(DatasetDetailContext)
+  const { dataset: currentDataset } = use(DatasetDetailContext)
   const isExternal = currentDataset?.provider === 'external'
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)

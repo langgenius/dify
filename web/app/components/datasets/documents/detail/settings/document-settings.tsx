@@ -15,7 +15,7 @@ import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
@@ -37,7 +37,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const router = useRouter()
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
   const [accountSettingTab, setAccountSettingTab] = React.useState<AccountSettingTab>(ACCOUNT_SETTING_TAB.PROVIDER)
-  const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
+  const { indexingTechnique, dataset } = use(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const handleOpenAccountSetting = React.useCallback(() => {
     setAccountSettingTab(ACCOUNT_SETTING_TAB.PROVIDER)

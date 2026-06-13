@@ -1,7 +1,7 @@
 'use client'
 
 import type { ChatProps } from './index'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
   | 'isResponding'
@@ -25,4 +25,4 @@ export const ChatContext = createContext<ChatContextValue>({
   readonly: false,
 })
 
-export const useChatContext = () => useContext(ChatContext)
+export const useChatContext = () => use(ChatContext)

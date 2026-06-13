@@ -58,7 +58,7 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
       </button>
     ),
     SelectValue: () => {
-      const { value } = React.useContext(MockSelectContext)
+      const { value } = React.use(MockSelectContext)
       return <span data-testid="selected-value">{value}</span>
     },
     SelectContent: ({
@@ -79,7 +79,7 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
       children: React.ReactNode
       value: string
     }) => {
-      const { onValueChange } = React.useContext(MockSelectContext)
+      const { onValueChange } = React.use(MockSelectContext)
       return (
         <button
           data-testid={`select-item-${value}`}

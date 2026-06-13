@@ -6,7 +6,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { Microphone01 } from '@/app/components/base/icons/src/vender/features'
 import { Infotip } from '@/app/components/base/infotip'
@@ -17,7 +17,7 @@ const ConfigAudio: FC = () => {
   const { t } = useTranslation()
   const file = useFeatures(s => s.features.file)
   const featuresStore = useFeaturesStore()
-  const { isShowAudioConfig, readonly } = useContext(ConfigContext)
+  const { isShowAudioConfig, readonly } = use(ConfigContext)
 
   const isAudioEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.audio) ?? false
 

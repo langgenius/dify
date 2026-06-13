@@ -50,7 +50,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     ),
     SelectLabel: () => null,
     SelectTrigger: ({ children, className }: { children: React.ReactNode, className?: string }) => {
-      const context = React.useContext(SelectContext)
+      const context = React.use(SelectContext)
       return (
         <div>
           <button data-testid="select-trigger" type="button" disabled={context.disabled} className={className}>
@@ -64,7 +64,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
-      const context = React.useContext(SelectContext)
+      const context = React.use(SelectContext)
       return (
         <button data-testid={`select-${value}`} type="button" onClick={() => context.onValueChange?.(value)}>
           {children}

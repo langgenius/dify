@@ -11,7 +11,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal<typeof import('use-context-selector')>()
   return {
     ...actual,
-    useContext: (context: unknown) => mockUseContext(context),
+    use: (context: unknown) => mockUseContext(context),
   }
 })
 

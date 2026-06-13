@@ -1,7 +1,7 @@
 import type { Category, Tag } from '../constant'
 import type { FilterState } from '../index'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
-import { createContext, useContext } from 'react'
+import { createContext, use } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ==================== Imports (after mocks) ====================
@@ -93,7 +93,7 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
     render?: React.ReactNode
     className?: string
   }) => {
-    const { open, onOpenChange } = useContext(MockPopoverContext)
+    const { open, onOpenChange } = use(MockPopoverContext)
     return (
       <div
         data-testid="portal-trigger"
@@ -108,7 +108,7 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
     children: React.ReactNode
     className?: string
   }) => {
-    const { open } = useContext(MockPopoverContext)
+    const { open } = use(MockPopoverContext)
     if (!open)
       return null
     return <div data-testid="portal-content" className={className}>{children}</div>

@@ -14,7 +14,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 import { AppSourceType } from '@/service/share'
 
 export type EmbeddedChatbotContextValue = {
@@ -91,4 +91,4 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   allInputsHidden: false,
   initUserVariables: {},
 })
-export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)
+export const useEmbeddedChatbotContext = () => use(EmbeddedChatbotContext)

@@ -47,7 +47,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    useContext: () => ({
+    use: () => ({
       toast: toastMocks.api,
     }),
   }
