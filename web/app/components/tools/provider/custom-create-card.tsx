@@ -37,6 +37,7 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
 
 export const NewCustomToolButton = ({ onRefreshData }: Props) => {
   const { t } = useTranslation()
+  const addSwaggerAPIAsToolLabel = t('addSwaggerAPIAsTool', { ns: 'tools' })
   const {
     doCreateCustomToolCollection,
     isCurrentWorkspaceManager,
@@ -53,9 +54,11 @@ export const NewCustomToolButton = ({ onRefreshData }: Props) => {
         variant="secondary"
         className="gap-0.5 px-3!"
         onClick={() => setIsShowEditCustomCollectionModal(true)}
+        title={addSwaggerAPIAsToolLabel}
+        aria-label={addSwaggerAPIAsToolLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-        {t('addSwaggerAPIAsTool', { ns: 'tools' })}
+        {addSwaggerAPIAsToolLabel}
       </Button>
       {isShowEditCollectionToolModal && (
         <EditCustomToolModal

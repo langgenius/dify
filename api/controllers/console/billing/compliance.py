@@ -1,8 +1,10 @@
+from typing import Any
+
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
-from controllers.common.schema import query_params_from_model
+from controllers.common.schema import query_params_from_model, register_response_schema_models
 from libs.helper import extract_remote_ip
 from libs.login import login_required
 from models import Account
@@ -23,10 +25,15 @@ class ComplianceDownloadQuery(BaseModel):
     doc_name: str = Field(..., description="Compliance document name")
 
 
+class ComplianceDownloadResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 console_ns.schema_model(
     ComplianceDownloadQuery.__name__,
     ComplianceDownloadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
 )
+register_response_schema_models(console_ns, ComplianceDownloadResponse)
 
 
 @console_ns.route("/compliance/download")
@@ -34,6 +41,7 @@ class ComplianceApi(Resource):
     @console_ns.doc(params=query_params_from_model(ComplianceDownloadQuery))
     @console_ns.doc("download_compliance_document")
     @console_ns.doc(description="Get compliance document download link")
+    @console_ns.response(200, "Success", console_ns.models[ComplianceDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

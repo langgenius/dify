@@ -14,6 +14,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from fields.base import ResponseModel
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from models.enums import FeedbackRating
@@ -33,8 +34,32 @@ class FeedbackListQuery(BaseModel):
     limit: int = Field(default=20, ge=1, le=101, description="Number of feedbacks per page")
 
 
+class AppFeedbackResponse(ResponseModel):
+    id: str
+    app_id: str
+    conversation_id: str
+    message_id: str
+    rating: str
+    content: str | None = None
+    from_source: str
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class AppFeedbackListResponse(ResponseModel):
+    data: list[AppFeedbackResponse]
+
+
 register_schema_models(service_api_ns, MessageListQuery, MessageFeedbackPayload, FeedbackListQuery)
-register_response_schema_models(service_api_ns, ResultResponse, SimpleResultStringListResponse)
+register_response_schema_models(
+    service_api_ns,
+    ResultResponse,
+    SimpleResultStringListResponse,
+    MessageInfiniteScrollPagination,
+    AppFeedbackListResponse,
+)
 
 
 @service_api_ns.route("/messages")
@@ -48,6 +73,11 @@ class MessageListApi(Resource):
             401: "Unauthorized - invalid API token",
             404: "Conversation or first message not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Messages retrieved successfully",
+        service_api_ns.models[MessageInfiniteScrollPagination.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser):
@@ -128,6 +158,11 @@ class AppGetFeedbacksApi(Resource):
             200: "Feedbacks retrieved successfully",
             401: "Unauthorized - invalid API token",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Feedbacks retrieved successfully",
+        service_api_ns.models[AppFeedbackListResponse.__name__],
     )
     @validate_app_token
     def get(self, app_model: App):

@@ -10,6 +10,7 @@ import {
   zGetExploreAppsLearnDifyResponse,
   zGetExploreAppsQuery,
   zGetExploreAppsResponse,
+  zGetExploreBannersQuery,
   zGetExploreBannersResponse,
 } from './zod.gen'
 
@@ -28,16 +29,8 @@ export const learnDify = {
   get,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getExploreAppsByAppId',
@@ -70,16 +63,9 @@ export const apps = {
 
 /**
  * Get banner list
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const get4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getExploreBanners',
@@ -87,6 +73,7 @@ export const get4 = oc
     summary: 'Get banner list',
     tags: ['default'],
   })
+  .input(z.object({ query: zGetExploreBannersQuery.optional() }))
   .output(zGetExploreBannersResponse)
 
 export const banners = {

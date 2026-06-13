@@ -387,7 +387,7 @@
   "nodes.agent.installPlugin.changelog": "変更ログ",
   "nodes.agent.installPlugin.desc": "次の連携をインストールしようとしています",
   "nodes.agent.installPlugin.install": "インストール",
-  "nodes.agent.installPlugin.title": "連携をインストールする",
+  "nodes.agent.installPlugin.title": "連携をインストール",
   "nodes.agent.learnMore": "もっと学ぶ",
   "nodes.agent.linkToPlugin": "インテグレーションへのリンク",
   "nodes.agent.maxIterations": "最大反復回数",

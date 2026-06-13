@@ -44,6 +44,7 @@ const MainNavLink = ({
     <Link
       href={item.href}
       aria-current={activated ? 'page' : undefined}
+      title={item.label}
       className={cn(
         navItemClassName,
         activated ? activeNavItemClassName : inactiveNavItemClassName,

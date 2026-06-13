@@ -3,10 +3,10 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
 
 from constants.languages import languages
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, with_current_user
 from fields.base import ResponseModel
@@ -69,6 +69,10 @@ class LearnDifyAppListResponse(ResponseModel):
     recommended_apps: list[RecommendedAppResponse]
 
 
+class RecommendedAppDetailResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 register_schema_models(
     console_ns,
     RecommendedAppsQuery,
@@ -77,6 +81,7 @@ register_schema_models(
     RecommendedAppListResponse,
     LearnDifyAppListResponse,
 )
+register_response_schema_models(console_ns, RecommendedAppDetailResponse)
 
 
 def _resolve_language(language: str | None, user: Account) -> str:
@@ -124,6 +129,7 @@ class LearnDifyAppListApi(Resource):
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):

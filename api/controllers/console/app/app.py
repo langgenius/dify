@@ -224,6 +224,11 @@ class AppTracePayload(BaseModel):
         return value
 
 
+class AppTraceResponse(ResponseModel):
+    enabled: bool
+    tracing_provider: str | None = None
+
+
 type JSONValue = Any
 
 
@@ -507,7 +512,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
-register_response_schema_models(console_ns, RedirectUrlResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, AppTraceResponse, RedirectUrlResponse, SimpleResultResponse)
 
 register_schema_models(
     console_ns,
@@ -907,7 +912,7 @@ class AppIconApi(Resource):
     @console_ns.doc(description="Update application icon")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[AppIconPayload.__name__])
-    @console_ns.response(200, "Icon updated successfully")
+    @console_ns.response(200, "Icon updated successfully", console_ns.models[AppDetail.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -977,7 +982,11 @@ class AppTraceApi(Resource):
     @console_ns.doc("get_app_trace")
     @console_ns.doc(description="Get app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Trace configuration retrieved successfully")
+    @console_ns.response(
+        200,
+        "Trace configuration retrieved successfully",
+        console_ns.models[AppTraceResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required

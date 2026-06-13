@@ -1,12 +1,14 @@
 import logging
+from typing import Any
 
 from flask import request
-from flask_restx import Resource, fields
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import BaseModel, Field, RootModel
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.fields import AudioBinaryResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -51,7 +53,12 @@ class AudioTranscriptResponse(BaseModel):
     text: str = Field(description="Transcribed text from audio")
 
 
+class TextToSpeechVoiceListResponse(RootModel[list[dict[str, Any]]]):
+    root: list[dict[str, Any]]
+
+
 register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
+register_response_schema_models(console_ns, AudioBinaryResponse, TextToSpeechVoiceListResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
@@ -113,7 +120,11 @@ class ChatMessageTextApi(Resource):
     @console_ns.doc(description="Convert text to speech for chat messages")
     @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
-    @console_ns.response(200, "Text to speech conversion successful")
+    @console_ns.response(
+        200,
+        "Text to speech conversion successful",
+        console_ns.models[AudioBinaryResponse.__name__],
+    )
     @console_ns.response(400, "Bad request - Invalid parameters")
     @get_app_model
     @setup_required
@@ -164,7 +175,9 @@ class TextModesApi(Resource):
     @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.doc(params=query_params_from_model(TextToSpeechVoiceQuery))
     @console_ns.response(
-        200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
+        200,
+        "TTS voices retrieved successfully",
+        console_ns.models[TextToSpeechVoiceListResponse.__name__],
     )
     @console_ns.response(400, "Invalid language parameter")
     @get_app_model

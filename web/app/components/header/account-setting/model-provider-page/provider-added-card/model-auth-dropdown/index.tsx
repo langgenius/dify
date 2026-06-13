@@ -36,13 +36,13 @@ function ModelAuthDropdown({
       <PopoverTrigger
         render={(
           <Button
-            className="flex grow justify-center"
+            className="flex w-full min-w-0 justify-center px-2"
             size="small"
             variant={buttonConfig.variant}
             title={buttonConfig.text}
           >
             <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
-            <span className="truncate">
+            <span className="min-w-0 truncate">
               {buttonConfig.text}
             </span>
           </Button>

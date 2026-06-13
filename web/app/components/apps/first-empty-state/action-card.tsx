@@ -82,8 +82,8 @@ function ActionCardContent({
           {icon}
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate system-md-medium text-text-secondary">{title}</span>
-          <span className="truncate system-xs-regular text-text-tertiary">{description}</span>
+          <span className="truncate system-md-medium text-text-secondary" title={title}>{title}</span>
+          <span className="truncate system-xs-regular text-text-tertiary" title={description}>{description}</span>
         </span>
       </>
     )
@@ -106,8 +106,8 @@ function ActionCardContent({
       <span className={`${isCompact ? 'size-10 rounded-lg border border-divider-regular text-2xl/7' : 'size-12 rounded-xl text-2xl/8'} flex items-center justify-center bg-components-icon-bg-teal-soft text-text-accent`}>
         {icon}
       </span>
-      <span className={`${isCompact ? 'mt-1 system-md-semibold text-text-secondary' : 'mt-5 system-md-semibold text-text-primary'} w-full truncate`}>{title}</span>
-      <span className={`${isCompact ? 'mt-3 line-clamp-3 system-xs-regular' : 'mt-2 system-sm-regular'} text-text-tertiary`}>{description}</span>
+      <span className={`${isCompact ? 'mt-1 system-md-semibold text-text-secondary' : 'mt-5 system-md-semibold text-text-primary'} w-full truncate`} title={title}>{title}</span>
+      <span className={`${isCompact ? 'mt-3 line-clamp-3 system-xs-regular' : 'mt-2 system-sm-regular'} text-text-tertiary`} title={description}>{description}</span>
     </>
   )
 }

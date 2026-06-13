@@ -184,6 +184,11 @@ export const zErrorBody = z.object({
 })
 
 /**
+ * EventStreamResponse
+ */
+export const zEventStreamResponse = z.string()
+
+/**
  * FileResponse
  */
 export const zFileResponse = z.object({
@@ -230,6 +235,17 @@ export const zGithub = z.object({
  */
 export const zHealthResponse = z.object({
   ok: z.boolean(),
+})
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(z.record(z.string(), z.unknown())).optional(),
 })
 
 /**
@@ -620,6 +636,21 @@ export const zAccountResponse = z.object({
 })
 
 /**
+ * DeviceTokenResponse
+ */
+export const zDeviceTokenResponse = z.object({
+  account: zAccountPayload.nullish(),
+  default_workspace_id: z.string().nullish(),
+  expires_at: z.string(),
+  subject_email: z.string().nullish(),
+  subject_issuer: z.string().nullish(),
+  subject_type: z.enum(['account', 'external_sso']),
+  token: z.string(),
+  token_id: z.string(),
+  workspaces: z.array(zWorkspacePayload).optional().default([]),
+})
+
+/**
  * WorkspaceSummaryResponse
  */
 export const zWorkspaceSummaryResponse = z.object({
@@ -754,7 +785,7 @@ export const zGetAppsByAppIdFormHumanInputByFormTokenPath = z.object({
 /**
  * Form definition
  */
-export const zGetAppsByAppIdFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
 
 export const zPostAppsByAppIdFormHumanInputByFormTokenBody = zHumanInputFormSubmitPayload
 
@@ -777,17 +808,22 @@ export const zPostAppsByAppIdRunPath = z.object({
 /**
  * Run result (SSE stream)
  */
-export const zPostAppsByAppIdRunResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdRunResponse = zEventStreamResponse
 
 export const zGetAppsByAppIdTasksByTaskIdEventsPath = z.object({
   app_id: z.string(),
   task_id: z.string(),
 })
 
+export const zGetAppsByAppIdTasksByTaskIdEventsQuery = z.object({
+  continue_on_pause: z.boolean().optional().default(false),
+  include_state_snapshot: z.boolean().optional().default(false),
+})
+
 /**
  * SSE event stream
  */
-export const zGetAppsByAppIdTasksByTaskIdEventsResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdTasksByTaskIdEventsResponse = zEventStreamResponse
 
 export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
   app_id: z.string(),
@@ -832,9 +868,9 @@ export const zGetOauthDeviceLookupResponse = zDeviceLookupResponse
 export const zPostOauthDeviceTokenBody = zDevicePollRequest
 
 /**
- * Success
+ * Device token
  */
-export const zPostOauthDeviceTokenResponse = z.record(z.string(), z.unknown())
+export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
 
 export const zGetPermittedExternalAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),

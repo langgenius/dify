@@ -74,6 +74,7 @@ const LearnDifyContent = ({
   }
 
   const visibleItems = itemLimit ? learnDifyItems.slice(0, itemLimit) : learnDifyItems
+  const sectionTitle = title ?? t('learnDify.title', { ns: 'explore' })
 
   if (isLoading)
     return loadingFallback
@@ -94,8 +95,8 @@ const LearnDifyContent = ({
       <div className="-mx-4 rounded-2xl bg-background-section p-4">
         <div className="flex items-start justify-between gap-4 pb-2.5">
           <div className="min-w-0">
-            <h2 id="learn-dify-title" className="truncate system-xl-medium text-text-primary">
-              {title ?? t('learnDify.title', { ns: 'explore' })}
+            <h2 id="learn-dify-title" className="truncate system-xl-medium text-text-primary" title={sectionTitle}>
+              {sectionTitle}
             </h2>
             {showDescription && (
               <p className="mt-0.5 truncate system-xs-regular text-text-tertiary">

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
@@ -18,7 +18,7 @@ import {
   AutocompleteTrigger,
 } from '../index'
 
-const renderWithSafeViewport = (ui: ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,
@@ -31,13 +31,13 @@ const renderAutocomplete = ({
   open = false,
   defaultValue = 'workflow',
 }: {
-  children?: ReactNode
+  children?: React.ReactNode
   open?: boolean
   defaultValue?: string
 } = {}) => renderWithSafeViewport(
   <Autocomplete open={open} defaultValue={defaultValue} items={['workflow', 'dataset']}>
     {children ?? (
-      <>
+      <React.Fragment>
         <AutocompleteInputGroup data-testid="input-group">
           <AutocompleteInput aria-label="Search suggestions" data-testid="input" />
           <AutocompleteClear data-testid="clear" />
@@ -65,7 +65,7 @@ const renderAutocomplete = ({
           </AutocompleteList>
           <AutocompleteEmpty data-testid="empty">No suggestions</AutocompleteEmpty>
         </AutocompleteContent>
-      </>
+      </React.Fragment>
     )}
   </Autocomplete>,
 )
@@ -150,7 +150,7 @@ describe('Autocomplete wrappers', () => {
     it('should rely on aria-labelledby when provided instead of injecting fallback labels', async () => {
       const screen = await renderAutocomplete({
         children: (
-          <>
+          <React.Fragment>
             <span id="clear-label">Clear from label</span>
             <span id="trigger-label">Trigger from label</span>
             <AutocompleteInputGroup>
@@ -158,7 +158,7 @@ describe('Autocomplete wrappers', () => {
               <AutocompleteClear aria-labelledby="clear-label" />
               <AutocompleteTrigger aria-labelledby="trigger-label" />
             </AutocompleteInputGroup>
-          </>
+          </React.Fragment>
         ),
       })
 

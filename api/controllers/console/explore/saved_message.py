@@ -19,12 +19,13 @@ from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
 register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)
-register_response_schema_models(console_ns, ResultResponse)
+register_response_schema_models(console_ns, ResultResponse, SavedMessageInfiniteScrollPagination)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
+    @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
