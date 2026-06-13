@@ -4,12 +4,11 @@ import type { AppListQuery } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useNeedRefreshAppList } from '@/context/app-list.storage'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { CheckModal } from '@/hooks/use-pay'
@@ -64,7 +63,7 @@ function List({
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+  const [needRefreshAppList, setNeedRefreshAppList] = useNeedRefreshAppList()
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)

@@ -4,7 +4,6 @@ import type {
 } from '@/models/app'
 import type { AppIconType } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import {
   useCallback,
   useRef,
@@ -12,8 +11,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useSelector } from '@/context/app-context'
+import { useSetNeedRefreshAppList } from '@/context/app-list.storage'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import {
@@ -45,7 +44,7 @@ export const useImportDSL = () => {
   const { push } = useRouter()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const handleImportDSL = useCallback(async (
     payload: DSLPayload,

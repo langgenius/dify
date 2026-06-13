@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
+import { useConversationIdInfo } from '@/context/conversation.storage'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { changeLanguage } from '@/i18n-config/client'
@@ -19,7 +20,6 @@ import { useInvalidateShareConversations, useShareChatList, useShareConversation
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
-import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
 const WEBAPP_SIDEBAR_COLLAPSE_STORAGE_KEY = 'webappSidebarCollapse'
@@ -139,7 +139,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     if (appId)
       setStoredSidebarCollapseState(state ? 'collapsed' : 'expanded')
   }, [appId, setStoredSidebarCollapseState])
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
+  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {

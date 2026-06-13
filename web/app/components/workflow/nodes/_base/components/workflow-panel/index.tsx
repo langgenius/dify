@@ -13,7 +13,6 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import {
   cloneElement,
@@ -57,6 +56,7 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
@@ -164,7 +164,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
   const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
-  const setNodePanelWidthStorage = useSetLocalStorage<string>('workflow-node-panel-width', { raw: true })
+  const setNodePanelWidthStorage = useSetWorkflowNodePanelWidth()
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -177,7 +177,7 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
-      setNodePanelWidthStorage(`${newValue}`)
+      setNodePanelWidthStorage(newValue)
 
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth, setNodePanelWidthStorage])

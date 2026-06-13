@@ -8,15 +8,14 @@ import {
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { useAppContext } from '@/context/app-context'
+import { useSetEducationVerifying } from '@/context/education.storage'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { usePathname, useRouter } from '@/next/navigation'
@@ -71,7 +70,7 @@ const PlanComp: FC<Props> = ({
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
-  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
+  const setEducationVerifying = useSetEducationVerifying()
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
     if (isPending)

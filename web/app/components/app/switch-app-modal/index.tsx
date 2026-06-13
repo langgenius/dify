@@ -16,7 +16,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -24,8 +23,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useSetNeedRefreshAppList } from '@/context/app-list.storage'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
@@ -61,7 +60,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const goStart = async () => {
     try {
