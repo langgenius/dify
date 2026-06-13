@@ -5,7 +5,7 @@ from typing import Any, Literal, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 
@@ -22,6 +22,7 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
+from libs.validators import MAX_APP_NAME_LENGTH, validate_app_name
 from models import Account
 from models.agent import AgentIconType
 from models.model import App, AppMode, AppModelConfig, IconType, Site
@@ -49,7 +50,7 @@ class AppListParams(BaseModel):
 
 
 class CreateAppParams(BaseModel):
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=MAX_APP_NAME_LENGTH)
     description: str | None = None
     mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
     icon_type: str | None = None
@@ -58,6 +59,11 @@ class CreateAppParams(BaseModel):
     api_rph: int = 0
     api_rpm: int = 0
     max_active_requests: int | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return validate_app_name(value)
 
 
 class AppService:
@@ -228,7 +234,7 @@ class AppService:
             default_model_config["model"] = json.dumps(default_model_dict)
 
         app = App(**app_template["app"])
-        app.name = params.name
+        app.name = validate_app_name(params.name)
         app.description = params.description or ""
         app.mode = app_mode
         app.icon_type = IconType(params.icon_type) if params.icon_type else IconType.EMOJI
@@ -385,7 +391,7 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
-        app.name = args["name"]
+        app.name = validate_app_name(args["name"])
         app.description = args["description"]
         icon_type = args.get("icon_type")
         if icon_type is None:
@@ -414,7 +420,7 @@ class AppService:
         :return: App instance
         """
         assert current_user is not None
-        app.name = name
+        app.name = validate_app_name(name)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
         db.session.commit()
