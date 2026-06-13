@@ -43,8 +43,9 @@ const mathPlugin = createMathPlugin({
 
 /**
  * Allowed HTML tags and their permitted data attributes for rehype-sanitize.
- * Keys = tag names to allow; values = attribute names in **hast** property format
- * (camelCase, e.g. `dataThink` for `data-think`).
+ * Keys = tag names to allow; values = attribute names used by the sanitize schema.
+ * Prefer **hast** property format (camelCase, e.g. `dataThink` for `data-think`),
+ * but include kebab-case variants when different parser paths can emit both forms.
  *
  * Prefer explicit attribute lists over wildcards (e.g. `data*`) to
  * minimise the attack surface when LLM-generated content is rendered.
@@ -55,7 +56,7 @@ const ALLOWED_TAGS: Record<string, string[]> = {
   input: ['type', 'name', 'value', 'placeholder', 'checked', 'dataTip', 'dataOptions'],
   textarea: ['name', 'placeholder', 'value'],
   label: ['htmlFor'],
-  details: ['dataThink'],
+  details: ['dataThink', 'data-think'],
   video: ['src'],
   audio: ['src'],
   source: ['src'],

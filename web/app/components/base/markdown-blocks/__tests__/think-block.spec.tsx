@@ -74,6 +74,18 @@ describe('ThinkBlock', () => {
       expect(screen.getByText('Thinking content')).toBeInTheDocument()
     })
 
+    it('should render think block when dataThink is true', () => {
+      renderWithContext(
+        <ThinkBlock dataThink={true}>
+          <p>Thinking content</p>
+        </ThinkBlock>,
+        true,
+      )
+
+      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText('Thinking content')).toBeInTheDocument()
+    })
+
     it('should render thought state when content has ENDTHINKFLAG', () => {
       renderWithContext(
         <ThinkBlock data-think={true}>
