@@ -15,6 +15,12 @@ import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
+const getComparableLabels = (list: InputVar[]) => {
+  return list
+    .map(item => (typeof item.label === 'string' ? item.label.trim() : ''))
+    .filter(Boolean)
+}
+
 const useConfig = (id: string, payload: StartNodeType) => {
   const { t } = useTranslation()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -91,7 +97,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
       errorMsgKey = 'varKeyError.keyAlreadyExists'
       typeName = 'variableConfig.varName'
     }
-    else if (hasDuplicateStr(newList.map(item => item.label as string))) {
+    else if (hasDuplicateStr(getComparableLabels(newList))) {
       errorMsgKey = 'varKeyError.keyAlreadyExists'
       typeName = 'variableConfig.labelName'
     }
