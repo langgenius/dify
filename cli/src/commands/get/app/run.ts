@@ -17,7 +17,7 @@ export type GetAppOptions = {
   readonly allWorkspaces?: boolean
   readonly page?: number
   readonly limitRaw?: string
-  readonly mode?: string
+  readonly mode?: AppMode
   readonly name?: string
   readonly tag?: string
   readonly format?: string

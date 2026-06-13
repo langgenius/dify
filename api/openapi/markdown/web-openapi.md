@@ -20,15 +20,15 @@ Convert audio file to text using speech-to-text service.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 413 | Audio file too large |
-| 415 | Unsupported audio type |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 413 | Audio file too large |  |
+| 415 | Unsupported audio type |  |
+| 500 | Internal Server Error |  |
 
 ### [POST] /chat-messages
 Create a chat message for conversational applications.
@@ -41,14 +41,14 @@ Create a chat message for conversational applications.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [POST] /chat-messages/{task_id}/stop
 Stop a running chat message task.
@@ -81,14 +81,14 @@ Create a completion message for text generation applications.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [POST] /completion-messages/{task_id}/stop
 Stop a running completion message task.
@@ -117,21 +117,21 @@ Retrieve paginated list of conversations for a chat application.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| last_id | query | Last conversation ID for pagination | No | string |
-| limit | query | Number of conversations to return (1-100) | No | integer, <br>**Default:** 20 |
-| pinned | query | Filter by pinned status | No | string, <br>**Available values:** "false", "true" |
-| sort_by | query | Sort order | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| last_id | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| pinned | query |  | No | boolean |
+| sort_by | query |  | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found or Not a Chat App |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found or Not a Chat App |  |
+| 500 | Internal Server Error |  |
 
 ### [DELETE] /conversations/{c_id}
 Delete a specific conversation.
@@ -164,16 +164,22 @@ Rename a specific conversation with a custom name or auto-generate one.
 | auto_generate | query | Auto-generate conversation name | No | boolean |
 | name | query | New conversation name | No | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ConversationRenamePayload](#conversationrenamepayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Conversation renamed successfully |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Conversation Not Found or Not a Chat App |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Conversation Not Found or Not a Chat App |  |
+| 500 | Internal Server Error |  |
 
 ### [PATCH] /conversations/{c_id}/pin
 Pin a specific conversation to keep it at the top of the list.
@@ -351,9 +357,9 @@ GET /api/form/human_input/<form_token>
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit human input form by token**
@@ -374,11 +380,17 @@ Request body:
 | ---- | ---------- | ----------- | -------- | ------ |
 | form_token | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputFormSubmitPayload](#humaninputformsubmitpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}/upload-token
 **Issue an upload token for a human input form**
@@ -393,9 +405,9 @@ POST /api/form/human_input/<form_token>/upload-token
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
 
 ### [POST] /human-input-forms/files
 **Upload one local file or remote URL file for a HITL human input form**
@@ -430,6 +442,13 @@ Authenticate user for web application access
 ### [GET] /login/status
 Check login status
 
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_code | query | Web app code | No | string |
+| user_id | query | End user session ID | No | string |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -459,14 +478,14 @@ Retrieve paginated list of messages from a conversation in a chat application.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Conversation Not Found or Not a Chat App |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WebMessageInfiniteScrollPagination](#webmessageinfinitescrollpagination)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Conversation Not Found or Not a Chat App |  |
+| 500 | Internal Server Error |  |
 
 ### [POST] /messages/{message_id}/feedbacks
 Submit feedback (like/dislike) for a specific message.
@@ -478,6 +497,12 @@ Submit feedback (like/dislike) for a specific message.
 | message_id | path | Message UUID | Yes | string |
 | content | query | Feedback content | No | string |
 | rating | query | Feedback rating | No | string, <br>**Available values:** "dislike", "like" |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [MessageFeedbackPayload](#messagefeedbackpayload)<br> |
 
 #### Responses
 
@@ -502,14 +527,14 @@ Generate a new completion similar to an existing message (completion apps only).
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request - Not a completion app or feature disabled |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Message Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request - Not a completion app or feature disabled |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | Message Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [GET] /messages/{message_id}/suggested-questions
 Get suggested follow-up questions after a message (chat apps only).
@@ -538,14 +563,14 @@ Retrieve the metadata for a specific app.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [GET] /parameters
 **Retrieve app parameters**
@@ -554,25 +579,31 @@ Retrieve the parameters for a specific app.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [GET] /passport
 Get authentication passport for web application access
 
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| user_id | query | End user session ID | No | string |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Passport retrieved successfully |
-| 401 | Unauthorized - missing app code or invalid authentication |
-| 404 | Application or user not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Passport retrieved successfully | **application/json**: [AccessTokenData](#accesstokendata)<br> |
+| 401 | Unauthorized - missing app code or invalid authentication |  |
+| 404 | Application or user not found |  |
 
 ### [POST] /remote-files/upload
 **Upload a file from a remote URL**
@@ -596,6 +627,12 @@ Raises:
     RemoteFileUploadError: Failed to fetch file from remote URL
     FileTooLargeError: File exceeds size limit
     UnsupportedFileTypeError: File type not supported
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RemoteFileUploadPayload](#remotefileuploadpayload)<br> |
 
 #### Responses
 
@@ -647,19 +684,19 @@ Retrieve paginated list of saved messages for a completion application.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| last_id | query | Last message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+| last_id | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request - Not a completion app |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
+| 400 | Bad Request - Not a completion app |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [POST] /saved-messages
 Save a specific message for later reference.
@@ -669,6 +706,12 @@ Save a specific message for later reference.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | query | Message UUID to save | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SavedMessageCreatePayload](#savedmessagecreatepayload)<br> |
 
 #### Responses
 
@@ -708,14 +751,14 @@ Retrieve app site information and configuration.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AppSiteInfoResponse](#appsiteinforesponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [GET] /system-features
 **Get system feature flags and configuration**
@@ -757,13 +800,13 @@ Convert text to audio using text-to-speech service.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 500 | Internal Server Error |  |
 
 ### [GET] /webapp/access-mode
 Retrieve the access mode for a web application (public or restricted).
@@ -814,14 +857,14 @@ Execute a workflow with provided inputs and files.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | App Not Found |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 404 | App Not Found |  |
+| 500 | Internal Server Error |  |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -864,9 +907,9 @@ Returns Server-Sent Events stream.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 
 ---
 ### Schemas
@@ -890,12 +933,97 @@ Returns Server-Sent Events stream.
 | data | [AccessTokenData](#accesstokendata) |  | Yes |
 | result | string |  | Yes |
 
+#### AgentThought
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chain_id | string |  | No |
+| created_at | integer |  | No |
+| files | [ string ] |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| observation | string |  | No |
+| position | integer |  | Yes |
+| thought | string |  | No |
+| tool | string |  | No |
+| tool_input | string |  | No |
+| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
+
 #### AppAccessModeQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | appCode | string | Application code | No |
 | appId | string | Application ID | No |
+
+#### AppMetaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| tool_icons | object | Tool icon metadata keyed by tool name | No |
+
+#### AppPermissionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| appId | string | Application ID | Yes |
+
+#### AppSiteInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| can_replace_logo | boolean |  | Yes |
+| custom_config | object |  | No |
+| enable_site | boolean |  | Yes |
+| end_user_id | string |  | No |
+| model_config | [AppSiteModelConfigResponse](#appsitemodelconfigresponse) |  | No |
+| plan | string |  | No |
+| site | [AppSiteResponse](#appsiteresponse) |  | Yes |
+
+#### AppSiteModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model |  |  | Yes |
+| more_like_this |  |  | Yes |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| suggested_questions |  |  | Yes |
+| suggested_questions_after_answer |  |  | Yes |
+| user_input_form |  |  | Yes |
+
+#### AppSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### AudioBinaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioBinaryResponse | string |  |  |
+
+#### AudioTranscriptResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
 
 #### BooleanResultResponse
 
@@ -912,6 +1040,14 @@ Returns Server-Sent Events stream.
 | favicon | string |  | Yes |
 | login_page_logo | string |  | Yes |
 | workspace_logo | string |  | Yes |
+
+#### ButtonStyle
+
+Button styles for user actions.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ButtonStyle | string | Button styles for user actions. |  |
 
 #### ChatMessagePayload
 
@@ -934,6 +1070,14 @@ Returns Server-Sent Events stream.
 | query | string | Query text for completion | No |
 | response_mode | string | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
+
+#### ConversationInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SimpleConversation](#simpleconversation) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 
 #### ConversationListQuery
 
@@ -966,6 +1110,39 @@ Returns Server-Sent Events stream.
 | email | string |  | Yes |
 | token | string |  | Yes |
 
+#### EventStreamResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EventStreamResponse | string |  |  |
+
+#### ExecutionContentType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ExecutionContentType | string |  |  |
+
+#### FileInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| number_limits | integer |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileResponse
 
 | Name | Type | Description | Required |
@@ -985,6 +1162,18 @@ Returns Server-Sent Events stream.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileTransferMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTransferMethod | string |  |  |
+
+#### FileType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileType | string |  |  |
 
 #### FileWithSignedUrl
 
@@ -1022,6 +1211,28 @@ Returns Server-Sent Events stream.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### FormInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
+
+#### GeneratedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GeneratedAppResponse |  |  |  |
+
+#### HumanInputContent
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| form_definition | [HumanInputFormDefinition](#humaninputformdefinition) |  | No |
+| form_submission_data | [HumanInputFormSubmissionData](#humaninputformsubmissiondata) |  | No |
+| submitted | boolean |  | Yes |
+| type | [ExecutionContentType](#executioncontenttype) |  | No |
+| workflow_run_id | string |  | Yes |
+
 #### HumanInputFileUploadFormPayload
 
 Parsed multipart form fields for HITL uploads.
@@ -1030,12 +1241,85 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | url | string | Remote file URL | No |
 
+#### HumanInputFormDefinition
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [UserActionConfig](#useractionconfig) ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | Yes |
+| form_content | string |  | Yes |
+| form_id | string |  | Yes |
+| form_token | string |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| resolved_default_values | object |  | No |
+
+#### HumanInputFormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | Yes |
+| form_content |  |  | Yes |
+| inputs |  |  | Yes |
+| resolved_default_values | object |  | Yes |
+| site | object |  | No |
+| user_actions |  |  | Yes |
+
+#### HumanInputFormSubmissionData
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action_id | string |  | Yes |
+| action_text | string |  | Yes |
+| node_id | string |  | Yes |
+| node_title | string |  | Yes |
+| rendered_content | string |  | Yes |
+| submitted_data | object |  | No |
+
+#### HumanInputFormSubmitPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
+
+#### HumanInputFormSubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
 #### HumanInputUploadTokenResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
+
+#### JSONObject
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONObject | object |  |  |
+
+#### JSONValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+
+#### JSONValueType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JSONValueType |  |  |  |
+
+#### JsonValue
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JsonValue |  |  |  |
 
 #### LicenseLimitationModel
 
@@ -1070,6 +1354,13 @@ Parsed multipart form fields for HITL uploads.
 | email | string |  | Yes |
 | password | string |  | Yes |
 
+#### LoginStatusQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string | Web app code | No |
+| user_id | string | End user session ID | No |
+
 #### LoginStatusResponse
 
 | Name | Type | Description | Required |
@@ -1084,6 +1375,20 @@ Parsed multipart form fields for HITL uploads.
 | content | string |  | No |
 | rating | string |  | No |
 
+#### MessageFile
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| belongs_to | string |  | No |
+| filename | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| size | integer |  | No |
+| transfer_method | string |  | Yes |
+| type | string |  | Yes |
+| upload_file_id | string |  | No |
+| url | string |  | No |
+
 #### MessageListQuery
 
 | Name | Type | Description | Required |
@@ -1097,6 +1402,39 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+
+#### ParagraphInputConfig
+
+Form input definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | [StringSource](#stringsource) |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### Parameters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
+| file_upload | [JSONObject](#jsonobject) |  | Yes |
+| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| opening_statement |  |  | No |
+| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
+| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
+| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
+| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
+| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+
+#### PassportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| user_id | string | End user session ID | No |
 
 #### PluginInstallationPermissionModel
 
@@ -1136,11 +1474,53 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
+#### RetrieverResource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | integer |  | No |
+| data_source_type | string |  | No |
+| dataset_id | string |  | No |
+| dataset_name | string |  | No |
+| document_id | string |  | No |
+| document_name | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | No |
+| index_node_hash | string |  | No |
+| message_id | string |  | No |
+| position | integer |  | Yes |
+| score | number |  | No |
+| segment_id | string |  | No |
+| segment_position | integer |  | No |
+| summary | string |  | No |
+| word_count | integer |  | No |
+
 #### SavedMessageCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | message_id | string |  | Yes |
+
+#### SavedMessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SavedMessageItem](#savedmessageitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### SavedMessageItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| created_at | integer |  | No |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| query | string |  | Yes |
 
 #### SavedMessageListQuery
 
@@ -1148,6 +1528,32 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
+
+#### SelectInputConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### SimpleConversation
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| introduction | string |  | No |
+| name | string |  | Yes |
+| status | string |  | Yes |
+| updated_at | integer |  | No |
+
+#### SimpleFeedback
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| rating | string |  | No |
 
 #### SimpleResultDataResponse
 
@@ -1161,6 +1567,24 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
+
+#### StringListSource
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | [ string ] |  | No |
+
+#### StringSource
+
+Default configuration for form inputs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| selector | [ string ] |  | No |
+| type | [ValueSourceType](#valuesourcetype) |  | Yes |
+| value | string |  | No |
 
 #### SuggestedQuestionsResponse
 
@@ -1193,6 +1617,16 @@ Parsed multipart form fields for HITL uploads.
 | sso_enforced_for_signin_protocol | string |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
+#### SystemParameters
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| audio_file_size_limit | integer |  | Yes |
+| file_size_limit | integer |  | Yes |
+| image_file_size_limit | integer |  | Yes |
+| video_file_size_limit | integer |  | Yes |
+| workflow_file_upload_limit | integer |  | Yes |
+
 #### TextToAudioPayload
 
 | Name | Type | Description | Required |
@@ -1201,6 +1635,25 @@ Parsed multipart form fields for HITL uploads.
 | streaming | boolean | Enable streaming response | No |
 | text | string | Text to convert to audio | No |
 | voice | string | Voice to use for TTS | No |
+
+#### UserActionConfig
+
+User action configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | No |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
+#### ValueSourceType
+
+ValueSourceType records whether the value comes from a static setting
+in form definiton, or a variable while the workflow is running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 
@@ -1225,6 +1678,34 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | string |  | Yes |
+
+#### WebMessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [WebMessageListItem](#webmessagelistitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### WebMessageListItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| error | string |  | No |
+| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| metadata | [JSONValueType](#jsonvaluetype) |  | No |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
+| status | string |  | Yes |
 
 #### WorkflowRunPayload
 

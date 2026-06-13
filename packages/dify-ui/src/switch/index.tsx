@@ -2,7 +2,7 @@
 
 import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -134,7 +134,7 @@ const switchSkeletonVariants = cva(
 )
 
 export type SwitchSkeletonProps
-  = HTMLAttributes<HTMLDivElement>
+  = React.ComponentProps<'div'>
     & VariantProps<typeof switchSkeletonVariants>
 
 export function SwitchSkeleton({
