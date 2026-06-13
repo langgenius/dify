@@ -36,12 +36,8 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostActivateError = PostActivateErrors[keyof PostActivateErrors]
 
 export type PostActivateResponses = {
   200: ActivationResponse

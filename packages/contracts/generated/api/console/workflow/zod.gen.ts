@@ -3,6 +3,11 @@
 import * as z from 'zod'
 
 /**
+ * EventStreamResponse
+ */
+export const zEventStreamResponse = z.string()
+
+/**
  * HumanInputPauseTypeResponse
  */
 export const zHumanInputPauseTypeResponse = z.object({
@@ -33,9 +38,9 @@ export const zGetWorkflowByWorkflowRunIdEventsPath = z.object({
 })
 
 /**
- * Success
+ * SSE event stream
  */
-export const zGetWorkflowByWorkflowRunIdEventsResponse = z.record(z.string(), z.unknown())
+export const zGetWorkflowByWorkflowRunIdEventsResponse = zEventStreamResponse
 
 export const zGetWorkflowByWorkflowRunIdPauseDetailsPath = z.object({
   workflow_run_id: z.string(),

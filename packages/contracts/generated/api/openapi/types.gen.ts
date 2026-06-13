@@ -168,6 +168,18 @@ export type DevicePollRequest = {
   device_code: string
 }
 
+export type DeviceTokenResponse = {
+  account?: AccountPayload | null
+  default_workspace_id?: string | null
+  expires_at: string
+  subject_email?: string | null
+  subject_issuer?: string | null
+  subject_type: 'account' | 'external_sso'
+  token: string
+  token_id: string
+  workspaces?: Array<WorkspacePayload>
+}
+
 export type ErrorBody = {
   code: string
   details?: Array<ErrorDetail> | null
@@ -181,6 +193,8 @@ export type ErrorDetail = {
   msg: string
   type: string
 }
+
+export type EventStreamResponse = string
 
 export type FileResponse = {
   conversation_id?: string | null
@@ -213,6 +227,20 @@ export type Github = {
 
 export type HealthResponse = {
   ok: boolean
+}
+
+export type HumanInputFormDefinitionResponse = {
+  expiration_time?: number | null
+  form_content: string
+  inputs?: Array<{
+    [key: string]: unknown
+  }>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  user_actions?: Array<{
+    [key: string]: unknown
+  }>
 }
 
 export type HumanInputFormSubmitPayload = {
@@ -684,18 +712,10 @@ export type PostAppsByAppIdFilesUploadData = {
 }
 
 export type PostAppsByAppIdFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  413: unknown
+  415: unknown
   default: ErrorBody
 }
 
@@ -720,9 +740,7 @@ export type GetAppsByAppIdFormHumanInputByFormTokenData = {
 }
 
 export type GetAppsByAppIdFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormDefinitionResponse
 }
 
 export type GetAppsByAppIdFormHumanInputByFormTokenResponse
@@ -769,9 +787,7 @@ export type PostAppsByAppIdRunErrors = {
 export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]
 
 export type PostAppsByAppIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type PostAppsByAppIdRunResponse
@@ -783,14 +799,15 @@ export type GetAppsByAppIdTasksByTaskIdEventsData = {
     app_id: string
     task_id: string
   }
-  query?: never
+  query?: {
+    continue_on_pause?: boolean
+    include_state_snapshot?: boolean
+  }
   url: '/apps/{app_id}/tasks/{task_id}/events'
 }
 
 export type GetAppsByAppIdTasksByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type GetAppsByAppIdTasksByTaskIdEventsResponse
@@ -886,9 +903,7 @@ export type PostOauthDeviceTokenData = {
 }
 
 export type PostOauthDeviceTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DeviceTokenResponse
 }
 
 export type PostOauthDeviceTokenResponse

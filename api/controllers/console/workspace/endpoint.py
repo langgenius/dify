@@ -61,11 +61,15 @@ class EndpointCreateResponse(BaseModel):
 
 
 class EndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+    )
 
 
 class PluginEndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+    )
 
 
 class EndpointDeleteResponse(BaseModel):

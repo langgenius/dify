@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
@@ -15,8 +15,8 @@ const clickElement = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 }
 
-type TestRadioGroupProps = ComponentProps<typeof RadioGroup> & {
-  children: ReactNode
+type TestRadioGroupProps = React.ComponentProps<typeof RadioGroup> & {
+  children: React.ReactNode
   label: string
   name?: string
 }
@@ -37,8 +37,8 @@ function TestRadioGroup({
   )
 }
 
-type TestRadioOptionProps = ComponentProps<typeof Radio> & {
-  children: ReactNode
+type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
+  children: React.ReactNode
 }
 
 function TestRadioOption({

@@ -6,7 +6,7 @@ from typing import Any, Literal
 import pytz
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -236,6 +236,10 @@ class EducationAutocompleteResponse(ResponseModel):
     has_next: bool | None = None
 
 
+class EducationActivateResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 register_schema_models(
     console_ns,
     AccountIntegrateResponse,
@@ -248,6 +252,7 @@ register_response_schema_models(
     console_ns,
     AccountResponse,
     AvatarUrlResponse,
+    EducationActivateResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
@@ -556,6 +561,7 @@ class EducationVerifyApi(Resource):
 @console_ns.route("/account/education")
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[EducationActivateResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

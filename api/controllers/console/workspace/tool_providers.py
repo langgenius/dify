@@ -5,13 +5,13 @@ from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, RootModel, field_validator, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -26,7 +26,7 @@ from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfi
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthAuthorizationUrlResponse
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
@@ -77,7 +77,7 @@ class BuiltinToolAddPayload(BaseModel):
 
 class BuiltinToolUpdatePayload(BaseModel):
     credential_id: str
-    credentials: dict[str, Any] | None = None
+    credentials: dict[str, Any] | None = Field(default=None)
     name: str | None = Field(default=None, max_length=30)
 
 
@@ -106,6 +106,13 @@ class UrlQuery(BaseModel):
 
 class ProviderQuery(BaseModel):
     provider: str
+
+
+class BuiltinCredentialListQuery(BaseModel):
+    include_credential_ids: list[str] = Field(
+        default_factory=list,
+        description="Credential IDs to include even if visibility would hide them",
+    )
 
 
 class ApiToolProviderDeletePayload(BaseModel):
@@ -199,7 +206,7 @@ class BuiltinProviderDefaultCredentialPayload(BaseModel):
 
 
 class ToolOAuthCustomClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
+    client_params: dict[str, Any] | None = Field(default=None)
     enable_oauth_custom_client: bool | None = True
 
 
@@ -261,8 +268,27 @@ class MCPCallbackQuery(BaseModel):
     state: str
 
 
+class ToolOAuthCustomClientResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
+class ToolOAuthClientSchemaResponse(RootModel[list[dict[str, Any]]]):
+    root: list[dict[str, Any]]
+
+
+class ToolProviderOpaqueResponse(RootModel[Any]):
+    root: Any
+
+
 register_schema_models(
     console_ns,
+    ToolProviderListQuery,
+    UrlQuery,
+    ProviderQuery,
+    BuiltinCredentialListQuery,
+    WorkflowToolGetQuery,
+    WorkflowToolListQuery,
+    MCPCallbackQuery,
     BuiltinToolCredentialDeletePayload,
     BuiltinToolAddPayload,
     BuiltinToolUpdatePayload,
@@ -281,11 +307,22 @@ register_schema_models(
     MCPProviderDeletePayload,
     MCPAuthPayload,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(
+    console_ns,
+    BinaryFileResponse,
+    PluginOAuthAuthorizationUrlResponse,
+    RedirectResponse,
+    SimpleResultResponse,
+    ToolOAuthClientSchemaResponse,
+    ToolOAuthCustomClientResponse,
+    ToolProviderOpaqueResponse,
+)
 
 
 @console_ns.route("/workspaces/current/tool-providers")
 class ToolProviderListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ToolProviderListQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -300,6 +337,7 @@ class ToolProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")
 class ToolBuiltinProviderListToolsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -315,6 +353,7 @@ class ToolBuiltinProviderListToolsApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/info")
 class ToolBuiltinProviderInfoApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -326,6 +365,7 @@ class ToolBuiltinProviderInfoApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/delete")
 class ToolBuiltinProviderDeleteApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinToolCredentialDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -344,6 +384,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/add")
 class ToolBuiltinProviderAddApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinToolAddPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -366,6 +407,7 @@ class ToolBuiltinProviderAddApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/update")
 class ToolBuiltinProviderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinToolUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -388,6 +430,8 @@ class ToolBuiltinProviderUpdateApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credentials")
 class ToolBuiltinProviderGetCredentialsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(BuiltinCredentialListQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -412,6 +456,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/icon")
 class ToolBuiltinProviderIconApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     def get(self, provider: str):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
@@ -422,6 +467,7 @@ class ToolBuiltinProviderIconApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/api/add")
 class ToolApiProviderAddApi(Resource):
     @console_ns.expect(console_ns.models[ApiToolProviderAddPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -447,6 +493,8 @@ class ToolApiProviderAddApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/api/remote")
 class ToolApiProviderGetRemoteSchemaApi(Resource):
+    @console_ns.doc(params=query_params_from_model(UrlQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -465,6 +513,8 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/api/tools")
 class ToolApiProviderListToolsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ProviderQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -486,6 +536,7 @@ class ToolApiProviderListToolsApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/api/update")
 class ToolApiProviderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[ApiToolProviderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -513,6 +564,7 @@ class ToolApiProviderUpdateApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/api/delete")
 class ToolApiProviderDeleteApi(Resource):
     @console_ns.expect(console_ns.models[ApiToolProviderDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -531,6 +583,8 @@ class ToolApiProviderDeleteApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/api/get")
 class ToolApiProviderGetApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ProviderQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -549,6 +603,7 @@ class ToolApiProviderGetApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credential/schema/<path:credential_type>")
 class ToolBuiltinProviderCredentialsSchemaApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -564,6 +619,7 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/api/schema")
 class ToolApiProviderSchemaApi(Resource):
     @console_ns.expect(console_ns.models[ApiToolSchemaPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -578,6 +634,7 @@ class ToolApiProviderSchemaApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/api/test/pre")
 class ToolApiProviderPreviousTestApi(Resource):
     @console_ns.expect(console_ns.models[ApiToolTestPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -598,6 +655,7 @@ class ToolApiProviderPreviousTestApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/workflow/create")
 class ToolWorkflowProviderCreateApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowToolCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -624,6 +682,7 @@ class ToolWorkflowProviderCreateApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/workflow/update")
 class ToolWorkflowProviderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowToolUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -650,6 +709,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/workflow/delete")
 class ToolWorkflowProviderDeleteApi(Resource):
     @console_ns.expect(console_ns.models[WorkflowToolDeletePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -668,6 +728,8 @@ class ToolWorkflowProviderDeleteApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/get")
 class ToolWorkflowProviderGetApi(Resource):
+    @console_ns.doc(params=query_params_from_model(WorkflowToolGetQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -697,6 +759,8 @@ class ToolWorkflowProviderGetApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/workflow/tools")
 class ToolWorkflowProviderListToolApi(Resource):
+    @console_ns.doc(params=query_params_from_model(WorkflowToolListQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -717,6 +781,7 @@ class ToolWorkflowProviderListToolApi(Resource):
 
 @console_ns.route("/workspaces/current/tools/builtin")
 class ToolBuiltinListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -736,6 +801,7 @@ class ToolBuiltinListApi(Resource):
 
 @console_ns.route("/workspaces/current/tools/api")
 class ToolApiListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -753,6 +819,7 @@ class ToolApiListApi(Resource):
 
 @console_ns.route("/workspaces/current/tools/workflow")
 class ToolWorkflowListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -772,6 +839,7 @@ class ToolWorkflowListApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-labels")
 class ToolLabelsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -782,6 +850,11 @@ class ToolLabelsApi(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider>/tool/authorization-url")
 class ToolPluginOAuthApi(Resource):
+    @console_ns.response(
+        200,
+        "Authorization URL retrieved successfully",
+        console_ns.models[PluginOAuthAuthorizationUrlResponse.__name__],
+    )
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -823,6 +896,11 @@ class ToolPluginOAuthApi(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider>/tool/callback")
 class ToolOAuthCallback(Resource):
+    @console_ns.response(
+        302,
+        "Redirect to console OAuth callback page",
+        console_ns.models[RedirectResponse.__name__],
+    )
     @setup_required
     def get(self, provider: str):
         context_id = request.cookies.get("context_id")
@@ -877,6 +955,7 @@ class ToolOAuthCallback(Resource):
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/default-credential")
 class ToolBuiltinProviderSetDefaultApi(Resource):
     @console_ns.expect(console_ns.models[BuiltinProviderDefaultCredentialPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -892,6 +971,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/custom-client")
 class ToolOAuthCustomClient(Resource):
     @console_ns.expect(console_ns.models[ToolOAuthCustomClientPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -912,6 +992,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[ToolOAuthCustomClientResponse.__name__])
     @with_current_tenant_id
     def get(self, current_tenant_id: str, provider: str):
         return jsonable_encoder(
@@ -921,6 +1002,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
         return jsonable_encoder(
@@ -930,6 +1012,7 @@ class ToolOAuthCustomClient(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/oauth/client-schema")
 class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolOAuthClientSchemaResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -944,6 +1027,8 @@ class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/credential/info")
 class ToolBuiltinProviderGetCredentialInfoApi(Resource):
+    @console_ns.doc(params=query_params_from_model(BuiltinCredentialListQuery))
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -967,6 +1052,7 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/mcp")
 class ToolProviderMCPApi(Resource):
     @console_ns.expect(console_ns.models[MCPProviderCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1021,6 +1107,7 @@ class ToolProviderMCPApi(Resource):
         return jsonable_encoder(result)
 
     @console_ns.expect(console_ns.models[MCPProviderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1091,6 +1178,7 @@ class ToolProviderMCPApi(Resource):
 @console_ns.route("/workspaces/current/tool-provider/mcp/auth")
 class ToolMCPAuthApi(Resource):
     @console_ns.expect(console_ns.models[MCPAuthPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1164,6 +1252,7 @@ class ToolMCPAuthApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/tools/<path:provider_id>")
 class ToolMCPDetailApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1177,6 +1266,7 @@ class ToolMCPDetailApi(Resource):
 
 @console_ns.route("/workspaces/current/tools/mcp")
 class ToolMCPListAllApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1192,6 +1282,7 @@ class ToolMCPListAllApi(Resource):
 
 @console_ns.route("/workspaces/current/tool-provider/mcp/update/<path:provider_id>")
 class ToolMCPUpdateApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ToolProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -1208,6 +1299,12 @@ class ToolMCPUpdateApi(Resource):
 
 @console_ns.route("/mcp/oauth/callback")
 class ToolMCPCallbackApi(Resource):
+    @console_ns.doc(params=query_params_from_model(MCPCallbackQuery))
+    @console_ns.response(
+        302,
+        "Redirect to console OAuth callback page",
+        console_ns.models[RedirectResponse.__name__],
+    )
     def get(self):
         raw_args = request.args.to_dict()
         query = MCPCallbackQuery.model_validate(raw_args)

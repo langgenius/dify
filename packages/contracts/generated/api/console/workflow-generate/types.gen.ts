@@ -14,6 +14,8 @@ export type WorkflowGeneratePayload = {
   model_config: ModelConfig
 }
 
+export type GeneratorResponse = unknown
+
 export type ModelConfig = {
   completion_params?: {
     [key: string]: unknown
@@ -33,20 +35,12 @@ export type PostWorkflowGenerateData = {
 }
 
 export type PostWorkflowGenerateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  402: {
-    [key: string]: unknown
-  }
+  400: unknown
+  402: unknown
 }
 
-export type PostWorkflowGenerateError = PostWorkflowGenerateErrors[keyof PostWorkflowGenerateErrors]
-
 export type PostWorkflowGenerateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratorResponse
 }
 
 export type PostWorkflowGenerateResponse
