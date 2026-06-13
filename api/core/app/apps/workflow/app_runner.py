@@ -66,8 +66,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         """
         Run application
         """
+        from core.app.app_context import reset_current_app_id, set_current_app_id
+
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
+
+        _app_id_token = set_current_app_id(app_config.app_id)
         invoke_from = self.application_generate_entity.invoke_from
         # if only single iteration or single loop run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -187,3 +191,5 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         for event in generator:
             self._handle_event(workflow_entry, event)
+
+        reset_current_app_id(_app_id_token)
