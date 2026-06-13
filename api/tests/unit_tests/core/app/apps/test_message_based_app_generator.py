@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -13,10 +14,12 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps import message_based_app_generator
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
-from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
-from models.model import AppMode, Conversation, Message
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, CompletionAppGenerateEntity, InvokeFrom
+from models.account import Account
+from models.model import App, AppMode, Conversation, Message
 from services.errors.app_model_config import AppModelConfigBrokenError
 
 
@@ -90,9 +93,9 @@ def _mock_db_session(monkeypatch: pytest.MonkeyPatch):
 
     def refresh_side_effect(obj):
         if isinstance(obj, Conversation) and obj.id is None:
-            obj.id = "generated-conversation-id"
+            object.__setattr__(obj, "id", "generated-conversation-id")
         if isinstance(obj, Message) and obj.id is None:
-            obj.id = "generated-message-id"
+            object.__setattr__(obj, "id", "generated-message-id")
 
     session.refresh.side_effect = refresh_side_effect
     session.add.return_value = None
@@ -108,7 +111,9 @@ def test_init_generate_records_skips_conversation_fields_for_non_conversation_en
 
     generator = MessageBasedAppGenerator()
 
-    conversation, message = generator._init_generate_records(entity, conversation=None)
+    conversation, message = generator._init_generate_records(
+        cast(CompletionAppGenerateEntity, entity), conversation=None
+    )
 
     assert conversation.id == "generated-conversation-id"
     assert message.id == "generated-message-id"
@@ -148,30 +153,64 @@ class TestMessageBasedAppGeneratorExtras:
         with pytest.raises(GenerateTaskStoppedError):
             generator._handle_response(
                 application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
-                queue_manager=SimpleNamespace(),
-                conversation=SimpleNamespace(id="conv"),
-                message=SimpleNamespace(id="msg"),
-                user=SimpleNamespace(),
+                queue_manager=cast(AppQueueManager, SimpleNamespace()),
+                conversation=cast(Conversation, SimpleNamespace(id="conv")),
+                message=cast(Message, SimpleNamespace(id="msg")),
+                user=cast(Account, SimpleNamespace()),
                 stream=False,
             )
 
+    def test_handle_response_removes_scoped_session_before_processing(self, monkeypatch: pytest.MonkeyPatch):
+        generator = MessageBasedAppGenerator()
+        remove_mock = MagicMock()
+        monkeypatch.setattr(
+            message_based_app_generator,
+            "db",
+            SimpleNamespace(session=SimpleNamespace(remove=remove_mock)),
+        )
+
+        class _Pipeline:
+            def __init__(self, **kwargs) -> None:
+                _ = kwargs
+
+            def process(self):
+                assert remove_mock.called
+                return SimpleNamespace()
+
+        monkeypatch.setattr(
+            "core.app.apps.message_based_app_generator.EasyUIBasedGenerateTaskPipeline",
+            _Pipeline,
+        )
+
+        generator._handle_response(
+            application_generate_entity=_make_chat_generate_entity(_make_app_config(AppMode.CHAT)),
+            queue_manager=cast(AppQueueManager, SimpleNamespace()),
+            conversation=cast(Conversation, SimpleNamespace(id="conv")),
+            message=cast(Message, SimpleNamespace(id="msg", created_at=SimpleNamespace(timestamp=lambda: 0))),
+            user=cast(Account, SimpleNamespace()),
+            stream=False,
+        )
+
+        remove_mock.assert_called_once()
+
     def test_get_app_model_config_requires_valid_config(self, monkeypatch: pytest.MonkeyPatch):
         generator = MessageBasedAppGenerator()
-        app_model = SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None)
+        app_model = cast(App, SimpleNamespace(id="app", app_model_config_id=None, app_model_config=None))
 
         with pytest.raises(AppModelConfigBrokenError):
             generator._get_app_model_config(app_model, conversation=None)
 
-        conversation = SimpleNamespace(app_model_config_id="missing-id")
+        conversation = cast(Conversation, SimpleNamespace(app_model_config_id="missing-id"))
         monkeypatch.setattr(
             message_based_app_generator, "db", SimpleNamespace(session=SimpleNamespace(scalar=lambda _: None))
         )
 
         with pytest.raises(AppModelConfigBrokenError):
-            generator._get_app_model_config(app_model=SimpleNamespace(id="app"), conversation=conversation)
+            generator._get_app_model_config(app_model=cast(App, SimpleNamespace(id="app")), conversation=conversation)
 
     def test_get_conversation_introduction_handles_missing_inputs(self):
         app_config = _make_app_config(AppMode.CHAT)
+        assert app_config.additional_features is not None
         app_config.additional_features.opening_statement = "Hello {{name}}"
         entity = _make_chat_generate_entity(app_config)
         entity.inputs = {}
