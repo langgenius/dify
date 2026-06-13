@@ -7,7 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useConfig as useAgentComposerConfig, useCurrentModel, useHydrateAgentComposerDraft, useModel } from '@/features/agent-v2/agent-composer/store'
+import { useHydrateAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
+import { useAppFeatures as useAgentComposerAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
+import { useCurrentModel, useModel } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { consoleQuery } from '@/service/client'
 import { AgentOrchestratePanel } from './components/orchestrate'
 import { AgentPreviewChat } from './components/preview/chat'
@@ -57,8 +59,8 @@ function AgentConfigurePageContent({
   }))
   const activeConfigSnapshot = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined) ?? agentQuery.data?.active_config_snapshot
   const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
-  const draftAgentSoulConfig = useAgentComposerConfig()
-  useHydrateAgentComposerDraft({
+  const draftAppFeatures = useAgentComposerAppFeatures()
+  useHydrateAgentSoulConfigFormState({
     agentId,
     activeVersionId,
     config: agentSoulConfig,
@@ -76,7 +78,12 @@ function AgentConfigurePageContent({
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
-  const previewAgentSoulConfig = draftAgentSoulConfig ?? agentSoulConfig
+  const previewAgentSoulConfig = agentSoulConfig && draftAppFeatures
+    ? {
+        ...agentSoulConfig,
+        app_features: draftAppFeatures,
+      }
+    : agentSoulConfig
 
   return (
     <section

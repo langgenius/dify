@@ -12,10 +12,8 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import {
-  agentComposerDraftAtom,
-  useConfig,
-} from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { useAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { useCodeBasedExtensions } from '@/service/use-common'
 import { ConfigureSection } from '../common/section'
 
@@ -54,12 +52,9 @@ function AgentContentModerationSettingsContent() {
     })
     setDraft(draft => ({
       ...draft,
-      config: {
-        ...draft.config,
-        app_features: {
-          ...draft.config?.app_features,
-          sensitive_word_avoidance: nextModeration as AgentSoulAppFeaturesConfig['sensitive_word_avoidance'],
-        },
+      appFeatures: {
+        ...draft.appFeatures,
+        sensitive_word_avoidance: nextModeration as AgentSoulAppFeaturesConfig['sensitive_word_avoidance'],
       },
     }))
   }, [featuresStore, setDraft])
@@ -174,8 +169,8 @@ function AgentContentModerationSettingsContent() {
 }
 
 export function AgentContentModerationSettings() {
-  const config = useConfig()
-  const moderation = config?.app_features?.sensitive_word_avoidance
+  const appFeatures = useAppFeatures()
+  const moderation = appFeatures?.sensitive_word_avoidance
   const features = useMemo<Features>(() => ({
     moderation: moderation
       ? {

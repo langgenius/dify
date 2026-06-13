@@ -10,13 +10,11 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import {
-  useFiles,
-  useKnowledgeRetrievals,
-  usePrompt,
-  useSkills,
-  useTools,
-} from '@/features/agent-v2/agent-composer/store'
+import { useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
+import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import { usePrompt } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { useSkills } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { useTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'

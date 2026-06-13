@@ -2,19 +2,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentComposerDraft, useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
+import { useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
 import { AgentKnowledgeRetrieval } from '../index'
 
 const agentKnowledgeDraft = {
-  ...defaultAgentComposerDraft,
+  ...defaultAgentSoulConfigFormState,
   knowledgeRetrievals: [
     {
       id: 'retrieval-1',
       nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
     },
   ],
-} satisfies typeof defaultAgentComposerDraft
+} satisfies typeof defaultAgentSoulConfigFormState
 
 function PublishPayloadPreview() {
   const payload = useConfigPublishPayload({ agentId: 'agent-1' })

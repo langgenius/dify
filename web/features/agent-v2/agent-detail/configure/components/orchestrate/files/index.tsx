@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/file-tree'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFiles } from '@/features/agent-v2/agent-composer/store'
+import { useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'

@@ -1,3 +1,4 @@
+import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agents/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type {
   MetadataFilteringConditions,
@@ -49,6 +50,7 @@ export type AgentKnowledgeRetrievalItem = {
   nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
   queryMode?: 'agent' | 'custom'
   customQuery?: string
+  datasetRefs?: AgentKnowledgeDatasetConfig[]
   selectedDatasets?: DataSet[]
   retrievalMode?: RETRIEVE_TYPE
   multipleRetrievalConfig?: MultipleRetrievalConfig

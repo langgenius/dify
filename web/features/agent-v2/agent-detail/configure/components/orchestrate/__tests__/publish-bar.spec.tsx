@@ -3,7 +3,8 @@ import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentComposerDraftAtom, agentComposerOriginalDraftAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentConfigurePromptAtom } from '../../../atoms'
 import { AgentConfigurePublishBar } from '../publish-bar'
 
@@ -43,7 +44,7 @@ const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
 }
 
 const originalDraftWithFile = {
-  ...defaultAgentComposerDraft,
+  ...defaultAgentSoulConfigFormState,
   files: [
     {
       id: 'preview-image',
@@ -51,7 +52,7 @@ const originalDraftWithFile = {
       icon: 'image',
     },
   ],
-} satisfies typeof defaultAgentComposerDraft
+} satisfies typeof defaultAgentSoulConfigFormState
 
 function renderPublishBar({
   activeConfigSnapshot,

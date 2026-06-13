@@ -3,7 +3,11 @@ import type { AgentTool } from '../orchestrate/tools/types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { agentComposerDraftAtom, agentComposerKnowledgeRetrievalsAtom, agentComposerPromptAtom, agentComposerToolsAtom, defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { AgentPromptEditor } from '../orchestrate/prompt-editor'
 import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 
@@ -103,7 +107,7 @@ const duckDuckGoProviderTool: AgentTool = {
 }
 
 const promptEditorDraft = {
-  ...defaultAgentComposerDraft,
+  ...defaultAgentSoulConfigFormState,
   skills: [
     {
       id: 'playwright',
@@ -111,11 +115,11 @@ const promptEditorDraft = {
     },
   ],
   tools: [duckDuckGoProviderTool],
-} satisfies typeof defaultAgentComposerDraft
+} satisfies typeof defaultAgentSoulConfigFormState
 
 const renderAgentPromptEditor = (
   value: string,
-  draftOverrides: Partial<typeof defaultAgentComposerDraft> = {},
+  draftOverrides: Partial<typeof defaultAgentSoulConfigFormState> = {},
 ) => {
   const store = createStore()
   store.set(agentComposerDraftAtom, {
@@ -162,7 +166,7 @@ describe('AgentPromptEditor', () => {
     it('should update knowledge reference labels when the retrieval title changes', () => {
       const store = createStore()
       store.set(agentComposerDraftAtom, {
-        ...defaultAgentComposerDraft,
+        ...defaultAgentSoulConfigFormState,
         prompt: 'Use [§knowledge:retrieval-1:Old Search§] and [§knowledge:retrieval-2:Keep Search§]',
         knowledgeRetrievals: [
           { id: 'retrieval-1', name: 'Old Search' },
@@ -181,7 +185,7 @@ describe('AgentPromptEditor', () => {
     it('should update CLI tool reference labels when the tool title changes', () => {
       const store = createStore()
       store.set(agentComposerDraftAtom, {
-        ...defaultAgentComposerDraft,
+        ...defaultAgentSoulConfigFormState,
         prompt: 'Run [§cli_tool:cli-1:Old CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]',
         tools: [
           { id: 'cli-1', kind: 'cli', name: 'Old CLI' },

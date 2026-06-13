@@ -1,14 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentEnvEditor } from '../env'
 import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
 
 function renderAgentEnvEditor() {
   return render(
-    <AgentComposerProvider initialDraft={defaultAgentComposerDraft}>
+    <AgentComposerProvider initialDraft={defaultAgentSoulConfigFormState}>
       <AgentEnvEditor />
     </AgentComposerProvider>,
   )
@@ -47,6 +47,36 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('User Interactions', () => {
+    it('should edit the initial environment variable row directly', async () => {
+      const user = userEvent.setup()
+      renderAgentEnvEditor()
+
+      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      const valueInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
+
+      await user.type(keyInput, 'API_KEY')
+      await user.type(valueInput, 'secret-value')
+
+      expect(screen.getByDisplayValue('API_KEY')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('secret-value')).toBeInTheDocument()
+    })
+
+    it('should add another editable variable row from the add button', async () => {
+      const user = userEvent.setup()
+      renderAgentEnvEditor()
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add' }))
+
+      const keyInputs = screen.getAllByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      expect(keyInputs).toHaveLength(2)
+      const newKeyInput = keyInputs[1]!
+      expect(newKeyInput).toHaveFocus()
+
+      await user.type(newKeyInput, 'SECOND_KEY')
+
+      expect(screen.getByDisplayValue('SECOND_KEY')).toBeInTheDocument()
+    })
+
     it('should import dotenv variables into the env table when a file is selected', async () => {
       const user = userEvent.setup()
       const { container } = renderAgentEnvEditor()

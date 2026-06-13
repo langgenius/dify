@@ -3,7 +3,7 @@
 import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useMemo, useState } from 'react'
-import { useRemoveProviderTool, useRemoveProviderToolAction, useTools } from '@/features/agent-v2/agent-composer/store'
+import { useRemoveProviderTool, useRemoveProviderToolAction, useTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 const toSelectedToolValue = (tool: AgentTool): ToolValue[] => {
   if (tool.kind !== 'provider')

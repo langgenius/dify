@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { defaultAgentComposerDraft } from '@/features/agent-v2/agent-composer/store'
 import { AgentTools } from '../index'
 
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
@@ -14,7 +14,7 @@ vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
 }))
 
 const agentToolsDraft = {
-  ...defaultAgentComposerDraft,
+  ...defaultAgentSoulConfigFormState,
   tools: [
     {
       id: 'duckduckgo',
@@ -44,7 +44,7 @@ const agentToolsDraft = {
       name: 'Lark CLI',
     },
   ],
-} satisfies typeof defaultAgentComposerDraft
+} satisfies typeof defaultAgentSoulConfigFormState
 
 function renderAgentTools() {
   return render(
