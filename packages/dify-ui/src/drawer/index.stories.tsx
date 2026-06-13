@@ -234,7 +234,9 @@ export const Positions: Story = {
   ),
 }
 
-const initialSnapPoint: DrawerRootSnapPoint = '18rem'
+const snapTopMarginRem = 1
+const visibleSnapPointRem = 30
+const initialSnapPoint: DrawerRootSnapPoint = `${visibleSnapPointRem + snapTopMarginRem}rem`
 const snapPoints = [initialSnapPoint, 1] satisfies DrawerRootSnapPoint[]
 
 function SnapPointsDemo() {
@@ -250,32 +252,52 @@ function SnapPointsDemo() {
       <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
         Open snap drawer
       </DrawerTrigger>
-      <DrawerParts popupClassName="data-[swipe-direction=down]:max-h-[calc(100dvh-1rem)]">
-        <DrawerFrame
-          showHandle
-          title="Snap points"
-          description="Drag the sheet between a compact peek and the full-height view."
-          footer={<DrawerClose className={primaryCloseClassName}>Done</DrawerClose>}
-        >
-          <div className="mb-4 flex items-center justify-between rounded-xl bg-background-section-burn px-3 py-2 text-xs text-text-tertiary">
-            <span>Current snap point</span>
-            <span className="font-medium text-text-secondary">{String(snapPoint)}</span>
-          </div>
-          <div className="grid gap-2">
-            {Array.from({ length: 12 }, (_, index) => (
-              <div key={index} className="flex items-center gap-3 rounded-xl border-[0.5px] border-divider-subtle p-3">
-                <span className="flex size-7 items-center justify-center rounded-lg bg-state-base-hover text-xs font-medium text-text-secondary">
-                  {index + 1}
-                </span>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-text-secondary">Activity checkpoint</div>
-                  <div className="text-xs text-text-tertiary">Visible in the scrollable content area.</div>
+      <DrawerPortal>
+        <DrawerBackdrop className="fixed" />
+        <DrawerViewport className="flex touch-none items-end justify-center">
+          <DrawerPopup
+            className={cn(
+              'relative overflow-visible! touch-none',
+              '[--bleed:3rem] [--top-margin:1rem]',
+              '[padding-bottom:max(0px,calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y,0px)))]',
+              'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[var(--bleed)] after:bg-[inherit] after:content-[""]',
+              'data-[swipe-direction=down]:max-h-[calc(100dvh-var(--top-margin))]',
+              'data-starting-style:[padding-bottom:0] data-ending-style:[padding-bottom:0]',
+            )}
+          >
+            <div className="shrink-0 touch-none border-b-[0.5px] border-divider-subtle px-6 pt-3.5 pb-4">
+              <div className="mx-auto mb-2.5 h-1 w-10 shrink-0 rounded-full bg-state-base-handle" />
+              <DrawerTitle className="cursor-default text-center text-lg/6 font-semibold text-text-primary">
+                Snap points
+              </DrawerTitle>
+            </div>
+            <DrawerContent className="min-h-0 flex-1 touch-auto overflow-y-auto overscroll-contain px-6 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom,0))]">
+              <div className="mx-auto w-full max-w-90">
+                <DrawerDescription className="mb-4 text-center text-sm/5 text-text-tertiary">
+                  Drag the sheet to snap between a compact peek and a near full-height view.
+                </DrawerDescription>
+                <div className="mb-4 flex items-center justify-between rounded-xl bg-background-section-burn px-3 py-2 text-xs text-text-tertiary">
+                  <span>Current snap point</span>
+                  <span className="font-medium text-text-secondary">{String(snapPoint)}</span>
+                </div>
+                <div className="mb-6 grid gap-2" aria-hidden>
+                  {Array.from({ length: 20 }, (_, index) => (
+                    <div key={index} className="flex h-12 items-center gap-3 rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3">
+                      <span className="flex size-7 items-center justify-center rounded-lg bg-state-base-hover text-xs font-medium text-text-secondary">
+                        {index + 1}
+                      </span>
+                      <div className="h-2 min-w-0 flex-1 rounded-full bg-state-base-hover" />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <DrawerClose className={primaryCloseClassName}>Close</DrawerClose>
                 </div>
               </div>
-            ))}
-          </div>
-        </DrawerFrame>
-      </DrawerParts>
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
     </Drawer>
   )
 }
