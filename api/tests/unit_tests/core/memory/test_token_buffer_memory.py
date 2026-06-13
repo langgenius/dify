@@ -757,8 +757,8 @@ class TestGetHistoryPromptMessages:
         # After pruning, we should have fewer than the 2 initial messages
         assert len(result) <= 1
 
-    def test_token_pruning_stops_at_single_message(self):
-        """Pruning stops when only 1 message remains (to prevent empty list)."""
+    def test_token_pruning_drops_last_message_when_it_still_exceeds_limit(self):
+        """History should be empty when even the newest message cannot fit the token budget."""
         conv = _make_conversation()
         conv.app = MagicMock()
 
@@ -796,8 +796,7 @@ class TestGetHistoryPromptMessages:
             mock_db.session.scalars.side_effect = scalars_side_effect
             result = mem.get_history_prompt_messages(max_token_limit=1)
 
-        # At least 1 message should remain
-        assert len(result) >= 1
+        assert result == []
 
     def test_no_pruning_when_within_limit(self):
         """When tokens ≤ limit, no pruning occurs."""
