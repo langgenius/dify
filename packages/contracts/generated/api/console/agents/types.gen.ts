@@ -389,6 +389,7 @@ export type AgentSandboxProviderConfig = {
 }
 
 export type AgentFileRefConfig = {
+  drive_key?: string | null
   file_id?: string | null
   id?: string | null
   name?: string | null
@@ -405,9 +406,14 @@ export type AgentFileRefConfig = {
 export type AgentSkillRefConfig = {
   description?: string | null
   file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
   id?: string | null
+  manifest_files?: Array<string> | null
   name?: string | null
   path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
   [key: string]: unknown
 }
 
@@ -423,6 +429,7 @@ export type AgentCliToolConfig = {
   enabled?: boolean
   env?: AgentCliToolEnvConfig
   id?: string | null
+  inferred_from?: string | null
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
