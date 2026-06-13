@@ -449,7 +449,7 @@ def init_app(app: DifyApp):
 
     global _pubsub_redis_client
     _pubsub_redis_client = client
-    if dify_config.normalized_pubsub_redis_url:
+    if dify_config.normalized_pubsub_redis_url and not dify_config.REDIS_USE_SENTINEL:
         _pubsub_redis_client = _create_pubsub_client(
             dify_config.normalized_pubsub_redis_url, dify_config.PUBSUB_REDIS_USE_CLUSTERS
         )
