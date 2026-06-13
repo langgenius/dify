@@ -420,25 +420,45 @@ export const IndentEffect: Story = {
   render: () => <IndentEffectDemo />,
 }
 
-export const NonModal: Story = {
-  render: () => (
+function NonModalDemo() {
+  const [backgroundClicks, setBackgroundClicks] = React.useState(0)
+
+  return (
     <Drawer swipeDirection="right" modal={false} disablePointerDismissal>
-      <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
-        Open non-modal drawer
-      </DrawerTrigger>
-      <DrawerParts backdropClassName="bg-transparent" popupClassName="data-[swipe-direction=right]:right-3 data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-r-[0.5px]">
-        <DrawerFrame
-          title="Non-modal drawer"
-          description="Focus is not trapped and outside pointer dismissal is disabled."
-          footer={<DrawerClose className={primaryCloseClassName}>Close</DrawerClose>}
-        >
-          <button type="button" className="w-full rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-left text-sm text-text-secondary hover:bg-state-base-hover">
-            Outside workflows can remain available while this panel is open.
-          </button>
-        </DrawerFrame>
-      </DrawerParts>
+      <div className="flex flex-col items-center gap-3">
+        <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
+          Open non-modal drawer
+        </DrawerTrigger>
+        <Button variant="secondary" onClick={() => setBackgroundClicks(count => count + 1)}>
+          Background action
+        </Button>
+        <span className="text-xs text-text-tertiary">
+          Background clicks:
+          {' '}
+          {backgroundClicks}
+        </span>
+      </div>
+      <DrawerPortal>
+        <DrawerViewport className="pointer-events-none">
+          <DrawerPopup className="pointer-events-auto touch-auto data-[swipe-direction=right]:right-3 data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-r-[0.5px]">
+            <DrawerFrame
+              title="Non-modal drawer"
+              description="Focus is not trapped and outside pointer dismissal is disabled."
+              footer={<DrawerClose className={primaryCloseClassName}>Close</DrawerClose>}
+            >
+              <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
+                The background action remains clickable while this drawer is open. Outside clicks do not dismiss it.
+              </div>
+            </DrawerFrame>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
     </Drawer>
-  ),
+  )
+}
+
+export const NonModal: Story = {
+  render: () => <NonModalDemo />,
 }
 
 const navItems = ['Explore', 'Apps', 'Datasets', 'Workflows'] as const
