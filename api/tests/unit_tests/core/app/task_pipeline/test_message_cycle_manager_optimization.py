@@ -226,11 +226,17 @@ class TestMessageCycleManagerOptimization:
         flask_app = object()
 
         class DummyTimer:
-            def __init__(self, interval, function, args=None, kwargs=None):
+            def __init__(
+                self,
+                interval: int,
+                function: object,
+                args: list[object] | None = None,
+                kwargs: dict[str, object] | None = None,
+            ):
                 self.interval = interval
                 self.function = function
                 self.args = args or []
-                self.kwargs = kwargs
+                self.kwargs = kwargs or {}
                 self.daemon = False
                 self.started = False
 
@@ -254,7 +260,7 @@ class TestMessageCycleManagerOptimization:
         assert thread.kwargs["flask_app"] is flask_app
         assert thread.kwargs["conversation_id"] == "conv-1"
         assert thread.kwargs["query"] == "hello"
-        assert message_cycle_manager._application_generate_entity.is_new_conversation is False
+        assert vars(message_cycle_manager._application_generate_entity)["is_new_conversation"] is False
 
     def test_generate_conversation_name_skips_thread_when_auto_generate_disabled(self, message_cycle_manager):
         """Skip thread creation when auto naming is disabled but still mark conversation as not new."""
@@ -266,7 +272,7 @@ class TestMessageCycleManagerOptimization:
 
         assert result is None
         mock_timer.assert_not_called()
-        assert message_cycle_manager._application_generate_entity.is_new_conversation is False
+        assert vars(message_cycle_manager._application_generate_entity)["is_new_conversation"] is False
 
     def test_generate_conversation_name_worker_releases_db_before_llm_call(self, message_cycle_manager):
         """Keep DB sessions bounded around reads and writes, not around LLM generation."""
