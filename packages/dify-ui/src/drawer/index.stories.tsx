@@ -1022,3 +1022,40 @@ export const StackingAndAnimations: Story = {
     </Drawer>
   ),
 }
+
+export const InstantRightPanel: Story = {
+  render: () => (
+    <Drawer swipeDirection="right" modal={false} disablePointerDismissal>
+      <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
+        Open instant right panel
+      </DrawerTrigger>
+      <DrawerPortal>
+        <DrawerViewport className="pointer-events-none">
+          <DrawerPopup className="pointer-events-auto data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:duration-0 data-starting-style:data-[swipe-direction=right]:transform-[translateX(0)] data-ending-style:duration-0 data-ending-style:data-[swipe-direction=right]:transform-[translateX(0)] data-swiping:shadow-none">
+            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+              <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
+                <div className="min-w-0">
+                  <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
+                    Instant right panel
+                  </DrawerTitle>
+                  <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
+                    This non-modal drawer opens without a slide-in animation and ignores outside clicks.
+                  </DrawerDescription>
+                </div>
+                <DrawerCloseButton className="shrink-0" />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
+                  The page stays interactive because this drawer is non-modal. Starting and ending styles both keep the panel at translateX(0), so open and close are instant.
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center justify-end gap-2 border-t-[0.5px] border-divider-subtle px-6 py-4">
+                <DrawerClose className={primaryCloseClassName}>Close</DrawerClose>
+              </div>
+            </DrawerContent>
+          </DrawerPopup>
+        </DrawerViewport>
+      </DrawerPortal>
+    </Drawer>
+  ),
+}
