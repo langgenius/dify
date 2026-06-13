@@ -406,3 +406,108 @@ def test_resolve_identity_mode_off_is_passthrough_when_not_enterprise(
     monkeypatch.setattr(controller_module.dify_config, "ENTERPRISE_ENABLED", False)
 
     assert controller_module._resolve_identity_mode(None, current=identity_mode.OFF) == identity_mode.OFF
+
+
+class _DummyBegin:
+    def __init__(self, session: object | None = None) -> None:
+        self._session = session or MagicMock()
+
+    def __enter__(self):
+        return self._session
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+def test_mcp_auth_starts_oauth_when_initialize_succeeds_but_no_tokens(
+    app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+):
+    user = _mock_account()
+    _set_current_account(monkeypatch, controller_module, user, "tenant-mcp")
+    monkeypatch.setattr(controller_module, "db", SimpleNamespace(engine=MagicMock()))
+
+    provider_entity = MagicMock()
+    provider_entity.decrypt_server_url.return_value = "https://example.com/mcp"
+    provider_entity.decrypt_authentication.return_value = {}
+    provider_entity.decrypt_credentials.return_value = {"client_information": {"client_id": "cid"}}
+    provider_entity.retrieve_tokens.return_value = None
+    provider_entity.timeout = 1
+    provider_entity.sse_read_timeout = 1
+
+    db_provider = MagicMock()
+    db_provider.to_entity.return_value = provider_entity
+
+    service_mock = MagicMock()
+    service_mock.get_provider.return_value = db_provider
+    service_mock.execute_auth_actions.return_value = {"authorization_url": "https://auth.example.com"}
+
+    monkeypatch.setattr(controller_module, "MCPToolManageService", MagicMock(return_value=service_mock))
+
+    session_factory = MagicMock()
+    session_factory.begin.return_value = _DummyBegin()
+    monkeypatch.setattr(controller_module, "sessionmaker", MagicMock(return_value=session_factory))
+
+    mcp_client = MagicMock()
+    mcp_client.__enter__.return_value = mcp_client
+    mcp_client.__exit__.return_value = None
+    monkeypatch.setattr(controller_module, "MCPClient", MagicMock(return_value=mcp_client))
+
+    auth_result = MagicMock()
+    auth_mock = MagicMock(return_value=auth_result)
+    monkeypatch.setattr(controller_module, "auth", auth_mock)
+
+    with app.test_request_context(
+        "/workspaces/current/tool-provider/mcp/auth", method="POST", json={"provider_id": "p1"}
+    ):
+        resp = controller_module.ToolMCPAuthApi().post()
+
+    assert resp == {"authorization_url": "https://auth.example.com"}
+    auth_mock.assert_called_once_with(provider_entity)
+    service_mock.execute_auth_actions.assert_called_once_with(auth_result)
+    service_mock.update_provider_credentials.assert_not_called()
+
+
+def test_mcp_auth_marks_authed_when_tokens_already_present(
+    app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+):
+    user = _mock_account()
+    _set_current_account(monkeypatch, controller_module, user, "tenant-mcp")
+    monkeypatch.setattr(controller_module, "db", SimpleNamespace(engine=MagicMock()))
+
+    provider_entity = MagicMock()
+    provider_entity.decrypt_server_url.return_value = "https://example.com/mcp"
+    provider_entity.decrypt_authentication.return_value = {"Authorization": "Bearer token"}
+    provider_entity.decrypt_credentials.return_value = {"client_information": {"client_id": "cid"}, "access_token": "t"}
+    provider_entity.retrieve_tokens.return_value = MagicMock()
+    provider_entity.credentials = {"client_information": {"client_id": "cid"}}
+    provider_entity.timeout = 1
+    provider_entity.sse_read_timeout = 1
+
+    db_provider = MagicMock()
+    db_provider.to_entity.return_value = provider_entity
+
+    service_mock = MagicMock()
+    service_mock.get_provider.return_value = db_provider
+
+    monkeypatch.setattr(controller_module, "MCPToolManageService", MagicMock(return_value=service_mock))
+
+    session_factory = MagicMock()
+    session_factory.begin.return_value = _DummyBegin()
+    monkeypatch.setattr(controller_module, "sessionmaker", MagicMock(return_value=session_factory))
+
+    mcp_client = MagicMock()
+    mcp_client.__enter__.return_value = mcp_client
+    mcp_client.__exit__.return_value = None
+    monkeypatch.setattr(controller_module, "MCPClient", MagicMock(return_value=mcp_client))
+
+    auth_mock = MagicMock()
+    monkeypatch.setattr(controller_module, "auth", auth_mock)
+
+    with app.test_request_context(
+        "/workspaces/current/tool-provider/mcp/auth", method="POST", json={"provider_id": "p1"}
+    ):
+        resp = controller_module.ToolMCPAuthApi().post()
+
+    assert resp == {"result": "success"}
+    auth_mock.assert_not_called()
+    service_mock.update_provider_credentials.assert_called_once()
