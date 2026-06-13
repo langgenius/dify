@@ -991,7 +991,7 @@ export type PluginCategoryBuiltinToolProviderResponse = {
 export type PluginCategoryInstalledPluginResponse = {
   checksum: string
   created_at: string
-  declaration: PluginDeclaration
+  declaration: PluginDeclarationResponse
   endpoints_active: number
   endpoints_setups: number
   id: string
@@ -1166,7 +1166,7 @@ export type ToolProviderType
     | 'plugin'
     | 'workflow'
 
-export type PluginDeclaration = {
+export type PluginDeclarationResponse = {
   agent_strategy?: AgentStrategyProviderEntity | null
   author: string | null
   category: PluginCategory
@@ -1178,7 +1178,7 @@ export type PluginDeclaration = {
   icon_dark?: string | null
   label: CoreToolsEntitiesCommonEntitiesI18nObject
   meta: Meta
-  model?: ProviderEntity | null
+  model?: ProviderEntityResponse | null
   name: string
   plugins: Plugins
   repo?: string | null
@@ -1198,7 +1198,7 @@ export type AiModelEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
-  label: I18nObject
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   model: string
   model_properties: {
     [key in ModelPropertyKey]?: unknown
@@ -1275,7 +1275,7 @@ export type Meta = {
   version?: string | null
 }
 
-export type ProviderEntity = {
+export type ProviderEntityResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
   description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
@@ -1284,7 +1284,7 @@ export type ProviderEntity = {
   icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   model_credential_schema?: ModelCredentialSchema | null
-  models?: Array<AiModelEntity>
+  models?: Array<AiModelEntityResponse>
   position?: {
     [key: string]: Array<string>
   } | null
@@ -1399,20 +1399,6 @@ export type EndpointDeclaration = {
   path: string
 }
 
-export type AiModelEntity = {
-  deprecated?: boolean
-  features?: Array<ModelFeature> | null
-  fetch_from: FetchFrom
-  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
-  model: string
-  model_properties: {
-    [key in ModelPropertyKey]?: unknown
-  }
-  model_type: ModelType
-  parameter_rules?: Array<ParameterRule>
-  pricing?: PriceConfig | null
-}
-
 export type Permission = {
   endpoint?: Endpoint | null
   model?: Model | null
@@ -1501,13 +1487,6 @@ export type CoreEntitiesProviderEntitiesBasicProviderConfigType
     | 'secret-input'
     | 'select'
     | 'text-input'
-
-export type PriceConfig = {
-  currency: string
-  input: string
-  output?: string | null
-  unit: string
-}
 
 export type Endpoint = {
   enabled?: boolean | null

@@ -41,6 +41,7 @@ from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from models.provider_ids import ToolProviderID
+from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -178,6 +179,10 @@ class PluginAutoUpgradeFetchResponse(ResponseModel):
     auto_upgrade: PluginAutoUpgradeSettingsResponseModel
 
 
+class PluginDeclarationResponse(PluginDeclaration):
+    model: ProviderEntityResponse | None = None
+
+
 class ParserAutoUpgradeChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -216,7 +221,7 @@ class PluginCategoryInstalledPluginResponse(ResponseModel):
     endpoints_active: int
     endpoints_setups: int
     installation_id: str
-    declaration: PluginDeclaration
+    declaration: PluginDeclarationResponse
     runtime_type: str
     version: str
     created_at: datetime

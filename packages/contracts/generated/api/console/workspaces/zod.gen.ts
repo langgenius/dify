@@ -1602,7 +1602,7 @@ export const zAiModelEntityResponse = z.object({
   deprecated: z.boolean().optional().default(false),
   features: z.array(zModelFeature).nullish(),
   fetch_from: zFetchFrom,
-  label: zI18nObject,
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
   model: z.string(),
   model_properties: z.record(z.string(), z.unknown()),
   model_type: zModelType,
@@ -1732,6 +1732,28 @@ export const zModelCredentialSchema = z.object({
  */
 export const zProviderCredentialSchema = z.object({
   credential_form_schemas: z.array(zCredentialFormSchema),
+})
+
+/**
+ * ProviderEntityResponse
+ *
+ * Runtime provider response with codegen-safe model pricing schemas.
+ */
+export const zProviderEntityResponse = z.object({
+  background: z.string().nullish(),
+  configurate_methods: z.array(zConfigurateMethod),
+  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  help: zProviderHelpEntity.nullish(),
+  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
+  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
+  model_credential_schema: zModelCredentialSchema.nullish(),
+  models: z.array(zAiModelEntityResponse).optional().default([]),
+  position: z.record(z.string(), z.array(z.string())).nullish().default({}),
+  provider: z.string(),
+  provider_credential_schema: zProviderCredentialSchema.nullish(),
+  provider_name: z.string().optional().default(''),
+  supported_model_types: z.array(zModelType),
 })
 
 /**
@@ -2018,64 +2040,6 @@ export const zToolProviderEntity = z.object({
 })
 
 /**
- * PriceConfig
- *
- * Model class for pricing info.
- */
-export const zPriceConfig = z.object({
-  currency: z.string(),
-  input: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
-  output: z
-    .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
-    .nullish(),
-  unit: z.string().regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/),
-})
-
-/**
- * AIModelEntity
- *
- * Model class for AI model.
- */
-export const zAiModelEntity = z.object({
-  deprecated: z.boolean().optional().default(false),
-  features: z.array(zModelFeature).nullish(),
-  fetch_from: zFetchFrom,
-  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
-  model: z.string(),
-  model_properties: z.record(z.string(), z.unknown()),
-  model_type: zModelType,
-  parameter_rules: z.array(zParameterRule).optional().default([]),
-  pricing: zPriceConfig.nullish(),
-})
-
-/**
- * ProviderEntity
- *
- * Runtime-native provider schema.
- *
- * `provider` is the canonical runtime identifier. `provider_name` is a
- * compatibility alias for callers that still resolve providers by short name and
- * is empty when no alias exists.
- */
-export const zProviderEntity = z.object({
-  background: z.string().nullish(),
-  configurate_methods: z.array(zConfigurateMethod),
-  description: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
-  help: zProviderHelpEntity.nullish(),
-  icon_small: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
-  icon_small_dark: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject.nullish(),
-  label: zGraphonModelRuntimeEntitiesCommonEntitiesI18nObject,
-  model_credential_schema: zModelCredentialSchema.nullish(),
-  models: z.array(zAiModelEntity).optional(),
-  position: z.record(z.string(), z.array(z.string())).nullish().default({}),
-  provider: z.string(),
-  provider_credential_schema: zProviderCredentialSchema.nullish(),
-  provider_name: z.string().optional().default(''),
-  supported_model_types: z.array(zModelType),
-})
-
-/**
  * Endpoint
  */
 export const zEndpoint = z.object({
@@ -2256,9 +2220,9 @@ export const zTriggerProviderEntity = z.object({
 })
 
 /**
- * PluginDeclaration
+ * PluginDeclarationResponse
  */
-export const zPluginDeclaration = z.object({
+export const zPluginDeclarationResponse = z.object({
   agent_strategy: zAgentStrategyProviderEntity.nullish(),
   author: z
     .string()
@@ -2273,7 +2237,7 @@ export const zPluginDeclaration = z.object({
   icon_dark: z.string().nullish(),
   label: zCoreToolsEntitiesCommonEntitiesI18nObject,
   meta: zMeta,
-  model: zProviderEntity.nullish(),
+  model: zProviderEntityResponse.nullish(),
   name: z.string().regex(/^[a-z0-9_-]{1,128}$/),
   plugins: zPlugins,
   repo: z.string().nullish(),
@@ -2291,7 +2255,7 @@ export const zPluginDeclaration = z.object({
 export const zPluginCategoryInstalledPluginResponse = z.object({
   checksum: z.string(),
   created_at: z.iso.datetime(),
-  declaration: zPluginDeclaration,
+  declaration: zPluginDeclarationResponse,
   endpoints_active: z.int(),
   endpoints_setups: z.int(),
   id: z.string(),
