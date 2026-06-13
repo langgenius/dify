@@ -73,7 +73,7 @@ class QueueDispatcherManager:
     """Factory for creating appropriate dispatcher based on tenant subscription"""
 
     # Mapping of billing plans to dispatchers
-    PLAN_DISPATCHER_MAP = {
+    PLAN_DISPATCHER_MAP: dict[str, type[BaseQueueDispatcher]] = {
         "professional": ProfessionalQueueDispatcher,
         "team": TeamQueueDispatcher,
         "sandbox": SandboxQueueDispatcher,
@@ -108,4 +108,4 @@ class QueueDispatcherManager:
             SandboxQueueDispatcher,  # Default to sandbox for unknown plans
         )
 
-        return dispatcher_class()  # type: ignore
+        return dispatcher_class()
