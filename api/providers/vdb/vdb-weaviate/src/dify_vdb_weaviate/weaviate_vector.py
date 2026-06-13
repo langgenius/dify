@@ -288,6 +288,11 @@ class WeaviateVector(BaseVector):
 
         uuids = []
         for doc in documents:
+            doc_id = doc.metadata.get("doc_id") if doc.metadata else None
+            if isinstance(doc_id, str) and self._is_uuid(doc_id):
+                uuids.append(doc_id)
+                continue
+
             uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
             uuids.append(str(uuid_val))
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
@@ -473,6 +473,7 @@ def test_create_child_chunk_vector_high_quality_adds_texts(monkeypatch: pytest.M
 
     VectorService.create_child_chunk_vector(child_chunk, dataset)
     vector_instance.add_texts.assert_called_once()
+    assert vector_instance.add_texts.call_args.kwargs["duplicate_check"] is True
 
 
 def test_create_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -516,10 +517,25 @@ def test_update_child_chunk_vector_high_quality_updates_vector(monkeypatch: pyte
 
     VectorService.update_child_chunk_vector([new_chunk], [upd_chunk], [del_chunk], dataset)
 
-    vector_instance.delete_by_ids.assert_called_once_with(["uid", "did"])
-    vector_instance.add_texts.assert_called_once()
-    docs = vector_instance.add_texts.call_args.args[0]
-    assert len(docs) == 2
+    vector_instance.delete_by_ids.assert_not_called()
+    assert vector_instance.delete_by_metadata_field.call_args_list == [
+        call("doc_id", "uid"),
+        call("doc_id", "did"),
+    ]
+    assert vector_instance.add_texts.call_count == 2
+
+    new_docs_call, updated_docs_call = vector_instance.add_texts.call_args_list
+    new_docs = new_docs_call.args[0]
+    assert new_docs_call.kwargs == {"duplicate_check": True}
+    assert len(new_docs) == 1
+    assert new_docs[0].page_content == "n"
+    assert new_docs[0].metadata["doc_id"] == "nid"
+
+    updated_docs = updated_docs_call.args[0]
+    assert updated_docs_call.kwargs == {"duplicate_check": False}
+    assert len(updated_docs) == 1
+    assert updated_docs[0].page_content == "u"
+    assert updated_docs[0].metadata["doc_id"] == "uid"
 
 
 def test_update_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -530,7 +546,7 @@ def test_update_child_chunk_vector_economy_noop(monkeypatch: pytest.MonkeyPatch)
     vector_cls.assert_not_called()
 
 
-def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_delete_child_chunk_vector_deletes_by_doc_id_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = _make_dataset()
     child_chunk = MagicMock()
     child_chunk.index_node_id = "cid"
@@ -539,7 +555,8 @@ def test_delete_child_chunk_vector_deletes_by_id(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(vector_service_module, "Vector", MagicMock(return_value=vector_instance))
 
     VectorService.delete_child_chunk_vector(child_chunk, dataset)
-    vector_instance.delete_by_ids.assert_called_once_with(["cid"])
+    vector_instance.delete_by_ids.assert_not_called()
+    vector_instance.delete_by_metadata_field.assert_called_once_with("doc_id", "cid")
 
 
 # ---------------------------------------------------------------------------

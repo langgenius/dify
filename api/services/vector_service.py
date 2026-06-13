@@ -211,7 +211,8 @@ class VectorService:
         delete_child_chunks: list[ChildChunk],
         dataset: Dataset,
     ):
-        documents = []
+        new_documents = []
+        updated_documents = []
         delete_node_ids = []
         for new_child_chunk in new_child_chunks:
             new_child_document = Document(
@@ -223,7 +224,7 @@ class VectorService:
                     "dataset_id": new_child_chunk.dataset_id,
                 },
             )
-            documents.append(new_child_document)
+            new_documents.append(new_child_document)
         for update_child_chunk in update_child_chunks:
             assert update_child_chunk.index_node_id
             child_document = Document(
@@ -235,7 +236,7 @@ class VectorService:
                     "dataset_id": update_child_chunk.dataset_id,
                 },
             )
-            documents.append(child_document)
+            updated_documents.append(child_document)
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
             assert delete_child_chunk.index_node_id
@@ -243,16 +244,19 @@ class VectorService:
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
-            if delete_node_ids:
-                vector.delete_by_ids(delete_node_ids)
-            if documents:
-                vector.add_texts(documents, duplicate_check=True)
+            for node_id in delete_node_ids:
+                vector.delete_by_metadata_field("doc_id", node_id)
+            if new_documents:
+                vector.add_texts(new_documents, duplicate_check=True)
+            if updated_documents:
+                # Force delete-then-insert refreshes even if a stale vector still exists.
+                vector.add_texts(updated_documents, duplicate_check=False)
 
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
         assert child_chunk.index_node_id
-        vector.delete_by_ids([child_chunk.index_node_id])
+        vector.delete_by_metadata_field("doc_id", child_chunk.index_node_id)
 
     @classmethod
     def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
