@@ -137,9 +137,7 @@ class MessageCycleManager:
                     name = cached_name.decode("utf-8")
                 else:
                     try:
-                        name = LLMGenerator.generate_conversation_name(
-                            tenant_id, query, conversation_id, app_id
-                        )
+                        name = LLMGenerator.generate_conversation_name(tenant_id, query, conversation_id, app_id)
                         redis_client.setex(cache_key, 3600, name)
                     except Exception:
                         if dify_config.DEBUG:
