@@ -858,18 +858,37 @@ function DetachedTriggersDemo() {
   const [drawerHandle] = React.useState(() => createDrawerHandle<DetachedPayload>())
 
   return (
-    <div className="grid gap-4">
-      <div className="flex justify-center gap-2">
-        {detachedPayloads.map(payload => (
-          <DrawerTrigger
-            key={payload.title}
-            handle={drawerHandle}
-            payload={payload}
-            render={<button type="button" className={triggerButtonClassName} />}
-          >
-            {payload.title}
-          </DrawerTrigger>
-        ))}
+    <div className="grid w-full max-w-2xl gap-4">
+      <div className="rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-text-primary">External trigger surface</div>
+            <div className="text-xs text-text-tertiary">These triggers are rendered before the shared Drawer.Root.</div>
+          </div>
+          <span className="shrink-0 rounded-full bg-background-section-burn px-2 py-1 font-mono text-xs text-text-tertiary">
+            handle
+          </span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {detachedPayloads.map(payload => (
+            <div key={payload.title} className="rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt p-3">
+              <div className="mb-2 min-w-0">
+                <div className="truncate text-sm font-medium text-text-secondary">{payload.title}</div>
+                <div className="truncate text-xs text-text-tertiary">{`payload: ${payload.fields.join(', ')}`}</div>
+              </div>
+              <DrawerTrigger
+                handle={drawerHandle}
+                payload={payload}
+                render={<button type="button" className={triggerButtonClassName} />}
+              >
+                {`Open ${payload.title}`}
+              </DrawerTrigger>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl border-[0.5px] border-dashed border-divider-subtle bg-background-section-burn p-4 text-sm text-text-secondary">
+        One Drawer.Root is mounted separately below this trigger surface and reads the payload from whichever detached trigger opened it.
       </div>
       <Drawer handle={drawerHandle} swipeDirection="right">
         {({ payload }) => (
@@ -890,6 +909,9 @@ function DetachedTriggersDemo() {
                     <DrawerCloseButton className="shrink-0" />
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                    <div className="mb-3 rounded-xl bg-state-accent-hover px-3 py-2 text-xs font-medium text-text-accent">
+                      Opened by detached trigger payload
+                    </div>
                     <div className="grid gap-2">
                       {(payload?.fields ?? ['Detached trigger']).map(field => (
                         <div key={field} className="rounded-xl border-[0.5px] border-divider-subtle px-3 py-2 text-sm text-text-secondary">
@@ -924,15 +946,15 @@ export const StackingAndAnimations: Story = {
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport>
-          <DrawerPopup className="data-starting-style:opacity-0 data-ending-style:opacity-0 data-swiping:shadow-none data-nested-drawer-open:brightness-95">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+          <DrawerPopup className="duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-swiping:shadow-none data-nested-drawer-open:brightness-95 data-nested-drawer-open:[&_[data-animation-content]]:opacity-0 data-nested-drawer-swiping:[&_[data-animation-content]]:opacity-100">
+            <DrawerContent data-animation-content className="flex min-h-0 flex-1 flex-col p-0 pb-0 transition-opacity duration-300">
               <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                 <div className="min-w-0">
                   <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
-                    Animated stack
+                    Right panel animation
                   </DrawerTitle>
                   <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                    Open a nested drawer to see Base UI stack state, backdrop opacity, and swipe transition styles.
+                    This panel slides in from the right using Base UI starting, ending, swiping, and nested data attributes.
                   </DrawerDescription>
                 </div>
                 <DrawerCloseButton className="shrink-0" />
@@ -940,23 +962,23 @@ export const StackingAndAnimations: Story = {
               <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
                 <div className="grid gap-3">
                   <div className="rounded-xl border-[0.5px] border-divider-subtle bg-background-section-burn p-3 text-sm/5 text-text-secondary">
-                    The parent drawer dims while the nested drawer is frontmost. Drag the panel edge to see the swiping state remove the heavy shadow.
+                    Open the nested right panel to see the parent drawer dim while the frontmost drawer keeps the same right-side motion.
                   </div>
-                  <Drawer>
+                  <Drawer swipeDirection="right">
                     <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
-                      Open nested animation
+                      Open nested right panel
                     </DrawerTrigger>
                     <DrawerPortal>
                       <DrawerViewport>
-                        <DrawerPopup className="data-starting-style:opacity-0 data-ending-style:opacity-0 data-swiping:shadow-none">
+                        <DrawerPopup className="duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] data-[swipe-direction=right]:max-w-105 data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)] data-swiping:shadow-none">
                           <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                             <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                               <div className="min-w-0">
                                 <DrawerTitle className="text-lg/6 font-semibold text-text-primary">
-                                  Nested animation
+                                  Nested right panel
                                 </DrawerTitle>
                                 <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
-                                  This front drawer uses the same Dify popup tokens with Base UI entering, ending, and swiping data attributes.
+                                  The front drawer uses the same right-side entering, ending, and swipe transition classes.
                                 </DrawerDescription>
                               </div>
                               <DrawerCloseButton className="shrink-0" />
