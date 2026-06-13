@@ -623,23 +623,39 @@ export const NonModal: Story = {
   render: () => <NonModalDemo />,
 }
 
-const navItems = ['Explore', 'Apps', 'Datasets', 'Workflows'] as const
-const componentItems = [
-  'Autocomplete',
-  'Button',
-  'Combobox',
-  'Dialog',
-  'Drawer',
-  'Field',
-  'Form',
-  'Popover',
-  'Select',
-  'Tabs',
-  'Tooltip',
-  'Toast',
+const mobilePrimaryLinks = [
+  { href: '/storybook/mobile/overview', label: 'Overview' },
+  { href: '/storybook/mobile/components', label: 'Components' },
+  { href: '/storybook/mobile/patterns', label: 'Patterns' },
+  { href: '/storybook/mobile/releases', label: 'Releases' },
+] as const
+
+const mobileComponentLinks = [
+  { href: '/storybook/mobile/components/alert-dialog', label: 'Alert Dialog' },
+  { href: '/storybook/mobile/components/avatar', label: 'Avatar' },
+  { href: '/storybook/mobile/components/button', label: 'Button' },
+  { href: '/storybook/mobile/components/collapsible', label: 'Collapsible' },
+  { href: '/storybook/mobile/components/dialog', label: 'Dialog' },
+  { href: '/storybook/mobile/components/drawer', label: 'Drawer' },
+  { href: '/storybook/mobile/components/dropdown-menu', label: 'Dropdown Menu' },
+  { href: '/storybook/mobile/components/file-tree', label: 'File Tree' },
+  { href: '/storybook/mobile/components/pagination', label: 'Pagination' },
+  { href: '/storybook/mobile/components/popover', label: 'Popover' },
+  { href: '/storybook/mobile/components/scroll-area', label: 'Scroll Area' },
+  { href: '/storybook/mobile/components/select', label: 'Select' },
+  { href: '/storybook/mobile/components/tabs', label: 'Tabs' },
+  { href: '/storybook/mobile/components/toast', label: 'Toast' },
+  { href: '/storybook/mobile/components/tooltip', label: 'Tooltip' },
 ] as const
 
 export const MobileNavigation: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: 'Based on the Base UI mobile navigation example. Open this story in a mobile or narrow viewport to evaluate the full-screen sheet behavior, long-list scrolling, and flick-to-dismiss gesture.',
+      },
+    },
+  },
   render: () => (
     <Drawer>
       <DrawerTrigger render={<button type="button" className={triggerButtonClassName} />}>
@@ -647,36 +663,35 @@ export const MobileNavigation: Story = {
       </DrawerTrigger>
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
-        <DrawerViewport>
-          <ScrollAreaRoot className="size-full overscroll-contain">
+        <DrawerViewport className="group">
+          <ScrollAreaRoot className="size-full overscroll-contain transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none group-data-starting-style:translate-y-[100dvh] group-data-ending-style:pointer-events-none">
             <ScrollAreaViewport className="size-full touch-auto overscroll-contain" role="region" aria-label="Mobile drawer viewport">
-              <ScrollAreaContent className="flex min-h-full min-w-0 items-end justify-center">
-                <DrawerPopup className="data-[swipe-direction=down]:max-h-[92dvh]">
-                  <nav aria-label="Mobile navigation" className="flex min-h-0 flex-1 flex-col">
+              <ScrollAreaContent className="flex min-h-full min-w-0 items-end justify-center pt-8 min-[42rem]:px-16 min-[42rem]:py-16">
+                <DrawerPopup className="w-full max-w-[42rem] transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none data-[swipe-direction=down]:max-h-[92dvh] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-swiping:select-none data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(max(100dvh,100%)_+_2px))] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] min-[42rem]:rounded-2xl min-[42rem]:border-[0.5px]">
+                  <nav aria-label="Mobile navigation" className="flex min-h-0 flex-1 flex-col bg-components-panel-bg">
                     <div className={handleClassName} />
                     <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-                      <div className="px-6 py-4 text-center">
+                      <div className="px-6 pt-5 pb-4">
                         <DrawerTitle className="text-lg/6 font-semibold text-text-primary">Menu</DrawerTitle>
+                        <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
+                          Scroll the long list. Flick down from the top to dismiss.
+                        </DrawerDescription>
                       </div>
-                      <DrawerDescription className="sr-only">
-                        Scroll the navigation list and swipe down from the top to dismiss.
-                      </DrawerDescription>
                       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-                        <ul className="grid gap-2">
-                          {navItems.map(item => (
-                            <li key={item}>
-                              <a href={`/storybook/drawer/${item.toLowerCase()}`} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-text-secondary hover:bg-state-base-hover">
-                                {item}
+                        <ul className="m-0 grid list-none gap-1 p-0">
+                          {mobilePrimaryLinks.map(item => (
+                            <li key={item.label} className="flex">
+                              <a href={item.href} className="flex h-11 w-full min-w-0 items-center rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3 text-sm font-medium text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+                                <span className="truncate">{item.label}</span>
                               </a>
                             </li>
                           ))}
                         </ul>
-                        <div className="mt-5 text-xs font-medium text-text-tertiary">Components</div>
-                        <ul className="mt-2 grid gap-1">
-                          {componentItems.map(item => (
-                            <li key={item}>
-                              <a href={`/storybook/components/${item.toLowerCase().replaceAll(' ', '-')}`} className="flex h-9 items-center rounded-lg px-3 text-sm text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary">
-                                {item}
+                        <ul aria-label="Component links" className="mt-6 grid list-none gap-1 p-0">
+                          {mobileComponentLinks.map(item => (
+                            <li key={item.label} className="flex">
+                              <a href={item.href} className="flex h-11 w-full min-w-0 items-center rounded-xl border-[0.5px] border-divider-subtle bg-components-panel-bg-alt px-3 text-sm text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+                                <span className="truncate">{item.label}</span>
                               </a>
                             </li>
                           ))}
