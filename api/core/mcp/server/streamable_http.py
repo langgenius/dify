@@ -13,6 +13,10 @@ from services.app_generate_service import AppGenerateService
 
 logger = logging.getLogger(__name__)
 
+_EVENT_MESSAGE = "message"
+_EVENT_AGENT_MESSAGE = "agent_message"
+_EVENT_AGENT_THOUGHT = "agent_thought"
+
 
 class ToolParameterSchemaDict(TypedDict):
     type: str
@@ -217,16 +221,22 @@ def extract_answer_from_response(app: App, response: Any) -> str:
 def process_streaming_response(response: RateLimitGenerator) -> str:
     """Process streaming response for agent chat mode"""
     answer = ""
+    last_thought = ""
     for item in response.generator:
         if isinstance(item, str) and item.startswith("data: "):
             try:
                 json_str = item[6:].strip()
                 parsed_data = json.loads(json_str)
-                if parsed_data.get("event") == "agent_thought":
-                    answer += parsed_data.get("thought", "")
+                event = parsed_data.get("event")
+                if event in (_EVENT_MESSAGE, _EVENT_AGENT_MESSAGE):
+                    answer += parsed_data.get("answer", "")
+                elif event == _EVENT_AGENT_THOUGHT:
+                    thought = parsed_data.get("thought", "")
+                    if thought:
+                        last_thought = thought
             except json.JSONDecodeError:
                 continue
-    return answer
+    return answer or last_thought
 
 
 def process_mapping_response(app: App, response: Mapping) -> str:
