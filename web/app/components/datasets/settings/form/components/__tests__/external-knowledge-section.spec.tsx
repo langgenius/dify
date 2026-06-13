@@ -1,6 +1,6 @@
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
@@ -69,6 +69,8 @@ describe('ExternalKnowledgeSection', () => {
 
   const defaultProps = {
     currentDataset: mockDataset,
+    externalKnowledgeId: 'ext-knowledge-123',
+    setExternalKnowledgeId: vi.fn(),
     topK: 5,
     scoreThreshold: 0.8,
     scoreThresholdEnabled: true,
@@ -114,8 +116,7 @@ describe('ExternalKnowledgeSection', () => {
 
     it('should render API connection icon', () => {
       const { container } = render(<ExternalKnowledgeSection {...defaultProps} />)
-      // The ApiConnectionMod icon should be rendered
-      const icon = container.querySelector('svg')
+      const icon = container.querySelector('.i-custom-vender-solid-development-api-connection-mod')
       expect(icon).toBeInTheDocument()
     })
 
@@ -131,17 +132,18 @@ describe('ExternalKnowledgeSection', () => {
   })
 
   describe('External Knowledge ID', () => {
-    it('should display external knowledge ID value', () => {
+    it('should display external knowledge ID input value', () => {
       render(<ExternalKnowledgeSection {...defaultProps} />)
-      expect(screen.getByText('ext-knowledge-123')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('ext-knowledge-123')).toBeInTheDocument()
     })
 
-    it('should render ID in a read-only display', () => {
-      render(<ExternalKnowledgeSection {...defaultProps} />)
+    it('should call setExternalKnowledgeId when ID changes', () => {
+      const setExternalKnowledgeId = vi.fn()
+      render(<ExternalKnowledgeSection {...defaultProps} setExternalKnowledgeId={setExternalKnowledgeId} />)
 
-      const idElement = screen.getByText('ext-knowledge-123')
-      // The ID should be in a div with input-like styling, not an actual input
-      expect(idElement.tagName.toLowerCase()).toBe('div')
+      fireEvent.change(screen.getByDisplayValue('ext-knowledge-123'), { target: { value: 'new-ext-id-789' } })
+
+      expect(setExternalKnowledgeId).toHaveBeenCalledWith('new-ext-id-789')
     })
   })
 
@@ -202,22 +204,14 @@ describe('ExternalKnowledgeSection', () => {
       expect(screen.getByText('Updated API Name')).toBeInTheDocument()
     })
 
-    it('should update when external knowledge ID changes', () => {
+    it('should update when external knowledge ID prop changes', () => {
       const { rerender } = render(<ExternalKnowledgeSection {...defaultProps} />)
 
-      expect(screen.getByText('ext-knowledge-123')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('ext-knowledge-123')).toBeInTheDocument()
 
-      const updatedDataset = {
-        ...mockDataset,
-        external_knowledge_info: {
-          ...mockDataset.external_knowledge_info,
-          external_knowledge_id: 'new-ext-id-789',
-        },
-      }
+      rerender(<ExternalKnowledgeSection {...defaultProps} externalKnowledgeId="new-ext-id-789" />)
 
-      rerender(<ExternalKnowledgeSection {...defaultProps} currentDataset={updatedDataset} />)
-
-      expect(screen.getByText('new-ext-id-789')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('new-ext-id-789')).toBeInTheDocument()
     })
 
     it('should update when API endpoint changes', () => {

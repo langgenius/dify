@@ -165,6 +165,7 @@ describe('useFormState', () => {
     it('should initialize external retrieval settings', () => {
       const { result } = renderHook(() => useFormState())
 
+      expect(result.current.externalKnowledgeId).toBe('ext-1')
       expect(result.current.topK).toBe(3)
       expect(result.current.scoreThreshold).toBe(0.7)
       expect(result.current.scoreThresholdEnabled).toBe(true)
@@ -244,6 +245,16 @@ describe('useFormState', () => {
       })
 
       expect(result.current.selectedMemberIDs).toEqual(['user-1', 'user-2'])
+    })
+
+    it('should update externalKnowledgeId when setExternalKnowledgeId is called', () => {
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setExternalKnowledgeId('ext-updated')
+      })
+
+      expect(result.current.externalKnowledgeId).toBe('ext-updated')
     })
   })
 
@@ -698,9 +709,13 @@ describe('useFormState', () => {
       }
     })
 
-    it('should include external knowledge info in save request for external provider', async () => {
+    it('should include trimmed external knowledge info in save request for external provider', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
       const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setExternalKnowledgeId('  ext-updated  ')
+      })
 
       await act(async () => {
         await result.current.handleSave()
@@ -709,7 +724,7 @@ describe('useFormState', () => {
       expect(updateDatasetSetting).toHaveBeenCalledWith({
         datasetId: 'dataset-1',
         body: expect.objectContaining({
-          external_knowledge_id: 'ext-123',
+          external_knowledge_id: 'ext-updated',
           external_knowledge_api_id: 'api-456',
           external_retrieval_model: expect.objectContaining({
             top_k: expect.any(Number),
@@ -718,6 +733,23 @@ describe('useFormState', () => {
           }),
         }),
       })
+    })
+
+    it('should show error toast when external knowledge ID is empty', async () => {
+      const { toast } = await import('@langgenius/dify-ui/toast')
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      const { result } = renderHook(() => useFormState())
+
+      act(() => {
+        result.current.setExternalKnowledgeId('   ')
+      })
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(toast.error).toHaveBeenCalledWith(expect.any(String))
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
     })
 
     it('should use correct external retrieval settings', async () => {
