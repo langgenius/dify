@@ -1347,16 +1347,11 @@ export const annotationSettings = {
 
 /**
  * Batch import annotations from CSV or JSONL file with rate limiting and security checks
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post18 = oc
   .route({
-    deprecated: true,
     description:
-      'Batch import annotations from CSV or JSONL file with rate limiting and security checks\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+      'Batch import annotations from CSV or JSONL file with rate limiting and security checks',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAnnotationsBatchImport',
