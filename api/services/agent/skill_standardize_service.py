@@ -112,6 +112,8 @@ class SkillStandardizeService:
                 "skill_md_key": skill_md_key,
                 "full_archive_file_id": archive_tool_file.id,
                 "full_archive_key": archive_key,
+                # ENG-371: zip member listing — strong signals (scripts/*.sh) for infer-tools.
+                "manifest_files": manifest.files,
             }
         )
         return {

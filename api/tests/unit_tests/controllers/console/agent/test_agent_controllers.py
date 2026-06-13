@@ -284,6 +284,10 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     )
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
     monkeypatch.setattr(
+        composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
+    )
+    monkeypatch.setattr(composer_controller.AgentComposerService, "resolve_bound_agent_id", lambda **kwargs: None)
+    monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "get_workflow_candidates",
         lambda **kwargs: _candidates_response("workflow"),
@@ -354,6 +358,10 @@ def test_agent_app_composer_get_put_validate_and_candidates(
         lambda **kwargs: _agent_app_composer_response(),
     )
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(
+        composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
+    )
+    monkeypatch.setattr(composer_controller.AgentComposerService, "resolve_bound_agent_id", lambda **kwargs: None)
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "get_agent_app_candidates",

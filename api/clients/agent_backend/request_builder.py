@@ -26,6 +26,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
+from dify_agent.layers.drive import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
 from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
@@ -50,6 +51,7 @@ WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
 AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
+DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
 DIFY_SHELL_LAYER_ID = "shell"
 
@@ -134,6 +136,9 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
+    # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
+    drive_config: DifyDriveLayerConfig | None = None
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
@@ -170,6 +175,9 @@ class AgentBackendAgentAppRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
+    # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
+    drive_config: DifyDriveLayerConfig | None = None
     # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
     # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
     include_shell: bool = False
@@ -227,6 +235,18 @@ class AgentBackendRunRequestBuilder:
                 ),
             ]
         )
+
+        if run_input.drive_config is not None:
+            # Drive Skills & Files declaration (dify.drive): a config-only index;
+            # the agent pulls listed entries through the back proxy by drive_ref.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_DRIVE_LAYER_ID,
+                    type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=run_input.drive_config,
+                )
+            )
 
         if run_input.include_history:
             layers.append(
@@ -382,6 +402,18 @@ class AgentBackendRunRequestBuilder:
                 ),
             ]
         )
+
+        if run_input.drive_config is not None:
+            # Drive Skills & Files declaration (dify.drive): a config-only index;
+            # the agent pulls listed entries through the back proxy by drive_ref.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_DRIVE_LAYER_ID,
+                    type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    metadata=run_input.metadata,
+                    config=run_input.drive_config,
+                )
+            )
 
         if run_input.include_history:
             layers.append(

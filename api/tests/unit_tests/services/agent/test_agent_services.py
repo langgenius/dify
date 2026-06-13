@@ -14,7 +14,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import AgentFileRefConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -1233,3 +1233,334 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
     }
     assert [entry["id"] for entry in entries[1:]] == ["duckduckgo/ddg_search", "duckduckgo/ddg_news"]
     assert {entry["granularity"] for entry in entries[1:]} == {"tool"}
+
+
+# ── ENG-623 §4.4: drive-backed ref validation ────────────────────────────────
+
+
+def _drive_soul(**overrides):
+    from services.entities.agent_entities import AgentSoulConfig
+
+    base = {
+        "skills_files": {
+            "skills": [
+                {"id": "sk-1", "name": "Tender Analyzer", "skill_md_key": "tender-analyzer/SKILL.md"},
+            ],
+            "files": [{"name": "sample.pdf", "drive_key": "files/sample.pdf"}],
+        },
+    }
+    base.update(overrides)
+    return AgentSoulConfig.model_validate(base)
+
+
+def _patch_drive_keys(monkeypatch, existing_keys):
+    import services.agent.composer_service as composer_service_module
+
+    captured: dict[str, object] = {}
+
+    def fake_scalars(stmt):
+        captured["stmt"] = stmt
+        return list(existing_keys)
+
+    monkeypatch.setattr(composer_service_module.db, "session", type("S", (), {"scalars": staticmethod(fake_scalars)})())
+    return captured
+
+
+def test_drive_ref_findings_reports_missing_keys(monkeypatch):
+    _patch_drive_keys(monkeypatch, existing_keys=["tender-analyzer/SKILL.md"])
+
+    findings = AgentComposerService._drive_ref_findings(
+        tenant_id="tenant-1", agent_id="agent-1", agent_soul=_drive_soul()
+    )
+
+    assert [(f["code"], f["id"]) for f in findings] == [("file_ref_dangling", "files/sample.pdf")]
+    assert str(findings[0]["message"]).startswith("file_ref_dangling: ")
+
+
+def test_drive_ref_findings_clean_when_all_keys_exist(monkeypatch):
+    _patch_drive_keys(monkeypatch, existing_keys=["tender-analyzer/SKILL.md", "files/sample.pdf"])
+
+    assert (
+        AgentComposerService._drive_ref_findings(tenant_id="tenant-1", agent_id="agent-1", agent_soul=_drive_soul())
+        == []
+    )
+
+
+def test_drive_ref_findings_skips_refs_without_drive_keys(monkeypatch):
+    # No drive-backed ref at all -> no DB roundtrip, no findings.
+    soul = _drive_soul(
+        skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u-1"}]}
+    )
+    findings = AgentComposerService._drive_ref_findings(tenant_id="tenant-1", agent_id="agent-1", agent_soul=soul)
+    assert findings == []
+
+
+def test_require_drive_refs_resolved_raises_with_stable_code(monkeypatch):
+    from services.agent.errors import InvalidComposerConfigError
+
+    _patch_drive_keys(monkeypatch, existing_keys=[])
+
+    with pytest.raises(InvalidComposerConfigError, match="skill_ref_dangling"):
+        AgentComposerService._require_drive_refs_resolved(
+            tenant_id="tenant-1", agent_id="agent-1", agent_soul=_drive_soul()
+        )
+
+
+def test_collect_validation_findings_appends_drive_findings_with_agent_context(monkeypatch):
+    from services.entities.agent_entities import ComposerSavePayload
+
+    _patch_drive_keys(monkeypatch, existing_keys=[])
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "save_strategy": "save_to_current_version",
+            "agent_soul": _drive_soul().model_dump(mode="json"),
+        }
+    )
+
+    findings = AgentComposerService.collect_validation_findings(
+        tenant_id="tenant-1", payload=payload, agent_id="agent-1"
+    )
+
+    codes = {w["code"] for w in findings["warnings"]}
+    assert {"skill_ref_dangling", "file_ref_dangling"} <= codes
+    # without agent context the drive check is skipped entirely
+    findings_no_agent = AgentComposerService.collect_validation_findings(tenant_id="tenant-1", payload=payload)
+    assert all(w["code"] not in {"skill_ref_dangling", "file_ref_dangling"} for w in findings_no_agent["warnings"])
+
+
+# ── ENG-625 D5: soul-first ref removal ───────────────────────────────────────
+
+
+def _patch_remove_drive_refs_env(monkeypatch, *, soul_dict):
+    """Wire the classmethod's collaborators so soul editing + versioning is observable."""
+    from types import SimpleNamespace
+
+    import services.agent.composer_service as module
+
+    agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="snap-1", updated_by=None)
+    snapshot = SimpleNamespace(id="snap-1", tenant_id="tenant-1", agent_id="agent-1", config_snapshot_dict=soul_dict)
+    committed: dict[str, object] = {}
+
+    fake_session = SimpleNamespace(scalar=lambda stmt: agent, commit=lambda: committed.setdefault("committed", True))
+    monkeypatch.setattr(module.db, "session", fake_session)
+    monkeypatch.setattr(AgentComposerService, "_require_version", classmethod(lambda cls, **kwargs: snapshot))
+
+    captured: dict[str, object] = {}
+
+    def fake_update(cls, *, current_snapshot, account_id, agent_soul, operation, version_note):
+        captured["agent_soul"] = agent_soul
+        captured["version_note"] = version_note
+        return SimpleNamespace(id="snap-2")
+
+    monkeypatch.setattr(AgentComposerService, "_update_current_version", classmethod(fake_update))
+    return agent, captured, committed
+
+
+def test_remove_drive_refs_drops_skill_by_slug_and_versions(monkeypatch):
+    soul_dict = {
+        "skills_files": {
+            "skills": [
+                {"id": "sk-1", "name": "Tender Analyzer", "skill_md_key": "tender-analyzer/SKILL.md"},
+                {"id": "sk-2", "name": "Other", "skill_md_key": "other-skill/SKILL.md"},
+            ],
+            "files": [],
+        }
+    }
+    agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    version_id = AgentComposerService.remove_drive_refs(
+        tenant_id="tenant-1", agent_id="agent-1", account_id="acc-1", skill_slug="tender-analyzer"
+    )
+
+    assert version_id == "snap-2"
+    assert agent.active_config_snapshot_id == "snap-2"
+    kept = [s.skill_md_key for s in captured["agent_soul"].skills_files.skills]
+    assert kept == ["other-skill/SKILL.md"]
+    assert "Tender Analyzer" in str(captured["version_note"])
+    assert committed.get("committed") is True
+
+
+def test_remove_drive_refs_is_noop_when_ref_absent(monkeypatch):
+    soul_dict = {"skills_files": {"skills": [], "files": []}}
+    agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    assert (
+        AgentComposerService.remove_drive_refs(
+            tenant_id="tenant-1", agent_id="agent-1", account_id="acc-1", file_key="files/none.pdf"
+        )
+        is None
+    )
+    assert "agent_soul" not in captured
+    assert committed == {}
+
+
+def test_remove_drive_refs_drops_file_by_key(monkeypatch):
+    soul_dict = {
+        "skills_files": {
+            "skills": [],
+            "files": [
+                {"name": "keep.pdf", "drive_key": "files/keep.pdf"},
+                {"name": "drop.pdf", "drive_key": "files/drop.pdf"},
+            ],
+        }
+    }
+    _, captured, _ = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    version_id = AgentComposerService.remove_drive_refs(
+        tenant_id="tenant-1", agent_id="agent-1", account_id="acc-1", file_key="files/drop.pdf"
+    )
+
+    assert version_id == "snap-2"
+    assert [f.drive_key for f in captured["agent_soul"].skills_files.files] == ["files/keep.pdf"]
+
+
+def test_add_drive_file_ref_adds_or_replaces_file_and_versions(monkeypatch):
+    soul_dict = {
+        "skills_files": {
+            "skills": [],
+            "files": [
+                {"name": "old.pdf", "drive_key": "files/old.pdf"},
+                {"name": "stale.pdf", "drive_key": "files/new.pdf"},
+            ],
+        }
+    }
+    agent, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+
+    version_id = AgentComposerService.add_drive_file_ref(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="acc-1",
+        file_ref=AgentFileRefConfig(name="new.pdf", file_id="uf-1", drive_key="files/new.pdf", type="application/pdf"),
+    )
+
+    assert version_id == "snap-2"
+    assert agent.active_config_snapshot_id == "snap-2"
+    assert [f.drive_key for f in captured["agent_soul"].skills_files.files] == ["files/old.pdf", "files/new.pdf"]
+    assert captured["agent_soul"].skills_files.files[-1].name == "new.pdf"
+    assert "new.pdf" in str(captured["version_note"])
+    assert committed.get("committed") is True
+
+
+def test_add_drive_file_ref_syncs_workflow_binding_snapshot(monkeypatch):
+    binding = SimpleNamespace(agent_id="agent-1", current_snapshot_id="snap-1", updated_by=None)
+    _patch_remove_drive_refs_env(monkeypatch, soul_dict={"skills_files": {"skills": [], "files": []}})
+    monkeypatch.setattr(
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: binding))
+
+    AgentComposerService.add_drive_file_ref(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="acc-1",
+        file_ref=AgentFileRefConfig(name="new.pdf", file_id="uf-1", drive_key="files/new.pdf"),
+        app_id="app-1",
+        node_id="agent-node-1",
+    )
+
+    assert binding.current_snapshot_id == "snap-2"
+    assert binding.updated_by == "acc-1"
+
+
+def test_remove_drive_refs_requires_exactly_one_scope():
+    with pytest.raises(ValueError):
+        AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u")
+
+
+# ── ENG-623/625: resolver helpers + save-path drive guard ────────────────────
+
+
+def test_resolve_bound_agent_id_queries_active_roster_agent(monkeypatch):
+    from types import SimpleNamespace
+
+    import services.agent.composer_service as module
+
+    monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: "agent-9"))
+    assert AgentComposerService.resolve_bound_agent_id(tenant_id="t-1", app_id="app-1") == "agent-9"
+
+
+def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(monkeypatch):
+    from types import SimpleNamespace
+
+    def boom(cls, **kwargs):
+        raise ValueError("no draft workflow")
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", classmethod(boom))
+    assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") is None
+
+    monkeypatch.setattr(
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: None))
+    assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") is None
+
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_workflow_binding",
+        classmethod(lambda cls, **kwargs: SimpleNamespace(agent_id="agent-7")),
+    )
+    assert AgentComposerService.resolve_workflow_node_agent_id(tenant_id="t", app_id="a", node_id="n") == "agent-7"
+
+
+def test_remove_drive_refs_returns_none_without_agent_or_snapshot(monkeypatch):
+    from types import SimpleNamespace
+
+    import services.agent.composer_service as module
+
+    monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: None))
+    assert AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u", skill_slug="s") is None
+
+    agent_without_snapshot = SimpleNamespace(id="a", active_config_snapshot_id=None)
+    monkeypatch.setattr(module.db, "session", SimpleNamespace(scalar=lambda stmt: agent_without_snapshot))
+    assert AgentComposerService.remove_drive_refs(tenant_id="t", agent_id="a", account_id="u", skill_slug="s") is None
+
+
+def test_save_workflow_composer_guards_drive_refs_for_existing_agent_strategies(monkeypatch):
+    from types import SimpleNamespace
+
+    from services.entities.agent_entities import ComposerSavePayload
+
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "workflow",
+            "save_strategy": "save_to_current_version",
+            "agent_soul": _drive_soul().model_dump(mode="json"),
+            "soul_lock": {"locked": False},
+        }
+    )
+    monkeypatch.setattr(
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_workflow_binding",
+        classmethod(lambda cls, **kwargs: SimpleNamespace(agent_id="agent-1")),
+    )
+    guarded: dict[str, str] = {}
+
+    def fake_guard(cls, *, tenant_id, agent_id, agent_soul):
+        guarded["agent_id"] = agent_id
+        raise InvalidComposerConfigError("skill_ref_dangling: boom")
+
+    from services.agent.errors import InvalidComposerConfigError
+
+    monkeypatch.setattr(AgentComposerService, "_require_drive_refs_resolved", classmethod(fake_guard))
+
+    with pytest.raises(InvalidComposerConfigError, match="skill_ref_dangling"):
+        AgentComposerService.save_workflow_composer(
+            tenant_id="t-1", app_id="app-1", node_id="n-1", account_id="acc-1", payload=payload
+        )
+    assert guarded["agent_id"] == "agent-1"
+
+
+def test_remove_drive_refs_noop_when_skill_slug_unmatched(monkeypatch):
+    soul_dict = {"skills_files": {"skills": [{"name": "Other", "skill_md_key": "other/SKILL.md"}], "files": []}}
+    _, captured, committed = _patch_remove_drive_refs_env(monkeypatch, soul_dict=soul_dict)
+    assert (
+        AgentComposerService.remove_drive_refs(
+            tenant_id="t-1", agent_id="agent-1", account_id="acc-1", skill_slug="ghost"
+        )
+        is None
+    )
+    assert committed == {}

@@ -70,6 +70,7 @@ class SkillManifest(BaseModel):
                 "size": self.size,
                 "hash": self.hash,
                 "entry_path": self.entry_path,
+                "manifest_files": self.files,
             }
         )
 
