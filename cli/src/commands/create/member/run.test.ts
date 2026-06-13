@@ -10,8 +10,7 @@ function active(): ActiveContext {
     email: 'inviter@example.com',
     ctx: {
       account: { id: 'acct-1', email: 'inviter@example.com', name: 'Inviter' },
-      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-      available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+      workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
     },
   }
 }
@@ -25,7 +24,7 @@ function fakeClient() {
         role: body.role,
         member_id: 'acct-new',
         invite_url: 'https://console.example.com/activate?email=x&token=tok',
-        tenant_id: 'ws-1',
+        tenant_id: '550e8400-e29b-41d4-a716-446655440000',
       })),
   }
 }
@@ -42,7 +41,7 @@ describe('runCreateMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.invite).toHaveBeenCalledWith('ws-1', { email: 'new@example.com', role: 'normal' })
+    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440000', { email: 'new@example.com', role: 'normal' })
     expect(result.data.text()).toMatch(/Invited new@example\.com as normal/)
     expect(result.data.name()).toBe('acct-new')
     expect(result.data.json()).toMatchObject({
@@ -50,9 +49,9 @@ describe('runCreateMember', () => {
       role: 'normal',
       member_id: 'acct-new',
       invite_url: 'https://console.example.com/activate?email=x&token=tok',
-      tenant_id: 'ws-1',
+      tenant_id: '550e8400-e29b-41d4-a716-446655440000',
     })
-    expect(result.workspaceId).toBe('ws-1')
+    expect(result.workspaceId).toBe('550e8400-e29b-41d4-a716-446655440000')
   })
 
   it('rejects unknown role before any HTTP call', async () => {
@@ -90,7 +89,7 @@ describe('runCreateMember', () => {
   it('-w flag overrides resolved workspace', async () => {
     const client = fakeClient()
     await runCreateMember(
-      { email: 'new@example.com', role: 'admin', workspace: 'ws-9' },
+      { email: 'new@example.com', role: 'admin', workspace: '550e8400-e29b-41d4-a716-446655440008' },
       {
         active: active(),
         http: {} as HttpClient,
@@ -98,6 +97,6 @@ describe('runCreateMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.invite).toHaveBeenCalledWith('ws-9', { email: 'new@example.com', role: 'admin' })
+    expect(client.invite).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', { email: 'new@example.com', role: 'admin' })
   })
 })

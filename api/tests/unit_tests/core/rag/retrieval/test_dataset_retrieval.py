@@ -1,7 +1,8 @@
 import threading
+from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -84,6 +85,14 @@ def create_mock_document(
         metadata=metadata,
         provider=provider,
     )
+
+
+def _dataset(**values: object) -> Dataset:
+    return cast(Dataset, SimpleNamespace(**values))
+
+
+def _metadata_condition() -> AppMetadataFilteringCondition:
+    return AppMetadataFilteringCondition(logical_operator="and", conditions=[])
 
 
 def create_side_effect_for_search(documents: list[Document]):
@@ -979,6 +988,72 @@ class TestRetrievalService:
         else:
             # Weights might be in positional args (position 3)
             assert len(call_args.args) >= 4
+
+    @pytest.mark.parametrize("empty_query", ["", None])
+    @patch("core.rag.datasource.retrieval_service.DataPostProcessor")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_hybrid_search_attachment_only_uses_image_query_type(
+        self,
+        mock_get_dataset,
+        mock_embedding_search,
+        mock_data_processor_class,
+        mock_dataset,
+        sample_documents,
+        empty_query,
+    ):
+        """
+        Regression test for GH #37116: attachment-only hybrid retrieval must use IMAGE_QUERY.
+
+        When HYBRID_SEARCH is invoked with no text query and a non-None attachment_id,
+        DataPostProcessor.invoke must receive query_type=QueryType.IMAGE_QUERY.
+        """
+        from core.rag.index_processor.constant.query_type import QueryType
+
+        # Arrange
+        mock_get_dataset.return_value = mock_dataset
+        attachment_id = "upload-file-uuid-1234"
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+            query_type=QueryType.TEXT_QUERY,
+        ):
+            all_documents.extend(sample_documents[:2])
+
+        mock_embedding_search.side_effect = side_effect_embedding
+
+        mock_processor_instance = Mock()
+        mock_processor_instance.invoke.return_value = sample_documents[:2]
+        mock_data_processor_class.return_value = mock_processor_instance
+
+        # Act: call retrieve with attachment_ids only, no text query
+        RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+            dataset_id=mock_dataset.id,
+            query=empty_query,
+            top_k=3,
+            score_threshold=0.5,
+            attachment_ids=[attachment_id],
+        )
+
+        # Assert: invoke must have been called with IMAGE_QUERY
+        mock_processor_instance.invoke.assert_called_once()
+        invoke_kwargs = mock_processor_instance.invoke.call_args.kwargs
+        assert invoke_kwargs["query_type"] == QueryType.IMAGE_QUERY, (
+            "Attachment-only hybrid search must use IMAGE_QUERY for reranking, not TEXT_QUERY"
+        )
+        assert invoke_kwargs["query"] == attachment_id, (
+            "The rerank query must be the attachment_id, not the empty text query"
+        )
 
     # ==================== Full-Text Search Tests ====================
 
@@ -2035,6 +2110,7 @@ class TestDocumentModel:
         doc = Document(page_content="Test content", vector=vector)
 
         assert doc.vector == vector
+        assert doc.vector is not None
         assert len(doc.vector) == 5
 
     def test_document_with_external_provider(self):
@@ -2848,14 +2924,14 @@ class TestProcessMetadataFilterFunc:
                 return mock_string_access
             elif name in ["year", "price", "rating"]:
                 return mock_float_access
+            elif name == "description":
+                return mock_null_access
             else:
                 return mock_string_access
 
         mock_metadata_field.__getitem__ = MagicMock(side_effect=getitem_side_effect)
         mock_metadata_field.as_string.return_value = mock_string_access
         mock_metadata_field.as_float.return_value = mock_float_access
-        mock_metadata_field[metadata_name:str].is_ = mock_null_access.is_
-        mock_metadata_field[metadata_name:str].isnot = mock_null_access.isnot
 
         return mock_metadata_field
 
@@ -3867,11 +3943,19 @@ class TestDatasetRetrievalAdditionalHelpers:
                 usage=None,
             ),
         )
-        text, returned_usage = retrieval._handle_invoke_result(iter([chunk_1, chunk_2]))
+
+        def _chunks() -> Generator[Any]:
+            yield chunk_1
+            yield chunk_2
+
+        text, returned_usage = retrieval._handle_invoke_result(_chunks())
         assert text == "hello world"
         assert returned_usage == usage
 
-        text_empty, usage_empty = retrieval._handle_invoke_result(iter([]))
+        def _empty_chunks() -> Generator[Any]:
+            yield from ()
+
+        text_empty, usage_empty = retrieval._handle_invoke_result(_empty_chunks())
         assert text_empty == ""
         assert usage_empty == LLMUsage.empty_usage()
 
@@ -4110,7 +4194,9 @@ class TestDatasetRetrievalAdditionalHelpers:
             )
         assert mapping == {"d1": ["doc-1"]}
         assert condition is not None
-        assert condition.conditions[0].value == "Alice"
+        assert condition.conditions
+        first_condition = condition.conditions[0]
+        assert first_condition.value == "Alice"
 
         with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars", return_value=scalars_result):
             with pytest.raises(ValueError, match="Invalid metadata filtering mode"):
@@ -4600,7 +4686,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         return DatasetRetrieval()
 
     def test_single_retrieve_external_path(self, retrieval: DatasetRetrieval) -> None:
-        dataset = SimpleNamespace(
+        dataset = _dataset(
             id="ds-1",
             name="External DS",
             description=None,
@@ -4645,7 +4731,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         assert retrieval.llm_usage.total_tokens == 2
 
     def test_single_retrieve_dify_path_and_filters(self, retrieval: DatasetRetrieval) -> None:
-        dataset = SimpleNamespace(
+        dataset = _dataset(
             id="ds-1",
             name="Internal DS",
             description="dataset desc",
@@ -4689,7 +4775,7 @@ class TestSingleAndMultipleRetrieveCoverage:
                     model_config=Mock(),
                     planning_strategy=PlanningStrategy.ROUTER,
                     metadata_filter_document_ids={"ds-1": ["doc-1"]},
-                    metadata_condition=SimpleNamespace(),
+                    metadata_condition=_metadata_condition(),
                 )
 
         assert results == [result_doc]
@@ -4706,7 +4792,7 @@ class TestSingleAndMultipleRetrieveCoverage:
                 user_from="workflow",
                 query="python",
                 available_datasets=[
-                    SimpleNamespace(id="ds-1", name="DS", description=None),
+                    _dataset(id="ds-1", name="DS", description=None),
                 ],
                 model_instance=Mock(),
                 model_config=Mock(),
@@ -4715,7 +4801,7 @@ class TestSingleAndMultipleRetrieveCoverage:
         assert results == []
 
     def test_single_retrieve_respects_metadata_filter_shortcuts(self, retrieval: DatasetRetrieval) -> None:
-        dataset = SimpleNamespace(
+        dataset = _dataset(
             id="ds-1",
             name="Internal DS",
             description="desc",
@@ -4740,7 +4826,7 @@ class TestSingleAndMultipleRetrieveCoverage:
                 model_config=Mock(),
                 planning_strategy=PlanningStrategy.REACT_ROUTER,
                 metadata_filter_document_ids=None,
-                metadata_condition=SimpleNamespace(),
+                metadata_condition=_metadata_condition(),
             )
             missing_doc_ids = retrieval.single_retrieve(
                 app_id="app-1",
@@ -4775,8 +4861,8 @@ class TestSingleAndMultipleRetrieveCoverage:
         )
 
         mixed = [
-            SimpleNamespace(id="d1", indexing_technique="high_quality"),
-            SimpleNamespace(id="d2", indexing_technique="economy"),
+            _dataset(id="d1", indexing_technique="high_quality"),
+            _dataset(id="d2", indexing_technique="economy"),
         ]
         with pytest.raises(ValueError, match="different indexing technique"):
             retrieval.multiple_retrieve(
@@ -4793,13 +4879,13 @@ class TestSingleAndMultipleRetrieveCoverage:
             )
 
         high_quality_mismatch = [
-            SimpleNamespace(
+            _dataset(
                 id="d1",
                 indexing_technique="high_quality",
                 embedding_model="model-a",
                 embedding_model_provider="provider-a",
             ),
-            SimpleNamespace(
+            _dataset(
                 id="d2",
                 indexing_technique="high_quality",
                 embedding_model="model-b",
@@ -4822,13 +4908,13 @@ class TestSingleAndMultipleRetrieveCoverage:
 
     def test_multiple_retrieve_threads_and_dedup(self, retrieval: DatasetRetrieval) -> None:
         datasets = [
-            SimpleNamespace(
+            _dataset(
                 id="d1",
                 indexing_technique="high_quality",
                 embedding_model="model-a",
                 embedding_model_provider="provider-a",
             ),
-            SimpleNamespace(
+            _dataset(
                 id="d2",
                 indexing_technique="high_quality",
                 embedding_model="model-a",
@@ -4890,7 +4976,7 @@ class TestSingleAndMultipleRetrieveCoverage:
 
     def test_multiple_retrieve_propagates_thread_exception(self, retrieval: DatasetRetrieval) -> None:
         datasets = [
-            SimpleNamespace(
+            _dataset(
                 id="d1",
                 indexing_technique="high_quality",
                 embedding_model="model-a",

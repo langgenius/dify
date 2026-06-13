@@ -37,6 +37,13 @@ class MCPSupportGrantType(StrEnum):
     REFRESH_TOKEN = "refresh_token"
 
 
+class IdentityMode(StrEnum):
+    """How Dify forwards the end-user's identity to an MCP server."""
+
+    OFF = "off"
+    IDP_TOKEN = "idp_token"
+
+
 class MCPAuthentication(BaseModel):
     client_id: str
     client_secret: str | None = None
@@ -76,6 +83,8 @@ class MCPProviderEntity(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    identity_mode: IdentityMode = IdentityMode.OFF
+
     @classmethod
     def from_db_model(cls, db_provider: MCPToolProvider) -> MCPProviderEntity:
         """Create entity from database model with decryption"""
@@ -96,6 +105,7 @@ class MCPProviderEntity(BaseModel):
             icon=db_provider.icon or "",
             created_at=db_provider.created_at,
             updated_at=db_provider.updated_at,
+            identity_mode=IdentityMode(db_provider.identity_mode),
         )
 
     @property
@@ -170,6 +180,7 @@ class MCPProviderEntity(BaseModel):
             "updated_at": int(self.updated_at.timestamp()),
             "label": I18nObject(en_US=self.name, zh_Hans=self.name).to_dict(),
             "description": I18nObject(en_US="", zh_Hans="").to_dict(),
+            "identity_mode": self.identity_mode,
         }
 
         # Add configuration

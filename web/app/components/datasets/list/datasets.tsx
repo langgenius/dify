@@ -9,12 +9,12 @@ import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
 import NewDatasetCard from './new-dataset-card'
 
-type Props = {
+type Props = Readonly<{
   tags: string[]
   keywords: string
   includeAll: boolean
   onOpenTagManagement?: () => void
-}
+}>
 
 const Datasets = ({
   tags,

@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
 
-type Props = {
+type Props = Readonly<{
   iconColor?: string
-}
+}>
 
 const ViewFormDropdown = ({
   iconColor,

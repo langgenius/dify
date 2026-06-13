@@ -7,10 +7,10 @@ import Divider from '@/app/components/base/divider'
 import { AppSourceType } from '@/service/share'
 import { useEmbeddedChatbotContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   collapsed: boolean
   setCollapsed: (collapsed: boolean) => void
-}
+}>
 
 const InputsFormNode = ({
   collapsed,

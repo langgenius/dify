@@ -467,7 +467,7 @@ class TriggerProviderService:
             if not subscription:
                 raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
-            if subscription.credential_type != CredentialType.OAUTH2.value:
+            if subscription.credential_type != CredentialType.OAUTH2:
                 raise ValueError("Only OAuth credentials can be refreshed")
 
             provider_id = TriggerProviderID(subscription.provider_id)

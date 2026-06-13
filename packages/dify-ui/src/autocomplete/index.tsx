@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
@@ -135,7 +135,7 @@ const autocompleteControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
     'group-data-readonly/autocomplete:hidden',
@@ -223,7 +223,7 @@ export function AutocompleteIcon({
 }
 
 type AutocompleteContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -302,7 +302,7 @@ export function AutocompleteItem({
   )
 }
 
-export type AutocompleteItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 export function AutocompleteItemText({
   className,
@@ -368,7 +368,7 @@ export function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLSpanElement>) {
+}: React.ComponentProps<'span'>) {
   return (
     <span
       className={cn(overlayIndicatorClassName, className)}

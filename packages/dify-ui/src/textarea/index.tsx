@@ -2,7 +2,7 @@
 
 import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
-import type { ComponentPropsWithRef } from 'react'
+import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -50,7 +50,7 @@ type UncontrolledTextareaProps = {
   onValueChange?: TextareaOnValueChange
 }
 
-type TextareaNativeProps = ComponentPropsWithRef<'textarea'>
+type TextareaNativeProps = React.ComponentPropsWithRef<'textarea'>
 type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
 type TextareaElementProps = Omit<
   TextareaNativeProps,

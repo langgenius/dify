@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -23,6 +23,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
     with_current_user_id,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -36,7 +37,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models import Account
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
@@ -63,8 +64,14 @@ class BaseMessagePayload(BaseModel):
     # Soul, so no override ``model_config`` is sent; chat / agent-chat / completion
     # debugging still pass it. Optional here, required in practice by those modes
     # downstream when their config is built from args.
-    model_config_data: dict[str, Any] = Field(default_factory=dict, alias="model_config")
-    files: list[Any] | None = Field(default=None, description="Uploaded files")
+    model_config_data: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="model_config",
+    )
+    files: list[Any] | None = Field(
+        default=None,
+        description="Uploaded files",
+    )
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
 
@@ -87,7 +94,7 @@ class ChatMessagePayload(BaseMessagePayload):
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 # define completion message api for user
@@ -97,14 +104,15 @@ class CompletionMessageApi(Resource):
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
-    @console_ns.response(200, "Completion generated successfully")
+    @console_ns.response(200, "Completion generated successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -112,8 +120,6 @@ class CompletionMessageApi(Resource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
@@ -170,7 +176,7 @@ class ChatMessageApi(Resource):
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully")
+    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App or conversation not found")
     @setup_required
@@ -178,7 +184,8 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
-    def post(self, app_model: App):
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
         raw_payload = console_ns.payload or {}
         args_model = ChatMessagePayload.model_validate(raw_payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
@@ -197,8 +204,6 @@ class ChatMessageApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )

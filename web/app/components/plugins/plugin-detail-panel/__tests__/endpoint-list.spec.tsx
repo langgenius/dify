@@ -1,5 +1,5 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EndpointList from '../endpoint-list'
 
@@ -18,6 +18,7 @@ const mockEndpoints = [
 let mockEndpointListData: { endpoints: typeof mockEndpoints } | undefined
 
 const mockInvalidateEndpointList = vi.fn()
+const mockInvalidateInstalledPluginList = vi.fn()
 const mockCreateEndpoint = vi.fn()
 
 vi.mock('@/service/use-endpoints', () => ({
@@ -29,6 +30,10 @@ vi.mock('@/service/use-endpoints', () => ({
       onSuccess()
     },
   }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
@@ -178,7 +183,10 @@ describe('EndpointList', () => {
       fireEvent.click(getAddButton())
       fireEvent.click(screen.getByTestId('modal-save'))
 
-      expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
+      return waitFor(() => {
+        expect(mockInvalidateEndpointList).toHaveBeenCalledWith('test-plugin')
+        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+      })
     })
 
     it('should pass correct params to createEndpoint', () => {

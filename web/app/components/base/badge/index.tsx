@@ -26,14 +26,14 @@ const BadgeVariants = cva(
   },
 )
 
-type BadgeProps = {
+type BadgeProps = Readonly<{
   size?: 's' | 'm' | 'l'
   iconOnly?: boolean
   uppercase?: boolean
   state?: BadgeState
   styleCss?: CSSProperties
   children?: ReactNode
-} & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
+}> & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
 
 function getBadgeState(state: BadgeState) {
   switch (state) {

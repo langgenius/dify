@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
@@ -97,7 +97,7 @@ export const numberFieldUnitVariants = cva(
   },
 )
 
-export type NumberFieldUnitProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof numberFieldUnitVariants>
+export type NumberFieldUnitProps = React.ComponentProps<'span'> & VariantProps<typeof numberFieldUnitVariants>
 
 export function NumberFieldUnit({
   className,
@@ -116,7 +116,7 @@ const numberFieldControlsVariants = cva(
   'flex shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
 )
 
-export type NumberFieldControlsProps = HTMLAttributes<HTMLDivElement>
+export type NumberFieldControlsProps = React.ComponentProps<'div'>
 
 export function NumberFieldControls({
   className,
@@ -134,7 +134,7 @@ const numberFieldControlButtonVariants = cva(
   [
     'flex touch-manipulation items-center justify-center px-1.5 text-text-tertiary outline-hidden transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',

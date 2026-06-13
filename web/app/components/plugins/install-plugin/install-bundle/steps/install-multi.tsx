@@ -8,7 +8,7 @@ import MarketplaceItem from '../item/marketplace-item'
 import PackageItem from '../item/package-item'
 import { getPluginKey, useInstallMultiState } from './hooks/use-install-multi-state'
 
-type Props = {
+type Props = Readonly<{
   allPlugins: Dependency[]
   selectedPlugins: Plugin[]
   onSelect: (plugin: Plugin, selectedIndex: number, allCanInstallPluginsLength: number) => void
@@ -17,7 +17,7 @@ type Props = {
   onLoadedAllPlugin: (installedInfo: Record<string, VersionInfo>) => void
   isFromMarketPlace?: boolean
   ref?: React.Ref<ExposeRefs>
-}
+}>
 
 export type ExposeRefs = {
   selectAllPlugins: () => void

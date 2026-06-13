@@ -4,17 +4,21 @@ from functools import wraps
 
 from flask import request
 from flask_restx import Resource
-from pydantic import Field
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import (
     RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
+    DefaultBlockConfigsResponse,
     WorkflowPaginationResponse,
+    WorkflowPublishResponse,
     WorkflowResponse,
+    WorkflowRestoreResponse,
 )
 from controllers.console.snippets.payloads import (
     PublishWorkflowPayload,
@@ -30,6 +34,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_user,
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -45,6 +50,7 @@ from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
+from models import Account
 from models.snippet import CustomizedSnippet
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.snippet_generate_service import SnippetGenerateService
@@ -67,6 +73,10 @@ class SnippetWorkflowResponse(WorkflowResponse):
     input_fields: list[dict] = Field(default_factory=list)
 
 
+class SnippetDraftConfigResponse(BaseModel):
+    parallel_depth_limit: int
+
+
 register_schema_models(
     console_ns,
     SnippetDraftSyncPayload,
@@ -80,8 +90,14 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    DefaultBlockConfigsResponse,
+    GeneratedAppResponse,
+    SimpleResultResponse,
+    SnippetDraftConfigResponse,
     SnippetWorkflowResponse,
+    WorkflowPublishResponse,
     WorkflowPaginationResponse,
+    WorkflowRestoreResponse,
     WorkflowRunPaginationResponse,
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -153,17 +169,20 @@ class SnippetDraftWorkflowApi(Resource):
 
     @console_ns.doc("sync_snippet_draft_workflow")
     @console_ns.expect(console_ns.models.get(SnippetDraftSyncPayload.__name__))
-    @console_ns.response(200, "Draft workflow synced successfully")
+    @console_ns.response(
+        200,
+        "Draft workflow synced successfully",
+        console_ns.models[WorkflowRestoreResponse.__name__],
+    )
     @console_ns.response(400, "Hash mismatch")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """Sync draft workflow for snippet."""
-        current_user, _ = current_account_with_tenant()
-
         payload = SnippetDraftSyncPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -190,7 +209,11 @@ class SnippetDraftWorkflowApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/config")
 class SnippetDraftConfigApi(Resource):
     @console_ns.doc("get_snippet_draft_config")
-    @console_ns.response(200, "Draft config retrieved successfully")
+    @console_ns.response(
+        200,
+        "Draft config retrieved successfully",
+        console_ns.models[SnippetDraftConfigResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -234,16 +257,16 @@ class SnippetPublishedWorkflowApi(Resource):
 
     @console_ns.doc("publish_snippet_workflow")
     @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
-    @console_ns.response(200, "Workflow published successfully")
+    @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
     @console_ns.response(400, "No draft workflow found")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """Publish snippet workflow."""
-        current_user, _ = current_account_with_tenant()
         snippet_service = _snippet_service()
 
         with Session(db.engine) as session:
@@ -268,7 +291,11 @@ class SnippetPublishedWorkflowApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/default-workflow-block-configs")
 class SnippetDefaultBlockConfigsApi(Resource):
     @console_ns.doc("get_snippet_default_block_configs")
-    @console_ns.response(200, "Default block configs retrieved successfully")
+    @console_ns.response(
+        200,
+        "Default block configs retrieved successfully",
+        console_ns.models[DefaultBlockConfigsResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -282,7 +309,7 @@ class SnippetDefaultBlockConfigsApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows")
 class SnippetPublishedAllWorkflowApi(Resource):
-    @console_ns.expect(console_ns.models[SnippetWorkflowListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(SnippetWorkflowListQuery))
     @console_ns.doc("get_all_snippet_published_workflows")
     @console_ns.doc(description="Get all published workflows for a snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID"})
@@ -325,17 +352,17 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     @console_ns.doc("restore_snippet_workflow_to_draft")
     @console_ns.doc(description="Restore a published snippet workflow version into the draft workflow")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Published workflow ID"})
-    @console_ns.response(200, "Workflow restored successfully")
+    @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
     @console_ns.response(400, "Source workflow must be published")
     @console_ns.response(404, "Workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, workflow_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, workflow_id: str):
         """Restore a published snippet workflow version into the draft workflow."""
-        current_user, _ = current_account_with_tenant()
         snippet_service = _snippet_service()
 
         try:
@@ -361,6 +388,7 @@ class SnippetDraftWorkflowRestoreApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
 class SnippetWorkflowRunsApi(Resource):
     @console_ns.doc("list_snippet_workflow_runs")
+    @console_ns.doc(params=query_params_from_model(WorkflowRunQuery))
     @console_ns.response(
         200,
         "Workflow runs retrieved successfully",
@@ -455,16 +483,16 @@ class SnippetDraftNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, node_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a single node in snippet draft workflow.
 
         Executes a specific node with provided inputs for single-step debugging.
         Returns the node execution result including status, outputs, and timing.
         """
-        current_user, _ = current_account_with_tenant()
         payload = SnippetDraftNodeRunPayload.model_validate(console_ns.payload or {})
 
         user_inputs = payload.inputs
@@ -534,21 +562,25 @@ class SnippetDraftRunIterationNodeApi(Resource):
     @console_ns.doc(description="Run draft workflow iteration node for snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models.get(SnippetIterationNodeRunPayload.__name__))
-    @console_ns.response(200, "Iteration node run started successfully (SSE stream)")
+    @console_ns.response(
+        200,
+        "Iteration node run started successfully (SSE stream)",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, node_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a draft workflow iteration node for snippet.
 
         Iteration nodes execute their internal sub-graph multiple times over an input list.
         Returns an SSE event stream with iteration progress and results.
         """
-        current_user, _ = current_account_with_tenant()
         args = SnippetIterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
@@ -575,21 +607,25 @@ class SnippetDraftRunLoopNodeApi(Resource):
     @console_ns.doc(description="Run draft workflow loop node for snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "node_id": "Node ID"})
     @console_ns.expect(console_ns.models.get(SnippetLoopNodeRunPayload.__name__))
-    @console_ns.response(200, "Loop node run started successfully (SSE stream)")
+    @console_ns.response(
+        200,
+        "Loop node run started successfully (SSE stream)",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet, node_id: str):
+    def post(self, current_user: Account, snippet: CustomizedSnippet, node_id: str):
         """
         Run a draft workflow loop node for snippet.
 
         Loop nodes execute their internal sub-graph repeatedly until a condition is met.
         Returns an SSE event stream with loop progress and results.
         """
-        current_user, _ = current_account_with_tenant()
         args = SnippetLoopNodeRunPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -614,22 +650,25 @@ class SnippetDraftRunLoopNodeApi(Resource):
 class SnippetDraftWorkflowRunApi(Resource):
     @console_ns.doc("run_snippet_draft_workflow")
     @console_ns.expect(console_ns.models.get(SnippetDraftRunPayload.__name__))
-    @console_ns.response(200, "Draft workflow run started successfully (SSE stream)")
+    @console_ns.response(
+        200,
+        "Draft workflow run started successfully (SSE stream)",
+        console_ns.models[GeneratedAppResponse.__name__],
+    )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @get_snippet
     @edit_permission_required
-    def post(self, snippet: CustomizedSnippet):
+    def post(self, current_user: Account, snippet: CustomizedSnippet):
         """
         Run draft workflow for snippet.
 
         Executes the snippet's draft workflow with the provided inputs
         and returns an SSE event stream with execution progress and results.
         """
-        current_user, _ = current_account_with_tenant()
-
         payload = SnippetDraftRunPayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
 
@@ -654,7 +693,7 @@ class SnippetDraftWorkflowRunApi(Resource):
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/tasks/<string:task_id>/stop")
 class SnippetWorkflowTaskStopApi(Resource):
     @console_ns.doc("stop_snippet_workflow_task")
-    @console_ns.response(200, "Task stopped successfully")
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
