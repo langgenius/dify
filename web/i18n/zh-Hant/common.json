@@ -242,6 +242,8 @@
   "members.name": "姓名",
   "members.normal": "成員",
   "members.normalTip": "只能使用應用程式，不能建立應用程式",
+  "members.viewer": "檢視者",
+  "members.viewerTip": "只能以唯讀模式檢視工作流程，無法編輯",
   "members.ok": "好的",
   "members.owner": "所有者",
   "members.pending": "待定...",

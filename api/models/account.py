@@ -22,6 +22,7 @@ class TenantAccountRole(enum.StrEnum):
     EDITOR = "editor"
     NORMAL = "normal"
     DATASET_OPERATOR = "dataset_operator"
+    VIEWER = "viewer"
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
@@ -33,6 +34,7 @@ class TenantAccountRole(enum.StrEnum):
             TenantAccountRole.EDITOR,
             TenantAccountRole.NORMAL,
             TenantAccountRole.DATASET_OPERATOR,
+            TenantAccountRole.VIEWER,
         }
 
     @staticmethod
@@ -56,6 +58,7 @@ class TenantAccountRole(enum.StrEnum):
             TenantAccountRole.EDITOR,
             TenantAccountRole.NORMAL,
             TenantAccountRole.DATASET_OPERATOR,
+            TenantAccountRole.VIEWER,
         }
 
     @staticmethod
@@ -63,6 +66,21 @@ class TenantAccountRole(enum.StrEnum):
         if not role:
             return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
+
+    @staticmethod
+    def is_viewing_role(role: Optional["TenantAccountRole"]) -> bool:
+        """Roles that may open and read the workflow editor (without editing).
+
+        Includes every editing role plus the read-only ``VIEWER`` role.
+        """
+        if not role:
+            return False
+        return role in {
+            TenantAccountRole.OWNER,
+            TenantAccountRole.ADMIN,
+            TenantAccountRole.EDITOR,
+            TenantAccountRole.VIEWER,
+        }
 
     @staticmethod
     def is_dataset_edit_role(role: Optional["TenantAccountRole"]) -> bool:
@@ -217,6 +235,15 @@ class Account(UserMixin, TypeBase):
         - `EDITOR`
         """
         return TenantAccountRole.is_editing_role(self.role)
+
+    @property
+    def has_view_permission(self):
+        """Determines if the account may open the workflow editor in read-only mode.
+
+        This includes every role with editing privileges (`OWNER`, `ADMIN`, `EDITOR`)
+        plus the read-only `VIEWER` role.
+        """
+        return TenantAccountRole.is_viewing_role(self.role)
 
     @property
     def is_dataset_editor(self):

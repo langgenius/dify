@@ -242,6 +242,8 @@
   "members.name": "İSİM",
   "members.normal": "Normal",
   "members.normalTip": "Sadece uygulamaları kullanabilir, uygulama oluşturamaz",
+  "members.viewer": "Görüntüleyici",
+  "members.viewerTip": "İş akışlarını salt okunur modda görüntüleyebilir, düzenleyemez",
   "members.ok": "Tamam",
   "members.owner": "Sahibi",
   "members.pending": "Beklemede...",

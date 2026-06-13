@@ -242,6 +242,8 @@
   "members.name": "姓名",
   "members.normal": "成员",
   "members.normalTip": "只能使用应用程序，不能建立应用程序",
+  "members.viewer": "查看者",
+  "members.viewerTip": "只能以只读模式查看工作流，不能编辑",
   "members.ok": "好的",
   "members.owner": "所有者",
   "members.pending": "待定...",
