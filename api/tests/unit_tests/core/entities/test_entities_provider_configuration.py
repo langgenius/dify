@@ -795,6 +795,7 @@ def test_get_current_credentials_system_handles_disable_and_restricted_base_mode
         RestrictModel(model="gpt-4o", base_model_name="base-model", model_type=ModelType.LLM)
     ]
     credentials = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+    assert credentials is not None
     assert credentials["base_model_name"] == "base-model"
 
 

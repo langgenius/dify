@@ -31,9 +31,8 @@ from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.helper import alphanumeric, uuid_value
-from libs.login import login_required
-from models import Account
+from libs.helper import alphanumeric, get_console_api_url, uuid_value
+from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
 
 # from models.provider_ids import ToolProviderID
@@ -874,7 +873,7 @@ class ToolPluginOAuthApi(Resource):
         context_id = OAuthProxyService.create_proxy_context(
             user_id=user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
         )
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
             user_id=user.id,
@@ -922,7 +921,7 @@ class ToolOAuthCallback(Resource):
         if oauth_client_params is None:
             raise Forbidden("no oauth available client config found for this tool provider")
 
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
             user_id=user_id,

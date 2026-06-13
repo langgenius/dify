@@ -17,7 +17,8 @@ from core.trigger.entities.entities import SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs.login import login_required
+from libs.helper import get_console_api_url
+from libs.login import current_user, login_required
 from models.account import Account
 from models.provider_ids import TriggerProviderID
 from services.plugin.oauth_service import OAuthProxyService
@@ -468,7 +469,7 @@ class TriggerOAuthAuthorizeApi(Resource):
             )
 
             # Build redirect URI for callback
-            redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
+            redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/trigger/callback"
 
             # Get authorization URL
             authorization_url_response = oauth_handler.get_authorization_url(
@@ -543,7 +544,7 @@ class TriggerOAuthCallbackApi(Resource):
 
         # Get OAuth credentials from callback
         oauth_handler = OAuthHandler()
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/trigger/callback"
 
         credentials_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,
@@ -603,8 +604,8 @@ class TriggerOAuthClientManageApi(Resource):
                 tenant_id=tenant_id,
                 provider_id=provider_id,
             )
-            provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
-            redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/trigger/callback"
+            provider_controller = TriggerManager.get_trigger_provider(user.current_tenant_id, provider_id)
+            redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider}/trigger/callback"
             return jsonable_encoder(
                 {
                     "configured": bool(custom_params or system_client_exists),

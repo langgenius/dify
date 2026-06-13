@@ -21,6 +21,7 @@ from core.plugin.impl.oauth import OAuthHandler
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import get_console_api_url
 from libs.login import login_required
 from models import Account
 from models.provider_ids import DatasourceProviderID
@@ -127,7 +128,7 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
             credential_id=credential_id,
         )
         oauth_handler = OAuthHandler()
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
             user_id=current_user.id,
@@ -176,7 +177,7 @@ class DatasourceOAuthCallback(Resource):
         )
         if not oauth_client_params:
             raise NotFound()
-        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
+        redirect_uri = f"{get_console_api_url()}/console/api/oauth/plugin/{provider_id}/datasource/callback"
         oauth_handler = OAuthHandler()
         oauth_response = oauth_handler.get_credentials(
             tenant_id=tenant_id,

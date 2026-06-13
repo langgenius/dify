@@ -21,6 +21,7 @@ from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
+from libs.helper import get_console_api_url
 from libs.login import current_user
 from models import Account
 from models.agent import AgentIconType
@@ -546,7 +547,7 @@ class AppService:
             # get all tools
             tools = cast(list[dict[str, Any]], agent_config.get("tools", []))
 
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        url_prefix = get_console_api_url() + "/console/api/workspaces/current/tool-provider/builtin/"
 
         for tool in tools:
             keys = list(tool.keys())
@@ -556,7 +557,7 @@ class AppService:
                 provider_id = str(tool.get("provider_id", ""))
                 tool_name = str(tool.get("tool_name", ""))
                 if provider_type == "builtin":
-                    meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
+                    meta["tool_icons"][tool_name] = f"{url_prefix}{provider_id}/icon"
                 elif provider_type == "api":
                     try:
                         provider: ApiToolProvider | None = db.session.get(ApiToolProvider, provider_id)

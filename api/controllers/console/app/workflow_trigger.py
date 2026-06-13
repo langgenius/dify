@@ -8,11 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.login import login_required
+from libs.helper import get_console_api_url
+from libs.login import current_user, login_required
 from models.enums import AppTriggerStatus
 from models.model import App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
@@ -143,7 +143,7 @@ class AppTriggersApi(Resource):
             )
 
         # Add computed icon field for each trigger
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        url_prefix = get_console_api_url() + "/console/api/workspaces/current/tool-provider/builtin/"
         for trigger in triggers:
             if trigger.trigger_type == "trigger-plugin":
                 trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
@@ -187,7 +187,7 @@ class AppTriggerEnableApi(Resource):
             trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED
 
         # Add computed icon field
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
+        url_prefix = get_console_api_url() + "/console/api/workspaces/current/tool-provider/builtin/"
         if trigger.trigger_type == "trigger-plugin":
             trigger.icon = url_prefix + trigger.provider_name + "/icon"  # type: ignore
         else:

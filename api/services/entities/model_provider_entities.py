@@ -5,7 +5,6 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from configs import dify_config
 from core.entities.model_entities import (
     ModelWithProviderEntity,
     ProviderModelWithStatusEntity,
@@ -31,6 +30,7 @@ from graphon.model_runtime.entities.provider_entities import (
     ProviderCredentialSchema,
     ProviderHelpEntity,
 )
+from libs.helper import get_console_api_url
 from models.provider import ProviderType
 
 _DECIMAL_STRING_PATTERN = r"^(?![-+.]*$)[+-]?0*\d*\.?\d*$"
@@ -95,9 +95,7 @@ class ProviderResponse(BaseModel):
 
     @model_validator(mode="after")
     def _(self):
-        url_prefix = (
-            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
-        )
+        url_prefix = get_console_api_url() + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -125,9 +123,7 @@ class ProviderWithModelsResponse(BaseModel):
 
     @model_validator(mode="after")
     def _(self):
-        url_prefix = (
-            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
-        )
+        url_prefix = get_console_api_url() + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -177,9 +173,7 @@ class SimpleProviderEntityResponse(BaseModel):
 
     @model_validator(mode="after")
     def _(self):
-        url_prefix = (
-            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
-        )
+        url_prefix = get_console_api_url() + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
