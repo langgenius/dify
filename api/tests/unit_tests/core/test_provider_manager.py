@@ -338,7 +338,7 @@ def test_get_provider_names_returns_short_and_full_aliases(provider_name: str, e
 def test_get_provider_model_bundle_raises_for_unknown_provider(mocker: MockerFixture):
     manager = _build_provider_manager(mocker)
 
-    with patch.object(manager, "get_configurations", return_value={}):
+    with patch.object(manager, "get_single_provider_configuration", return_value={}):
         with pytest.raises(ValueError, match="Provider openai does not exist."):
             manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
 
@@ -452,7 +452,7 @@ def test_get_provider_model_bundle_returns_selected_model_type_instance(mocker: 
     expected_bundle = Mock()
 
     with (
-        patch.object(manager, "get_configurations", return_value={"openai": provider_configuration}),
+        patch.object(manager, "get_single_provider_configuration", return_value=provider_configuration),
         patch("core.provider_manager.ProviderModelBundle", return_value=expected_bundle) as mock_bundle,
     ):
         result = manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
