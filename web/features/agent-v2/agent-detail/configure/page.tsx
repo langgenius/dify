@@ -16,6 +16,7 @@ import { AgentPreviewChat } from './components/preview/chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
 import { AgentPreviewHeader } from './components/preview/header'
 import { AgentPreviewVersionsPanel } from './components/preview/versions-panel'
+import { useAgentConfigureSync } from './use-agent-configure-sync'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -38,7 +39,8 @@ function AgentConfigurePageContent({
   const [showChatFeatures, setShowChatFeatures] = useState(false)
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
-  const [, setConfigureModel] = useModel()
+  const configureModelState = useModel()
+  const setConfigureModel = configureModelState[1]
   const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
     input: {
       params: {
@@ -46,9 +48,19 @@ function AgentConfigurePageContent({
       },
     },
   }))
-  const activeVersionId = agentQuery.data?.active_config_snapshot_id
+  const appId = agentQuery.data?.app_id
+  const composerQuery = useQuery(consoleQuery.apps.byAppId.agentComposer.get.queryOptions({
+    input: appId
+      ? {
+          params: {
+            app_id: appId,
+          },
+        }
+      : skipToken,
+  }))
+  const activeVersionId = composerQuery.data?.active_config_snapshot.id ?? agentQuery.data?.active_config_snapshot_id
   const versionQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
-    input: activeVersionId
+    input: activeVersionId && !composerQuery.data?.agent_soul
       ? {
           params: {
             agent_id: agentId,
@@ -57,9 +69,11 @@ function AgentConfigurePageContent({
         }
       : skipToken,
   }))
-  const activeConfigSnapshot = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined) ?? agentQuery.data?.active_config_snapshot
-  const agentSoulConfig = (versionQuery.data as AgentConfigSnapshotDetailResponse | undefined)?.config_snapshot
+  const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
+  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot ?? versionDetail ?? agentQuery.data?.active_config_snapshot
+  const agentSoulConfig = composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot
   const draftAppFeatures = useAgentComposerAppFeatures()
+  // eslint-disable-next-line react/use-state -- Hydrates Jotai composer atoms; despite the suffix this is not a useState wrapper.
   useHydrateAgentSoulConfigFormState({
     agentId,
     activeVersionId,
@@ -78,6 +92,16 @@ function AgentConfigurePageContent({
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
+  const {
+    isPublishing,
+    publishDraft,
+  } = useAgentConfigureSync({
+    agentId,
+    appId,
+    baseConfig: agentSoulConfig,
+    currentModel,
+    enabled: composerQuery.isSuccess,
+  })
   const previewAgentSoulConfig = agentSoulConfig && draftAppFeatures
     ? {
         ...agentSoulConfig,
@@ -97,7 +121,9 @@ function AgentConfigurePageContent({
         agentSoulConfig={agentSoulConfig}
         currentModel={currentModel}
         textGenerationModelList={textGenerationModelList}
+        isPublishing={isPublishing}
         onSelectModel={setConfigureModel}
+        onPublish={publishDraft}
         onOpenVersions={() => setShowPreviewVersions(true)}
       />
 

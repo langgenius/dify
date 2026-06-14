@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
@@ -20,7 +21,9 @@ type AgentOrchestratePanelProps = {
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   currentModel?: DefaultModel
   textGenerationModelList: Model[]
+  isPublishing?: boolean
   onSelectModel: (model: DefaultModel) => void
+  onPublish: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onOpenVersions: () => void
 }
 
@@ -30,7 +33,9 @@ export function AgentOrchestratePanel({
   agentSoulConfig,
   currentModel,
   textGenerationModelList,
+  isPublishing,
   onSelectModel,
+  onPublish,
   onOpenVersions,
 }: AgentOrchestratePanelProps) {
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
@@ -67,6 +72,8 @@ export function AgentOrchestratePanel({
         activeConfigSnapshot={activeConfigSnapshot}
         agentSoulConfig={agentSoulConfig}
         currentModel={currentModel}
+        isPublishing={isPublishing}
+        onPublish={onPublish}
         onOpenVersions={onOpenVersions}
       />
     </div>

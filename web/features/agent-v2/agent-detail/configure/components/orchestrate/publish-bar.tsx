@@ -13,7 +13,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P'
 
-type AgentConfigurePublishPayload = {
+export type AgentConfigurePublishPayload = {
   agent_id: string
   config_snapshot: AgentSoulConfig
 }
@@ -29,7 +29,7 @@ type AgentConfigurePublishBarProps = {
     model: string
   }
   isPublishing?: boolean
-  onPublish?: (payload: AgentConfigurePublishPayload) => void
+  onPublish?: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onOpenVersions: () => void
 }
 
@@ -92,9 +92,7 @@ export function AgentConfigurePublishBar({
     if (!canPublish)
       return
 
-    onPublish?.(publishPayload)
-    // eslint-disable-next-line no-console -- Requested temporary publish payload inspection.
-    console.log('[Agent Roster] publish payload', publishPayload)
+    void onPublish?.(publishPayload)
   }
 
   useHotkey(PUBLISH_AGENT_HOTKEY, (event) => {
