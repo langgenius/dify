@@ -126,7 +126,7 @@ class WorkspaceSwitchApi(Resource):
     """
 
     @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
-    @with_session
+    @with_session(write=False)
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
     def post(self, session: Session, workspace_id: str, *, auth_data: AuthData):
         account = _load_account(session, auth_data.account_id)
@@ -174,7 +174,7 @@ class WorkspaceMembersApi(Resource):
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    @with_session
+    @with_session(write=False)
     @returns(201, MemberInviteResponse, description="Member invited")
     @accepts(body=MemberInvitePayload)
     def post(self, session: Session, workspace_id: str, *, auth_data: AuthData, body: MemberInvitePayload):
@@ -230,7 +230,7 @@ class WorkspaceMemberApi(Resource):
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    @with_session
+    @with_session(write=False)
     @returns(200, MemberActionResponse, description="Member removed")
     def delete(self, session: Session, workspace_id: str, member_id: str, *, auth_data: AuthData):
         operator = _load_account(session, auth_data.account_id)
@@ -264,7 +264,7 @@ class WorkspaceMemberRoleApi(Resource):
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
     )
-    @with_session
+    @with_session(write=False)
     @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
     def put(

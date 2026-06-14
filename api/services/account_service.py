@@ -991,19 +991,19 @@ class AccountService:
         This keeps backward compatibility for older records that stored uppercase emails while the
         rest of the system gradually normalizes new inputs.
         """
-        if session is not None:
-            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+
+        def get_account(active_session: Session | scoped_session) -> Account | None:
+            account = active_session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
             if account or email == email.lower():
                 return account
 
-            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+            return active_session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+
+        if session is not None:
+            return get_account(session)
 
         with session_factory.create_session() as session:
-            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-            if account or email == email.lower():
-                return account
-
-            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+            return get_account(session)
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
@@ -1329,10 +1329,7 @@ class TenantService:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             active_session.add(ta)
 
-        if session is None:
-            db.session.commit()
-        else:
-            active_session.flush()
+        active_session.commit()
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
@@ -1525,9 +1522,8 @@ class TenantService:
     ):
         """Switch the current workspace for the account.
 
-        When a controller owns the request transaction, pass its session so the
-        membership update commits with the outer handler. Legacy callers keep
-        using the Flask-scoped session and commit here.
+        When a controller passes an explicit session, this service still owns
+        the commit so side effects keep their legacy ordering.
         """
 
         # Ensure tenant_id is provided
@@ -1559,8 +1555,7 @@ class TenantService:
             tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
-            if session is None:
-                db.session.commit()
+            active_session.commit()
 
     @staticmethod
     def get_tenant_members(tenant: Tenant, session: Session | scoped_session | None = None) -> list[Account]:
@@ -1786,10 +1781,7 @@ class TenantService:
                 active_session.delete(account)
                 should_delete_account = True
 
-        if session is None:
-            db.session.commit()
-        else:
-            active_session.flush()
+        active_session.commit()
 
         if should_delete_account:
             logger.info(
@@ -1883,10 +1875,7 @@ class TenantService:
         else:
             target_member_join.role = new_tenant_role
 
-        if session is None:
-            db.session.commit()
-        else:
-            active_session.flush()
+        active_session.commit()
 
     @staticmethod
     def get_custom_config(tenant_id: str):

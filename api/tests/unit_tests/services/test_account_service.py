@@ -810,20 +810,20 @@ class TestTenantService:
 
         self._assert_database_operations_called(mock_db_dependencies["db"])
 
-    def test_create_tenant_member_uses_injected_session_without_commit(self):
-        """Injected request sessions should leave member creation commits to the caller."""
+    def test_create_tenant_member_uses_injected_session_and_preserves_commit(self):
+        """Injected sessions still preserve the service-owned commit boundary."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
 
-        result = TenantService.create_tenant_member(mock_tenant, mock_account, "normal", session=mock_session)
+        result = TenantService.create_tenant_member(mock_tenant, mock_account, mock_session, role="normal")
 
         assert result is not None
         mock_session.add.assert_called_once()
-        mock_session.flush.assert_called_once()
-        mock_session.commit.assert_not_called()
+        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_not_called()
 
     # ==================== Member Removal Tests ====================
 
@@ -929,8 +929,8 @@ class TestTenantService:
             # Assert: only the join record should be deleted
             mock_db.session.delete.assert_called_once_with(mock_ta)
 
-    def test_remove_member_uses_injected_session_without_commit(self):
-        """Injected request sessions should leave member-removal commits to the caller."""
+    def test_remove_member_uses_injected_session_and_preserves_commit(self):
+        """Injected sessions still commit before member-removal side effects."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123", role="owner")
@@ -942,16 +942,21 @@ class TestTenantService:
             tenant_id="tenant-456", account_id="member-789", role="normal"
         )
         mock_session = MagicMock()
-        mock_session.scalar.side_effect = [mock_operator_join, mock_ta]
+        mock_session.scalar.side_effect = [mock_operator_join, mock_ta, "owner-123"]
+
+        events: list[str] = []
+        mock_session.commit.side_effect = lambda: events.append("commit")
 
         with patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync:
             mock_sync.return_value = True
+            mock_sync.side_effect = lambda **_: events.append("sync") or True
 
             TenantService.remove_member_from_tenant(mock_tenant, mock_member, mock_operator, session=mock_session)
 
         mock_session.delete.assert_called_once_with(mock_ta)
-        mock_session.flush.assert_called_once()
-        mock_session.commit.assert_not_called()
+        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_not_called()
+        assert events == ["commit", "sync"]
 
     # ==================== Tenant Switching Tests ====================
 
@@ -980,8 +985,8 @@ class TestTenantService:
             assert mock_tenant_join.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db)
 
-    def test_switch_tenant_uses_injected_session_without_commit(self):
-        """Injected request sessions should leave commit ownership to the caller."""
+    def test_switch_tenant_uses_injected_session_and_preserves_commit(self):
+        """Injected sessions still preserve the service-owned switch commit."""
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
         mock_tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
             tenant_id="tenant-456", account_id="user-123", current=False
@@ -994,7 +999,7 @@ class TestTenantService:
         assert mock_tenant_join.current is True
         mock_session.scalar.assert_called_once()
         mock_session.execute.assert_called_once()
-        mock_session.commit.assert_not_called()
+        mock_session.commit.assert_called_once()
         mock_account.set_tenant_id.assert_called_once_with("tenant-456")
 
     def test_switch_tenant_no_tenant_id(self):
@@ -1129,8 +1134,8 @@ class TestTenantService:
             with pytest.raises(NoPermissionError):
                 TenantService.update_member_role(mock_tenant, mock_member, "owner", mock_operator)
 
-    def test_update_member_role_uses_injected_session_without_commit(self):
-        """Injected request sessions should leave role-update commits to the caller."""
+    def test_update_member_role_uses_injected_session_and_preserves_commit(self):
+        """Injected sessions still preserve the service-owned role-update commit."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
@@ -1147,8 +1152,8 @@ class TestTenantService:
         TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator, session=mock_session)
 
         assert mock_target_join.role == TenantAccountRole.ADMIN
-        mock_session.flush.assert_called_once()
-        mock_session.commit.assert_not_called()
+        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_not_called()
 
     # ==================== Permission Check Tests ====================
 
@@ -1898,7 +1903,7 @@ class TestRegisterService:
                         status=AccountStatus.PENDING,
                         is_setup=True,
                     )
-                    mock_lookup.assert_called_once_with("newuser@example.com")
+                    mock_lookup.assert_called_once_with("newuser@example.com", session=None)
 
     def test_invite_new_member_normalizes_new_account_email(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
@@ -1942,12 +1947,12 @@ class TestRegisterService:
                         status=AccountStatus.PENDING,
                         is_setup=True,
                     )
-                    mock_lookup.assert_called_once_with(mixed_email)
-                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
+                    mock_lookup.assert_called_once_with(mixed_email, session=None)
+                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add", session=None)
                     mock_create_member.assert_called_once_with(
-                        mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "normal"
+                        mock_tenant, mock_new_account, session=None, role="normal"
                     )
-                    mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
+                    mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id, session=None)
                     mock_generate_token.assert_called_once_with(
                         mock_tenant, mock_new_account, "normal", requires_setup=True
                     )
@@ -1994,13 +1999,13 @@ class TestRegisterService:
                 # Verify results
                 assert result == "invite-token-123"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_existing_account, mock_db_dependencies["db"].session, "normal"
+                    mock_tenant, mock_existing_account, session=None, role="normal"
                 )
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
                 mock_task_dependencies.delay.assert_called_once()
-                mock_lookup.assert_called_once_with("existing@example.com")
+                mock_lookup.assert_called_once_with("existing@example.com", session=None)
 
     def test_invite_existing_active_account_requires_acceptance_before_joining(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
@@ -2034,7 +2039,9 @@ class TestRegisterService:
                 )
 
                 assert result == "invite-token-123"
-                mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, mock_existing_account, "add")
+                mock_check_permission.assert_called_once_with(
+                    mock_tenant, mock_inviter, mock_existing_account, "add", session=None
+                )
                 mock_create_member.assert_not_called()
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "admin", requires_setup=False
@@ -2129,7 +2136,7 @@ class TestRegisterService:
 
                 assert result == "rbac-token"
                 mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, mock_db_dependencies["db"].session, TenantAccountRole.NORMAL.value
+                    mock_tenant, mock_new_account, session=None, role=TenantAccountRole.NORMAL.value
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
@@ -2176,8 +2183,8 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(
                     mock_tenant,
                     mock_existing_account,
-                    mock_db_dependencies["db"].session,
-                    TenantAccountRole.NORMAL.value,
+                    session=None,
+                    role=TenantAccountRole.NORMAL.value,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
@@ -2223,8 +2230,8 @@ class TestRegisterService:
                 mock_create_member.assert_called_once_with(
                     mock_tenant,
                     mock_existing_account,
-                    mock_db_dependencies["db"].session,
-                    TenantAccountRole.NORMAL.value,
+                    session=None,
+                    role=TenantAccountRole.NORMAL.value,
                 )
                 mock_rbac_service.MemberRoles.replace.assert_called_once_with(
                     tenant_id=str(mock_tenant.id),
@@ -2271,9 +2278,7 @@ class TestRegisterService:
                 )
 
                 assert result == "legacy-token"
-                mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "editor"
-                )
+                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, session=None, role="editor")
                 mock_rbac_service.MemberRoles.replace.assert_not_called()
 
     # ==================== Token Management Tests ====================

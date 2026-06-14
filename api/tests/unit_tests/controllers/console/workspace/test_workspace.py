@@ -498,6 +498,7 @@ class TestCustomConfigWorkspaceApi:
 
         assert result["result"] == "success"
         session.get.assert_called_once()
+        session.commit.assert_called_once()
 
     def test_logo_fallback(self, app: Flask):
         api = CustomConfigWorkspaceApi()
@@ -520,6 +521,7 @@ class TestCustomConfigWorkspaceApi:
 
         assert tenant.custom_config_dict["replace_webapp_logo"] == "old-logo"
         assert result["result"] == "success"
+        session.commit.assert_called_once()
 
 
 class TestWebappLogoWorkspaceApi:
@@ -681,6 +683,7 @@ class TestWorkspaceInfoApi:
 
         assert result["result"] == "success"
         session.get.assert_called_once()
+        session.commit.assert_called_once()
 
     def test_no_current_tenant(self, app: Flask):
         api = WorkspaceInfoApi()
