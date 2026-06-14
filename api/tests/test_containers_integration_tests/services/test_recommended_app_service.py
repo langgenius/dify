@@ -307,7 +307,7 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
 
-        result = RecommendedAppService.get_recommended_apps_and_categories(db_session_with_containers, "ja-JP")
+        result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "ja-JP")
 
         builtin_instance.fetch_recommended_apps_from_builtin.assert_called_once_with("en-US")
         assert result["recommended_apps"][0]["can_trial"] is True
@@ -343,7 +343,7 @@ class TestRecommendedAppServiceTrialFeatures:
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
 
-        result = RecommendedAppService.get_recommend_app_detail(db_session_with_containers, app_id)
+        result = RecommendedAppService.get_recommend_app_detail(db.session, app_id)
         assert result is not None
         detail_result = cast(RecommendedAppPayload, result)
 
@@ -377,7 +377,7 @@ class TestRecommendedAppServiceTrialFeatures:
         db_session_with_containers.add(AccountTrialAppRecord(app_id=app_id, account_id=account_id, count=3))
         db_session_with_containers.commit()
 
-        RecommendedAppService.add_trial_app_record(db_session_with_containers, app_id, account_id)
+        RecommendedAppService.add_trial_app_record(db.session, app_id, account_id)
 
         db_session_with_containers.expire_all()
         record = db_session_with_containers.scalar(
@@ -392,7 +392,7 @@ class TestRecommendedAppServiceTrialFeatures:
         app_id = str(uuid.uuid4())
         account_id = str(uuid.uuid4())
 
-        RecommendedAppService.add_trial_app_record(db_session_with_containers, app_id, account_id)
+        RecommendedAppService.add_trial_app_record(db.session, app_id, account_id)
 
         db_session_with_containers.expire_all()
         record = db_session_with_containers.scalar(
