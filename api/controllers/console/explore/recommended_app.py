@@ -9,6 +9,7 @@ from constants.languages import languages
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, with_current_user
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from libs.login import login_required
@@ -98,7 +99,7 @@ class RecommendedAppListApi(Resource):
             language_prefix = languages[0]
 
         return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(language_prefix),
+            RecommendedAppService.get_recommended_apps_and_categories(db.session, language_prefix),
             from_attributes=True,
         ).model_dump(mode="json")
 
@@ -109,4 +110,4 @@ class RecommendedAppApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(str(app_id))
+        return RecommendedAppService.get_recommend_app_detail(db.session, str(app_id))
