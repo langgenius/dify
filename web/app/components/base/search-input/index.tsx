@@ -223,14 +223,3 @@ export function SearchInput({
     </SearchInputRoot>
   )
 }
-
-/**
- * @public
- */
-export {
-  SearchInputClearButton,
-  SearchInputControl,
-  SearchInputGroup,
-  SearchInputIcon,
-  SearchInputRoot,
-}
