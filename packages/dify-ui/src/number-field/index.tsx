@@ -5,6 +5,7 @@ import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { textControlCompoundFocusClassName } from '../form-control-shared'
 
 export const NumberField = BaseNumberField.Root
 export type NumberFieldRootProps = BaseNumberField.Root.Props
@@ -13,6 +14,7 @@ export const numberFieldGroupVariants = cva(
   [
     'group/number-field flex w-full min-w-0 items-stretch overflow-hidden border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',

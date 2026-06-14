@@ -75,6 +75,7 @@ describe('NumberField wrapper', () => {
       })
 
       await expect.element(screen.getByTestId('group')).toHaveClass('rounded-lg')
+      await expect.element(screen.getByTestId('group')).toHaveClass('focus-within:border-components-input-border-active')
       await expect.element(screen.getByTestId('group')).toHaveClass('custom-group')
     })
 
