@@ -664,20 +664,27 @@ export const MobileNavigation: Story = {
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport className="group">
-          <ScrollAreaRoot className="size-full overscroll-contain transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none group-data-starting-style:translate-y-[100dvh] group-data-ending-style:pointer-events-none">
+          <ScrollAreaRoot
+            style={{ position: undefined }}
+            className="h-full overscroll-contain transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none group-data-starting-style:translate-y-[100dvh] group-data-ending-style:pointer-events-none"
+          >
             <ScrollAreaViewport className="size-full touch-auto overscroll-contain" role="region" aria-label="Mobile drawer viewport">
               <ScrollAreaContent className="flex min-h-full min-w-0 items-end justify-center pt-8 min-[42rem]:px-16 min-[42rem]:py-16">
-                <DrawerPopup className="w-full max-w-[42rem] transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none data-[swipe-direction=down]:max-h-[92dvh] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-swiping:select-none data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(max(100dvh,100%)_+_2px))] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] min-[42rem]:rounded-2xl min-[42rem]:border-[0.5px]">
-                  <nav aria-label="Mobile navigation" className="flex min-h-0 flex-1 flex-col bg-components-panel-bg">
-                    <div className={handleClassName} />
-                    <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <DrawerPopup className="relative w-full max-w-[42rem] touch-auto overflow-visible transition-transform duration-600 ease-[cubic-bezier(0.45,1.005,0,1.005)] motion-reduce:transition-none data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-swiping:select-none data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(max(100dvh,100%)_+_2px))] data-ending-style:duration-350 data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)] min-[42rem]:rounded-2xl min-[42rem]:border-[0.5px] min-[42rem]:border-b-[0.5px]">
+                  <nav aria-label="Mobile navigation" className="relative flex flex-col bg-components-panel-bg">
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-start px-6 pt-4">
+                      <div aria-hidden className="h-9 w-9" />
+                      <div className="h-1 w-12 justify-self-center rounded-full bg-state-base-handle" />
+                      <div aria-hidden className="h-9 w-9" />
+                    </div>
+                    <DrawerContent className="w-full flex-none overflow-visible overscroll-auto p-0 pb-0">
                       <div className="px-6 pt-5 pb-4">
                         <DrawerTitle className="text-lg/6 font-semibold text-text-primary">Menu</DrawerTitle>
                         <DrawerDescription className="mt-1 text-sm/5 text-text-tertiary">
                           Scroll the long list. Flick down from the top to dismiss.
                         </DrawerDescription>
                       </div>
-                      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                      <div className="px-6 pb-8">
                         <ul className="m-0 grid list-none gap-1 p-0">
                           {mobilePrimaryLinks.map(item => (
                             <li key={item.label} className="flex">
@@ -697,7 +704,7 @@ export const MobileNavigation: Story = {
                           ))}
                         </ul>
                       </div>
-                      <div className="flex shrink-0 justify-center border-t-[0.5px] border-divider-subtle px-6 py-4">
+                      <div className="flex justify-center border-t-[0.5px] border-divider-subtle px-6 py-4">
                         <DrawerClose className={textCloseClassName}>Close menu</DrawerClose>
                       </div>
                     </DrawerContent>
@@ -785,45 +792,34 @@ function ActionSheetDemo() {
       <DrawerPortal>
         <DrawerBackdrop className="fixed" />
         <DrawerViewport className="flex items-end justify-center">
-          <DrawerPopup className="-mb-12 touch-auto overflow-visible border-none bg-transparent px-4 pb-[calc(1rem_+_env(safe-area-inset-bottom,0px)_+_3rem)] shadow-none data-[swipe-direction=down]:max-h-[calc(80dvh_+_3rem)] data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_-_3rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
-            <div className={handleClassName} />
-            <DrawerContent className="min-h-0 flex-none overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg p-0 pb-0 shadow-xl">
-              <div>
-                <DrawerTitle className="sr-only">App actions</DrawerTitle>
-                <DrawerDescription className="sr-only">
-                  Choose an action for Customer support assistant.
-                </DrawerDescription>
-                <ul className="m-0 list-none divide-y divide-divider-subtle p-0" aria-label="App actions">
-                  {actionItems.map(([label, description]) => (
-                    <li key={label}>
-                      <DrawerClose
-                        type="button"
-                        className="flex w-full flex-col items-start gap-0.5 bg-transparent px-4 py-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                      >
-                        <span className="text-sm font-medium text-text-secondary">{label}</span>
-                        <span className="text-xs text-text-tertiary">{description}</span>
-                      </DrawerClose>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="border-t-[0.5px] border-divider-subtle">
-                <DrawerClose
-                  type="button"
-                  className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-components-button-destructive-secondary-text outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  Delete app
-                </DrawerClose>
-              </div>
-              <div className="border-t-[0.5px] border-divider-subtle">
-                <DrawerClose
-                  type="button"
-                  className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                >
-                  Cancel
-                </DrawerClose>
-              </div>
+          <DrawerPopup className="pointer-events-none relative flex w-full max-w-80 flex-col gap-3 overflow-visible border-none bg-transparent px-4 pb-[calc(1rem_+_env(safe-area-inset-bottom,0px))] shadow-none data-[swipe-direction=down]:inset-auto data-[swipe-direction=down]:max-h-none data-[swipe-direction=down]:transform-[translateY(var(--drawer-swipe-movement-y,0px))] data-starting-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_+_1rem_+_2px))] data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(100%_+_1rem_+_2px))] data-ending-style:duration-[calc(var(--drawer-swipe-strength)_*_400ms)]">
+            <DrawerContent className="pointer-events-auto flex-none overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg p-0 pb-0 shadow-xl">
+              <DrawerTitle className="sr-only">App actions</DrawerTitle>
+              <DrawerDescription className="sr-only">
+                Choose an action for Customer support assistant.
+              </DrawerDescription>
+              <ul className="m-0 list-none divide-y divide-divider-subtle p-0" aria-label="App actions">
+                {actionItems.map(([label, description]) => (
+                  <li key={label}>
+                    <DrawerClose
+                      type="button"
+                      className="flex w-full flex-col items-start gap-0.5 bg-transparent px-4 py-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    >
+                      <span className="text-sm font-medium text-text-secondary">{label}</span>
+                      <span className="text-xs text-text-tertiary">{description}</span>
+                    </DrawerClose>
+                  </li>
+                ))}
+              </ul>
             </DrawerContent>
+            <div className="pointer-events-auto overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-components-panel-bg shadow-xl">
+              <DrawerClose
+                type="button"
+                className="h-11 w-full bg-transparent px-4 text-center text-sm font-medium text-components-button-destructive-secondary-text outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              >
+                Delete app
+              </DrawerClose>
+            </div>
           </DrawerPopup>
         </DrawerViewport>
       </DrawerPortal>
