@@ -202,14 +202,14 @@ describe('ModalContextProvider trigger events limit modal', () => {
   })
 
   it('falls back to the in-memory guard when localStorage.setItem fails', async () => {
-    const plan = createPlan({
+    const planOverrides: PlanOverrides = {
       type: Plan.professional,
       usage: { triggerEvents: 120 },
       total: { triggerEvents: 120 },
       reset: { triggerEvents: 2 },
-    })
+    }
     mockUseProviderContext.mockReturnValue({
-      plan,
+      plan: createPlan(planOverrides),
       isFetchedPlan: true,
     })
     vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
@@ -217,11 +217,23 @@ describe('ModalContextProvider trigger events limit modal', () => {
     })
     const user = userEvent.setup()
 
-    renderProvider()
+    const { rerender } = renderProvider()
 
     await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'billing.triggerLimitModal.dismiss' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(planOverrides),
+      isFetchedPlan: true,
+    })
+    rerender(
+      <ModalContextProvider>
+        <div data-testid="modal-context-test-child" />
+      </ModalContextProvider>,
+    )
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
