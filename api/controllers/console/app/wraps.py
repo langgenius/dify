@@ -2,10 +2,11 @@
 
 `with_session` opens one SQLAlchemy session for a request handler and injects it
 as the first argument after `self`. Handlers use a transaction by default so
-migrated write paths keep commit/rollback handling; pure read handlers may opt
-out with `write=False`. App-loading decorators prefer that injected session when
-present, while still supporting existing handlers that have not been migrated
-yet and still rely on Flask-SQLAlchemy's scoped `db.session`.
+migrated write paths keep commit/rollback handling; read handlers and
+service-owned commit paths may opt out with `write=False`. App-loading
+decorators prefer that injected session when present, while still supporting
+existing handlers that have not been migrated yet and still rely on
+Flask-SQLAlchemy's scoped `db.session`.
 """
 
 from collections.abc import Callable
@@ -68,7 +69,12 @@ def with_session[T, **P, R](
 ) -> (
     Callable[Concatenate[T, P], R] | Callable[[Callable[Concatenate[T, Session, P], R]], Callable[Concatenate[T, P], R]]
 ):
-    """Inject a request-scoped session, using a transaction only for write handlers."""
+    """Inject a request-scoped session.
+
+    ``write=False`` still injects a session, but leaves transaction ownership to
+    the caller/service so legacy commit ordering can be preserved during
+    incremental migrations.
+    """
 
     def decorator(view: Callable[Concatenate[T, Session, P], R]) -> Callable[Concatenate[T, P], R]:
         @wraps(view)

@@ -211,6 +211,8 @@ class WorkspaceListApi(Resource):
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
+        # TODO(#36544): migrate this once the explicit-session path has a
+        # replacement for Flask-SQLAlchemy's paginate helper.
         tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
         has_more = False
 
@@ -262,7 +264,7 @@ class SwitchWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, current_user: Account):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
@@ -288,7 +290,7 @@ class CustomConfigWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
@@ -306,6 +308,7 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
+        session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
@@ -335,6 +338,9 @@ class WebappLogoWorkspaceApi(Resource):
             raise UnsupportedFileTypeError()
 
         try:
+            # TODO(#36544): FileService currently owns its DB access through
+            # an engine-backed session, so keep this path on the legacy session
+            # boundary until that service can accept an injected session.
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
@@ -358,7 +364,7 @@ class WorkspaceInfoApi(Resource):
     @account_initialization_required
     # Change workspace name
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)
@@ -369,6 +375,7 @@ class WorkspaceInfoApi(Resource):
         if tenant is None:
             abort(404)
         tenant.name = args.name
+        session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 

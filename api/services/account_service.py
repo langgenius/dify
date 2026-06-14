@@ -925,19 +925,19 @@ class AccountService:
         This keeps backward compatibility for older records that stored uppercase emails while the
         rest of the system gradually normalizes new inputs.
         """
-        if session is not None:
-            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+
+        def get_account(active_session: Session | scoped_session) -> Account | None:
+            account = active_session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
             if account or email == email.lower():
                 return account
 
-            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+            return active_session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+
+        if session is not None:
+            return get_account(session)
 
         with session_factory.create_session() as session:
-            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
-            if account or email == email.lower():
-                return account
-
-            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+            return get_account(session)
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
@@ -1253,10 +1253,7 @@ class TenantService:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             active_session.add(ta)
 
-        if session is None:
-            db.session.commit()
-        else:
-            active_session.flush()
+        active_session.commit()
 
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
@@ -1448,9 +1445,8 @@ class TenantService:
     ):
         """Switch the current workspace for the account.
 
-        When a controller owns the request transaction, pass its session so the
-        membership update commits with the outer handler. Legacy callers keep
-        using the Flask-scoped session and commit here.
+        When a controller passes an explicit session, this service still owns
+        the commit so side effects keep their legacy ordering.
         """
 
         # Ensure tenant_id is provided
@@ -1481,8 +1477,7 @@ class TenantService:
             tenant_account_join.current = True
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
-            if session is None:
-                db.session.commit()
+            active_session.commit()
 
     @staticmethod
     def get_tenant_members(tenant: Tenant, session: Session | scoped_session | None = None) -> list[Account]:
@@ -1655,10 +1650,7 @@ class TenantService:
                 active_session.delete(account)
                 should_delete_account = True
 
-        if session is None:
-            db.session.commit()
-        else:
-            active_session.flush()
+        active_session.commit()
 
         if should_delete_account:
             logger.info(
@@ -1725,10 +1717,7 @@ class TenantService:
 
         # Update the role of the target member
         target_member_join.role = new_tenant_role
-        if session is None:
-            db.session.commit()
-        else:
-            active_session.flush()
+        active_session.commit()
 
     @staticmethod
     def get_custom_config(tenant_id: str):
@@ -1875,16 +1864,10 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        if session is None:
-            account = AccountService.get_account_by_email_with_case_fallback(email)
-        else:
-            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:
-            if session is None:
-                TenantService.check_member_permission(tenant, inviter, None, "add")
-            else:
-                TenantService.check_member_permission(tenant, inviter, None, "add", session=session)
+            TenantService.check_member_permission(tenant, inviter, None, "add", session=session)
             name = normalized_email.split("@")[0]
 
             account = cls.register(
@@ -1895,17 +1878,10 @@ class RegisterService:
                 is_setup=True,
             )
             # Create new tenant member for invited tenant
-            if session is None:
-                TenantService.create_tenant_member(tenant, account, role)
-                TenantService.switch_tenant(account, tenant.id)
-            else:
-                TenantService.create_tenant_member(tenant, account, role, session=session)
-                TenantService.switch_tenant(account, tenant.id, session=session)
+            TenantService.create_tenant_member(tenant, account, role, session=session)
+            TenantService.switch_tenant(account, tenant.id, session=session)
         else:
-            if session is None:
-                TenantService.check_member_permission(tenant, inviter, account, "add")
-            else:
-                TenantService.check_member_permission(tenant, inviter, account, "add", session=session)
+            TenantService.check_member_permission(tenant, inviter, account, "add", session=session)
             ta = active_session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
@@ -1913,10 +1889,7 @@ class RegisterService:
             )
 
             if not ta:
-                if session is None:
-                    TenantService.create_tenant_member(tenant, account, role)
-                else:
-                    TenantService.create_tenant_member(tenant, account, role, session=session)
+                TenantService.create_tenant_member(tenant, account, role, session=session)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
