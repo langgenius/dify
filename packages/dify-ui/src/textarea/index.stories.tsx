@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import { Button } from '../button'
 import {
   FieldDescription,
@@ -91,7 +91,7 @@ export const States: Story = {
 }
 
 const FormDemo = () => {
-  const [savedDescription, setSavedDescription] = useState<string | null>(null)
+  const [savedDescription, setSavedDescription] = React.useState<string | null>(null)
 
   return (
     <Form
@@ -134,7 +134,7 @@ export const WithField: Story = {
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = useState('Summarize customer feedback into actionable product themes.')
+  const [value, setValue] = React.useState('Summarize customer feedback into actionable product themes.')
 
   return (
     <FieldRoot name="prompt">
@@ -160,7 +160,7 @@ export const Controlled: Story = {
 
 const CharacterCounterDemo = () => {
   const maxLength = 120
-  const [value, setValue] = useState('Summarize customer feedback into actionable product themes.')
+  const [value, setValue] = React.useState('Summarize customer feedback into actionable product themes.')
 
   return (
     <FieldRoot name="limitedPrompt">

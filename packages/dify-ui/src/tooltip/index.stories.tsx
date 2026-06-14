@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Tooltip,
   TooltipContent,
@@ -107,7 +107,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = useState<Placement>('top')
+  const [placement, setPlacement] = React.useState<Placement>('top')
 
   return (
     <div className="flex flex-col items-center gap-4 p-24">
