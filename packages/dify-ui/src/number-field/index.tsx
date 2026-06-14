@@ -16,6 +16,7 @@ export const numberFieldGroupVariants = cva(
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
     textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
+    'data-invalid:border-components-input-border-destructive data-invalid:bg-components-input-bg-destructive',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal motion-reduce:transition-none',
@@ -34,7 +35,12 @@ export const numberFieldGroupVariants = cva(
 )
 export type NumberFieldSize = NonNullable<VariantProps<typeof numberFieldGroupVariants>['size']>
 
-export type NumberFieldGroupProps = BaseNumberField.Group.Props & VariantProps<typeof numberFieldGroupVariants>
+export type NumberFieldGroupProps
+  = Omit<BaseNumberField.Group.Props, 'className'>
+    & VariantProps<typeof numberFieldGroupVariants>
+    & {
+      className?: string
+    }
 
 export function NumberFieldGroup({
   className,
@@ -69,7 +75,12 @@ export const numberFieldInputVariants = cva(
   },
 )
 
-export type NumberFieldInputProps = Omit<BaseNumberField.Input.Props, 'size'> & VariantProps<typeof numberFieldInputVariants>
+export type NumberFieldInputProps
+  = Omit<BaseNumberField.Input.Props, 'className' | 'size'>
+    & VariantProps<typeof numberFieldInputVariants>
+    & {
+      className?: string
+    }
 
 export function NumberFieldInput({
   className,
@@ -187,7 +198,12 @@ type NumberFieldButtonVariantProps = Omit<
   'direction'
 >
 
-export type NumberFieldButtonProps = BaseNumberField.Increment.Props & NumberFieldButtonVariantProps
+export type NumberFieldButtonProps
+  = Omit<BaseNumberField.Increment.Props, 'className'>
+    & NumberFieldButtonVariantProps
+    & {
+      className?: string
+    }
 
 const incrementAriaLabel = 'Increment value'
 const decrementAriaLabel = 'Decrement value'
