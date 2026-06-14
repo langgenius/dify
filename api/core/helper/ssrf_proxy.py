@@ -10,9 +10,12 @@ file URLs can be resolved through DB + storage before falling back to this SSRF
 client.
 """
 
+import ipaddress
 import logging
+import socket
 import time
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
@@ -323,3 +326,69 @@ class GraphonSSRFProxy:
 
 ssrf_proxy = SSRFProxy()
 graphon_ssrf_proxy = GraphonSSRFProxy()
+
+
+def _is_disallowed_ip(raw: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(raw)
+    except ValueError:
+        return True
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified
+
+
+def _ssrf_proxy_configured() -> bool:
+    return bool(
+        dify_config.SSRF_PROXY_ALL_URL or (dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL)
+    )
+
+
+def is_safe_external_url(url: str) -> bool:
+    """Defense-in-depth URL validation for tenant-supplied outbound targets.
+
+    Beyond the usual http(s)-scheme + non-empty-host format check, this also
+    rejects URLs whose host points into a private, loopback, link-local,
+    multicast, reserved, or unspecified range — covering cloud instance
+    metadata (169.254.169.254), Docker bridge networks, and RFC1918 LANs.
+
+    When an SSRF egress proxy is configured (``SSRF_PROXY_*``), the proxy is
+    already the chokepoint for outbound traffic, so DNS resolution is skipped
+    for hostnames; only IP-literal hosts are still rejected. When no proxy
+    is configured (the default in ``.env.example``), hostnames are resolved
+    via ``getaddrinfo`` and every resolved address must be a public IP.
+
+    DNS rebinding is a residual risk: a hostname can resolve to a public IP
+    at validation time and a private IP at connection time. Callers that
+    need rebind-safe behavior should also resolve-and-pin at the client
+    layer.
+    """
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url)
+    except (ValueError, TypeError):
+        return False
+    if parsed.scheme not in ("http", "https"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+
+    try:
+        ipaddress.ip_address(host)
+        is_ip_literal = True
+    except ValueError:
+        is_ip_literal = False
+
+    if is_ip_literal:
+        return not _is_disallowed_ip(host)
+
+    if _ssrf_proxy_configured():
+        return True
+
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except (socket.gaierror, UnicodeError, OSError):
+        return False
+    # sockaddr[0] is the address string for both AF_INET and AF_INET6;
+    # str() keeps the type checker happy about the int | str union.
+    return all(not _is_disallowed_ip(str(info[4][0])) for info in infos)

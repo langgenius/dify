@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.ssrf_proxy import is_safe_external_url
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.entities import AuthActionType, AuthResult
@@ -716,14 +717,13 @@ class MCPToolManageService:
         raise error
 
     def _is_valid_url(self, url: str) -> bool:
-        """Validate URL format."""
-        if not url:
-            return False
-        try:
-            parsed = urlparse(url)
-            return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
-        except (ValueError, TypeError):
-            return False
+        """Validate URL format and that it does not target an internal address.
+
+        Defense-in-depth check before persisting the URL or issuing the
+        ``MCPClient`` handshake; see ``is_safe_external_url`` for the
+        scheme / IP-range rules and the SSRF-proxy interaction.
+        """
+        return is_safe_external_url(url)
 
     def _update_optional_fields(self, mcp_provider: MCPToolProvider, configuration: MCPConfiguration) -> None:
         """Update optional configuration fields using setattr for cleaner code."""
