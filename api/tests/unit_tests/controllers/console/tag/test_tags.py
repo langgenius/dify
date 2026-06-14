@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
@@ -125,7 +125,7 @@ class TestTagListApi:
             ):
                 result, status = method(api, "tenant-1")
 
-        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None)
+        get_tags_mock.assert_called_once_with(ANY, "snippet", "tenant-1", None)
         assert status == 200
         assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
 
