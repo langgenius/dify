@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
 
-from flask import request
+from flask import abort, request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -19,6 +20,7 @@ from controllers.common.errors import (
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
+from controllers.console.app.wraps import with_session
 from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
@@ -286,6 +288,8 @@ class WorkspaceListApi(Resource):
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
+        # TODO(#36544): migrate this once the explicit-session path has a
+        # replacement for Flask-SQLAlchemy's paginate helper.
         tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
         has_more = False
 
@@ -338,17 +342,18 @@ class SwitchWorkspaceApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account):
+    @with_session(write=False)
+    def post(self, session: Session, current_user: Account):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
         # check if tenant_id is valid, 403 if not
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id)
+            TenantService.switch_tenant(current_user, args.tenant_id, session=session)
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
-        new_tenant = db.session.get(Tenant, args.tenant_id)  # Get new tenant
+        new_tenant = session.get(Tenant, args.tenant_id)  # Get new tenant
         if new_tenant is None:
             raise ValueError("Tenant not found")
 
@@ -364,10 +369,13 @@ class CustomConfigWorkspaceApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("workspace_custom")
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceCustomConfigPayload.model_validate(payload)
-        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant = session.get(Tenant, current_tenant_id)
+        if tenant is None:
+            abort(404)
 
         custom_config_dict: TenantCustomConfigDict = {
             "remove_webapp_brand": args.remove_webapp_brand
@@ -379,7 +387,7 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
-        db.session.commit()
+        session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
@@ -410,6 +418,9 @@ class WebappLogoWorkspaceApi(Resource):
             raise UnsupportedFileTypeError()
 
         try:
+            # TODO(#36544): FileService currently owns its DB access through
+            # an engine-backed session, so keep this path on the legacy session
+            # boundary until that service can accept an injected session.
             upload_file = FileService(db.engine).upload_file(
                 filename=file.filename,
                 content=file.stream.read(),
@@ -434,15 +445,18 @@ class WorkspaceInfoApi(Resource):
     @account_initialization_required
     # Change workspace name
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @with_session(write=False)
+    def post(self, session: Session, current_tenant_id: str):
         payload = console_ns.payload or {}
         args = WorkspaceInfoPayload.model_validate(payload)
 
         if not current_tenant_id:
             raise ValueError("No current tenant")
-        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant = session.get(Tenant, current_tenant_id)
+        if tenant is None:
+            abort(404)
         tenant.name = args.name
-        db.session.commit()
+        session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 

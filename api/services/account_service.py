@@ -915,19 +915,29 @@ class AccountService:
         return token
 
     @staticmethod
-    def get_account_by_email_with_case_fallback(email: str) -> Account | None:
+    def get_account_by_email_with_case_fallback(
+        email: str,
+        session: Session | scoped_session | None = None,
+    ) -> Account | None:
         """
         Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
 
         This keeps backward compatibility for older records that stored uppercase emails while the
         rest of the system gradually normalizes new inputs.
         """
-        with session_factory.create_session() as session:
-            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+
+        def get_account(active_session: Session | scoped_session) -> Account | None:
+            account = active_session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
             if account or email == email.lower():
                 return account
 
-            return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+            return active_session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+
+        if session is not None:
+            return get_account(session)
+
+        with session_factory.create_session() as session:
+            return get_account(session)
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
@@ -1218,14 +1228,21 @@ class TenantService:
         tenant_was_created.send(tenant)
 
     @staticmethod
-    def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
+    def create_tenant_member(
+        tenant: Tenant,
+        account: Account,
+        role: str = "normal",
+        session: Session | scoped_session | None = None,
+    ) -> TenantAccountJoin:
         """Create tenant member"""
+        active_session = session if session is not None else db.session
+
         if role == TenantAccountRole.OWNER:
-            if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
+            if TenantService.has_roles(tenant, [TenantAccountRole.OWNER], session=active_session):
                 logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
 
-        ta = db.session.scalar(
+        ta = active_session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .limit(1)
@@ -1234,9 +1251,10 @@ class TenantService:
             ta.role = TenantAccountRole(role)
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
-            db.session.add(ta)
+            active_session.add(ta)
 
-        db.session.commit()
+        active_session.commit()
+
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
@@ -1420,14 +1438,24 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: str | None = None):
-        """Switch the current workspace for the account"""
+    def switch_tenant(
+        account: Account,
+        tenant_id: str | None = None,
+        session: Session | scoped_session | None = None,
+    ):
+        """Switch the current workspace for the account.
+
+        When a controller passes an explicit session, this service still owns
+        the commit so side effects keep their legacy ordering.
+        """
 
         # Ensure tenant_id is provided
         if tenant_id is None:
             raise ValueError("Tenant ID must be provided.")
 
-        tenant_account_join = db.session.scalar(
+        active_session = session if session is not None else db.session
+
+        tenant_account_join = active_session.scalar(
             select(TenantAccountJoin)
             .join(Tenant, TenantAccountJoin.tenant_id == Tenant.id)
             .where(
@@ -1441,7 +1469,7 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
-            db.session.execute(
+            active_session.execute(
                 update(TenantAccountJoin)
                 .where(TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id)
                 .values(current=False)
@@ -1449,11 +1477,12 @@ class TenantService:
             tenant_account_join.current = True
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
-            db.session.commit()
+            active_session.commit()
 
     @staticmethod
-    def get_tenant_members(tenant: Tenant) -> list[Account]:
+    def get_tenant_members(tenant: Tenant, session: Session | scoped_session | None = None) -> list[Account]:
         """Get tenant members"""
+        active_session = session if session is not None else db.session
         stmt = (
             select(Account, TenantAccountJoin.role)
             .select_from(Account)
@@ -1464,7 +1493,7 @@ class TenantService:
         # Initialize an empty list to store the updated accounts
         updated_accounts = []
 
-        for account, role in db.session.execute(stmt):
+        for account, role in active_session.execute(stmt):
             account.role = role
             updated_accounts.append(account)
 
@@ -1491,13 +1520,18 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
-    def has_roles(tenant: Tenant, roles: list[TenantAccountRole]) -> bool:
+    def has_roles(
+        tenant: Tenant,
+        roles: list[TenantAccountRole],
+        session: Session | scoped_session | None = None,
+    ) -> bool:
         """Check if user has any of the given roles for a tenant"""
         if not all(isinstance(role, TenantAccountRole) for role in roles):
             raise ValueError("all roles must be TenantAccountRole")
 
+        active_session = session if session is not None else db.session
         return (
-            db.session.scalar(
+            active_session.scalar(
                 select(TenantAccountJoin)
                 .where(
                     TenantAccountJoin.tenant_id == tenant.id,
@@ -1509,9 +1543,14 @@ class TenantService:
         )
 
     @staticmethod
-    def get_user_role(account: Account, tenant: Tenant) -> TenantAccountRole | None:
+    def get_user_role(
+        account: Account,
+        tenant: Tenant,
+        session: Session | scoped_session | None = None,
+    ) -> TenantAccountRole | None:
         """Get the role of the current account for a given tenant"""
-        join = db.session.scalar(
+        active_session = session if session is not None else db.session
+        join = active_session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .limit(1)
@@ -1524,8 +1563,15 @@ class TenantService:
         return cast(int, db.session.scalar(select(func.count(Tenant.id))))
 
     @staticmethod
-    def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str):
+    def check_member_permission(
+        tenant: Tenant,
+        operator: Account,
+        member: Account | None,
+        action: str,
+        session: Session | scoped_session | None = None,
+    ):
         """Check member permission"""
+        active_session = session if session is not None else db.session
         perms = {
             "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
             "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
@@ -1538,7 +1584,7 @@ class TenantService:
             if operator.id == member.id:
                 raise CannotOperateSelfError("Cannot operate self.")
 
-        ta_operator = db.session.scalar(
+        ta_operator = active_session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == operator.id)
             .limit(1)
@@ -1548,7 +1594,7 @@ class TenantService:
             raise NoPermissionError(f"No permission to {action} member.")
 
         if action == "remove" and ta_operator.role == TenantAccountRole.ADMIN and member:
-            ta_member = db.session.scalar(
+            ta_member = active_session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == member.id)
                 .limit(1)
@@ -1557,7 +1603,12 @@ class TenantService:
                 raise NoPermissionError(f"No permission to {action} member.")
 
     @staticmethod
-    def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
+    def remove_member_from_tenant(
+        tenant: Tenant,
+        account: Account,
+        operator: Account,
+        session: Session | scoped_session | None = None,
+    ):
         """Remove member from tenant.
 
         If the removed member has ``AccountStatus.PENDING`` (invited but never
@@ -1567,9 +1618,10 @@ class TenantService:
         if operator.id == account.id:
             raise CannotOperateSelfError("Cannot operate self.")
 
-        TenantService.check_member_permission(tenant, operator, account, "remove")
+        active_session = session if session is not None else db.session
+        TenantService.check_member_permission(tenant, operator, account, "remove", session=active_session)
 
-        ta = db.session.scalar(
+        ta = active_session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .limit(1)
@@ -1582,23 +1634,23 @@ class TenantService:
         account_id = account.id
         account_email = account.email
 
-        db.session.delete(ta)
+        active_session.delete(ta)
 
         # Clean up orphaned pending accounts (invited but never activated)
         should_delete_account = False
         if account.status == AccountStatus.PENDING:
             # autoflush flushes ta deletion before this query, so 0 means no remaining joins
             remaining_joins = (
-                db.session.scalar(
+                active_session.scalar(
                     select(func.count(TenantAccountJoin.id)).where(TenantAccountJoin.account_id == account_id)
                 )
                 or 0
             )
             if remaining_joins == 0:
-                db.session.delete(account)
+                active_session.delete(account)
                 should_delete_account = True
 
-        db.session.commit()
+        active_session.commit()
 
         if should_delete_account:
             logger.info(
@@ -1624,12 +1676,19 @@ class TenantService:
             )
 
     @staticmethod
-    def update_member_role(tenant: Tenant, member: Account, new_role: str, operator: Account):
+    def update_member_role(
+        tenant: Tenant,
+        member: Account,
+        new_role: str,
+        operator: Account,
+        session: Session | scoped_session | None = None,
+    ):
         """Update member role"""
-        TenantService.check_member_permission(tenant, operator, member, "update")
+        active_session = session if session is not None else db.session
+        TenantService.check_member_permission(tenant, operator, member, "update", session=active_session)
         new_tenant_role = TenantAccountRole(new_role)
 
-        target_member_join = db.session.scalar(
+        target_member_join = active_session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == member.id)
             .limit(1)
@@ -1638,7 +1697,7 @@ class TenantService:
         if not target_member_join:
             raise MemberNotInTenantError("Member not in tenant.")
 
-        operator_role = TenantService.get_user_role(operator, tenant)
+        operator_role = TenantService.get_user_role(operator, tenant, session=active_session)
         target_role = TenantAccountRole(target_member_join.role)
         if operator_role == TenantAccountRole.ADMIN and (TenantAccountRole.OWNER in {target_role, new_tenant_role}):
             raise NoPermissionError("No permission to update member.")
@@ -1648,7 +1707,7 @@ class TenantService:
 
         if new_role == "owner":
             # Find the current owner and change their role to 'admin'
-            current_owner_join = db.session.scalar(
+            current_owner_join = active_session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "owner")
                 .limit(1)
@@ -1658,7 +1717,7 @@ class TenantService:
 
         # Update the role of the target member
         target_member_join.role = new_tenant_role
-        db.session.commit()
+        active_session.commit()
 
     @staticmethod
     def get_custom_config(tenant_id: str):
@@ -1785,12 +1844,19 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str | None, role: str = "normal", inviter: Account | None = None
+        cls,
+        tenant: Tenant,
+        email: str,
+        language: str | None,
+        role: str = "normal",
+        inviter: Account | None = None,
+        session: Session | scoped_session | None = None,
     ) -> str:
         if not inviter:
             raise ValueError("Inviter is required")
 
         normalized_email = email.lower()
+        active_session = session if session is not None else db.session
 
         """Invite new member"""
         # Check workspace permission for member invitations
@@ -1798,10 +1864,10 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:
-            TenantService.check_member_permission(tenant, inviter, None, "add")
+            TenantService.check_member_permission(tenant, inviter, None, "add", session=session)
             name = normalized_email.split("@")[0]
 
             account = cls.register(
@@ -1812,18 +1878,18 @@ class RegisterService:
                 is_setup=True,
             )
             # Create new tenant member for invited tenant
-            TenantService.create_tenant_member(tenant, account, role)
-            TenantService.switch_tenant(account, tenant.id)
+            TenantService.create_tenant_member(tenant, account, role, session=session)
+            TenantService.switch_tenant(account, tenant.id, session=session)
         else:
-            TenantService.check_member_permission(tenant, inviter, account, "add")
-            ta = db.session.scalar(
+            TenantService.check_member_permission(tenant, inviter, account, "add", session=session)
+            ta = active_session.scalar(
                 select(TenantAccountJoin)
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
                 .limit(1)
             )
 
             if not ta:
-                TenantService.create_tenant_member(tenant, account, role)
+                TenantService.create_tenant_member(tenant, account, role, session=session)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
