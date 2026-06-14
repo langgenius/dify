@@ -132,13 +132,14 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                     return value if isinstance(value, bool) else bool(value)
 
             case PluginParameterType.NUMBER:
-                if isinstance(value, int | float):
-                    return value
-                elif isinstance(value, str) and value:
-                    if "." in value:
-                        return float(value)
-                    else:
-                        return int(value)
+                match value:
+                    case int() | float():
+                        return value
+                    case str() if value:
+                        if "." in value:
+                            return float(value)
+                        else:
+                            return int(value)
             case PluginParameterType.SYSTEM_FILES | PluginParameterType.FILES:
                 if not isinstance(value, list):
                     return [value]
