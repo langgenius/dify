@@ -343,57 +343,6 @@ class TestResourceAccessScopeBindings:
         )
         assert payload.access_policy_ids == ["policy-1", "policy-2"]
 
-    def test_app_put_forwards_policy_and_expanded_members(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/apps/app-1/access-policies/policy-1/bindings",
-                method="PUT",
-                json={"scope": "all"},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch(
-                "controllers.console.workspace.rbac._resolve_access_scope_account_ids",
-                return_value=["acct-1", "acct-2"],
-            ),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist") as mock_replace,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACAppBindingsApi.put)(
-                rbac_mod.RBACAppBindingsApi(), "app-1", "policy-1"
-            )
-
-        tenant_id, account_id, app_id, bindings = mock_replace.call_args.args
-        assert (tenant_id, account_id, app_id) == ("tenant-1", "acct-1", "app-1")
-        assert bindings.account_ids == ["acct-1", "acct-2"]
-
-    def test_dataset_put_forwards_policy_and_expanded_members(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/datasets/dataset-1/access-policies/policy-1/bindings",
-                method="PUT",
-                json={"scope": "specific", "account_ids": ["acct-2"]},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch(
-                "controllers.console.workspace.rbac._resolve_access_scope_account_ids",
-                return_value=["acct-2"],
-            ),
-            patch("controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist") as mock_replace,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACDatasetBindingsApi.put)(
-                rbac_mod.RBACDatasetBindingsApi(), "dataset-1", "policy-1"
-            )
-
-        tenant_id, account_id, dataset_id, bindings = mock_replace.call_args.args
-        assert (tenant_id, account_id, dataset_id) == (
-            "tenant-1",
-            "acct-1",
-            "dataset-1",
-        )
-        assert bindings.account_ids == ["acct-2"]
-
-
 class TestPaginationForwarding:
     def test_role_members_get_forwards_outer_pagination_params(self, app):
         with (

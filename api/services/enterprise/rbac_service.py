@@ -556,7 +556,18 @@ class ReplaceRoleBindings(_RBACModel):
 
 
 class ReplaceMemberBindings(_RBACModel):
+    scope: str = "specific"
     account_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("scope")
+    @classmethod
+    def _normalize_scope(cls, value: Any) -> str:
+        scope = str(value or "").strip().lower()
+        if scope in {"", "specific"}:
+            return "specific"
+        if scope in {"all", "only_me"}:
+            return scope
+        raise ValueError(f"invalid scope: {value}")
 
     @field_validator("account_ids", mode="before")
     @classmethod

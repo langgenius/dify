@@ -538,7 +538,7 @@ class RBACAppWhitelistApi(Resource):
                 tenant_id,
                 account_id,
                 str(app_id),
-                svc.ReplaceMemberBindings(account_ids=account_ids),
+                svc.ReplaceMemberBindings(scope=request.scope.value, account_ids=account_ids),
             )
         )
 
@@ -588,26 +588,6 @@ class RBACAppMemberBindingsApi(Resource):
         return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
 
 
-@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policies/<uuid:policy_id>/bindings")
-class RBACAppBindingsApi(Resource):
-    @login_required
-    def put(self, app_id, policy_id):
-        # Compatibility route: resource scope is now stored in the resource
-        # whitelist and no longer depends on the policy id.
-        _ = policy_id
-        tenant_id, account_id = _current_ids()
-        request = _payload(_ResourceAccessScopeRequest)
-        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
-        return _dump(
-            svc.RBACService.AppAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(app_id),
-                svc.ReplaceMemberBindings(account_ids=account_ids),
-            )
-        )
-
-
 # ---------------------------------------------------------------------------
 # Per-dataset access (Knowledge Base Access Config).
 # ---------------------------------------------------------------------------
@@ -640,7 +620,7 @@ class RBACDatasetWhitelistApi(Resource):
                 tenant_id,
                 account_id,
                 str(dataset_id),
-                svc.ReplaceMemberBindings(account_ids=account_ids),
+                svc.ReplaceMemberBindings(scope=request.scope.value, account_ids=account_ids),
             )
         )
 
@@ -681,25 +661,6 @@ class RBACDatasetRoleBindingsApi(Resource):
         tenant_id, account_id = _current_ids()
         return _dump(
             svc.RBACService.DatasetAccess.list_role_bindings(tenant_id, account_id, str(dataset_id), str(policy_id))
-        )
-
-
-@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policies/<uuid:policy_id>/bindings")
-class RBACDatasetBindingsApi(Resource):
-    @login_required
-    def put(self, dataset_id, policy_id):
-        # Compatibility route; see RBACAppBindingsApi.put.
-        _ = policy_id
-        tenant_id, account_id = _current_ids()
-        request = _payload(_ResourceAccessScopeRequest)
-        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
-        return _dump(
-            svc.RBACService.DatasetAccess.replace_whitelist(
-                tenant_id,
-                account_id,
-                str(dataset_id),
-                svc.ReplaceMemberBindings(account_ids=account_ids),
-            )
         )
 
 

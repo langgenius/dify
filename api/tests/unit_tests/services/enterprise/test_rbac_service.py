@@ -345,7 +345,7 @@ class TestResourceAccess:
 
     def test_app_replace_whitelist(self, mock_send: MagicMock):
         mock_send.return_value = {"account_ids": ["acct-1", "acct-2"]}
-        payload = svc.ReplaceMemberBindings(account_ids=["acct-1", "acct-2"])
+        payload = svc.ReplaceMemberBindings(scope="all", account_ids=["acct-1", "acct-2"])
 
         out = svc.RBACService.AppAccess.replace_whitelist("tenant-1", "acct-1", "app-1", payload)
 
@@ -353,7 +353,7 @@ class TestResourceAccess:
         assert call.method == "PUT"
         assert call.endpoint == "/rbac/apps/whitelist"
         assert call.params == {"app_id": "app-1"}
-        assert call.json == {"account_ids": ["acct-1", "acct-2"]}
+        assert call.json == {"scope": "all", "account_ids": ["acct-1", "acct-2"]}
         assert out.account_ids == ["acct-1", "acct-2"]
 
     def test_dataset_whitelist(self, mock_send: MagicMock):
