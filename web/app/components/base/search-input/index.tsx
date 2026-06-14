@@ -11,36 +11,6 @@ type SearchInputProps = {
   className?: string
 } & Pick<InputProps, 'aria-label' | 'autoFocus'>
 
-type SearchInputClearButtonProps = {
-  ariaLabel: string
-  onClick: () => void
-}
-
-function SearchInputIcon() {
-  return (
-    <span
-      className="mr-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-      aria-hidden="true"
-    />
-  )
-}
-
-function SearchInputClearButton({
-  ariaLabel,
-  onClick,
-}: SearchInputClearButtonProps) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      className="group/clear flex size-5 shrink-0 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
-      onClick={onClick}
-    >
-      <span className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary" aria-hidden="true" />
-    </button>
-  )
-}
-
 export function SearchInput({
   placeholder,
   className,
@@ -66,21 +36,19 @@ export function SearchInput({
 
   return (
     <div className={cn(
-      'flex min-h-8 w-full min-w-0 items-center rounded-lg border border-transparent bg-components-input-bg-normal px-2 text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
-      'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-      'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+      'relative',
       className,
     )}
     >
-      <SearchInputIcon />
+      <span className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" aria-hidden="true" />
       <Input
         ref={inputRef}
         type="search"
         name="query"
         aria-label={ariaLabel ?? t('operation.search', { ns: 'common' })}
         className={cn(
-          'block h-4.5 w-0 min-w-0 flex-1 rounded-none border-0 bg-transparent px-1 py-0 system-sm-regular shadow-none',
-          'hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none',
+          'ps-7',
+          !!inputValue && 'pe-7',
           '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
         )}
         placeholder={placeholder ?? t('operation.search', { ns: 'common' })}
@@ -120,14 +88,16 @@ export function SearchInput({
         autoFocus={autoFocus}
         enterKeyHint="search"
       />
-      {inputValue
-        ? (
-            <SearchInputClearButton
-              ariaLabel={t('operation.clear', { ns: 'common' })}
-              onClick={handleClear}
-            />
-          )
-        : null}
+      {!!inputValue && (
+        <button
+          type="button"
+          aria-label={t('operation.clear', { ns: 'common' })}
+          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          onClick={handleClear}
+        >
+          <span className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary" aria-hidden="true" />
+        </button>
+      )}
     </div>
   )
 }

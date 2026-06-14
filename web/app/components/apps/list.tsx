@@ -208,13 +208,16 @@ function List({
               onChange={setCreatorIDs}
             />
             <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <SearchInput
-              className="w-52"
-              value={keywords}
-              onValueChange={setKeywords}
-              placeholder={t('operation.search', { ns: 'common' })}
-              aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
-            />
+            <div className="relative w-50">
+              <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+              <SearchInput
+                className="w-52"
+                value={keywords}
+                onValueChange={setKeywords}
+                placeholder={t('operation.search', { ns: 'common' })}
+                aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
+              />
+            </div>
           </div>
           <Link
             href="/snippets"

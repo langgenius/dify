@@ -41,15 +41,14 @@ describe('SearchInput', () => {
 
       const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
       expect(clearButton).toHaveClass(
+        'right-1.5',
         'size-5',
-        'rounded-md',
         'focus-visible:bg-components-input-bg-hover',
         'focus-visible:ring-2',
         'focus-visible:ring-state-accent-solid',
         'focus-visible:ring-inset',
       )
       expect(clearButton).not.toHaveClass('size-4')
-      expect(clearButton).not.toHaveClass('absolute')
       expect(clearButton).not.toHaveClass('focus-visible:ring-1')
       expect(clearButton).not.toHaveClass('focus-visible:ring-components-input-border-active')
     })
@@ -152,25 +151,10 @@ describe('SearchInput', () => {
       expect(onValueChange).toHaveBeenCalledWith('')
     })
 
-    it('composes the input and adornments with the design-system input group layout', () => {
-      const { container } = render(<SearchInput value="" onValueChange={() => {}} />)
-      const wrapper = container.firstChild as HTMLElement
+    it('uses dify-ui input spacing for the search adornment', () => {
+      render(<SearchInput value="" onValueChange={() => {}} />)
       const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      const searchIcon = wrapper.querySelector('.i-ri-search-line')
-
-      expect(wrapper).toHaveClass(
-        'flex',
-        'min-h-8',
-        'items-center',
-        'rounded-lg',
-        'border',
-        'bg-components-input-bg-normal',
-        'focus-within:border-components-input-border-active',
-        'focus-within:bg-components-input-bg-active',
-      )
-      expect(searchIcon).toHaveAttribute('aria-hidden', 'true')
-      expect(input).toHaveClass('w-0', 'min-w-0', 'flex-1', 'bg-transparent', 'px-1')
-      expect(input).not.toHaveClass('ps-7')
+      expect(input).toHaveClass('ps-7')
       expect(input).not.toHaveClass('h-[18px]')
     })
   })
