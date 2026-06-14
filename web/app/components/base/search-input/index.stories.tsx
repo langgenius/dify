@@ -2,7 +2,14 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import type { ComponentProps } from 'react'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useState } from 'react'
-import { SearchInput } from '.'
+import {
+  SearchInput,
+  SearchInputClearButton,
+  SearchInputGroup,
+  SearchInputIcon,
+  SearchInputInput,
+  SearchInputRoot,
+} from '.'
 
 const meta = {
   title: 'Base/Data Entry/SearchInput',
@@ -97,6 +104,39 @@ export const CustomPlaceholder: Story = {
     value: '',
   },
 }
+
+const CompoundDemo = () => {
+  const [value, setValue] = useState('workflow')
+
+  return (
+    <div style={{ width: '400px' }} className="space-y-3">
+      <SearchInputRoot value={value} onValueChange={setValue}>
+        <SearchInputGroup className="h-9 px-3">
+          <SearchInputIcon className="text-text-tertiary" />
+          <SearchInputInput
+            aria-label="Filter workflows"
+            name="workflow-keyword"
+            placeholder="Filter workflows"
+            className="system-md-regular"
+          />
+          <SearchInputClearButton aria-label="Clear workflow filter" className="text-text-tertiary">
+            <span className="i-ri-close-line size-4" aria-hidden="true" />
+          </SearchInputClearButton>
+        </SearchInputGroup>
+      </SearchInputRoot>
+      <div className="system-xs-regular text-text-tertiary">
+        Current query:
+        {' '}
+        {value || 'none'}
+      </div>
+    </div>
+  )
+}
+
+export const Compound: Story = {
+  render: () => <CompoundDemo />,
+  parameters: { controls: { disable: true } },
+} as unknown as Story
 
 // Real-world example - User list search
 const UserListSearchDemo = () => {
