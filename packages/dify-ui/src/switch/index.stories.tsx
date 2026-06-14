@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState, useTransition } from 'react'
+import * as React from 'react'
 import { Switch, SwitchSkeleton } from '.'
 import {
   FieldDescription,
@@ -47,12 +46,12 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-type SwitchDemoProps = Partial<Omit<ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>> & {
+type SwitchDemoProps = Partial<Omit<React.ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>> & {
   checked?: boolean
 }
 
 const SwitchDemo = (args: SwitchDemoProps) => {
-  const [enabled, setEnabled] = useState(args.checked ?? false)
+  const [enabled, setEnabled] = React.useState(args.checked ?? false)
 
   return (
     <FieldRoot name="autoRetry" className="w-72">
@@ -167,7 +166,7 @@ export const AllStates: Story = {
 }
 
 const SizeComparisonDemo = () => {
-  const [states, setStates] = useState({
+  const [states, setStates] = React.useState({
     xs: false,
     sm: false,
     md: true,
@@ -209,7 +208,7 @@ export const SizeComparison: Story = {
 }
 
 const LoadingDemo = () => {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = React.useState(true)
 
   return (
     <div className="flex flex-col items-center space-y-4">
@@ -275,7 +274,7 @@ export const Loading: Story = {
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 function useMockAutoRetrySettingQuery() {
-  const [enabled, setEnabled] = useState(false)
+  const [enabled, setEnabled] = React.useState(false)
 
   return {
     data: {
@@ -290,8 +289,8 @@ function useMockUpdateAutoRetrySettingMutation({
 }: {
   onSuccess: (enabled: boolean) => void
 }) {
-  const [requestCount, setRequestCount] = useState(0)
-  const [isPending, startTransition] = useTransition()
+  const [requestCount, setRequestCount] = React.useState(0)
+  const [isPending, startTransition] = React.useTransition()
 
   const mutate = (nextValue: boolean) => {
     if (isPending)
