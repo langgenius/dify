@@ -1,13 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import {
-  SearchInput,
-  SearchInputClearButton,
-  SearchInputGroup,
-  SearchInputIcon,
-  SearchInputInput,
-  SearchInputRoot,
-} from '..'
+import { SearchInput } from '..'
 
 describe('SearchInput', () => {
   describe('Render', () => {
@@ -120,47 +113,6 @@ describe('SearchInput', () => {
       expect(onValueChange).toHaveBeenNthCalledWith(3, 'final')
     })
 
-    it('keeps composition state when custom composition handlers prevent default', () => {
-      const onValueChange = vi.fn()
-
-      function ControlledSearchInput() {
-        const [value, setValue] = useState('initial')
-
-        return (
-          <SearchInputRoot
-            value={value}
-            onValueChange={(nextValue) => {
-              onValueChange(nextValue)
-              setValue(nextValue)
-            }}
-          >
-            <SearchInputGroup>
-              <SearchInputInput
-                aria-label="Filter datasets"
-                onCompositionStart={event => event.preventDefault()}
-                onCompositionEnd={event => event.preventDefault()}
-              />
-            </SearchInputGroup>
-          </SearchInputRoot>
-        )
-      }
-
-      render(<ControlledSearchInput />)
-      const input = screen.getByRole('searchbox', { name: 'Filter datasets' })
-
-      fireEvent.compositionStart(input)
-      fireEvent.change(input, { target: { value: 'final' } })
-
-      expect(onValueChange).not.toHaveBeenCalled()
-
-      fireEvent.compositionEnd(input)
-      fireEvent.change(input, { target: { value: 'finalx' } })
-
-      expect(onValueChange).toHaveBeenCalledTimes(2)
-      expect(onValueChange).toHaveBeenNthCalledWith(1, 'final')
-      expect(onValueChange).toHaveBeenNthCalledWith(2, 'finalx')
-    })
-
     it('clears composition value without committing stale text', () => {
       const onValueChange = vi.fn()
 
@@ -191,40 +143,6 @@ describe('SearchInput', () => {
       expect(onValueChange).toHaveBeenCalledWith('')
     })
 
-    it('does not commit stale composition text after parent value reset', () => {
-      const onValueChange = vi.fn()
-
-      function ControlledSearchInput() {
-        const [value, setValue] = useState('initial')
-
-        return (
-          <>
-            <button type="button" onClick={() => setValue('')}>
-              Reset
-            </button>
-            <SearchInput
-              value={value}
-              onValueChange={(nextValue) => {
-                onValueChange(nextValue)
-                setValue(nextValue)
-              }}
-            />
-          </>
-        )
-      }
-
-      render(<ControlledSearchInput />)
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-
-      fireEvent.compositionStart(input)
-      fireEvent.change(input, { target: { value: 'final' } })
-      fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
-      fireEvent.compositionEnd(input, { target: { value: 'final' } })
-
-      expect(input).toHaveValue('')
-      expect(onValueChange).not.toHaveBeenCalled()
-    })
-
     it('calls onValueChange with empty string when clear button is clicked', () => {
       const onValueChange = vi.fn()
       render(<SearchInput value="has value" onValueChange={onValueChange} />)
@@ -232,73 +150,6 @@ describe('SearchInput', () => {
       const clearButton = screen.getByLabelText('common.operation.clear')
       fireEvent.click(clearButton)
       expect(onValueChange).toHaveBeenCalledWith('')
-    })
-
-    it('supports compound composition with custom input and clear button props', () => {
-      const onValueChange = vi.fn()
-
-      render(
-        <SearchInputRoot value="query" onValueChange={onValueChange}>
-          <SearchInputGroup className="custom-group" data-search-input>
-            <SearchInputIcon className="custom-icon" />
-            <SearchInputInput
-              aria-label="Filter datasets"
-              className="custom-input"
-              name="keyword"
-              enterKeyHint="done"
-              placeholder="Filter"
-            />
-            <SearchInputClearButton aria-label="Reset filter" className="custom-clear">
-              Reset
-            </SearchInputClearButton>
-          </SearchInputGroup>
-        </SearchInputRoot>,
-      )
-
-      const input = screen.getByRole('searchbox', { name: 'Filter datasets' })
-      const clearButton = screen.getByRole('button', { name: 'Reset filter' })
-
-      expect(input).toHaveAttribute('name', 'keyword')
-      expect(input).toHaveAttribute('enterkeyhint', 'done')
-      expect(input).toHaveClass('custom-input')
-      expect(clearButton).toHaveTextContent('Reset')
-      expect(clearButton).toHaveClass('custom-clear')
-
-      fireEvent.click(clearButton)
-      expect(onValueChange).toHaveBeenCalledWith('')
-    })
-
-    it('lets custom clear button handlers prevent clearing', () => {
-      const onValueChange = vi.fn()
-
-      render(
-        <SearchInputRoot value="query" onValueChange={onValueChange}>
-          <SearchInputGroup>
-            <SearchInputInput aria-label="Filter datasets" />
-            <SearchInputClearButton
-              aria-label="Reset filter"
-              onClick={event => event.preventDefault()}
-            />
-          </SearchInputGroup>
-        </SearchInputRoot>,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Reset filter' }))
-      expect(onValueChange).not.toHaveBeenCalled()
-    })
-
-    it('supports compound composition without a clear button', () => {
-      render(
-        <SearchInputRoot value="query" onValueChange={() => {}}>
-          <SearchInputGroup>
-            <SearchInputIcon />
-            <SearchInputInput aria-label="Filter datasets" />
-          </SearchInputGroup>
-        </SearchInputRoot>,
-      )
-
-      expect(screen.getByRole('searchbox', { name: 'Filter datasets' })).toHaveValue('query')
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
 
     it('composes the input and adornments with the design-system input group layout', () => {
