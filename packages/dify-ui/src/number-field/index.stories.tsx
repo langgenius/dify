@@ -281,7 +281,7 @@ function FormDemo() {
         <Button type="submit" variant="primary">Save Settings</Button>
       </div>
       {savedValue && (
-        <div aria-live="polite" className="rounded-lg bg-background-section px-3 py-2 text-text-secondary system-xs-regular">
+        <div className="rounded-lg bg-background-section px-3 py-2 text-text-secondary system-xs-regular">
           Saved:
           {' '}
           {savedValue}
