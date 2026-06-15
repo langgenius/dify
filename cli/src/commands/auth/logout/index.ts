@@ -21,14 +21,14 @@ export default class Logout extends DifyCommand {
   async run(argv: string[]): Promise<void> {
     this.parse(Logout, argv)
     const io = realStreams()
-    const reg = Registry.load()
+    const reg = await Registry.load()
     const active = reg.resolveActive()
 
     let http: HttpClient | undefined
     if (active !== undefined) {
       let bearer = ''
       try {
-        bearer = getTokenStore(reg.token_storage).read(active.host, active.email)
+        bearer = await getTokenStore(reg.token_storage).read(active.host, active.email)
       }
       catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
       if (bearer !== '') {
