@@ -2,25 +2,23 @@
 
 CLI client for [Dify] platform. Browser device-flow signin, list/inspect apps, run with structured input, parse output as JSON, YAML, or human text.
 
-## Install
+## Install (edge, internal)
 
-Builds are standalone binaries (Bun-compiled) published as **GitHub Actions workflow artifacts** — no npm, no GitHub Release assets. The installer fetches the latest successful `cli-release.yml` run on `main`, verifies sha256, and copies the binary into `$HOME/.local/bin/difyctl`.
+Per-commit `edge` builds are published to Cloudflare R2. Install with one command — pass the R2 base via env (shared internally):
 
 ```sh
-# GH_TOKEN with `actions:read` scope is required — workflow artifact downloads
-# need auth even on public repos.
-export GH_TOKEN=<your-pat>
-curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
+curl -fsSL <BASE>/difyctl/install.sh | DIFYCTL_R2_BASE=<BASE> sh
 ```
 
-| Env              | Default           | Purpose                                               |
-| ---------------- | ----------------- | ----------------------------------------------------- |
-| `GH_TOKEN`       | —                 | GitHub PAT (or `GITHUB_TOKEN`) with `actions:read`.   |
-| `DIFYCTL_PREFIX` | `$HOME/.local`    | Install root. Binary lands at `<prefix>/bin/difyctl`. |
-| `DIFYCTL_REPO`   | `langgenius/dify` | Source repo.                                          |
-| `DIFYCTL_BRANCH` | `main`            | Branch to pick the latest successful run from.        |
+| Env               | Default        | Purpose                                        |
+| ----------------- | -------------- | ---------------------------------------------- |
+| `DIFYCTL_R2_BASE` | — (required)   | R2 public base, e.g. `https://pub-….r2.dev`.   |
+| `DIFYCTL_CHANNEL` | `edge`         | Channel to install.                            |
+| `DIFYCTL_PREFIX`  | `$HOME/.local` | Install root; binary → `<prefix>/bin/difyctl`. |
 
-Supported targets: `darwin-arm64`, `darwin-x64`, `linux-arm64`, `linux-x64`, `windows-x64.exe`. The shell installer covers Linux + macOS; Windows users can download the `.exe` directly from the same artifact.
+Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm <BASE>/difyctl/install.ps1 | iex`
+
+Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh`).
 
 ## Quickstart
 
