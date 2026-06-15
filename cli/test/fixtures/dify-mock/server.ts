@@ -150,8 +150,9 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   app.use('*', async (c, next) => {
     const scenario = getScenario()
     if (scenario === 'rate-limited') {
+      // Unified ErrorBody — per-token throttle (retryable); Retry-After advises the wait.
       return c.json(
-        { error: { code: 'rate_limited', message: 'too many requests' } },
+        { code: 'too_many_requests', message: 'Too many requests for this API token.', status: 429 },
         { status: 429, headers: { 'retry-after': '1' } },
       )
     }
