@@ -288,7 +288,7 @@ class TestDatasetList:
         current_user = self._mock_user()
         permissions = enterprise_rbac_service.MyPermissionsResponse(
             dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
-                default_permission_keys=["dataset.acl.readonly"]
+                default_permission_keys=["dataset.preview"]
             )
         )
 
@@ -323,7 +323,7 @@ class TestDatasetList:
                 overrides=[
                     enterprise_rbac_service.ResourcePermissionKeys(
                         resource_id="dataset-shared",
-                        permission_keys=["dataset.acl.readonly"],
+                        permission_keys=["dataset.preview"],
                     ),
                     enterprise_rbac_service.ResourcePermissionKeys(
                         resource_id="dataset-hidden",

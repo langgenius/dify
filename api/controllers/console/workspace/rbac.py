@@ -481,14 +481,6 @@ class _AccessScope(StrEnum):
 
 class _ResourceAccessScopeRequest(BaseModel):
     scope: _AccessScope
-    account_ids: list[str] = Field(default_factory=list)
-
-    @field_validator("account_ids", mode="before")
-    @classmethod
-    def _coerce_bindings(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        return value
 
 
 class _ReplaceBindingsRequest(BaseModel):
@@ -501,27 +493,6 @@ class _ReplaceBindingsRequest(BaseModel):
         if value is None:
             return []
         return value
-
-
-def _resolve_access_scope_account_ids(
-    tenant_id: str, account_id: str, payload: _ResourceAccessScopeRequest
-) -> list[str]:
-    if payload.scope is _AccessScope.ONLY_ME:
-        return [account_id]
-
-    requested_ids = sorted({value.strip() for value in payload.account_ids if value and value.strip()})
-    with session_factory.create_session() as session:
-        workspace_account_ids = set(
-            session.scalars(select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == tenant_id)).all()
-        )
-
-    if payload.scope is _AccessScope.ALL:
-        return sorted(workspace_account_ids)
-
-    unknown_ids = sorted(set(requested_ids) - workspace_account_ids)
-    if unknown_ids:
-        raise BadRequest(f"Accounts do not belong to the current workspace: {', '.join(unknown_ids)}")
-    return requested_ids
 
 
 @console_ns.route("/workspaces/current/rbac/my-permissions")
@@ -560,13 +531,12 @@ class RBACAppWhitelistApi(Resource):
     def put(self, app_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
         return _dump(
             svc.RBACService.AppAccess.replace_whitelist(
                 tenant_id,
                 account_id,
                 str(app_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value, account_ids=account_ids),
+                svc.ReplaceMemberBindings(scope=request.scope.value),
             )
         )
 
@@ -640,13 +610,12 @@ class RBACDatasetWhitelistApi(Resource):
     def put(self, dataset_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_ResourceAccessScopeRequest)
-        account_ids = _resolve_access_scope_account_ids(tenant_id, account_id, request)
         return _dump(
             svc.RBACService.DatasetAccess.replace_whitelist(
                 tenant_id,
                 account_id,
                 str(dataset_id),
-                svc.ReplaceMemberBindings(scope=request.scope.value, account_ids=account_ids),
+                svc.ReplaceMemberBindings(scope=request.scope.value),
             )
         )
 

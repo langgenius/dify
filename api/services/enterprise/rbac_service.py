@@ -557,7 +557,6 @@ class ReplaceRoleBindings(_RBACModel):
 
 class ReplaceMemberBindings(_RBACModel):
     scope: str = "specific"
-    account_ids: list[str] = Field(default_factory=list)
 
     @field_validator("scope")
     @classmethod
@@ -568,13 +567,6 @@ class ReplaceMemberBindings(_RBACModel):
         if scope in {"all", "only_me"}:
             return scope
         raise ValueError(f"invalid scope: {value}")
-
-    @field_validator("account_ids", mode="before")
-    @classmethod
-    def _coerce_account_ids(cls, value: Any) -> list[str]:
-        if value is None:
-            return []
-        return value
 
 
 class ReplaceBindings(_RBACModel):
@@ -1068,23 +1060,6 @@ class RBACService:
             )
             return MemberBindingsResponse.model_validate(data or {})
 
-        @staticmethod
-        def replace_member_bindings(
-            tenant_id: str,
-            account_id: str | None,
-            app_id: str,
-            policy_id: str,
-            payload: ReplaceMemberBindings,
-        ) -> MemberBindingsResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/apps/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"app_id": app_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return MemberBindingsResponse.model_validate(data or {})
 
         @staticmethod
         def replace_bindings(
@@ -1239,24 +1214,6 @@ class RBACService:
             return MemberBindingsResponse.model_validate(data or {})
 
         @staticmethod
-        def replace_member_bindings(
-            tenant_id: str,
-            account_id: str | None,
-            dataset_id: str,
-            policy_id: str,
-            payload: ReplaceMemberBindings,
-        ) -> MemberBindingsResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/datasets/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"dataset_id": dataset_id, "policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return MemberBindingsResponse.model_validate(data or {})
-
-        @staticmethod
         def replace_bindings(
             tenant_id: str,
             account_id: str | None,
@@ -1358,23 +1315,6 @@ class RBACService:
             return MemberBindingsResponse.model_validate(data or {})
 
         @staticmethod
-        def replace_app_member_bindings(
-            tenant_id: str,
-            account_id: str | None,
-            policy_id: str,
-            payload: ReplaceMemberBindings,
-        ) -> MemberBindingsResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/workspace/apps/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
-            )
-            return MemberBindingsResponse.model_validate(data or {})
-
-        @staticmethod
         def replace_app_bindings(
             tenant_id: str,
             account_id: str | None,
@@ -1435,23 +1375,6 @@ class RBACService:
                 tenant_id=tenant_id,
                 account_id=account_id,
                 params={"policy_id": policy_id},
-            )
-            return MemberBindingsResponse.model_validate(data or {})
-
-        @staticmethod
-        def replace_dataset_member_bindings(
-            tenant_id: str,
-            account_id: str | None,
-            policy_id: str,
-            payload: ReplaceMemberBindings,
-        ) -> MemberBindingsResponse:
-            data = _inner_call(
-                "PUT",
-                f"{_INNER_PREFIX}/workspace/datasets/access-policy/member-bindings",
-                tenant_id=tenant_id,
-                account_id=account_id,
-                params={"policy_id": policy_id},
-                json=payload.model_dump(mode="json"),
             )
             return MemberBindingsResponse.model_validate(data or {})
 

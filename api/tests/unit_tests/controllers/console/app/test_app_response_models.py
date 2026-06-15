@@ -649,7 +649,7 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
     assert get_paginate_apps.call_args.args[2].is_created_by_me is True
 
 
-def test_app_list_api_limits_to_view_layout_overrides_without_manage_own_permission(app, app_module):
+def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(app, app_module):
     method = app_module.AppListApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -669,7 +669,7 @@ def test_app_list_api_limits_to_view_layout_overrides_without_manage_own_permiss
                         overrides=[
                             app_module.enterprise_rbac_service.ResourcePermissionKeys(
                                 resource_id="app-shared",
-                                permission_keys=["app.acl.view_layout"],
+                                permission_keys=["app.preview"],
                             )
                         ]
                     )

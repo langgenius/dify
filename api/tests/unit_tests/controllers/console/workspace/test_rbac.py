@@ -137,20 +137,17 @@ class TestPydanticModels:
     def test_resource_access_scope_defaults_empty_account_ids(self):
         parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "specific"})
         assert parsed.scope is rbac_mod._AccessScope.SPECIFIC
-        assert parsed.account_ids == []
 
     def test_resource_access_scope_coerce_null_account_ids(self):
-        parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "all", "account_ids": None})
-        assert parsed.account_ids == []
+        rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "all"})
 
     def test_resource_access_scope_rejects_unknown_scope(self):
         with pytest.raises(ValidationError):
             rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "team"})
 
     def test_replace_bindings_keeps_role_binding_contract(self):
-        parsed = rbac_mod._ReplaceBindingsRequest.model_validate({"role_ids": None, "account_ids": None})
+        parsed = rbac_mod._ReplaceBindingsRequest.model_validate({"role_ids": None})
         assert parsed.role_ids == []
-        assert parsed.account_ids == []
 
     def test_replace_member_roles_coerce_null_list(self):
         parsed = rbac_mod._ReplaceMemberRolesRequest.model_validate({"role_ids": None})
@@ -262,56 +259,6 @@ class TestPaginationMapping:
         assert options.page_number == 2
         assert options.results_per_page == 50
         assert options.reverse is True
-
-
-class TestAccessScopeResolution:
-    def test_only_me_uses_current_account_without_query(self):
-        payload = rbac_mod._ResourceAccessScopeRequest.model_validate(
-            {"scope": "only_me", "account_ids": ["ignored"]}
-        )
-
-        with patch("controllers.console.workspace.rbac.session_factory.create_session") as mock_session:
-            result = rbac_mod._resolve_access_scope_account_ids("tenant-1", "acct-1", payload)
-
-        assert result == ["acct-1"]
-        mock_session.assert_not_called()
-
-    def test_all_expands_workspace_members(self):
-        payload = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "all"})
-        session = SimpleNamespace()
-        session.scalars = lambda _stmt: SimpleNamespace(all=lambda: ["acct-2", "acct-1"])
-        session_context = patch("controllers.console.workspace.rbac.session_factory.create_session")
-
-        with session_context as mock_create:
-            mock_create.return_value.__enter__.return_value = session
-            result = rbac_mod._resolve_access_scope_account_ids("tenant-1", "acct-current", payload)
-
-        assert result == ["acct-1", "acct-2"]
-
-    def test_specific_accepts_workspace_members_and_deduplicates(self):
-        payload = rbac_mod._ResourceAccessScopeRequest.model_validate(
-            {"scope": "specific", "account_ids": ["acct-2", "acct-1", "acct-2"]}
-        )
-        session = SimpleNamespace()
-        session.scalars = lambda _stmt: SimpleNamespace(all=lambda: ["acct-1", "acct-2", "acct-3"])
-
-        with patch("controllers.console.workspace.rbac.session_factory.create_session") as mock_create:
-            mock_create.return_value.__enter__.return_value = session
-            result = rbac_mod._resolve_access_scope_account_ids("tenant-1", "acct-current", payload)
-
-        assert result == ["acct-1", "acct-2"]
-
-    def test_specific_rejects_non_workspace_members(self):
-        payload = rbac_mod._ResourceAccessScopeRequest.model_validate(
-            {"scope": "specific", "account_ids": ["acct-1", "outside"]}
-        )
-        session = SimpleNamespace()
-        session.scalars = lambda _stmt: SimpleNamespace(all=lambda: ["acct-1"])
-
-        with patch("controllers.console.workspace.rbac.session_factory.create_session") as mock_create:
-            mock_create.return_value.__enter__.return_value = session
-            with pytest.raises(rbac_mod.BadRequest):
-                rbac_mod._resolve_access_scope_account_ids("tenant-1", "acct-current", payload)
 
 
 class TestResourceAccessScopeBindings:
