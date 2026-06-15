@@ -714,7 +714,6 @@ class AppService:
             backing_agent.updated_by = account_id
             backing_agent.updated_at = now
 
-        db.session.execute(sa.delete(AppStar).where(AppStar.tenant_id == app.tenant_id, AppStar.app_id == app.id))
         db.session.delete(app)
         db.session.commit()
 
