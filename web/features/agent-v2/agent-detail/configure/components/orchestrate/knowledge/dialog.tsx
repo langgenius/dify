@@ -285,6 +285,7 @@ export function AgentKnowledgeRetrievalDialog({
               <DatasetList
                 list={selectedDatasets}
                 onChange={setSelectedDatasets}
+                settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
               />
             </Field>
           </div>

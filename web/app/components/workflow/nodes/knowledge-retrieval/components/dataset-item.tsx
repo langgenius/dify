@@ -33,6 +33,7 @@ type Props = Readonly<{
   onChange: (dataSet: DataSet) => void
   readonly?: boolean
   editable?: boolean
+  settingsDrawerPopupClassName?: string
 }>
 
 const DatasetItem: FC<Props> = ({
@@ -41,6 +42,7 @@ const DatasetItem: FC<Props> = ({
   onChange,
   readonly,
   editable = true,
+  settingsDrawerPopupClassName,
 }) => {
   const media = useBreakpoints()
   const { t } = useTranslation()
@@ -149,7 +151,11 @@ const DatasetItem: FC<Props> = ({
           <DrawerPortal>
             <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
             <DrawerViewport>
-              <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl">
+              <DrawerPopup className={cn(
+                'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl',
+                settingsDrawerPopupClassName ?? 'data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:bottom-3',
+              )}
+              >
                 <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                   <SettingsModal
                     currentDataset={payload}

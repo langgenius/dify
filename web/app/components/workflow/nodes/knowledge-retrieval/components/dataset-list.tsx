@@ -13,12 +13,14 @@ type Props = Readonly<{
   list: DataSet[]
   onChange: (list: DataSet[]) => void
   readonly?: boolean
+  settingsDrawerPopupClassName?: string
 }>
 
 const DatasetList: FC<Props> = ({
   list,
   onChange,
   readonly,
+  settingsDrawerPopupClassName,
 }) => {
   const { t } = useTranslation()
   const userProfile = useAppContextSelector(s => s.userProfile)
@@ -67,6 +69,7 @@ const DatasetList: FC<Props> = ({
                 onChange={handleChange(index)}
                 readonly={readonly}
                 editable={item.editable}
+                settingsDrawerPopupClassName={settingsDrawerPopupClassName}
               />
             )
           })
