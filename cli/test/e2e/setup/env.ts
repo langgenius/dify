@@ -187,8 +187,13 @@ export function isE2ELocalMode(): boolean {
 /**
  * Resolve the E2E environment, merging capabilities (from global-setup) on top
  * of the optional env-var overrides. Capabilities always take priority.
+ *
+ * `caps` may be undefined in local mode (DIFY_E2E_MODE=local), where
+ * global-setup returns early without calling project.provide().
  */
-export function resolveEnv(caps: E2ECapabilities): E2EEnv {
+export function resolveEnv(caps: E2ECapabilities | undefined): E2EEnv {
+  if (!caps)
+    return loadE2EEnv()
   const env = loadE2EEnv()
   return {
     ...env,

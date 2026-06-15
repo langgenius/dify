@@ -21,7 +21,7 @@ const USE_HOST_HINT = 'run \'difyctl use host\' or \'difyctl auth login\''
 
 export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
-  const reg = Registry.load()
+  const reg = await Registry.load()
   if (reg.current_host === undefined)
     throw notLoggedInError(USE_HOST_HINT)
   const host = reg.current_host
@@ -39,7 +39,7 @@ export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   }
 
   const store = opts.store ?? getTokenStore(reg.token_storage)
-  if (store.read(host, target) === '') {
+  if (await store.read(host, target) === '') {
     throw new BaseError({
       code: ErrorCode.NotLoggedIn,
       message: `no credential stored for ${target} on ${host}`,
@@ -48,7 +48,7 @@ export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
   }
 
   reg.setAccount(target)
-  reg.save()
+  await reg.save()
   opts.io.out.write(`${cs.successIcon()} Active account on ${host} is now ${target}\n`)
 }
 

@@ -8,32 +8,32 @@ import { getConfigurationStore } from './manager'
 describe('saveConfig', () => {
   useTempConfigDir('difyctl-w-')
 
-  it('stamps schema_version=1 even if caller passed 0', () => {
-    saveConfig(getConfigurationStore(), { ...emptyConfig() })
-    const r = loadConfig(getConfigurationStore())
+  it('stamps schema_version=1 even if caller passed 0', async () => {
+    await saveConfig(getConfigurationStore(), { ...emptyConfig() })
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found)
       expect(r.config.schema_version).toBe(1)
   })
 
-  it('overrides a stale schema_version on save', () => {
-    saveConfig(getConfigurationStore(), {
+  it('overrides a stale schema_version on save', async () => {
+    await saveConfig(getConfigurationStore(), {
       ...emptyConfig(),
       schema_version: 999 as never,
     })
-    const r = loadConfig(getConfigurationStore())
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found)
       expect(r.config.schema_version).toBe(1)
   })
 
-  it('round-trips defaults + state', () => {
-    saveConfig(getConfigurationStore(), {
+  it('round-trips defaults + state', async () => {
+    await saveConfig(getConfigurationStore(), {
       schema_version: 1,
       defaults: { format: 'wide', limit: 75 },
       state: { current_app: 'app-xyz' },
     })
-    const r = loadConfig(getConfigurationStore())
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).toBe('wide')
@@ -42,18 +42,18 @@ describe('saveConfig', () => {
     }
   })
 
-  it('overwrites the previous config on resave', () => {
-    saveConfig(getConfigurationStore(), {
+  it('overwrites the previous config on resave', async () => {
+    await saveConfig(getConfigurationStore(), {
       schema_version: 1,
       defaults: { format: 'json' },
       state: {},
     })
-    saveConfig(getConfigurationStore(), {
+    await saveConfig(getConfigurationStore(), {
       schema_version: 1,
       defaults: { format: 'table' },
       state: { current_app: 'app-2' },
     })
-    const r = loadConfig(getConfigurationStore())
+    const r = await loadConfig(getConfigurationStore())
     expect(r.found).toBe(true)
     if (r.found) {
       expect(r.config.defaults.format).toBe('table')

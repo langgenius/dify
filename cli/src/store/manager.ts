@@ -54,20 +54,20 @@ const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => T
  * write/read/remove round-trip. The probe MUTATES the keyring, so call this
  * only where a credential is about to be written anyway (login).
  */
-export function detectTokenStore(opts: GetTokenStoreOptions = {}): { store: TokenStore, mode: StorageMode } {
+export async function detectTokenStore(opts: GetTokenStoreOptions = {}): Promise<{ store: TokenStore, mode: StorageMode }> {
   // DIFY_E2E_NO_KEYRING=1 forces file-based storage in E2E tests to avoid
   // macOS keychain UI prompts blocking child processes spawned by vitest.
   if (process.env.DIFY_E2E_NO_KEYRING === '1')
     return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
   try {
     const k = TOKEN_STORE_OPENERS.keychain(opts)
-    k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)
+    await k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)
     let got = ''
     try {
-      got = k.read(PROBE_HOST, PROBE_EMAIL)
+      got = await k.read(PROBE_HOST, PROBE_EMAIL)
     }
     finally {
-      k.remove(PROBE_HOST, PROBE_EMAIL)
+      await k.remove(PROBE_HOST, PROBE_EMAIL)
     }
     if (got === PROBE_VALUE)
       return { store: k, mode: 'keychain' }

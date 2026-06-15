@@ -37,7 +37,7 @@ class FakeEntry {
 }
 
 vi.mock('@napi-rs/keyring', () => ({
-  Entry: FakeEntry,
+  AsyncEntry: FakeEntry,
 }))
 
 const { KeychainTokenStore } = await import('./token-store')
@@ -52,68 +52,68 @@ beforeEach(() => {
 })
 
 describe('KeychainTokenStore', () => {
-  it('round-trips a bearer through write/read', () => {
+  it('round-trips a bearer through write/read', async () => {
     const store = new KeychainTokenStore(SERVICE)
-    store.write('https://cloud.dify.ai', 'a@x.com', 'dfoa_secret')
-    expect(store.read('https://cloud.dify.ai', 'a@x.com')).toBe('dfoa_secret')
+    await store.write('https://cloud.dify.ai', 'a@x.com', 'dfoa_secret')
+    expect(await store.read('https://cloud.dify.ai', 'a@x.com')).toBe('dfoa_secret')
   })
 
-  it('returns empty string for an absent credential', () => {
+  it('returns empty string for an absent credential', async () => {
     const store = new KeychainTokenStore(SERVICE)
-    expect(store.read('https://cloud.dify.ai', 'missing@x.com')).toBe('')
+    expect(await store.read('https://cloud.dify.ai', 'missing@x.com')).toBe('')
   })
 
-  it('removes a credential, after which read returns empty string', () => {
+  it('removes a credential, after which read returns empty string', async () => {
     const store = new KeychainTokenStore(SERVICE)
-    store.write('h', 'e', 'dfoa_secret')
-    store.remove('h', 'e')
-    expect(store.read('h', 'e')).toBe('')
+    await store.write('h', 'e', 'dfoa_secret')
+    await store.remove('h', 'e')
+    expect(await store.read('h', 'e')).toBe('')
   })
 
-  it('treats remove of an absent credential as a no-op', () => {
+  it('treats remove of an absent credential as a no-op', async () => {
     const store = new KeychainTokenStore(SERVICE)
-    expect(() => store.remove('h', 'absent')).not.toThrow()
+    await expect(store.remove('h', 'absent')).resolves.not.toThrow()
   })
 
-  it('uses the legacy entry name tokens.<host>.<email> (back-compat)', () => {
+  it('uses the legacy entry name tokens.<host>.<email> (back-compat)', async () => {
     const store = new KeychainTokenStore(SERVICE)
-    store.write('https://cloud.dify.ai', 'a@x.com', 'dfoa_secret')
+    await store.write('https://cloud.dify.ai', 'a@x.com', 'dfoa_secret')
     expect(constructed).toContainEqual({
       service: SERVICE,
       username: 'tokens.https://cloud.dify.ai.a@x.com',
     })
   })
 
-  it('keeps host and email literal — dots, colons, and @ are never split', () => {
+  it('keeps host and email literal — dots, colons, and @ are never split', async () => {
     const store = new KeychainTokenStore(SERVICE)
     const host = 'https://my.dify.example.com:8443'
     const email = 'first.last@sub.example.com'
-    store.write(host, email, 'dfoa_literal')
-    expect(store.read(host, email)).toBe('dfoa_literal')
+    await store.write(host, email, 'dfoa_literal')
+    expect(await store.read(host, email)).toBe('dfoa_literal')
     expect(constructed).toContainEqual({
       service: SERVICE,
       username: `tokens.${host}.${email}`,
     })
   })
 
-  it('returns empty string when the stored value decodes to a non-string', () => {
+  it('returns empty string when the stored value decodes to a non-string', async () => {
     const store = new KeychainTokenStore(SERVICE)
     passwords.set(`${SERVICE}::tokens.h.e`, '123')
-    expect(store.read('h', 'e')).toBe('')
+    expect(await store.read('h', 'e')).toBe('')
   })
 
-  it('returns empty string when the stored value is not valid JSON', () => {
+  it('returns empty string when the stored value is not valid JSON', async () => {
     const store = new KeychainTokenStore(SERVICE)
     passwords.set(`${SERVICE}::tokens.h.e`, 'not-json')
-    expect(store.read('h', 'e')).toBe('')
+    expect(await store.read('h', 'e')).toBe('')
   })
 
-  it('throws KeyringUnavailable (not empty string) when keyring access fails on read', () => {
+  it('throws KeyringUnavailable (not empty string) when keyring access fails on read', async () => {
     getPasswordError = new Error('keyring locked')
     const store = new KeychainTokenStore(SERVICE)
     let caught: unknown
     try {
-      store.read('h', 'e')
+      await store.read('h', 'e')
     }
     catch (err) {
       caught = err
@@ -122,12 +122,12 @@ describe('KeychainTokenStore', () => {
     expect((caught as BaseError).code).toBe(ErrorCode.KeyringUnavailable)
   })
 
-  it('throws KeyringUnavailable when keyring access fails on write', () => {
+  it('throws KeyringUnavailable when keyring access fails on write', async () => {
     setPasswordError = new Error('keyring locked')
     const store = new KeychainTokenStore(SERVICE)
     let caught: unknown
     try {
-      store.write('h', 'e', 'dfoa_secret')
+      await store.write('h', 'e', 'dfoa_secret')
     }
     catch (err) {
       caught = err
