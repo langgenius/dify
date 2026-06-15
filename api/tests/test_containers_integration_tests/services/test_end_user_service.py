@@ -1,3 +1,4 @@
+import pytest
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -210,8 +211,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         # Assert
         assert result.type == InvokeFrom.WEB_APP
 
-    @patch("services.end_user_service.logger")
-    def test_upgrade_legacy_end_user_type(self, mock_logger, db_session_with_containers: Session, factory):
+    def test_upgrade_legacy_end_user_type(self, caplog: pytest.LogCaptureFixture, db_session_with_containers: Session, factory):
         """Test upgrading legacy end user with different type."""
         # Arrange
         app = factory.create_app_and_account(db_session_with_containers)
@@ -227,22 +227,27 @@ class TestEndUserServiceGetOrCreateEndUserByType:
             session_id=user_id,
             invoke_type=InvokeFrom.SERVICE_API,
         )
-
-        # Act - Request with different type
-        result = EndUserService.get_or_create_end_user_by_type(
-            type=InvokeFrom.WEB_APP,
-            tenant_id=tenant_id,
-            app_id=app_id,
-            user_id=user_id,
-        )
+        with caplog.at_level(logging.INFO, logger="services.end_user_service"):
+            # Act - Request with different type
+            result = EndUserService.get_or_create_end_user_by_type(
+                type=InvokeFrom.WEB_APP,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                user_id=user_id,
+            )
 
         # Assert
         assert result.id == existing_user.id
         assert result.type == InvokeFrom.WEB_APP  # Type should be updated
-        mock_logger.info.assert_called_once()
-        # Verify log message contains upgrade info
-        log_call = mock_logger.info.call_args[0][0]
-        assert "Upgrading legacy EndUser" in log_call
+        matching_logs = [
+            record
+            for record in caplog.records
+            if record.name == "services.end_user_service"
+            and record.levelno == logging.INFO
+            and "Upgrading legacy EndUser" in record.message
+        ]
+
+        assert len(matching_logs) == 1
 
     @patch("services.end_user_service.logger")
     def test_get_existing_end_user_matching_type(self, mock_logger, db_session_with_containers: Session, factory):
