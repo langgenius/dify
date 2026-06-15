@@ -140,7 +140,6 @@ const BasicAppPreview: FC<Props> = ({
       external_data_tools: modelConfig.external_data_tools,
       dataSets,
       agentConfig: appDetail?.mode === 'agent-chat'
-        // eslint-disable-next-line style/multiline-ternary
         ? ({
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
             ...modelConfig.agent_mode,

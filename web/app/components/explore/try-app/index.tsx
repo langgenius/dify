@@ -1,4 +1,3 @@
-/* eslint-disable style/multiline-ternary */
 'use client'
 import type { FC } from 'react'
 import type { App as AppType } from '@/models/explore'

@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any, style/jsx-one-expression-per-line */
+/* eslint-disable ts/no-explicit-any */
 import type { ListFilterNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'

@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any, style/jsx-one-expression-per-line */
+/* eslint-disable ts/no-explicit-any */
 import type { VariableAssignerNodeType } from '../types'
 import type { PanelProps } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
