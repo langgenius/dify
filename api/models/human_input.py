@@ -40,6 +40,10 @@ class HumanInputForm(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    # ENG-635: Agent v2 chat ask_human forms are owned by a conversation turn
+    # instead of a workflow run (the new Agent App has no workflow_run_id). Exactly
+    # one of workflow_run_id / conversation_id is set for a RUNTIME form.
+    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     form_kind: Mapped[HumanInputFormKind] = mapped_column(
         EnumText(HumanInputFormKind),
         nullable=False,

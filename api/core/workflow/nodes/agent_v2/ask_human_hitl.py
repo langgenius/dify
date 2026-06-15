@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, assert_never
 
 from dify_agent.layers.ask_human import (
@@ -230,29 +231,36 @@ def build_delivery_methods(
     return methods
 
 
-def build_ask_human_pause_reason(
+@dataclass(frozen=True, slots=True)
+class AskHumanFormCreated:
+    """A created ask_human HITL form, owner-agnostic (workflow run or conversation)."""
+
+    form_id: str
+    args: AskHumanToolArgs
+    node_data: HumanInputNodeData
+    node_title: str
+    resolved_default_values: dict[str, Any]
+
+
+def create_ask_human_form(
     *,
     deferred_tool_call: DeferredToolCallPayload,
     node_id: str,
     default_node_title: str,
-    workflow_run_id: str | None,
     contacts: Sequence[AgentHumanContactConfig],
     repository: HumanInputFormRepository,
-    expected_tool_name: str = DEFAULT_ASK_HUMAN_TOOL_NAME,
+    workflow_run_id: str | None = None,
+    conversation_id: str | None = None,
     display_in_ui: bool = True,
-) -> HumanInputRequired | None:
-    """Create a HITL form for an ask_human deferred call and return its pause reason.
+) -> AskHumanFormCreated:
+    """Create a HITL form from an ask_human deferred call (caller verified tool_name).
 
-    Returns ``None`` when the deferred call is *not* the ask_human tool, letting
-    the caller fall back to a generic scheduling pause. Raises
-    ``AskHumanFormBuildError`` when the call is ask_human but its args or the form
-    cannot be built — the caller should surface that as a node failure rather
-    than a silent, unresumable pause.
+    The form is owned by exactly one of ``workflow_run_id`` (workflow Agent node)
+    or ``conversation_id`` (Agent v2 chat). Raises ``AskHumanFormBuildError`` on
+    invalid args, a missing owner, or a repository failure.
     """
-    if deferred_tool_call.tool_name != expected_tool_name:
-        return None
-    if not workflow_run_id:
-        raise AskHumanFormBuildError("workflow_run_id is required to create an ask_human HITL form")
+    if not workflow_run_id and not conversation_id:
+        raise AskHumanFormBuildError("an ask_human HITL form requires a workflow_run_id or conversation_id")
 
     args = parse_ask_human_args(deferred_tool_call.args)
     node_title = args.title or default_node_title
@@ -263,6 +271,7 @@ def build_ask_human_pause_reason(
         form = repository.create_form(
             FormCreateParams(
                 workflow_execution_id=workflow_run_id,
+                conversation_id=conversation_id,
                 node_id=node_id,
                 form_config=node_data,
                 # No workflow-variable placeholders to resolve — the content is
@@ -276,22 +285,66 @@ def build_ask_human_pause_reason(
     except ValueError as error:
         raise AskHumanFormBuildError(f"failed to create ask_human HITL form: {error}") from error
 
-    return HumanInputRequired(
+    return AskHumanFormCreated(
         form_id=form.id,
-        form_content=node_data.form_content,
-        inputs=list(node_data.inputs),
-        actions=list(node_data.user_actions),
-        node_id=node_id,
+        args=args,
+        node_data=node_data,
         node_title=node_title,
         resolved_default_values=resolved_default_values,
+    )
+
+
+def build_ask_human_pause_reason(
+    *,
+    deferred_tool_call: DeferredToolCallPayload,
+    node_id: str,
+    default_node_title: str,
+    workflow_run_id: str | None,
+    contacts: Sequence[AgentHumanContactConfig],
+    repository: HumanInputFormRepository,
+    expected_tool_name: str = DEFAULT_ASK_HUMAN_TOOL_NAME,
+    display_in_ui: bool = True,
+) -> HumanInputRequired | None:
+    """Create a workflow HITL form for an ask_human call and return its pause reason.
+
+    Returns ``None`` when the deferred call is *not* the ask_human tool, letting
+    the caller fall back to a generic scheduling pause. Raises
+    ``AskHumanFormBuildError`` when the call is ask_human but its args or the form
+    cannot be built — the caller should surface that as a node failure rather
+    than a silent, unresumable pause.
+    """
+    if deferred_tool_call.tool_name != expected_tool_name:
+        return None
+    if not workflow_run_id:
+        raise AskHumanFormBuildError("workflow_run_id is required to create an ask_human HITL form")
+
+    created = create_ask_human_form(
+        deferred_tool_call=deferred_tool_call,
+        node_id=node_id,
+        default_node_title=default_node_title,
+        contacts=contacts,
+        repository=repository,
+        workflow_run_id=workflow_run_id,
+        display_in_ui=display_in_ui,
+    )
+    return HumanInputRequired(
+        form_id=created.form_id,
+        form_content=created.node_data.form_content,
+        inputs=list(created.node_data.inputs),
+        actions=list(created.node_data.user_actions),
+        node_id=node_id,
+        node_title=created.node_title,
+        resolved_default_values=created.resolved_default_values,
     )
 
 
 __all__ = [
     "DEFAULT_ASK_HUMAN_TOOL_NAME",
     "AskHumanFormBuildError",
+    "AskHumanFormCreated",
     "ask_human_args_to_node_data",
     "build_ask_human_pause_reason",
     "build_delivery_methods",
+    "create_ask_human_form",
     "parse_ask_human_args",
 ]

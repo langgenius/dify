@@ -18,7 +18,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 
 from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
@@ -65,6 +65,8 @@ class AgentAppRuntimeBuildContext:
     user_query: str
     idempotency_key: str
     session_snapshot: CompositorSessionSnapshot | None = None
+    # ENG-638: set when resuming a chat turn after a submitted ask_human form.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,6 +161,7 @@ class AgentAppRuntimeRequestBuilder:
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
+                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
             )
