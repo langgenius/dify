@@ -1,6 +1,6 @@
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Protocol, cast
+from typing import cast
 
 import pytest
 from flask import Flask
@@ -128,10 +128,6 @@ def _get_app_model_modes(view) -> list[AppMode]:
     return []
 
 
-class _PayloadWithDescription(Protocol):
-    description: object
-
-
 @pytest.fixture
 def account_id() -> str:
     return "account-1"
@@ -153,27 +149,10 @@ def test_roster_list_get_parses_query_and_calls_service(app: Flask, monkeypatch:
     assert captured == {"tenant_id": "tenant-1", "page": 2, "limit": 5, "keyword": "analyst"}
 
 
-def test_roster_list_post_creates_agent_and_returns_detail(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    created_agent = SimpleNamespace(id="agent-1")
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "create_roster_agent",
-        lambda _self, **kwargs: created_agent,
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "get_roster_agent_detail",
-        lambda _self, **kwargs: _agent_response(kwargs["agent_id"]),
-    )
-
-    with app.test_request_context(json={"name": "Analyst", "agent_soul": {"prompt": {"system_prompt": "x"}}}):
-        result, status = unwrap(AgentRosterListApi.post)(AgentRosterListApi(), "tenant-1", account_id)
-
-    assert status == 201
-    assert result["id"] == "agent-1"
-    assert result["agent_kind"] == "dify_agent"
+def test_roster_direct_mutation_endpoints_are_not_exposed() -> None:
+    assert not hasattr(AgentRosterListApi, "post")
+    assert not hasattr(AgentRosterDetailApi, "patch")
+    assert not hasattr(AgentRosterDetailApi, "delete")
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -192,29 +171,13 @@ def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.Monkey
     assert captured == {"tenant_id": "tenant-1", "page": 1, "limit": 10, "keyword": None, "app_id": "app-1"}
 
 
-def test_roster_detail_patch_delete_and_versions_call_services(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
+def test_roster_detail_and_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     version_id = "00000000-0000-0000-0000-000000000002"
-    archived: dict[str, object] = {}
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_roster_agent_detail",
         lambda _self, **kwargs: _agent_response(cast(str, kwargs["agent_id"])),
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "update_roster_agent",
-        lambda _self, **kwargs: {
-            **_agent_response(cast(str, kwargs["agent_id"])),
-            "description": cast(_PayloadWithDescription, kwargs["payload"]).description,
-        },
-    )
-    monkeypatch.setattr(
-        roster_controller.AgentRosterService,
-        "archive_roster_agent",
-        lambda _self, **kwargs: archived.update(kwargs),
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
@@ -245,13 +208,6 @@ def test_roster_detail_patch_delete_and_versions_call_services(
     )
 
     assert unwrap(AgentRosterDetailApi.get)(AgentRosterDetailApi(), "tenant-1", agent_id)["id"] == agent_id
-    with app.test_request_context(json={"description": "updated"}):
-        assert (
-            unwrap(AgentRosterDetailApi.patch)(AgentRosterDetailApi(), "tenant-1", account_id, agent_id)["description"]
-            == "updated"
-        )
-    assert unwrap(AgentRosterDetailApi.delete)(AgentRosterDetailApi(), "tenant-1", account_id, agent_id) == ("", 204)
-    assert archived["account_id"] == "account-1"
     assert (
         unwrap(AgentRosterVersionsApi.get)(AgentRosterVersionsApi(), "tenant-1", agent_id)["data"][0]["id"]
         == "version-1"

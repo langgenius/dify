@@ -12,15 +12,12 @@ export type AgentRosterListResponse = {
   total: number
 }
 
-export type RosterAgentCreatePayload = {
-  agent_soul?: AgentSoulConfig
-  description?: string
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: AgentIconType | null
-  name: string
-  role?: string
-  version_note?: string | null
+export type AgentInviteOptionsResponse = {
+  data: Array<AgentInviteOptionResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type AgentRosterResponse = {
@@ -51,23 +48,6 @@ export type AgentRosterResponse = {
   workflow_node_id?: string | null
 }
 
-export type AgentInviteOptionsResponse = {
-  data: Array<AgentInviteOptionResponse>
-  has_more: boolean
-  limit: number
-  page: number
-  total: number
-}
-
-export type RosterAgentUpdatePayload = {
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: AgentIconType | null
-  name?: string | null
-  role?: string | null
-}
-
 export type AgentConfigSnapshotListResponse = {
   data: Array<AgentConfigSnapshotSummaryResponse>
 }
@@ -83,51 +63,6 @@ export type AgentConfigSnapshotDetailResponse = {
   version: number
   version_note?: string | null
 }
-
-export type AgentSoulConfig = {
-  app_features?: AgentSoulAppFeaturesConfig
-  app_variables?: Array<AppVariableConfig>
-  env?: AgentSoulEnvConfig
-  human?: AgentSoulHumanConfig
-  knowledge?: AgentSoulKnowledgeConfig
-  memory?: AgentSoulMemoryConfig
-  misc_legacy?: AgentSoulAppFeaturesConfig
-  model?: AgentSoulModelConfig | null
-  prompt?: AgentSoulPromptConfig
-  sandbox?: AgentSoulSandboxConfig
-  schema_version?: number
-  skills_files?: AgentSoulSkillsFilesConfig
-  tools?: AgentSoulToolsConfig
-}
-
-export type AgentIconType = 'emoji' | 'image' | 'link'
-
-export type AgentConfigSnapshotSummaryResponse = {
-  agent_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  id: string
-  summary?: string | null
-  version: number
-  version_note?: string | null
-}
-
-export type AgentKind = 'dify_agent'
-
-export type AgentPublishedReferenceResponse = {
-  app_id: string
-  app_mode: string
-  app_name: string
-  node_ids?: Array<string>
-  workflow_id: string
-  workflow_version: string
-}
-
-export type AgentScope = 'roster' | 'workflow_only'
-
-export type AgentSource = 'agent_app' | 'imported' | 'system' | 'workflow'
-
-export type AgentStatus = 'active' | 'archived'
 
 export type AgentInviteOptionResponse = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -158,6 +93,51 @@ export type AgentInviteOptionResponse = {
   updated_by?: string | null
   workflow_id?: string | null
   workflow_node_id?: string | null
+}
+
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  id: string
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentKind = 'dify_agent'
+
+export type AgentIconType = 'emoji' | 'image' | 'link'
+
+export type AgentPublishedReferenceResponse = {
+  app_id: string
+  app_mode: string
+  app_name: string
+  node_ids?: Array<string>
+  workflow_id: string
+  workflow_version: string
+}
+
+export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
+
+export type AgentStatus = 'active' | 'archived'
+
+export type AgentSoulConfig = {
+  app_features?: AgentSoulAppFeaturesConfig
+  app_variables?: Array<AppVariableConfig>
+  env?: AgentSoulEnvConfig
+  human?: AgentSoulHumanConfig
+  knowledge?: AgentSoulKnowledgeConfig
+  memory?: AgentSoulMemoryConfig
+  misc_legacy?: AgentSoulAppFeaturesConfig
+  model?: AgentSoulModelConfig | null
+  prompt?: AgentSoulPromptConfig
+  sandbox?: AgentSoulSandboxConfig
+  schema_version?: number
+  skills_files?: AgentSoulSkillsFilesConfig
+  tools?: AgentSoulToolsConfig
 }
 
 export type AgentConfigRevisionResponse = {
@@ -538,19 +518,6 @@ export type GetAgentsResponses = {
 
 export type GetAgentsResponse = GetAgentsResponses[keyof GetAgentsResponses]
 
-export type PostAgentsData = {
-  body: RosterAgentCreatePayload
-  path?: never
-  query?: never
-  url: '/agents'
-}
-
-export type PostAgentsResponses = {
-  201: AgentRosterResponse
-}
-
-export type PostAgentsResponse = PostAgentsResponses[keyof PostAgentsResponses]
-
 export type GetAgentsInviteOptionsData = {
   body?: never
   path?: never
@@ -570,22 +537,6 @@ export type GetAgentsInviteOptionsResponses = {
 export type GetAgentsInviteOptionsResponse
   = GetAgentsInviteOptionsResponses[keyof GetAgentsInviteOptionsResponses]
 
-export type DeleteAgentsByAgentIdData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agents/{agent_id}'
-}
-
-export type DeleteAgentsByAgentIdResponses = {
-  204: void
-}
-
-export type DeleteAgentsByAgentIdResponse
-  = DeleteAgentsByAgentIdResponses[keyof DeleteAgentsByAgentIdResponses]
-
 export type GetAgentsByAgentIdData = {
   body?: never
   path: {
@@ -601,22 +552,6 @@ export type GetAgentsByAgentIdResponses = {
 
 export type GetAgentsByAgentIdResponse
   = GetAgentsByAgentIdResponses[keyof GetAgentsByAgentIdResponses]
-
-export type PatchAgentsByAgentIdData = {
-  body: RosterAgentUpdatePayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agents/{agent_id}'
-}
-
-export type PatchAgentsByAgentIdResponses = {
-  200: AgentRosterResponse
-}
-
-export type PatchAgentsByAgentIdResponse
-  = PatchAgentsByAgentIdResponses[keyof PatchAgentsByAgentIdResponses]
 
 export type GetAgentsByAgentIdVersionsData = {
   body?: never

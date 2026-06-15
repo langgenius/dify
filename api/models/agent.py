@@ -38,6 +38,8 @@ class AgentScope(StrEnum):
 class AgentSource(StrEnum):
     """Origin that created or imported the Agent."""
 
+    # Created directly as a reusable Agent Roster asset.
+    ROSTER = "roster"
     # Created from an Agent App composer.
     AGENT_APP = "agent_app"
     # Created from a Workflow Agent Composer flow.

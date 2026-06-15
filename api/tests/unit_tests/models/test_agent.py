@@ -27,6 +27,7 @@ def test_agent_enums_match_prd_boundaries():
     assert AgentIconType.EMOJI.value == "emoji"
     assert AgentScope.ROSTER.value == "roster"
     assert AgentScope.WORKFLOW_ONLY.value == "workflow_only"
+    assert AgentSource.ROSTER.value == "roster"
     assert AgentSource.AGENT_APP.value == "agent_app"
     assert AgentSource.WORKFLOW.value == "workflow"
     assert AgentStatus.ACTIVE.value == "active"
