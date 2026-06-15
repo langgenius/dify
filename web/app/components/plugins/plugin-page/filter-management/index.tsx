@@ -26,6 +26,7 @@ const FilterManagement = ({
 }: FilterManagementProps) => {
   const initFilters = usePluginPageContext(v => v.filters) as FilterState
   const [filters, setFilters] = useState<FilterState>(initFilters)
+  const showRightSlot = rightSlot !== undefined && rightSlot !== null
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters }
@@ -51,7 +52,7 @@ const FilterManagement = ({
         searchQuery={filters.searchQuery}
         onChange={searchQuery => updateFilters({ searchQuery })}
       />
-      {rightSlot && (
+      {showRightSlot && (
         <div className="ml-auto shrink-0">
           {rightSlot}
         </div>

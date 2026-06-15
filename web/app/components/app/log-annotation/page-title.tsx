@@ -13,6 +13,8 @@ const PageTitle = ({
   learnMoreHref,
   learnMoreLabel,
 }: PageTitleProps) => {
+  const showLearnMore = !!learnMoreHref && learnMoreLabel !== undefined && learnMoreLabel !== null
+
   return (
     <div className="flex shrink-0 flex-col gap-0.5">
       <div className="flex h-6 items-center">
@@ -20,7 +22,7 @@ const PageTitle = ({
       </div>
       <div className="flex min-w-0 items-start gap-0.5 system-xs-regular text-text-tertiary">
         <p className="min-w-0 truncate">{description}</p>
-        {learnMoreHref && learnMoreLabel && (
+        {showLearnMore && (
           <a
             href={learnMoreHref}
             target="_blank"

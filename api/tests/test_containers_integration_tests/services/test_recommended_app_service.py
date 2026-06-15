@@ -302,13 +302,13 @@ class TestRecommendedAppServiceGetLearnDifyApps:
             "get_system_features",
             MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
         )
-        session_mock = MagicMock()
-        session_mock.scalar.return_value = object()
+        can_trial_mock = MagicMock(return_value=True)
+        monkeypatch.setattr(RecommendedAppService, "_can_trial_app", can_trial_mock)
 
-        result = RecommendedAppService.get_learn_dify_apps(session_mock, "en-US")
+        result = RecommendedAppService.get_learn_dify_apps(db.session, "en-US")
 
         assert result["recommended_apps"][0]["can_trial"] is True
-        session_mock.scalar.assert_called_once()
+        can_trial_mock.assert_called_once_with(db.session, "app-1")
 
 
 # ── Integration tests: trial app features (real DB) ────────────────────

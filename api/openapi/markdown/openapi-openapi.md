@@ -5,9 +5,9 @@ User-scoped programmatic API (bearer auth)
 
 ### Available authorizations
 #### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}<br>
-**Name:** Authorization<br>
-**In:** header<br>
+Type: Bearer {your-api-key}  
+**Name:** Authorization  
+**In:** header  
 
 ---
 ## openapi

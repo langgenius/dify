@@ -5,9 +5,9 @@ Public APIs for web applications including file uploads, chat interactions, and 
 
 ### Available authorizations
 #### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}<br>
-**Name:** Authorization<br>
-**In:** header<br>
+Type: Bearer {your-api-key}  
+**Name:** Authorization  
+**In:** header  
 
 ---
 ## web

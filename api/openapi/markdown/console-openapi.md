@@ -10768,22 +10768,6 @@ Default namespace
 ---
 ### Schemas
 
-#### AIModelEntity
-
-Model class for AI model.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| deprecated | boolean |  | No |
-| features | [ [ModelFeature](#modelfeature) ] |  | No |
-| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
-| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
-| model | string |  | Yes |
-| model_properties | object |  | Yes |
-| model_type | [ModelType](#modeltype) |  | Yes |
-| parameter_rules | [ [ParameterRule](#parameterrule) ], <br>**Default:**  |  | No |
-| pricing | [PriceConfig](#priceconfig) |  | No |
-
 #### AIModelEntityResponse
 
 | Name | Type | Description | Required |
@@ -10791,7 +10775,7 @@ Model class for AI model.
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
 | fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
 | model_type | [ModelType](#modeltype) |  | Yes |
@@ -16783,7 +16767,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | checksum | string |  | Yes |
 | created_at | dateTime |  | Yes |
-| declaration | [PluginDeclaration](#plugindeclaration) |  | Yes |
+| declaration | [PluginDeclarationResponse](#plugindeclarationresponse) |  | Yes |
 | endpoints_active | integer |  | Yes |
 | endpoints_setups | integer |  | Yes |
 | id | string |  | Yes |
@@ -16827,7 +16811,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | key | string |  | Yes |
 | port | integer |  | Yes |
 
-#### PluginDeclaration
+#### PluginDeclarationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -16842,7 +16826,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | icon_dark | string |  | No |
 | label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
 | meta | [Meta](#meta) |  | Yes |
-| model | [ProviderEntity](#providerentity) |  | No |
+| model | [ProviderEntityResponse](#providerentityresponse) |  | No |
 | name | string |  | Yes |
 | plugins | [Plugins](#plugins) |  | Yes |
 | repo | string |  | No |
@@ -17020,17 +17004,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | content | string |  | Yes |
 | summary | string |  | No |
 
-#### PriceConfig
-
-Model class for pricing info.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| currency | string |  | Yes |
-| input | string |  | Yes |
-| output | string |  | No |
-| unit | string |  | Yes |
-
 #### PriceConfigResponse
 
 Serialized pricing info with codegen-safe decimal string patterns.
@@ -17096,13 +17069,9 @@ Model class for provider credential schema.
 | error | string |  | No |
 | result | string, <br>**Available values:** "error", "success" | *Enum:* `"error"`, `"success"` | Yes |
 
-#### ProviderEntity
+#### ProviderEntityResponse
 
-Runtime-native provider schema.
-
-`provider` is the canonical runtime identifier. `provider_name` is a
-compatibility alias for callers that still resolve providers by short name and
-is empty when no alias exists.
+Runtime provider response with codegen-safe model pricing schemas.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -17114,7 +17083,7 @@ is empty when no alias exists.
 | icon_small_dark | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
 | label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
-| models | [ [AIModelEntity](#aimodelentity) ] |  | No |
+| models | [ [AIModelEntityResponse](#aimodelentityresponse) ], <br>**Default:**  |  | No |
 | position | object |  | No |
 | provider | string |  | Yes |
 | provider_credential_schema | [ProviderCredentialSchema](#providercredentialschema) |  | No |

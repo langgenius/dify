@@ -32,11 +32,7 @@ class RecommendedAppService:
             apps = result["recommended_apps"]
             for app in apps:
                 app_id = app["app_id"]
-                trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
-                if trial_app_model:
-                    app["can_trial"] = True
-                else:
-                    app["can_trial"] = False
+                app["can_trial"] = cls._can_trial_app(session, app_id)
         return result
 
     @classmethod
@@ -50,9 +46,7 @@ class RecommendedAppService:
 
         if FeatureService.get_system_features().enable_trial_app:
             for app in result["recommended_apps"]:
-                app_id = app["app_id"]
-                trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
-                app["can_trial"] = trial_app_model is not None
+                app["can_trial"] = cls._can_trial_app(session, app["app_id"])
 
         return {"recommended_apps": result["recommended_apps"]}
 
@@ -70,11 +64,7 @@ class RecommendedAppService:
             return None
         if FeatureService.get_system_features().enable_trial_app:
             app_id = result["id"]
-            trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
-            if trial_app_model:
-                result["can_trial"] = True
-            else:
-                result["can_trial"] = False
+            result["can_trial"] = cls._can_trial_app(session, app_id)
         return result
 
     @classmethod
@@ -95,3 +85,8 @@ class RecommendedAppService:
         else:
             session.add(AccountTrialAppRecord(app_id=app_id, count=1, account_id=account_id))
             session.commit()
+
+    @staticmethod
+    def _can_trial_app(session: scoped_session, app_id: str) -> bool:
+        trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
+        return trial_app_model is not None

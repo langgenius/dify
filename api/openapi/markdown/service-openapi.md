@@ -5,9 +5,9 @@ API for application services
 
 ### Available authorizations
 #### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}<br>
-**Name:** Authorization<br>
-**In:** header<br>
+Type: Bearer {your-api-key}  
+**Name:** Authorization  
+**In:** header  
 
 ---
 ## service_api
@@ -3398,7 +3398,8 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | chunk_overlap | integer |  | No |
 | max_tokens | integer |  | Yes |
-| separator | string, <br>**Default:** |  | No |
+| separator | string, <br>**Default:** 
+ |  | No |
 
 #### SelectInputConfig
 
