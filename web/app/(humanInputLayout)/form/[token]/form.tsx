@@ -50,6 +50,9 @@ const FormContent = () => {
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
+  const replaceWebappLogo = typeof formData?.site?.custom_config?.replace_webapp_logo === 'string'
+    ? formData.site.custom_config.replace_webapp_logo
+    : null
 
   const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
@@ -104,31 +107,14 @@ const FormContent = () => {
 
   if (success) {
     return (
-      <div className={cn('flex h-full w-full flex-col items-center justify-center')}>
-        <div className="max-w-[640px] min-w-[480px]">
-          <div className="border-components-divider-subtle flex h-[320px] flex-col gap-4 rounded-[20px] border bg-chat-bubble-bg p-10 pb-9 shadow-lg backdrop-blur-xs">
-            <div className="h-[56px] w-[56px] shrink-0 rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge p-3">
-              <RiCheckboxCircleFill className="h-8 w-8 text-text-success" />
-            </div>
-            <div className="grow">
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.thanks', { ns: 'share' })}</div>
-              <div className="title-4xl-semi-bold text-text-primary">{t('humanInput.recorded', { ns: 'share' })}</div>
-            </div>
-            <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
-          </div>
-          {!removeWebappBrand && (
-            <div className="flex flex-row-reverse px-2 py-3">
-              <div className={cn(
-                'flex shrink-0 items-center gap-1.5 px-1',
-              )}
-              >
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-                <DifyLogo size="small" />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <FormStatusCard
+        iconClassName="i-ri-checkbox-circle-fill text-text-success"
+        title={t('humanInput.thanks', { ns: 'share' })}
+        subtitle={t('humanInput.recorded', { ns: 'share' })}
+        submissionID={token}
+        removeWebappBrand={removeWebappBrand}
+        replaceWebappLogo={replaceWebappLogo}
+      />
     )
   }
 
@@ -243,55 +229,14 @@ const FormContent = () => {
   const site = formData.site.site
 
   return (
-    <div className={cn('mx-auto flex h-full w-full max-w-[720px] flex-col items-center')}>
-      <div className="mt-4 flex w-full shrink-0 items-center gap-3 py-3">
-        <AppIcon
-          size="large"
-          iconType={site.icon_type}
-          icon={site.icon}
-          background={site.icon_background}
-          imageUrl={site.icon_url}
-        />
-        <div className="grow system-xl-semibold text-text-primary">{site.title}</div>
-      </div>
-      <div className="h-0 w-full grow overflow-y-auto">
-        <div className="border-components-divider-subtle rounded-[20px] border bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">
-          {contentList.map((content, index) => (
-            <ContentItem
-              key={index}
-              content={content}
-              formInputFields={formData.inputs}
-              inputs={inputs}
-              onInputChange={handleInputsChange}
-            />
-          ))}
-          <div className="flex flex-wrap gap-1 py-1">
-            {formData.user_actions.map((action: UserAction) => (
-              <Button
-                key={action.id}
-                disabled={isSubmitting}
-                variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-                onClick={() => submit(action.id)}
-              >
-                {action.title}
-              </Button>
-            ))}
-          </div>
-          <ExpirationTime expirationTime={formData.expiration_time * 1000} />
-        </div>
-        {!removeWebappBrand && (
-          <div className="flex flex-row-reverse px-2 py-3">
-            <div className={cn(
-              'flex shrink-0 items-center gap-1.5 px-1',
-            )}
-            >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-              <DifyLogo size="small" />
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+    <LoadedFormContent
+      key={token}
+      formData={formData}
+      isSubmitting={isSubmitting}
+      onSubmit={submit}
+      removeWebappBrand={removeWebappBrand}
+      replaceWebappLogo={replaceWebappLogo}
+    />
   )
 }
 
