@@ -8,22 +8,22 @@ tool and validates the model response against the same schema.
 
 ## Layer contract
 
-| Property            | Value                   |
-| ------------------- | ----------------------- |
-| Reserved layer name | `output`                |
-| Type id             | `dify.output`           |
-| Config              | `DifyOutputLayerConfig` |
-| Dependencies        | none                    |
+| Property | Value |
+| --- | --- |
+| Reserved layer name | `output` |
+| Type id | `dify.output` |
+| Config | `DifyOutputLayerConfig` |
+| Dependencies | none |
 
 Use at most one structured output layer. It must be named `output`.
 
 ## Config fields
 
-| Field         | Type                   | Meaning                                             |
-| ------------- | ---------------------- | --------------------------------------------------- |
-| `json_schema` | `dict[str, JsonValue]` | Top-level object JSON Schema for the final answer.  |
-| `description` | `str \| None`          | Optional model-facing tool description.             |
-| `strict`      | `bool \| None`         | Optional strictness flag passed to the output tool. |
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `json_schema` | `dict[str, JsonValue]` | Top-level object JSON Schema for the final answer. |
+| `description` | `str \| None` | Optional model-facing tool description. |
+| `strict` | `bool \| None` | Optional strictness flag passed to the output tool. |
 
 The structured-output tool name is fixed to `final_output`.
 
@@ -93,9 +93,9 @@ the runtime can rebuild the output contract.
 
 ## Troubleshooting
 
-| Symptom                                 | What to check                                                      |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| `must use reserved layer name 'output'` | Rename the layer to `output`.                                      |
-| Structured output falls back to text    | Confirm the `output` layer is present and has type `dify.output`.  |
-| Run fails before model resolution       | Validate the JSON Schema and `$ref` usage.                         |
-| Resume loses structured output          | Resubmit the same output layer; snapshots do not store the schema. |
+| Symptom | What to check |
+| --- | --- |
+| `must use reserved layer name 'output'` | Rename the layer to `output`. |
+| Structured output falls back to text | Confirm the `output` layer is present and has type `dify.output`. |
+| Run fails before model resolution | Validate the JSON Schema and `$ref` usage. |
+| Resume loses structured output | Resubmit the same output layer; snapshots do not store the schema. |

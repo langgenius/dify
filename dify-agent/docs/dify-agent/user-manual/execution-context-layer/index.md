@@ -11,12 +11,12 @@ on this layer to reach the plugin daemon.
 
 ## Config fields
 
-| Field                                                                                                                                                    | Type           | Meaning                                                           |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------- |
-| `tenant_id`                                                                                                                                              | `str`          | Dify tenant/workspace id used when calling the plugin daemon.     |
-| `user_id`                                                                                                                                                | `str \| None`  | Optional end-user id passed through to the plugin daemon.         |
-| `invoke_from`                                                                                                                                            | `Literal[...]` | Dify caller category recorded for observability and correlation.  |
-| `app_id` / `workflow_id` / `workflow_run_id` / `node_id` / `node_execution_id` / `conversation_id` / `agent_id` / `agent_config_version_id` / `trace_id` | `str \| None`  | Optional Dify-owned execution identifiers forwarded with the run. |
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `tenant_id` | `str` | Dify tenant/workspace id used when calling the plugin daemon. |
+| `user_id` | `str \| None` | Optional end-user id passed through to the plugin daemon. |
+| `invoke_from` | `Literal[...]` | Dify caller category recorded for observability and correlation. |
+| `app_id` / `workflow_id` / `workflow_run_id` / `node_id` / `node_execution_id` / `conversation_id` / `agent_id` / `agent_config_version_id` / `trace_id` | `str \| None` | Optional Dify-owned execution identifiers forwarded with the run. |
 
 The execution-context layer type id is `dify.execution_context`.
 

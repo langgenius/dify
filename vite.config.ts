@@ -9,6 +9,8 @@ const generatedIgnores = [
   '**/coverage/**',
   '**/dist/**',
   '**/storybook-static/**',
+  'api/**',
+  'dify-agent/**',
   'e2e/.auth/**',
   'e2e/cucumber-report/**',
   'web/next/**',

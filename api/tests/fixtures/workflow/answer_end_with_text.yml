@@ -14,17 +14,17 @@ workflow:
   features:
     file_upload:
       allowed_file_extensions:
-        - .JPG
-        - .JPEG
-        - .PNG
-        - .GIF
-        - .WEBP
-        - .SVG
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
       allowed_file_types:
-        - image
+      - image
       allowed_file_upload_methods:
-        - local_file
-        - remote_url
+      - local_file
+      - remote_url
       enabled: false
       fileUploadConfig:
         audio_file_size_limit: 50
@@ -37,8 +37,8 @@ workflow:
         enabled: false
         number_limits: 3
         transfer_methods:
-          - local_file
-          - remote_url
+        - local_file
+        - remote_url
       number_limits: 3
     opening_statement: ''
     retriever_resource:
@@ -56,56 +56,56 @@ workflow:
       voice: ''
   graph:
     edges:
-      - data:
-          isInLoop: false
-          sourceType: start
-          targetType: answer
-        id: 1755077165531-source-answer-target
-        source: '1755077165531'
-        sourceHandle: source
-        target: answer
-        targetHandle: target
-        type: custom
-        zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: answer
+      id: 1755077165531-source-answer-target
+      source: '1755077165531'
+      sourceHandle: source
+      target: answer
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
-      - data:
-          desc: ''
-          selected: false
-          title: Start
-          type: start
-          variables: []
-        height: 54
-        id: '1755077165531'
-        position:
-          x: 80
-          y: 282
-        positionAbsolute:
-          x: 80
-          y: 282
-        sourcePosition: right
-        targetPosition: left
-        type: custom
-        width: 244
-      - data:
-          answer: prefix{{#sys.query#}}suffix
-          desc: ''
-          selected: true
-          title: Answer
-          type: answer
-          variables: []
-        height: 105
-        id: answer
-        position:
-          x: 384
-          y: 282
-        positionAbsolute:
-          x: 384
-          y: 282
+    - data:
+        desc: ''
+        selected: false
+        title: Start
+        type: start
+        variables: []
+      height: 54
+      id: '1755077165531'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        answer: prefix{{#sys.query#}}suffix
+        desc: ''
         selected: true
-        sourcePosition: right
-        targetPosition: left
-        type: custom
-        width: 244
+        title: Answer
+        type: answer
+        variables: []
+      height: 105
+      id: answer
+      position:
+        x: 384
+        y: 282
+      positionAbsolute:
+        x: 384
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
     viewport:
       x: 178
       y: 116

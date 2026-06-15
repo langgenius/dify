@@ -14,17 +14,17 @@ workflow:
   features:
     file_upload:
       allowed_file_extensions:
-        - .JPG
-        - .JPEG
-        - .PNG
-        - .GIF
-        - .WEBP
-        - .SVG
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
       allowed_file_types:
-        - image
+      - image
       allowed_file_upload_methods:
-        - local_file
-        - remote_url
+      - local_file
+      - remote_url
       enabled: false
       fileUploadConfig:
         audio_file_size_limit: 50
@@ -37,8 +37,8 @@ workflow:
         enabled: false
         number_limits: 3
         transfer_methods:
-          - local_file
-          - remote_url
+        - local_file
+        - remote_url
       number_limits: 3
     opening_statement: ''
     retriever_resource:
@@ -56,68 +56,68 @@ workflow:
       voice: ''
   graph:
     edges:
-      - data:
-          isInIteration: false
-          isInLoop: false
-          sourceType: start
-          targetType: end
-        id: 1754154032319-source-1754154034161-target
-        source: '1754154032319'
-        sourceHandle: source
-        target: '1754154034161'
-        targetHandle: target
-        type: custom
-        zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: end
+      id: 1754154032319-source-1754154034161-target
+      source: '1754154032319'
+      sourceHandle: source
+      target: '1754154034161'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
-      - data:
-          desc: ''
-          selected: false
-          title: Start
-          type: start
-          variables:
-            - label: query
-              max_length: null
-              options: []
-              required: true
-              type: text-input
-              variable: query
-        height: 90
-        id: '1754154032319'
-        position:
-          x: 30
-          y: 227
-        positionAbsolute:
-          x: 30
-          y: 227
+    - data:
+        desc: ''
         selected: false
-        sourcePosition: right
-        targetPosition: left
-        type: custom
-        width: 244
-      - data:
-          desc: ''
-          outputs:
-            - value_selector:
-                - '1754154032319'
-                - query
-              value_type: string
-              variable: query
-          selected: true
-          title: End
-          type: end
-        height: 90
-        id: '1754154034161'
-        position:
-          x: 334
-          y: 227
-        positionAbsolute:
-          x: 334
-          y: 227
+        title: Start
+        type: start
+        variables:
+        - label: query
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: query
+      height: 90
+      id: '1754154032319'
+      position:
+        x: 30
+        y: 227
+      positionAbsolute:
+        x: 30
+        y: 227
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1754154032319'
+          - query
+          value_type: string
+          variable: query
         selected: true
-        sourcePosition: right
-        targetPosition: left
-        type: custom
-        width: 244
+        title: End
+        type: end
+      height: 90
+      id: '1754154034161'
+      position:
+        x: 334
+        y: 227
+      positionAbsolute:
+        x: 334
+        y: 227
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
     viewport:
       x: 0
       y: 0

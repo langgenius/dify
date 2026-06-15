@@ -70,7 +70,7 @@ CREATE TABLE <collection_name> (
 
 -- Vector index for similarity search
 CREATE VECTOR INDEX idx_<collection_name>_vec
-ON TABLE <schema>.<collection_name>(vector)
+ON TABLE <schema>.<collection_name>(vector) 
 PROPERTIES (
     "distance.function" = "cosine_distance",
     "scalar.type" = "f32"
@@ -92,17 +92,21 @@ Clickzetta supports advanced full-text search with multiple analyzers:
 ### Analyzer Types
 
 1. **keyword**: No tokenization, treats the entire string as a single token
+
    - Best for: Exact matching, IDs, codes
 
 1. **english**: Designed for English text
+
    - Features: Recognizes ASCII letters and numbers, converts to lowercase
    - Best for: English content
 
 1. **chinese**: Chinese text tokenizer
+
    - Features: Recognizes Chinese and English characters, removes punctuation
    - Best for: Chinese or mixed Chinese-English content
 
 1. **unicode**: Multi-language tokenizer based on Unicode
+
    - Features: Recognizes text boundaries in multiple languages
    - Best for: Multi-language content
 
@@ -130,16 +134,19 @@ Clickzetta supports advanced full-text search with multiple analyzers:
    ```
 
 1. **Use appropriate distance functions**:
+
    - `cosine_distance`: Best for normalized embeddings (e.g., from language models)
    - `l2_distance`: Best for raw feature vectors
 
 ### Full-Text Search
 
 1. **Choose the right analyzer**:
+
    - Use `keyword` for exact matching
    - Use language-specific analyzers for better tokenization
 
 1. **Combine with vector search**:
+
    - Pre-filter with full-text search for better performance
    - Use hybrid search for improved relevance
 

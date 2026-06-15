@@ -12,11 +12,11 @@ Use it for:
 
 ## Config fields
 
-| Field    | Type                 | Meaning                                                        |
-| -------- | -------------------- | -------------------------------------------------------------- |
+| Field | Type | Meaning |
+| --- | --- | --- |
 | `prefix` | `str` or `list[str]` | System prompt fragments collected before other prompt content. |
-| `user`   | `str` or `list[str]` | Current user-message fragments for the run.                    |
-| `suffix` | `str` or `list[str]` | System prompt fragments collected after prefix content.        |
+| `user` | `str` or `list[str]` | Current user-message fragments for the run. |
+| `suffix` | `str` or `list[str]` | System prompt fragments collected after prefix content. |
 
 All fields default to an empty list. Dify Agent rejects a create-run request when
 the effective user prompt is empty or whitespace-only.

@@ -22,7 +22,7 @@ Look for:
 - **Function/method docstring**: behavioural contract.
   - Document arguments, return shape, side effects (DB writes, external I/O, task dispatch), and raised domain exceptions.
   - Add examples only when they prevent misuse.
-- **Paragraph/block comments**: explain _why_ (trade-offs, historical constraints, surprising edge cases), not what the code already states.
+- **Paragraph/block comments**: explain *why* (trade-offs, historical constraints, surprising edge cases), not what the code already states.
   - Keep comments adjacent to the logic they justify; delete or rewrite comments that no longer match reality.
 
 ### Rules (must follow)

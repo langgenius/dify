@@ -8,12 +8,12 @@ tools, and it owns no live resources.
 
 ## Layer contract
 
-| Property            | Value                 |
-| ------------------- | --------------------- |
-| Reserved layer name | `history`             |
-| Type id             | `pydantic_ai.history` |
-| Config              | none                  |
-| Dependencies        | none                  |
+| Property | Value |
+| --- | --- |
+| Reserved layer name | `history` |
+| Type id | `pydantic_ai.history` |
+| Config | none |
+| Dependencies | none |
 
 Use at most one history layer. It must be named `history` and must not declare
 dependencies.
@@ -95,9 +95,9 @@ Always restore snapshots with the same layer names and order that produced them.
 
 ## Troubleshooting
 
-| Symptom                                         | What to check                                                                       |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `must use reserved layer name 'history'`        | Rename the layer to `history`.                                                      |
-| `does not support dependencies`                 | Remove `deps` from the history layer.                                               |
-| Resume fails with snapshot lifecycle errors     | Use the success snapshot from `run_succeeded` and keep layer names/order unchanged. |
-| System prompts appear missing from saved memory | This is expected; current system prompts are temporary and are not persisted.       |
+| Symptom | What to check |
+| --- | --- |
+| `must use reserved layer name 'history'` | Rename the layer to `history`. |
+| `does not support dependencies` | Remove `deps` from the history layer. |
+| Resume fails with snapshot lifecycle errors | Use the success snapshot from `run_succeeded` and keep layer names/order unchanged. |
+| System prompts appear missing from saved memory | This is expected; current system prompts are temporary and are not persisted. |

@@ -146,24 +146,24 @@ the default `suspend` behavior.
 
 Fields related to exit control in `CreateRunRequest`:
 
-| Field              | Type                                | Required | Meaning                                                                                                          |
-| ------------------ | ----------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `session_snapshot` | `CompositorSessionSnapshot \| None` | no       | The session snapshot returned by the previous `agent run`. It resumes the same Agent session.                    |
-| `on_exit`          | `LayerExitSignals`                  | no       | The exit policy used when this `agent run` exits layers. If omitted, all active layers are suspended by default. |
+| Field | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `session_snapshot` | `CompositorSessionSnapshot \| None` | no | The session snapshot returned by the previous `agent run`. It resumes the same Agent session. |
+| `on_exit` | `LayerExitSignals` | no | The exit policy used when this `agent run` exits layers. If omitted, all active layers are suspended by default. |
 
 `LayerExitSignals` has this structure:
 
-| Field     | Type                               | Default     | Meaning                                                                                                        |
-| --------- | ---------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| `default` | `"suspend" \| "delete"`            | `"suspend"` | Exit intent for layers not explicitly listed in `layers`.                                                      |
-| `layers`  | `dict[str, "suspend" \| "delete"]` | `{}`        | Per-layer exit intent overrides by layer name. Each key must refer to a layer name in the current composition. |
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `default` | `"suspend" \| "delete"` | `"suspend"` | Exit intent for layers not explicitly listed in `layers`. |
+| `layers` | `dict[str, "suspend" \| "delete"]` | `{}` | Per-layer exit intent overrides by layer name. Each key must refer to a layer name in the current composition. |
 
 Exit intent semantics:
 
-| Exit intent | Layer exit state | Effect                                                                                               |
-| ----------- | ---------------- | ---------------------------------------------------------------------------------------------------- |
-| `suspend`   | `suspended`      | Keep the layer runtime state and make the returned `session_snapshot` usable by a later `agent run`. |
-| `delete`    | `closed`         | Delete/close the layer context. The corresponding layer snapshot should not be resumed again.        |
+| Exit intent | Layer exit state | Effect |
+| --- | --- | --- |
+| `suspend` | `suspended` | Keep the layer runtime state and make the returned `session_snapshot` usable by a later `agent run`. |
+| `delete` | `closed` | Delete/close the layer context. The corresponding layer snapshot should not be resumed again. |
 
 Python DTO example:
 

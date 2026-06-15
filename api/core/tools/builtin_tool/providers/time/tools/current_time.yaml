@@ -24,7 +24,7 @@ parameters:
       zh_Hans: strftime 标准的时间格式。
       pt_BR: Time format in strftime standard.
     form: form
-    default: '%Y-%m-%d %H:%M:%S'
+    default: "%Y-%m-%d %H:%M:%S"
   - name: timezone
     type: select
     required: false

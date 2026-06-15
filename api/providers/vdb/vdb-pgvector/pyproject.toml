@@ -2,7 +2,9 @@
 name = "dify-vdb-pgvector"
 version = "0.0.1"
 
-dependencies = ["pgvector==0.4.2"]
+dependencies = [
+    "pgvector==0.4.2",
+]
 description = "Dify vector store backend (dify-vdb-pgvector)."
 
 [project.entry-points."dify.vector_backends"]

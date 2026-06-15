@@ -6,11 +6,11 @@ Unlike VDB providers, trace plugins are **not** discovered via entry points. The
 
 ## Architecture
 
-| Layer        | Location                                                                                                                 | Role                                                                                                                          |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Contracts    | `api/core/ops/base_trace_instance.py`, `api/core/ops/entities/trace_entity.py`, `api/core/ops/entities/config_entity.py` | `BaseTraceInstance`, `BaseTracingConfig`, and typed `*TraceInfo` payloads                                                     |
-| Registry     | `api/core/ops/ops_trace_manager.py`                                                                                      | `TracingProviderEnum`, `OpsTraceProviderConfigMap` — maps provider **string** → config class, encrypted keys, and trace class |
-| Your package | `api/providers/trace/trace-<name>/`                                                                                      | Pydantic config + subclass of `BaseTraceInstance`                                                                             |
+| Layer | Location | Role |
+|--------|----------|------|
+| Contracts | `api/core/ops/base_trace_instance.py`, `api/core/ops/entities/trace_entity.py`, `api/core/ops/entities/config_entity.py` | `BaseTraceInstance`, `BaseTracingConfig`, and typed `*TraceInfo` payloads |
+| Registry | `api/core/ops/ops_trace_manager.py` | `TracingProviderEnum`, `OpsTraceProviderConfigMap` — maps provider **string** → config class, encrypted keys, and trace class |
+| Your package | `api/providers/trace/trace-<name>/` | Pydantic config + subclass of `BaseTraceInstance` |
 
 At runtime, `OpsTraceManager` decrypts stored credentials, builds your config model, caches a trace instance, and calls `trace(trace_info)` with a concrete `BaseTraceInfo` subtype.
 
@@ -55,7 +55,7 @@ Upstream changes are required so Dify knows your provider exists:
    - `config_class`: your Pydantic config type
    - `secret_keys` / `other_keys`: lists of field names as above
    - `trace_instance`: your `BaseTraceInstance` subclass  
-     Lazy-import your package inside the case so missing optional installs raise a clear `ImportError`.
+   Lazy-import your package inside the case so missing optional installs raise a clear `ImportError`.
 
 If the `match` case is missing, the provider string will not resolve and tracing will be disabled for that app.
 
