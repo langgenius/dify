@@ -56,9 +56,7 @@
     "ci": "pnpm tree:check && pnpm type-check && pnpm lint && pnpm test:coverage && pnpm build",
     "clean": "rm -rf dist node_modules/.cache",
     "version:info": "bun scripts/print-buildinfo.ts",
-    "build:bin": "scripts/release-build.sh",
-    "install:local": "scripts/install-local.sh",
-    "uninstall:local": "scripts/uninstall-local.sh"
+    "build:bin": "scripts/release-build.sh"
   },
   "dependencies": {
     "@dify/contracts": "workspace:*",

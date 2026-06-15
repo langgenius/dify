@@ -13,7 +13,6 @@ function runPublish(): { code: number, order: string[], stderr: string } {
     '  case "$*" in',
     '    *" cp "*"/index.json"*)    echo put-index    >>"$ORDER_LOG" ;;',
     '    *" cp "*"/manifest.json"*) echo put-manifest >>"$ORDER_LOG" ;;',
-    '    *" cp "*"install"*)        echo put-install  >>"$ORDER_LOG" ;;',
     '    *" sync "*)                echo sync-binaries >>"$ORDER_LOG" ;;',
     '    *"head-object"*)           echo head-verify  >>"$ORDER_LOG" ;;',
     '    *" rm "*)                  echo prune        >>"$ORDER_LOG" ;;',
@@ -24,10 +23,10 @@ function runPublish(): { code: number, order: string[], stderr: string } {
     'node() {',
     '  case "$*" in',
     '    *release-naming.mjs*targets*)',
-    "      printf 'bun-linux-x64\\tlinux-x64\\t0\\nbun-linux-arm64\\tlinux-arm64\\t0\\nbun-darwin-x64\\tdarwin-x64\\t0\\nbun-darwin-arm64\\tdarwin-arm64\\t0\\nbun-windows-x64\\twindows-x64\\t1\\n' ;;",
-    "    *release-naming.mjs*' asset '*)  printf 'difyctl-vX\\n' ;;",
-    "    *release-r2-edge.mjs*' index '*)    echo '{}'; echo 'stale-dir' >&2 ;;",
-    "    *release-r2-edge.mjs*' manifest '*) echo '{}' ;;",
+    '      printf \'bun-linux-x64\\tlinux-x64\\t0\\nbun-linux-arm64\\tlinux-arm64\\t0\\nbun-darwin-x64\\tdarwin-x64\\t0\\nbun-darwin-arm64\\tdarwin-arm64\\t0\\nbun-windows-x64\\twindows-x64\\t1\\n\' ;;',
+    '    *release-naming.mjs*\' asset \'*)  printf \'difyctl-vX\\n\' ;;',
+    '    *release-r2-edge.mjs*\' index \'*)    echo \'{}\'; echo \'stale-dir\' >&2 ;;',
+    '    *release-r2-edge.mjs*\' manifest \'*) echo \'{}\' ;;',
     '    *) : ;;',
     '  esac',
     '}',
@@ -54,14 +53,13 @@ function runPublish(): { code: number, order: string[], stderr: string } {
 }
 
 describe('release-r2-publish order', () => {
-  it('uploads binaries, verifies, then index, then manifest, then installers, then prunes', () => {
+  it('uploads binaries, verifies, then index, then manifest, then prunes', () => {
     const { code, order } = runPublish()
     expect(code).toBe(0)
     expect(order.indexOf('sync-binaries')).toBeLessThan(order.indexOf('head-verify'))
     expect(order.indexOf('head-verify')).toBeLessThan(order.indexOf('put-index'))
     expect(order.indexOf('put-index')).toBeLessThan(order.indexOf('put-manifest'))
-    expect(order.indexOf('put-manifest')).toBeLessThan(order.indexOf('put-install'))
-    expect(order.indexOf('put-install')).toBeLessThan(order.indexOf('prune'))
+    expect(order.indexOf('put-manifest')).toBeLessThan(order.indexOf('prune'))
     expect(order.indexOf('sync-binaries')).toBeLessThan(order.indexOf('put-manifest'))
   })
 

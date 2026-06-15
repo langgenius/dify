@@ -4,27 +4,27 @@ CLI client for [Dify] platform. Browser device-flow signin, list/inspect apps, r
 
 ## Install (edge, internal)
 
-Per-commit `edge` builds are published to Cloudflare R2. Install with one command — pass the R2 base via env (shared internally):
+Per-commit `edge` builds are published to Cloudflare R2. The installer script lives in this repo; binaries are fetched from R2 via `DIFYCTL_R2_BASE` (shared internally):
 
 ```sh
-curl -fsSL <BASE>/difyctl/install.sh | DIFYCTL_R2_BASE=<BASE> sh
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> sh
 ```
 
 | Env               | Default        | Purpose                                        |
 | ----------------- | -------------- | ---------------------------------------------- |
-| `DIFYCTL_R2_BASE` | — (required)   | R2 public base, e.g. `https://pub-….r2.dev`.       |
-| `DIFYCTL_CHANNEL` | `edge`         | Channel to install.                                |
-| `DIFYCTL_PREFIX`  | `$HOME/.local` | Install root; binary → `<prefix>/bin/difyctl`.     |
-| `DIFYCTL_VERSION` | latest         | Pin an exact published version.                    |
-| `DIFYCTL_COMMIT`  | latest         | Pin by git commit (short or full sha).             |
+| `DIFYCTL_R2_BASE` | — (required)   | R2 public base, e.g. `https://pub-….r2.dev`.   |
+| `DIFYCTL_CHANNEL` | `edge`         | Channel to install.                            |
+| `DIFYCTL_PREFIX`  | `$HOME/.local` | Install root; binary → `<prefix>/bin/difyctl`. |
+| `DIFYCTL_VERSION` | latest         | Pin an exact published version.                |
+| `DIFYCTL_COMMIT`  | latest         | Pin by git commit (short or full sha).         |
 
 By default the channel pointer (latest build) is installed. Set `DIFYCTL_COMMIT` (e.g. `ce4af86`) or `DIFYCTL_VERSION` to install a specific past build — both resolve through the channel's `index.json`:
 
 ```sh
-curl -fsSL <BASE>/difyctl/install.sh | DIFYCTL_R2_BASE=<BASE> DIFYCTL_COMMIT=ce4af86 sh
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> DIFYCTL_COMMIT=ce4af86 sh
 ```
 
-Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm <BASE>/difyctl/install.ps1 | iex` (same env vars, e.g. `$env:DIFYCTL_COMMIT='ce4af86'`).
+Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.ps1 | iex` (same env vars, e.g. `$env:DIFYCTL_COMMIT='ce4af86'`).
 
 Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh`).
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # release-r2-publish.sh — direct-publish difyctl binaries + manifest + index to R2.
 # Strict order so the pointer never references missing bytes:
-#   sync binaries -> HEAD-verify -> put index.json -> put manifest.json -> put installers -> prune.
+#   sync binaries -> HEAD-verify -> put index.json -> put manifest.json -> prune.
+# Installers (install-r2.sh/.ps1) are served from the GitHub repo, not R2.
 # Usage: release-r2-publish.sh <channel> <version>
 # Env: R2_S3_ENDPOINT R2_BUCKET R2_PUBLIC_BASE (+ AWS creds, AWS_REQUEST_CHECKSUM_CALCULATION).
 set -euo pipefail
@@ -56,13 +57,7 @@ publish_main() {
   aws_s3 s3 cp "$manifest" "s3://${R2_BUCKET}/${pointer_prefix}/manifest.json" \
     --content-type application/json --cache-control "public, max-age=60, must-revalidate"
 
-  # 5. installers (committed sources next to this script)
-  aws_s3 s3 cp "${_dir}/install-r2.sh" "s3://${R2_BUCKET}/difyctl/install.sh" \
-    --content-type "text/x-shellscript" --cache-control "public, max-age=60, must-revalidate"
-  aws_s3 s3 cp "${_dir}/install-r2.ps1" "s3://${R2_BUCKET}/difyctl/install.ps1" \
-    --content-type "text/plain" --cache-control "public, max-age=60, must-revalidate"
-
-  # 6. prune stale dirs (each line from release-r2-edge stderr)
+  # 5. prune stale dirs (each line from release-r2-edge stderr)
   local dir
   while IFS= read -r dir; do
     [ -n "$dir" ] || continue

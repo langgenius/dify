@@ -1,5 +1,5 @@
 # install-r2.ps1 — one-line difyctl installer (Windows) from Cloudflare R2.
-# Usage: $env:DIFYCTL_R2_BASE='<BASE>'; irm <BASE>/difyctl/install.ps1 | iex
+# Usage: $env:DIFYCTL_R2_BASE='<BASE>'; irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.ps1 | iex
 # Env: DIFYCTL_R2_BASE (required), DIFYCTL_CHANNEL (default edge),
 #      DIFYCTL_PREFIX (default %LOCALAPPDATA%\difyctl),
 #      DIFYCTL_VERSION (pin exact published version),

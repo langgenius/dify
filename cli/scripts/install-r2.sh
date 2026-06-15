@@ -1,7 +1,7 @@
 #!/bin/sh
 # install-r2.sh — one-line difyctl installer from Cloudflare R2.
 # Reads a per-channel pointer manifest, sha256-verifies, installs to PATH.
-# Usage:  curl -fsSL <BASE>/difyctl/install.sh | DIFYCTL_R2_BASE=<BASE> sh
+# Usage:  curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> sh
 # Env:
 #   DIFYCTL_R2_BASE  (required)  R2 public base, e.g. https://pub-….r2.dev
 #   DIFYCTL_CHANNEL  (default edge)
