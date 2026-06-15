@@ -15,8 +15,11 @@ from flask import Flask
 
 from controllers.console.app.agent_drive_inspector import (
     AgentDriveDownloadApi,
+    AgentDriveDownloadByAgentApi,
     AgentDriveListApi,
+    AgentDriveListByAgentApi,
     AgentDrivePreviewApi,
+    AgentDrivePreviewByAgentApi,
 )
 from services.agent_drive_service import AgentDriveError
 
@@ -51,6 +54,32 @@ def test_list_filters_value_pointers_out_of_console_payload():
     assert body["items"][0]["key"] == "pdf-toolkit/SKILL.md"
     assert "file_id" not in body["items"][0]
     assert drive.return_value.manifest.call_args.kwargs["prefix"] == "pdf-toolkit/"
+
+
+def test_list_by_agent_filters_value_pointers_out_of_console_payload():
+    raw = _raw(AgentDriveListByAgentApi.get)
+    with app.test_request_context("/?prefix=pdf-toolkit/"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.manifest.return_value = [
+                {
+                    "key": "pdf-toolkit/SKILL.md",
+                    "size": 5,
+                    "hash": "h",
+                    "mime_type": "text/markdown",
+                    "file_kind": "tool_file",
+                    "file_id": "tf-1",
+                    "created_at": 1718000000,
+                }
+            ]
+            body = raw(AgentDriveListByAgentApi(), "tenant-1", "agent-1")
+
+    assert body["items"][0]["key"] == "pdf-toolkit/SKILL.md"
+    assert "file_id" not in body["items"][0]
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+    assert drive.return_value.manifest.call_args.kwargs["agent_id"] == "agent-1"
 
 
 def test_list_resolves_workflow_node_binding_agent():
@@ -101,6 +130,37 @@ def test_preview_passes_through_and_maps_errors():
     assert body["code"] == "drive_key_not_found"
 
 
+def test_preview_by_agent_passes_through_and_maps_errors():
+    raw = _raw(AgentDrivePreviewByAgentApi.get)
+    with app.test_request_context("/?key=pdf-toolkit/SKILL.md"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.preview.return_value = {
+                "key": "pdf-toolkit/SKILL.md",
+                "size": 5,
+                "truncated": False,
+                "binary": False,
+                "text": "# hi",
+            }
+            body = raw(AgentDrivePreviewByAgentApi(), "tenant-1", "agent-1")
+    assert body["text"] == "# hi"
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+
+    with app.test_request_context("/?key=ghost/SKILL.md"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP),
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.preview.side_effect = AgentDriveError(
+                "drive_key_not_found", "no drive entry", status_code=404
+            )
+            body, status = raw(AgentDrivePreviewByAgentApi(), "tenant-1", "agent-1")
+    assert status == 404
+    assert body["code"] == "drive_key_not_found"
+
+
 def test_download_returns_signed_url_json():
     raw = _raw(AgentDriveDownloadApi.get)
     with app.test_request_context("/?key=pdf-toolkit/.DIFY-SKILL-FULL.zip"):
@@ -108,3 +168,16 @@ def test_download_returns_signed_url_json():
             drive.return_value.download_url.return_value = "https://signed.example/zip"
             body = raw(AgentDriveDownloadApi(), _APP)
     assert body == {"url": "https://signed.example/zip"}
+
+
+def test_download_by_agent_returns_signed_url_json():
+    raw = _raw(AgentDriveDownloadByAgentApi.get)
+    with app.test_request_context("/?key=pdf-toolkit/.DIFY-SKILL-FULL.zip"):
+        with (
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.AgentDriveService") as drive,
+        ):
+            drive.return_value.download_url.return_value = "https://signed.example/zip"
+            body = raw(AgentDriveDownloadByAgentApi(), "tenant-1", "agent-1")
+    assert body == {"url": "https://signed.example/zip"}
+    resolve_app.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")

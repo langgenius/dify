@@ -64,7 +64,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.feature_service import FeatureService
 
-ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"]
+ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
 register_enum_models(console_ns, IconType)
 
@@ -163,9 +163,7 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
     description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
-    mode: Literal["chat", "agent-chat", "agent", "advanced-chat", "workflow", "completion"] = Field(
-        ..., description="App mode"
-    )
+    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
@@ -400,6 +398,8 @@ class AppPartial(ResponseModel):
     create_user_name: str | None = None
     author_name: str | None = None
     has_draft_trigger: bool | None = None
+    # For Agent App type: the roster Agent backing this app (None otherwise).
+    bound_agent_id: str | None = None
     is_starred: bool = False
 
     @computed_field(return_type=str | None)  # type: ignore

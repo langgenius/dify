@@ -6,10 +6,21 @@ from pydantic import BaseModel, Field
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.app import (
+    AppDetailWithSite,
+    AppListQuery,
+    AppPagination,
+    UpdateAppPayload,
+    _normalize_app_list_query_args,
+)
 from controllers.console.wraps import (
     account_initialization_required,
+    cloud_edition_billing_resource_check,
+    edit_permission_required,
+    enterprise_license_required,
     setup_required,
     with_current_tenant_id,
+    with_current_user,
 )
 from extensions.ext_database import db
 from fields.agent_fields import (
@@ -18,12 +29,17 @@ from fields.agent_fields import (
     AgentInviteOptionsResponse,
     AgentPublishedReferenceResponse,
     AgentRosterListResponse,
-    AgentRosterResponse,
 )
 from libs.helper import dump_response
 from libs.login import login_required
+from models import Account
+from models.model import IconType
+from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
+from services.app_service import AppListParams, AppService, CreateAppParams
+from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterListQuery
+from services.feature_service import FeatureService
 
 
 class AgentInviteOptionsQuery(RosterListQuery):
@@ -34,20 +50,32 @@ class AgentIdPath(BaseModel):
     agent_id: str
 
 
+class AgentAppCreatePayload(BaseModel):
+    name: str = Field(..., min_length=1, description="Agent name")
+    description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
+    icon_type: IconType | None = Field(default=None, description="Icon type")
+    icon: str | None = Field(default=None, description="Icon")
+    icon_background: str | None = Field(default=None, description="Icon background color")
+
+
 register_schema_models(
     console_ns,
+    AgentAppCreatePayload,
     AgentInviteOptionsQuery,
     AgentIdPath,
+    AppListQuery,
+    UpdateAppPayload,
     RosterListQuery,
 )
 register_response_schema_models(
     console_ns,
+    AppDetailWithSite,
+    AppPagination,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentInviteOptionsResponse,
     AgentPublishedReferenceResponse,
     AgentRosterListResponse,
-    AgentRosterResponse,
 )
 
 
@@ -55,25 +83,138 @@ def _agent_roster_service() -> AgentRosterService:
     return AgentRosterService(db.session)
 
 
-@console_ns.route("/agents")
-class AgentRosterListApi(Resource):
-    @console_ns.doc(params=query_params_from_model(RosterListQuery))
-    @console_ns.response(200, "Agent roster list", console_ns.models[AgentRosterListResponse.__name__])
+def _serialize_agent_app_detail(app_model) -> dict:
+    app_model = AppService().get_app(app_model)
+    if FeatureService.get_system_features().webapp_auth.enabled:
+        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+        app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
+
+    payload = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
+    agent_id = payload.pop("bound_agent_id", None)
+    if not agent_id:
+        raise AgentNotFoundError()
+    payload["id"] = agent_id
+    return payload
+
+
+def _serialize_agent_app_pagination(app_pagination) -> dict:
+    payload = AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
+    for item in payload["data"]:
+        agent_id = item.pop("bound_agent_id", None)
+        if agent_id:
+            item["id"] = agent_id
+    return payload
+
+
+def _resolve_agent_app_model(*, tenant_id: str, agent_id: UUID):
+    return _agent_roster_service().get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
+
+
+@console_ns.route("/agent")
+class AgentAppListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(AppListQuery))
+    @console_ns.response(200, "Agent app list", console_ns.models[AppPagination.__name__])
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        query = RosterListQuery.model_validate(request.args.to_dict(flat=True))
-        return dump_response(
-            AgentRosterListResponse,
-            _agent_roster_service().list_roster_agents(
-                tenant_id=tenant_id, page=query.page, limit=query.limit, keyword=query.keyword
-            ),
+    def get(self, current_tenant_id: str, current_user: Account):
+        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        params = AppListParams(
+            page=args.page,
+            limit=args.limit,
+            mode="agent",
+            name=args.name,
+            tag_ids=args.tag_ids,
+            creator_ids=args.creator_ids,
+            is_created_by_me=args.is_created_by_me,
+            status="normal",
         )
 
+        app_pagination = AppService().get_paginate_apps(current_user.id, current_tenant_id, params)
+        if app_pagination is None:
+            empty = AppPagination(page=args.page, limit=args.limit, total=0, has_more=False, data=[])
+            return empty.model_dump(mode="json")
 
-@console_ns.route("/agents/invite-options")
+        return _serialize_agent_app_pagination(app_pagination)
+
+    @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
+    @console_ns.response(201, "Agent app created successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("apps")
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account):
+        args = AgentAppCreatePayload.model_validate(console_ns.payload)
+        params = CreateAppParams(
+            name=args.name,
+            description=args.description,
+            mode="agent",
+            icon_type=args.icon_type,
+            icon=args.icon,
+            icon_background=args.icon_background,
+        )
+
+        app = AppService().create_app(current_tenant_id, params, current_user)
+        return _serialize_agent_app_detail(app), 201
+
+
+@console_ns.route("/agent/<uuid:agent_id>")
+class AgentAppApi(Resource):
+    @console_ns.response(200, "Agent app detail", console_ns.models[AppDetailWithSite.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        return _serialize_agent_app_detail(app_model)
+
+    @console_ns.expect(console_ns.models[UpdateAppPayload.__name__])
+    @console_ns.response(200, "Agent app updated successfully", console_ns.models[AppDetailWithSite.__name__])
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_tenant_id
+    def put(self, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        args = UpdateAppPayload.model_validate(console_ns.payload)
+        args_dict: AppService.ArgsDict = {
+            "name": args.name,
+            "description": args.description or "",
+            "icon_type": args.icon_type,
+            "icon": args.icon or "",
+            "icon_background": args.icon_background or "",
+            "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
+            "max_active_requests": args.max_active_requests or 0,
+        }
+        updated = AppService().update_app(app_model, args_dict)
+        return _serialize_agent_app_detail(updated)
+
+    @console_ns.response(204, "Agent app deleted successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, agent_id: UUID):
+        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        AppService().delete_app(app_model)
+        return "", 204
+
+
+@console_ns.route("/agent/invite-options")
 class AgentInviteOptionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
     @console_ns.response(200, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
@@ -95,21 +236,7 @@ class AgentInviteOptionsApi(Resource):
         )
 
 
-@console_ns.route("/agents/<uuid:agent_id>")
-class AgentRosterDetailApi(Resource):
-    @console_ns.response(200, "Agent detail", console_ns.models[AgentRosterResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        return dump_response(
-            AgentRosterResponse,
-            _agent_roster_service().get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id)),
-        )
-
-
-@console_ns.route("/agents/<uuid:agent_id>/versions")
+@console_ns.route("/agent/<uuid:agent_id>/versions")
 class AgentRosterVersionsApi(Resource):
     @console_ns.response(200, "Agent versions", console_ns.models[AgentConfigSnapshotListResponse.__name__])
     @setup_required
@@ -123,7 +250,7 @@ class AgentRosterVersionsApi(Resource):
         )
 
 
-@console_ns.route("/agents/<uuid:agent_id>/versions/<uuid:version_id>")
+@console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>")
 class AgentRosterVersionDetailApi(Resource):
     @console_ns.response(200, "Agent version detail", console_ns.models[AgentConfigSnapshotDetailResponse.__name__])
     @setup_required

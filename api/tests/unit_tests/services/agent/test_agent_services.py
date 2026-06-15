@@ -1037,6 +1037,31 @@ class TestAgentAppBackingAgent:
 
         assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None
 
+    def test_get_agent_app_model_resolves_app_backing_agent(self):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        app = SimpleNamespace(id="app-1", mode="agent", status="normal")
+        session = FakeSession(scalar=[agent, app])
+        service = AgentRosterService(session)
+
+        assert service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-1") is app
+
+    def test_get_agent_app_model_rejects_unbound_agent(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        with pytest.raises(roster_service.AgentNotFoundError):
+            service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
+
 
 class TestListWorkflowsReferencingAppAgent:
     def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
