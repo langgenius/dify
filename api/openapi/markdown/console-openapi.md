@@ -308,19 +308,6 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent roster list | **application/json**: [AgentRosterListResponse](#agentrosterlistresponse)<br> |
 
-### [POST] /agents
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [RosterAgentCreatePayload](#rosteragentcreatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Agent created | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
-
 ### [GET] /agents/invite-options
 #### Parameters
 
@@ -337,19 +324,6 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent invite options | **application/json**: [AgentInviteOptionsResponse](#agentinviteoptionsresponse)<br> |
 
-### [DELETE] /agents/{agent_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description |
-| ---- | ----------- |
-| 204 | Agent archived |
-
 ### [GET] /agents/{agent_id}
 #### Parameters
 
@@ -362,25 +336,6 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent detail | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
-
-### [PATCH] /agents/{agent_id}
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [RosterAgentUpdatePayload](#rosteragentupdatepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent updated | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
 
 ### [GET] /agents/{agent_id}/versions
 #### Parameters
@@ -599,7 +554,7 @@ Create a new application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | App created successfully | **application/json**: [AppDetail](#appdetail)<br> |
+| 201 | App created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -16964,30 +16919,6 @@ Model class for provider quota configuration.
 | segment_position | integer |  | No |
 | summary | string |  | No |
 | word_count | integer |  | No |
-
-#### RosterAgentCreatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | [AgentIconType](#agenticontype) |  | No |
-| name | string |  | Yes |
-| role | string |  | No |
-| version_note | string |  | No |
-
-#### RosterAgentUpdatePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | [AgentIconType](#agenticontype) |  | No |
-| name | string |  | No |
-| role | string |  | No |
 
 #### RosterListQuery
 

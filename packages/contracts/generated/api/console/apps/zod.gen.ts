@@ -835,6 +835,35 @@ export const zAppIconPayload = z.object({
 })
 
 /**
+ * DeletedTool
+ */
+export const zDeletedTool = z.object({
+  provider_id: z.string(),
+  tool_name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * Site
+ */
+export const zSite = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * Tag
  */
 export const zTag = z.object({
@@ -886,35 +915,6 @@ export const zImport = z.object({
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
   status: zImportStatus,
-})
-
-/**
- * DeletedTool
- */
-export const zDeletedTool = z.object({
-  provider_id: z.string(),
-  tool_name: z.string(),
-  type: z.string(),
-})
-
-/**
- * Site
- */
-export const zSite = z.object({
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  default_language: z.string(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
-  privacy_policy: z.string().nullish(),
-  show_workflow_steps: z.boolean(),
-  title: z.string(),
-  use_icon_as_answer_icon: z.boolean(),
 })
 
 /**
@@ -2039,30 +2039,6 @@ export const zModelConfig = z.object({
 })
 
 /**
- * AppDetail
- */
-export const zAppDetail = z.object({
-  access_mode: z.string().nullish(),
-  app_model_config: zModelConfig.nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  description: z.string().nullish(),
-  enable_api: z.boolean(),
-  enable_site: z.boolean(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  id: z.string(),
-  mode_compatible_with_agent: z.string(),
-  name: z.string(),
-  tags: z.array(zTag).optional(),
-  tracing: zJsonValue.nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
-})
-
-/**
  * AppDetailWithSite
  */
 export const zAppDetailWithSite = z.object({
@@ -2084,6 +2060,30 @@ export const zAppDetailWithSite = z.object({
   mode_compatible_with_agent: z.string(),
   name: z.string(),
   site: zSite.nullish(),
+  tags: z.array(zTag).optional(),
+  tracing: zJsonValue.nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zWorkflowPartial.nullish(),
+})
+
+/**
+ * AppDetail
+ */
+export const zAppDetail = z.object({
+  access_mode: z.string().nullish(),
+  app_model_config: zModelConfig.nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string().nullish(),
+  enable_api: z.boolean(),
+  enable_site: z.boolean(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  id: z.string(),
+  mode_compatible_with_agent: z.string(),
+  name: z.string(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
   updated_at: z.int().nullish(),
@@ -3638,7 +3638,7 @@ export const zPostAppsBody = zCreateAppPayload
 /**
  * App created successfully
  */
-export const zPostAppsResponse = zAppDetail
+export const zPostAppsResponse = zAppDetailWithSite
 
 export const zPostAppsImportsBody = zAppImportPayload
 
