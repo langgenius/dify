@@ -113,7 +113,7 @@ jobs:
         run: vp exec playwright install --with-deps chromium
 
       - name: Run dify-ui tests
-        run: vp test run --coverage --silent=passed-only
+        run: vp test run --config vite.config.ts --coverage --silent=passed-only
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
