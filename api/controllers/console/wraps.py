@@ -12,6 +12,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums.cloud_plan import CloudPlan
@@ -27,6 +28,10 @@ from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+
+# Re-exported so controllers can import the RBAC enums and decorator alongside
+# other console wraps from this module.
+__all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
