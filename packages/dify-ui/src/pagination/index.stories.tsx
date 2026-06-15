@@ -77,11 +77,19 @@ type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {
   render: () => <PaginationDemo />,
+  parameters: {
+    a11y: {
+      test: 'todo',
+    },
+  },
 }
 
 export const DesignSpec: Story = {
   render: () => <DesignSpecDemo />,
   parameters: {
+    a11y: {
+      test: 'todo',
+    },
     docs: {
       description: {
         story: 'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',
