@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from controllers.console import console_ns
-from controllers.console.wraps import rbac_permission_required
+from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from core.db.session_factory import session_factory
 from libs.login import current_account_with_tenant, login_required
 from models import Account, TenantAccountJoin
@@ -249,7 +249,9 @@ class _RoleUpsertRequest(BaseModel):
 @console_ns.route("/workspaces/current/rbac/roles")
 class RBACRolesApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def get(self):
         tenant_id, account_id = _current_ids()
         query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
@@ -264,7 +266,9 @@ class RBACRolesApi(Resource):
         return _dump(result)
 
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def post(self):
         tenant_id, account_id = _current_ids()
         request = _payload(_RoleUpsertRequest)
@@ -275,13 +279,17 @@ class RBACRolesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>")
 class RBACRoleItemApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.Roles.get(tenant_id, account_id, str(role_id)))
 
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def put(self, role_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_RoleUpsertRequest)
@@ -289,7 +297,9 @@ class RBACRoleItemApi(Resource):
         return _dump(role)
 
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def delete(self, role_id):
         tenant_id, account_id = _current_ids()
         svc.RBACService.Roles.delete(tenant_id, account_id, str(role_id))
@@ -299,7 +309,9 @@ class RBACRoleItemApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/copy")
 class RBACRoleCopyApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def post(self, role_id):
         tenant_id, account_id = _current_ids()
         request = _payload(CopyRoleParam)
@@ -310,7 +322,9 @@ class RBACRoleCopyApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
 class RBACRoleMembersApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
         return _dump(
@@ -344,7 +358,9 @@ class _AccessPolicyUpdateRequest(BaseModel):
 @console_ns.route("/workspaces/current/rbac/access-policies")
 class RBACAccessPoliciesApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def get(self):
         tenant_id, account_id = _current_ids()
         # `resource_type` is exposed as a query argument so the UI can show
@@ -360,7 +376,9 @@ class RBACAccessPoliciesApi(Resource):
         )
 
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def post(self):
         tenant_id, account_id = _current_ids()
         request = _payload(_AccessPolicyCreateRequest)
@@ -380,13 +398,17 @@ class RBACAccessPoliciesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policies/<uuid:policy_id>")
 class RBACAccessPolicyItemApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def get(self, policy_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicies.get(tenant_id, account_id, str(policy_id)))
 
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_AccessPolicyUpdateRequest)
@@ -403,7 +425,9 @@ class RBACAccessPolicyItemApi(Resource):
         return _dump(policy)
 
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def delete(self, policy_id):
         tenant_id, account_id = _current_ids()
         svc.RBACService.AccessPolicies.delete(tenant_id, account_id, str(policy_id))
@@ -413,7 +437,9 @@ class RBACAccessPolicyItemApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policies/<uuid:policy_id>/copy")
 class RBACAccessPolicyCopyApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def post(self, policy_id):
         tenant_id, account_id = _current_ids()
         policy = svc.RBACService.AccessPolicies.copy(tenant_id, account_id, str(policy_id))
@@ -423,7 +449,9 @@ class RBACAccessPolicyCopyApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policy-bindings/<uuid:binding_id>/lock")
 class RBACAccessPolicyBindingLockApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def put(self, binding_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicyBindings.lock(tenant_id, account_id, str(binding_id)))
@@ -432,7 +460,9 @@ class RBACAccessPolicyBindingLockApi(Resource):
 @console_ns.route("/workspaces/current/rbac/access-policy-bindings/<uuid:binding_id>/unlock")
 class RBACAccessPolicyBindingUnlockApi(Resource):
     @login_required
-    @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
     def put(self, binding_id):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AccessPolicyBindings.unlock(tenant_id, account_id, str(binding_id)))
@@ -482,9 +512,7 @@ def _resolve_access_scope_account_ids(
     requested_ids = sorted({value.strip() for value in payload.account_ids if value and value.strip()})
     with session_factory.create_session() as session:
         workspace_account_ids = set(
-            session.scalars(
-                select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == tenant_id)
-            ).all()
+            session.scalars(select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == tenant_id)).all()
         )
 
     if payload.scope is _AccessScope.ALL:
@@ -553,9 +581,7 @@ class RBACAppUserAccessPoliciesApi(Resource):
         return _dump(result)
 
 
-@console_ns.route(
-    "/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies"
-)
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies")
 class RBACAppUserAccessPolicyAssignmentApi(Resource):
     @login_required
     def put(self, app_id, target_account_id):
@@ -635,9 +661,7 @@ class RBACDatasetUserAccessPoliciesApi(Resource):
         return _dump(result)
 
 
-@console_ns.route(
-    "/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies"
-)
+@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies")
 class RBACDatasetUserAccessPolicyAssignmentApi(Resource):
     @login_required
     def put(self, dataset_id, target_account_id):

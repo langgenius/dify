@@ -10,6 +10,8 @@ from werkzeug.exceptions import HTTPException
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     _extract_resource_id,
     account_initialization_required,
     cloud_edition_billing_enabled,
@@ -173,7 +175,7 @@ class TestRbacPermissionRequired:
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
 
-        @rbac_permission_required("app", "app_delete")
+        @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
         def protected_view(**kwargs):
             return "ok"
 
@@ -199,7 +201,9 @@ class TestRbacPermissionRequired:
     def test_workspace_scoped_check_skips_resource_id_extraction(self):
         current_user = make_account("account-2")
 
-        @rbac_permission_required("dataset", "dataset_create_and_management", resource_required=False)
+        @rbac_permission_required(
+            RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+        )
         def protected_view():
             return "ok"
 
@@ -225,7 +229,9 @@ class TestRbacPermissionRequired:
     def test_workspace_scene_omits_resource_type(self):
         current_user = make_account("account-3")
 
-        @rbac_permission_required("workspace", "workspace_role_manage", resource_required=False)
+        @rbac_permission_required(
+            RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+        )
         def protected_view():
             return "ok"
 
@@ -247,7 +253,7 @@ class TestRbacPermissionRequired:
     def test_resource_owned_app_skips_rbac_check(self):
         current_user = make_account("account-4")
 
-        @rbac_permission_required("app", "app_delete")
+        @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
         def protected_view(**kwargs):
             return "ok"
 
@@ -266,7 +272,7 @@ class TestRbacPermissionRequired:
     def test_resource_owned_dataset_skips_rbac_check(self):
         current_user = make_account("account-5")
 
-        @rbac_permission_required("dataset", "dataset_edit")
+        @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
         def protected_view(**kwargs):
             return "ok"
 

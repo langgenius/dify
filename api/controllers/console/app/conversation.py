@@ -13,6 +13,8 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     rbac_permission_required,
@@ -100,7 +102,7 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App):
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))
@@ -173,7 +175,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)
@@ -217,7 +219,7 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App):
         args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))
@@ -329,7 +331,7 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, current_user: Account, app_model: App, conversation_id: UUID):
         conversation_id_str = str(conversation_id)

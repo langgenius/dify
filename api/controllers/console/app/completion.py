@@ -20,6 +20,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     rbac_permission_required,
@@ -106,7 +108,7 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_test_and_run")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
@@ -180,7 +182,7 @@ class ChatMessageApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @with_current_user
-    @rbac_permission_required("app", "app_test_and_run")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, current_user: Account, app_model: App):
         raw_payload = console_ns.payload or {}

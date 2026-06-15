@@ -9,6 +9,8 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     rbac_permission_required,
     setup_required,
@@ -54,7 +56,7 @@ class DailyMessageStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -115,7 +117,7 @@ class DailyConversationStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -175,7 +177,7 @@ class DailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -236,7 +238,7 @@ class DailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -300,7 +302,7 @@ class AverageSessionInteractionStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -380,7 +382,7 @@ class UserSatisfactionRateStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -450,7 +452,7 @@ class AverageResponseTimeStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=AppMode.COMPLETION)
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
@@ -511,7 +513,7 @@ class TokensPerSecondStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_monitor")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
