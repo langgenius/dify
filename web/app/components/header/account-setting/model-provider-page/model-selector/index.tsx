@@ -24,6 +24,7 @@ type ModelSelectorProps = {
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
+  providerSettingsSource?: 'agent'
   showModelMeta?: boolean
 }
 function ModelSelector({
@@ -39,6 +40,7 @@ function ModelSelector({
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
   onConfigureEmptyState,
+  providerSettingsSource,
   showModelMeta,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
@@ -150,6 +152,7 @@ function ModelSelector({
           modelList={modelList}
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
+          providerSettingsSource={providerSettingsSource}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onInputValueChange={setInputValue}
           onHide={handleHide}

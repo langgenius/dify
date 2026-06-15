@@ -29,6 +29,7 @@ export function AgentModelField({
           modelList={textGenerationModelList}
           triggerClassName="h-8! w-full rounded-lg! pr-10! [&_.i-ri-arrow-down-s-line]:hidden"
           popupClassName="w-(--anchor-width) max-w-[min(var(--anchor-width),var(--available-width),calc(100vw-32px))]"
+          providerSettingsSource="agent"
           showModelMeta={false}
           onSelect={onSelect}
         />
