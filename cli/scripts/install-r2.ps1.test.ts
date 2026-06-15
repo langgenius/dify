@@ -7,7 +7,10 @@ const hasPwsh = spawnSync('pwsh', ['-v'], { encoding: 'utf8' }).status === 0
 const d = hasPwsh ? describe : describe.skip
 
 const MANIFEST = JSON.stringify({
-  schema: 1, name: 'difyctl', channel: 'edge', version: '0.1.0-edge.2fd7b82',
+  schema: 1,
+  name: 'difyctl',
+  channel: 'edge',
+  version: '0.1.0-edge.2fd7b82',
   baseUrl: 'https://pub.example.r2.dev/difyctl/edge/0.1.0-edge.2fd7b82',
   targets: { 'windows-x64': { asset: 'difyctl-v0.1.0-edge.2fd7b82-windows-x64.exe', sha256: 'deadbeef' } },
 })
@@ -18,7 +21,7 @@ function pwsh(program: string): { code: number, stdout: string, stderr: string }
     encoding: 'utf8',
     env: { ...process.env, DIFYCTL_INSTALL_LIB: '1' },
   })
-  return { code: r.status ?? 1, stdout: (r.stdout ?? '').trim(), stderr: r.stderr ?? '' }
+  return { code: r.status ?? 1, stdout: (r.stdout ?? '').replace(/\r\n/g, '\n').trim(), stderr: r.stderr ?? '' }
 }
 
 d('install-r2.ps1', () => {

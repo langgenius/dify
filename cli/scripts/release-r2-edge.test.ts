@@ -35,11 +35,36 @@ function writeChecksums(version: string): string {
 const VERSION = '0.1.0-edge.2fd7b82'
 const BASE_URL = 'https://example.r2.dev/difyctl/edge/0.1.0-edge.2fd7b82'
 
-function buildManifest(version = VERSION): { code: number, json: any, stdout: string, stderr: string } {
+type ManifestJson = {
+  schema: number
+  name: string
+  channel: string
+  version: string
+  commit: string
+  buildDate: string
+  compat: { minDify: string, maxDify: string }
+  baseUrl: string
+  targets: Record<string, { asset: string, sha256: string }>
+}
+
+type IndexBuild = {
+  version: string
+  commit: string
+  buildDate: string
+  dir: string
+}
+
+type IndexJson = {
+  schema: number
+  channel: string
+  updated: string
+  builds: IndexBuild[]
+}
+
+function buildManifest(version = VERSION): { code: number, json: ManifestJson, stdout: string, stderr: string } {
   const checksums = writeChecksums(version)
-  const r = run(['manifest', '--channel', 'edge', '--version', version, '--commit', 'abc1234',
-    '--build-date', '2026-06-14T12:00:00Z', '--base-url', BASE_URL, '--checksums', checksums])
-  return { code: r.code, json: r.code === 0 ? JSON.parse(r.stdout) : null, stdout: r.stdout, stderr: r.stderr }
+  const r = run(['manifest', '--channel', 'edge', '--version', version, '--commit', 'abc1234', '--build-date', '2026-06-14T12:00:00Z', '--base-url', BASE_URL, '--checksums', checksums])
+  return { code: r.code, json: (r.code === 0 ? JSON.parse(r.stdout) : null) as ManifestJson, stdout: r.stdout, stderr: r.stderr }
 }
 
 describe('release-r2-edge manifest', () => {
@@ -62,10 +87,11 @@ describe('release-r2-edge manifest', () => {
   it('lists all 5 targets with asset name + sha256 from the checksums file', () => {
     const { json } = buildManifest()
     expect(Object.keys(json.targets).sort()).toEqual(
-      ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64', 'windows-x64'])
+      ['darwin-arm64', 'darwin-x64', 'linux-arm64', 'linux-x64', 'windows-x64'],
+    )
     expect(json.targets['linux-x64'].asset).toBe(`difyctl-v${VERSION}-linux-x64`)
     expect(json.targets['windows-x64'].asset).toBe(`difyctl-v${VERSION}-windows-x64.exe`)
-    expect(json.targets['linux-x64'].sha256).toMatch(/^[0-9]{64}$/)
+    expect(json.targets['linux-x64'].sha256).toMatch(/^\d{64}$/)
   })
 
   it('renders each target on a single line (installer greps it)', () => {
@@ -82,15 +108,13 @@ describe('release-r2-edge manifest', () => {
     const dir = mkdtempSync(join(tmpdir(), 'difyctl-manifest-'))
     const file = join(dir, `difyctl-v${VERSION}-checksums.txt`)
     writeFileSync(file, `${'0'.repeat(64)}  difyctl-v${VERSION}-linux-x64\n`) // only 1 of 5
-    const r = run(['manifest', '--channel', 'edge', '--version', VERSION, '--commit', 'abc1234',
-      '--build-date', '2026-06-14T12:00:00Z', '--base-url', BASE_URL, '--checksums', file])
+    const r = run(['manifest', '--channel', 'edge', '--version', VERSION, '--commit', 'abc1234', '--build-date', '2026-06-14T12:00:00Z', '--base-url', BASE_URL, '--checksums', file])
     expect(r.code).not.toBe(0)
   })
 
   it('rejects a malformed dropped-value argument (no silent misparse)', () => {
     // --version has no value; --commit must NOT be swallowed as the version
-    const r = run(['manifest', '--channel', 'edge', '--version', '--commit', 'abc1234',
-      '--build-date', '2026-06-14T12:00:00Z', '--base-url', 'https://x', '--checksums', '/nonexistent'])
+    const r = run(['manifest', '--channel', 'edge', '--version', '--commit', 'abc1234', '--build-date', '2026-06-14T12:00:00Z', '--base-url', 'https://x', '--checksums', '/nonexistent'])
     expect(r.code).not.toBe(0)
   })
 })
@@ -104,11 +128,10 @@ function runIndex(currentContent: string | null, build: Record<string, string>) 
     currentArg = join(dir, 'index.json')
     writeFileSync(currentArg, currentContent)
   }
-  const r = spawnSync('node', [SCRIPT, 'index', '--current', currentArg, '--channel', 'edge',
-    '--version', build.version, '--commit', build.commit, '--build-date', build.buildDate], { encoding: 'utf8' })
+  const r = spawnSync('node', [SCRIPT, 'index', '--current', currentArg, '--channel', 'edge', '--version', build.version, '--commit', build.commit, '--build-date', build.buildDate], { encoding: 'utf8' })
   return {
     code: r.status ?? 1,
-    index: r.status === 0 ? JSON.parse(r.stdout) : null,
+    index: (r.status === 0 ? JSON.parse(r.stdout) : null) as IndexJson,
     prune: (r.stderr ?? '').split('\n').filter(Boolean),
   }
 }
@@ -140,7 +163,7 @@ describe('release-r2-edge index', () => {
   it('prepends the new build (publish order; newest at [0])', () => {
     const current = JSON.stringify({ schema: 1, channel: 'edge', builds: [{ version: B1.version, commit: B1.commit, buildDate: B1.buildDate, dir: B1.version }] })
     const { index } = runIndex(current, B2)
-    expect(index.builds.map((b: any) => b.version)).toEqual([B2.version, B1.version])
+    expect(index.builds.map(b => b.version)).toEqual([B2.version, B1.version])
   })
 
   it('dedups a re-cut of the same version (no duplicate, moves to top)', () => {
@@ -149,7 +172,7 @@ describe('release-r2-edge index', () => {
       { version: B1.version, commit: B1.commit, buildDate: B1.buildDate, dir: B1.version },
     ] })
     const { index, prune } = runIndex(current, B1) // re-cut B1
-    expect(index.builds.map((b: any) => b.version)).toEqual([B1.version, B2.version])
+    expect(index.builds.map(b => b.version)).toEqual([B1.version, B2.version])
     expect(prune).not.toContain(B1.version)
   })
 

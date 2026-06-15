@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'cli/**'
-      - 'packages/contracts/**'
+      - 'packages/contracts/generated/api/**'
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +16,7 @@ jobs:
   publish:
     name: build + publish edge to R2
     runs-on: ${{ github.repository == 'langgenius/dify' && 'depot-ubuntu-24.04' || 'ubuntu-24.04' }}
-    if: vars.R2_BUCKET != ''
+    if: vars.DIFYCTL_R2_BUCKET != ''
     defaults:
       run:
         shell: bash
@@ -60,14 +60,14 @@ jobs:
 
       - name: Publish to R2
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.DIFYCTL_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DIFYCTL_R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
           AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
           AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
-          R2_S3_ENDPOINT: ${{ vars.R2_S3_ENDPOINT }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
-          R2_PUBLIC_BASE: ${{ vars.R2_PUBLIC_BASE }}
+          DIFYCTL_R2_S3_ENDPOINT: ${{ vars.DIFYCTL_R2_S3_ENDPOINT }}
+          DIFYCTL_R2_BUCKET: ${{ vars.DIFYCTL_R2_BUCKET }}
+          DIFYCTL_R2_PUBLIC_BASE: ${{ vars.DIFYCTL_R2_PUBLIC_BASE }}
           DIFYCTL_COMMIT: ${{ github.sha }}
         run: |
           DIFYCTL_BUILD_DATE="$(git log -1 --format=%cI HEAD)" \

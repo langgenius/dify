@@ -59,7 +59,9 @@ function lib(program: string, env: Record<string, string> = {}): { code: number,
 }
 
 describe('install-r2 manifest parsing', () => {
-  it('detect_target maps to one of the 5 ids', () => {
+  // install-r2.sh is POSIX-only; under git-bash on Windows `uname -s` is MINGW*,
+  // so detect_target intentionally dies (Windows installs go through install-r2.ps1).
+  it.skipIf(process.platform === 'win32')('detect_target maps to one of the 5 ids', () => {
     const { stdout } = lib('detect_target')
     expect(['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64', 'windows-x64']).toContain(stdout)
   })

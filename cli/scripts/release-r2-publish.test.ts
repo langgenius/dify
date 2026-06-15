@@ -43,9 +43,9 @@ function runPublish(): { code: number, order: string[], stderr: string } {
     env: {
       ...process.env,
       RELEASE_PUBLISH_LIB: '1',
-      R2_S3_ENDPOINT: 'https://endpoint.example',
-      R2_BUCKET: 'cli-dev',
-      R2_PUBLIC_BASE: 'https://pub.example.r2.dev',
+      DIFYCTL_R2_S3_ENDPOINT: 'https://endpoint.example',
+      DIFYCTL_R2_BUCKET: 'cli-dev',
+      DIFYCTL_R2_PUBLIC_BASE: 'https://pub.example.r2.dev',
       DIST_DIR: '/tmp',
     },
   })
@@ -75,9 +75,9 @@ describe('release-r2-publish order', () => {
       env: {
         ...process.env,
         RELEASE_PUBLISH_LIB: '1',
-        R2_S3_ENDPOINT: 'https://endpoint.example',
-        R2_BUCKET: 'cli-dev',
-        R2_PUBLIC_BASE: 'https://pub.example.r2.dev',
+        DIFYCTL_R2_S3_ENDPOINT: 'https://endpoint.example',
+        DIFYCTL_R2_BUCKET: 'cli-dev',
+        DIFYCTL_R2_PUBLIC_BASE: 'https://pub.example.r2.dev',
         DIST_DIR: '/tmp',
       },
     })
