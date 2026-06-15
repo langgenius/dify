@@ -5,7 +5,7 @@ import { type } from '@orpc/contract'
 import { base } from '../base'
 
 export type AppListSortBy = 'last_modified' | 'recently_created' | 'earliest_created'
-export type AppListMode = AppModeEnum | 'agent' | 'channel' | 'all'
+type AppListMode = AppModeEnum | 'agent' | 'channel' | 'all'
 
 export type AppListQuery = {
   page?: number

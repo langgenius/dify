@@ -1,47 +1,7 @@
 'use client'
 
-import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-
-export function RecommendationSectionSkeleton({
-  className,
-  hasDescription = false,
-}: {
-  className?: string
-  hasDescription?: boolean
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <section className={cn('px-8 pb-6', className)} role="status" aria-label={t('loading', { ns: 'common' })}>
-      <RecommendationSectionSkeletonBody hasDescription={hasDescription} />
-    </section>
-  )
-}
-
-export function ExploreHeaderSkeleton() {
-  const { t } = useTranslation()
-
-  return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="sticky top-0 z-10 bg-background-body">
-      <div className="flex items-center gap-2 px-8 pt-6">
-        <div className="min-w-0 flex-1">
-          <SkeletonRectangle className="h-6 w-32 animate-pulse" />
-        </div>
-        <SkeletonRectangle className="h-4 w-20 shrink-0 animate-pulse" />
-      </div>
-      <div className="flex items-start justify-between gap-2 px-8 pt-3 pb-3">
-        <div className="flex min-w-0 flex-1 gap-1">
-          {Array.from({ length: 4 }, (_, index) => (
-            <SkeletonRectangle key={index} className="h-8 w-24 animate-pulse rounded-lg" />
-          ))}
-        </div>
-        <SkeletonRectangle className="h-8 w-40 shrink-0 animate-pulse rounded-lg" />
-      </div>
-    </div>
-  )
-}
 
 function ExploreAppCardSkeleton() {
   return (
@@ -66,18 +26,6 @@ function ExploreAppCardSkeleton() {
           <SkeletonRectangle className="my-0 h-5 w-20 animate-pulse rounded-[5px]" />
         </div>
       </div>
-    </div>
-  )
-}
-
-export function ExploreAppListSkeleton() {
-  const { t } = useTranslation()
-
-  return (
-    <div role="status" aria-label={t('loading', { ns: 'common' })} className="contents">
-      {Array.from({ length: 8 }, (_, index) => (
-        <ExploreAppCardSkeleton key={index} />
-      ))}
     </div>
   )
 }

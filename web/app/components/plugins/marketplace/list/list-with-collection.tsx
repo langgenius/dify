@@ -13,7 +13,6 @@ import Carousel from './carousel'
 import {
   CAROUSEL_BREAKPOINTS,
   CAROUSEL_PAGE_CLASS,
-  CAROUSEL_PAGE_GRID_CLASS,
   CAROUSEL_PAGE_SIZE,
   GRID_CLASS,
 } from './collection-constants'
@@ -146,13 +145,13 @@ const ListWithCollection = ({
                       autoPlay
                       autoPlayInterval={5000}
                     >
-                      {pages.map((pageItems, pageIndex) => (
+                      {pages.map(pageItems => (
                         <div
-                          key={pageItems[0]?.plugin_id ?? pageIndex}
+                          key={pageItems.map(plugin => plugin.plugin_id).join('-')}
                           className={CAROUSEL_PAGE_CLASS}
                           style={{ scrollSnapAlign: 'start' }}
                         >
-                          <div className={cn(CAROUSEL_PAGE_GRID_CLASS, cardContainerClassName)}>
+                          <div className={cn(GRID_CLASS, cardContainerClassName)}>
                             {pageItems.map(plugin => (
                               <div
                                 key={plugin.plugin_id}
