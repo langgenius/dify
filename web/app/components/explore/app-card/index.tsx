@@ -84,7 +84,7 @@ const AppCard = ({
         </div>
         <div className="flex w-0 grow flex-col gap-1 py-px">
           <div className="flex items-center system-md-semibold text-text-secondary">
-            <div id={nameId} className="truncate">{appBasicInfo.name}</div>
+            <div id={nameId} className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
           </div>
           <div className="flex items-center system-2xs-medium-uppercase text-text-tertiary">
             {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
@@ -99,17 +99,6 @@ const AppCard = ({
         <div id={descriptionId} className="line-clamp-2 min-h-8 flex-1 system-xs-regular text-text-tertiary">
           {app.description}
         </div>
-      </div>
-      <div className="relative flex h-[26px] w-full shrink-0 flex-col gap-2 overflow-hidden px-3">
-        <div className="flex w-full shrink-0 items-center gap-1 rounded-lg p-1">
-          {app.categories.slice(0, 2).map(category => (
-            <div key={category} className="flex min-w-[18px] shrink-0 items-center justify-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px] system-2xs-medium-uppercase text-text-tertiary">
-              <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-3 shrink-0" />
-              <span className="whitespace-nowrap">{category}</span>
-            </div>
-          ))}
-        </div>
-        <div className="pointer-events-none absolute top-0 right-0 bottom-0 w-20 bg-linear-to-r from-components-card-bg-alt-transparent to-components-card-bg-alt group-focus-within:hidden" />
       </div>
     </div>
   )

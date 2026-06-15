@@ -109,11 +109,11 @@ describe('AppCard', () => {
       expect(descWrapper).toHaveClass('line-clamp-2')
     })
 
-    it('should render category badges', () => {
+    it('should not render category badges', () => {
       renderComponent({ app: createApp({ categories: ['Search', 'Productivity'] }) })
 
-      expect(screen.getByText('Search')).toBeInTheDocument()
-      expect(screen.getByText('Productivity')).toBeInTheDocument()
+      expect(screen.queryByText('Search')).not.toBeInTheDocument()
+      expect(screen.queryByText('Productivity')).not.toBeInTheDocument()
     })
   })
 
