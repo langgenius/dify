@@ -342,6 +342,26 @@ describe('Action Component', () => {
       })
     })
 
+    it('should invalidate installed plugin list after successful uninstall', async () => {
+      // Arrange
+      mockUninstallPlugin.mockResolvedValue({ success: true })
+      const props = createActionProps({
+        isShowDelete: true,
+        isShowInfo: false,
+        isShowFetchNewVersion: false,
+      })
+
+      // Act
+      render(<Action {...props} />)
+      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteConfirmButton())
+
+      // Assert
+      await waitFor(() => {
+        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+      })
+    })
+
     it('should not call onDelete if uninstall fails', async () => {
       // Arrange
       mockUninstallPlugin.mockResolvedValue({ success: false })

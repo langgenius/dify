@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "dodano",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Žiadna stratégia agenta nie je k dispozícii",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Oglejte si vodič",
   "copyToolName": "Kopiraj ime",
   "createCustomTool": "Ustvari prilagojeno orodje",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Vrsta avtorizacije",
   "createTool.authHeaderPrefix.types.basic": "Osnovna",
   "createTool.authHeaderPrefix.types.bearer": "Imetnik",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Nastavitve",
   "setBuiltInTools.string": "niz",
   "setBuiltInTools.toolDescription": "Opis orodja",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Parametri",
   "test.parametersValue": "Parametri in vrednosti",
   "test.testResult": "Rezultati testa",
@@ -211,5 +214,12 @@
   "toolRemoved": "Orodje odstranjeno",
   "type.builtIn": "Vgrajena",
   "type.custom": "Prilagojena",
-  "type.workflow": "Potek dela"
+  "type.workflow": "Potek dela",
+  "workflowToolEmpty.description": "Če želite workflow uporabiti kot orodje, ga najprej objavite v Studio. Nato se bo prikazal tukaj in ga lahko dodate v katero koli aplikacijo.",
+  "workflowToolEmpty.goToStudio": "Pojdi v Studio",
+  "workflowToolEmpty.learnMore": "Potrebujete pomoč? Naučite se objaviti workflow kot orodje →",
+  "workflowToolEmpty.step1": "Ustvarite workflow v Studio",
+  "workflowToolEmpty.step2": "V meniju za objavo kliknite »Workflow as Tool«, da bo na voljo kot orodje",
+  "workflowToolEmpty.step3": "Vrnite se sem za upravljanje in ponovno uporabo",
+  "workflowToolEmpty.title": "Noben workflow še ni objavljen kot orodje"
 }

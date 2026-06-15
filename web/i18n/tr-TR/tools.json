@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Eklendi",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Mevcut ajan stratejisi yok",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Rehberi Görüntüle",
   "copyToolName": "Adı Kopyala",
   "createCustomTool": "Özel Araç Oluştur",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Yetki Türü",
   "createTool.authHeaderPrefix.types.basic": "Temel",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Ayar",
   "setBuiltInTools.string": "metin",
   "setBuiltInTools.toolDescription": "Araç açıklaması",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Parametreler",
   "test.parametersValue": "Parametreler ve Değer",
   "test.testResult": "Test Sonuçları",
@@ -211,5 +214,12 @@
   "toolRemoved": "Araç kaldırıldı",
   "type.builtIn": "Yerleşik",
   "type.custom": "Özel",
-  "type.workflow": "İş Akışı"
+  "type.workflow": "İş Akışı",
+  "workflowToolEmpty.description": "Bir workflow’u araç olarak kullanmak için önce Studio’dan yayınlayın. Ardından burada görünür ve herhangi bir uygulamaya eklenebilir.",
+  "workflowToolEmpty.goToStudio": "Studio’ya git",
+  "workflowToolEmpty.learnMore": "Yardıma mı ihtiyacınız var? Bir workflow’u araç olarak yayınlamayı öğrenin →",
+  "workflowToolEmpty.step1": "Studio’da bir workflow oluşturun",
+  "workflowToolEmpty.step2": "Yayınlama menüsünde “Workflow as Tool”a tıklayarak araç olarak kullanılabilir hale getirin",
+  "workflowToolEmpty.step3": "Yönetmek ve yeniden kullanmak için buraya dönün",
+  "workflowToolEmpty.title": "Henüz araç olarak yayınlanmış workflow yok"
 }

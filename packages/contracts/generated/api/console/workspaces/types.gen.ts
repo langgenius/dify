@@ -376,6 +376,30 @@ export type WorkspacePermissionResponse = {
 
 export type BinaryFileResponse = Blob | File
 
+export type ParserAutoUpgradeChange = {
+  auto_upgrade: PluginAutoUpgradeSettingsPayload
+  category: PluginCategory
+}
+
+export type PluginAutoUpgradeChangeResponse = {
+  message?: string | null
+  success: boolean
+}
+
+export type ParserExcludePlugin = {
+  category: PluginCategory
+  plugin_id: string
+}
+
+export type SuccessResponse = {
+  success: boolean
+}
+
+export type PluginAutoUpgradeFetchResponse = {
+  auto_upgrade: PluginAutoUpgradeSettingsResponseModel
+  category: PluginCategory
+}
+
 export type PluginDebuggingKeyResponse = {
   host: string
   key: string
@@ -432,36 +456,13 @@ export type ParserDynamicOptionsWithCredentials = {
 }
 
 export type ParserPermissionChange = {
-  debug_permission: DebugPermission
-  install_permission: InstallPermission
-}
-
-export type SuccessResponse = {
-  success: boolean
+  debug_permission?: DebugPermission
+  install_permission?: InstallPermission
 }
 
 export type PluginPermissionResponse = {
   debug_permission: DebugPermission
   install_permission: InstallPermission
-}
-
-export type ParserExcludePlugin = {
-  plugin_id: string
-}
-
-export type PluginOperationSuccessResponse = {
-  message?: string | null
-  success: boolean
-}
-
-export type ParserPreferencesChange = {
-  auto_upgrade: PluginAutoUpgradeSettingsPayload
-  permission: PluginPermissionSettingsPayload
-}
-
-export type PluginPreferencesResponse = {
-  auto_upgrade: PluginAutoUpgradeSettingsPayload
-  permission: PluginPermissionSettingsPayload
 }
 
 export type PluginReadmeResponse = {
@@ -497,6 +498,12 @@ export type ParserGithubUpload = {
   package: string
   repo: string
   version: string
+}
+
+export type PluginCategoryListResponse = {
+  builtin_tools: Array<PluginCategoryBuiltinToolProviderResponse>
+  has_more: boolean
+  plugins: Array<PluginCategoryInstalledPluginResponse>
 }
 
 export type ToolProviderOpaqueResponse = unknown
@@ -901,8 +908,8 @@ export type ModelCredentialLoadBalancingResponse = {
 
 export type ParameterRule = {
   default?: unknown | null
-  help?: I18nObject | null
-  label: I18nObject
+  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   max?: number | null
   min?: number | null
   name: string
@@ -923,10 +930,6 @@ export type ProviderWithModelsResponse = {
   tenant_id: string
 }
 
-export type DebugPermission = 'admins' | 'everyone' | 'noone'
-
-export type InstallPermission = 'admins' | 'everyone' | 'noone'
-
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
   include_plugins?: Array<string>
@@ -935,9 +938,75 @@ export type PluginAutoUpgradeSettingsPayload = {
   upgrade_time_of_day?: number
 }
 
-export type PluginPermissionSettingsPayload = {
-  debug_permission?: DebugPermission
-  install_permission?: InstallPermission
+export type PluginCategory
+  = | 'agent-strategy'
+    | 'datasource'
+    | 'extension'
+    | 'model'
+    | 'tool'
+    | 'trigger'
+
+export type PluginAutoUpgradeSettingsResponseModel = {
+  exclude_plugins: Array<string>
+  include_plugins: Array<string>
+  strategy_setting: StrategySetting
+  upgrade_mode: UpgradeMode
+  upgrade_time_of_day: number
+}
+
+export type DebugPermission = 'admins' | 'everyone' | 'noone'
+
+export type InstallPermission = 'admins' | 'everyone' | 'noone'
+
+export type PluginCategoryBuiltinToolProviderResponse = {
+  allow_delete: boolean
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon:
+    | string
+    | {
+      [key: string]: string
+    }
+  icon_dark:
+    | string
+    | {
+      [key: string]: string
+    }
+    | null
+  id: string
+  is_team_authorization: boolean
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  plugin_id: string | null
+  plugin_unique_identifier: string | null
+  team_credentials: {
+    [key: string]: unknown
+  }
+  tools: Array<PluginCategoryBuiltinToolResponse>
+  type: ToolProviderType
+  [key: string]: unknown
+}
+
+export type PluginCategoryInstalledPluginResponse = {
+  checksum: string
+  created_at: string
+  declaration: PluginDeclarationResponse
+  endpoints_active: number
+  endpoints_setups: number
+  id: string
+  installation_id: string
+  meta: {
+    [key: string]: unknown
+  }
+  name: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  tenant_id: string
+  updated_at: string
+  version: string
 }
 
 export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
@@ -976,12 +1045,14 @@ export type CustomConfigurationResponse = {
 
 export type I18nObject = {
   en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
   zh_Hans?: string | null
 }
 
 export type ProviderHelpEntity = {
-  title: I18nObject
-  url: I18nObject
+  title: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  url: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
 }
 
 export type ModelCredentialSchema = {
@@ -1036,6 +1107,11 @@ export type ModelStatus
     | 'no-permission'
     | 'quota-exceeded'
 
+export type GraphonModelRuntimeEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
+
 export type ParameterType = 'boolean' | 'float' | 'int' | 'string' | 'text'
 
 export type ProviderModelWithStatusEntity = {
@@ -1059,13 +1135,86 @@ export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
 
 export type UpgradeMode = 'all' | 'exclude' | 'partial'
 
+export type CoreToolsEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type PluginCategoryBuiltinToolResponse = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  output_schema: {
+    [key: string]: unknown
+  }
+  parameters?: Array<{
+    [key: string]: unknown
+  }> | null
+  [key: string]: unknown
+}
+
+export type ToolProviderType
+  = | 'api'
+    | 'app'
+    | 'builtin'
+    | 'dataset-retrieval'
+    | 'mcp'
+    | 'plugin'
+    | 'workflow'
+
+export type PluginDeclarationResponse = {
+  agent_strategy?: {
+    [key: string]: unknown
+  } | null
+  author: string | null
+  category: PluginCategory
+  created_at: string
+  datasource?: {
+    [key: string]: unknown
+  } | null
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  endpoint?: {
+    [key: string]: unknown
+  } | null
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  meta: {
+    [key: string]: unknown
+  }
+  model?: ProviderEntityResponse | null
+  name: string
+  plugins: {
+    [key: string]: Array<string> | null
+  }
+  repo?: string | null
+  resource: {
+    [key: string]: unknown
+  }
+  tags?: Array<string>
+  tool?: {
+    [key: string]: unknown
+  } | null
+  trigger?: {
+    [key: string]: unknown
+  } | null
+  verified?: boolean
+  version: string
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
+
 export type ToolParameterForm = 'form' | 'llm' | 'schema'
 
 export type AiModelEntityResponse = {
   deprecated?: boolean
   features?: Array<ModelFeature> | null
   fetch_from: FetchFrom
-  label: I18nObject
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   model: string
   model_properties: {
     [key in ModelPropertyKey]?: unknown
@@ -1094,10 +1243,10 @@ export type CustomModelConfiguration = {
 
 export type CredentialFormSchema = {
   default?: string | null
-  label: I18nObject
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   max_length?: number
   options?: Array<FormOption> | null
-  placeholder?: I18nObject | null
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
   required?: boolean
   show_on?: Array<FormShowOnObject>
   type: FormType
@@ -1105,8 +1254,8 @@ export type CredentialFormSchema = {
 }
 
 export type FieldModelSchema = {
-  label: I18nObject
-  placeholder?: I18nObject | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
 }
 
 export type ProviderQuotaType = 'free' | 'paid' | 'trial'
@@ -1120,6 +1269,25 @@ export type QuotaConfiguration = {
   restrict_models?: Array<RestrictModel>
 }
 
+export type ProviderEntityResponse = {
+  background?: string | null
+  configurate_methods: Array<ConfigurateMethod>
+  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  help?: ProviderHelpEntity | null
+  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  model_credential_schema?: ModelCredentialSchema | null
+  models?: Array<AiModelEntityResponse>
+  position?: {
+    [key: string]: Array<string>
+  } | null
+  provider: string
+  provider_credential_schema?: ProviderCredentialSchema | null
+  provider_name?: string
+  supported_model_types: Array<ModelType>
+}
+
 export type PriceConfigResponse = {
   currency: string
   input: string
@@ -1128,7 +1296,7 @@ export type PriceConfigResponse = {
 }
 
 export type FormOption = {
-  label: I18nObject
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   show_on?: Array<FormShowOnObject>
   value: string
 }
@@ -2166,6 +2334,50 @@ export type GetWorkspacesCurrentPluginAssetResponses = {
 export type GetWorkspacesCurrentPluginAssetResponse
   = GetWorkspacesCurrentPluginAssetResponses[keyof GetWorkspacesCurrentPluginAssetResponses]
 
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeData = {
+  body: ParserAutoUpgradeChange
+  path?: never
+  query?: never
+  url: '/workspaces/current/plugin/auto-upgrade/change'
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponses = {
+  200: PluginAutoUpgradeChangeResponse
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponse
+  = PostWorkspacesCurrentPluginAutoUpgradeChangeResponses[keyof PostWorkspacesCurrentPluginAutoUpgradeChangeResponses]
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeData = {
+  body: ParserExcludePlugin
+  path?: never
+  query?: never
+  url: '/workspaces/current/plugin/auto-upgrade/exclude'
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses = {
+  200: SuccessResponse
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponse
+  = PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses[keyof PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses]
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/auto-upgrade/fetch'
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponses = {
+  200: PluginAutoUpgradeFetchResponse
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponse
+  = GetWorkspacesCurrentPluginAutoUpgradeFetchResponses[keyof GetWorkspacesCurrentPluginAutoUpgradeFetchResponses]
+
 export type GetWorkspacesCurrentPluginDebuggingKeyData = {
   body?: never
   path?: never
@@ -2379,48 +2591,6 @@ export type GetWorkspacesCurrentPluginPermissionFetchResponses = {
 export type GetWorkspacesCurrentPluginPermissionFetchResponse
   = GetWorkspacesCurrentPluginPermissionFetchResponses[keyof GetWorkspacesCurrentPluginPermissionFetchResponses]
 
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeData = {
-  body: ParserExcludePlugin
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/autoupgrade/exclude'
-}
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses = {
-  200: PluginOperationSuccessResponse
-}
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse
-  = PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses[keyof PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses]
-
-export type PostWorkspacesCurrentPluginPreferencesChangeData = {
-  body: ParserPreferencesChange
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/change'
-}
-
-export type PostWorkspacesCurrentPluginPreferencesChangeResponses = {
-  200: PluginOperationSuccessResponse
-}
-
-export type PostWorkspacesCurrentPluginPreferencesChangeResponse
-  = PostWorkspacesCurrentPluginPreferencesChangeResponses[keyof PostWorkspacesCurrentPluginPreferencesChangeResponses]
-
-export type GetWorkspacesCurrentPluginPreferencesFetchData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/fetch'
-}
-
-export type GetWorkspacesCurrentPluginPreferencesFetchResponses = {
-  200: PluginPreferencesResponse
-}
-
-export type GetWorkspacesCurrentPluginPreferencesFetchResponse
-  = GetWorkspacesCurrentPluginPreferencesFetchResponses[keyof GetWorkspacesCurrentPluginPreferencesFetchResponses]
-
 export type GetWorkspacesCurrentPluginReadmeData = {
   body?: never
   path?: never
@@ -2601,6 +2771,25 @@ export type PostWorkspacesCurrentPluginUploadPkgResponses = {
 
 export type PostWorkspacesCurrentPluginUploadPkgResponse
   = PostWorkspacesCurrentPluginUploadPkgResponses[keyof PostWorkspacesCurrentPluginUploadPkgResponses]
+
+export type GetWorkspacesCurrentPluginByCategoryListData = {
+  body?: never
+  path: {
+    category: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/workspaces/current/plugin/{category}/list'
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListResponses = {
+  200: PluginCategoryListResponse
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListResponse
+  = GetWorkspacesCurrentPluginByCategoryListResponses[keyof GetWorkspacesCurrentPluginByCategoryListResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never

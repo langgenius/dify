@@ -73,7 +73,7 @@
   "title": "Журнали",
   "triggerBy.appRun": "Веб-додаток",
   "triggerBy.debugging": "Налагодження",
-  "triggerBy.plugin": "Плагін",
+  "triggerBy.plugin": "Інтеграція",
   "triggerBy.ragPipelineDebugging": "Виправлення помилок RAG",
   "triggerBy.ragPipelineRun": "Конвеєр RAG",
   "triggerBy.schedule": "Розклад",

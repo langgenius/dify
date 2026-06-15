@@ -5,7 +5,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchInput } from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import {
@@ -24,7 +23,7 @@ import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 
 const iconClassName = `
-  w-5 h-5 mr-2
+  w-4 h-4 mr-2
 `
 
 type IAccountSettingProps = {
@@ -36,6 +35,7 @@ type IAccountSettingProps = {
 type GroupItem = {
   key: AccountSettingTab
   name: string
+  title?: string
   description?: string
   icon: React.JSX.Element
   activeIcon: React.JSX.Element
@@ -52,85 +52,88 @@ export default function AccountSetting({
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
-  const workplaceGroupItems: GroupItem[] = (() => {
+  const settingItems: GroupItem[] = [
+    {
+      key: ACCOUNT_SETTING_TAB.PROVIDER,
+      name: t('settings.provider', { ns: 'common' }),
+      icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.MEMBERS,
+      name: t('settings.members', { ns: 'common' }),
+      icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.BILLING,
+      name: t('settings.billing', { ns: 'common' }),
+      description: t('plansCommon.receiptInfo', { ns: 'billing' }),
+      icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
+      name: t('settings.dataSource', { ns: 'common' }),
+      icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
+      name: t('settings.customEndpoint', { ns: 'common' }),
+      icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.CUSTOM,
+      name: t('custom', { ns: 'custom' }),
+      icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.LANGUAGE,
+      name: t('settings.preferences', { ns: 'common' }),
+      title: t('account.general', { ns: 'common' }),
+      icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
+    },
+  ]
+  const activeItem = settingItems.find(item => item.key === activeMenu)
+
+  const visibleSettingItems: GroupItem[] = (() => {
     if (isCurrentWorkspaceDatasetOperator)
       return []
 
-    const items: GroupItem[] = [
-      {
-        key: ACCOUNT_SETTING_TAB.PROVIDER,
-        name: t('settings.provider', { ns: 'common' }),
-        icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.MEMBERS,
-        name: t('settings.members', { ns: 'common' }),
-        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
-      },
-    ]
+    const visibleTabs: AccountSettingTab[] = []
 
-    if (enableBilling) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.BILLING,
-        name: t('settings.billing', { ns: 'common' }),
-        description: t('plansCommon.receiptInfo', { ns: 'billing' }),
-        icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
-      })
-    }
+    visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
 
-    items.push(
-      {
-        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-        name: t('settings.dataSource', { ns: 'common' }),
-        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
-      },
-      {
-        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
-        name: t('settings.apiBasedExtension', { ns: 'common' }),
-        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
-      },
-    )
+    if (enableBilling)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.BILLING)
 
-    if (enableReplaceWebAppLogo || enableBilling) {
-      items.push({
-        key: ACCOUNT_SETTING_TAB.CUSTOM,
-        name: t('custom', { ns: 'custom' }),
-        icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
-        activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
-      })
-    }
+    if (enableReplaceWebAppLogo || enableBilling)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
 
-    return items
+    return visibleTabs
+      .map(tab => settingItems.find(item => item.key === tab))
+      .filter((item): item is GroupItem => Boolean(item))
   })()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const languageItem = settingItems.find(item => item.key === ACCOUNT_SETTING_TAB.LANGUAGE)
 
   const menuItems = [
     {
       key: 'workspace-group',
-      name: t('settings.workplaceGroup', { ns: 'common' }),
-      items: workplaceGroupItems,
+      name: t('settings.workspace', { ns: 'common' }),
+      items: visibleSettingItems,
     },
     {
-      key: 'account-group',
-      name: t('settings.generalGroup', { ns: 'common' }),
-      items: [
-        {
-          key: ACCOUNT_SETTING_TAB.LANGUAGE,
-          name: t('settings.language', { ns: 'common' }),
-          icon: <span className={cn('i-ri-translate-2', iconClassName)} />,
-          activeIcon: <span className={cn('i-ri-translate-2', iconClassName)} />,
-        },
-      ],
+      key: 'user-group',
+      items: languageItem ? [languageItem] : [],
     },
   ]
-  const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
 
@@ -151,24 +154,26 @@ export default function AccountSetting({
       show
       onClose={handleClose}
     >
-      <div className="mx-auto flex h-screen max-w-[1048px]">
-        <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[224px]">
-          <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
+      <div className="flex h-screen w-full max-w-full pl-0 sm:pl-[232px]">
+        <div className="flex w-[44px] shrink-0 flex-col pr-6 pl-4 sm:w-[224px]">
+          <div className="mt-6 mb-8 flex h-[38px] items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">{t('settings.settings', { ns: 'common' })}</div>
           <div className="w-full">
             {
               menuItems.map(menuItem => (
-                <div key={menuItem.key} className="mb-2">
-                  {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
+                <div key={menuItem.key} className={cn(menuItem.key === 'workspace-group' ? 'mb-2' : 'mt-2')}>
+                  {menuItem.name && !isMobile && (
+                    <div className="flex h-7 items-center px-3 system-xs-medium-uppercase text-text-tertiary">
+                      {menuItem.name}
+                    </div>
                   )}
-                  <div>
+                  <div className={cn(menuItem.key === 'user-group' && 'border-t border-divider-subtle pt-3')}>
                     {
                       menuItem.items.map(item => (
                         <button
                           type="button"
                           key={item.key}
                           className={cn(
-                            'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
+                            'mb-0.5 flex h-8 w-full items-center rounded-lg px-3 text-left text-sm',
                             activeMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
                           )}
                           aria-label={item.name}
@@ -208,25 +213,21 @@ export default function AccountSetting({
               content: 'min-h-full pb-4',
             }}
           >
-            <div className="sticky top-0 z-20 mx-8 mb-[18px] flex items-center bg-components-panel-bg pt-[27px] pb-2">
+            <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
               <div className="shrink-0 title-2xl-semi-bold text-text-primary">
-                {activeItem?.name}
+                {activeItem?.title ?? activeItem?.name}
                 {activeItem?.description && (
                   <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
                 )}
               </div>
-              {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
-                <div className="flex grow justify-end">
-                  <SearchInput
-                    className="w-52"
-                    onValueChange={setSearchValue}
-                    value={searchValue}
-                  />
-                </div>
-              )}
             </div>
-            <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
+            <div className="px-4 pt-6 sm:px-8">
+              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
+                <ModelProviderPage
+                  searchText={searchValue}
+                  onSearchTextChange={setSearchValue}
+                />
+              )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}

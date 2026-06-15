@@ -36,8 +36,8 @@ const ServiceApi = ({
           render={(
             <button type="button" className="w-full border-none bg-transparent p-0 text-left">
               <div className={cn(
-                'relative flex h-8 cursor-pointer items-center gap-2 rounded-lg border-[0.5px] border-components-button-secondary-border-hover bg-components-button-secondary-bg px-3',
-                open ? 'bg-components-button-secondary-bg-hover' : 'hover:bg-components-button-secondary-bg-hover',
+                'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
+                open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
               )}
               >
                 <StatusDot
@@ -46,7 +46,7 @@ const ServiceApi = ({
                     apiBaseUrl ? 'success' : 'warning'
                   }
                 />
-                <div className="grow system-sm-medium text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>
+                <div className="px-0.5 system-xs-medium">{t('serviceApi.title', { ns: 'dataset' })}</div>
               </div>
             </button>
           )}

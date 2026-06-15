@@ -43,6 +43,14 @@ export const exploreAppsContract = base
   .input(type<{ query?: { language?: string } }>())
   .output(type<ExploreAppsResponse>())
 
+export const learnDifyAppsContract = base
+  .route({
+    path: '/explore/apps/learn-dify',
+    method: 'GET',
+  })
+  .input(type<{ query?: { language?: string } }>())
+  .output(type<ExploreAppsResponse>())
+
 export const exploreAppDetailContract = base
   .route({
     path: '/explore/apps/{id}',
