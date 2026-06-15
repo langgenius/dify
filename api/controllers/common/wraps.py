@@ -1,19 +1,3 @@
-"""Shared decorator utilities for Dify controller layers.
-
-This module provides decorators that are not tied to any single API group (e.g.
-console, inner, service).  Currently it exposes the RBAC permission gate, which
-can be applied to any blueprint.
-
-Key exports
------------
-``rbac_permission_required`` – decorator that gates enterprise RBAC access
-    control.  In the community edition this is always a no-op; enterprise
-    editions override the implementation without changing the public interface.
-
-``RBACPermission``, ``RBACResourceScope`` – re-exported from ``core.rbac`` so
-    callers only need a single import site.
-"""
-
 from collections.abc import Callable
 from functools import wraps
 
