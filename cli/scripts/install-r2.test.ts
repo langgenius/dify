@@ -54,4 +54,16 @@ describe('install-r2 manifest parsing', () => {
     expect(r.status).not.toBe(0)
     expect(r.stderr).toMatch(/DIFYCTL_R2_BASE/)
   })
+
+  it('sha256_check aborts on a checksum mismatch', () => {
+    const r = lib('f="$(mktemp)"; printf \'hello\' > "$f"; sha256_check "$f" deadbeef')
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toMatch(/checksum mismatch/)
+  })
+
+  it('sha256_check passes on the correct hash', () => {
+    // sha256('hello') = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+    const r = lib('f="$(mktemp)"; printf \'hello\' > "$f"; sha256_check "$f" 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 && echo OK')
+    expect(r.stdout).toBe('OK')
+  })
 })

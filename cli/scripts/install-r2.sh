@@ -10,6 +10,7 @@ set -eu
 
 # --- library functions (sourced for tests when DIFYCTL_INSTALL_LIB=1) ---
 tmp_m="$(mktemp 2>/dev/null || echo /tmp/difyctl-manifest.$$)"
+trap 'rm -f "$tmp_m" "${tmp_b:-}"' EXIT INT TERM
 
 err() { printf '%s\n' "install-r2: $*" >&2; }
 die() { err "$*"; exit 1; }
@@ -29,6 +30,8 @@ detect_target() {
   printf '%s-%s' "$_os" "$_arch"
 }
 
+# Parse OUR manifest with grep/sed (no jq). Correct ONLY because
+# release-r2-edge.mjs renders one key per line and each target on a single line.
 # manifest_str <file> <key>  -> value of a top-level string field
 manifest_str() {
   grep "\"$2\"[[:space:]]*:" "$1" | head -1 \
