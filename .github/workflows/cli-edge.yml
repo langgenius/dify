@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'cli/**'
-      - 'packages/contracts/generated/api/**'
+      - 'packages/contracts/generated/api/openapi/**'
   workflow_dispatch:
 
 concurrency:
