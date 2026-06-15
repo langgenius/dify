@@ -15,12 +15,28 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 
 function ProviderIcon({
+  icon,
   iconClassName,
 }: {
+  icon?: AgentProviderTool['icon']
   iconClassName: string
 }) {
+  if (icon) {
+    return (
+      <BlockIcon
+        className="shrink-0"
+        type={BlockEnum.Tool}
+        toolIcon={icon}
+      />
+    )
+  }
+
   return (
     <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge">
       <span aria-hidden className={cn('size-3.5', iconClassName)} />
@@ -116,6 +132,9 @@ export function AgentProviderToolItem({
   onRemoveProvider: () => void
 }) {
   const { t } = useTranslation('agentV2')
+  const { theme } = useTheme()
+  const icon = theme === Theme.dark && tool.iconDark ? tool.iconDark : tool.icon
+  const displayName = tool.displayName ?? tool.name
 
   return (
     <CollapsibleRoot
@@ -127,10 +146,10 @@ export function AgentProviderToolItem({
         <CollapsibleTrigger
           className="group min-h-0 min-w-0 flex-1 justify-start gap-2 rounded-md px-0 pr-1 text-left hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
         >
-          <ProviderIcon iconClassName={tool.iconClassName} />
+          <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
           <span className="flex min-w-0 items-center">
             <span className="min-w-0 truncate system-sm-medium text-text-primary">
-              {tool.name}
+              {displayName}
             </span>
             <span
               aria-hidden

@@ -74,21 +74,13 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
       render: trigger,
     }: {
       render: React.ReactElement
-      openOnHover?: boolean
-      delay?: number
-      closeDelay?: number
     }) => {
-      const context = React.useContext(PopoverContext)
       if (!React.isValidElement(trigger))
         return trigger
 
       const triggerProps = trigger.props as React.HTMLAttributes<HTMLElement>
       return React.cloneElement(trigger, {
         onClick: triggerProps.onClick,
-        onMouseEnter: (event: React.MouseEvent<HTMLElement>) => {
-          triggerProps.onMouseEnter?.(event)
-          context.onOpenChange?.(true)
-        },
       } as React.HTMLAttributes<HTMLElement>)
     },
   }
@@ -259,8 +251,8 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('should show affected workflow references when hovering a publishable agent in use', () => {
-    renderPublishBar({
+  it('should show affected workflow references when clicking a publishable agent in use', () => {
+    const { onPublish } = renderPublishBar({
       activeConfigSnapshot,
       prompt: 'Updated system prompt',
       publishedReferenceCount: 2,
@@ -269,14 +261,17 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
+    expect(onPublish).not.toHaveBeenCalled()
     expect(screen.getByTestId('publish-impact-popover')).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.descriptionPrefix/)).toBeInTheDocument()
     expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.workflowCount/)).toBeInTheDocument()
     expect(screen.getByText('Python bug fixer')).toBeInTheDocument()
     expect(screen.getByText('Translation Workflow')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: 'Python bug fixer' })).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('should publish from the affected workflow popover action', () => {
@@ -287,7 +282,7 @@ describe('AgentConfigurePublishBar', () => {
       publishedReferences,
     })
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
     fireEvent.click(within(screen.getByTestId('publish-impact-popover')).getByRole('button', {
       name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
     }))

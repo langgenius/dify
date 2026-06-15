@@ -49,6 +49,7 @@ export type TriggerDefaultValue = PluginCommonDefaultValue & {
 }
 
 export type ToolDefaultValue = PluginCommonDefaultValue & {
+  provider_show_name?: string
   tool_name: string
   tool_label: string
   tool_description: string

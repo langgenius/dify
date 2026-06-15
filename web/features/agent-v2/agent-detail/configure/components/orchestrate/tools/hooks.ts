@@ -47,6 +47,9 @@ export const addProviderTools = (
 
       nextTools[existingToolIndex] = {
         ...existingTool,
+        displayName: existingTool.displayName ?? selectedTool.provider_show_name,
+        icon: existingTool.icon ?? selectedTool.provider_icon,
+        iconDark: existingTool.iconDark ?? selectedTool.provider_icon_dark,
         actions: [...existingTool.actions, action],
       }
       return
@@ -56,7 +59,10 @@ export const addProviderTools = (
       id: selectedTool.provider_id,
       name: selectedTool.provider_name,
       kind: 'provider',
+      displayName: selectedTool.provider_show_name,
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+      icon: selectedTool.provider_icon,
+      iconDark: selectedTool.provider_icon_dark,
       providerType: selectedTool.provider_type,
       credentialKey: selectedTool.is_team_authorization
         ? 'agentDetail.configure.tools.credential.authOne'

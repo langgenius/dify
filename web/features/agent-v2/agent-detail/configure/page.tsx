@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentPublishedReferenceResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +24,30 @@ import { useAgentConfigureSync } from './use-agent-configure-sync'
 type AgentConfigurePageProps = {
   agentId: string
 }
+
+const mockPublishedReferences: AgentPublishedReferenceResponse[] = [
+  {
+    app_id: 'mock-python-fixer-app',
+    app_mode: 'workflow',
+    app_name: 'Python bug fixer',
+    workflow_id: 'mock-python-fixer-workflow',
+    workflow_version: '1',
+  },
+  {
+    app_id: 'mock-translation-app',
+    app_mode: 'workflow',
+    app_name: 'Translation Workflow',
+    workflow_id: 'mock-translation-workflow',
+    workflow_version: '1',
+  },
+  {
+    app_id: 'mock-email-reply-app',
+    app_mode: 'workflow',
+    app_name: 'Automated Email Reply',
+    workflow_id: 'mock-email-reply-workflow',
+    workflow_version: '1',
+  },
+]
 
 export function AgentConfigurePage({
   agentId,
@@ -73,6 +97,10 @@ function AgentConfigurePageContent({
     currentModel,
     enabled: composerQuery.isSuccess,
   })
+  const publishedReferences = agentQuery.data?.published_references?.length
+    ? agentQuery.data.published_references
+    : mockPublishedReferences
+  const publishedReferenceCount = agentQuery.data?.published_reference_count || publishedReferences.length
   const previewAgentSoulConfig = getPreviewAgentSoulConfig(agentSoulConfig, draftAppFeatures)
 
   return (
@@ -89,8 +117,8 @@ function AgentConfigurePageContent({
         currentModel={currentModel}
         textGenerationModelList={textGenerationModelList}
         isPublishing={isPublishing}
-        publishedReferenceCount={agentQuery.data?.published_reference_count}
-        publishedReferences={agentQuery.data?.published_references}
+        publishedReferenceCount={publishedReferenceCount}
+        publishedReferences={publishedReferences}
         onSelectModel={setConfigureModel}
         onPublish={publishDraft}
         onOpenVersions={() => setShowPreviewVersions(true)}

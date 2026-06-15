@@ -1,11 +1,11 @@
 'use client'
 
 import type { AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agents/types.gen'
-import type { ReactElement } from 'react'
+import type { MouseEvent, ReactElement } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
+import { cloneElement, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 
@@ -15,7 +15,9 @@ type AgentPublishImpactPopoverProps = {
   disabled?: boolean
   publishedReferenceCount?: number
   publishedReferences?: AgentPublishedReferenceResponse[]
-  trigger: ReactElement
+  trigger: ReactElement<{
+    onClick?: (event: MouseEvent<HTMLElement>) => void
+  }>
   onPublish: () => void
 }
 
@@ -48,6 +50,13 @@ export function AgentPublishImpactPopover({
   if (!hasPublishedReferences || disabled)
     return trigger
 
+  const triggerWithImpact = cloneElement(trigger, {
+    onClick: (event: MouseEvent<HTMLElement>) => {
+      event.preventDefault()
+      setOpen(true)
+    },
+  })
+
   const handlePublish = () => {
     setOpen(false)
     onPublish()
@@ -56,14 +65,11 @@ export function AgentPublishImpactPopover({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        openOnHover
-        delay={300}
-        closeDelay={200}
-        render={trigger}
+        render={triggerWithImpact}
       />
       <PopoverContent
         placement="top-end"
-        sideOffset={8}
+        sideOffset={-40}
         popupClassName="w-96 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
       >
         <div className="flex flex-col gap-0">
@@ -129,6 +135,8 @@ function ReferenceLink({
   return (
     <Link
       href={getWorkflowReferenceHref(reference)}
+      target="_blank"
+      rel="noopener noreferrer"
       className="flex min-w-0 items-center gap-2 rounded-lg py-1 pr-2.5 pl-2 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
     >
       <span

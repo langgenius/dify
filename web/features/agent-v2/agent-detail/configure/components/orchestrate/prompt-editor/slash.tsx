@@ -433,11 +433,13 @@ function toToolDefaultValue(
 
   const label = getLocalizedText(tool.label, language) || tool.name
   const description = getLocalizedText(tool.description, language)
+  const providerLabel = getLocalizedText(provider.label, language) || provider.name
 
   return {
     provider_id: provider.id,
     provider_type: provider.type,
     provider_name: provider.name,
+    provider_show_name: providerLabel,
     plugin_id: provider.plugin_id,
     plugin_unique_identifier: provider.plugin_unique_identifier,
     provider_icon: provider.icon,

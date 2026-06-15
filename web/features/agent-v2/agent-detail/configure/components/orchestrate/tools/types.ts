@@ -1,4 +1,5 @@
 import type { EnvVariable } from '../advanced/env'
+import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type AgentToolBase = {
@@ -15,7 +16,10 @@ export type AgentToolAction = {
 
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
+  displayName?: string
   iconClassName: string
+  icon?: ToolDefaultValue['provider_icon']
+  iconDark?: ToolDefaultValue['provider_icon_dark']
   providerType?: string
   credentialKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
   credentialVariant: 'authorized' | 'endUser'
