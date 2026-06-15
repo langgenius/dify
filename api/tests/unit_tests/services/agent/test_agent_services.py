@@ -1213,9 +1213,7 @@ class TestWorkflowAgentDraftBindingSync:
             node_job_config=WorkflowNodeJobConfig(
                 workflow_prompt="Old prompt",
                 declared_outputs=[
-                    DeclaredOutputConfig(
-                        name="summary", type=DeclaredOutputType.STRING, description="Short summary"
-                    )
+                    DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary")
                 ],
             ),
         )
