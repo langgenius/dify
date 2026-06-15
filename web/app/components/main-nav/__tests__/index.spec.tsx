@@ -651,7 +651,7 @@ describe('MainNav', () => {
   })
 
   it('registers the detail navigation shortcut to run while inputs are focused', () => {
-    mockPathname = '/roster/agent/agent-1/configure'
+    mockPathname = '/app/app-1/overview'
 
     renderMainNav()
 

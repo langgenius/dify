@@ -7,8 +7,8 @@ import { useModalContext } from '@/context/modal-context'
 import { integrationSectionByMovedAccountSettingTab } from './destinations'
 
 type IntegrationsSettingState
-  = | { payload: MovedAccountSettingTab, source?: 'agent' }
-    | { section: IntegrationSection, source?: 'agent' }
+  = | { payload: MovedAccountSettingTab, source?: 'agent', onCancelCallback?: () => void }
+    | { section: IntegrationSection, source?: 'agent', onCancelCallback?: () => void }
 
 export const useIntegrationsSetting = () => {
   const { setShowAccountSettingModal } = useModalContext()
@@ -20,9 +20,11 @@ export const useIntegrationsSetting = () => {
         : integrationSectionByMovedAccountSettingTab[state.payload]
 
     if (section) {
-      setShowAccountSettingModal(state.source
-        ? { payload: section, source: state.source }
-        : { payload: section })
+      setShowAccountSettingModal({
+        payload: section,
+        ...(state.source ? { source: state.source } : {}),
+        ...(state.onCancelCallback ? { onCancelCallback: state.onCancelCallback } : {}),
+      })
     }
   }, [setShowAccountSettingModal])
 }

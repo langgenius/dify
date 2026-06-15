@@ -50,4 +50,15 @@ describe('useIntegrationsSetting', () => {
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider', source: 'agent' })
   })
+
+  it('should preserve the cancel callback for migrated integrations settings', () => {
+    const onCancelCallback = vi.fn()
+    const { result } = renderHook(() => useIntegrationsSetting())
+
+    act(() => {
+      result.current({ payload: ACCOUNT_SETTING_TAB.PROVIDER, onCancelCallback })
+    })
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider', onCancelCallback })
+  })
 })
