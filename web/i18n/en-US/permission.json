@@ -1,5 +1,7 @@
 {
   "accessRule.actions": "Actions",
+  "accessRule.addMemberAria": "Add {{name}}",
+  "accessRule.addMembersTitle": "Add members",
   "accessRule.allPermittedMembers": "All permitted members",
   "accessRule.allPermittedMembersDescription": "Members with matching role permissions can access this resource.",
   "accessRule.appDescription": "Control who this app is open to. Members still need role permissions to view or operate it.",
@@ -24,6 +26,7 @@
   "accessRule.lockedSummary_one": "· {{count}} locked",
   "accessRule.lockedSummary_other": "· {{count}} locked",
   "accessRule.newPermissionSet": "New permission set",
+  "accessRule.noAvailableMembers": "No members available to add",
   "accessRule.noDescription": "No description",
   "accessRule.noRoles": "No roles",
   "accessRule.noRules": "No access rules",

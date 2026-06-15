@@ -8,9 +8,10 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import AddAccessSubjectPopover from './add-access-subject-popover'
 import { ACCESS_RULE_TABLE_GRID } from './constants'
 import ResourceOpenScopeSection from './open-scope-section'
 import UserAccessPolicyRow from './user-access-policy-row'
@@ -26,7 +27,7 @@ export type AccessRulesEditorProps = {
   className?: string
   onOpenScopeChange?: (openScope: ResourceOpenScope) => void
   onUserAccessPoliciesChange?: (accountId: string, accessPolicyIds: string[]) => void
-  onAddAccessSubject?: () => void
+  onAddAccessSubject?: (accountId: string, accessPolicyIds: string[]) => void
 }
 
 export default function AccessRulesEditor({
@@ -43,6 +44,7 @@ export default function AccessRulesEditor({
   onAddAccessSubject,
 }: AccessRulesEditorProps) {
   const { t } = useTranslation()
+  const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false)
   const isLoading = isLoadingRules || isLoadingUserAccessSettings
   const individualPermissionSettingsTip = t('accessRule.individualPermissionSettingsTip', { ns: 'permission' })
   const policyOptions = useMemo(() => {
@@ -81,15 +83,35 @@ export default function AccessRulesEditor({
             </TooltipContent>
           </Tooltip>
         </div>
-        <Button
-          variant="primary"
-          size="medium"
-          disabled={!onAddAccessSubject}
-          onClick={onAddAccessSubject}
-        >
-          <span className="i-ri-add-line size-3.5" aria-hidden />
-          <span>{t('operation.add', { ns: 'common' })}</span>
-        </Button>
+        {onAddAccessSubject
+          ? (
+              <AddAccessSubjectPopover
+                open={isAddPopoverOpen}
+                trigger={(
+                  <Button
+                    variant="primary"
+                    size="medium"
+                  >
+                    <span className="i-ri-add-line size-3.5" aria-hidden />
+                    <span>{t('operation.add', { ns: 'common' })}</span>
+                  </Button>
+                )}
+                userAccessSettings={userAccessSettings}
+                updatingAccountId={updatingAccountId}
+                onOpenChange={setIsAddPopoverOpen}
+                onAddAccessSubject={onAddAccessSubject}
+              />
+            )
+          : (
+              <Button
+                variant="primary"
+                size="medium"
+                disabled
+              >
+                <span className="i-ri-add-line size-3.5" aria-hidden />
+                <span>{t('operation.add', { ns: 'common' })}</span>
+              </Button>
+            )}
       </div>
       <section className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
         <div className={cn('grid items-center gap-4 border-b border-divider-deep px-10 py-4 system-sm-semibold text-text-tertiary', ACCESS_RULE_TABLE_GRID)}>

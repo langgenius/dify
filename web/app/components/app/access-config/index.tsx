@@ -74,6 +74,7 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
           updatingAccountId={updatingAccountId}
           onOpenScopeChange={handleOpenScopeChange}
           onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
+          onAddAccessSubject={handleUserAccessPoliciesChange}
         />
       </main>
     </ScrollArea>

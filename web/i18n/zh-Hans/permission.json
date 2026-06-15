@@ -1,5 +1,7 @@
 {
   "accessRule.actions": "操作",
+  "accessRule.addMemberAria": "添加 {{name}}",
+  "accessRule.addMembersTitle": "添加成员",
   "accessRule.allPermittedMembers": "所有被授权成员",
   "accessRule.allPermittedMembersDescription": "拥有匹配角色权限的成员都可以访问此资源。",
   "accessRule.appDescription": "控制此应用对哪些成员开放。成员仍需具备角色权限才能查看或操作此应用。",
@@ -24,6 +26,7 @@
   "accessRule.lockedSummary_one": "· {{count}} 个锁定",
   "accessRule.lockedSummary_other": "· {{count}} 个锁定",
   "accessRule.newPermissionSet": "新建权限集",
+  "accessRule.noAvailableMembers": "暂无可添加成员",
   "accessRule.noDescription": "无描述",
   "accessRule.noRoles": "暂无角色",
   "accessRule.noRules": "暂无访问规则",

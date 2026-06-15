@@ -97,6 +97,14 @@ describe('DatasetAccessConfigPage', () => {
       }, expect.objectContaining({
         onSettled: expect.any(Function),
       }))
+
+      mockAccessRulesEditor.props?.onAddAccessSubject?.('account-2', ['default'])
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        accountId: 'account-2',
+        accessPolicyIds: ['default'],
+      }, expect.objectContaining({
+        onSettled: expect.any(Function),
+      }))
     })
   })
 })

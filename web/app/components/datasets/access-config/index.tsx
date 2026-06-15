@@ -74,6 +74,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           updatingAccountId={updatingAccountId}
           onOpenScopeChange={handleOpenScopeChange}
           onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
+          onAddAccessSubject={handleUserAccessPoliciesChange}
         />
       </main>
     </ScrollArea>

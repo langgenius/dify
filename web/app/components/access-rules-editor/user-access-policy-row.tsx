@@ -13,9 +13,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
-import { ACCESS_RULE_TABLE_GRID } from './constants'
-
-const DEFAULT_POLICY_VALUE = 'default'
+import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
 
 type PolicyOption = {
   id: string
@@ -39,7 +37,7 @@ export default function UserAccessPolicyRow({
 }: UserAccessPolicyRowProps) {
   const { t } = useTranslation()
   const accountId = setting.account.account_id
-  const selectedPolicyId = setting.access_policies[0]?.id ?? DEFAULT_POLICY_VALUE
+  const selectedPolicyId = setting.access_policies[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
   const roleNames = setting.roles.map(role => role.name).filter(Boolean)
   const primaryRoleName = roleNames[0]
 
@@ -47,7 +45,7 @@ export default function UserAccessPolicyRow({
     if (!nextPolicyId || nextPolicyId === selectedPolicyId)
       return
 
-    onChange?.(accountId, nextPolicyId === DEFAULT_POLICY_VALUE ? [] : [nextPolicyId])
+    onChange?.(accountId, nextPolicyId === DEFAULT_ACCESS_POLICY_ID ? [] : [nextPolicyId])
   }
 
   const handleRemove = () => {
@@ -55,7 +53,7 @@ export default function UserAccessPolicyRow({
   }
 
   return (
-    <div className={cn('grid min-h-[76px] items-center gap-4 px-6 py-4', ACCESS_RULE_TABLE_GRID, className)}>
+    <div className={cn('grid min-h-19 items-center gap-4 px-6 py-4', ACCESS_RULE_TABLE_GRID, className)}>
       <div className="flex min-w-0 items-center gap-3">
         <Avatar
           avatar={setting.account.avatar ?? null}
@@ -87,17 +85,17 @@ export default function UserAccessPolicyRow({
           aria-label={t('accessRule.exceptionPermissionFor', { ns: 'permission', name: setting.account.account_name })}
           size="small"
           disabled={disabled}
-          className="w-fit max-w-full min-w-[121px]"
+          className="w-fit max-w-full min-w-30.25"
         >
           <SelectValue>
-            {selectedPolicyId === DEFAULT_POLICY_VALUE
-              ? DEFAULT_POLICY_VALUE
+            {selectedPolicyId === DEFAULT_ACCESS_POLICY_ID
+              ? DEFAULT_ACCESS_POLICY_ID
               : setting.access_policies[0]?.name}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={DEFAULT_POLICY_VALUE}>
-            <SelectItemText>{DEFAULT_POLICY_VALUE}</SelectItemText>
+          <SelectItem value={DEFAULT_ACCESS_POLICY_ID}>
+            <SelectItemText>{DEFAULT_ACCESS_POLICY_ID}</SelectItemText>
             <SelectItemIndicator />
           </SelectItem>
           {policyOptions.map(policy => (
@@ -110,7 +108,7 @@ export default function UserAccessPolicyRow({
       </Select>
       <button
         type="button"
-        disabled={disabled || selectedPolicyId === DEFAULT_POLICY_VALUE}
+        disabled={disabled}
         className="w-fit rounded-md border-none bg-transparent p-0 text-left system-xs-medium text-text-destructive outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:no-underline"
         onClick={handleRemove}
       >

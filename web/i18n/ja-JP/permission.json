@@ -1,5 +1,7 @@
 {
   "accessRule.actions": "アクション",
+  "accessRule.addMemberAria": "{{name}} を追加",
+  "accessRule.addMembersTitle": "メンバーを追加",
   "accessRule.allPermittedMembers": "許可されたすべてのメンバー",
   "accessRule.allPermittedMembersDescription": "一致するロール権限を持つメンバーは、このリソースにアクセスできます。",
   "accessRule.appDescription": "このアプリを公開する対象を制御します。メンバーが表示または操作するには、引き続きロール権限が必要です。",
@@ -24,6 +26,7 @@
   "accessRule.lockedSummary_one": "· {{count}} 件ロック済み",
   "accessRule.lockedSummary_other": "· {{count}} 件ロック済み",
   "accessRule.newPermissionSet": "新しい権限セット",
+  "accessRule.noAvailableMembers": "追加できるメンバーがいません",
   "accessRule.noDescription": "説明なし",
   "accessRule.noRoles": "ロールなし",
   "accessRule.noRules": "アクセスルールがありません",

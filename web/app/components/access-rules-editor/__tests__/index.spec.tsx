@@ -1,6 +1,20 @@
 import type { AccessPolicyWithBindings, ResourceUserAccessSetting } from '@/models/access-control'
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { Member } from '@/models/common'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import AccessRulesEditor from '../index'
+
+const mockMembers = vi.hoisted(() => ({
+  accounts: [] as Member[] | null,
+  isLoading: false,
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: vi.fn(() => ({
+    data: { accounts: mockMembers.accounts },
+    isLoading: mockMembers.isLoading,
+  })),
+}))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
   policy: {
@@ -51,7 +65,25 @@ const createDefaultUserAccessSetting = (): ResourceUserAccessSetting => ({
   access_policies: [],
 })
 
+const createMember = (overrides: Partial<Member> = {}): Member => ({
+  id: 'account-2',
+  name: 'Mia',
+  email: 'mia@example.com',
+  avatar: '',
+  avatar_url: '',
+  status: 'active',
+  role: 'normal',
+  roles: [],
+  ...overrides,
+} as Member)
+
 describe('AccessRulesEditor', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockMembers.accounts = []
+    mockMembers.isLoading = false
+  })
+
   it('should render loading state before empty or row content', () => {
     render(
       <AccessRulesEditor
@@ -157,5 +189,42 @@ describe('AccessRulesEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(onOpenScopeChange).not.toHaveBeenCalled()
+  })
+
+  it('should add unassigned members with default permission', async () => {
+    const user = userEvent.setup()
+    const onAddAccessSubject = vi.fn()
+    mockMembers.accounts = [
+      createMember({
+        id: 'account-1',
+        name: 'Evan',
+        email: 'evan@example.com',
+      }),
+      createMember(),
+    ]
+
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[createUserAccessSetting()]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        openScope="specific"
+        isUpdatingOpenScope={false}
+        updatingAccountId={null}
+        onAddAccessSubject={onAddAccessSubject}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+
+    const dialog = screen.getByRole('dialog', { name: 'permission.accessRule.addMembersTitle' })
+    expect(within(dialog).queryByText('Evan')).not.toBeInTheDocument()
+    expect(within(dialog).getByText('Mia')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('tablist')).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'permission.accessRule.addMemberAria:{"name":"Mia"}' }))
+
+    expect(onAddAccessSubject).toHaveBeenCalledWith('account-2', ['default'])
   })
 })
