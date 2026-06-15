@@ -3,7 +3,9 @@
 # Env: DIFYCTL_R2_BASE (required), DIFYCTL_CHANNEL (default edge),
 #      DIFYCTL_INSTALL_DIR (default %LOCALAPPDATA%\difyctl\bin; binary written here as difyctl.exe),
 #      DIFYCTL_VERSION (pin exact published version),
-#      DIFYCTL_COMMIT  (pin by git commit, short or full sha; via index.json).
+#      DIFYCTL_COMMIT  (pin by git commit, short or full sha; via index.json),
+#      DIFYCTL_R2_PREFIX (default difyctl; key root for pointer JSONs),
+#      DIFYCTL_R2_BIN_PREFIX (default <prefix>/bin; key root for binaries).
 # With no pin the channel pointer (latest) is installed.
 $ErrorActionPreference = 'Stop'
 
@@ -60,11 +62,13 @@ function Install-DifyctlR2 {
   if (-not $base) { throw "set DIFYCTL_R2_BASE to the R2 public base (e.g. https://pub-….r2.dev)" }
   $base = $base.TrimEnd('/')
   $channel = if ($env:DIFYCTL_CHANNEL) { $env:DIFYCTL_CHANNEL } else { 'edge' }
+  $prefix = if ($env:DIFYCTL_R2_PREFIX) { $env:DIFYCTL_R2_PREFIX } else { 'difyctl' }
+  $binPrefix = if ($env:DIFYCTL_R2_BIN_PREFIX) { $env:DIFYCTL_R2_BIN_PREFIX } else { "$prefix/bin" }
   $installDir = if ($env:DIFYCTL_INSTALL_DIR) { $env:DIFYCTL_INSTALL_DIR } else { Join-Path (Join-Path $env:LOCALAPPDATA 'difyctl') 'bin' }
   $target = 'windows-x64'
 
   if ($env:DIFYCTL_VERSION -or $env:DIFYCTL_COMMIT) {
-    $iurl = "$base/difyctl/$channel/index.json"
+    $iurl = "$base/$prefix/$channel/index.json"
     try { $index = Invoke-RestMethod -Uri $iurl }
     catch { throw "R2 unavailable fetching $iurl; retry." }
     $build = if ($env:DIFYCTL_VERSION) { Resolve-IndexBuild $index 'version' $env:DIFYCTL_VERSION }
@@ -72,7 +76,7 @@ function Install-DifyctlR2 {
     $pin = if ($env:DIFYCTL_VERSION) { $env:DIFYCTL_VERSION } else { $env:DIFYCTL_COMMIT }
     if (-not $build) { throw "no build matching $pin in channel $channel" }
     $version = $build.version
-    $vbase = "$base/difyctl/$channel/$($build.dir)"
+    $vbase = "$base/$binPrefix/$channel/$($build.dir)"
     try { $cf = (Invoke-WebRequest -Uri "$vbase/difyctl-v$version-checksums.txt").Content }
     catch { throw "checksums missing for $version (channel $channel)" }
     $ct = Get-ChecksumTarget $cf $target
@@ -81,7 +85,7 @@ function Install-DifyctlR2 {
     return
   }
 
-  $murl = "$base/difyctl/$channel/manifest.json"
+  $murl = "$base/$prefix/$channel/manifest.json"
   try { $manifest = Invoke-RestMethod -Uri $murl }
   catch {
     if ($_.Exception.Response.StatusCode.value__ -eq 404) {

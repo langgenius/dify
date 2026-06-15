@@ -121,18 +121,24 @@ describe('release-r2-edge manifest', () => {
 
 // ---- index ----
 
-function runIndex(currentContent: string | null, build: Record<string, string>) {
+function runIndex(currentContent: string | null, build: Record<string, string>, existingDirs?: string[]) {
   let currentArg = '-'
   if (currentContent !== null) {
     const dir = mkdtempSync(join(tmpdir(), 'difyctl-index-'))
     currentArg = join(dir, 'index.json')
     writeFileSync(currentArg, currentContent)
   }
-  const r = spawnSync('node', [SCRIPT, 'index', '--current', currentArg, '--channel', 'edge', '--version', build.version, '--commit', build.commit, '--build-date', build.buildDate], { encoding: 'utf8' })
+  const extra: string[] = []
+  if (existingDirs !== undefined) {
+    const dir = mkdtempSync(join(tmpdir(), 'difyctl-existing-'))
+    const f = join(dir, 'existing.txt')
+    writeFileSync(f, `${existingDirs.join('\n')}\n`)
+    extra.push('--existing-dirs', f)
+  }
+  const r = spawnSync('node', [SCRIPT, 'index', '--current', currentArg, '--channel', 'edge', '--version', build.version, '--commit', build.commit, '--build-date', build.buildDate, ...extra], { encoding: 'utf8' })
   return {
     code: r.status ?? 1,
     index: (r.status === 0 ? JSON.parse(r.stdout) : null) as IndexJson,
-    prune: (r.stderr ?? '').split('\n').filter(Boolean),
   }
 }
 
@@ -171,24 +177,30 @@ describe('release-r2-edge index', () => {
       { version: B2.version, commit: B2.commit, buildDate: B2.buildDate, dir: B2.version },
       { version: B1.version, commit: B1.commit, buildDate: B1.buildDate, dir: B1.version },
     ] })
-    const { index, prune } = runIndex(current, B1) // re-cut B1
+    const { index } = runIndex(current, B1) // re-cut B1
     expect(index.builds.map(b => b.version)).toEqual([B1.version, B2.version])
-    expect(prune).not.toContain(B1.version)
   })
 
-  it('truncates to 500 and reports the dropped dir for pruning', () => {
-    const builds = Array.from({ length: 500 }, (_, i) => ({
-      version: `0.1.0-edge.${String(i).padStart(7, '0')}`,
-      commit: String(i).padStart(7, '0'),
-      buildDate: '2026-06-01T00:00:00Z',
-      dir: `0.1.0-edge.${String(i).padStart(7, '0')}`,
-    }))
-    const oldest = builds[builds.length - 1].version
-    const current = JSON.stringify({ schema: 1, channel: 'edge', builds })
-    const { index, prune } = runIndex(current, B2)
-    expect(index.builds).toHaveLength(500)
-    expect(index.builds[0].version).toBe(B2.version)
-    expect(prune).toContain(oldest)
+  it('reconciles to surviving binary dirs (drops a build whose binary expired)', () => {
+    const current = JSON.stringify({ schema: 1, channel: 'edge', builds: [
+      { version: B1.version, commit: B1.commit, buildDate: B1.buildDate, dir: B1.version },
+    ] })
+    // B1's binary is gone (not in existing); the new B2 is always kept.
+    const { index } = runIndex(current, B2, [B2.version])
+    expect(index.builds.map(b => b.version)).toEqual([B2.version])
+  })
+
+  it('keeps the new build even when it is absent from the existing-dirs list', () => {
+    const { index } = runIndex(null, B1, []) // empty survivors, fresh ledger
+    expect(index.builds.map(b => b.version)).toEqual([B1.version])
+  })
+
+  it('does not reconcile when no --existing-dirs is given (list unavailable)', () => {
+    const current = JSON.stringify({ schema: 1, channel: 'edge', builds: [
+      { version: B1.version, commit: B1.commit, buildDate: B1.buildDate, dir: B1.version },
+    ] })
+    const { index } = runIndex(current, B2) // no existing-dirs → keep all
+    expect(index.builds.map(b => b.version)).toEqual([B2.version, B1.version])
   })
 
   it('dies on a non-empty current file that is not valid JSON', () => {

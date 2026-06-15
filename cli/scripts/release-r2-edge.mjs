@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 // release-r2-edge.mjs — edge/R2 release metadata generator. Two subcommands:
 //   manifest  -> the per-channel pointer manifest.json (the installer reads this)
-//   index     -> the per-channel build-history ledger index.json (+ prune list)
+//   index     -> the per-channel build-history ledger index.json
 import { existsSync, readFileSync } from 'node:fs'
 import { assetName, loadPkg, validateVersionForChannel } from './release-naming.mjs'
-
-const MAX_BUILDS = 500
 
 function die(msg) {
   process.stderr.write(`release-r2-edge: ${msg}\n`)
@@ -71,6 +69,20 @@ function emitManifest(args) {
   process.stdout.write(`{\n${headLines},\n  "targets": {\n${targetLines}\n  }\n}\n`)
 }
 
+// Newline-delimited dir names of binaries that still exist in R2. Absent file =
+// no reconciliation (caller could not list); empty file = no survivors.
+function loadExistingDirs(path) {
+  if (!path || !existsSync(path))
+    return null
+  const set = new Set()
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    const d = line.trim()
+    if (d)
+      set.add(d)
+  }
+  return set
+}
+
 function emitIndex(args) {
   requireArgs(args, ['current', 'channel', 'version', 'commit', 'build-date'])
 
@@ -88,18 +100,19 @@ function emitIndex(args) {
     }
   }
 
-  const oldDirs = new Set((current.builds ?? []).map(b => b.dir))
   const entry = { version: args.version, commit: args.commit, buildDate: args['build-date'], dir: args.version }
   const kept = (current.builds ?? []).filter(b => b.version !== entry.version)
-  const builds = [entry, ...kept].slice(0, MAX_BUILDS)
+  let builds = [entry, ...kept]
 
-  const newDirs = new Set(builds.map(b => b.dir))
-  const prune = [...oldDirs].filter(d => !newDirs.has(d))
+  // Reconcile to binaries that still exist in R2: lifecycle/TTL on the bin prefix
+  // is the only deletion mechanism, so the ledger never advertises a build whose
+  // binary is gone. The new build is always kept (just uploaded). No count cap.
+  const existing = loadExistingDirs(args['existing-dirs'])
+  if (existing)
+    builds = builds.filter(b => b.dir === entry.dir || existing.has(b.dir))
 
   const index = { schema: 1, channel: args.channel, updated: args['build-date'], builds }
   process.stdout.write(`${JSON.stringify(index, null, 2)}\n`)
-  for (const dir of prune)
-    process.stderr.write(`${dir}\n`)
 }
 
 const [cmd, ...rest] = process.argv.slice(2)

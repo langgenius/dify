@@ -8,8 +8,10 @@
 #   DIFYCTL_INSTALL_DIR  (default $HOME/.local/bin)  directory the binary is written to as <dir>/difyctl
 #   DIFYCTL_VERSION  pin an exact published version (e.g. 0.1.0-edge.ce4af868)
 #   DIFYCTL_COMMIT   pin by git commit (short or full sha); resolved via index.json
+#   DIFYCTL_R2_PREFIX      (default difyctl)       key root for pointer JSONs
+#   DIFYCTL_R2_BIN_PREFIX  (default <prefix>/bin)  key root for binaries
 # With no pin the channel pointer (latest) is installed. A pin resolves through
-# difyctl/<channel>/index.json -> the build's immutable dir + checksums.txt.
+# <prefix>/<channel>/index.json -> the build's immutable dir under the bin prefix.
 set -eu
 
 # --- library functions (sourced for tests when DIFYCTL_INSTALL_LIB=1) ---
@@ -100,7 +102,7 @@ fetch_verify_install() {
 
 # Resolve a pinned build into download url + sha. Sets: version, dl_url, dl_sha.
 resolve_pinned() {
-  iurl="${base}/difyctl/${channel}/index.json"
+  iurl="${base}/${prefix}/${channel}/index.json"
   curl -fsSL "$iurl" -o "$tmp_m" || die "R2 unavailable fetching ${iurl}; retry."
   if [ -n "${DIFYCTL_VERSION:-}" ]; then res="$(index_resolve "$tmp_m" version "$DIFYCTL_VERSION")"
   else res="$(index_resolve "$tmp_m" commit "$DIFYCTL_COMMIT")"; fi
@@ -108,7 +110,7 @@ resolve_pinned() {
   version="$(printf '%s' "$res" | cut -f1)"
   dir="$(printf '%s' "$res" | cut -f2)"
 
-  vbase="${base}/difyctl/${channel}/${dir}"
+  vbase="${base}/${bin_prefix}/${channel}/${dir}"
   tmp_c="$(mktemp)"
   curl -fsSL "${vbase}/difyctl-v${version}-checksums.txt" -o "$tmp_c" \
     || die "checksums missing for ${version} (channel ${channel})"
@@ -120,7 +122,7 @@ resolve_pinned() {
 
 # Resolve the channel pointer (latest) into download url + sha. Sets the same.
 resolve_pointer() {
-  murl="${base}/difyctl/${channel}/manifest.json"
+  murl="${base}/${prefix}/${channel}/manifest.json"
   _code="$(curl -fsS -o "$tmp_m" -w '%{http_code}' "$murl" 2>/dev/null || true)"
   if [ ! -s "$tmp_m" ]; then
     case "$_code" in
@@ -143,6 +145,8 @@ install_main() {
   [ -n "${DIFYCTL_R2_BASE:-}" ] || die "set DIFYCTL_R2_BASE to the R2 public base (e.g. https://pub-….r2.dev)"
   base="${DIFYCTL_R2_BASE%/}"
   channel="${DIFYCTL_CHANNEL:-edge}"
+  prefix="${DIFYCTL_R2_PREFIX:-difyctl}"
+  bin_prefix="${DIFYCTL_R2_BIN_PREFIX:-${prefix}/bin}"
   install_dir="${DIFYCTL_INSTALL_DIR:-${HOME}/.local/bin}"
   target="$(detect_target)"
 
