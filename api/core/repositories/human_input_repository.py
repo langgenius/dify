@@ -220,6 +220,9 @@ class HumanInputFormRecord:
     recipient_id: str | None
     recipient_type: RecipientType | None
     access_token: str | None
+    # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
+    # defaulted so existing record constructions stay source-compatible.
+    conversation_id: str | None = None
 
     @property
     def submitted(self) -> bool:
@@ -235,6 +238,7 @@ class HumanInputFormRecord:
         return cls(
             form_id=form_model.id,
             workflow_run_id=form_model.workflow_run_id,
+            conversation_id=form_model.conversation_id,
             node_id=form_model.node_id,
             tenant_id=form_model.tenant_id,
             app_id=form_model.app_id,
