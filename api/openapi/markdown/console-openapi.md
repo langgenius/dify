@@ -11868,27 +11868,6 @@ Soft lifecycle state for Agent records.
 | ---- | ---- | ----------- | -------- |
 | AgentStatus | string | Soft lifecycle state for Agent records. |  |
 
-#### AgentStrategyProviderEntity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| identity | [AgentStrategyProviderIdentity](#agentstrategyprovideridentity) |  | Yes |
-| plugin_id | string | The id of the plugin | No |
-
-#### AgentStrategyProviderIdentity
-
-Inherits from ToolProviderIdentity, without any additional fields.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the tool | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
-| icon | string | The icon of the tool | Yes |
-| icon_dark | string | The dark icon of the tool | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
-| name | string | The name of the tool | Yes |
-| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
-
 #### AgentSuggestedQuestionsAfterAnswerFeatureConfig
 
 | Name | Type | Description | Required |
@@ -12342,12 +12321,6 @@ AppMCPServer Status Enum
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
-
-#### AppSelectorScope
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| AppSelectorScope | string |  |  |
 
 #### AppSiteResponse
 
@@ -13855,36 +13828,6 @@ Model class for provider custom model configuration.
 | error | string | Error message from OAuth provider | No |
 | state | string | OAuth state parameter | No |
 
-#### DatasourceProviderEntity
-
-Datasource provider entity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
-| identity | [DatasourceProviderIdentity](#datasourceprovideridentity) |  | Yes |
-| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
-| provider_type | [DatasourceProviderType](#datasourceprovidertype) |  | Yes |
-
-#### DatasourceProviderIdentity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the tool | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
-| icon | string | The icon of the tool | Yes |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
-| name | string | The name of the tool | Yes |
-| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
-
-#### DatasourceProviderType
-
-Enum class for datasource provider
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasourceProviderType | string | Enum class for datasource provider |  |
-
 #### DatasourceUpdateNamePayload
 
 | Name | Type | Description | Required |
@@ -14338,12 +14281,6 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | EmptyObjectResponse | object |  |  |
 
-#### Endpoint
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
-
 #### EndpointCreatePayload
 
 | Name | Type | Description | Required |
@@ -14357,16 +14294,6 @@ Request payload for bulk downloading documents as a zip archive.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | success | boolean | Operation success | Yes |
-
-#### EndpointDeclaration
-
-declaration of an endpoint
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| hidden | boolean |  | No |
-| method | string |  | Yes |
-| path | string |  | Yes |
 
 #### EndpointDeleteResponse
 
@@ -14412,15 +14339,6 @@ declaration of an endpoint
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | endpoints | [ object ] | Endpoint information | Yes |
-
-#### EndpointProviderDeclaration
-
-declaration of an endpoint group
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| endpoints | [ [EndpointDeclaration](#endpointdeclaration) ] |  | No |
-| settings | [ [ProviderConfig](#providerconfig) ] |  | No |
 
 #### EndpointUpdatePayload
 
@@ -14476,57 +14394,6 @@ declaration of an endpoint group
 | ---- | ---- | ----------- | -------- |
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
-
-#### EventEntity
-
-The configuration of an event
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the event | Yes |
-| identity | [EventIdentity](#eventidentity) |  | Yes |
-| output_schema | object | The output schema that this event produces | No |
-| parameters | [ [EventParameter](#eventparameter) ] | The parameters of the event | No |
-
-#### EventIdentity
-
-The identity of the event
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the event | Yes |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the event | Yes |
-| name | string | The name of the event | Yes |
-| provider | string | The provider of the event | No |
-
-#### EventParameter
-
-The parameter of the event
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) | The auto generate of the parameter | No |
-| default | integer<br>number<br>string<br>[ object ] |  | No |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label presented to the user | Yes |
-| max | number<br>integer |  | No |
-| min | number<br>integer |  | No |
-| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
-| name | string | The name of the parameter | Yes |
-| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
-| precision | integer |  | No |
-| required | boolean |  | No |
-| scope | string |  | No |
-| template | [PluginParameterTemplate](#pluginparametertemplate) | The template of the parameter | No |
-| type | [EventParameterType](#eventparametertype) |  | Yes |
-
-#### EventParameterType
-
-The type of the parameter
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| EventParameterType | string | The type of the parameter |  |
 
 #### EventStreamResponse
 
@@ -15642,13 +15509,6 @@ Enum class for large language model mode.
 | first_id | string | First message ID for pagination | No |
 | limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
 
-#### Meta
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| minimum_dify_version | string |  | No |
-| version | string |  | No |
-
 #### MetadataArgs
 
 | Name | Type | Description | Required |
@@ -15686,18 +15546,6 @@ Metadata operation data
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
-
-#### Model
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
-| llm | boolean |  | No |
-| moderation | boolean |  | No |
-| rerank | boolean |  | No |
-| speech2text | boolean |  | No |
-| text_embedding | boolean |  | No |
-| tts | boolean |  | No |
 
 #### ModelConfig
 
@@ -15803,12 +15651,6 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
 
-#### ModelSelectorScope
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ModelSelectorScope | string |  |  |
-
 #### ModelStatus
 
 Enum class for model status.
@@ -15860,12 +15702,6 @@ Model with provider entity.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | new_app_id | string |  | Yes |
-
-#### Node
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
 
 #### NodeIdQuery
 
@@ -16096,15 +15932,6 @@ Coarse node-level status used by Inspector to pick a banner.
 | refresh_token | string |  | Yes |
 | token_type | string |  | Yes |
 
-#### OAuthSchema
-
-OAuth schema
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| client_schema | [ [ProviderConfig](#providerconfig) ] | client schema like client_id, client_secret, etc. | No |
-| credentials_schema | [ [ProviderConfig](#providerconfig) ] | credentials schema like access_token, refresh_token, etc. | No |
-
 #### OAuthTokenRequest
 
 | Name | Type | Description | Required |
@@ -16121,13 +15948,6 @@ OAuth schema
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | OpaqueObjectResponse | object |  |  |
-
-#### Option
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the option | Yes |
-| value | string | The value of the option | Yes |
 
 #### OutputErrorStrategy
 
@@ -16562,16 +16382,6 @@ Enum class for parameter type.
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
-#### Permission
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| endpoint | [Endpoint](#endpoint) |  | No |
-| model | [Model](#model) |  | No |
-| node | [Node](#node) |  | No |
-| storage | [Storage](#storage) |  | No |
-| tool | [Tool](#tool) |  | No |
-
 #### PermissionEnum
 
 Shared permission levels for resources (datasets, credentials, etc.)
@@ -16770,25 +16580,25 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_strategy | [AgentStrategyProviderEntity](#agentstrategyproviderentity) |  | No |
+| agent_strategy | object |  | No |
 | author | string |  | Yes |
 | category | [PluginCategory](#plugincategory) |  | Yes |
 | created_at | dateTime |  | Yes |
-| datasource | [DatasourceProviderEntity](#datasourceproviderentity) |  | No |
+| datasource | object |  | No |
 | description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
-| endpoint | [EndpointProviderDeclaration](#endpointproviderdeclaration) |  | No |
+| endpoint | object |  | No |
 | icon | string |  | Yes |
 | icon_dark | string |  | No |
 | label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
-| meta | [Meta](#meta) |  | Yes |
+| meta | object |  | Yes |
 | model | [ProviderEntityResponse](#providerentityresponse) |  | No |
 | name | string |  | Yes |
-| plugins | [Plugins](#plugins) |  | Yes |
+| plugins | object |  | Yes |
 | repo | string |  | No |
-| resource | [PluginResourceRequirements](#pluginresourcerequirements) |  | Yes |
+| resource | object |  | Yes |
 | tags | [ string ] |  | No |
-| tool | [ToolProviderEntity](#toolproviderentity) |  | No |
-| trigger | [TriggerProviderEntity](#triggerproviderentity) |  | No |
+| tool | object |  | No |
+| trigger | object |  | No |
 | verified | boolean |  | No |
 | version | string |  | Yes |
 
@@ -16869,26 +16679,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | message | string |  | No |
 | success | boolean |  | Yes |
 
-#### PluginParameterAutoGenerate
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| type | [core__plugin__entities__parameters__PluginParameterAutoGenerate__Type](#core__plugin__entities__parameters__pluginparameterautogenerate__type) |  | Yes |
-
-#### PluginParameterOption
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string | The icon of the option, can be a url or a base64 encoded image | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the option | Yes |
-| value | string | The value of the option | Yes |
-
-#### PluginParameterTemplate
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether the parameter is jinja enabled | No |
-
 #### PluginPermissionResponse
 
 | Name | Type | Description | Required |
@@ -16909,13 +16699,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | readme | string |  | Yes |
 
-#### PluginResourceRequirements
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| memory | integer |  | Yes |
-| permission | [Permission](#permission) |  | No |
-
 #### PluginTaskResponse
 
 | Name | Type | Description | Required |
@@ -16933,16 +16716,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | versions |  |  | Yes |
-
-#### Plugins
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| datasources | [ string ] |  | No |
-| endpoints | [ string ] |  | No |
-| models | [ string ] |  | No |
-| tools | [ string ] |  | No |
-| triggers | [ string ] |  | No |
 
 #### PreProcessingRule
 
@@ -16984,24 +16757,6 @@ Dataset Process Rule Mode
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
-
-#### ProviderConfig
-
-Model class for common provider settings like credentials
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default | integer<br>string<br>number<br>boolean |  | No |
-| help | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
-| multiple | boolean |  | No |
-| name | string | The name of the credentials | Yes |
-| options | [ [Option](#option) ] |  | No |
-| placeholder | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
-| required | boolean |  | No |
-| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
-| type | [core__entities__provider_entities__BasicProviderConfig__Type](#core__entities__provider_entities__basicproviderconfig__type) | The type of the credentials | Yes |
-| url | string |  | No |
 
 #### ProviderCredentialResponse
 
@@ -17997,13 +17752,6 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
-#### Storage
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
-| size | integer, <br>**Default:** 1048576 |  | No |
-
 #### StrategySetting
 
 | Name | Type | Description | Required |
@@ -18027,16 +17775,6 @@ Default configuration for form inputs.
 | selector | [ string ] |  | No |
 | type | [ValueSourceType](#valuesourcetype) |  | Yes |
 | value | string |  | No |
-
-#### SubscriptionConstructor
-
-The subscription constructor of the trigger provider
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| credentials_schema | [ [ProviderConfig](#providerconfig) ] | The credentials schema of the subscription constructor | No |
-| oauth_schema | [OAuthSchema](#oauthschema) | The OAuth schema of the subscription constructor if OAuth is supported | No |
-| parameters | [ [EventParameter](#eventparameter) ] | The parameters schema of the subscription constructor | No |
 
 #### SubscriptionModel
 
@@ -18305,18 +18043,6 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
 
-#### Tool
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | No |
-
-#### ToolLabelEnum
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ToolLabelEnum | string |  |  |
-
 #### ToolOAuthClientSchemaResponse
 
 | Name | Type | Description | Required |
@@ -18342,27 +18068,6 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | ToolParameterForm | string |  |  |
 
-#### ToolProviderEntity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
-| identity | [ToolProviderIdentity](#toolprovideridentity) |  | Yes |
-| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
-| plugin_id | string |  | No |
-
-#### ToolProviderIdentity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the tool | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
-| icon | string | The icon of the tool | Yes |
-| icon_dark | string | The dark icon of the tool | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
-| name | string | The name of the tool | Yes |
-| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
-
 #### ToolProviderListQuery
 
 | Name | Type | Description | Required |
@@ -18382,12 +18087,6 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderType | string | Enum class for tool provider |  |
-
-#### ToolSelectorScope
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ToolSelectorScope | string |  |  |
 
 #### TraceAppConfigResponse
 
@@ -18649,31 +18348,6 @@ Enum class for tool provider
 | params | object |  | Yes |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
-
-#### TriggerProviderEntity
-
-The configuration of a trigger provider
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| events | [ [EventEntity](#evententity) ] | The events of the trigger provider | No |
-| identity | [TriggerProviderIdentity](#triggerprovideridentity) |  | Yes |
-| subscription_constructor | [SubscriptionConstructor](#subscriptionconstructor) | The subscription constructor of the trigger provider | No |
-| subscription_schema | [ [ProviderConfig](#providerconfig) ] | The configuration schema stored in the subscription entity | No |
-
-#### TriggerProviderIdentity
-
-The identity of the trigger provider
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the trigger provider | Yes |
-| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the trigger provider | Yes |
-| icon | string | The icon of the trigger provider | No |
-| icon_dark | string | The dark icon of the trigger provider | No |
-| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the trigger provider | Yes |
-| name | string | The name of the trigger provider | Yes |
-| tags | [ string ] | The tags of the trigger provider | No |
 
 #### TriggerProviderOpaqueResponse
 
@@ -19832,18 +19506,6 @@ Workflow tool configuration
 | updated_by | string |  | No |
 | use_count | integer |  | No |
 | version | integer |  | No |
-
-#### core__entities__provider_entities__BasicProviderConfig__Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| core__entities__provider_entities__BasicProviderConfig__Type | string |  |  |
-
-#### core__plugin__entities__parameters__PluginParameterAutoGenerate__Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| core__plugin__entities__parameters__PluginParameterAutoGenerate__Type | string |  |  |
 
 #### core__tools__entities__common_entities__I18nObject
 
