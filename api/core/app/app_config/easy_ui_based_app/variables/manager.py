@@ -1,12 +1,26 @@
 import re
+from typing import Any, cast
 
-from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity, VariableEntityType
+from core.app.app_config.entities import ExternalDataVariableEntity
 from core.external_data_tool.factory import ExternalDataToolFactory
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from models.model import AppModelConfigDict
+
+_ALLOWED_VARIABLE_ENTITY_TYPE = frozenset(
+    [
+        VariableEntityType.TEXT_INPUT,
+        VariableEntityType.SELECT,
+        VariableEntityType.PARAGRAPH,
+        VariableEntityType.NUMBER,
+        VariableEntityType.EXTERNAL_DATA_TOOL,
+        VariableEntityType.CHECKBOX,
+    ]
+)
 
 
 class BasicVariablesConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> tuple[list[VariableEntity], list[ExternalDataVariableEntity]]:
+    def convert(cls, config: AppModelConfigDict) -> tuple[list[VariableEntity], list[ExternalDataVariableEntity]]:
         """
         Convert model config to model config
 
@@ -39,7 +53,9 @@ class BasicVariablesConfigManager:
 
                 external_data_variables.append(
                     ExternalDataVariableEntity(
-                        variable=variable["variable"], type=variable["type"], config=variable["config"]
+                        variable=variable["variable"],
+                        type=variable.get("type", ""),
+                        config=variable.get("config", {}),
                     )
                 )
             elif variable_type in {
@@ -47,14 +63,15 @@ class BasicVariablesConfigManager:
                 VariableEntityType.PARAGRAPH,
                 VariableEntityType.NUMBER,
                 VariableEntityType.SELECT,
+                VariableEntityType.CHECKBOX,
             }:
                 variable = variables[variable_type]
                 variable_entities.append(
                     VariableEntity(
-                        type=variable_type,
-                        variable=variable.get("variable"),
+                        type=cast(VariableEntityType, variable_type),
+                        variable=variable["variable"],
                         description=variable.get("description") or "",
-                        label=variable.get("label"),
+                        label=variable["label"],
                         required=variable.get("required", False),
                         max_length=variable.get("max_length"),
                         options=variable.get("options") or [],
@@ -64,7 +81,7 @@ class BasicVariablesConfigManager:
         return variable_entities, external_data_variables
 
     @classmethod
-    def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, tenant_id: str, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for user input form
 
@@ -81,7 +98,7 @@ class BasicVariablesConfigManager:
         return config, related_config_keys
 
     @classmethod
-    def validate_variables_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_variables_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for user input form
 
@@ -96,8 +113,17 @@ class BasicVariablesConfigManager:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
-                raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
+            # if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
+            if key not in {
+                VariableEntityType.TEXT_INPUT,
+                VariableEntityType.SELECT,
+                VariableEntityType.PARAGRAPH,
+                VariableEntityType.NUMBER,
+                VariableEntityType.EXTERNAL_DATA_TOOL,
+                VariableEntityType.CHECKBOX,
+            }:
+                allowed_keys = ", ".join(i.value for i in _ALLOWED_VARIABLE_ENTITY_TYPE)
+                raise ValueError(f"Keys in user_input_form list can only be {allowed_keys}")
 
             form_item = item[key]
             if "label" not in form_item:
@@ -137,7 +163,9 @@ class BasicVariablesConfigManager:
         return config, ["user_input_form"]
 
     @classmethod
-    def validate_external_data_tools_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
+    def validate_external_data_tools_and_set_defaults(
+        cls, tenant_id: str, config: dict[str, Any]
+    ) -> tuple[dict[str, Any], list[str]]:
         """
         Validate and set defaults for external data fetch feature
 

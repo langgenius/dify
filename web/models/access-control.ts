@@ -24,7 +24,7 @@ export type AccessControlAccount = {
   avatarUrl: 'string'
 }
 
-export type SubjectGroup = { subjectId: string; subjectType: SubjectType; groupData: AccessControlGroup }
-export type SubjectAccount = { subjectId: string; subjectType: SubjectType; accountData: AccessControlAccount }
+export type SubjectGroup = { subjectId: string, subjectType: SubjectType, groupData: AccessControlGroup }
+export type SubjectAccount = { subjectId: string, subjectType: SubjectType, accountData: AccessControlAccount }
 
 export type Subject = SubjectGroup | SubjectAccount

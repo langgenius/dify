@@ -1,9 +1,10 @@
 import logging
 from collections.abc import Generator
+from typing import override
 
-import boto3  # type: ignore
-from botocore.client import Config  # type: ignore
-from botocore.exceptions import ClientError  # type: ignore
+import boto3
+from botocore.client import Config
+from botocore.exceptions import ClientError
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -39,43 +40,48 @@ class AwsS3Storage(BaseStorage):
             self.client.head_bucket(Bucket=self.bucket_name)
         except ClientError as e:
             # if bucket not exists, create it
-            if e.response["Error"]["Code"] == "404":
+            if e.response.get("Error", {}).get("Code") == "404":
                 self.client.create_bucket(Bucket=self.bucket_name)
             # if bucket is not accessible, pass, maybe the bucket is existing but not accessible
-            elif e.response["Error"]["Code"] == "403":
+            elif e.response.get("Error", {}).get("Code") == "403":
                 pass
             else:
                 # other error, raise exception
                 raise
 
+    @override
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("File not found")
             else:
                 raise
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         try:
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("file not found")
             elif "reached max retries" in str(ex):
                 raise ValueError("please do not request the same file too frequently")
             else:
                 raise
 
+    @override
     def download(self, filename, target_filepath):
         self.client.download_file(self.bucket_name, filename, target_filepath)
 
+    @override
     def exists(self, filename):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
@@ -83,5 +89,6 @@ class AwsS3Storage(BaseStorage):
         except:
             return False
 
-    def delete(self, filename):
+    @override
+    def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)

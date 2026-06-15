@@ -1,6 +1,8 @@
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
-import { PromptMode } from '@/models/debug'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Collection } from '@/app/components/tools/types'
+import type { ExternalDataTool } from '@/models/common'
+import type { DataSet } from '@/models/datasets'
 import type {
   AnnotationReplyConfig,
   BlockStatus,
@@ -19,20 +21,19 @@ import type {
   SuggestedQuestionsAfterAnswerConfig,
   TextToSpeechConfig,
 } from '@/models/debug'
-import type { ExternalDataTool } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
-import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Collection } from '@/app/components/tools/types'
-import { noop } from 'lodash-es'
+import { PromptMode } from '@/models/debug'
+import { AppModeEnum, ModelModeType, Resolution, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 type IDebugConfiguration = {
+  readonly?: boolean
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
-  mode: string
+  mode: AppModeEnum
   modelModeType: ModelModeType
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
@@ -108,10 +109,11 @@ type IDebugConfiguration = {
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
+  readonly: false,
   appId: '',
   isAPIKeySet: false,
   isTrailFinished: false,
-  mode: '',
+  mode: AppModeEnum.CHAT,
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: noop,
@@ -210,6 +212,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       prompt_template: '',
       prompt_variables: [],
     },
+    chat_prompt_config: DEFAULT_CHAT_PROMPT_CONFIG,
+    completion_prompt_config: DEFAULT_COMPLETION_PROMPT_CONFIG,
     more_like_this: null,
     opening_statement: '',
     suggested_questions: [],
@@ -220,6 +224,14 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     suggested_questions_after_answer: null,
     retriever_resource: null,
     annotation_reply: null,
+    external_data_tools: [],
+    system_parameters: {
+      audio_file_size_limit: 0,
+      file_size_limit: 0,
+      image_file_size_limit: 0,
+      video_file_size_limit: 0,
+      workflow_file_upload_limit: 0,
+    },
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },
@@ -233,7 +245,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       reranking_provider_name: '',
       reranking_model_name: '',
     },
-    top_k: 2,
+    top_k: 4,
     score_threshold_enabled: false,
     score_threshold: 0.7,
     datasets: {
@@ -242,7 +254,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   datasetConfigsRef: {
     current: null,
-  },
+  } as unknown as RefObject<DatasetConfigs>,
   setDatasetConfigs: noop,
   hasSetContextVar: false,
   isShowVisionConfig: false,

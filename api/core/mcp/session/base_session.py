@@ -2,10 +2,9 @@ import logging
 import queue
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
-from contextlib import ExitStack
 from datetime import timedelta
 from types import TracebackType
-from typing import Any, Generic, Self, TypeVar
+from typing import Any, Self
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
@@ -32,16 +31,13 @@ from core.mcp.types import (
     SessionMessage,
 )
 
-SendRequestT = TypeVar("SendRequestT", ClientRequest, ServerRequest)
-SendResultT = TypeVar("SendResultT", ClientResult, ServerResult)
-SendNotificationT = TypeVar("SendNotificationT", ClientNotification, ServerNotification)
-ReceiveRequestT = TypeVar("ReceiveRequestT", ClientRequest, ServerRequest)
-ReceiveResultT = TypeVar("ReceiveResultT", bound=BaseModel)
-ReceiveNotificationT = TypeVar("ReceiveNotificationT", ClientNotification, ServerNotification)
+logger = logging.getLogger(__name__)
+
+
 DEFAULT_RESPONSE_READ_TIMEOUT = 1.0
 
 
-class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
+class RequestResponder[ReceiveRequestT: ClientRequest | ServerRequest, SendResultT: ClientResult | ServerResult]:
     """Handles responding to MCP requests and manages request lifecycle.
 
     This class MUST be used as a context manager to ensure proper cleanup and
@@ -58,28 +54,22 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     """
 
     request: ReceiveRequestT
-    _session: Any
-    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any]
+    _session: "BaseSession[Any, Any, SendResultT, ReceiveRequestT, Any]"
+    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], object]
 
     def __init__(
         self,
         request_id: RequestId,
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
-        session: """BaseSession[
-            SendRequestT,
-            SendNotificationT,
-            SendResultT,
-            ReceiveRequestT,
-            ReceiveNotificationT
-        ]""",
-        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
-    ) -> None:
+        session: "BaseSession[Any, Any, SendResultT, ReceiveRequestT, Any]",
+        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], object],
+    ):
         self.request_id = request_id
         self.request_meta = request_meta
         self.request = request
         self._session = session
-        self._completed = False
+        self.completed = False
         self._on_complete = on_complete
         self._entered = False  # Track if we're in a context manager
 
@@ -93,15 +83,15 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
-    ) -> None:
+    ):
         """Exit the context manager, performing cleanup and notifying completion."""
         try:
-            if self._completed:
+            if self.completed:
                 self._on_complete(self)
         finally:
             self._entered = False
 
-    def respond(self, response: SendResultT | ErrorData) -> None:
+    def respond(self, response: SendResultT | ErrorData):
         """Send a response for this request.
 
         Must be called within a context manager block.
@@ -111,34 +101,32 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         """
         if not self._entered:
             raise RuntimeError("RequestResponder must be used as a context manager")
-        assert not self._completed, "Request already responded to"
+        assert not self.completed, "Request already responded to"
 
-        self._completed = True
+        self.completed = True
 
-        self._session._send_response(request_id=self.request_id, response=response)
+        self._session.send_response(request_id=self.request_id, response=response)
 
-    def cancel(self) -> None:
+    def cancel(self):
         """Cancel this request and mark it as completed."""
         if not self._entered:
             raise RuntimeError("RequestResponder must be used as a context manager")
 
-        self._completed = True  # Mark as completed so it's removed from in_flight
+        self.completed = True  # Mark as completed so it's removed from in_flight
         # Send an error response to indicate cancellation
-        self._session._send_response(
+        self._session.send_response(
             request_id=self.request_id,
             response=ErrorData(code=0, message="Request cancelled", data=None),
         )
 
 
-class BaseSession(
-    Generic[
-        SendRequestT,
-        SendNotificationT,
-        SendResultT,
-        ReceiveRequestT,
-        ReceiveNotificationT,
-    ],
-):
+class BaseSession[
+    SendRequestT: ClientRequest | ServerRequest,
+    SendNotificationT: ClientNotification | ServerNotification,
+    SendResultT: ClientResult | ServerResult,
+    ReceiveRequestT: ClientRequest | ServerRequest,
+    ReceiveNotificationT: ClientNotification | ServerNotification,
+]:
     """
     Implements an MCP "session" on top of read/write streams, including features
     like request/response linking, notifications, and progress.
@@ -147,7 +135,7 @@ class BaseSession(
     messages when entered.
     """
 
-    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError]]
+    _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError]]
     _request_id: int
     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]
     _receive_request_type: type[ReceiveRequestT]
@@ -161,7 +149,7 @@ class BaseSession(
         receive_notification_type: type[ReceiveNotificationT],
         # If none, reading will never time out
         read_timeout_seconds: timedelta | None = None,
-    ) -> None:
+    ):
         self._read_stream = read_stream
         self._write_stream = write_stream
         self._response_streams = {}
@@ -170,7 +158,6 @@ class BaseSession(
         self._receive_notification_type = receive_notification_type
         self._session_read_timeout_seconds = read_timeout_seconds
         self._in_flight = {}
-        self._exit_stack = ExitStack()
         # Initialize executor and future to None for proper cleanup checks
         self._executor: ThreadPoolExecutor | None = None
         self._receiver_future: Future | None = None
@@ -182,7 +169,7 @@ class BaseSession(
         self._receiver_future = self._executor.submit(self._receive_loop)
         return self
 
-    def check_receiver_status(self) -> None:
+    def check_receiver_status(self):
         """`check_receiver_status` ensures that any exceptions raised during the
         execution of `_receive_loop` are retrieved and propagated."""
         if self._receiver_future and self._receiver_future.done():
@@ -190,7 +177,7 @@ class BaseSession(
 
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> None:
+    ):
         self._read_stream.put(None)
         self._write_stream.put(None)
 
@@ -200,19 +187,22 @@ class BaseSession(
                 self._receiver_future.result(timeout=5.0)  # Wait up to 5 seconds
             except TimeoutError:
                 # If the receiver loop is still running after timeout, we'll force shutdown
-                pass
+                # Cancel the future to interrupt the receiver loop
+                self._receiver_future.cancel()
 
         # Shutdown the executor
         if self._executor:
-            self._executor.shutdown(wait=True)
+            # Use non-blocking shutdown to prevent hanging
+            # The receiver thread should have already exited due to the None message in the queue
+            self._executor.shutdown(wait=False)
 
-    def send_request(
+    def send_request[T: BaseModel](
         self,
         request: SendRequestT,
-        result_type: type[ReceiveResultT],
+        result_type: type[T],
         request_read_timeout_seconds: timedelta | None = None,
-        metadata: MessageMetadata = None,
-    ) -> ReceiveResultT:
+        metadata: MessageMetadata | None = None,
+    ) -> T:
         """
         Sends a request and wait for a response. Raises an McpError if the
         response contains an error. If a request read timeout is provided, it
@@ -226,7 +216,7 @@ class BaseSession(
         request_id = self._request_id
         self._request_id = request_id + 1
 
-        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError] = queue.Queue()
+        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError | HTTPStatusError] = queue.Queue()
         self._response_streams[request_id] = response_queue
 
         try:
@@ -250,24 +240,31 @@ class BaseSession(
                     self.check_receiver_status()
                     continue
 
-            if response_or_error is None:
-                raise MCPConnectionError(
-                    ErrorData(
-                        code=500,
-                        message="No response received",
-                    )
-                )
-            elif isinstance(response_or_error, JSONRPCError):
-                if response_or_error.error.code == 401:
-                    raise MCPAuthError(
-                        ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
-                    )
-                else:
+            match response_or_error:
+                case None:
                     raise MCPConnectionError(
-                        ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
+                        ErrorData(
+                            code=500,
+                            message="No response received",
+                        )
                     )
-            else:
-                return result_type.model_validate(response_or_error.result)
+                case HTTPStatusError():
+                    # HTTPStatusError from streamable_client with preserved response object
+                    if response_or_error.response.status_code == 401:
+                        raise MCPAuthError(response=response_or_error.response)
+                    else:
+                        raise MCPConnectionError(
+                            ErrorData(code=response_or_error.response.status_code, message=str(response_or_error))
+                        )
+                case JSONRPCError():
+                    if response_or_error.error.code == 401:
+                        raise MCPAuthError(message=response_or_error.error.message)
+                    else:
+                        raise MCPConnectionError(
+                            ErrorData(code=response_or_error.error.code, message=response_or_error.error.message)
+                        )
+                case _:
+                    return result_type.model_validate(response_or_error.result)
 
         finally:
             self._response_streams.pop(request_id, None)
@@ -276,7 +273,7 @@ class BaseSession(
         self,
         notification: SendNotificationT,
         related_request_id: RequestId | None = None,
-    ) -> None:
+    ):
         """
         Emits a notification, which is a one-way message that does not expect
         a response.
@@ -295,7 +292,7 @@ class BaseSession(
         )
         self._write_stream.put(session_message)
 
-    def _send_response(self, request_id: RequestId, response: SendResultT | ErrorData) -> None:
+    def send_response(self, request_id: RequestId, response: SendResultT | ErrorData):
         if isinstance(response, ErrorData):
             jsonrpc_error = JSONRPCError(jsonrpc="2.0", id=request_id, error=response)
             session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_error))
@@ -309,7 +306,7 @@ class BaseSession(
             session_message = SessionMessage(message=JSONRPCMessage(jsonrpc_response))
             self._write_stream.put(session_message)
 
-    def _receive_loop(self) -> None:
+    def _receive_loop(self):
         """
         Main message processing loop.
         In a real synchronous implementation, this would likely run in a separate thread.
@@ -320,68 +317,86 @@ class BaseSession(
                 message = self._read_stream.get(timeout=DEFAULT_RESPONSE_READ_TIMEOUT)
                 if message is None:
                     break
-                if isinstance(message, HTTPStatusError):
-                    response_queue = self._response_streams.get(self._request_id - 1)
-                    if response_queue is not None:
-                        response_queue.put(
-                            JSONRPCError(
-                                jsonrpc="2.0",
-                                id=self._request_id - 1,
-                                error=ErrorData(code=message.response.status_code, message=message.args[0]),
-                            )
-                        )
-                    else:
-                        self._handle_incoming(RuntimeError(f"Received response with an unknown request ID: {message}"))
-                elif isinstance(message, Exception):
-                    self._handle_incoming(message)
-                elif isinstance(message.message.root, JSONRPCRequest):
-                    validated_request = self._receive_request_type.model_validate(
-                        message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
-                    )
-
-                    responder = RequestResponder(
-                        request_id=message.message.root.id,
-                        request_meta=validated_request.root.params.meta if validated_request.root.params else None,
-                        request=validated_request,
-                        session=self,
-                        on_complete=lambda r: self._in_flight.pop(r.request_id, None),
-                    )
-
-                    self._in_flight[responder.request_id] = responder
-                    self._received_request(responder)
-
-                    if not responder._completed:
-                        self._handle_incoming(responder)
-
-                elif isinstance(message.message.root, JSONRPCNotification):
-                    try:
-                        notification = self._receive_notification_type.model_validate(
-                            message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
-                        )
-                        # Handle cancellation notifications
-                        if isinstance(notification.root, CancelledNotification):
-                            cancelled_id = notification.root.params.requestId
-                            if cancelled_id in self._in_flight:
-                                self._in_flight[cancelled_id].cancel()
+                match message:
+                    case HTTPStatusError():
+                        response_queue = self._response_streams.get(self._request_id - 1)
+                        if response_queue is not None:
+                            # For 401 errors, pass the HTTPStatusError directly to preserve response object
+                            if message.response.status_code == 401:
+                                response_queue.put(message)
+                            else:
+                                response_queue.put(
+                                    JSONRPCError(
+                                        jsonrpc="2.0",
+                                        id=self._request_id - 1,
+                                        error=ErrorData(code=message.response.status_code, message=message.args[0]),
+                                    )
+                                )
                         else:
-                            self._received_notification(notification)
-                            self._handle_incoming(notification)
-                    except Exception as e:
-                        # For other validation errors, log and continue
-                        logging.warning(f"Failed to validate notification: {e}. Message was: {message.message.root}")
-                else:  # Response or error
-                    response_queue = self._response_streams.get(message.message.root.id)
-                    if response_queue is not None:
-                        response_queue.put(message.message.root)
-                    else:
-                        self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            self._handle_incoming(
+                                RuntimeError(f"Received response with an unknown request ID: {message}")
+                            )
+                    case Exception():
+                        self._handle_incoming(message)
+                    case SessionMessage(message=JSONRPCMessage(root=JSONRPCRequest())):
+                        request_root = message.message.root
+                        if not isinstance(request_root, JSONRPCRequest):
+                            continue
+
+                        validated_request = self._receive_request_type.model_validate(
+                            request_root.model_dump(by_alias=True, mode="json", exclude_none=True)
+                        )
+
+                        responder = RequestResponder[ReceiveRequestT, SendResultT](
+                            request_id=request_root.id,
+                            request_meta=validated_request.root.params.meta if validated_request.root.params else None,
+                            request=validated_request,  # type: ignore[arg-type]  # mypy can't narrow constrained TypeVar from model_validate
+                            session=self,
+                            on_complete=lambda r: self._in_flight.pop(r.request_id, None),
+                        )
+
+                        self._in_flight[responder.request_id] = responder
+                        self._received_request(responder)
+
+                        if not responder.completed:
+                            self._handle_incoming(responder)
+
+                    case SessionMessage(message=JSONRPCMessage(root=JSONRPCNotification())):
+                        try:
+                            notification = self._receive_notification_type.model_validate(
+                                message.message.root.model_dump(by_alias=True, mode="json", exclude_none=True)
+                            )
+                            # Handle cancellation notifications
+                            if isinstance(notification.root, CancelledNotification):
+                                cancelled_id = notification.root.params.requestId
+                                if cancelled_id in self._in_flight:
+                                    self._in_flight[cancelled_id].cancel()
+                            else:
+                                self._received_notification(notification)  # type: ignore[arg-type]
+                                self._handle_incoming(notification)  # type: ignore[arg-type]
+                        except Exception as e:
+                            # For other validation errors, log and continue
+                            logger.warning(
+                                "Failed to validate notification: %s. Message was: %s", e, message.message.root
+                            )
+                    case _:  # Response or error
+                        response_root = message.message.root
+                        if not isinstance(response_root, (JSONRPCResponse, JSONRPCError)):
+                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
+                            continue
+
+                        response_queue = self._response_streams.get(response_root.id)
+                        if response_queue is not None:
+                            response_queue.put(response_root)
+                        else:
+                            self._handle_incoming(RuntimeError(f"Server Error: {message}"))
             except queue.Empty:
                 continue
-            except Exception as e:
-                logging.exception("Error in message processing loop")
+            except Exception:
+                logger.exception("Error in message processing loop")
                 raise
 
-    def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]) -> None:
+    def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]):
         """
         Can be overridden by subclasses to handle a request without needing to
         listen on the message stream.
@@ -389,27 +404,21 @@ class BaseSession(
         If the request is responded to within this method, it will not be
         forwarded on to the message stream.
         """
-        pass
 
-    def _received_notification(self, notification: ReceiveNotificationT) -> None:
+    def _received_notification(self, notification: ReceiveNotificationT):
         """
         Can be overridden by subclasses to handle a notification without needing
         to listen on the message stream.
         """
-        pass
 
-    def send_progress_notification(
-        self, progress_token: str | int, progress: float, total: float | None = None
-    ) -> None:
+    def send_progress_notification(self, progress_token: str | int, progress: float, total: float | None = None):
         """
         Sends a progress notification for a request that is currently being
         processed.
         """
-        pass
 
     def _handle_incoming(
         self,
         req: RequestResponder[ReceiveRequestT, SendResultT] | ReceiveNotificationT | Exception,
-    ) -> None:
+    ):
         """A generic handler for incoming messages. Overwritten by subclasses."""
-        pass

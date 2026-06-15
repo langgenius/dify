@@ -1,22 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { Plugin } from '../../../types'
-import Card from '../../../card'
-import Checkbox from '@/app/components/base/checkbox'
-import useGetIcon from '../../base/use-get-icon'
+import type { Plugin, VersionProps } from '../../../types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import * as React from 'react'
 import { MARKETPLACE_API_PREFIX } from '@/config'
+import Card from '../../../card'
+import useGetIcon from '../../base/use-get-icon'
 import Version from '../../base/version'
-import type { VersionProps } from '../../../types'
 import usePluginInstallLimit from '../../hooks/use-install-plugin-limit'
 
-type Props = {
+type Props = Readonly<{
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: Plugin
   isFromMarketPlace?: boolean
   versionInfo: VersionProps
-}
+}>
 
 const LoadedItem: FC<Props> = ({
   checked,
@@ -32,15 +31,16 @@ const LoadedItem: FC<Props> = ({
   }
   const { canInstall } = usePluginInstallLimit(payload)
   return (
-    <div className='flex items-center space-x-2'>
+    <div className="flex items-center space-x-2">
       <Checkbox
         disabled={!canInstall}
-        className='shrink-0'
+        className="shrink-0"
         checked={checked}
-        onCheck={() => onCheckedChange(payload)}
+        aria-label={payload.name}
+        onCheckedChange={() => onCheckedChange(payload)}
       />
       <Card
-        className='grow'
+        className="grow"
         payload={{
           ...payload,
           icon: isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon` : getIconUrl(payload.icon),

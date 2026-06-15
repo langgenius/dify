@@ -1,8 +1,8 @@
-import { useContext } from 'react'
-import { createStore, useStore } from 'zustand'
 import type { DataSet } from '@/models/datasets'
+import { produce } from 'immer'
+import { use } from 'react'
+import { createStore, useStore } from 'zustand'
 import { DatasetsDetailContext } from './provider'
-import produce from 'immer'
 
 type DatasetsDetailStore = {
   datasetsDetail: Record<string, DataSet>
@@ -30,7 +30,7 @@ export const createDatasetsDetailStore = () => {
 }
 
 export const useDatasetsDetailStore = <T>(selector: (state: DatasetsDetailStore) => T): T => {
-  const store = useContext(DatasetsDetailContext)
+  const store = use(DatasetsDetailContext)
   if (!store)
     throw new Error('Missing DatasetsDetailContext.Provider in the tree')
 

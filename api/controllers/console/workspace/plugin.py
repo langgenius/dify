@@ -1,32 +1,288 @@
 import io
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from flask import request, send_file
-from flask_login import current_user
-from flask_restful import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, RootModel
+from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.console import api
+from controllers.common.fields import BinaryFileResponse, SuccessResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
+from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
-from controllers.console.wraps import account_initialization_required, setup_required
-from core.model_runtime.utils.encoders import jsonable_encoder
+from controllers.console.wraps import (
+    account_initialization_required,
+    is_admin_or_owner_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+    with_current_user_id,
+)
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.plugin.plugin_service import PluginService
+from fields.base import ResponseModel
+from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
-from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from models.account import Account, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
-from services.plugin.plugin_service import PluginService
 
 
+class ParserList(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
+
+
+class ParserLatest(BaseModel):
+    plugin_ids: list[str]
+
+
+class ParserIcon(BaseModel):
+    tenant_id: str
+    filename: str
+
+
+class ParserAsset(BaseModel):
+    plugin_unique_identifier: str
+    file_name: str
+
+
+class ParserGithubUpload(BaseModel):
+    repo: str
+    version: str
+    package: str
+
+
+class ParserPluginIdentifiers(BaseModel):
+    plugin_unique_identifiers: list[str]
+
+
+class ParserGithubInstall(BaseModel):
+    plugin_unique_identifier: str
+    repo: str
+    version: str
+    package: str
+
+
+class ParserPluginIdentifierQuery(BaseModel):
+    plugin_unique_identifier: str
+
+
+class ParserTasks(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
+
+
+class ParserMarketplaceUpgrade(BaseModel):
+    original_plugin_unique_identifier: str
+    new_plugin_unique_identifier: str
+
+
+class ParserGithubUpgrade(BaseModel):
+    original_plugin_unique_identifier: str
+    new_plugin_unique_identifier: str
+    repo: str
+    version: str
+    package: str
+
+
+class ParserUninstall(BaseModel):
+    plugin_installation_id: str
+
+
+class ParserPermissionChange(BaseModel):
+    install_permission: TenantPluginPermission.InstallPermission
+    debug_permission: TenantPluginPermission.DebugPermission
+
+
+class ParserDynamicOptions(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str | None = None
+    provider_type: Literal["tool", "trigger"]
+
+
+class ParserDynamicOptionsWithCredentials(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str
+    credentials: Mapping[str, Any]
+
+
+class PluginPermissionSettingsPayload(BaseModel):
+    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
+    debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
+
+
+class PluginAutoUpgradeSettingsPayload(BaseModel):
+    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting = (
+        TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
+    )
+    upgrade_time_of_day: int = 0
+    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+    exclude_plugins: list[str] = Field(default_factory=list)
+    include_plugins: list[str] = Field(default_factory=list)
+
+
+class ParserPreferencesChange(BaseModel):
+    permission: PluginPermissionSettingsPayload
+    auto_upgrade: PluginAutoUpgradeSettingsPayload
+
+
+class ParserExcludePlugin(BaseModel):
+    plugin_id: str
+
+
+class ParserReadme(BaseModel):
+    plugin_unique_identifier: str
+    language: str = Field(default="en-US")
+
+
+class PluginDebuggingKeyResponse(ResponseModel):
+    key: str
+    host: str
+    port: int
+
+
+class PluginDaemonOperationResponse(RootModel[Any]):
+    root: Any
+
+
+class PluginListResponse(ResponseModel):
+    plugins: Any
+    total: int
+
+
+class PluginVersionsResponse(ResponseModel):
+    versions: Any
+
+
+class PluginInstallationsResponse(ResponseModel):
+    plugins: Any
+
+
+class PluginManifestResponse(ResponseModel):
+    manifest: Any
+
+
+class PluginTasksResponse(ResponseModel):
+    tasks: Any
+
+
+class PluginTaskResponse(ResponseModel):
+    task: Any
+
+
+class PluginPermissionResponse(ResponseModel):
+    install_permission: TenantPluginPermission.InstallPermission
+    debug_permission: TenantPluginPermission.DebugPermission
+
+
+class PluginDynamicOptionsResponse(ResponseModel):
+    options: Any
+
+
+class PluginOperationSuccessResponse(ResponseModel):
+    success: bool
+    message: str | None = None
+
+
+class PluginPreferencesResponse(ResponseModel):
+    permission: PluginPermissionSettingsPayload
+    auto_upgrade: PluginAutoUpgradeSettingsPayload
+
+
+class PluginReadmeResponse(ResponseModel):
+    readme: str
+
+
+register_schema_models(
+    console_ns,
+    ParserList,
+    PluginAutoUpgradeSettingsPayload,
+    PluginPermissionSettingsPayload,
+    ParserLatest,
+    ParserIcon,
+    ParserAsset,
+    ParserGithubUpload,
+    ParserPluginIdentifiers,
+    ParserGithubInstall,
+    ParserPluginIdentifierQuery,
+    ParserTasks,
+    ParserMarketplaceUpgrade,
+    ParserGithubUpgrade,
+    ParserUninstall,
+    ParserPermissionChange,
+    ParserDynamicOptions,
+    ParserDynamicOptionsWithCredentials,
+    ParserPreferencesChange,
+    ParserExcludePlugin,
+    ParserReadme,
+)
+register_response_schema_models(
+    console_ns,
+    BinaryFileResponse,
+    PluginDaemonOperationResponse,
+    PluginDebuggingKeyResponse,
+    PluginDynamicOptionsResponse,
+    PluginInstallationsResponse,
+    PluginListResponse,
+    PluginManifestResponse,
+    PluginOperationSuccessResponse,
+    PluginPermissionResponse,
+    PluginPreferencesResponse,
+    PluginReadmeResponse,
+    PluginTaskResponse,
+    PluginTasksResponse,
+    PluginVersionsResponse,
+    SuccessResponse,
+)
+
+register_enum_models(
+    console_ns,
+    TenantPluginPermission.DebugPermission,
+    TenantPluginAutoUpgradeStrategy.UpgradeMode,
+    TenantPluginAutoUpgradeStrategy.StrategySetting,
+    TenantPluginPermission.InstallPermission,
+)
+
+
+def _read_upload_content(file: FileStorage, max_size: int) -> bytes:
+    """
+    Read the uploaded file and validate its actual size before delegating to the plugin service.
+
+    FileStorage.content_length is not reliable for multipart test uploads and may be zero even when
+    content exists, so the controllers validate against the loaded bytes instead.
+    """
+    content = file.stream.read()
+    if len(content) > max_size:
+        raise ValueError("File size exceeds the maximum allowed size")
+
+    return content
+
+
+@console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginDebuggingKeyResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(debug_required=True)
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         try:
             return {
                 "key": PluginService.get_debugging_key(tenant_id),
@@ -34,140 +290,150 @@ class PluginDebuggingKeyApi(Resource):
                 "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
             }
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserList))
+    @console_ns.response(200, "Success", console_ns.models[PluginListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=False, location="args", default=1)
-        parser.add_argument("page_size", type=int, required=False, location="args", default=256)
-        args = parser.parse_args()
+    @with_current_user_id
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user_id: str):
+        args = ParserList.model_validate(request.args.to_dict(flat=True))
         try:
-            plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
+            plugins_with_total = PluginService.list_with_total(tenant_id, user_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
+@console_ns.route("/workspaces/current/plugin/list/latest-versions")
 class PluginListLatestVersionsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserLatest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginVersionsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_ids", type=list, required=True, location="json")
-        args = req.parse_args()
+        args = ParserLatest.model_validate(console_ns.payload)
 
         try:
-            versions = PluginService.list_latest_versions(args["plugin_ids"])
+            versions = PluginService.list_latest_versions(args.plugin_ids)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"versions": versions})
 
 
+@console_ns.route("/workspaces/current/plugin/list/installations/ids")
 class PluginListInstallationsFromIdsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserLatest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallationsResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_ids", type=list, required=True, location="json")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserLatest.model_validate(console_ns.payload)
 
         try:
-            plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
+            plugins = PluginService.list_installations_from_ids(tenant_id, args.plugin_ids)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"plugins": plugins})
 
 
+@console_ns.route("/workspaces/current/plugin/icon")
 class PluginIconApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserIcon))
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     def get(self):
-        req = reqparse.RequestParser()
-        req.add_argument("tenant_id", type=str, required=True, location="args")
-        req.add_argument("filename", type=str, required=True, location="args")
-        args = req.parse_args()
+        args = ParserIcon.model_validate(request.args.to_dict(flat=True))
 
         try:
-            icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
+            icon_bytes, mimetype = PluginService.get_asset(args.tenant_id, args.filename)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 
+@console_ns.route("/workspaces/current/plugin/asset")
+class PluginAssetApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserAsset))
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = ParserAsset.model_validate(request.args.to_dict(flat=True))
+
+        try:
+            binary = PluginService.extract_asset(tenant_id, args.plugin_unique_identifier, args.file_name)
+            return send_file(io.BytesIO(binary), mimetype="application/octet-stream")
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+
+@console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         file = request.files["pkg"]
-
-        # check file size
-        if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
-
-        content = file.read()
+        content = _read_upload_content(file, dify_config.PLUGIN_MAX_PACKAGE_SIZE)
         try:
             response = PluginService.upload_pkg(tenant_id, content)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/upload/github")
 class PluginUploadFromGithubApi(Resource):
+    @console_ns.expect(console_ns.models[ParserGithubUpload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("repo", type=str, required=True, location="json")
-        parser.add_argument("version", type=str, required=True, location="json")
-        parser.add_argument("package", type=str, required=True, location="json")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserGithubUpload.model_validate(console_ns.payload)
 
         try:
-            response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
+            response = PluginService.upload_pkg_from_github(tenant_id, args.repo, args.version, args.package)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/upload/bundle")
 class PluginUploadFromBundleApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         file = request.files["bundle"]
-
-        # check file size
-        if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
-            raise ValueError("File size exceeds the maximum allowed size")
-
-        content = file.read()
+        content = _read_upload_content(file, dify_config.PLUGIN_MAX_BUNDLE_SIZE)
         try:
             response = PluginService.upload_bundle(tenant_id, content)
         except PluginDaemonClientSideError as e:
@@ -176,312 +442,292 @@ class PluginUploadFromBundleApi(Resource):
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/install/pkg")
 class PluginInstallFromPkgApi(Resource):
+    @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
-        args = parser.parse_args()
-
-        # check if all plugin_unique_identifiers are valid string
-        for plugin_unique_identifier in args["plugin_unique_identifiers"]:
-            if not isinstance(plugin_unique_identifier, str):
-                raise ValueError("Invalid plugin unique identifier")
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserPluginIdentifiers.model_validate(console_ns.payload)
 
         try:
-            response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
+            response = PluginService.install_from_local_pkg(tenant_id, args.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/install/github")
 class PluginInstallFromGithubApi(Resource):
+    @console_ns.expect(console_ns.models[ParserGithubInstall.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("repo", type=str, required=True, location="json")
-        parser.add_argument("version", type=str, required=True, location="json")
-        parser.add_argument("package", type=str, required=True, location="json")
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserGithubInstall.model_validate(console_ns.payload)
 
         try:
             response = PluginService.install_from_github(
                 tenant_id,
-                args["plugin_unique_identifier"],
-                args["repo"],
-                args["version"],
-                args["package"],
+                args.plugin_unique_identifier,
+                args.repo,
+                args.version,
+                args.package,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/install/marketplace")
 class PluginInstallFromMarketplaceApi(Resource):
+    @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
-        args = parser.parse_args()
-
-        # check if all plugin_unique_identifiers are valid string
-        for plugin_unique_identifier in args["plugin_unique_identifiers"]:
-            if not isinstance(plugin_unique_identifier, str):
-                raise ValueError("Invalid plugin unique identifier")
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserPluginIdentifiers.model_validate(console_ns.payload)
 
         try:
-            response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
+            response = PluginService.install_from_marketplace_pkg(tenant_id, args.plugin_unique_identifiers)
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder(response)
 
 
+@console_ns.route("/workspaces/current/plugin/marketplace/pkg")
 class PluginFetchMarketplacePkgApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserPluginIdentifierQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginManifestResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder(
                 {
                     "manifest": PluginService.fetch_marketplace_pkg(
                         tenant_id,
-                        args["plugin_unique_identifier"],
+                        args.plugin_unique_identifier,
                     )
                 }
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/fetch-manifest")
 class PluginFetchManifestApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserPluginIdentifierQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginManifestResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = ParserPluginIdentifierQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
             return jsonable_encoder(
-                {
-                    "manifest": PluginService.fetch_plugin_manifest(
-                        tenant_id, args["plugin_unique_identifier"]
-                    ).model_dump()
-                }
+                {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args.plugin_unique_identifier).model_dump()}
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/tasks")
 class PluginFetchInstallTasksApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserTasks))
+    @console_ns.response(200, "Success", console_ns.models[PluginTasksResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=int, required=True, location="args")
-        parser.add_argument("page_size", type=int, required=True, location="args")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = ParserTasks.model_validate(request.args.to_dict(flat=True))
 
         try:
-            return jsonable_encoder(
-                {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
-            )
+            return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/<task_id>")
 class PluginFetchInstallTaskApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginTaskResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def get(self, task_id: str):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, task_id: str):
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete")
 class PluginDeleteInstallTaskApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self, task_id: str):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str, task_id: str):
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/delete_all")
 class PluginDeleteAllInstallTaskItemsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 class PluginDeleteInstallTaskItemApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self, task_id: str, identifier: str):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str, task_id: str, identifier: str):
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
 class PluginUpgradeFromMarketplaceApi(Resource):
+    @console_ns.expect(console_ns.models[ParserMarketplaceUpgrade.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
-        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserMarketplaceUpgrade.model_validate(console_ns.payload)
 
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_marketplace(
-                    tenant_id, args["original_plugin_unique_identifier"], args["new_plugin_unique_identifier"]
+                    tenant_id, args.original_plugin_unique_identifier, args.new_plugin_unique_identifier
                 )
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/upgrade/github")
 class PluginUpgradeFromGithubApi(Resource):
+    @console_ns.expect(console_ns.models[ParserGithubUpgrade.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
-        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
-        parser.add_argument("repo", type=str, required=True, location="json")
-        parser.add_argument("version", type=str, required=True, location="json")
-        parser.add_argument("package", type=str, required=True, location="json")
-        args = parser.parse_args()
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserGithubUpgrade.model_validate(console_ns.payload)
 
         try:
             return jsonable_encoder(
                 PluginService.upgrade_plugin_with_github(
                     tenant_id,
-                    args["original_plugin_unique_identifier"],
-                    args["new_plugin_unique_identifier"],
-                    args["repo"],
-                    args["version"],
-                    args["package"],
+                    args.original_plugin_unique_identifier,
+                    args.new_plugin_unique_identifier,
+                    args.repo,
+                    args.version,
+                    args.package,
                 )
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/uninstall")
 class PluginUninstallApi(Resource):
+    @console_ns.expect(console_ns.models[ParserUninstall.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @plugin_permission_required(install_required=True)
-    def post(self):
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_installation_id", type=str, required=True, location="json")
-        args = req.parse_args()
-
-        tenant_id = current_user.current_tenant_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
+        args = ParserUninstall.model_validate(console_ns.payload)
 
         try:
-            return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
+            return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
 
+@console_ns.route("/workspaces/current/plugin/permission/change")
 class PluginChangePermissionApi(Resource):
+    @console_ns.expect(console_ns.models[ParserPermissionChange.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        user = current_user
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        req = reqparse.RequestParser()
-        req.add_argument("install_permission", type=str, required=True, location="json")
-        req.add_argument("debug_permission", type=str, required=True, location="json")
-        args = req.parse_args()
+        args = ParserPermissionChange.model_validate(console_ns.payload)
 
-        install_permission = TenantPluginPermission.InstallPermission(args["install_permission"])
-        debug_permission = TenantPluginPermission.DebugPermission(args["debug_permission"])
-
-        tenant_id = user.current_tenant_id
-
-        return {"success": PluginPermissionService.change_permission(tenant_id, install_permission, debug_permission)}
+        return {
+            "success": PluginPermissionService.change_permission(
+                tenant_id, args.install_permission, args.debug_permission
+            )
+        }
 
 
+@console_ns.route("/workspaces/current/plugin/permission/fetch")
 class PluginFetchPermissionApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginPermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         permission = PluginPermissionService.get_permission(tenant_id)
         if not permission:
             return jsonable_encoder(
@@ -499,72 +745,94 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")
 class PluginFetchDynamicSelectOptionsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserDynamicOptions))
+    @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
-    def get(self):
-        # check if the user is admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        tenant_id = current_user.current_tenant_id
-        user_id = current_user.id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_id", type=str, required=True, location="args")
-        parser.add_argument("provider", type=str, required=True, location="args")
-        parser.add_argument("action", type=str, required=True, location="args")
-        parser.add_argument("parameter", type=str, required=True, location="args")
-        parser.add_argument("provider_type", type=str, required=True, location="args")
-        args = parser.parse_args()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account):
+        args = ParserDynamicOptions.model_validate(request.args.to_dict(flat=True))
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
-                tenant_id,
-                user_id,
-                args["plugin_id"],
-                args["provider"],
-                args["action"],
-                args["parameter"],
-                args["provider_type"],
+                tenant_id=tenant_id,
+                user_id=current_user.id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                provider_type=args.provider_type,
             )
         except PluginDaemonClientSideError as e:
-            raise ValueError(e)
+            return {"code": "plugin_error", "message": e.description}, 400
 
         return jsonable_encoder({"options": options})
 
 
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-options-with-credentials")
+class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDynamicOptionsWithCredentials.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDynamicOptionsResponse.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account):
+        """Fetch dynamic options using credentials directly (for edit mode)."""
+        args = ParserDynamicOptionsWithCredentials.model_validate(console_ns.payload)
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options_with_credentials(
+                tenant_id=tenant_id,
+                user_id=current_user.id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                credentials=args.credentials,
+            )
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/preferences/change")
 class PluginChangePreferencesApi(Resource):
+    @console_ns.expect(console_ns.models[ParserPreferencesChange.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginOperationSuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        user = current_user
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, user: Account):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        req = reqparse.RequestParser()
-        req.add_argument("permission", type=dict, required=True, location="json")
-        req.add_argument("auto_upgrade", type=dict, required=True, location="json")
-        args = req.parse_args()
+        args = ParserPreferencesChange.model_validate(console_ns.payload)
 
-        tenant_id = user.current_tenant_id
+        permission = args.permission
 
-        permission = args["permission"]
+        install_permission = permission.install_permission
+        debug_permission = permission.debug_permission
 
-        install_permission = TenantPluginPermission.InstallPermission(permission.get("install_permission", "everyone"))
-        debug_permission = TenantPluginPermission.DebugPermission(permission.get("debug_permission", "everyone"))
+        auto_upgrade = args.auto_upgrade
 
-        auto_upgrade = args["auto_upgrade"]
-
-        strategy_setting = TenantPluginAutoUpgradeStrategy.StrategySetting(
-            auto_upgrade.get("strategy_setting", "fix_only")
-        )
-        upgrade_time_of_day = auto_upgrade.get("upgrade_time_of_day", 0)
-        upgrade_mode = TenantPluginAutoUpgradeStrategy.UpgradeMode(auto_upgrade.get("upgrade_mode", "exclude"))
-        exclude_plugins = auto_upgrade.get("exclude_plugins", [])
-        include_plugins = auto_upgrade.get("include_plugins", [])
+        strategy_setting = auto_upgrade.strategy_setting
+        upgrade_time_of_day = auto_upgrade.upgrade_time_of_day
+        upgrade_mode = auto_upgrade.upgrade_mode
+        exclude_plugins = auto_upgrade.exclude_plugins
+        include_plugins = auto_upgrade.include_plugins
 
         # set permission
         set_permission_result = PluginPermissionService.change_permission(
@@ -590,13 +858,14 @@ class PluginChangePreferencesApi(Resource):
         return jsonable_encoder({"success": True})
 
 
+@console_ns.route("/workspaces/current/plugin/preferences/fetch")
 class PluginFetchPreferencesApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[PluginPreferencesResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        tenant_id = current_user.current_tenant_id
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
         permission = PluginPermissionService.get_permission(tenant_id)
         permission_dict = {
             "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
@@ -628,48 +897,31 @@ class PluginFetchPreferencesApi(Resource):
         return jsonable_encoder({"permission": permission_dict, "auto_upgrade": auto_upgrade_dict})
 
 
+@console_ns.route("/workspaces/current/plugin/preferences/autoupgrade/exclude")
 class PluginAutoUpgradeExcludePluginApi(Resource):
+    @console_ns.expect(console_ns.models[ParserExcludePlugin.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginOperationSuccessResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         # exclude one single plugin
-        tenant_id = current_user.current_tenant_id
+        args = ParserExcludePlugin.model_validate(console_ns.payload)
 
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_id", type=str, required=True, location="json")
-        args = req.parse_args()
-
-        return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
+        return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args.plugin_id)})
 
 
-api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
-api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
-api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
-api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
-api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
-api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
-api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
-api.add_resource(PluginUploadFromBundleApi, "/workspaces/current/plugin/upload/bundle")
-api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/pkg")
-api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/github")
-api.add_resource(PluginUpgradeFromMarketplaceApi, "/workspaces/current/plugin/upgrade/marketplace")
-api.add_resource(PluginUpgradeFromGithubApi, "/workspaces/current/plugin/upgrade/github")
-api.add_resource(PluginInstallFromMarketplaceApi, "/workspaces/current/plugin/install/marketplace")
-api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manifest")
-api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
-api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
-api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
-api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin/tasks/delete_all")
-api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
-api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
-api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marketplace/pkg")
-
-api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
-api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
-
-api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
-
-api.add_resource(PluginFetchPreferencesApi, "/workspaces/current/plugin/preferences/fetch")
-api.add_resource(PluginChangePreferencesApi, "/workspaces/current/plugin/preferences/change")
-api.add_resource(PluginAutoUpgradeExcludePluginApi, "/workspaces/current/plugin/preferences/autoupgrade/exclude")
+@console_ns.route("/workspaces/current/plugin/readme")
+class PluginReadmeApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ParserReadme))
+    @console_ns.response(200, "Success", console_ns.models[PluginReadmeResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = ParserReadme.model_validate(request.args.to_dict(flat=True))
+        return jsonable_encoder(
+            {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}
+        )

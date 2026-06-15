@@ -1,11 +1,15 @@
 import logging
+from typing import Any, Literal
 
-import flask_login
-from flask_restful import Resource, reqparse
-from werkzeug.exceptions import InternalServerError, NotFound
+from flask import request
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.console import api
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -15,48 +19,109 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    setup_required,
+    with_current_user,
+    with_current_user_id,
+)
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
+from core.helper.trace_id_helper import get_external_trace_id
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
 from libs.login import login_required
-from models.model import AppMode
+from models import Account
+from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
+
+logger = logging.getLogger(__name__)
+
+
+def _resolve_debugger_chat_streaming(
+    *, app_mode: AppMode, response_mode: str, response_mode_provided: bool = True
+) -> bool:
+    """Agent App runtime is SSE-only until backend blocking runs are supported."""
+    if app_mode != AppMode.AGENT:
+        return response_mode != "blocking"
+    if response_mode_provided and response_mode == "blocking":
+        raise BadRequest("Agent App only supports streaming response mode.")
+    return True
+
+
+class BaseMessagePayload(BaseModel):
+    inputs: dict[str, Any]
+    # Agent Apps (AppMode.AGENT) derive their model + prompt from the bound Agent
+    # Soul, so no override ``model_config`` is sent; chat / agent-chat / completion
+    # debugging still pass it. Optional here, required in practice by those modes
+    # downstream when their config is built from args.
+    model_config_data: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="model_config",
+    )
+    files: list[Any] | None = Field(
+        default=None,
+        description="Uploaded files",
+    )
+    response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
+    retriever_from: str = Field(default="dev", description="Retriever source")
+
+
+class CompletionMessagePayload(BaseMessagePayload):
+    query: str = Field(default="", description="Query text")
+
+
+class ChatMessagePayload(BaseMessagePayload):
+    query: str = Field(..., description="User query")
+    conversation_id: str | None = Field(default=None, description="Conversation ID")
+    parent_message_id: str | None = Field(default=None, description="Parent message ID")
+
+    @field_validator("conversation_id", "parent_message_id")
+    @classmethod
+    def validate_uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 # define completion message api for user
+@console_ns.route("/apps/<uuid:app_id>/completion-messages")
 class CompletionMessageApi(Resource):
+    @console_ns.doc("create_completion_message")
+    @console_ns.doc(description="Generate completion message for debugging")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
+    @console_ns.response(200, "Completion generated successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, location="json", default="")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-        args = parser.parse_args()
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        args_model = CompletionMessagePayload.model_validate(console_ns.payload)
+        args = args_model.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args["response_mode"] != "blocking"
+        streaming = args_model.response_mode != "blocking"
         args["auto_generate_name"] = False
-
-        account = flask_login.current_user
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -65,7 +130,7 @@ class CompletionMessageApi(Resource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -78,48 +143,69 @@ class CompletionMessageApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
 class CompletionMessageStopApi(Resource):
+    @console_ns.doc("stop_completion_message")
+    @console_ns.doc(description="Stop a running completion message generation")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model, task_id):
-        account = flask_login.current_user
+    @with_current_user_id
+    def post(self, current_user_id: str, app_model: App, task_id: str):
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user_id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageApi(Resource):
+    @console_ns.doc("create_chat_message")
+    @console_ns.doc(description="Generate chat message for debugging")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(404, "App or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
-    def post(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, required=True, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-        args = parser.parse_args()
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
+    @edit_permission_required
+    @with_current_user
+    def post(self, current_user: Account, app_model: App):
+        raw_payload = console_ns.payload or {}
+        args_model = ChatMessagePayload.model_validate(raw_payload)
+        args = args_model.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args["response_mode"] != "blocking"
+        streaming = _resolve_debugger_chat_streaming(
+            app_mode=AppMode.value_of(app_model.mode),
+            response_mode=args_model.response_mode,
+            response_mode_provided=isinstance(raw_payload, dict) and "response_mode" in raw_payload,
+        )
+        if AppMode.value_of(app_model.mode) == AppMode.AGENT:
+            args["response_mode"] = "streaming"
         args["auto_generate_name"] = False
 
-        account = flask_login.current_user
+        external_trace_id = get_external_trace_id(request)
+        if external_trace_id:
+            args["external_trace_id"] = external_trace_id
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=account, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -128,7 +214,7 @@ class ChatMessageApi(Resource):
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -143,24 +229,28 @@ class ChatMessageApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
 class ChatMessageStopApi(Resource):
+    @console_ns.doc("stop_chat_message")
+    @console_ns.doc(description="Stop a running chat message generation")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def post(self, app_model, task_id):
-        account = flask_login.current_user
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    @with_current_user_id
+    def post(self, current_user_id: str, app_model: App, task_id: str):
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user_id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
-
-
-api.add_resource(CompletionMessageApi, "/apps/<uuid:app_id>/completion-messages")
-api.add_resource(CompletionMessageStopApi, "/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
-api.add_resource(ChatMessageApi, "/apps/<uuid:app_id>/chat-messages")
-api.add_resource(ChatMessageStopApi, "/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")

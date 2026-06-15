@@ -1,0 +1,14 @@
+[importlinter]
+root_packages =
+    core
+    constants
+    context
+    configs
+    controllers
+    extensions
+    factories
+    libs
+    models
+    tasks
+    services
+include_external_packages = True

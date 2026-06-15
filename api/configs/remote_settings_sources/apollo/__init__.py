@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any, override
 
 from pydantic import Field
 from pydantic.fields import FieldInfo
@@ -15,22 +15,22 @@ class ApolloSettingsSourceInfo(BaseSettings):
     Packaging build information
     """
 
-    APOLLO_APP_ID: Optional[str] = Field(
+    APOLLO_APP_ID: str | None = Field(
         description="apollo app_id",
         default=None,
     )
 
-    APOLLO_CLUSTER: Optional[str] = Field(
+    APOLLO_CLUSTER: str | None = Field(
         description="apollo cluster",
         default=None,
     )
 
-    APOLLO_CONFIG_URL: Optional[str] = Field(
+    APOLLO_CONFIG_URL: str | None = Field(
         description="apollo config url",
         default=None,
     )
 
-    APOLLO_NAMESPACE: Optional[str] = Field(
+    APOLLO_NAMESPACE: str | None = Field(
         description="apollo namespace",
         default=None,
     )
@@ -48,6 +48,7 @@ class ApolloSettingsSource(RemoteSettingsSource):
         self.namespace = configs["APOLLO_NAMESPACE"]
         self.remote_configs = self.client.get_all_dicts(self.namespace)
 
+    @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
         if not isinstance(self.remote_configs, dict):
             raise ValueError(f"remote configs is not dict, but {type(self.remote_configs)}")

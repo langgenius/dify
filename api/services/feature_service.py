@@ -3,31 +3,38 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
-from services.billing_service import BillingService
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from enums.cloud_plan import CloudPlan
+from enums.hosted_provider import HostedTrialProvider
+from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
-class SubscriptionModel(BaseModel):
-    plan: str = "sandbox"
+class FeatureResponseModel(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True, protected_namespaces=())
+
+
+class SubscriptionModel(FeatureResponseModel):
+    plan: str = CloudPlan.SANDBOX
     interval: str = ""
 
 
-class BillingModel(BaseModel):
+class BillingModel(FeatureResponseModel):
     enabled: bool = False
     subscription: SubscriptionModel = SubscriptionModel()
 
 
-class EducationModel(BaseModel):
+class EducationModel(FeatureResponseModel):
     enabled: bool = False
     activated: bool = False
 
 
-class LimitationModel(BaseModel):
+class LimitationModel(FeatureResponseModel):
     size: int = 0
     limit: int = 0
 
 
-class LicenseLimitationModel(BaseModel):
+class LicenseLimitationModel(FeatureResponseModel):
     """
     - enabled: whether this limit is enforced
     - size: current usage count
@@ -53,6 +60,12 @@ class LicenseLimitationModel(BaseModel):
         return (self.limit - self.size) >= required
 
 
+class Quota(FeatureResponseModel):
+    usage: int = 0
+    limit: int = 0
+    reset_date: int = -1
+
+
 class LicenseStatus(StrEnum):
     NONE = "none"
     INACTIVE = "inactive"
@@ -62,13 +75,13 @@ class LicenseStatus(StrEnum):
     LOST = "lost"
 
 
-class LicenseModel(BaseModel):
+class LicenseModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
 
-class BrandingModel(BaseModel):
+class BrandingModel(FeatureResponseModel):
     enabled: bool = False
     application_title: str = ""
     login_page_logo: str = ""
@@ -76,16 +89,20 @@ class BrandingModel(BaseModel):
     favicon: str = ""
 
 
-class WebAppAuthSSOModel(BaseModel):
+class WebAppAuthSSOModel(FeatureResponseModel):
     protocol: str = ""
 
 
-class WebAppAuthModel(BaseModel):
+class WebAppAuthModel(FeatureResponseModel):
     enabled: bool = False
     allow_sso: bool = False
     sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
     allow_email_code_login: bool = False
     allow_email_password_login: bool = False
+
+
+class KnowledgePipeline(FeatureResponseModel):
+    publish_enabled: bool = False
 
 
 class PluginInstallationScope(StrEnum):
@@ -95,7 +112,7 @@ class PluginInstallationScope(StrEnum):
     ALL = "all"
 
 
-class PluginInstallationPermissionModel(BaseModel):
+class PluginInstallationPermissionModel(FeatureResponseModel):
     # Plugin installation scope – possible values:
     #   none: prohibit all plugin installations
     #   official_only: allow only Dify official plugins
@@ -108,12 +125,12 @@ class PluginInstallationPermissionModel(BaseModel):
     restrict_to_marketplace_only: bool = False
 
 
-class FeatureModel(BaseModel):
+class FeatureModel(FeatureResponseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
-    vector_space: LimitationModel = LimitationModel(size=0, limit=5)
+    vector_space: LimitationModel | None = LimitationModel(size=0, limit=5)
     knowledge_rate_limit: int = 10
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
@@ -124,17 +141,25 @@ class FeatureModel(BaseModel):
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     is_allow_transfer_workspace: bool = True
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
+    trigger_event: Quota = Quota(usage=0, limit=3000, reset_date=0)
+    api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
+    # Controls whether email delivery is allowed for HumanInput nodes.
+    human_input_email_delivery_enabled: bool = False
+    knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
+    next_credit_reset_date: int = 0
 
 
-class KnowledgeRateLimitModel(BaseModel):
+class KnowledgeRateLimitModel(FeatureResponseModel):
     enabled: bool = False
     limit: int = 10
     subscription_plan: str = ""
 
 
-class SystemFeatureModel(BaseModel):
+class PluginManagerModel(FeatureResponseModel):
+    enabled: bool = False
+
+
+class SystemFeatureModel(FeatureResponseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -142,6 +167,7 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
+    enable_collaboration_mode: bool = True
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
@@ -150,23 +176,51 @@ class SystemFeatureModel(BaseModel):
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
+    plugin_manager: PluginManagerModel = PluginManagerModel()
+    enable_creators_platform: bool = False
+    enable_trial_app: bool = False
+    enable_explore_banner: bool = False
 
 
 class FeatureService:
     @classmethod
-    def get_features(cls, tenant_id: str) -> FeatureModel:
+    def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
         features = FeatureModel()
+        if exclude_vector_space:
+            features.vector_space = None
 
         cls._fulfill_params_from_env(features)
 
         if dify_config.BILLING_ENABLED and tenant_id:
-            cls._fulfill_params_from_billing_api(features, tenant_id)
+            cls._fulfill_params_from_billing_api(
+                features,
+                tenant_id,
+                exclude_vector_space=exclude_vector_space,
+            )
 
         if dify_config.ENTERPRISE_ENABLED:
             features.webapp_copyright_enabled = True
+            features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
 
+        features.human_input_email_delivery_enabled = cls._resolve_human_input_email_delivery_enabled(
+            features=features,
+            tenant_id=tenant_id,
+        )
+
         return features
+
+    @classmethod
+    def get_vector_space(cls, tenant_id: str) -> LimitationModel:
+        vector_space = LimitationModel(size=0, limit=5)
+        if dify_config.BILLING_ENABLED and tenant_id:
+            billing_vector_space = BillingService.get_vector_space(tenant_id)
+            # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
+            # but feature API keeps LimitationModel.size as int for compatibility.
+            vector_space.size = int(billing_vector_space["size"])
+            vector_space.limit = billing_vector_space["limit"]
+
+        return vector_space
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
@@ -175,11 +229,22 @@ class FeatureService:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
-            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
+            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
         return knowledge_rate_limit
 
     @classmethod
-    def get_system_features(cls) -> SystemFeatureModel:
+    def _resolve_human_input_email_delivery_enabled(cls, *, features: FeatureModel, tenant_id: str | None) -> bool:
+        if dify_config.ENTERPRISE_ENABLED or not dify_config.BILLING_ENABLED:
+            return True
+        if not tenant_id:
+            return False
+        return features.billing.enabled and features.billing.subscription.plan in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        )
+
+    @classmethod
+    def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
 
         cls._fulfill_system_params_from_env(system_features)
@@ -188,21 +253,48 @@ class FeatureService:
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
-            cls._fulfill_params_from_enterprise(system_features)
+            system_features.plugin_manager.enabled = True
+            cls._fulfill_params_from_enterprise(system_features, is_authenticated)
 
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
 
+        if dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
+            system_features.enable_creators_platform = True
+
         return system_features
+
+    @classmethod
+    def get_app_dsl_version(cls) -> str:
+        return CURRENT_APP_DSL_VERSION
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        system_features.enable_collaboration_mode = dify_config.ENABLE_COLLABORATION_MODE
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+        system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
+        system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+
+    @classmethod
+    def _fulfill_trial_models_from_env(cls) -> list[str]:
+        return [
+            provider.value
+            for provider in HostedTrialProvider
+            if (
+                getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
+                and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
+            )
+        ]
+
+    @classmethod
+    def get_trial_models(cls) -> list[str]:
+        """Return hosted trial provider ids without requiring the full system-features payload."""
+        return cls._fulfill_trial_models_from_env()
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
@@ -220,18 +312,38 @@ class FeatureService:
             features.workspace_members.enabled = workspace_info["WorkspaceMembers"]["enabled"]
 
     @classmethod
-    def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
-        billing_info = BillingService.get_info(tenant_id)
+    def _fulfill_params_from_billing_api(
+        cls,
+        features: FeatureModel,
+        tenant_id: str,
+        exclude_vector_space: bool = False,
+    ):
+        if exclude_vector_space:
+            billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        else:
+            billing_info = BillingService.get_info(tenant_id)
+
+        features_usage_info = BillingService.get_quota_info(tenant_id)
 
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
 
-        if features.billing.subscription.plan != "sandbox":
+        if features.billing.subscription.plan != CloudPlan.SANDBOX:
             features.webapp_copyright_enabled = True
         else:
             features.is_allow_transfer_workspace = False
+
+        if "trigger_event" in features_usage_info:
+            features.trigger_event.usage = features_usage_info["trigger_event"]["usage"]
+            features.trigger_event.limit = features_usage_info["trigger_event"]["limit"]
+            features.trigger_event.reset_date = features_usage_info["trigger_event"].get("reset_date", -1)
+
+        if "api_rate_limit" in features_usage_info:
+            features.api_rate_limit.usage = features_usage_info["api_rate_limit"]["usage"]
+            features.api_rate_limit.limit = features_usage_info["api_rate_limit"]["limit"]
+            features.api_rate_limit.reset_date = features_usage_info["api_rate_limit"].get("reset_date", -1)
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
@@ -241,9 +353,9 @@ class FeatureService:
             features.apps.size = billing_info["apps"]["size"]
             features.apps.limit = billing_info["apps"]["limit"]
 
-        if "vector_space" in billing_info:
-            features.vector_space.size = billing_info["vector_space"]["size"]
-            features.vector_space.limit = billing_info["vector_space"]["limit"]
+        if not exclude_vector_space:
+            assert features.vector_space is not None
+            cls._fulfill_vector_space_from_billing_info(features.vector_space, billing_info)
 
         if "documents_upload_quota" in billing_info:
             features.documents_upload_quota.size = billing_info["documents_upload_quota"]["size"]
@@ -263,10 +375,30 @@ class FeatureService:
             features.model_load_balancing_enabled = billing_info["model_load_balancing_enabled"]
 
         if "knowledge_rate_limit" in billing_info:
+            # NOTE (hj24):
+            # 1. knowledge_rate_limit size is nullable, currently it's defined but never used, only limit is used.
+            # 2. So be careful if later we decide to use [size], we cannot assume it is always present.
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
+            # NOTE END
+
+        if "knowledge_pipeline_publish_enabled" in billing_info:
+            features.knowledge_pipeline.publish_enabled = billing_info["knowledge_pipeline_publish_enabled"]
+
+        if "next_credit_reset_date" in billing_info:
+            features.next_credit_reset_date = billing_info["next_credit_reset_date"]
 
     @classmethod
-    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
+    def _fulfill_vector_space_from_billing_info(cls, vector_space: LimitationModel, billing_info: BillingInfo):
+        if "vector_space" not in billing_info:
+            return
+
+        # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
+        # but feature API keeps LimitationModel.size as int for compatibility.
+        vector_space.size = int(billing_info["vector_space"]["size"])
+        vector_space.limit = billing_info["vector_space"]["limit"]
+
+    @classmethod
+    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel, is_authenticated: bool = False):
         enterprise_info = EnterpriseService.get_info()
 
         if "SSOEnforcedForSignin" in enterprise_info:
@@ -303,19 +435,19 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        if "License" in enterprise_info:
-            license_info = enterprise_info["License"]
+        # SECURITY NOTE: Only license *status* is exposed to unauthenticated callers
+        # so the login page can detect an expired/inactive license after force-logout.
+        # All other license details (expiry date, workspace usage) remain auth-gated.
+        # This behavior reflects prior internal review of information-leakage risks.
+        if license_info := enterprise_info.get("License"):
+            features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
 
-            if "status" in license_info:
-                features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-
-            if "expiredAt" in license_info:
-                features.license.expired_at = license_info["expiredAt"]
-
-            if "workspaces" in license_info:
-                features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
-                features.license.workspaces.limit = license_info["workspaces"]["limit"]
-                features.license.workspaces.size = license_info["workspaces"]["used"]
+            if is_authenticated:
+                features.license.expired_at = license_info.get("expiredAt", "")
+                if workspaces_info := license_info.get("workspaces"):
+                    features.license.workspaces.enabled = workspaces_info.get("enabled", False)
+                    features.license.workspaces.limit = workspaces_info.get("limit", 0)
+                    features.license.workspaces.size = workspaces_info.get("used", 0)
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]

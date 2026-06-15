@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import timedelta
-from typing import Optional
+from typing import override
 
 from azure.identity import ChainedTokenCredential, DefaultAzureCredential
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
@@ -21,31 +21,49 @@ class AzureBlobStorage(BaseStorage):
         self.account_name = dify_config.AZURE_BLOB_ACCOUNT_NAME
         self.account_key = dify_config.AZURE_BLOB_ACCOUNT_KEY
 
-        self.credential: Optional[ChainedTokenCredential] = None
+        self.credential: ChainedTokenCredential | None = None
         if self.account_key == "managedidentity":
             self.credential = DefaultAzureCredential()
         else:
             self.credential = None
 
+    @override
     def save(self, filename, data):
+        if not self.bucket_name:
+            return
+
         client = self._sync_client()
         blob_container = client.get_container_client(container=self.bucket_name)
         blob_container.upload_blob(filename, data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
+        if not self.bucket_name:
+            raise FileNotFoundError("Azure bucket name is not configured.")
+
         client = self._sync_client()
         blob = client.get_container_client(container=self.bucket_name)
         blob = blob.get_blob_client(blob=filename)
-        data: bytes = blob.download_blob().readall()
+        data = blob.download_blob().readall()
+        if not isinstance(data, bytes):
+            raise TypeError(f"Expected bytes from blob.readall(), got {type(data).__name__}")
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
+        if not self.bucket_name:
+            raise FileNotFoundError("Azure bucket name is not configured.")
+
         client = self._sync_client()
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
         blob_data = blob.download_blob()
         yield from blob_data.chunks()
 
+    @override
     def download(self, filename, target_filepath):
+        if not self.bucket_name:
+            return
+
         client = self._sync_client()
 
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
@@ -53,13 +71,21 @@ class AzureBlobStorage(BaseStorage):
             blob_data = blob.download_blob()
             blob_data.readinto(my_blob)
 
+    @override
     def exists(self, filename):
+        if not self.bucket_name:
+            return False
+
         client = self._sync_client()
 
         blob = client.get_blob_client(container=self.bucket_name, blob=filename)
         return blob.exists()
 
-    def delete(self, filename):
+    @override
+    def delete(self, filename: str):
+        if not self.bucket_name:
+            return
+
         client = self._sync_client()
 
         blob_container = client.get_container_client(container=self.bucket_name)
@@ -69,7 +95,7 @@ class AzureBlobStorage(BaseStorage):
         if self.account_key == "managedidentity":
             return BlobServiceClient(account_url=self.account_url, credential=self.credential)  # type: ignore
 
-        cache_key = "azure_blob_sas_token_{}_{}".format(self.account_name, self.account_key)
+        cache_key = f"azure_blob_sas_token_{self.account_name}_{self.account_key}"
         cache_result = redis_client.get(cache_key)
         if cache_result is not None:
             sas_token = cache_result.decode("utf-8")

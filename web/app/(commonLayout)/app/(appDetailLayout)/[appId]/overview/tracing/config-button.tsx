@@ -1,71 +1,55 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
 import type { PopupProps } from './config-popup'
-import ConfigPopup from './config-popup'
-import cn from '@/utils/classnames'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 
-type Props = {
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useState } from 'react'
+import ConfigPopup from './config-popup'
+
+type Props = Readonly<{
   readOnly: boolean
   className?: string
   hasConfigured: boolean
-  controlShowPopup?: number
-} & PopupProps
+  children?: React.ReactNode
+}> & PopupProps
 
 const ConfigBtn: FC<Props> = ({
   className,
   hasConfigured,
-  controlShowPopup,
+  children,
   ...popupProps
 }) => {
-  const [open, doSetOpen] = useState(false)
-  const openRef = useRef(open)
-  const setOpen = useCallback((v: boolean) => {
-    doSetOpen(v)
-    openRef.current = v
-  }, [doSetOpen])
-
-  const handleTrigger = useCallback(() => {
-    setOpen(!openRef.current)
-  }, [setOpen])
-
-  useEffect(() => {
-    if (controlShowPopup)
-      // setOpen(!openRef.current)
-      setOpen(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [controlShowPopup])
+  const [open, setOpen] = useState(false)
 
   if (popupProps.readOnly && !hasConfigured)
     return null
 
   return (
-    <PortalToFollowElem
+    <Popover
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
-      offset={{
-        mainAxis: 12,
-        crossAxis: hasConfigured ? 8 : 49,
-      }}
     >
-      <PortalToFollowElemTrigger onClick={handleTrigger}>
-        <div className={cn(className, 'rounded-md p-1')}>
-          <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PopoverTrigger
+        render={(
+          <div className={cn('select-none', className)}>
+            {children}
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom-end"
+        sideOffset={12}
+        popupClassName="border-none bg-transparent shadow-none"
+      >
         <ConfigPopup {...popupProps} />
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
 export default React.memo(ConfigBtn)

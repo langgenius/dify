@@ -1,9 +1,13 @@
-import { type Context, type Provider, createContext, useContext } from 'react'
+import type { Context, Provider } from 'react'
+import { createContext, use } from 'react'
 import * as selector from 'use-context-selector'
 
+type UseContextImpl = <T>(context: Context<T>) => T
+
 const createCreateCtxFunction = (
-  useContextImpl: typeof useContext,
-  createContextImpl: typeof createContext) => {
+  useContextImpl: UseContextImpl,
+  createContextImpl: typeof createContext,
+) => {
   return function<T>({ name, defaultValue }: CreateCtxOptions<T> = {}): CreateCtxReturn<T> {
     const emptySymbol = Symbol(`empty ${name}`)
     // @ts-expect-error it's ok here
@@ -37,9 +41,9 @@ type CreateCtxReturn<T> = [Provider<T>, () => T, Context<T>] & {
 // example
 // const [AppProvider, useApp, AppContext] = createCtx<AppContextValue>()
 
-export const createCtx = createCreateCtxFunction(useContext, createContext)
+export const createCtx = createCreateCtxFunction(use, createContext)
 
 export const createSelectorCtx = createCreateCtxFunction(
-  selector.useContext,
+  selector.useContext as UseContextImpl,
   selector.createContext as typeof createContext,
 )

@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useStore } from '@/app/components/workflow/store'
 
-type Props = {
+type Props = Readonly<{
   isInNode?: boolean
   isExpand: boolean
   className: string
   style: React.CSSProperties
   children: React.ReactNode
-}
+}>
 
 // It doesn't has workflow store
 const WrapInWebApp = ({

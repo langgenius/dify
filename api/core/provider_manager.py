@@ -1,16 +1,21 @@
-import json
-from collections import defaultdict
-from json import JSONDecodeError
-from typing import Any, Optional, cast
+from __future__ import annotations
 
+import contextlib
+from collections import defaultdict
+from collections.abc import Sequence
+from json import JSONDecodeError
+from typing import TYPE_CHECKING, Any
+
+from pydantic import TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
+    CredentialConfiguration,
     CustomConfiguration,
     CustomModelConfiguration,
     CustomProviderConfiguration,
@@ -20,42 +25,78 @@ from core.entities.provider_entities import (
     QuotaConfiguration,
     QuotaUnit,
     SystemConfiguration,
+    UnaddedModelConfiguration,
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
+from extensions import ext_hosting_provider
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     CredentialFormSchema,
     FormType,
     ProviderEntity,
 )
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.plugin.entities.plugin import ModelProviderID
-from extensions import ext_hosting_provider
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
+    ProviderCredential,
     ProviderModel,
+    ProviderModelCredential,
     ProviderModelSetting,
     ProviderType,
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from models.provider_ids import ModelProviderID
 from services.feature_service import FeatureService
+
+if TYPE_CHECKING:
+    from graphon.model_runtime.protocols.runtime import ModelRuntime
+    from models.account import Account
+
+_credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
 class ProviderManager:
     """
-    ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
+    ProviderManager manages tenant-scoped model provider configuration.
+
+    The runtime adapter is injected by the composition layer so this class stays
+    focused on configuration assembly instead of constructing plugin runtimes.
+    Request-bound managers may carry caller identity in that runtime, and the
+    resulting ``ProviderConfiguration`` objects must reuse it for downstream
+    model-type and schema lookups.
+
+    Configuration assembly is cached per manager instance so call chains that
+    share one request-scoped manager can reuse the same provider graph instead
+    of rebuilding it for every lookup. Call ``clear_configurations_cache()``
+    when a long-lived manager needs to observe writes performed within the same
+    instance scope.
     """
 
-    def __init__(self) -> None:
+    decoding_rsa_key: Any | None
+    decoding_cipher_rsa: Any | None
+    _model_runtime: ModelRuntime
+    _configurations_cache: dict[str, ProviderConfigurations]
+
+    def __init__(self, model_runtime: ModelRuntime):
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
+        self._model_runtime = model_runtime
+        self._configurations_cache = {}
+
+    def clear_configurations_cache(self, tenant_id: str | None = None) -> None:
+        """Drop assembled provider configurations cached on this manager instance."""
+        if tenant_id is None:
+            self._configurations_cache.clear()
+            return
+
+        self._configurations_cache.pop(tenant_id, None)
 
     def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
@@ -94,6 +135,10 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
+        cached_configurations = self._configurations_cache.get(tenant_id)
+        if cached_configurations is not None:
+            return cached_configurations
+
         # Get all provider records of the workspace
         provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
@@ -121,7 +166,7 @@ class ProviderManager:
                 )
 
         # Get all provider entities
-        model_provider_factory = ModelProviderFactory(tenant_id)
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
@@ -144,14 +189,17 @@ class ProviderManager:
             tenant_id
         )
 
+        # Get All provider model credentials
+        provider_name_to_provider_model_credentials_dict = self._get_all_provider_model_credentials(tenant_id)
+
         provider_configurations = ProviderConfigurations(tenant_id=tenant_id)
 
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
             # handle include, exclude
             if is_filtered(
-                include_set=cast(set[str], dify_config.POSITION_PROVIDER_INCLUDES_SET),
-                exclude_set=cast(set[str], dify_config.POSITION_PROVIDER_EXCLUDES_SET),
+                include_set=dify_config.POSITION_PROVIDER_INCLUDES_SET,
+                exclude_set=dify_config.POSITION_PROVIDER_EXCLUDES_SET,
                 data=provider_entity,
                 name_func=lambda x: x.provider,
             ):
@@ -165,10 +213,18 @@ class ProviderManager:
                 provider_model_records.extend(
                     provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
                 )
+            provider_model_credentials = provider_name_to_provider_model_credentials_dict.get(
+                provider_entity.provider, []
+            )
+            provider_id_entity = ModelProviderID(provider_name)
+            if provider_id_entity.is_langgenius():
+                provider_model_credentials.extend(
+                    provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, [])
+                )
 
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
-                tenant_id, provider_entity, provider_records, provider_model_records
+                tenant_id, provider_entity, provider_records, provider_model_records, provider_model_credentials
             )
 
             # Convert to system configuration
@@ -178,7 +234,9 @@ class ProviderManager:
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
 
             if preferred_provider_type_record:
-                preferred_provider_type = ProviderType.value_of(preferred_provider_type_record.preferred_provider_type)
+                preferred_provider_type = preferred_provider_type_record.preferred_provider_type
+            elif dify_config.EDITION == "CLOUD" and system_configuration.enabled:
+                preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
             elif system_configuration.enabled:
@@ -236,8 +294,11 @@ class ProviderManager:
                 custom_configuration=custom_configuration,
                 model_settings=model_settings,
             )
+            provider_configuration.bind_model_runtime(self._model_runtime)
 
             provider_configurations[str(provider_id_entity)] = provider_configuration
+
+        self._configurations_cache[tenant_id] = provider_configurations
 
         # Return the encapsulated object
         return provider_configurations
@@ -264,7 +325,7 @@ class ProviderManager:
             model_type_instance=model_type_instance,
         )
 
-    def get_default_model(self, tenant_id: str, model_type: ModelType) -> Optional[DefaultModelEntity]:
+    def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
         Get default model.
 
@@ -272,15 +333,11 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        # Get the corresponding TenantDefaultModel record
-        default_model = (
-            db.session.query(TenantDefaultModel)
-            .where(
-                TenantDefaultModel.tenant_id == tenant_id,
-                TenantDefaultModel.model_type == model_type.to_origin_model_type(),
-            )
-            .first()
+        stmt = select(TenantDefaultModel).where(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == model_type,
         )
+        default_model = db.session.scalar(stmt)
 
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
@@ -292,22 +349,21 @@ class ProviderManager:
             available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
 
             if available_models:
-                available_model = next(
-                    (model for model in available_models if model.model == "gpt-4"), available_models[0]
-                )
+                available_model = available_models[0]
 
-                default_model = TenantDefaultModel()
-                default_model.tenant_id = tenant_id
-                default_model.model_type = model_type.to_origin_model_type()
-                default_model.provider_name = available_model.provider.provider
-                default_model.model_name = available_model.model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type,
+                    provider_name=available_model.provider.provider,
+                    model_name=available_model.model,
+                )
                 db.session.add(default_model)
                 db.session.commit()
 
         if not default_model:
             return None
 
-        model_provider_factory = ModelProviderFactory(tenant_id)
+        model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
         provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
 
         return DefaultModelEntity(
@@ -317,7 +373,6 @@ class ProviderManager:
                 provider=provider_schema.provider,
                 label=provider_schema.label,
                 icon_small=provider_schema.icon_small,
-                icon_large=provider_schema.icon_large,
                 supported_model_types=provider_schema.supported_model_types,
             ),
         )
@@ -363,16 +418,11 @@ class ProviderManager:
         model_names = [model.model for model in available_models]
         if model not in model_names:
             raise ValueError(f"Model {model} does not exist.")
-
-        # Get the list of available models from get_configurations and check if it is LLM
-        default_model = (
-            db.session.query(TenantDefaultModel)
-            .where(
-                TenantDefaultModel.tenant_id == tenant_id,
-                TenantDefaultModel.model_type == model_type.to_origin_model_type(),
-            )
-            .first()
+        stmt = select(TenantDefaultModel).where(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == model_type,
         )
+        default_model = db.session.scalar(stmt)
 
         # create or update TenantDefaultModel record
         if default_model:
@@ -384,7 +434,7 @@ class ProviderManager:
             # create default model
             default_model = TenantDefaultModel(
                 tenant_id=tenant_id,
-                model_type=model_type.value,
+                model_type=model_type,
                 provider_name=provider,
                 model_name=model,
             )
@@ -396,7 +446,7 @@ class ProviderManager:
     @staticmethod
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
             providers = session.scalars(stmt)
             for provider in providers:
@@ -413,7 +463,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
             provider_models = session.scalars(stmt)
             for provider_model in provider_models:
@@ -429,7 +479,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_preferred_provider_type_records_dict = {}
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
             preferred_provider_types = session.scalars(stmt)
             provider_name_to_preferred_provider_type_records_dict = {
@@ -447,7 +497,7 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_settings_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
             provider_model_settings = session.scalars(stmt)
             for provider_model_setting in provider_model_settings:
@@ -455,6 +505,24 @@ class ProviderManager:
                     provider_model_setting
                 )
         return provider_name_to_provider_model_settings_dict
+
+    @staticmethod
+    def _get_all_provider_model_credentials(tenant_id: str) -> dict[str, list[ProviderModelCredential]]:
+        """
+        Get All provider model credentials of the workspace.
+
+        :param tenant_id: workspace id
+        :return:
+        """
+        provider_name_to_provider_model_credentials_dict = defaultdict(list)
+        with session_factory.create_session() as session:
+            stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
+            provider_model_credentials = session.scalars(stmt)
+            for provider_model_credential in provider_model_credentials:
+                provider_name_to_provider_model_credentials_dict[provider_model_credential.provider_name].append(
+                    provider_model_credential
+                )
+        return provider_name_to_provider_model_credentials_dict
 
     @staticmethod
     def _get_all_provider_load_balancing_configs(tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
@@ -467,7 +535,9 @@ class ProviderManager:
         cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
         cache_result = redis_client.get(cache_key)
         if cache_result is None:
-            model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+            model_load_balancing_enabled = FeatureService.get_features(
+                tenant_id, exclude_vector_space=True
+            ).model_load_balancing_enabled
             redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
         else:
             cache_result = cache_result.decode("utf-8")
@@ -477,7 +547,7 @@ class ProviderManager:
             return {}
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
+        with session_factory.create_session() as session:
             stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
             provider_load_balancing_configs = session.scalars(stmt)
             for provider_load_balancing_config in provider_load_balancing_configs:
@@ -486,6 +556,97 @@ class ProviderManager:
                 ].append(provider_load_balancing_config)
 
         return provider_name_to_provider_load_balancing_model_configs_dict
+
+    @staticmethod
+    def _get_provider_names(provider_name: str) -> list[str]:
+        """
+        provider_name: `openai` or `langgenius/openai/openai`
+        return: [`openai`, `langgenius/openai/openai`]
+        """
+        provider_names = [provider_name]
+        model_provider_id = ModelProviderID(provider_name)
+        if model_provider_id.is_langgenius():
+            if "/" in provider_name:
+                provider_names.append(model_provider_id.provider_name)
+            else:
+                provider_names.append(str(model_provider_id))
+        return provider_names
+
+    @staticmethod
+    def get_provider_available_credentials(
+        tenant_id: str,
+        provider_name: str,
+        user: Account | None = None,
+    ) -> list[CredentialConfiguration]:
+        """
+        Get provider all credentials, filtered by visibility.
+
+        :param tenant_id: workspace id
+        :param provider_name: provider name
+        :param user: current user (id + admin flag drive the visibility filter)
+        :return:
+        """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
+        with session_factory.create_session() as session:
+            stmt = (
+                select(ProviderCredential)
+                .where(
+                    ProviderCredential.tenant_id == tenant_id,
+                    ProviderCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
+                )
+                .order_by(ProviderCredential.created_at.desc())
+            )
+
+            if user is not None:
+                stmt = CredentialPermissionService.apply_visibility_filter(
+                    stmt,
+                    model_id_column=ProviderCredential.id,
+                    model_user_id_column=ProviderCredential.user_id,
+                    model_visibility_column=ProviderCredential.visibility,
+                    credential_type=CredPermType.PROVIDER_CREDENTIAL,
+                    user=user,
+                )
+
+            available_credentials = session.scalars(stmt).all()
+
+        return [
+            CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
+            for credential in available_credentials
+        ]
+
+    @staticmethod
+    def get_provider_model_available_credentials(
+        tenant_id: str, provider_name: str, model_name: str, model_type: str
+    ) -> list[CredentialConfiguration]:
+        """
+        Get provider custom model all credentials.
+
+        :param tenant_id: workspace id
+        :param provider_name: provider name
+        :param model_name: model name
+        :param model_type: model type
+        :return:
+        """
+        with session_factory.create_session() as session:
+            stmt = (
+                select(ProviderModelCredential)
+                .where(
+                    ProviderModelCredential.tenant_id == tenant_id,
+                    ProviderModelCredential.provider_name.in_(ProviderManager._get_provider_names(provider_name)),
+                    ProviderModelCredential.model_name == model_name,
+                    ProviderModelCredential.model_type == model_type,
+                )
+                .order_by(ProviderModelCredential.created_at.desc())
+            )
+
+            available_credentials = session.scalars(stmt).all()
+
+        return [
+            CredentialConfiguration(credential_id=credential.id, credential_name=credential.credential_name)
+            for credential in available_credentials
+        ]
 
     @staticmethod
     def _init_trial_provider_records(
@@ -511,26 +672,25 @@ class ProviderManager:
 
             provider_quota_to_provider_record_dict = {}
             for provider_record in provider_records:
-                if provider_record.provider_type != ProviderType.SYSTEM.value:
+                if provider_record.provider_type != ProviderType.SYSTEM:
                     continue
 
-                provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
-                    provider_record
-                )
+                if provider_record.quota_type is not None:
+                    provider_quota_to_provider_record_dict[provider_record.quota_type] = provider_record
 
             for quota in configuration.quotas:
-                if quota.quota_type == ProviderQuotaType.TRIAL:
+                if quota.quota_type in (ProviderQuotaType.TRIAL, ProviderQuotaType.PAID):
                     # Init trial provider records if not exists
-                    if ProviderQuotaType.TRIAL not in provider_quota_to_provider_record_dict:
+                    if quota.quota_type not in provider_quota_to_provider_record_dict:
                         try:
-                            # FIXME ignore the type errork, onyl TrialHostingQuota has limit need to change the logic
+                            # FIXME ignore the type error, only TrialHostingQuota has limit need to change the logic
                             new_provider_record = Provider(
                                 tenant_id=tenant_id,
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM.value,
-                                quota_type=ProviderQuotaType.TRIAL.value,
-                                quota_limit=quota.quota_limit,  # type: ignore
+                                provider_type=ProviderType.SYSTEM,
+                                quota_type=quota.quota_type,  # type: ignore[arg-type]
+                                quota_limit=0,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
                             )
@@ -539,16 +699,13 @@ class ProviderManager:
                             provider_name_to_provider_records_dict[provider_name].append(new_provider_record)
                         except IntegrityError:
                             db.session.rollback()
-                            existed_provider_record = (
-                                db.session.query(Provider)
-                                .where(
-                                    Provider.tenant_id == tenant_id,
-                                    Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                    Provider.provider_type == ProviderType.SYSTEM.value,
-                                    Provider.quota_type == ProviderQuotaType.TRIAL.value,
-                                )
-                                .first()
+                            stmt = select(Provider).where(
+                                Provider.tenant_id == tenant_id,
+                                Provider.provider_name == ModelProviderID(provider_name).provider_name,
+                                Provider.provider_type == ProviderType.SYSTEM.value,
+                                Provider.quota_type == quota.quota_type,
                             )
+                            existed_provider_record = db.session.scalar(stmt)
                             if not existed_provider_record:
                                 continue
 
@@ -566,6 +723,7 @@ class ProviderManager:
         provider_entity: ProviderEntity,
         provider_records: list[Provider],
         provider_model_records: list[ProviderModel],
+        provider_model_credentials: list[ProviderModelCredential],
     ) -> CustomConfiguration:
         """
         Convert to custom configuration.
@@ -576,6 +734,41 @@ class ProviderManager:
         :param provider_model_records: provider model records
         :return:
         """
+        # Get custom provider configuration
+        custom_provider_configuration = self._get_custom_provider_configuration(
+            tenant_id, provider_entity, provider_records
+        )
+
+        # Get custom models which have not been added to the model list yet
+        unadded_models = self._get_can_added_models(provider_model_records, provider_model_credentials)
+
+        # Get custom model configurations
+        custom_model_configurations = self._get_custom_model_configurations(
+            tenant_id, provider_entity, provider_model_records, unadded_models, provider_model_credentials
+        )
+
+        can_added_models = [
+            UnaddedModelConfiguration(model=model["model"], model_type=model["model_type"]) for model in unadded_models
+        ]
+
+        return CustomConfiguration(
+            provider=custom_provider_configuration,
+            models=custom_model_configurations,
+            can_added_models=can_added_models,
+        )
+
+    def _get_custom_provider_configuration(
+        self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
+    ) -> CustomProviderConfiguration | None:
+        """Get custom provider configuration."""
+        # Find custom provider record (non-system)
+        custom_provider_record = next(
+            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM), None
+        )
+
+        if not custom_provider_record:
+            return None
+
         # Get provider credential secret variables
         provider_credential_secret_variables = self._extract_secret_variables(
             provider_entity.provider_credential_schema.credential_form_schemas
@@ -583,118 +776,174 @@ class ProviderManager:
             else []
         )
 
-        # Get custom provider record
-        custom_provider_record = None
-        for provider_record in provider_records:
-            if provider_record.provider_type == ProviderType.SYSTEM.value:
-                continue
+        # Get and decrypt provider credentials
+        provider_credentials = self._get_and_decrypt_credentials(
+            tenant_id=tenant_id,
+            record_id=custom_provider_record.id,
+            encrypted_config=custom_provider_record.encrypted_config,
+            secret_variables=provider_credential_secret_variables,
+            cache_type=ProviderCredentialsCacheType.PROVIDER,
+            is_provider=True,
+        )
 
-            if not provider_record.encrypted_config:
-                continue
+        return CustomProviderConfiguration(
+            credentials=provider_credentials,
+            current_credential_name=custom_provider_record.credential_name,
+            current_credential_id=custom_provider_record.credential_id,
+            available_credentials=self.get_provider_available_credentials(
+                tenant_id, custom_provider_record.provider_name
+            ),
+        )
 
-            custom_provider_record = provider_record
+    def _get_can_added_models(
+        self, provider_model_records: list[ProviderModel], all_model_credentials: Sequence[ProviderModelCredential]
+    ) -> list[dict]:
+        """Get the custom models and credentials from enterprise version which haven't add to the model list"""
+        existing_model_set = {(record.model_name, record.model_type) for record in provider_model_records}
 
-        # Get custom provider credentials
-        custom_provider_configuration = None
-        if custom_provider_record:
-            provider_credentials_cache = ProviderCredentialsCache(
-                tenant_id=tenant_id,
-                identity_id=custom_provider_record.id,
-                cache_type=ProviderCredentialsCacheType.PROVIDER,
-            )
+        # Get not added custom models credentials
+        not_added_custom_models_credentials = [
+            credential
+            for credential in all_model_credentials
+            if (credential.model_name, credential.model_type) not in existing_model_set
+        ]
 
-            # Get cached provider credentials
-            cached_provider_credentials = provider_credentials_cache.get()
+        # Group credentials by model
+        model_to_credentials = defaultdict(list)
+        for credential in not_added_custom_models_credentials:
+            model_to_credentials[(credential.model_name, credential.model_type)].append(credential)
 
-            if not cached_provider_credentials:
-                try:
-                    # fix origin data
-                    if custom_provider_record.encrypted_config is None:
-                        raise ValueError("No credentials found")
-                    if not custom_provider_record.encrypted_config.startswith("{"):
-                        provider_credentials = {"openai_api_key": custom_provider_record.encrypted_config}
-                    else:
-                        provider_credentials = json.loads(custom_provider_record.encrypted_config)
-                except JSONDecodeError:
-                    provider_credentials = {}
+        return [
+            {
+                "model": model_key[0],
+                "model_type": ModelType(model_key[1]),
+                "available_model_credentials": [
+                    CredentialConfiguration(credential_id=cred.id, credential_name=cred.credential_name)
+                    for cred in creds
+                ],
+            }
+            for model_key, creds in model_to_credentials.items()
+        ]
 
-                # Get decoding rsa key and cipher for decrypting credentials
-                if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                    self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
-
-                for variable in provider_credential_secret_variables:
-                    if variable in provider_credentials:
-                        try:
-                            provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                provider_credentials.get(variable) or "",  # type: ignore
-                                self.decoding_rsa_key,
-                                self.decoding_cipher_rsa,
-                            )
-                        except ValueError:
-                            pass
-
-                # cache provider credentials
-                provider_credentials_cache.set(credentials=provider_credentials)
-            else:
-                provider_credentials = cached_provider_credentials
-
-            custom_provider_configuration = CustomProviderConfiguration(credentials=provider_credentials)
-
-        # Get provider model credential secret variables
+    def _get_custom_model_configurations(
+        self,
+        tenant_id: str,
+        provider_entity: ProviderEntity,
+        provider_model_records: list[ProviderModel],
+        can_added_models: list[dict],
+        all_model_credentials: Sequence[ProviderModelCredential],
+    ) -> list[CustomModelConfiguration]:
+        """Get custom model configurations."""
+        # Get model credential secret variables
         model_credential_secret_variables = self._extract_secret_variables(
             provider_entity.model_credential_schema.credential_form_schemas
             if provider_entity.model_credential_schema
             else []
         )
 
-        # Get custom provider model credentials
+        # Create credentials lookup for efficient access
+        credentials_map = defaultdict(list)
+        for credential in all_model_credentials:
+            credentials_map[(credential.model_name, credential.model_type)].append(credential)
+
         custom_model_configurations = []
+
+        # Process existing model records
         for provider_model_record in provider_model_records:
-            if not provider_model_record.encrypted_config:
-                continue
+            # Use pre-fetched credentials instead of individual database calls
+            available_model_credentials = [
+                CredentialConfiguration(credential_id=cred.id, credential_name=cred.credential_name)
+                for cred in credentials_map.get(
+                    (provider_model_record.model_name, provider_model_record.model_type), []
+                )
+            ]
 
-            provider_model_credentials_cache = ProviderCredentialsCache(
-                tenant_id=tenant_id, identity_id=provider_model_record.id, cache_type=ProviderCredentialsCacheType.MODEL
+            # Get and decrypt model credentials
+            provider_model_credentials = self._get_and_decrypt_credentials(
+                tenant_id=tenant_id,
+                record_id=provider_model_record.id,
+                encrypted_config=provider_model_record.encrypted_config,
+                secret_variables=model_credential_secret_variables,
+                cache_type=ProviderCredentialsCacheType.MODEL,
+                is_provider=False,
             )
-
-            # Get cached provider model credentials
-            cached_provider_model_credentials = provider_model_credentials_cache.get()
-
-            if not cached_provider_model_credentials:
-                try:
-                    provider_model_credentials = json.loads(provider_model_record.encrypted_config)
-                except JSONDecodeError:
-                    continue
-
-                # Get decoding rsa key and cipher for decrypting credentials
-                if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                    self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
-
-                for variable in model_credential_secret_variables:
-                    if variable in provider_model_credentials:
-                        try:
-                            provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                provider_model_credentials.get(variable),
-                                self.decoding_rsa_key,
-                                self.decoding_cipher_rsa,
-                            )
-                        except ValueError:
-                            pass
-
-                # cache provider model credentials
-                provider_model_credentials_cache.set(credentials=provider_model_credentials)
-            else:
-                provider_model_credentials = cached_provider_model_credentials
 
             custom_model_configurations.append(
                 CustomModelConfiguration(
                     model=provider_model_record.model_name,
-                    model_type=ModelType.value_of(provider_model_record.model_type),
+                    model_type=provider_model_record.model_type,
                     credentials=provider_model_credentials,
+                    current_credential_id=provider_model_record.credential_id,
+                    current_credential_name=provider_model_record.credential_name,
+                    available_model_credentials=available_model_credentials,
                 )
             )
 
-        return CustomConfiguration(provider=custom_provider_configuration, models=custom_model_configurations)
+        # Add models that can be added
+        for model in can_added_models:
+            custom_model_configurations.append(
+                CustomModelConfiguration(
+                    model=model["model"],
+                    model_type=model["model_type"],
+                    credentials=None,
+                    current_credential_id=None,
+                    current_credential_name=None,
+                    available_model_credentials=model["available_model_credentials"],
+                    unadded_to_model_list=True,
+                )
+            )
+
+        return custom_model_configurations
+
+    def _get_and_decrypt_credentials(
+        self,
+        tenant_id: str,
+        record_id: str,
+        encrypted_config: str | None,
+        secret_variables: list[str],
+        cache_type: ProviderCredentialsCacheType,
+        is_provider: bool = False,
+    ) -> dict[str, Any]:
+        """Get and decrypt credentials with caching."""
+        credentials_cache = ProviderCredentialsCache(
+            tenant_id=tenant_id,
+            identity_id=record_id,
+            cache_type=cache_type,
+        )
+
+        # Try to get from cache first
+        cached_credentials = credentials_cache.get()
+        if cached_credentials:
+            return cached_credentials
+
+        # Parse encrypted config
+        if not encrypted_config:
+            return {}
+
+        if is_provider and not encrypted_config.startswith("{"):
+            return {"openai_api_key": encrypted_config}
+
+        try:
+            credentials = _credentials_adapter.validate_json(encrypted_config)
+        except (ValueError, JSONDecodeError):
+            return {}
+
+        # Decrypt secret variables
+        if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+            self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+
+        for variable in secret_variables:
+            if variable in credentials:
+                with contextlib.suppress(ValueError):
+                    credentials[variable] = encrypter.decrypt_token_with_decoding(
+                        credentials.get(variable) or "",
+                        self.decoding_rsa_key,
+                        self.decoding_cipher_rsa,
+                    )
+
+        # Cache the decrypted credentials
+        credentials_cache.set(credentials=credentials)
+        return credentials
 
     def _to_system_configuration(
         self, tenant_id: str, provider_entity: ProviderEntity, provider_records: list[Provider]
@@ -717,13 +966,28 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}
         for provider_record in provider_records:
-            if provider_record.provider_type != ProviderType.SYSTEM.value:
+            if provider_record.provider_type != ProviderType.SYSTEM:
                 continue
 
-            quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
-                provider_record
-            )
+            if provider_record.quota_type is not None:
+                quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
         quota_configurations = []
+
+        if dify_config.EDITION == "CLOUD":
+            from services.credit_pool_service import CreditPoolService
+
+            trail_pool = CreditPoolService.get_pool(
+                tenant_id=tenant_id,
+                pool_type=ProviderQuotaType.TRIAL,
+            )
+            paid_pool = CreditPoolService.get_pool(
+                tenant_id=tenant_id,
+                pool_type=ProviderQuotaType.PAID,
+            )
+        else:
+            trail_pool = None
+            paid_pool = None
+
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
                 if provider_quota.quota_type == ProviderQuotaType.FREE:
@@ -744,16 +1008,37 @@ class ProviderManager:
                     raise ValueError("quota_used is None")
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
+                match provider_quota.quota_type:
+                    case ProviderQuotaType.TRIAL if trail_pool is not None:
+                        quota_configuration = QuotaConfiguration(
+                            quota_type=provider_quota.quota_type,
+                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                            quota_used=trail_pool.quota_used,
+                            quota_limit=trail_pool.quota_limit,
+                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
+                            restrict_models=provider_quota.restrict_models,
+                        )
 
-                quota_configuration = QuotaConfiguration(
-                    quota_type=provider_quota.quota_type,
-                    quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                    quota_used=provider_record.quota_used,
-                    quota_limit=provider_record.quota_limit,
-                    is_valid=provider_record.quota_limit > provider_record.quota_used
-                    or provider_record.quota_limit == -1,
-                    restrict_models=provider_quota.restrict_models,
-                )
+                    case ProviderQuotaType.PAID if paid_pool is not None:
+                        quota_configuration = QuotaConfiguration(
+                            quota_type=provider_quota.quota_type,
+                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                            quota_used=paid_pool.quota_used,
+                            quota_limit=paid_pool.quota_limit,
+                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                            restrict_models=provider_quota.restrict_models,
+                        )
+
+                    case _:
+                        quota_configuration = QuotaConfiguration(
+                            quota_type=provider_quota.quota_type,
+                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
+                            quota_used=provider_record.quota_used,
+                            quota_limit=provider_record.quota_limit,
+                            is_valid=provider_record.quota_limit > provider_record.quota_used
+                            or provider_record.quota_limit == -1,
+                            restrict_models=provider_quota.restrict_models,
+                        )
 
             quota_configurations.append(quota_configuration)
 
@@ -780,7 +1065,7 @@ class ProviderManager:
                 if not cached_provider_credentials:
                     provider_credentials: dict[str, Any] = {}
                     if provider_records and provider_records[0].encrypted_config:
-                        provider_credentials = json.loads(provider_records[0].encrypted_config)
+                        provider_credentials = _credentials_adapter.validate_json(provider_records[0].encrypted_config)
 
                     # Get provider credential secret variables
                     provider_credential_secret_variables = self._extract_secret_variables(
@@ -866,8 +1151,8 @@ class ProviderManager:
     def _to_model_settings(
         self,
         provider_entity: ProviderEntity,
-        provider_model_settings: Optional[list[ProviderModelSetting]] = None,
-        load_balancing_model_configs: Optional[list[LoadBalancingModelConfig]] = None,
+        provider_model_settings: list[ProviderModelSetting] | None = None,
+        load_balancing_model_configs: list[LoadBalancingModelConfig] | None = None,
     ) -> list[ModelSettings]:
         """
         Convert to model settings.
@@ -927,8 +1212,10 @@ class ProviderManager:
 
                         if not cached_provider_model_credentials:
                             try:
-                                provider_model_credentials = json.loads(load_balancing_model_config.encrypted_config)
-                            except JSONDecodeError:
+                                provider_model_credentials = _credentials_adapter.validate_json(
+                                    load_balancing_model_config.encrypted_config
+                                )
+                            except (ValueError, JSONDecodeError):
                                 continue
 
                             # Get decoding rsa key and cipher for decrypting credentials
@@ -941,7 +1228,7 @@ class ProviderManager:
                                 if variable in provider_model_credentials:
                                     try:
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
-                                            provider_model_credentials.get(variable),
+                                            provider_model_credentials.get(variable) or "",
                                             self.decoding_rsa_key,
                                             self.decoding_cipher_rsa,
                                         )
@@ -958,14 +1245,17 @@ class ProviderManager:
                                 id=load_balancing_model_config.id,
                                 name=load_balancing_model_config.name,
                                 credentials=provider_model_credentials,
+                                credential_source_type=load_balancing_model_config.credential_source_type,
+                                credential_id=load_balancing_model_config.credential_id,
                             )
                         )
 
             model_settings.append(
                 ModelSettings(
                     model=provider_model_setting.model_name,
-                    model_type=ModelType.value_of(provider_model_setting.model_type),
+                    model_type=provider_model_setting.model_type,
                     enabled=provider_model_setting.enabled,
+                    load_balancing_enabled=provider_model_setting.load_balancing_enabled,
                     load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else [],
                 )
             )

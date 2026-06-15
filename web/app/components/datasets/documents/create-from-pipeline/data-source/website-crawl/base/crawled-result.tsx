@@ -1,0 +1,129 @@
+'use client'
+import type { CrawlResultItem } from '@/models/datasets'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import CheckboxWithLabel from './checkbox-with-label'
+import CrawledResultItem from './crawled-result-item'
+
+const I18N_PREFIX = 'stepOne.website'
+
+type CrawledResultProps = {
+  className?: string
+  previewIndex?: number
+  list: CrawlResultItem[]
+  checkedList: CrawlResultItem[]
+  onSelectedChange: (selected: CrawlResultItem[]) => void
+  onPreview?: (payload: CrawlResultItem, index: number) => void
+  showPreview?: boolean
+  usedTime: number
+  isMultipleChoice?: boolean
+}
+
+const CrawledResult = ({
+  className = '',
+  previewIndex,
+  list,
+  checkedList,
+  onSelectedChange,
+  usedTime,
+  onPreview,
+  showPreview = false,
+  isMultipleChoice = true,
+}: CrawledResultProps) => {
+  const { t } = useTranslation()
+
+  const isCheckAll = checkedList.length === list.length
+
+  const handleCheckedAll = useCallback(() => {
+    if (!isCheckAll)
+      onSelectedChange(list)
+
+    else
+      onSelectedChange([])
+  }, [isCheckAll, list, onSelectedChange])
+
+  const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
+    return (checked: boolean) => {
+      if (checked) {
+        if (isMultipleChoice)
+          onSelectedChange([...checkedList, item])
+        else
+          onSelectedChange([item])
+      }
+      else { onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url)) }
+    }
+  }, [checkedList, onSelectedChange, isMultipleChoice])
+
+  const handlePreview = useCallback((index: number) => {
+    if (!onPreview)
+      return
+    onPreview(list[index]!, index)
+  }, [list, onPreview])
+
+  const selectedSourceUrl = checkedList[0]?.source_url
+  const handleRadioChange = useCallback((sourceUrl: string) => {
+    const selectedItem = list.find(item => item.source_url === sourceUrl)
+    if (selectedItem)
+      onSelectedChange([selectedItem])
+  }, [list, onSelectedChange])
+
+  const resultItems = list.map((item, index) => (
+    <CrawledResultItem
+      key={item.source_url}
+      payload={item}
+      isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
+      onCheckChange={handleItemCheckChange(item)}
+      isPreview={index === previewIndex}
+      onPreview={handlePreview.bind(null, index)}
+      showPreview={showPreview}
+      isMultipleChoice={isMultipleChoice}
+    />
+  ))
+
+  return (
+    <div className={cn('flex flex-col gap-y-2', className)}>
+      <div className="pt-2 system-sm-medium text-text-primary">
+        {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+          ns: 'datasetCreation',
+          total: list.length,
+          time: usedTime.toFixed(1),
+        })}
+      </div>
+      <div className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
+        {isMultipleChoice && (
+          <div className="flex items-center px-4 py-2">
+            <CheckboxWithLabel
+              isChecked={isCheckAll}
+              onChange={handleCheckedAll}
+              label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
+            />
+          </div>
+        )}
+        {isMultipleChoice
+          ? (
+              <div className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2">
+                {resultItems}
+              </div>
+            )
+          : (
+              <RadioGroup
+                aria-label={t(`${I18N_PREFIX}.scrapTimeInfo`, {
+                  ns: 'datasetCreation',
+                  total: list.length,
+                  time: usedTime.toFixed(1),
+                })}
+                value={selectedSourceUrl}
+                onValueChange={handleRadioChange}
+                className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2"
+              >
+                {resultItems}
+              </RadioGroup>
+            )}
+      </div>
+    </div>
+  )
+}
+export default React.memo(CrawledResult)

@@ -1,5 +1,5 @@
+import { produce } from 'immer'
 import { useCallback } from 'react'
-import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 
 export const useEdgesInteractionsWithoutSync = () => {

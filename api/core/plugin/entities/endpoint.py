@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -24,7 +24,7 @@ class EndpointProviderDeclaration(BaseModel):
     """
 
     settings: list[ProviderConfig] = Field(default_factory=list)
-    endpoints: Optional[list[EndpointDeclaration]] = Field(default_factory=list[EndpointDeclaration])
+    endpoints: list[EndpointDeclaration] | None = Field(default_factory=list[EndpointDeclaration])
 
 
 class EndpointEntity(BasePluginEntity):
@@ -32,7 +32,7 @@ class EndpointEntity(BasePluginEntity):
     entity of an endpoint
     """
 
-    settings: dict
+    settings: dict[str, Any]
     tenant_id: str
     plugin_id: str
     expired_at: datetime

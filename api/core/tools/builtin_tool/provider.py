@@ -1,14 +1,14 @@
 from abc import abstractmethod
 from os import listdir, path
-from typing import Any
+from typing import Any, override
 
 from core.entities.provider_entities import ProviderConfig
 from core.helper.module_import_helper import load_single_subclass_from_source
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import (
-    CredentialType,
     OAuthSchema,
     ToolEntity,
     ToolProviderEntity,
@@ -18,20 +18,20 @@ from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
     ToolProviderNotFoundError,
 )
-from core.tools.utils.yaml_utils import load_yaml_file
+from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
-class BuiltinToolProviderController(ToolProviderController):
+class BuiltinToolProviderController(ToolProviderController[ToolProviderEntity, BuiltinTool | None]):
     tools: list[BuiltinTool]
 
-    def __init__(self, **data: Any) -> None:
+    def __init__(self, **data: Any):
         self.tools = []
 
         # load provider yaml
         provider = self.__class__.__module__.split(".")[-1]
         yaml_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, f"{provider}.yaml")
         try:
-            provider_yaml = load_yaml_file(yaml_path, ignore_error=False)
+            provider_yaml = load_yaml_file_cached(yaml_path)
         except Exception as e:
             raise ToolProviderNotFoundError(f"can not load provider yaml for {provider}: {e}")
 
@@ -71,10 +71,10 @@ class BuiltinToolProviderController(ToolProviderController):
         for tool_file in tool_files:
             # get tool name
             tool_name = tool_file.split(".")[0]
-            tool = load_yaml_file(path.join(tool_path, tool_file), ignore_error=False)
+            tool = load_yaml_file_cached(path.join(tool_path, tool_file))
 
             # get tool class, import the module
-            assistant_tool_class: type[BuiltinTool] = load_single_subclass_from_source(
+            assistant_tool_class: type = load_single_subclass_from_source(
                 module_name=f"core.tools.builtin_tool.providers.{provider}.tools.{tool_name}",
                 script_path=path.join(
                     path.dirname(path.realpath(__file__)),
@@ -90,7 +90,7 @@ class BuiltinToolProviderController(ToolProviderController):
             tools.append(
                 assistant_tool_class(
                     provider=provider,
-                    entity=ToolEntity(**tool),
+                    entity=ToolEntity.model_validate(tool),
                     runtime=ToolRuntime(tenant_id=""),
                 )
             )
@@ -105,25 +105,35 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.tools
 
+    @override
     def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
         :return: the credentials schema
         """
-        return self.get_credentials_schema_by_type(CredentialType.API_KEY.value)
+        return self.get_credentials_schema_by_type(CredentialType.API_KEY)
 
-    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+    def get_credentials_schema_by_type(self, credential_type: CredentialType | str) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
-        :param credential_type: the type of the credential
-        :return: the credentials schema of the provider
+        :param credential_type: the type of the credential, as CredentialType or str; str values
+            are normalized via CredentialType.of and may raise ValueError for invalid values.
+        :return: list[ProviderConfig] for CredentialType.OAUTH2 or CredentialType.API_KEY, an
+            empty list for CredentialType.UNAUTHORIZED or missing schemas.
+
+        Reads from self.entity.oauth_schema and self.entity.credentials_schema.
+        Raises ValueError for invalid credential types.
         """
-        if credential_type == CredentialType.OAUTH2.value:
+        if isinstance(credential_type, str):
+            credential_type = CredentialType.of(credential_type)
+        if credential_type == CredentialType.OAUTH2:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
-        if credential_type == CredentialType.API_KEY.value:
+        if credential_type == CredentialType.API_KEY:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
+        if credential_type == CredentialType.UNAUTHORIZED:
+            return []
         raise ValueError(f"Invalid credential type: {credential_type}")
 
     def get_oauth_client_schema(self) -> list[ProviderConfig]:
@@ -134,15 +144,15 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
 
-    def get_supported_credential_types(self) -> list[str]:
+    def get_supported_credential_types(self) -> list[CredentialType]:
         """
         returns the credential support type of the provider
         """
         types = []
         if self.entity.credentials_schema is not None and len(self.entity.credentials_schema) > 0:
-            types.append(CredentialType.API_KEY.value)
+            types.append(CredentialType.API_KEY)
         if self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) > 0:
-            types.append(CredentialType.OAUTH2.value)
+            types.append(CredentialType.OAUTH2)
         return types
 
     def get_tools(self) -> list[BuiltinTool]:
@@ -153,11 +163,12 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self._get_builtin_tools()
 
-    def get_tool(self, tool_name: str) -> BuiltinTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> BuiltinTool | None:
         """
         returns the tool that the provider can provide
         """
-        return next(filter(lambda x: x.entity.identity.name == tool_name, self.get_tools()), None)  # type: ignore
+        return next(filter(lambda x: x.entity.identity.name == tool_name, self.get_tools()), None)
 
     @property
     def need_credentials(self) -> bool:
@@ -173,6 +184,7 @@ class BuiltinToolProviderController(ToolProviderController):
         )
 
     @property
+    @override
     def provider_type(self) -> ToolProviderType:
         """
         returns the type of the provider
@@ -197,7 +209,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.entity.identity.tags or []
 
-    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
 
@@ -211,7 +223,7 @@ class BuiltinToolProviderController(ToolProviderController):
         self._validate_credentials(user_id, credentials)
 
     @abstractmethod
-    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]):
         """
         validate the credentials of the provider
 

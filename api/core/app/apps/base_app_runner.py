@@ -1,38 +1,51 @@
+import base64
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional, Union
+from mimetypes import guess_extension
+from typing import TYPE_CHECKING, Any, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
     InvokeFrom,
     ModelConfigWithCredentialsEntity,
 )
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueLLMChunkEvent,
+    QueueMessageEndEvent,
+    QueueMessageFileEvent,
+)
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    ImagePromptMessageContent,
-    PromptMessage,
-)
-from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
-from models.model import App, AppMode, Message, MessageAnnotation
+from core.tools.tool_file_manager import ToolFileManager
+from extensions.ext_database import db
+from graphon.file import FileTransferMethod, FileType
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    TextPromptMessageContent,
+)
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
+from models.enums import CreatorUserRole, MessageFileBelongsTo
+from models.model import App, AppMode, Message, MessageAnnotation, MessageFile
 
 if TYPE_CHECKING:
-    from core.file.models import File
+    from graphon.file import File
 
 _logger = logging.getLogger(__name__)
 
@@ -61,9 +74,6 @@ class AppRunner:
         if model_context_tokens is None:
             return -1
 
-        if max_tokens is None:
-            max_tokens = 0
-
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         if prompt_tokens + max_tokens > model_context_tokens:
@@ -82,11 +92,12 @@ class AppRunner:
         prompt_template_entity: PromptTemplateEntity,
         inputs: Mapping[str, str],
         files: Sequence["File"],
-        query: Optional[str] = None,
-        context: Optional[str] = None,
-        memory: Optional[TokenBufferMemory] = None,
-        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
-    ) -> tuple[list[PromptMessage], Optional[list[str]]]:
+        query: str = "",
+        context: str | None = None,
+        memory: TokenBufferMemory | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
+    ) -> tuple[list[PromptMessage], list[str] | None]:
         """
         Organize prompt messages
         :param context:
@@ -108,12 +119,13 @@ class AppRunner:
                 app_mode=AppMode.value_of(app_record.mode),
                 prompt_template_entity=prompt_template_entity,
                 inputs=inputs,
-                query=query or "",
+                query=query,
                 files=files,
                 context=context,
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
         else:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
@@ -161,8 +173,8 @@ class AppRunner:
         prompt_messages: list,
         text: str,
         stream: bool,
-        usage: Optional[LLMUsage] = None,
-    ) -> None:
+        usage: LLMUsage | None = None,
+    ):
         """
         Direct output
         :param queue_manager: application queue manager
@@ -204,30 +216,51 @@ class AppRunner:
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
-    ) -> None:
+        message_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+    ):
         """
         Handle invoke result
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
         :param stream: stream
         :param agent: agent
+        :param message_id: message id for multimodal output
+        :param user_id: user id for multimodal output
+        :param tenant_id: tenant id for multimodal output
         :return:
         """
         if not stream and isinstance(invoke_result, LLMResult):
-            self._handle_invoke_result_direct(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+            self._handle_invoke_result_direct(
+                invoke_result=invoke_result,
+                queue_manager=queue_manager,
+            )
         elif stream and isinstance(invoke_result, Generator):
-            self._handle_invoke_result_stream(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+            self._handle_invoke_result_stream(
+                invoke_result=invoke_result,
+                queue_manager=queue_manager,
+                agent=agent,
+                message_id=message_id,
+                user_id=user_id,
+                tenant_id=tenant_id,
+            )
         else:
             raise NotImplementedError(f"unsupported invoke result type: {type(invoke_result)}")
 
     def _handle_invoke_result_direct(
-        self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool
-    ) -> None:
+        self,
+        invoke_result: LLMResult,
+        queue_manager: AppQueueManager,
+    ):
         """
         Handle invoke result direct
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
         :param agent: agent
+        :param message_id: message id for multimodal output
+        :param user_id: user id for multimodal output
+        :param tenant_id: tenant id for multimodal output
         :return:
         """
         queue_manager.publish(
@@ -238,45 +271,75 @@ class AppRunner:
         )
 
     def _handle_invoke_result_stream(
-        self, invoke_result: Generator[LLMResultChunk, None, None], queue_manager: AppQueueManager, agent: bool
-    ) -> None:
+        self,
+        invoke_result: Generator[LLMResultChunk, None, None],
+        queue_manager: AppQueueManager,
+        agent: bool,
+        message_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+    ):
         """
         Handle invoke result
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
         :param agent: agent
+        :param message_id: message id for multimodal output
+        :param user_id: user id for multimodal output
+        :param tenant_id: tenant id for multimodal output
         :return:
         """
         model: str = ""
         prompt_messages: list[PromptMessage] = []
         text = ""
         usage = None
-        for result in invoke_result:
-            if not agent:
-                queue_manager.publish(QueueLLMChunkEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
-            else:
-                queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
+        try:
+            for result in invoke_result:
+                if not agent:
+                    queue_manager.publish(QueueLLMChunkEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
+                else:
+                    queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
 
-            message = result.delta.message
-            if isinstance(message.content, str):
-                text += message.content
-            elif isinstance(message.content, list):
-                for content in message.content:
-                    if not isinstance(content, str):
-                        # TODO(QuantumGhost): Add multimodal output support for easy ui.
-                        _logger.warning("received multimodal output, type=%s", type(content))
-                        text += content.data
-                    else:
-                        text += content  # failback to str
+                message = result.delta.message
+                match message.content:
+                    case str():
+                        text += message.content
+                    case list():
+                        for content in message.content:
+                            match content:
+                                case str():
+                                    text += content
+                                case TextPromptMessageContent():
+                                    text += content.data
+                                case ImagePromptMessageContent():
+                                    if message_id and user_id and tenant_id:
+                                        try:
+                                            self._handle_multimodal_image_content(
+                                                content=content,
+                                                message_id=message_id,
+                                                user_id=user_id,
+                                                tenant_id=tenant_id,
+                                                queue_manager=queue_manager,
+                                            )
+                                        except Exception:
+                                            _logger.exception("Failed to handle multimodal image output")
+                                    else:
+                                        _logger.warning("Received multimodal output but missing required parameters")
+                                case _:
+                                    text += content.data if hasattr(content, "data") else str(content)
 
-            if not model:
-                model = result.model
+                if not model:
+                    model = result.model
 
-            if not prompt_messages:
-                prompt_messages = list(result.prompt_messages)
+                if not prompt_messages:
+                    prompt_messages = list(result.prompt_messages)
 
-            if result.delta.usage:
-                usage = result.delta.usage
+                if result.delta.usage:
+                    usage = result.delta.usage
+        except GenerateTaskStoppedError:
+            # Explicitly close provider stream to stop in-flight token generation ASAP.
+            invoke_result.close()
+            raise
 
         if usage is None:
             usage = LLMUsage.empty_usage()
@@ -291,6 +354,99 @@ class AppRunner:
             ),
             PublishFrom.APPLICATION_MANAGER,
         )
+
+    def _handle_multimodal_image_content(
+        self,
+        content: ImagePromptMessageContent,
+        message_id: str,
+        user_id: str,
+        tenant_id: str,
+        queue_manager: AppQueueManager,
+    ):
+        """
+        Handle multimodal image content from LLM response.
+        Save the image and create a MessageFile record.
+
+        :param content: ImagePromptMessageContent instance
+        :param message_id: message id
+        :param user_id: user id
+        :param tenant_id: tenant id
+        :param queue_manager: queue manager
+        :return:
+        """
+        _logger.info("Handling multimodal image content for message %s", message_id)
+
+        image_url = content.url
+        base64_data = content.base64_data
+
+        _logger.info("Image URL: %s, Base64 data present: %s", image_url, base64_data)
+
+        if not image_url and not base64_data:
+            _logger.warning("Image content has neither URL nor base64 data")
+            return
+
+        tool_file_manager = ToolFileManager()
+
+        # Save the image file
+        try:
+            if image_url:
+                # Download image from URL
+                _logger.info("Downloading image from URL: %s", image_url)
+                tool_file = tool_file_manager.create_file_by_url(
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    file_url=image_url,
+                    conversation_id=None,
+                )
+                _logger.info("Image saved successfully, tool_file_id: %s", tool_file.id)
+            elif base64_data:
+                if base64_data.startswith("data:"):
+                    base64_data = base64_data.split(",", 1)[1]
+
+                image_binary = base64.b64decode(base64_data)
+                mimetype = content.mime_type or "image/png"
+                extension = guess_extension(mimetype) or ".png"
+
+                tool_file = tool_file_manager.create_file_by_raw(
+                    user_id=user_id,
+                    tenant_id=tenant_id,
+                    conversation_id=None,
+                    file_binary=image_binary,
+                    mimetype=mimetype,
+                    filename=f"generated_image{extension}",
+                )
+                _logger.info("Image saved successfully, tool_file_id: %s", tool_file.id)
+            else:
+                return
+        except Exception:
+            _logger.exception("Failed to save image file")
+            return
+
+        # Create MessageFile record
+        message_file = MessageFile(
+            message_id=message_id,
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            belongs_to=MessageFileBelongsTo.ASSISTANT,
+            url=f"/files/tools/{tool_file.id}",
+            upload_file_id=tool_file.id,
+            created_by_role=(
+                CreatorUserRole.ACCOUNT if queue_manager.invoke_from.runs_as_account() else CreatorUserRole.END_USER
+            ),
+            created_by=user_id,
+        )
+
+        db.session.add(message_file)
+        db.session.commit()
+        db.session.refresh(message_file)
+
+        # Publish QueueMessageFileEvent
+        queue_manager.publish(
+            QueueMessageFileEvent(message_file_id=message_file.id),
+            PublishFrom.APPLICATION_MANAGER,
+        )
+
+        _logger.info("QueueMessageFileEvent published for message_file_id: %s", message_file.id)
 
     def moderation_for_inputs(
         self,
@@ -377,7 +533,7 @@ class AppRunner:
 
     def query_app_annotations_to_reply(
         self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
-    ) -> Optional[MessageAnnotation]:
+    ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
         :param app_record: app record

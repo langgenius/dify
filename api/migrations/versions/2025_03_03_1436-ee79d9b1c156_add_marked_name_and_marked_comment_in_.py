@@ -17,10 +17,23 @@ branch_labels = None
 depends_on = None
 
 
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
+
+
 def upgrade():
-    with op.batch_alter_table('workflows', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('marked_name', sa.String(), nullable=False, server_default=''))
-        batch_op.add_column(sa.Column('marked_comment', sa.String(), nullable=False, server_default=''))
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        # PostgreSQL: Keep original syntax
+        with op.batch_alter_table('workflows', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('marked_name', sa.String(), nullable=False, server_default=''))
+            batch_op.add_column(sa.Column('marked_comment', sa.String(), nullable=False, server_default=''))
+    else:
+        # MySQL: Use compatible syntax
+        with op.batch_alter_table('workflows', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('marked_name', sa.String(length=255), nullable=False, server_default=''))
+            batch_op.add_column(sa.Column('marked_comment', sa.String(length=255), nullable=False, server_default=''))
 
 
 def downgrade():

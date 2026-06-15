@@ -1,39 +1,44 @@
+import type { SyncCallback } from './use-nodes-sync-draft'
+import { produce } from 'immer'
 import { useCallback } from 'react'
-import produce from 'immer'
-import { useStoreApi } from 'reactflow'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 
 type NodeDataUpdatePayload = {
   id: string
-  data: Record<string, any>
+  data: Record<string, unknown>
 }
 
 export const useNodeDataUpdate = () => {
-  const store = useStoreApi()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
 
   const handleNodeDataUpdate = useCallback(({ id, data }: NodeDataUpdatePayload) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
+    const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(node => node.id === id)!
 
       if (currentNode)
         currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
-  }, [store])
+  }, [collaborativeWorkflow])
 
-  const handleNodeDataUpdateWithSyncDraft = useCallback((payload: NodeDataUpdatePayload) => {
+  const handleNodeDataUpdateWithSyncDraft = useCallback((
+    payload: NodeDataUpdatePayload,
+    options?: {
+      sync?: boolean
+      notRefreshWhenSyncError?: boolean
+      callback?: SyncCallback
+    },
+  ) => {
     if (getNodesReadOnly())
       return
 
     handleNodeDataUpdate(payload)
-    handleSyncWorkflowDraft()
+    handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
   }, [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly])
 
   return {

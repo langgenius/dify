@@ -1,45 +1,73 @@
-import traceback
+import json
+import logging
+import operator
 import typing
 
 import click
-from celery import shared_task  # type: ignore
+from celery import shared_task
 
-from core.helper import marketplace
-from core.helper.marketplace import MarketplacePluginDeclaration
+from core.plugin.entities.marketplace import MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
+from extensions.ext_redis import redis_client
 from models.account import TenantPluginAutoUpgradeStrategy
 
+logger = logging.getLogger(__name__)
+
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
+CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
+CACHE_REDIS_TTL = 60 * 60  # 1 hour
 
 
-cached_plugin_manifests: dict[str, typing.Union[MarketplacePluginDeclaration, None]] = {}
+def _get_redis_cache_key(plugin_id: str) -> str:
+    """Generate Redis cache key for plugin manifest."""
+    return f"{CACHE_REDIS_KEY_PREFIX}{plugin_id}"
+
+
+def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapshot, None, bool]:
+    """
+    Get cached plugin manifest from Redis.
+    Returns:
+        - MarketplacePluginSnapshot: if found in cache
+        - None: if cached as not found (marketplace returned no result)
+        - False: if not in cache at all
+    """
+    try:
+        key = _get_redis_cache_key(plugin_id)
+        cached_data = redis_client.get(key)
+        if cached_data is None:
+            return False
+
+        cached_json = json.loads(cached_data)
+        if cached_json is None:
+            return None
+
+        return MarketplacePluginSnapshot.model_validate(cached_json)
+    except Exception:
+        logger.exception("Failed to get cached manifest for plugin %s", plugin_id)
+        return False
 
 
 def marketplace_batch_fetch_plugin_manifests(
     plugin_ids_plain_list: list[str],
-) -> list[MarketplacePluginDeclaration]:
-    global cached_plugin_manifests
-    # return marketplace.batch_fetch_plugin_manifests(plugin_ids_plain_list)
-    not_included_plugin_ids = [
-        plugin_id for plugin_id in plugin_ids_plain_list if plugin_id not in cached_plugin_manifests
-    ]
-    if not_included_plugin_ids:
-        manifests = marketplace.batch_fetch_plugin_manifests_ignore_deserialization_error(not_included_plugin_ids)
-        for manifest in manifests:
-            cached_plugin_manifests[manifest.plugin_id] = manifest
+) -> list[MarketplacePluginSnapshot]:
+    """
+    Fetch plugin manifests from Redis cache only.
+    This function assumes fetch_global_plugin_manifest() has been called
+    to pre-populate the cache with all marketplace plugins.
+    """
+    result: list[MarketplacePluginSnapshot] = []
 
-        if (
-            len(manifests) == 0
-        ):  # this indicates that the plugin not found in marketplace, should set None in cache to prevent future check
-            for plugin_id in not_included_plugin_ids:
-                cached_plugin_manifests[plugin_id] = None
-
-    result: list[MarketplacePluginDeclaration] = []
+    # Check Redis cache for each plugin
     for plugin_id in plugin_ids_plain_list:
-        final_manifest = cached_plugin_manifests.get(plugin_id)
-        if final_manifest is not None:
-            result.append(final_manifest)
+        cached_result = _get_cached_manifest(plugin_id)
+        if not isinstance(cached_result, MarketplacePluginSnapshot):
+            # cached_result is False (not in cache) or None (cached as not found)
+            logger.warning("plugin %s not found in cache, skipping", plugin_id)
+            continue
+
+        result.append(cached_result)
 
     return result
 
@@ -58,7 +86,7 @@ def process_tenant_plugin_autoupgrade_check_task(
 
         click.echo(
             click.style(
-                "Checking upgradable plugin for tenant: {}".format(tenant_id),
+                f"Checking upgradable plugin for tenant: {tenant_id}",
                 fg="green",
             )
         )
@@ -68,7 +96,7 @@ def process_tenant_plugin_autoupgrade_check_task(
 
         # get plugin_ids to check
         plugin_ids: list[tuple[str, str, str]] = []  # plugin_id, version, unique_identifier
-        click.echo(click.style("Upgrade mode: {}".format(upgrade_mode), fg="green"))
+        click.echo(click.style(f"Upgrade mode: {upgrade_mode}", fg="green"))
 
         if upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL and include_plugins:
             all_plugins = manager.list_plugins(tenant_id)
@@ -118,7 +146,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                     current_version = version
                     latest_version = manifest.latest_version
 
-                    def fix_only_checker(latest_version, current_version):
+                    def fix_only_checker(latest_version: str, current_version: str):
                         latest_version_tuple = tuple(int(val) for val in latest_version.split("."))
                         current_version_tuple = tuple(int(val) for val in current_version.split("."))
 
@@ -130,8 +158,7 @@ def process_tenant_plugin_autoupgrade_check_task(
                         return False
 
                     version_checker = {
-                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: lambda latest_version,
-                        current_version: latest_version != current_version,
+                        TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST: operator.ne,
                         TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY: fix_only_checker,
                     }
 
@@ -139,28 +166,26 @@ def process_tenant_plugin_autoupgrade_check_task(
                         # execute upgrade
                         new_unique_identifier = manifest.latest_package_identifier
 
-                        marketplace.record_install_plugin_event(new_unique_identifier)
                         click.echo(
                             click.style(
-                                "Upgrade plugin: {} -> {}".format(original_unique_identifier, new_unique_identifier),
+                                f"Upgrade plugin: {original_unique_identifier} -> {new_unique_identifier}",
                                 fg="green",
                             )
                         )
-                        task_start_resp = manager.upgrade_plugin(
+                        # Use the service that downloads and uploads the package to the daemon
+                        # first; calling manager.upgrade_plugin directly skips that step and the
+                        # daemon fails because the package never reaches its local bucket.
+                        _ = PluginService.upgrade_plugin_with_marketplace(
                             tenant_id,
                             original_unique_identifier,
                             new_unique_identifier,
-                            PluginInstallationSource.Marketplace,
-                            {
-                                "plugin_unique_identifier": new_unique_identifier,
-                            },
                         )
                 except Exception as e:
-                    click.echo(click.style("Error when upgrading plugin: {}".format(e), fg="red"))
-                    traceback.print_exc()
+                    click.echo(click.style(f"Error when upgrading plugin: {e}", fg="red"))
+                    # traceback.print_exc()
                 break
 
     except Exception as e:
-        click.echo(click.style("Error when checking upgradable plugin: {}".format(e), fg="red"))
-        traceback.print_exc()
+        click.echo(click.style(f"Error when checking upgradable plugin: {e}", fg="red"))
+        # traceback.print_exc()
         return

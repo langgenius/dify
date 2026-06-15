@@ -1,88 +1,98 @@
 import time
 import uuid
-from unittest.mock import MagicMock
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.system_variable import SystemVariable
-from extensions.ext_database import db
-from models.enums import UserFrom
-from models.workflow import WorkflowType
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.workflow.system_variables import build_system_variables
+from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.nodes.answer.answer_node import AnswerNode
+from graphon.nodes.answer.entities import AnswerNodeData
+from graphon.runtime import GraphRuntimeState, VariablePool
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
-def test_execute_answer():
+def _build_variable_pool() -> VariablePool:
+    return VariablePool.from_bootstrap(
+        system_variables=build_system_variables(user_id="aaa", files=[]),
+        user_inputs={},
+    )
+
+
+def _build_answer_node(*, answer: str, variable_pool: VariablePool) -> AnswerNode:
     graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm-target",
-                "source": "start",
-                "target": "llm",
-            },
-        ],
+        "edges": [],
         "nodes": [
-            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "llm",
+                    "title": "Answer",
+                    "type": "answer",
+                    "answer": answer,
                 },
-                "id": "llm",
-            },
+                "id": "answer",
+            }
         ],
     }
-
-    graph = Graph.init(graph_config=graph_config)
-
-    init_params = GraphInitParams(
-        tenant_id="1",
-        app_id="1",
-        workflow_type=WorkflowType.WORKFLOW,
+    init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
+        tenant_id="1",
+        app_id="1",
         user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-
-    # construct variable pool
-    pool = VariablePool(
-        system_variables=SystemVariable(user_id="aaa", files=[]),
-        user_inputs={},
-        environment_variables=[],
+    graph_runtime_state = GraphRuntimeState(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
     )
-    pool.add(["start", "weather"], "sunny")
-    pool.add(["llm", "text"], "You are a helpful AI.")
-
-    node_config = {
-        "id": "answer",
-        "data": {
-            "title": "123",
-            "type": "answer",
-            "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
-        },
-    }
-
-    node = AnswerNode(
-        id=str(uuid.uuid4()),
+    return AnswerNode(
+        node_id=str(uuid.uuid4()),
         graph_init_params=init_params,
-        graph=graph,
-        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=time.perf_counter()),
-        config=node_config,
+        graph_runtime_state=graph_runtime_state,
+        data=AnswerNodeData(
+            title="Answer",
+            type="answer",
+            answer=answer,
+        ),
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
+def test_execute_answer_renders_variable_selectors() -> None:
+    variable_pool = _build_variable_pool()
+    variable_pool.add(["start", "weather"], "sunny")
+    variable_pool.add(["llm", "text"], "You are a helpful AI.")
+    node = _build_answer_node(
+        answer="Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
+        variable_pool=variable_pool,
+    )
 
-    # execute node
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs["answer"] == "Today's weather is sunny\nYou are a helpful AI.\n{{img}}\nFin."
+
+
+def test_execute_answer_renders_structured_output_object_as_json() -> None:
+    variable_pool = _build_variable_pool()
+    variable_pool.add(["1777539038857", "structured_output"], {"type": "greeting"})
+    node = _build_answer_node(
+        answer="{{#1777539038857.structured_output#}}",
+        variable_pool=variable_pool,
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["answer"] == '{\n  "type": "greeting"\n}'
+
+
+def test_execute_answer_falls_back_to_plain_selector_text_when_structured_output_missing() -> None:
+    node = _build_answer_node(
+        answer="{{#1777539038857.structured_output#}}",
+        variable_pool=_build_variable_pool(),
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["answer"] == "1777539038857.structured_output"

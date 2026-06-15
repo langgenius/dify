@@ -1,4 +1,5 @@
 from base64 import b64encode
+from collections.abc import Callable
 from functools import wraps
 from hashlib import sha1
 from hmac import new as hmac_new
@@ -6,13 +7,13 @@ from hmac import new as hmac_new
 from flask import abort, request
 
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.model import EndUser
 
 
-def enterprise_inner_api_only(view):
+def billing_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
             abort(404)
 
@@ -26,9 +27,27 @@ def enterprise_inner_api_only(view):
     return decorated
 
 
-def enterprise_inner_api_user_auth(view):
+def enterprise_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not dify_config.INNER_API:
+            abort(404)
+
+        # get header 'X-Inner-Api-Key'
+        inner_api_key = request.headers.get("X-Inner-Api-Key")
+        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY:
+            abort(401)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def enterprise_inner_api_user_auth[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Inject an EndUser for valid inner API HMAC auth, otherwise pass the request through unchanged."""
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.INNER_API:
             return view(*args, **kwargs)
 
@@ -55,16 +74,16 @@ def enterprise_inner_api_user_auth(view):
         if signature_base64 != token:
             return view(*args, **kwargs)
 
-        kwargs["user"] = db.session.query(EndUser).where(EndUser.id == user_id).first()
-
-        return view(*args, **kwargs)
+        with session_factory.create_session() as session:
+            kwargs["user"] = session.get(EndUser, user_id)
+            return view(*args, **kwargs)
 
     return decorated
 
 
-def plugin_inner_api_only(view):
+def plugin_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         if not dify_config.PLUGIN_DAEMON_KEY:
             abort(404)
 

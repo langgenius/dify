@@ -1,16 +1,19 @@
-from flask_restful import Resource
+from flask_restx import Resource
 
 from configs import dify_config
-from controllers.service_api import api
+from controllers.common.fields import IndexInfoResponse
+from controllers.common.schema import register_response_schema_models
+from controllers.service_api import service_api_ns
+
+register_response_schema_models(service_api_ns, IndexInfoResponse)
 
 
+@service_api_ns.route("/")
 class IndexApi(Resource):
-    def get(self):
+    @service_api_ns.response(200, "Success", service_api_ns.models[IndexInfoResponse.__name__])
+    def get(self) -> dict[str, str]:
         return {
             "welcome": "Dify OpenAPI",
             "api_version": "v1",
             "server_version": dify_config.project.version,
         }
-
-
-api.add_resource(IndexApi, "/")

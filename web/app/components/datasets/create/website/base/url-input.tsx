@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from './input'
-import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
+import Input from './text-input'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   isRunning: boolean
   onRun: (url: string) => void
-}
+}>
 
 const UrlInput: FC<Props> = ({
   isRunning,
@@ -30,19 +31,18 @@ const UrlInput: FC<Props> = ({
   }, [isRunning, onRun, url])
 
   return (
-    <div className='flex items-center justify-between gap-x-2'>
+    <div className="flex items-center justify-between gap-x-2">
       <Input
         value={url}
         onChange={handleUrlChange}
         placeholder={docLink()}
       />
       <Button
-        variant='primary'
+        variant="primary"
         onClick={handleOnRun}
         loading={isRunning}
-        spinnerClassName='!ml-0'
       >
-        {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
+        {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>
     </div>
   )

@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "Формат SVG або PNG з мінімальним розміром 80x80 пікселів",
+  "app.title": "Налаштувати бренд заголовка програми app",
+  "apply": "Застосувати",
+  "change": "Змінити",
+  "custom": "Налаштування",
+  "customize.contactUs": "зв'яжіться з нами",
+  "customize.prefix": "Щоб налаштувати логотип бренду в програмі, будь ласка,",
+  "customize.suffix": "щоб перейти на корпоративне видання.",
+  "restore": "Відновити значення за замовчуванням",
+  "upgradeTip.des": "Оновіть свій план, щоб налаштувати свій бренд",
+  "upgradeTip.prefix": "Оновіть свій план до ",
+  "upgradeTip.suffix": ", щоб налаштувати свій бренд.",
+  "upgradeTip.title": "Оновіть свій план",
+  "upload": "Завантажити",
+  "uploadedFail": "Помилка завантаження зображення, будь ласка, завантажте ще раз.",
+  "uploading": "Завантаження",
+  "webapp.changeLogo": "Змінити зображення бренду \"Powered by\"",
+  "webapp.changeLogoTip": "Формат SVG або PNG з мінімальним розміром 40x40 пікселів",
+  "webapp.removeBrand": "Видалити Powered by Dify",
+  "webapp.title": "Налаштувати бренд для web app"
+}

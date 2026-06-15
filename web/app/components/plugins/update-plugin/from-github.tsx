@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { UpdateFromGitHubPayload } from '../types'
+import * as React from 'react'
 import InstallFromGitHub from '../install-plugin/install-from-github'
 
-type Props = {
+type Props = Readonly<{
   payload: UpdateFromGitHubPayload
   onSave: () => void
   onCancel: () => void
-}
+}>
 
 const FromGitHub: FC<Props> = ({
   payload,

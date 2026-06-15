@@ -1,85 +1,125 @@
 'use client'
-
+import type { Locale } from '@/i18n-config'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { useAppContext } from '@/context/app-context'
-import { SimpleSelect } from '@/app/components/base/select'
-import type { Item } from '@/app/components/base/select'
+import { useLocale } from '@/context/i18n'
+import { setLocaleOnClient } from '@/i18n-config'
+import { languages } from '@/i18n-config/language'
+import { useRouter } from '@/next/navigation'
 import { updateUserProfile } from '@/service/common'
-import { ToastContext } from '@/app/components/base/toast'
-import I18n from '@/context/i18n'
 import { timezones } from '@/utils/timezone'
-import { languages } from '@/i18n/language'
+
+type SelectOption = {
+  value: string
+  name: string
+}
+
+type TimezoneOption = {
+  value: string | number
+  name: string
+}
 
 const titleClassName = `
   mb-2 system-sm-semibold text-text-secondary
 `
-
 export default function LanguagePage() {
-  const { locale, setLocaleOnClient } = useContext(I18n)
+  const locale = useLocale()
   const { userProfile, mutateUserProfile } = useAppContext()
-  const { notify } = useContext(ToastContext)
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
-
-  const handleSelectLanguage = async (item: Item) => {
+  const router = useRouter()
+  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
+  const selectedLanguage = languageOptions.find(item => item.value === (locale || userProfile.interface_language))
+  const selectedTimezone = timezones.find(item => item.value === userProfile.timezone)
+  const handleSelectLanguage = async (item: SelectOption) => {
     const url = '/account/interface-language'
     const bodyKey = 'interface_language'
-
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-
-      setLocaleOnClient(item.value.toString())
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      setLocaleOnClient(item.value.toString() as Locale, false)
+      router.refresh()
     }
     catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
     }
     finally {
       setEditing(false)
     }
   }
-
-  const handleSelectTimezone = async (item: Item) => {
+  const handleSelectTimezone = async (item: TimezoneOption) => {
     const url = '/account/timezone'
     const bodyKey = 'timezone'
-
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-
+      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       mutateUserProfile()
     }
     catch (e) {
-      notify({ type: 'error', message: (e as Error).message })
+      toast.error((e as Error).message)
     }
     finally {
       setEditing(false)
     }
   }
-
   return (
     <>
-      <div className='mb-8'>
-        <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
-        <SimpleSelect
-          defaultValue={locale || userProfile.interface_language}
-          items={languages.filter(item => item.supported)}
-          onSelect={item => handleSelectLanguage(item)}
+      <div className="mb-8">
+        <div className={titleClassName}>{t('language.displayLanguage', { ns: 'common' })}</div>
+        <Select
+          value={selectedLanguage?.value ?? null}
           disabled={editing}
-        />
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
+            const nextItem = languageOptions.find(item => item.value === nextValue)
+            if (nextItem)
+              handleSelectLanguage(nextItem)
+          }}
+        >
+          <SelectTrigger size="large">
+            {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
+          </SelectTrigger>
+          <SelectContent>
+            {languageOptions.map(item => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      <div className='mb-8'>
-        <div className={titleClassName}>{t('common.language.timezone')}</div>
-        <SimpleSelect
-          defaultValue={userProfile.timezone}
-          items={timezones}
-          onSelect={item => handleSelectTimezone(item)}
+      <div className="mb-8">
+        <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
+        <Select
+          value={selectedTimezone ? String(selectedTimezone.value) : null}
           disabled={editing}
-        />
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
+            const nextItem = timezones.find(item => String(item.value) === nextValue)
+            if (nextItem)
+              handleSelectTimezone(nextItem)
+          }}
+        >
+          <SelectTrigger size="large">
+            {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
+          </SelectTrigger>
+          <SelectContent>
+            {timezones.map(item => (
+              <SelectItem key={item.value} value={String(item.value)}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </>
   )

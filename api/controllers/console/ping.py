@@ -1,14 +1,17 @@
-from flask_restful import Resource
+from pydantic import BaseModel, Field
 
-from controllers.console import api
-
-
-class PingApi(Resource):
-    def get(self):
-        """
-        For connection health check
-        """
-        return {"result": "pong"}
+from controllers.fastopenapi import console_router
 
 
-api.add_resource(PingApi, "/ping")
+class PingResponse(BaseModel):
+    result: str = Field(description="Health check result", examples=["pong"])
+
+
+@console_router.get(
+    "/ping",
+    response_model=PingResponse,
+    tags=["console"],
+)
+def ping() -> PingResponse:
+    """Health check endpoint for connection testing."""
+    return PingResponse(result="pong")

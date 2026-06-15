@@ -1,25 +1,37 @@
+import type { RefObject } from 'react'
 import type { Viewport } from 'reactflow'
-import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
-import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { MutableRefObject } from 'react'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type {
+  BlockEnum,
+  CommonNodeType,
+  ConversationVariable,
+  Edge,
+  EnvironmentVariable,
+  InputVar,
+  Node,
+  ValueSelector,
+  Variable,
+  VarType,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
-  node_execution_id: string,
-  id: string,
-  node_id: string,
-  parent_id?: string,
-  label: string,
-  data: object, // debug data
-  error?: string,
-  status: string,
+  node_execution_id: string
+  message_id: string
+  node_id: string
+  parent_id?: string
+  label: string
+  data: object // debug data
+  error?: string
+  status: string
   metadata?: {
     elapsed_time?: number
     provider?: string
     icon?: string
-  },
+  }
 }
 
 export type AgentLogItemWithChildren = AgentLogItem & {
@@ -37,8 +49,14 @@ export type NodeTracing = {
   node_type: BlockEnum
   title: string
   inputs: any
+  inputs_truncated: boolean
   process_data: any
+  process_data_truncated: boolean
   outputs?: Record<string, any>
+  outputs_truncated: boolean
+  outputs_full_content?: {
+    download_url: string
+  }
   status: string
   parallel_run_id?: string
   error?: string
@@ -119,10 +137,11 @@ export type FetchWorkflowDraftResponse = {
     id: string
     name: string
     email: string
-  },
+  }
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  rag_pipeline_variables?: RAGPipelineVariables
   version: string
   marked_name: string
   marked_comment: string
@@ -131,7 +150,7 @@ export type FetchWorkflowDraftResponse = {
 export type VersionHistory = FetchWorkflowDraftResponse
 
 export type FetchWorkflowDraftPageParams = {
-  appId: string
+  url: string
   initialPage: number
   limit: number
   userId?: string
@@ -156,6 +175,20 @@ export type WorkflowStartedResponse = {
     id: string
     workflow_id: string
     created_at: number
+  }
+  conversation_id?: string // only in chatflow
+  message_id?: string // only in chatflow
+}
+
+export type WorkflowPausedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    outputs: any // todo: remove any
+    paused_nodes: string[]
+    reasons: any[] // todo: remove any
+    workflow_run_id: string
   }
 }
 
@@ -272,6 +305,7 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
   }
 }
 
@@ -290,6 +324,61 @@ export type AgentLogResponse = {
   data: AgentLogItemWithChildren
 }
 
+export type HumanInputFormData = {
+  form_id: string
+  node_id: string
+  node_title: string
+  form_content: string
+  inputs: FormInputItem[]
+  actions: UserAction[]
+  form_token: string
+  resolved_default_values: Record<string, HumanInputResolvedValue>
+  display_in_ui: boolean
+  expiration_time: number
+}
+
+export type HumanInputRequiredResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFormData
+}
+
+export type HumanInputFormValue = string | FileResponse | FileResponse[]
+
+export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
+
+export type HumanInputFilledFormData = {
+  node_id: string
+  node_title: string
+  rendered_content: string
+  action_id: string
+  action_text: string
+  form_content?: string
+  inputs?: FormInputItem[]
+  submitted_data?: Record<string, HumanInputFormValue>
+}
+
+export type HumanInputFormFilledResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFilledFormData
+}
+
+export type HumanInputFormTimeoutData = {
+  node_id: string
+  node_title: string
+  expiration_time: number
+}
+
+export type HumanInputFormTimeoutResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: HumanInputFormTimeoutData
+}
+
 export type WorkflowRunHistory = {
   id: string
   version: string
@@ -301,7 +390,7 @@ export type WorkflowRunHistory = {
     viewport?: Viewport
   }
   inputs: Record<string, string>
-  status: string
+  status: WorkflowRunningStatus
   outputs: Record<string, any>
   error?: string
   elapsed_time: number
@@ -319,17 +408,13 @@ export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
-export type ChatRunHistoryResponse = {
-  data: WorkflowRunHistory[]
-}
-
 export type NodesDefaultConfigsResponse = {
   type: string
   config: any
 }[]
 
 export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number; created_at: number })[]
+  data: (ConversationVariable & { updated_at: number, created_at: number })[]
   has_more: boolean
   limit: number
   total: number
@@ -345,25 +430,24 @@ export type WorkflowConfigResponse = {
 }
 
 export type PublishWorkflowParams = {
+  url: string
   title: string
   releaseNotes: string
 }
+
+export type WorkflowKind = 'standard'
 
 export type UpdateWorkflowParams = {
-  workflowId: string
+  url: string
   title: string
   releaseNotes: string
-}
-
-export type PanelExposedType = {
-  singleRunParams: Pick<BeforeRunFormProps, 'forms'> & Partial<SpecialResultPanelProps>
 }
 
 export type PanelProps = {
   getInputVars: (textList: string[]) => InputVar[]
   toVarInputs: (variables: Variable[]) => InputVar[]
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   setRunInputData: (data: Record<string, any>) => void
   runResult: any
 }
@@ -371,11 +455,17 @@ export type PanelProps = {
 export type NodeRunResult = NodeTracing
 
 // Var Inspect
-export enum VarInInspectType {
-  conversation = 'conversation',
-  environment = 'env',
-  node = 'node',
-  system = 'sys',
+export const VarInInspectType = {
+  conversation: 'conversation',
+  environment: 'env',
+  node: 'node',
+  system: 'sys',
+} as const
+export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
+
+type FullContent = {
+  size_bytes: number
+  download_url: string
 }
 
 export type VarInInspect = {
@@ -388,6 +478,9 @@ export type VarInInspect = {
   value: any
   edited: boolean
   visible: boolean
+  is_truncated: boolean
+  full_content: FullContent
+  schemaType?: string
 }
 
 export type NodeWithVar = {

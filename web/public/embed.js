@@ -38,6 +38,7 @@
     height: 43.75rem;
     max-height: calc(100vh - 6rem);
     border: none;
+    border-radius: 1rem;
     z-index: 2147483640;
     overflow: hidden;
     user-select: none;
@@ -62,6 +63,7 @@
     height: 88%;
     max-height: calc(100vh - 6rem);
     border: none;
+    border-radius: 1rem;
     z-index: 2147483640;
     overflow: hidden;
     user-select: none;
@@ -132,6 +134,11 @@
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
     const targetOrigin = new URL(baseUrl).origin;
+
+    // Pass sendOnEnter config as URL parameter
+    if (config.sendOnEnter === false) {
+      params.set('sendOnEnter', 'false');
+    }
 
     // pre-check the length of the URL
     const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
@@ -305,9 +312,11 @@
         }
         targetIframe.style.display =
           targetIframe.style.display === "none" ? "block" : "none";
-        targetIframe.style.display === "none"
-          ? setSvgIcon("open")
-          : setSvgIcon("close");
+        if (targetIframe.style.display === "none") {
+          setSvgIcon("open")
+        } else {
+          setSvgIcon("close")
+        }
 
         if (targetIframe.style.display === "none") {
           document.removeEventListener("keydown", handleEscKey);

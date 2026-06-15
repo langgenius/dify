@@ -1,5 +1,5 @@
-import { CodeGroup } from '../code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+import { CodeGroup, Embed } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # Advanced Chat App API
 
@@ -7,10 +7,7 @@ Chat applications support session persistence, allowing previous chat history to
 
 <div>
   ### Base URL
-  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
-    ```javascript
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url} />
 
   ### Authentication
 
@@ -19,12 +16,7 @@ Chat applications support session persistence, allowing previous chat history to
 
   For all API requests, include your API Key in the `Authorization`HTTP Header, as shown below:
 
-  <CodeGroup title="Code">
-    ```javascript
-      Authorization: Bearer {API_KEY}
-
-    ```
-  </CodeGroup>
+  <CodeGroup title="Code" targetCode='Authorization: Bearer {API_KEY}' />
 </div>
 
 ---
@@ -65,26 +57,37 @@ Chat applications support session persistence, allowing previous chat history to
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: 
-            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
-            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
-            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
-            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
-            - `custom` (Other file types)
-          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
-          - `url` (string) Image URL (when the transfer method is `remote_url`)
-          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision/Video capability.
+          - `type` (string) Supported type:
+            - `document` Supported types include: 'TXT', 'MD', 'MARKDOWN', 'MDX', 'PDF', 'HTML', 'XLSX', 'XLS', 'VTT', 'PROPERTIES', 'DOC', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` Supported types include: 'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` Supported types include: 'MP3', 'M4A', 'WAV', 'WEBM', 'MPGA'
+            - `video` Supported types include: 'MP4', 'MOV', 'MPEG', 'WEBM'
+            - `custom` Supported types include: other file types
+          - `transfer_method` (string) Transfer method:
+            - `remote_url`: File URL.
+            - `local_file`: Upload file.
+          - `url` File URL. (Only when transfer method is `remote_url`).
+          - `upload_file_id` Upload file ID. (Only when transfer method is `local_file`).
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
       Auto-generate title, default is `true`.
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
+      </Property>
+      <Property name='workflow_id' type='string' key='workflow_id'>
+      (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
         - Header: via HTTP Header <code>X-Trace-Id</code>, highest priority.<br/>
         - Query parameter: via URL query parameter <code>trace_id</code>.<br/>
         - Request Body: via request body field <code>trace_id</code> (i.e., this field).<br/>
+      </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+        (Optional) Trace session ID for observability grouping. Tracing providers that support session grouping can use this value as the exported session identifier. It does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports the following three ways to pass, in order of priority:<br/>
+        - Header: via HTTP Header <code>X-Trace-Session-Id</code>, highest priority.<br/>
+        - Query parameter: via URL query parameter <code>trace_session_id</code>.<br/>
+        - Request Body: via request body field <code>trace_session_id</code> (i.e., this field).<br/>
       </Property>
     </Properties>
 
@@ -194,6 +197,24 @@ Chat applications support session persistence, allowing previous chat history to
           - `total_price` (decimal) optional Total cost
           - `currency` (string) optional e.g. `USD` / `RMB`
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: human_input_required` Workflow paused and requires Human-in-the-Loop input
+      - `task_id` (string) Task ID, used for request tracking
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `human_input_required`
+      - `data` (object) detail
+        - `form_id` (string) Human input form ID
+        - `node_id` (string) Human input node ID
+        - `node_title` (string) Human input node title
+        - `form_content` (string) Rendered form content
+        - `inputs` (array[object]) Input field definitions
+        - `actions` (array[object]) User action buttons
+          - `id` (string) Action ID
+          - `title` (string) Button text
+          - `button_style` (string) Button style
+        - `display_in_ui` (bool) Whether this form should be shown in UI
+        - `form_token` (string) Token used by `/form/human_input/:form_token` APIs
+        - `resolved_default_values` (object) Runtime-resolved default values
+        - `expiration_time` (timestamp) Form expiration time (Unix seconds)
     - `event: workflow_finished` workflow execution ends, success or failure in different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `workflow_run_id` (string) Unique ID of workflow execution
@@ -225,33 +246,49 @@ Chat applications support session persistence, allowing previous chat history to
     - 400, `provider_not_initialize`, no available model credential configuration
     - 400, `provider_quota_exceeded`, model invocation quota insufficient
     - 400, `model_currently_not_support`, current model unavailable
+    - 400, `workflow_not_found`, specified workflow version not found
+    - 400, `draft_workflow_error`, cannot use draft workflow version
+    - 400, `workflow_id_format_error`, invalid workflow_id format, expected UUID format
     - 400, `completion_request_error`, text generation failed
     - 500, internal server error
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "What are the specs of the iPhone 13 Pro Max?",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123",\n    "files": [\n      {\n        "type": "image",\n        "transfer_method": "remote_url",\n        "url": "https://cloud.dify.ai/logo/logo-site.png"\n      }\n    ]\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/chat-messages' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "query": "eh",
-        "response_mode": "streaming",
-        "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/chat-messages"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "inputs": ${JSON.stringify(props.inputs)},
+    "query": "What are the specs of the iPhone 13 Pro Max?",
+    "response_mode": "streaming",
+    "conversation_id": "",
+    "user": "abc-123",
+    "files": [
+        {
+            "type": "image",
+            "transfer_method": "remote_url",
+            "url": "https://cloud.dify.ai/logo/logo-site.png"
+        }
+    ]
+}'`}
+    />
     ### Blocking Mode
+    Blocking mode can return a normal chat message or a paused workflow response.
+
+    When advanced chat pauses for Human-in-the-Loop, `event` becomes `workflow_paused`.
+    The payload still includes `message_id`, `conversation_id`, `answer`, and `workflow_run_id`, and `data` adds `paused_nodes` plus `reasons`.
+    For `human_input_required`, each reason contains the `form_id` and its `expiration_time`.
+
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
         "event": "message",
-        "task_id": "c3800678-a077-43df-a102-53f23ed20b88", 
+        "task_id": "c3800678-a077-43df-a102-53f23ed20b88",
         "id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
@@ -289,6 +326,83 @@ Chat applications support session persistence, allowing previous chat history to
     }
     ```
     </CodeGroup>
+    <CodeGroup title="Paused Response Example">
+    ```json {{ title: 'Paused Response Example' }}
+    {
+        "event": "workflow_paused",
+        "task_id": "8a9cbfcf-e7e0-4b17-aeef-24de57a2659a",
+        "id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+        "message_id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+        "conversation_id": "098e19be-356a-435d-9ec3-a406f4f1a97a",
+        "mode": "advanced-chat",
+        "answer": "",
+        "metadata": {
+            "annotation_reply": null,
+            "retriever_resources": [],
+            "usage": null
+        },
+        "created_at": 1776074715,
+        "workflow_run_id": "7a4d6509-8a65-4c7d-a4fd-cf081dcf169f",
+        "data": {
+            "id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+            "mode": "advanced-chat",
+            "conversation_id": "098e19be-356a-435d-9ec3-a406f4f1a97a",
+            "message_id": "31714374-88cb-485f-9fa4-e3ab2a9ed95e",
+            "workflow_run_id": "7a4d6509-8a65-4c7d-a4fd-cf081dcf169f",
+            "answer": "",
+            "metadata": {
+                "annotation_reply": null,
+                "retriever_resources": [],
+                "usage": null
+            },
+            "created_at": 1776074715,
+            "paused_nodes": [
+                "1775724080699"
+            ],
+            "reasons": [
+                {
+                    "form_id": "019d864d-6f55-752c-9f4c-feee67508d5b",
+                    "form_content": "this is form 2:\n\n{{#$output.some_field_2#}}\n",
+                    "inputs": [
+                        {
+                            "type": "paragraph",
+                            "output_variable_name": "some_field_2",
+                            "default": {
+                                "type": "constant",
+                                "selector": [],
+                                "value": ""
+                            }
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "id": "approve",
+                            "title": "yes",
+                            "button_style": "default"
+                        },
+                        {
+                            "id": "reject",
+                            "title": "no",
+                            "button_style": "default"
+                        }
+                    ],
+                    "display_in_ui": true,
+                    "node_id": "1775724080699",
+                    "node_title": "Human Input 2",
+                    "resolved_default_values": {},
+                    "form_token": "0dvwTdpTFXgCZmAo2FoiJ5",
+                    "type": "human_input_required",
+                    "expiration_time": 1776333914
+                }
+            ],
+            "status": "paused",
+            "elapsed_time": 0.034081,
+            "total_tokens": 0,
+            "total_steps": 2
+        }
+    }
+    ```
+    </CodeGroup>
     ### Streaming Mode
     <CodeGroup title="Response">
     ```streaming {{ title: 'Response' }}
@@ -305,6 +419,220 @@ Chat applications support session persistence, allowing previous chat history to
       data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548}, "retriever_resources": [{"position": 1, "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb", "dataset_name": "iPhone", "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00", "document_name": "iPhone List", "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a", "score": 0.98457545, "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""}]}}
       data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+    Streaming mode can also pause for Human-in-the-Loop. In that case, the SSE stream emits `human_input_required` first and then `workflow_paused`.
+
+    <CodeGroup title="Paused Streaming Response Example">
+    ```streaming {{ title: 'Paused Streaming Response Example' }}
+    event: ping
+
+    data: {
+      "event": "workflow_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+        "workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+        "inputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+        },
+        "created_at": 1776129228,
+        "reason": "initial"
+      }
+    }
+
+    data: {
+      "event": "node_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "7d9bb041-5ecb-497f-a674-d8706eed0ab1",
+        "node_id": "1775717266623",
+        "node_type": "start",
+        "title": "User Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": null,
+        "inputs_truncated": false,
+        "created_at": 1776129228,
+        "extras": {},
+        "iteration_id": null,
+        "loop_id": null,
+        "agent_strategy": null
+      }
+    }
+
+    data: {
+      "event": "node_finished",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "7d9bb041-5ecb-497f-a674-d8706eed0ab1",
+        "node_id": "1775717266623",
+        "node_type": "start",
+        "title": "User Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+          "sys.timestamp": 1776129228
+        },
+        "inputs_truncated": false,
+        "process_data": {},
+        "process_data_truncated": false,
+        "outputs": {
+          "sys.files": [],
+          "sys.user_id": "abc-123",
+          "sys.app_id": "d1074979-f67e-4114-8691-e35878df9a89",
+          "sys.workflow_id": "e46514f1-c008-41ff-94b0-4f33d4b97d36",
+          "sys.workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+          "sys.timestamp": 1776129228
+        },
+        "outputs_truncated": false,
+        "status": "succeeded",
+        "error": null,
+        "elapsed_time": 0.000097,
+        "execution_metadata": null,
+        "created_at": 1776129228,
+        "finished_at": 1776129228,
+        "files": [],
+        "iteration_id": null,
+        "loop_id": null
+      }
+    }
+
+    data: {
+      "event": "node_started",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "id": "c09ff568-1d55-4f0d-9a07-512bcbfeb289",
+        "node_id": "1775717346519",
+        "node_type": "human-input",
+        "title": "Human Input",
+        "index": 1,
+        "predecessor_node_id": null,
+        "inputs": null,
+        "inputs_truncated": false,
+        "created_at": 1776129228,
+        "extras": {},
+        "iteration_id": null,
+        "loop_id": null,
+        "agent_strategy": null
+      }
+    }
+
+    data: {
+      "event": "human_input_required",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "form_id": "019d898d-3d80-7105-b920-9899ead4ff3e",
+        "node_id": "1775717346519",
+        "node_title": "Human Input",
+        "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+        "inputs": [
+          {
+            "type": "paragraph",
+            "output_variable_name": "some_field",
+            "default": {
+              "type": "variable",
+              "selector": [
+                "sys",
+                "workflow_run_id"
+              ],
+              "value": ""
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "approve",
+            "title": "YES",
+            "button_style": "default"
+          },
+          {
+            "id": "reject",
+            "title": "NO",
+            "button_style": "default"
+          }
+        ],
+        "display_in_ui": true,
+        "form_token": "0Tb1nXYe4hzQUD706nHB4y",
+        "resolved_default_values": {
+          "some_field": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+        },
+        "expiration_time": 1776388428
+      }
+    }
+
+    data: {
+      "event": "workflow_paused",
+      "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+      "task_id": "0399c5c2-181b-4493-a78e-1421914e8a25",
+      "data": {
+        "workflow_run_id": "a4959eb4-c852-4e0c-ac7a-348233f7f345",
+        "paused_nodes": [
+          "1775717346519"
+        ],
+        "outputs": {},
+        "reasons": [
+          {
+            "form_id": "019d898d-3d80-7105-b920-9899ead4ff3e",
+            "form_content": "this is form 1:\n{{#$output.some_field#}}\n",
+            "inputs": [
+              {
+                "type": "paragraph",
+                "output_variable_name": "some_field",
+                "default": {
+                  "type": "variable",
+                  "selector": [
+                    "sys",
+                    "workflow_run_id"
+                  ],
+                  "value": ""
+                }
+              }
+            ],
+            "actions": [
+              {
+                "id": "approve",
+                "title": "YES",
+                "button_style": "default"
+              },
+              {
+                "id": "reject",
+                "title": "NO",
+                "button_style": "default"
+              }
+            ],
+            "display_in_ui": true,
+            "node_id": "1775717346519",
+            "node_title": "Human Input",
+            "resolved_default_values": {
+              "some_field": "a4959eb4-c852-4e0c-ac7a-348233f7f345"
+            },
+            "form_token": "0Tb1nXYe4hzQUD706nHB4y",
+            "type": "human_input_required",
+            "expiration_time": 1776388428
+          }
+        ],
+        "status": "paused",
+        "created_at": 1776129228,
+        "elapsed_time": 0.070478,
+        "total_tokens": 0,
+        "total_steps": 2
+      }
+    }
     ```
     </CodeGroup>
 
@@ -357,16 +685,15 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@"/path/to/file"'
-    ```
-
-    </CodeGroup>
-
+  <CodeGroup
+    title="Request"
+    tag="POST"
+    label="/files/upload"
+    targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\
+--form 'user=abc-123'`}
+  />
 
   ### Response Example
   <CodeGroup title="Response">
@@ -387,6 +714,148 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
+  url='/end-users/:end_user_id'
+  method='GET'
+  title='Get End User'
+  name='#end-user'
+/>
+<Row>
+  <Col>
+    Retrieve an end user by ID.
+
+    This is useful when other APIs return an end-user ID (e.g. `created_by` from File Upload).
+
+    ### Path Parameters
+    - `end_user_id` (uuid) Required
+      End user ID.
+
+    ### Response
+    Returns an EndUser object.
+    - `id` (uuid) ID
+    - `tenant_id` (uuid) Tenant ID
+    - `app_id` (uuid) App ID
+    - `type` (string) End user type
+    - `external_user_id` (string) External user ID
+    - `name` (string) Name
+    - `is_anonymous` (boolean) Whether anonymous
+    - `session_id` (string) Session ID
+    - `created_at` (string) ISO 8601 datetime
+    - `updated_at` (string) ISO 8601 datetime
+
+    ### Errors
+    - 404, `end_user_not_found`, end user not found
+    - 500, internal server error
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/end-users/:end_user_id"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/end-users/6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "tenant_id": "8c0f3f3a-66b0-4b55-a0bf-8b8e0d6aee7d",
+      "app_id": "6c8c3f41-2c6f-4e1b-8f4f-7f11c8f2ad2a",
+      "type": "service_api",
+      "external_user_id": "abc-123",
+      "name": "Alice",
+      "is_anonymous": false,
+      "session_id": "abc-123",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/files/:file_id/preview'
+  method='GET'
+  title='File Preview'
+  name='#file-preview'
+/>
+<Row>
+  <Col>
+    Preview or download uploaded files. This endpoint allows you to access files that have been previously uploaded via the File Upload API.
+
+    <i>Files can only be accessed if they belong to messages within the requesting application.</i>
+
+    ### Path Parameters
+    - `file_id` (string) Required
+      The unique identifier of the file to preview, obtained from the File Upload API response.
+
+    ### Query Parameters
+    - `as_attachment` (boolean) Optional
+      Whether to force download the file as an attachment. Default is `false` (preview in browser).
+
+    ### Response
+    Returns the file content with appropriate headers for browser display or download.
+    - `Content-Type` Set based on file mime type
+    - `Content-Length` File size in bytes (if available)
+    - `Content-Disposition` Set to "attachment" if `as_attachment=true`
+    - `Cache-Control` Caching headers for performance
+    - `Accept-Ranges` Set to "bytes" for audio/video files
+
+    ### Errors
+    - 400, `invalid_param`, abnormal parameter input
+    - 403, `file_access_denied`, file access denied or file does not belong to current application
+    - 404, `file_not_found`, file not found or has been deleted
+    - 500, internal server error
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/files/:file_id/preview"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    ### Download as Attachment
+    <CodeGroup
+      title="Download Request"
+      tag="GET"
+      label="/files/:file_id/preview?as_attachment=true"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/files/72fa9618-8f89-4a37-9b33-7e1178a24a67/preview?as_attachment=true' \\
+--header 'Authorization: Bearer {api_key}' \\
+--output downloaded_file.png`}
+    />
+
+    ### Response Headers Example
+    <CodeGroup title="Response Headers">
+    ```http {{ title: 'Headers - Image Preview' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+
+    ### Download Response Headers
+    <CodeGroup title="Download Response Headers">
+    ```http {{ title: 'Headers - File Download' }}
+    Content-Type: image/png
+    Content-Length: 1024
+    Content-Disposition: attachment; filename*=UTF-8''example.png
+    Cache-Control: public, max-age=3600
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/chat-messages/:task_id/stop'
   method='POST'
   title='Stop Generate'
@@ -394,27 +863,28 @@ Chat applications support session persistence, allowing previous chat history to
 />
 <Row>
   <Col>
-  Only supported in streaming mode.
-  ### Path
-  - `task_id` (string) Task ID, can be obtained from the streaming chunk return
-  ### Request Body
-  - `user` (string) Required
-    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
-  ### Response
-  - `result` (string) Always returns "success"
+    Only supported in streaming mode.
+    ### Path
+    - `task_id` (string) Task ID, can be obtained from the streaming chunk return
+    ### Request Body
+    - `user` (string) Required
+      User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
+    ### Response
+    - `result` (string) Always returns "success"
   </Col>
   <Col sticky>
-  ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \
-    -H 'Authorization: Bearer {api_key}' \
-    -H 'Content-Type: application/json' \
-    --data-raw '{
-        "user": "abc-123"
-    }'
-    ```
-    </CodeGroup>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/chat-messages/:task_id/stop"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{
+    "user": "abc-123"
+}'`}
+    />
 
     ### Response Example
     <CodeGroup title="Response">
@@ -422,6 +892,198 @@ Chat applications support session persistence, allowing previous chat history to
     {
       "result": "success"
     }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='GET'
+  title='Get Human Input Form'
+  name='#get-human-input-form'
+/>
+<Row>
+  <Col>
+    Retrieve a pending Human-in-the-Loop form by `form_token`.
+
+    Use this endpoint when streaming returns `human_input_required` with a `form_token`.
+
+    ### Path
+    - `form_token` (string) Required, token returned by the pause event.
+
+    ### Response
+    - `form_content` (string) Rendered form content (markdown/plain text)
+    - `inputs` (array[object]) Form input definitions
+    - `resolved_default_values` (object) Default values resolved to strings
+    - `user_actions` (array[object]) Action buttons
+    - `expiration_time` (timestamp) Form expiration time (Unix seconds)
+
+    ### Errors
+    - 404, form not found or does not belong to current app
+    - 412, `human_input_form_submitted`, form already submitted
+    - 412, `human_input_form_expired`, form expired
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "form_content": "Please confirm the final answer: {{#$output.answer#}}",
+      "inputs": [
+        {
+          "label": "Answer",
+          "type": "text-input",
+          "required": true,
+          "output_variable_name": "answer"
+        }
+      ],
+      "resolved_default_values": {
+        "answer": "Initial value"
+      },
+      "user_actions": [
+        { "id": "approve", "title": "Approve", "button_style": "primary" },
+        { "id": "reject", "title": "Reject", "button_style": "warning" }
+      ],
+      "expiration_time": 1735689600
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/form/human_input/:form_token'
+  method='POST'
+  title='Submit Human Input Form'
+  name='#submit-human-input-form'
+/>
+<Row>
+  <Col>
+    Submit a pending Human-in-the-Loop form.
+
+    ### Path
+    - `form_token` (string) Required, token returned by the pause event.
+
+    ### Request Body
+    - `inputs` (object) Required, key/value pairs for form fields.
+    - `action` (string) Required, selected action ID from `user_actions`.
+    - `user` (string) Required, end-user identifier.
+
+    ### Response
+    Returns an empty object on success.
+
+    ### Errors
+    - 400, `invalid_form_data`, submitted data does not match the form schema
+    - 404, form not found or does not belong to current app
+    - 412, `human_input_form_submitted`, form already submitted
+    - 412, `human_input_form_expired`, form expired
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/form/human_input/:form_token"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/form/human_input/{form_token}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+  "inputs": {"answer": "Approved answer"},
+  "action": "approve",
+  "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflow/:task_id/events'
+  method='GET'
+  title='Get Workflow Resume Events'
+  name='#get-workflow-resume-events'
+/>
+<Row>
+  <Col>
+    Continue receiving workflow events after submitting a human input form.
+
+    This endpoint returns `text/event-stream` and can be used to observe resumed execution until completion.
+
+    ### Path
+    - `task_id` (string) Required, workflow run ID (`workflow_run_id`).
+
+    ### Query
+    - `user` (string) Required, end-user identifier.
+    - `include_state_snapshot` (bool) Optional, set to `true` to replay from persisted state snapshot before continuing with live events.
+    - `continue_on_pause` (bool) Optional, set to `true` to keep the stream open across `workflow_paused` events until `workflow_finished`.
+
+    ### Response
+    Server-Sent Events stream (`text/event-stream`).
+    Typical events include `workflow_paused`, `node_started`, `node_finished`, `human_input_form_filled`, `human_input_form_timeout`, and `workflow_finished`.
+    If the workflow has already finished when you call this endpoint, the server returns a single finished event immediately.
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflow/:task_id/events"
+      targetCode={`curl -N -X GET '${props.appDetail.api_base_url}/workflow/{workflow_run_id}/events?user=abc-123&continue_on_pause=true' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
+
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+    event: ping
+
+    data: {"event":"workflow_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","sys.timestamp":1776087863},"created_at":1776087863,"reason":"initial"}}
+
+    data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_finished","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"b552d685-1119-4e6a-9a81-e91a23e5324b","node_id":"1775717266623","node_type":"start","title":"User Input","index":1,"predecessor_node_id":null,"inputs":null,"process_data":null,"outputs":null,"status":"succeeded","error":null,"elapsed_time":0.00032,"execution_metadata":null,"created_at":1776087863,"finished_at":1776087863,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":2,"predecessor_node_id":null,"inputs":null,"created_at":1776087863,"extras":{},"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_finished","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":2,"predecessor_node_id":null,"inputs":null,"process_data":null,"outputs":null,"status":"paused","error":null,"elapsed_time":0.007381,"execution_metadata":null,"created_at":1776087863,"finished_at":1776087863,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"workflow_paused","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","data":{"workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","paused_nodes":["1775717346519"],"outputs":{},"reasons":[{"form_id":"019d8716-0fde-75da-8207-1458ccde76e5","form_content":"this is form 1:\n{{#$output.some_field#}}\n","inputs":[{"type":"paragraph","output_variable_name":"some_field","default":{"type":"variable","selector":["sys","workflow_run_id"],"value":""}}],"actions":[{"id":"approve","title":"YES","button_style":"default"},{"id":"reject","title":"NO","button_style":"default"}],"display_in_ui":true,"node_id":"1775717346519","node_title":"Human Input","resolved_default_values":{"some_field":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"form_token":"n7hFG4ZDYdGcgZ5VDc7EGM","type":"human_input_required"}],"status":"paused","created_at":1776087863,"elapsed_time":0.0,"total_tokens":0,"total_steps":2}}
+
+    data: {"event":"workflow_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","inputs":{"sys.files":[],"sys.user_id":"abc-123","sys.app_id":"d1074979-f67e-4114-8691-e35878df9a89","sys.workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","sys.workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c"},"created_at":1776087877,"reason":"resumption"}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"human_input_form_filled","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"node_id":"1775717346519","node_title":"Human Input","rendered_content":"this is form 1:\nfield 1 filled!\n","action_id":"approve","action_text":"YES"}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"8d7e8e01-5159-4089-a4b6-3aa394992cc2","node_id":"1775717346519","node_type":"human-input","title":"Human Input","index":1,"predecessor_node_id":null,"inputs":{},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"some_field":"field 1 filled!","some_field_2":"from bruno with love","__action_id":"approve","__rendered_content":"this is form 1:\nfield 1 filled!\n"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.004431,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"6d8fc3cb-19f7-440b-b83e-eed4e847a332","node_id":"1775717350710","node_type":"template-transform","title":"Template","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"text_chunk","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"text":"field 1 filled!","from_variable_selector":["1775717350710","output"]}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"6d8fc3cb-19f7-440b-b83e-eed4e847a332","node_id":"1775717350710","node_type":"template-transform","title":"Template","index":1,"predecessor_node_id":null,"inputs":{"some_field":"field 1 filled!"},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"output":"field 1 filled!"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.264614,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"node_started","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"e88dec7e-aa2c-41f7-8d73-032b749e23f5","node_id":"1775717354177","node_type":"end","title":"Output","index":1,"predecessor_node_id":null,"inputs":null,"inputs_truncated":false,"created_at":1776087877,"extras":{},"iteration_id":null,"loop_id":null,"agent_strategy":null}}
+
+    data: {"event":"node_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"e88dec7e-aa2c-41f7-8d73-032b749e23f5","node_id":"1775717354177","node_type":"end","title":"Output","index":1,"predecessor_node_id":null,"inputs":{"output":"field 1 filled!"},"inputs_truncated":false,"process_data":{},"process_data_truncated":false,"outputs":{"output":"field 1 filled!"},"outputs_truncated":false,"status":"succeeded","error":null,"elapsed_time":0.00003,"execution_metadata":null,"created_at":1776087877,"finished_at":1776087877,"files":[],"iteration_id":null,"loop_id":null}}
+
+    data: {"event":"workflow_finished","workflow_run_id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","task_id":"1784c3dd-20eb-4919-bd5d-a8d800b74ada","data":{"id":"5d7ef348-e1c1-4f6d-bb9b-62cc2fb2ef3c","workflow_id":"e46514f1-c008-41ff-94b0-4f33d4b97d36","status":"succeeded","outputs":{"output":"field 1 filled!"},"error":null,"elapsed_time":0.364935,"total_tokens":0,"total_steps":5,"created_by":{"id":"7932d34c-dcf4-4fba-b770-f2a9de88c0a0","user":"abc-123"},"created_at":1776087877,"finished_at":1776087877,"exceptions_count":0,"files":[]}}
     ```
     </CodeGroup>
   </Col>
@@ -465,20 +1127,19 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "rating": "like",
-        "user": "abc-123",
-        "content": "message feedback information"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/messages/:message_id/feedbacks"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "rating": "like",
+    "user": "abc-123",
+    "content": "message feedback information"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -520,15 +1181,14 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/app/feedbacks" targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/app/feedbacks"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -583,15 +1243,14 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123& \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --header 'Content-Type: application/json' \
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages/{message_id}/suggested"
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123' \\
+--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\
+--header 'Content-Type: application/json'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -647,7 +1306,7 @@ Chat applications support session persistence, allowing previous chat history to
       - `message_files` (array[object]) Message files
         - `id` (string) ID
         - `type` (string) File type, image for images
-        - `url` (string) Preview image URL
+        - `url` (string) File preview URL, use the File Preview API (`/files/{file_id}/preview`) to access the file
         - `belongs_to` (string) belongs to，user orassistant
       - `answer` (string) Response message content
       - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
@@ -660,14 +1319,14 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/messages"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id={conversation_id}'
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
     ### Response Example
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -753,14 +1412,13 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\\n --header 'Authorization: Bearer {api_key}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/conversations"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -818,19 +1476,18 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/conversations/:conversation_id" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/:conversation_id' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-        curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \
-        --header 'Content-Type: application/json' \
-        --header 'Accept: application/json' \
-        --header 'Authorization: Bearer {api_key}' \
-        --data '{
-            "user": "abc-123"
-        }'
-      ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/conversations/:conversation_id"
+      targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Accept: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data '{
+    "user": "abc-123"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```text {{ title: 'Response' }}
@@ -878,20 +1535,19 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "auto_generate": true, \n "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
-    --header 'Content-Type: application/json' \
-    --header 'Authorization: Bearer {api_key}' \
-    --data-raw '{
-        "name": "",
-        "auto_generate": true,
-        "user": "abc-123"
-    }'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/conversations/:conversation_id/name"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "name": "",
+    "auto_generate": true,
+    "user": "abc-123"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -962,21 +1618,20 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/conversations/:conversation_id/variables"
+      debug="true"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\
+--header 'Authorization: Bearer {api_key}'`} />
 
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Request with variable name filter">
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request with variable name filter"
+      language="bash"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1012,10 +1667,126 @@ Chat applications support session persistence, allowing previous chat history to
 ---
 
 <Heading
+  url='/conversations/:conversation_id/variables/:variable_id'
+  method='PUT'
+  title='Update Conversation Variable'
+  name='#update-conversation-variable'
+/>
+<Row>
+  <Col>
+    Update the value of a specific conversation variable. This endpoint allows you to modify the value of a variable that was captured during the conversation while preserving its name, type, and description.
+
+    ### Path Parameters
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        The ID of the conversation containing the variable to update.
+      </Property>
+      <Property name='variable_id' type='string' key='variable_id'>
+        The ID of the variable to update.
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='value' type='any' key='value'>
+        The new value for the variable. Must match the variable's expected type (string, number, object, etc.).
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the application.
+      </Property>
+    </Properties>
+
+    ### Response
+
+    Returns the updated variable object with:
+    - `id` (string) Variable ID
+    - `name` (string) Variable name
+    - `value_type` (string) Variable type (string, number, object, etc.)
+    - `value` (any) Updated variable value
+    - `description` (string) Variable description
+    - `created_at` (int) Creation timestamp
+    - `updated_at` (int) Last update timestamp
+
+    ### Errors
+    - 400, `Type mismatch: variable expects {expected_type}, but got {actual_type} type`, Value type doesn't match variable's expected type
+    - 404, `conversation_not_exists`, Conversation not found
+    - 404, `conversation_variable_not_exists`, Variable not found
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup
+      title="Request"
+      tag="PUT"
+      label="/conversations/:conversation_id/variables/:variable_id"
+      targetCode={`curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": "Updated Value",
+    "user": "abc-123"
+}'`}
+    />
+
+    <CodeGroup
+      title="Update with different value types"
+      targetCode={[
+        {
+          title: 'String',
+          code: `curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": "New string value",
+    "user": "abc-123"
+}'`,
+        }, {
+          title: 'Number',
+          code: `curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": 42,
+    "user": "abc-123"
+}'`,
+        }, {
+          title: 'Object',
+          code: `curl -X PUT '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables/{variable_id}' \\
+--header 'Content-Type: application/json' \\
+--header 'Authorization: Bearer {api_key}' \\
+--data-raw '{
+    "value": {"product": "Widget", "quantity": 10, "price": 29.99},
+    "user": "abc-123"
+}'`,
+        },
+      ]}
+    />
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "variable-uuid-1",
+      "name": "customer_name",
+      "value_type": "string",
+      "value": "Updated Value",
+      "description": "Customer name extracted from the conversation",
+      "created_at": 1650000000000,
+      "updated_at": 1650000001000
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='Speech to Text'
-  name='#audio'
+  name='#audio-to-text'
 />
 <Row>
   <Col>
@@ -1040,15 +1811,14 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/name' \
-    --header 'Authorization: Bearer {api_key}' \
-    --form 'file=@localfile;type=audio/mp3'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/audio-to-text"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\
+--header 'Authorization: Bearer {api_key}' \\
+--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1066,7 +1836,7 @@ Chat applications support session persistence, allowing previous chat history to
   url='/text-to-audio'
   method='POST'
   title='Text to Audio'
-  name='#audio'
+  name='#text-to-audio'
 />
 <Row>
   <Col>
@@ -1088,20 +1858,19 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "Hello Dify",\n    "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-        "text": "Hello Dify",
-        "user": "abc-123",
-        "streaming": false
-    }'
-    ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/text-to-audio"
+      targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+    "text": "Hello Dify",
+    "user": "abc-123",
+}'`}
+    />
 
     <CodeGroup title="headers">
     ```json {{ title: 'headers' }}
@@ -1132,12 +1901,14 @@ Chat applications support session persistence, allowing previous chat history to
   - `author_name` (string) application author name
   </Col>
   <Col>
-    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
-      ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/info' \
-      -H 'Authorization: Bearer {api_key}'
-      ```
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
+
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
@@ -1203,30 +1974,30 @@ Chat applications support session persistence, allowing previous chat history to
         - `default` (string) Default value
         - `options` (array[string]) Option values
     - `file_upload` (object) File upload configuration
-      - `document` (object) Document settings  
-        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Document number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `image` (object) Image settings  
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Image number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `audio` (object) Audio settings  
-        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Audio number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `video` (object) Video settings  
-        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Video number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
-      - `custom` (object) Custom settings  
-        - `enabled` (bool) Whether it is enabled  
-        - `number_limits` (int) Custom number limit, default is 3  
-        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.  
+      - `document` (object) Document settings
+        Currently only supports document types: `txt`, `md`, `markdown`, `pdf`, `html`, `xlsx`, `xls`, `docx`, `csv`, `eml`, `msg`, `pptx`, `ppt`, `xml`, `epub`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Document number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `image` (object) Image settings
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Image number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `audio` (object) Audio settings
+        Currently only supports audio types: `mp3`, `m4a`, `wav`, `webm`, `amr`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Audio number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `video` (object) Video settings
+        Currently only supports video types: `mp4`, `mov`, `mpeg`, `mpga`.
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Video number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
+      - `custom` (object) Custom settings
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Custom number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods: `remote_url`, `local_file`. Must choose one.
     - `system_parameters` (object) System parameters
       - `file_size_limit` (int) Document upload size limit (MB)
       - `image_file_size_limit` (int) Image file upload size limit (MB)
@@ -1236,14 +2007,12 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/parameters"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/parameters'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1321,13 +2090,13 @@ Chat applications support session persistence, allowing previous chat history to
         - (string) url of icon
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/meta' \
-    -H 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/meta"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1372,13 +2141,13 @@ Chat applications support session persistence, allowing previous chat history to
   - `use_icon_as_answer_icon` (bool) Whether to replace 🤖 in chat with the WebApp icon
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/site' \
-    -H 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/site"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
+-H 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1427,13 +2196,9 @@ ___
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotations?page=1&limit=20' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotations?page=1&limit=20' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1481,18 +2246,14 @@ ___
       title="Request"
       tag="POST"
       label="/apps/annotations"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "question": "What is your name?",
-        "answer": "I am Dify."
-    }'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "question": "What is your name?",
+    "answer": "I am Dify."
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1535,18 +2296,14 @@ ___
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "question": "What is your name?",
-        "answer": "I am Dify."
-    }'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request PUT '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "question": "What is your name?",
+    "answer": "I am Dify."
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1581,15 +2338,12 @@ ___
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="PUT"
+      tag="DELETE"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json'`}
+    />
 
     <CodeGroup title="Response">
     ```text {{ title: 'Response' }}
@@ -1630,19 +2384,15 @@ ___
       title="Request"
       tag="POST"
       label="/apps/annotation-reply/{action}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotation-reply/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"score_threshold": 0.9, "embedding_provider_name": "zhipu", "embedding_model_name": "embedding_3"}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/apps/annotation-reply/{action}' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "score_threshold": 0.9,
-        "embedding_provider_name": "zhipu",
-        "embedding_model_name": "embedding_3"
-    }'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotation-reply/{action}' \\
+--header 'Authorization: Bearer {api_key}' \\
+--header 'Content-Type: application/json' \\
+--data-raw '{
+    "score_threshold": 0.9,
+    "embedding_provider_name": "zhipu",
+    "embedding_model_name": "embedding_3"
+}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -1680,13 +2430,9 @@ ___
       title="Request"
       tag="GET"
       label="/apps/annotations"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/apps/annotation-reply/{action}/status/{job_id}' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-    </CodeGroup>
+      targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/apps/annotation-reply/{action}/status/{job_id}' \\
+--header 'Authorization: Bearer {api_key}'`}
+    />
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}

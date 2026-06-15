@@ -1,15 +1,19 @@
-import Tooltip from '@/app/components/base/tooltip'
+import type { FC } from 'react'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import Indicator from '@/app/components/header/indicator'
-import { type FC, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 
-export type ModelBarProps = {
+type ModelBarProps = {
   provider: string
   model: string
-} | {}
+} | {
+  provider?: never
+  model?: never
+}
 
 const useAllModel = () => {
   const { data: textGeneration } = useModelList(ModelTypeEnum.textGeneration)
@@ -34,42 +38,62 @@ const useAllModel = () => {
 export const ModelBar: FC<ModelBarProps> = (props) => {
   const { t } = useTranslation()
   const modelList = useAllModel()
-  if (!('provider' in props)) {
-    return <Tooltip
-      popupContent={t('workflow.nodes.agent.modelNotSelected')}
-      triggerMethod='hover'
-    >
-      <div className='relative'>
-        <ModelSelector
-          modelList={[]}
-          triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-          defaultModel={undefined}
-          showDeprecatedWarnIcon={false}
-          readonly
-          deprecatedClassName='opacity-50'
+  if (props.provider === undefined) {
+    const tooltip = t('nodes.agent.modelNotSelected', { ns: 'workflow' })
+
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <div className="relative" aria-label={tooltip}>
+              <ModelSelector
+                modelList={[]}
+                triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
+                defaultModel={undefined}
+                showDeprecatedWarnIcon={false}
+                readonly
+                deprecatedClassName="opacity-50"
+              />
+              <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />
+            </div>
+          )}
         />
-        <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />
-      </div>
-    </Tooltip>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    )
   }
   const modelInstalled = modelList?.some(
-    provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model))
+    provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model),
+  )
   const showWarn = modelList && !modelInstalled
-  return modelList && <Tooltip
-    popupContent={t('workflow.nodes.agent.modelNotInstallTooltip')}
-    triggerMethod='hover'
-    disabled={!modelList || modelInstalled}
-  >
-    <div className='relative'>
+  if (!modelList)
+    return null
+
+  const modelNotInstalledTooltip = t('nodes.agent.modelNotInstallTooltip', { ns: 'workflow' })
+  const modelSelector = (
+    <div className="relative" aria-label={showWarn ? modelNotInstalledTooltip : undefined}>
       <ModelSelector
         modelList={modelList}
-        triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-        defaultModel={props}
+        triggerClassName="bg-workflow-block-parma-bg h-6! rounded-md!"
+        defaultModel={{
+          provider: props.provider,
+          model: props.model,
+        }}
         showDeprecatedWarnIcon={false}
         readonly
-        deprecatedClassName='opacity-50'
+        deprecatedClassName="opacity-50"
       />
-      {showWarn && <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />}
+      {showWarn && <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />}
     </div>
-  </Tooltip>
+  )
+
+  if (modelInstalled)
+    return modelSelector
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={modelSelector} />
+      <TooltipContent>{modelNotInstalledTooltip}</TooltipContent>
+    </Tooltip>
+  )
 }

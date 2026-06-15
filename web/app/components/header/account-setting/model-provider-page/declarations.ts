@@ -14,6 +14,7 @@ export enum FormTypeEnum {
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
+  checkbox = 'checkbox',
   boolean = 'boolean',
   files = 'files',
   file = 'file',
@@ -71,9 +72,6 @@ export enum ModelFeatureEnum {
 }
 
 export enum ModelFeatureTextEnum {
-  toolCall = 'Tool Call',
-  multiToolCall = 'Multi Tool Call',
-  agentThought = 'Agent Thought',
   vision = 'Vision',
   video = 'Video',
   document = 'Document',
@@ -86,21 +84,7 @@ export enum ModelStatusEnum {
   quotaExceeded = 'quota-exceeded',
   noPermission = 'no-permission',
   disabled = 'disabled',
-}
-
-export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
-  'no-configure': {
-    en_US: 'No Configure',
-    zh_Hans: '未配置凭据',
-  },
-  'quota-exceeded': {
-    en_US: 'Quota Exceeded',
-    zh_Hans: '额度不足',
-  },
-  'no-permission': {
-    en_US: 'No Permission',
-    zh_Hans: '无使用权限',
-  },
+  credentialRemoved = 'credential-removed',
 }
 
 export enum CustomConfigurationStatusEnum {
@@ -108,7 +92,7 @@ export enum CustomConfigurationStatusEnum {
   noConfigure = 'no-configure',
 }
 
-export type FormShowOnObject = {
+type FormShowOnObject = {
   variable: string
   value: string
 }
@@ -128,17 +112,17 @@ export type CredentialFormSchemaBase = {
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & {
-  max_length?: number;
-  placeholder?: TypeWithI18N,
+  max_length?: number
+  placeholder?: TypeWithI18N
   template?: {
     enabled: boolean
-  },
+  }
   auto_generate?: {
     type: string
   }
 }
-export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number; max?: number; placeholder?: TypeWithI18N }
-export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
+export type CredentialFormSchemaNumberInput = CredentialFormSchemaBase & { min?: number, max?: number, placeholder?: TypeWithI18N }
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[], placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
 export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
@@ -153,6 +137,7 @@ export type ModelItem = {
   model_properties: Record<string, string | number>
   load_balancing_enabled: boolean
   deprecated?: boolean
+  has_invalid_load_balancing_configs?: boolean
 }
 
 export enum PreferredProviderTypeEnum {
@@ -168,17 +153,34 @@ export enum CurrentSystemQuotaTypeEnum {
 
 export enum QuotaUnitEnum {
   times = 'times',
-  tokens = 'tokens',
-  credits = 'credits',
 }
 
-export type QuotaConfiguration = {
+type QuotaConfiguration = {
   quota_type: CurrentSystemQuotaTypeEnum
   quota_unit: QuotaUnitEnum
   quota_limit: number
   quota_used: number
   last_used: number
   is_valid: boolean
+}
+
+export type Credential = {
+  credential_id: string
+  credential_name?: string
+  from_enterprise?: boolean
+  not_allowed_to_use?: boolean
+}
+
+export type CustomModel = {
+  model: string
+  model_type: ModelTypeEnum
+}
+
+export type CustomModelCredential = CustomModel & {
+  credentials?: Record<string, any>
+  available_model_credentials?: Credential[]
+  current_credential_id?: string
+  current_credential_name?: string
 }
 
 export type ModelProvider = {
@@ -190,7 +192,7 @@ export type ModelProvider = {
     url: TypeWithI18N
   }
   icon_small: TypeWithI18N
-  icon_large: TypeWithI18N
+  icon_small_dark?: TypeWithI18N
   background?: string
   supported_model_types: ModelTypeEnum[]
   configurate_methods: ConfigurationMethodEnum[]
@@ -207,18 +209,27 @@ export type ModelProvider = {
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
     status: CustomConfigurationStatusEnum
+    current_credential_id?: string
+    current_credential_name?: string
+    available_credentials?: Credential[]
+    custom_models?: CustomModelCredential[]
+    can_added_models?: {
+      model: string
+      model_type: ModelTypeEnum
+    }[]
   }
   system_configuration: {
     enabled: boolean
     current_quota_type: CurrentSystemQuotaTypeEnum
     quota_configurations: QuotaConfiguration[]
   }
+  allow_custom_token?: boolean
 }
 
 export type Model = {
   provider: string
-  icon_large: TypeWithI18N
   icon_small: TypeWithI18N
+  icon_small_dark?: TypeWithI18N
   label: TypeWithI18N
   models: ModelItem[]
   status: ModelStatusEnum
@@ -229,7 +240,6 @@ export type DefaultModelResponse = {
   model_type: ModelTypeEnum
   provider: {
     provider: string
-    icon_large: TypeWithI18N
     icon_small: TypeWithI18N
   }
 }
@@ -272,9 +282,31 @@ export type ModelLoadBalancingConfigEntry = {
   in_cooldown?: boolean
   /** cooldown time (in seconds) */
   ttl?: number
+  credential_id?: string
 }
 
 export type ModelLoadBalancingConfig = {
   enabled: boolean
   configs: ModelLoadBalancingConfigEntry[]
+}
+
+export type ProviderCredential = {
+  credentials: Record<string, any>
+  name: string
+  credential_id: string
+}
+
+export type ModelCredential = {
+  credentials: Record<string, any>
+  load_balancing: ModelLoadBalancingConfig
+  available_credentials: Credential[]
+  current_credential_id?: string
+  current_credential_name?: string
+}
+
+export enum ModelModalModeEnum {
+  configProviderCredential = 'config-provider-credential',
+  configCustomModel = 'config-custom-model',
+  addCustomModelToModelList = 'add-custom-model-to-model-list',
+  configModelCredential = 'config-model-credential',
 }

@@ -1,27 +1,43 @@
-from enum import Enum
-from typing import Optional
+from collections.abc import Sequence
+from decimal import Decimal
+from enum import StrEnum
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from configs import dify_config
 from core.entities.model_entities import (
     ModelWithProviderEntity,
     ProviderModelWithStatusEntity,
 )
-from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
+from core.entities.provider_entities import (
+    CredentialConfiguration,
+    CustomModelConfiguration,
+    ProviderQuotaType,
+    QuotaConfiguration,
+    UnaddedModelConfiguration,
+)
+from graphon.model_runtime.entities.common_entities import I18nObject
+from graphon.model_runtime.entities.model_entities import (
+    FetchFrom,
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+)
+from graphon.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     ModelCredentialSchema,
     ProviderCredentialSchema,
     ProviderHelpEntity,
-    SimpleProviderEntity,
 )
 from models.provider import ProviderType
 
+_DECIMAL_STRING_PATTERN = r"^(?![-+.]*$)[+-]?0*\d*\.?\d*$"
+CodegenSafeDecimal = Annotated[Decimal, Field(json_schema_extra={"pattern": _DECIMAL_STRING_PATTERN})]
 
-class CustomConfigurationStatus(Enum):
+
+class CustomConfigurationStatus(StrEnum):
     """
     Enum class for custom configuration status.
     """
@@ -36,6 +52,11 @@ class CustomConfigurationResponse(BaseModel):
     """
 
     status: CustomConfigurationStatus
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    available_credentials: list[CredentialConfiguration] | None = None
+    custom_models: list[CustomModelConfiguration] | None = None
+    can_added_models: list[UnaddedModelConfiguration] | None = None
 
 
 class SystemConfigurationResponse(BaseModel):
@@ -44,7 +65,7 @@ class SystemConfigurationResponse(BaseModel):
     """
 
     enabled: bool
-    current_quota_type: Optional[ProviderQuotaType] = None
+    current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
 
 
@@ -56,15 +77,15 @@ class ProviderResponse(BaseModel):
     tenant_id: str
     provider: str
     label: I18nObject
-    description: Optional[I18nObject] = None
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
-    background: Optional[str] = None
-    help: Optional[ProviderHelpEntity] = None
-    supported_model_types: list[ModelType]
+    description: I18nObject | None = None
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    background: str | None = None
+    help: ProviderHelpEntity | None = None
+    supported_model_types: Sequence[ModelType]
     configurate_methods: list[ConfigurateMethod]
-    provider_credential_schema: Optional[ProviderCredentialSchema] = None
-    model_credential_schema: Optional[ModelCredentialSchema] = None
+    provider_credential_schema: ProviderCredentialSchema | None = None
+    model_credential_schema: ModelCredentialSchema | None = None
     preferred_provider_type: ProviderType
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
@@ -72,9 +93,8 @@ class ProviderResponse(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def __init__(self, **data) -> None:
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -82,11 +102,12 @@ class ProviderResponse(BaseModel):
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
-
-        if self.icon_large is not None:
-            self.icon_large = I18nObject(
-                en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US",
+                zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans",
             )
+        return self
 
 
 class ProviderWithModelsResponse(BaseModel):
@@ -97,14 +118,13 @@ class ProviderWithModelsResponse(BaseModel):
     tenant_id: str
     provider: str
     label: I18nObject
-    icon_small: Optional[I18nObject] = None
-    icon_large: Optional[I18nObject] = None
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
-    def __init__(self, **data) -> None:
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -113,22 +133,50 @@ class ProviderWithModelsResponse(BaseModel):
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
 
-        if self.icon_large is not None:
-            self.icon_large = I18nObject(
-                en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
             )
+        return self
 
 
-class SimpleProviderEntityResponse(SimpleProviderEntity):
+class PriceConfigResponse(BaseModel):
+    """Serialized pricing info with codegen-safe decimal string patterns."""
+
+    input: CodegenSafeDecimal
+    output: CodegenSafeDecimal | None = None
+    unit: CodegenSafeDecimal
+    currency: str
+
+
+class AIModelEntityResponse(BaseModel):
+    model: str
+    label: I18nObject
+    model_type: ModelType
+    features: list[ModelFeature] | None = None
+    fetch_from: FetchFrom
+    model_properties: dict[ModelPropertyKey, Any]
+    deprecated: bool = False
+    parameter_rules: list[ParameterRule] = []
+    pricing: PriceConfigResponse | None = None
+
+
+class SimpleProviderEntityResponse(BaseModel):
     """
     Simple provider entity response.
     """
 
+    provider: str
+    provider_name: str = ""
+    label: I18nObject
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    supported_model_types: Sequence[ModelType]
     tenant_id: str
+    models: list[AIModelEntityResponse] = []
 
-    def __init__(self, **data) -> None:
-        super().__init__(**data)
-
+    @model_validator(mode="after")
+    def _(self):
         url_prefix = (
             dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
         )
@@ -137,10 +185,11 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
 
-        if self.icon_large is not None:
-            self.icon_large = I18nObject(
-                en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
             )
+        return self
 
 
 class DefaultModelResponse(BaseModel):
@@ -163,7 +212,7 @@ class ModelWithProviderEntityResponse(ProviderModelWithStatusEntity):
 
     provider: SimpleProviderEntityResponse
 
-    def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
+    def __init__(self, tenant_id: str, model: ModelWithProviderEntity):
         dump_model = model.model_dump()
         dump_model["provider"]["tenant_id"] = tenant_id
         super().__init__(**dump_model)

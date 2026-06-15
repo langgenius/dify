@@ -1,18 +1,22 @@
 import type { MouseEvent } from 'react'
-import {
-  useCallback,
-} from 'react'
-import produce from 'immer'
 import type {
   OnSelectionChangeFunc,
 } from 'reactflow'
+import type { Node } from '../types'
+import { produce } from 'immer'
+import {
+  useCallback,
+} from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '../store'
-import type { Node } from '../types'
+import { useCollaborativeWorkflow } from './use-collaborative-workflow'
+import { useNodesReadOnly } from './use-workflow'
 
 export const useSelectionInteractions = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleSelectionStart = useCallback(() => {
     const {
@@ -81,15 +85,14 @@ export const useSelectionInteractions = () => {
   }, [store])
 
   const handleSelectionDrag = useCallback((_: MouseEvent, nodesWithDrag: Node[]) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
     workflowStore.setState({
       nodeAnimation: false,
     })
-    const nodes = getNodes()
+
+    if (getNodesReadOnly())
+      return
+
+    const { nodes, setNodes } = collaborativeWorkflow.getState()
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         const dragNode = nodesWithDrag.find(n => n.id === node.id)
@@ -98,8 +101,8 @@ export const useSelectionInteractions = () => {
           node.position = dragNode.position
       })
     })
-    setNodes(newNodes)
-  }, [store, workflowStore])
+    setNodes(newNodes, true, 'use-selection-interactions:handleSelectionDrag')
+  }, [collaborativeWorkflow, getNodesReadOnly, workflowStore])
 
   const handleSelectionCancel = useCallback(() => {
     const {
@@ -131,10 +134,22 @@ export const useSelectionInteractions = () => {
     setEdges(newEdges)
   }, [store])
 
+  const handleSelectionContextMenu = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (!target.classList.contains('react-flow__nodesselection-rect'))
+      return
+
+    e.preventDefault()
+    workflowStore.setState({
+      contextMenuTarget: { type: 'selection' },
+    })
+  }, [workflowStore])
+
   return {
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
     handleSelectionCancel,
+    handleSelectionContextMenu,
   }
 }

@@ -1,116 +1,116 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "10",
-			"height": "10",
-			"viewBox": "0 0 10 10",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "Group"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector",
-							"d": "M2.5 10H0V7.5H2.5V10Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_2",
-							"d": "M6.25 6.25H3.75V3.75H6.25V6.25Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_3",
-							"d": "M2.5 6.25H0V3.75H2.5V6.25Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_4",
-							"d": "M6.25 2.5H3.75V0H6.25V2.5Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_5",
-							"d": "M2.5 2.5H0V0H2.5V2.5Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_6",
-							"d": "M10 2.5H7.5V0H10V2.5Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_7",
-							"d": "M9.58332 7.91663H7.91666V9.58329H9.58332V7.91663Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_8",
-							"d": "M9.58332 4.16663H7.91666V5.83329H9.58332V4.16663Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					},
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Vector_9",
-							"d": "M5.83332 7.91663H4.16666V9.58329H5.83332V7.91663Z",
-							"fill": "#676F83"
-						},
-						"children": []
-					}
-				]
-			}
-		]
-	},
-	"name": "SelectionMod"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "10",
+      "height": "10",
+      "viewBox": "0 0 10 10",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "Group"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector",
+              "d": "M2.5 10H0V7.5H2.5V10Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_2",
+              "d": "M6.25 6.25H3.75V3.75H6.25V6.25Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_3",
+              "d": "M2.5 6.25H0V3.75H2.5V6.25Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_4",
+              "d": "M6.25 2.5H3.75V0H6.25V2.5Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_5",
+              "d": "M2.5 2.5H0V0H2.5V2.5Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_6",
+              "d": "M10 2.5H7.5V0H10V2.5Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_7",
+              "d": "M9.58332 7.91663H7.91666V9.58329H9.58332V7.91663Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_8",
+              "d": "M9.58332 4.16663H7.91666V5.83329H9.58332V4.16663Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Vector_9",
+              "d": "M5.83332 7.91663H4.16666V9.58329H5.83332V7.91663Z",
+              "fill": "#676F83"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "SelectionMod"
 }

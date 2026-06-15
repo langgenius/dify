@@ -1,10 +1,12 @@
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'next/navigation'
-import style from '../page.module.css'
-import Button from '@/app/components/base/button'
 import { API_PREFIX } from '@/config'
-import classNames from '@/utils/classnames'
+import { useLocale } from '@/context/i18n'
+import { useSearchParams } from '@/next/navigation'
 import { getPurifyHref } from '@/utils'
+import { getBrowserTimezone } from '@/utils/timezone'
+import style from '../page.module.css'
 
 type SocialAuthProps = {
   disabled?: boolean
@@ -13,50 +15,56 @@ type SocialAuthProps = {
 export default function SocialAuth(props: SocialAuthProps) {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
+  const locale = useLocale()
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
-    if (searchParams.has('invite_token'))
-      return `${url}?${searchParams.toString()}`
+    const params = new URLSearchParams(searchParams.toString())
+    const timezone = getBrowserTimezone()
+    if (timezone)
+      params.set('timezone', timezone)
+    params.set('language', locale)
+
+    const query = params.toString()
+    if (query)
+      return `${url}?${query}`
 
     return url
   }
-  return <>
-    <div className='w-full'>
-      <a href={getOAuthLink('/oauth/login/github')}>
-        <Button
-          disabled={props.disabled}
-          className='w-full'
-        >
-          <>
-            <span className={
-              classNames(
-                style.githubIcon,
-                'mr-2 h-5 w-5',
-              )
-            } />
-            <span className="truncate leading-normal">{t('login.withGitHub')}</span>
-          </>
-        </Button>
-      </a>
-    </div>
-    <div className='w-full'>
-      <a href={getOAuthLink('/oauth/login/google')}>
-        <Button
-          disabled={props.disabled}
-          className='w-full'
-        >
-          <>
-            <span className={
-              classNames(
-                style.googleIcon,
-                'mr-2 h-5 w-5',
-              )
-            } />
-            <span className="truncate leading-normal">{t('login.withGoogle')}</span>
-          </>
-        </Button>
-      </a>
-    </div>
-  </>
+  return (
+    <>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/github')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.githubIcon, 'mr-2 size-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('withGitHub', { ns: 'login' })}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/google')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.googleIcon, 'mr-2 size-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('withGoogle', { ns: 'login' })}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+    </>
+  )
 }

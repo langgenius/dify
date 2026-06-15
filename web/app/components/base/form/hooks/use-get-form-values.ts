@@ -1,18 +1,18 @@
-import { useCallback } from 'react'
 import type { AnyFormApi } from '@tanstack/react-form'
-import { useCheckValidated } from './use-check-validated'
 import type {
   FormSchema,
   GetValuesOptions,
 } from '../types'
-import { getTransformedValuesWhenSecretInputPristine } from '../utils'
+import { useCallback } from 'react'
+import { getTransformedValuesWhenSecretInputPristine } from '../utils/secret-input'
+import { useCheckValidated } from './use-check-validated'
 
 export const useGetFormValues = (form: AnyFormApi, formSchemas: FormSchema[]) => {
   const { checkValidated } = useCheckValidated(form, formSchemas)
 
   const getFormValues = useCallback((
     {
-      needCheckValidatedValues,
+      needCheckValidatedValues = true,
       needTransformWhenSecretFieldIsPristine,
     }: GetValuesOptions,
   ) => {
@@ -20,7 +20,7 @@ export const useGetFormValues = (form: AnyFormApi, formSchemas: FormSchema[]) =>
     if (!needCheckValidatedValues) {
       return {
         values,
-        isCheckValidated: false,
+        isCheckValidated: true,
       }
     }
 

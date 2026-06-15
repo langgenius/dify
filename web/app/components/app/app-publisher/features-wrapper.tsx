@@ -1,19 +1,34 @@
-import React, { useCallback, useState } from 'react'
+import type { AppPublisherProps, AppPublisherPublishParams } from '@/app/components/app/app-publisher'
+import type { Features, FileUpload } from '@/app/components/base/features/types'
+import type { ModelConfig } from '@/models/debug'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
-import Confirm from '@/app/components/base/confirm'
 import AppPublisher from '@/app/components/app/app-publisher'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { Resolution } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { Resolution } from '@/types/app'
+
+type PublishedModelConfig = ModelConfig & {
+  resetAppConfig?: () => void
+}
 
 type Props = Omit<AppPublisherProps, 'onPublish'> & {
-  onPublish?: (modelAndParameter?: ModelAndParameter, features?: any) => Promise<any> | any
-  publishedConfig?: any
+  onPublish?: (params?: AppPublisherPublishParams, features?: Features) => Promise<unknown> | unknown
+  publishedConfig: {
+    modelConfig: PublishedModelConfig
+  }
   resetAppConfig?: () => void
 }
 
@@ -22,45 +37,47 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   const features = useFeatures(s => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
+  const { more_like_this, opening_statement, suggested_questions, sensitive_word_avoidance, speech_to_text, text_to_speech, suggested_questions_after_answer, retriever_resource, annotation_reply, file_upload, resetAppConfig } = props.publishedConfig.modelConfig
+
   const handleConfirm = useCallback(() => {
-    props.resetAppConfig?.()
+    resetAppConfig?.()
     const {
       features,
       setFeatures,
     } = featuresStore!.getState()
     const newFeatures = produce(features, (draft) => {
-      draft.moreLikeThis = props.publishedConfig.modelConfig.more_like_this || { enabled: false }
+      draft.moreLikeThis = more_like_this || { enabled: false }
       draft.opening = {
-        enabled: !!props.publishedConfig.modelConfig.opening_statement,
-        opening_statement: props.publishedConfig.modelConfig.opening_statement || '',
-        suggested_questions: props.publishedConfig.modelConfig.suggested_questions || [],
+        enabled: !!opening_statement,
+        opening_statement: opening_statement || '',
+        suggested_questions: suggested_questions || [],
       }
-      draft.moderation = props.publishedConfig.modelConfig.sensitive_word_avoidance || { enabled: false }
-      draft.speech2text = props.publishedConfig.modelConfig.speech_to_text || { enabled: false }
-      draft.text2speech = props.publishedConfig.modelConfig.text_to_speech || { enabled: false }
-      draft.suggested = props.publishedConfig.modelConfig.suggested_questions_after_answer || { enabled: false }
-      draft.citation = props.publishedConfig.modelConfig.retriever_resource || { enabled: false }
-      draft.annotationReply = props.publishedConfig.modelConfig.annotation_reply || { enabled: false }
+      draft.moderation = sensitive_word_avoidance || { enabled: false }
+      draft.speech2text = speech_to_text || { enabled: false }
+      draft.text2speech = text_to_speech || { enabled: false }
+      draft.suggested = suggested_questions_after_answer || { enabled: false }
+      draft.citation = retriever_resource || { enabled: false }
+      draft.annotationReply = annotation_reply || { enabled: false }
       draft.file = {
         image: {
-          detail: props.publishedConfig.modelConfig.file_upload?.image?.detail || Resolution.high,
-          enabled: !!props.publishedConfig.modelConfig.file_upload?.image?.enabled,
-          number_limits: props.publishedConfig.modelConfig.file_upload?.image?.number_limits || 3,
-          transfer_methods: props.publishedConfig.modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          detail: file_upload?.image?.detail || Resolution.high,
+          enabled: !!file_upload?.image?.enabled,
+          number_limits: file_upload?.image?.number_limits || 3,
+          transfer_methods: file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         },
-        enabled: !!(props.publishedConfig.modelConfig.file_upload?.enabled || props.publishedConfig.modelConfig.file_upload?.image?.enabled),
-        allowed_file_types: props.publishedConfig.modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: props.publishedConfig.modelConfig.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-        allowed_file_upload_methods: props.publishedConfig.modelConfig.file_upload?.allowed_file_upload_methods || props.publishedConfig.modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: props.publishedConfig.modelConfig.file_upload?.number_limits || props.publishedConfig.modelConfig.file_upload?.image?.number_limits || 3,
+        enabled: !!(file_upload?.enabled || file_upload?.image?.enabled),
+        allowed_file_types: file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
+        allowed_file_extensions: file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image]!.map(ext => `.${ext}`),
+        allowed_file_upload_methods: file_upload?.allowed_file_upload_methods || file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        number_limits: file_upload?.number_limits || file_upload?.image?.number_limits || 3,
       } as FileUpload
     })
     setFeatures(newFeatures)
     setRestoreConfirmOpen(false)
   }, [featuresStore, props])
 
-  const handlePublish = useCallback((modelAndParameter?: ModelAndParameter) => {
-    return props.onPublish?.(modelAndParameter, features)
+  const handlePublish = useCallback((params?: AppPublisherPublishParams) => {
+    return props.onPublish?.(params, features)
   }, [features, props])
 
   return (
@@ -69,16 +86,26 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         ...props,
         onPublish: handlePublish,
         onRestore: () => setRestoreConfirmOpen(true),
-      }}/>
-      {restoreConfirmOpen && (
-        <Confirm
-          title={t('appDebug.resetConfig.title')}
-          content={t('appDebug.resetConfig.message')}
-          isShow={restoreConfirmOpen}
-          onConfirm={handleConfirm}
-          onCancel={() => setRestoreConfirmOpen(false)}
-        />
-      )}
+      }}
+      />
+      <AlertDialog open={restoreConfirmOpen} onOpenChange={open => !open && setRestoreConfirmOpen(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('resetConfig.title', { ns: 'appDebug' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('resetConfig.message', { ns: 'appDebug' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import Input from '@/app/components/base/input'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   labelClassName?: string
@@ -12,7 +12,7 @@ type Props = {
   onChange: (value: string) => void
   isRequired?: boolean
   placeholder?: string
-}
+}>
 
 const Field: FC<Props> = ({
   className,
@@ -25,14 +25,17 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className)}>
-      <div className='flex py-[7px]'>
-        <div className={cn(labelClassName, 'flex h-[18px] items-center text-[13px] font-medium text-text-primary')}>{label} </div>
-        {isRequired && <span className='ml-0.5 text-xs font-semibold text-[#D92D20]'>*</span>}
+      <div className="flex py-[7px]">
+        <div className={cn(labelClassName, 'flex h-[18px] items-center text-[13px] font-medium text-text-primary')}>
+          {label}
+          {' '}
+        </div>
+        {isRequired && <span className="ml-0.5 text-xs font-semibold text-[#D92D20]">*</span>}
       </div>
       <Input
         value={value}
         onChange={e => onChange(e.target.value)}
-        className='h-9'
+        className="h-9"
         placeholder={placeholder}
       />
     </div>

@@ -38,11 +38,6 @@ class Extension:
 
     def extension_class(self, module: ExtensionModule, extension_name: str) -> type:
         module_extension = self.module_extension(module, extension_name)
+        assert module_extension.extension_class is not None
         t: type = module_extension.extension_class
         return t
-
-    def validate_form_schema(self, module: ExtensionModule, extension_name: str, config: dict) -> None:
-        module_extension = self.module_extension(module, extension_name)
-        form_schema = module_extension.form_schema
-
-        # TODO validate form_schema

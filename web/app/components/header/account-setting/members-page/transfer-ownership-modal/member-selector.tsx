@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
+import { Avatar } from '@langgenius/dify-ui/avatar'
 import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import Avatar from '@/app/components/base/avatar'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { fetchMembers } from '@/service/common'
-import cn from '@/utils/classnames'
+import { useMembers } from '@/service/use-common'
 
-type Props = {
-  value?: any
-  onSelect: (value: any) => void
+type Props = Readonly<{
+  value?: string
+  onSelect: (value: string) => void
   exclude?: string[]
-}
+}>
 
 const MemberSelector: FC<Props> = ({
   value,
@@ -27,86 +27,85 @@ const MemberSelector: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
-  const { data } = useSWR(
-    {
-      url: '/workspaces/current/members',
-      params: {},
-    },
-    fetchMembers,
-  )
+  const { data } = useMembers()
 
   const currentValue = useMemo(() => {
-    if (!data?.accounts) return null
-    const accounts = data.accounts || []
-    if (!value) return null
-    return accounts.find(account => account.id === value)
+    if (!data?.accounts || !value)
+      return null
+    return data.accounts.find(account => account.id === value) ?? null
   }, [data, value])
 
   const filteredList = useMemo(() => {
-    if (!data?.accounts) return []
+    if (!data?.accounts)
+      return []
     const accounts = data.accounts
-    if (!searchValue) return accounts.filter(account => !exclude.includes(account.id))
+    if (!searchValue)
+      return accounts.filter(account => !exclude.includes(account.id))
     return accounts.filter((account) => {
       const name = account.name || ''
       const email = account.email || ''
       return name.toLowerCase().includes(searchValue.toLowerCase())
         || email.toLowerCase().includes(searchValue.toLowerCase())
     }).filter(account => !exclude.includes(account.id))
-  }, [data, searchValue, exclude])
+  }, [data, exclude, searchValue])
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement='bottom'
-      offset={4}
-    >
-      <PortalToFollowElemTrigger
-        className='w-full'
-        onClick={() => setOpen(v => !v)}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <div
+            data-testid="member-selector-trigger"
+            className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
+          >
+            {!currentValue && (
+              <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
+            )}
+            {currentValue && (
+              <>
+                <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
+                <div className="grow truncate system-sm-medium text-text-secondary">{currentValue.name}</div>
+                <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
+              </>
+            )}
+            <div className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary" />
+          </div>
+        )}
+      />
+      <PopoverContent
+        placement="bottom"
+        sideOffset={4}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
-        <div className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>
-          {!currentValue && (
-            <div className='system-sm-regular grow p-1 text-components-input-text-placeholder'>{t('common.members.transferModal.transferPlaceholder')}</div>
-          )}
-          {currentValue && (
-            <>
-              <Avatar avatar={currentValue.avatar_url} size={24} name={currentValue.name} />
-              <div className='system-sm-medium grow truncate text-text-secondary'>{currentValue.name}</div>
-              <div className='system-xs-regular text-text-quaternary'>{currentValue.email}</div>
-            </>
-          )}
-          <RiArrowDownSLine className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
-          <div className='p-2 pb-1'>
+        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
+          <div className="p-2 pb-1">
             <Input
+              data-testid="member-selector-search"
               showLeftIcon
               value={searchValue}
               onChange={e => setSearchValue(e.target.value)}
             />
           </div>
-          <div className='p-1'>
+          <div className="p-1">
             {filteredList.map(account => (
               <div
                 key={account.id}
-                className='flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover'
+                data-testid="member-selector-item"
+                className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pr-3 pl-2 hover:bg-state-base-hover"
                 onClick={() => {
                   onSelect(account.id)
                   setOpen(false)
                 }}
               >
-                <Avatar avatar={account.avatar_url} size={24} name={account.name} />
-                <div className='system-sm-medium grow truncate text-text-secondary'>{account.name}</div>
-                <div className='system-xs-regular text-text-quaternary'>{account.email}</div>
+                <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
+                <div className="grow truncate system-sm-medium text-text-secondary">{account.name}</div>
+                <div className="system-xs-regular text-text-quaternary">{account.email}</div>
               </div>
             ))}
           </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 }
+
 export default MemberSelector

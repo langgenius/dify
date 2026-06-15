@@ -65,14 +65,27 @@ class Storage:
                 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 
                 return VolcengineTosStorage
-            case StorageType.SUPBASE:
+            case StorageType.SUPABASE:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
+            case StorageType.CLICKZETTA_VOLUME:
+                from extensions.storage.clickzetta_volume.clickzetta_volume_storage import (
+                    ClickZettaVolumeConfig,
+                    ClickZettaVolumeStorage,
+                )
+
+                def create_clickzetta_volume_storage():
+                    # ClickZettaVolumeConfig will automatically read from environment variables
+                    # and fallback to CLICKZETTA_* config if CLICKZETTA_VOLUME_* is not set
+                    volume_config = ClickZettaVolumeConfig()
+                    return ClickZettaVolumeStorage(volume_config)
+
+                return create_clickzetta_volume_storage
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
-    def save(self, filename, data):
+    def save(self, filename: str, data: bytes):
         self.storage_runner.save(filename, data)
 
     @overload
@@ -80,6 +93,10 @@ class Storage:
 
     @overload
     def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
+
+    # Keep a bool fallback overload for callers that forward a runtime bool flag.
+    @overload
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]: ...
 
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         if stream:
@@ -99,7 +116,7 @@ class Storage:
     def exists(self, filename):
         return self.storage_runner.exists(filename)
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         return self.storage_runner.delete(filename)
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
@@ -111,3 +128,6 @@ storage = Storage()
 
 def init_app(app: DifyApp):
     storage.init_app(app)
+    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+
+    bind_dify_workflow_file_runtime()

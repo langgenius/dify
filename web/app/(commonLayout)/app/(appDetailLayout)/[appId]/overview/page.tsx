@@ -1,7 +1,7 @@
-import React from 'react'
-import ChartView from './chartView'
-import TracingPanel from './tracing/panel'
+import * as React from 'react'
 import ApikeyInfoPanel from '@/app/components/app/overview/apikey-info-panel'
+import ChartView from './chart-view'
+import TracingPanel from './tracing/panel'
 
 export type IDevelopProps = {
   params: Promise<{ appId: string }>

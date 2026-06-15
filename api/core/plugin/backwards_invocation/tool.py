@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any, Optional
+from typing import Any
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
@@ -23,7 +23,7 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
         provider: str,
         tool_name: str,
         tool_parameters: dict[str, Any],
-        credential_id: Optional[str] = None,
+        credential_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke tool
@@ -31,7 +31,13 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
         # get tool runtime
         try:
             tool_runtime = ToolManager.get_tool_runtime_from_plugin(
-                tool_type, tenant_id, provider, tool_name, tool_parameters, credential_id
+                tool_type,
+                tenant_id,
+                provider,
+                tool_name,
+                tool_parameters,
+                user_id=user_id,
+                credential_id=credential_id,
             )
             response = ToolEngine.generic_invoke(
                 tool_runtime, tool_parameters, user_id, DifyWorkflowCallbackHandler(), workflow_call_depth=1

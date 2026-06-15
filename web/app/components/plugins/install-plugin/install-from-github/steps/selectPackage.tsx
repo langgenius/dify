@@ -1,24 +1,30 @@
 'use client'
 
-import React from 'react'
-import type { Item } from '@/app/components/base/select'
-import { PortalSelect } from '@/app/components/base/select'
-import Button from '@/app/components/base/button'
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { FieldRoot } from '@langgenius/dify-ui/field'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGitHubUpload } from '../../hooks'
+import Badge from '@/app/components/base/badge'
+import { handleUpload } from '../../hooks'
 
-const i18nPrefix = 'plugin.installFromGitHub'
+const i18nPrefix = 'installFromGitHub'
+
+type SelectOption = {
+  value: string | number
+  name: string
+}
 
 type SelectPackageProps = {
   updatePayload: UpdateFromGitHubPayload
   repoUrl: string
   selectedVersion: string
-  versions: Item[]
-  onSelectVersion: (item: Item) => void
+  versions: SelectOption[]
+  onSelectVersion: (item: SelectOption) => void
   selectedPackage: string
-  packages: Item[]
-  onSelectPackage: (item: Item) => void
+  packages: SelectOption[]
+  onSelectPackage: (item: SelectOption) => void
   onUploaded: (result: {
     uniqueIdentifier: string
     manifest: PluginDeclaration
@@ -43,10 +49,12 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { t } = useTranslation()
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
-  const { handleUpload } = useGitHubUpload()
+  const selectedVersionOption = versions.find(item => String(item.value) === selectedVersion) ?? null
+  const selectedPackageOption = packages.find(item => String(item.value) === selectedPackage) ?? null
 
   const handleUploadPackage = async () => {
-    if (isUploading) return
+    if (isUploading)
+      return
     setIsUploading(true)
     try {
       const repo = repoUrl.replace('https://github.com/', '')
@@ -61,7 +69,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       if (e.response?.message)
         onFailed(e.response?.message)
       else
-        onFailed(t(`${i18nPrefix}.uploadFailed`))
+        onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
     }
     finally {
       setIsUploading(false)
@@ -70,54 +78,96 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
 
   return (
     <>
-      <label
-        htmlFor='version'
-        className='flex flex-col items-start justify-center self-stretch text-text-secondary'
-      >
-        <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectVersion`)}</span>
-      </label>
-      <PortalSelect
-        value={selectedVersion}
-        onSelect={onSelectVersion}
-        items={versions}
-        installedValue={updatePayload?.originalPackageInfo.version}
-        placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`) || ''}
-        popupClassName='w-[512px] z-[1001]'
-        triggerClassName='text-components-input-text-filled'
-      />
-      <label
-        htmlFor='package'
-        className='flex flex-col items-start justify-center self-stretch text-text-secondary'
-      >
-        <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectPackage`)}</span>
-      </label>
-      <PortalSelect
-        value={selectedPackage}
-        onSelect={onSelectPackage}
-        items={packages}
-        readonly={!selectedVersion}
-        placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`) || ''}
-        popupClassName='w-[512px] z-[1001]'
-        triggerClassName='text-components-input-text-filled'
-      />
-      <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
+      <FieldRoot name="version" className="gap-4 self-stretch">
+        <Select
+          value={selectedVersionOption ? String(selectedVersionOption.value) : null}
+          onValueChange={(value) => {
+            if (!value)
+              return
+            const selectedItem = versions.find(item => String(item.value) === value)
+            if (selectedItem)
+              onSelectVersion(selectedItem)
+          }}
+        >
+          <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
+          </SelectLabel>
+          <SelectTrigger className="h-9 text-components-input-text-filled">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate">
+                {selectedVersionOption?.name ?? t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) ?? ''}
+              </span>
+              {!!(updatePayload?.originalPackageInfo.version && selectedVersionOption && selectedVersionOption.value !== updatePayload.originalPackageInfo.version) && (
+                <Badge>
+                  {updatePayload.originalPackageInfo.version}
+                  {' '}
+                  {'->'}
+                  {' '}
+                  {selectedVersionOption.value}
+                </Badge>
+              )}
+            </div>
+          </SelectTrigger>
+          <SelectContent popupClassName="w-[512px]">
+            {versions.map(item => (
+              <SelectItem key={item.value} value={String(item.value)}>
+                <SelectItemText>{item.name}</SelectItemText>
+                {item.value === updatePayload?.originalPackageInfo.version && (
+                  <Badge uppercase={true} className="ml-1 shrink-0">INSTALLED</Badge>
+                )}
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldRoot>
+      <FieldRoot name="package" className="gap-4 self-stretch">
+        <Select
+          value={selectedPackageOption ? String(selectedPackageOption.value) : null}
+          readOnly={!selectedVersion}
+          onValueChange={(value) => {
+            if (!value)
+              return
+            const selectedItem = packages.find(item => String(item.value) === value)
+            if (selectedItem)
+              onSelectPackage(selectedItem)
+          }}
+        >
+          <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
+          </SelectLabel>
+          <SelectTrigger className="h-9 text-components-input-text-filled">
+            {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
+          </SelectTrigger>
+          <SelectContent popupClassName="w-[512px]">
+            {packages.map(item => (
+              <SelectItem key={item.value} value={String(item.value)}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldRoot>
+      <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit
-          && <Button
-            variant='secondary'
-            className='min-w-[72px]'
-            onClick={onBack}
-            disabled={isUploading}
-          >
-            {t('plugin.installModal.back')}
-          </Button>
-        }
+          && (
+            <Button
+              variant="secondary"
+              className="min-w-[72px]"
+              onClick={onBack}
+              disabled={isUploading}
+            >
+              {t('installModal.back', { ns: 'plugin' })}
+            </Button>
+          )}
         <Button
-          variant='primary'
-          className='min-w-[72px]'
+          variant="primary"
+          className="min-w-[72px]"
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >
-          {t('plugin.installModal.next')}
+          {t('installModal.next', { ns: 'plugin' })}
         </Button>
       </div>
     </>

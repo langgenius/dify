@@ -1,7 +1,7 @@
 import logging
-from typing import Optional
+from typing import Any, override
 
-import requests
+import httpx
 
 from configs import dify_config
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
@@ -13,30 +13,36 @@ logger = logging.getLogger(__name__)
 
 class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
     """
-    Retrieval recommended app from dify official
+    Retrieval recommended app from dify official.
+
+    The remote `/apps` payload is already curated for display, including category order.
+    Keep the response order intact so Explore matches the template service.
     """
 
+    @override
     def get_recommend_app_detail(self, app_id: str):
         try:
             result = self.fetch_recommended_app_detail_from_dify_official(app_id)
         except Exception as e:
-            logger.warning(f"fetch recommended app detail from dify official failed: {e}, switch to built-in.")
+            logger.warning("fetch recommended app detail from dify official failed: %s, switch to built-in.", e)
             result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin(app_id)
         return result
 
-    def get_recommended_apps_and_categories(self, language: str) -> dict:
+    @override
+    def get_recommended_apps_and_categories(self, language: str):
         try:
             result = self.fetch_recommended_apps_from_dify_official(language)
         except Exception as e:
-            logger.warning(f"fetch recommended apps from dify official failed: {e}, switch to built-in.")
+            logger.warning("fetch recommended apps from dify official failed: %s, switch to built-in.", e)
             result = BuildInRecommendAppRetrieval.fetch_recommended_apps_from_builtin(language)
         return result
 
+    @override
     def get_type(self) -> str:
         return RecommendAppType.REMOTE
 
     @classmethod
-    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> Optional[dict]:
+    def fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> dict[str, Any] | None:
         """
         Fetch recommended app detail from dify official.
         :param app_id: App ID
@@ -44,14 +50,14 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps/{app_id}"
-        response = requests.get(url, timeout=(3, 10))
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             return None
-        data: dict = response.json()
+        data: dict[str, Any] = response.json()
         return data
 
     @classmethod
-    def fetch_recommended_apps_from_dify_official(cls, language: str) -> dict:
+    def fetch_recommended_apps_from_dify_official(cls, language: str):
         """
         Fetch recommended apps from dify official.
         :param language: language
@@ -59,13 +65,9 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps?language={language}"
-        response = requests.get(url, timeout=(3, 10))
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
-        result: dict = response.json()
-
-        if "categories" in result:
-            result["categories"] = sorted(result["categories"])
-
+        result: dict[str, Any] = response.json()
         return result

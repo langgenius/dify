@@ -1,6 +1,8 @@
 """Abstract interface for document loader implementations."""
 
-from bs4 import BeautifulSoup  # type: ignore
+from typing import override
+
+from bs4 import BeautifulSoup
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -19,6 +21,7 @@ class HtmlExtractor(BaseExtractor):
         """Initialize with file path."""
         self._file_path = file_path
 
+    @override
     def extract(self) -> list[Document]:
         return [Document(page_content=self._load_as_text())]
 

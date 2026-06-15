@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
 
@@ -9,12 +7,12 @@ class TidbOnQdrantConfig(BaseSettings):
     Tidb on Qdrant configs
     """
 
-    TIDB_ON_QDRANT_URL: Optional[str] = Field(
+    TIDB_ON_QDRANT_URL: str | None = Field(
         description="Tidb on Qdrant url",
         default=None,
     )
 
-    TIDB_ON_QDRANT_API_KEY: Optional[str] = Field(
+    TIDB_ON_QDRANT_API_KEY: str | None = Field(
         description="Tidb on Qdrant api key",
         default=None,
     )
@@ -34,37 +32,37 @@ class TidbOnQdrantConfig(BaseSettings):
         default=6334,
     )
 
-    TIDB_PUBLIC_KEY: Optional[str] = Field(
+    TIDB_PUBLIC_KEY: str | None = Field(
         description="Tidb account public key",
         default=None,
     )
 
-    TIDB_PRIVATE_KEY: Optional[str] = Field(
+    TIDB_PRIVATE_KEY: str | None = Field(
         description="Tidb account private key",
         default=None,
     )
 
-    TIDB_API_URL: Optional[str] = Field(
+    TIDB_API_URL: str | None = Field(
         description="Tidb API url",
         default=None,
     )
 
-    TIDB_IAM_API_URL: Optional[str] = Field(
+    TIDB_IAM_API_URL: str | None = Field(
         description="Tidb IAM API url",
         default=None,
     )
 
-    TIDB_REGION: Optional[str] = Field(
+    TIDB_REGION: str | None = Field(
         description="Tidb serverless region",
         default="regions/aws-us-east-1",
     )
 
-    TIDB_PROJECT_ID: Optional[str] = Field(
+    TIDB_PROJECT_ID: str | None = Field(
         description="Tidb project id",
         default=None,
     )
 
-    TIDB_SPEND_LIMIT: Optional[int] = Field(
+    TIDB_SPEND_LIMIT: int | None = Field(
         description="Tidb spend limit",
         default=100,
     )

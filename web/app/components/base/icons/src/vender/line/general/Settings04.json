@@ -1,39 +1,39 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "14",
-			"height": "14",
-			"viewBox": "0 0 14 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "Left Icon"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"id": "Icon",
-							"d": "M1.75 4.6665L8.75 4.6665M8.75 4.6665C8.75 5.633 9.5335 6.4165 10.5 6.4165C11.4665 6.4165 12.25 5.633 12.25 4.6665C12.25 3.70001 11.4665 2.9165 10.5 2.9165C9.5335 2.9165 8.75 3.70001 8.75 4.6665ZM5.25 9.33317L12.25 9.33317M5.25 9.33317C5.25 10.2997 4.4665 11.0832 3.5 11.0832C2.5335 11.0832 1.75 10.2997 1.75 9.33317C1.75 8.36667 2.5335 7.58317 3.5 7.58317C4.4665 7.58317 5.25 8.36667 5.25 9.33317Z",
-							"stroke": "currentColor",
-							"stroke-width": "1.25",
-							"stroke-linecap": "round",
-							"stroke-linejoin": "round"
-						},
-						"children": []
-					}
-				]
-			}
-		]
-	},
-	"name": "Settings04"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "14",
+      "height": "14",
+      "viewBox": "0 0 14 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "Left Icon"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Icon",
+              "d": "M1.75 4.6665L8.75 4.6665M8.75 4.6665C8.75 5.633 9.5335 6.4165 10.5 6.4165C11.4665 6.4165 12.25 5.633 12.25 4.6665C12.25 3.70001 11.4665 2.9165 10.5 2.9165C9.5335 2.9165 8.75 3.70001 8.75 4.6665ZM5.25 9.33317L12.25 9.33317M5.25 9.33317C5.25 10.2997 4.4665 11.0832 3.5 11.0832C2.5335 11.0832 1.75 10.2997 1.75 9.33317C1.75 8.36667 2.5335 7.58317 3.5 7.58317C4.4665 7.58317 5.25 8.36667 5.25 9.33317Z",
+              "stroke": "currentColor",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Settings04"
 }

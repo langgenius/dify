@@ -1,48 +1,49 @@
+import type {
+  UpdateWorkflowNodesMapPayload,
+} from './index'
+import type { WorkflowNodesMap } from './node'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import {
+  COMMAND_PRIORITY_EDITOR,
+} from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  COMMAND_PRIORITY_EDITOR,
-} from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import {
-  RiErrorWarningFill,
-  RiMoreLine,
-} from '@remixicon/react'
 import { useReactFlow, useStoreApi } from 'reactflow'
+import { isRagVariableVar, isSpecialVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
+import {
+  VariableLabelInEditor,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { useSelectOrDelete } from '../../hooks'
-import type { WorkflowNodesMap } from './node'
-import { WorkflowVariableBlockNode } from './node'
 import {
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
-import cn from '@/utils/classnames'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
-import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import Tooltip from '@/app/components/base/tooltip'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { WorkflowVariableBlockNode } from './node'
+import { useLlmModelPluginInstalled } from './use-llm-model-plugin-installed'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
   variables: string[]
   workflowNodesMap: WorkflowNodesMap
+  availableVariables?: NodeOutPutVar[]
   environmentVariables?: Var[]
   conversationVariables?: Var[]
+  ragVariables?: Var[]
   getVarType?: (payload: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => Type
 }
 
@@ -50,15 +51,15 @@ const WorkflowVariableBlockComponent = ({
   nodeKey,
   variables,
   workflowNodesMap = {},
+  availableVariables,
   getVarType,
-  environmentVariables,
-  conversationVariables,
 }: WorkflowVariableBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
-  const isShowAPart = variablesLength > 2
+  const isRagVar = isRagVariableVar(variables)
+  const isShowAPart = variablesLength > 2 && !isRagVar
   const varName = (
     () => {
       const isSystem = isSystemVar(variables)
@@ -67,23 +68,25 @@ const WorkflowVariableBlockComponent = ({
     }
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
-  const node = localWorkflowNodesMap![variables[0]]
-  const isEnv = isENV(variables)
-  const isChatVar = isConversationVar(variables)
-  const isException = isExceptionVariable(varName, node?.type)
+  const [localAvailableVariables, setLocalAvailableVariables] = useState<NodeOutPutVar[]>(availableVariables || [])
+  const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]!]
 
-  let variableValid = true
-  if (isEnv) {
-    if (environmentVariables)
-      variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isChatVar) {
-    if (conversationVariables)
-      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else {
-    variableValid = !!node
-  }
+  const isException = isExceptionVariable(varName, node?.type)
+  const sourceNodeId = variables[isRagVar ? 1 : 0]
+  const isLlmModelInstalled = useLlmModelPluginInstalled(sourceNodeId!, localWorkflowNodesMap)
+  const variableValid = useMemo(() => {
+    if (isSpecialVar(variables[0] ?? ''))
+      return true
+
+    if (!variables[1])
+      return false
+
+    const sourceNode = localAvailableVariables.find(v => v.nodeId === variables[0])
+    if (!sourceNode)
+      return false
+
+    return sourceNode.vars.some(v => v.variable === variables[1])
+  }, [localAvailableVariables, variables])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -95,9 +98,9 @@ const WorkflowVariableBlockComponent = ({
     return mergeRegister(
       editor.registerCommand(
         UPDATE_WORKFLOW_NODES_MAP,
-        (workflowNodesMap: WorkflowNodesMap) => {
-          setLocalWorkflowNodesMap(workflowNodesMap)
-
+        (payload: UpdateWorkflowNodesMapPayload) => {
+          setLocalWorkflowNodesMap(payload.workflowNodesMap)
+          setLocalAvailableVariables(payload.availableVariables)
           return true
         },
         COMMAND_PRIORITY_EDITOR,
@@ -117,98 +120,57 @@ const WorkflowVariableBlockComponent = ({
     } = reactflow
     const { transform } = store.getState()
     const zoom = transform[2]
-    const position = node.position
+    const position = node!.position
     setViewport({
-      x: (clientWidth - 400 - node.width! * zoom) / 2 - position!.x * zoom,
-      y: (clientHeight - node.height! * zoom) / 2 - position!.y * zoom,
+      x: (clientWidth - 400 - node!.width! * zoom) / 2 - position!.x * zoom,
+      y: (clientHeight - node!.height! * zoom) / 2 - position!.y * zoom,
       zoom: transform[2],
     })
   }, [node, reactflow, store])
 
   const Item = (
-    <div
-      className={cn(
-        'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] hover:border-state-accent-solid hover:bg-state-accent-hover',
-        isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
-        !variableValid && '!border-state-destructive-solid !bg-state-destructive-hover',
-      )}
+    <VariableLabelInEditor
+      nodeType={node?.type}
+      nodeTitle={node?.title}
+      variables={variables}
       onClick={(e) => {
         e.stopPropagation()
         handleVariableJump()
       }}
+      isExceptionVariable={isException}
+      errorMsg={
+        !variableValid
+          ? t('errorMsg.invalidVariable', { ns: 'workflow' })
+          : !isLlmModelInstalled
+              ? t('errorMsg.modelPluginNotInstalled', { ns: 'workflow' })
+              : undefined
+      }
+      isSelected={isSelected}
       ref={ref}
-    >
-      {!isEnv && !isChatVar && (
-        <div className='flex items-center'>
-          {
-            node?.type && (
-              <div className='p-[1px]'>
-                <VarBlockIcon
-                  className='!text-text-secondary'
-                  type={node?.type}
-                />
-              </div>
-            )
-          }
-          <div className='mx-0.5 max-w-[60px] shrink-0 truncate text-xs font-medium text-text-secondary' title={node?.title} style={{
-          }}>{node?.title}</div>
-          <Line3 className='mr-0.5 text-divider-deep'></Line3>
-        </div>
-      )}
-      {isShowAPart && (
-        <div className='flex items-center'>
-          <RiMoreLine className='h-3 w-3 text-text-secondary' />
-          <Line3 className='mr-0.5 text-divider-deep'></Line3>
-        </div>
-      )}
-
-      <div className='flex items-center text-text-accent'>
-        {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
-        {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
-        <div className={cn(
-          'ml-0.5 shrink-0 truncate text-xs font-medium',
-          isEnv && 'text-util-colors-violet-violet-600',
-          isChatVar && 'text-util-colors-teal-teal-700',
-          isException && 'text-text-warning',
-        )} title={varName}>{varName}</div>
-        {
-          !variableValid && (
-            <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />
-          )
-        }
-      </div>
-    </div>
+      notShowFullPath={isShowAPart}
+    />
   )
 
-  if (!variableValid) {
-    return (
-      <Tooltip popupContent={t('workflow.errorMsg.invalidVariable')}>
-        {Item}
-      </Tooltip>
-    )
-  }
-
-  if (!node)
+  if (!node || !isShowAPart)
     return Item
 
   return (
-    <Tooltip
-      noDecoration
-      popupContent={
+    <PreviewCard>
+      <PreviewCardTrigger delay={300} closeDelay={200} render={<div>{Item}</div>} />
+      <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={getVarType ? getVarType({
-            nodeId: variables[0],
-            valueSelector: variables,
-          }) : Type.string}
+          varType={getVarType
+            ? getVarType({
+                nodeId: variables[0]!,
+                valueSelector: variables,
+              })
+            : Type.string}
           nodeType={node?.type}
-        />}
-      disabled={!isShowAPart}
-    >
-      <div>{Item}</div>
-    </Tooltip>
+        />
+      </PreviewCardContent>
+    </PreviewCard>
   )
 }
 

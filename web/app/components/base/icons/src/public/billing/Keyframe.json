@@ -1,28 +1,28 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "29",
-			"height": "28",
-			"viewBox": "0 0 29 28",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "path",
-				"attributes": {
-					"d": "M15.9831 3.98321C15.072 3.072 13.5945 3.072 12.6833 3.98321L4.31648 12.35C3.40526 13.2612 3.40524 14.7386 4.31647 15.6499L12.6833 24.0167C13.5945 24.9279 15.072 24.9279 15.9831 24.0167L24.35 15.6499C25.2612 14.7386 25.2612 13.2612 24.35 12.35L15.9831 3.98321Z",
-					"stroke": "#155AEF",
-					"stroke-width": "1.5",
-					"stroke-linejoin": "round"
-				},
-				"children": []
-			}
-		]
-	},
-	"name": "Keyframe"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "29",
+      "height": "28",
+      "viewBox": "0 0 29 28",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "path",
+        "attributes": {
+          "d": "M15.9831 3.98321C15.072 3.072 13.5945 3.072 12.6833 3.98321L4.31648 12.35C3.40526 13.2612 3.40524 14.7386 4.31647 15.6499L12.6833 24.0167C13.5945 24.9279 15.072 24.9279 15.9831 24.0167L24.35 15.6499C25.2612 14.7386 25.2612 13.2612 24.35 12.35L15.9831 3.98321Z",
+          "stroke": "#155AEF",
+          "stroke-width": "1.5",
+          "stroke-linejoin": "round"
+        },
+        "children": []
+      }
+    ]
+  },
+  "name": "Keyframe"
 }

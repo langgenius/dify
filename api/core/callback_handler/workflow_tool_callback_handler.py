@@ -1,5 +1,5 @@
 from collections.abc import Generator, Iterable, Mapping
-from typing import Any, Optional
+from typing import Any
 
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler, print_text
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -14,9 +14,9 @@ class DifyWorkflowCallbackHandler(DifyAgentCallbackHandler):
         tool_name: str,
         tool_inputs: Mapping[str, Any],
         tool_outputs: Iterable[ToolInvokeMessage],
-        message_id: Optional[str] = None,
-        timer: Optional[Any] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
+        message_id: str | None = None,
+        timer: Any | None = None,
+        trace_manager: TraceQueueManager | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         for tool_output in tool_outputs:
             print_text("\n[on_tool_execution]\n", color=self.color)

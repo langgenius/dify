@@ -4,10 +4,10 @@ This `launch.json.template` file provides various debug configurations for the D
 
 ## How to Use
 
-1.  **Create `launch.json`**: If you don't have one, create a file named `launch.json` inside the `.vscode` directory.
-2.  **Copy Content**: Copy the entire content from `launch.json.template` into your newly created `launch.json` file.
-3.  **Select Debug Configuration**: Go to the Run and Debug view in VS Code / Cursor (Ctrl+Shift+D or Cmd+Shift+D).
-4.  **Start Debugging**: Select the desired configuration from the dropdown menu and click the green play button.
+1. **Create `launch.json`**: If you don't have one, create a file named `launch.json` inside the `.vscode` directory.
+1. **Copy Content**: Copy the entire content from `launch.json.template` into your newly created `launch.json` file.
+1. **Select Debug Configuration**: Go to the Run and Debug view in VS Code / Cursor (Ctrl+Shift+D or Cmd+Shift+D).
+1. **Start Debugging**: Select the desired configuration from the dropdown menu and click the green play button.
 
 ## Tips
 

@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -13,6 +13,8 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
+    "in",
+    "not in",
     # for number
     "=",
     "≠",
@@ -28,7 +30,7 @@ SupportedComparisonOperator = Literal[
 
 class Condition(BaseModel):
     """
-    Conditon detail
+    Condition detail
     """
 
     name: str
@@ -36,10 +38,10 @@ class Condition(BaseModel):
     value: str | Sequence[str] | None | int | float = None
 
 
-class MetadataCondition(BaseModel):
+class MetadataFilteringCondition(BaseModel):
     """
-    Metadata Condition.
+    Metadata Filtering Condition.
     """
 
-    logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
+    logical_operator: Literal["and", "or"] | None = "and"
+    conditions: list[Condition] | None = Field(default=None, deprecated=True)

@@ -5,16 +5,13 @@ This factory is specifically designed for DifyAPI repositories that handle
 service-layer operations with dependency injection patterns.
 """
 
-import logging
-
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.repositories import DifyCoreRepositoryFactory, RepositoryImportError
+from libs.module_loading import import_string
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-
-logger = logging.getLogger(__name__)
 
 
 class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
@@ -28,7 +25,7 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
 
     @classmethod
     def create_api_workflow_node_execution_repository(
-        cls, session_maker: sessionmaker
+        cls, session_maker: sessionmaker[Session]
     ) -> DifyAPIWorkflowNodeExecutionRepository:
         """
         Create a DifyAPIWorkflowNodeExecutionRepository instance based on configuration.
@@ -48,26 +45,17 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
             RepositoryImportError: If the configured repository cannot be imported or instantiated
         """
         class_path = dify_config.API_WORKFLOW_NODE_EXECUTION_REPOSITORY
-        logger.debug(f"Creating DifyAPIWorkflowNodeExecutionRepository from: {class_path}")
 
         try:
-            repository_class = cls._import_class(class_path)
-            cls._validate_repository_interface(repository_class, DifyAPIWorkflowNodeExecutionRepository)
-            # Service repository requires session_maker parameter
-            cls._validate_constructor_signature(repository_class, ["session_maker"])
-
-            return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
-        except RepositoryImportError:
-            # Re-raise our custom errors as-is
-            raise
-        except Exception as e:
-            logger.exception("Failed to create DifyAPIWorkflowNodeExecutionRepository")
+            repository_class = import_string(class_path)
+            return repository_class(session_maker=session_maker)
+        except (ImportError, Exception) as e:
             raise RepositoryImportError(
                 f"Failed to create DifyAPIWorkflowNodeExecutionRepository from '{class_path}': {e}"
             ) from e
 
     @classmethod
-    def create_api_workflow_run_repository(cls, session_maker: sessionmaker) -> APIWorkflowRunRepository:
+    def create_api_workflow_run_repository(cls, session_maker: sessionmaker[Session]) -> APIWorkflowRunRepository:
         """
         Create an APIWorkflowRunRepository instance based on configuration.
 
@@ -86,18 +74,9 @@ class DifyAPIRepositoryFactory(DifyCoreRepositoryFactory):
             RepositoryImportError: If the configured repository cannot be imported or instantiated
         """
         class_path = dify_config.API_WORKFLOW_RUN_REPOSITORY
-        logger.debug(f"Creating APIWorkflowRunRepository from: {class_path}")
 
         try:
-            repository_class = cls._import_class(class_path)
-            cls._validate_repository_interface(repository_class, APIWorkflowRunRepository)
-            # Service repository requires session_maker parameter
-            cls._validate_constructor_signature(repository_class, ["session_maker"])
-
-            return repository_class(session_maker=session_maker)  # type: ignore[no-any-return]
-        except RepositoryImportError:
-            # Re-raise our custom errors as-is
-            raise
-        except Exception as e:
-            logger.exception("Failed to create APIWorkflowRunRepository")
+            repository_class = import_string(class_path)
+            return repository_class(session_maker=session_maker)
+        except (ImportError, Exception) as e:
             raise RepositoryImportError(f"Failed to create APIWorkflowRunRepository from '{class_path}': {e}") from e

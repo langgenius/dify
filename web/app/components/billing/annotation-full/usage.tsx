@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useProviderContext } from '@/context/provider-context'
 import { MessageFastPlus } from '../../base/icons/src/vender/line/communication'
 import UsageInfo from '../usage-info'
-import { useProviderContext } from '@/context/provider-context'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 const Usage: FC<Props> = ({
   className,
@@ -23,7 +23,7 @@ const Usage: FC<Props> = ({
     <UsageInfo
       className={className}
       Icon={MessageFastPlus}
-      name={t('billing.annotatedResponse.quotaTitle')}
+      name={t('annotatedResponse.quotaTitle', { ns: 'billing' })}
       usage={usage.annotatedResponse}
       total={total.annotatedResponse}
     />

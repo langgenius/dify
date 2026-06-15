@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
+import * as React from 'react'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 
 const extendToFileTypeMap: { [key: string]: FileAppearanceType } = {
   pdf: FileAppearanceTypeEnum.pdf,
@@ -19,12 +19,12 @@ const extendToFileTypeMap: { [key: string]: FileAppearanceType } = {
   docx: FileAppearanceTypeEnum.word,
 }
 
-type Props = {
+type Props = Readonly<{
   extension?: string
   name?: string
-  size?: 'sm' | 'lg' | 'md'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
-}
+}>
 
 const DocumentFileIcon: FC<Props> = ({
   extension,

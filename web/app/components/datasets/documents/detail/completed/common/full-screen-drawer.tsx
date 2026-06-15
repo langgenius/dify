@@ -1,36 +1,39 @@
-import React, { type FC } from 'react'
-import Drawer from '@/app/components/base/drawer'
-import classNames from '@/utils/classnames'
-import { noop } from 'lodash-es'
+import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
+import { noop } from 'es-toolkit/function'
+import { CompletedDrawer } from './drawer'
 
-type IFullScreenDrawerProps = {
-  isOpen: boolean
+type DocumentDetailDrawerProps = {
+  open: boolean
   onClose?: () => void
   fullScreen: boolean
-  children: React.ReactNode
+  modal?: boolean
+  children: ReactNode
 }
 
-const FullScreenDrawer: FC<IFullScreenDrawerProps> = ({
-  isOpen,
+export function DocumentDetailDrawer({
+  open,
   onClose = noop,
   fullScreen,
   children,
-}) => {
+  modal = false,
+}: DocumentDetailDrawerProps) {
   return (
-    <Drawer
-      isOpen={isOpen}
+    <CompletedDrawer
+      open={open}
       onClose={onClose}
-      panelClassName={classNames('!p-0 bg-components-panel-bg',
+      panelClassName={cn(
         fullScreen
-          ? '!max-w-full !w-full'
-          : 'mt-16 mr-2 mb-2 !max-w-[560px] !w-[560px] border-[0.5px] border-components-panel-border rounded-xl',
+          ? 'w-full data-[swipe-direction=left]:w-full data-[swipe-direction=right]:w-full'
+          : 'w-[568px] pt-16 pr-2 pb-2 data-[swipe-direction=left]:w-[568px] data-[swipe-direction=right]:w-[568px]',
       )}
-      mask={false}
-      unmount
-      footer={null}
+      panelContentClassName={cn(
+        'bg-components-panel-bg',
+        !fullScreen && 'rounded-xl border-[0.5px] border-components-panel-border',
+      )}
+      modal={modal}
     >
       {children}
-    </Drawer>)
+    </CompletedDrawer>
+  )
 }
-
-export default FullScreenDrawer

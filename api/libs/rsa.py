@@ -1,5 +1,4 @@
 import hashlib
-import os
 from typing import Union
 
 from Crypto.Cipher import AES
@@ -18,7 +17,7 @@ def generate_key_pair(tenant_id: str) -> str:
     pem_private = private_key.export_key()
     pem_public = public_key.export_key()
 
-    filepath = os.path.join("privkeys", tenant_id, "private.pem")
+    filepath = f"privkeys/{tenant_id}/private.pem"
 
     storage.save(filepath, pem_private)
 
@@ -48,15 +47,15 @@ def encrypt(text: str, public_key: Union[str, bytes]) -> bytes:
 
 
 def get_decrypt_decoding(tenant_id: str) -> tuple[RSA.RsaKey, object]:
-    filepath = os.path.join("privkeys", tenant_id, "private.pem")
+    filepath = f"privkeys/{tenant_id}/private.pem"
 
-    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    cache_key = f"tenant_privkey:{hashlib.sha3_256(filepath.encode()).hexdigest()}"
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:
             private_key = storage.load(filepath)
         except FileNotFoundError:
-            raise PrivkeyNotFoundError("Private key not found, tenant_id: {tenant_id}".format(tenant_id=tenant_id))
+            raise PrivkeyNotFoundError(f"Private key not found, tenant_id: {tenant_id}")
 
         redis_client.setex(cache_key, 120, private_key)
 

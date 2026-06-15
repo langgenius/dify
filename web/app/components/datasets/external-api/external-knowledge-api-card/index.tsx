@@ -1,17 +1,26 @@
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { CreateExternalAPIReq } from '../declarations'
+import type { ExternalAPIItem } from '@/models/datasets'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import type { CreateExternalAPIReq } from '../declarations'
-import type { ExternalAPIItem } from '@/models/datasets'
-import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI, updateExternalAPI } from '@/service/datasets'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
-import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
+import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI, updateExternalAPI } from '@/service/datasets'
 
 type ExternalKnowledgeAPICardProps = {
   api: ExternalAPIItem
@@ -109,41 +118,47 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
         bg-components-panel-on-panel-item-bg p-2
         pl-3 ${isHovered ? 'border-state-destructive-border bg-state-destructive-hover' : ''}`}
       >
-        <div className='flex grow flex-col items-start justify-center gap-1.5 py-1'>
-          <div className='flex items-center gap-1 self-stretch text-text-secondary'>
-            <ApiConnectionMod className='h-4 w-4' />
-            <div className='system-sm-medium'>{api.name}</div>
+        <div className="flex grow flex-col items-start justify-center gap-1.5 py-1">
+          <div className="flex items-center gap-1 self-stretch text-text-secondary">
+            <ApiConnectionMod className="size-4" />
+            <div className="system-sm-medium">{api.name}</div>
           </div>
-          <div className='system-xs-regular self-stretch text-text-tertiary'>{api.settings.endpoint}</div>
+          <div className="self-stretch system-xs-regular text-text-tertiary">{api.settings.endpoint}</div>
         </div>
-        <div className='flex items-start gap-1'>
+        <div className="flex items-start gap-1">
           <ActionButton onClick={handleEditClick}>
-            <RiEditLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
+            <RiEditLine className="size-4 text-text-tertiary hover:text-text-secondary" />
           </ActionButton>
           <ActionButton
-            className='hover:bg-state-destructive-hover'
+            className="hover:bg-state-destructive-hover"
             onClick={handleDeleteClick}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <RiDeleteBinLine className='h-4 w-4 text-text-tertiary hover:text-text-destructive' />
+            <RiDeleteBinLine className="size-4 text-text-tertiary hover:text-text-destructive" />
           </ActionButton>
         </div>
       </div>
-      {showConfirm && (
-        <Confirm
-          isShow={showConfirm}
-          title={`${t('dataset.deleteExternalAPIConfirmWarningContent.title.front')} ${api.name}${t('dataset.deleteExternalAPIConfirmWarningContent.title.end')}`}
-          content={
-            usageCount > 0
-              ? `${t('dataset.deleteExternalAPIConfirmWarningContent.content.front')} ${usageCount} ${t('dataset.deleteExternalAPIConfirmWarningContent.content.end')}`
-              : t('dataset.deleteExternalAPIConfirmWarningContent.noConnectionContent')
-          }
-          type='warning'
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
+      <AlertDialog open={showConfirm} onOpenChange={open => !open && setShowConfirm(false)}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {`${t('deleteExternalAPIConfirmWarningContent.title.front', { ns: 'dataset' })} ${api.name}${t('deleteExternalAPIConfirmWarningContent.title.end', { ns: 'dataset' })}`}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {usageCount > 0
+                ? `${t('deleteExternalAPIConfirmWarningContent.content.front', { ns: 'dataset' })} ${usageCount} ${t('deleteExternalAPIConfirmWarningContent.content.end', { ns: 'dataset' })}`
+                : t('deleteExternalAPIConfirmWarningContent.noConnectionContent', { ns: 'dataset' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleConfirmDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

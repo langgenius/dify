@@ -1,42 +1,59 @@
-import { useContext } from 'react'
-import {
-  noop,
-} from 'lodash-es'
+import type { FileUpload } from '../../base/features/types'
+import type {
+  BlockEnum,
+  Node,
+  NodeDefault,
+  ToolWithProvider,
+  ValueSelector,
+} from '@/app/components/workflow/types'
+import type { IOtherOptions } from '@/service/base'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { FlowType } from '@/types/common'
+import type { VarInInspect } from '@/types/workflow'
+import { noop } from 'es-toolkit/function'
+import { use } from 'react'
 import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
-import type { IOtherOptions } from '@/service/base'
-import type { VarInInspect } from '@/types/workflow'
-import type {
-  Node,
-  ValueSelector,
-} from '@/app/components/workflow/types'
 
+export type AvailableNodesMetaData = {
+  nodes: NodeDefault[]
+  nodesMap?: Record<BlockEnum, NodeDefault<any>>
+}
+export type SyncDraftCallback = {
+  onSuccess?: () => void
+  onError?: () => void
+  onSettled?: () => void
+}
 type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
-    callback?: {
-      onSuccess?: () => void
-      onError?: () => void
-      onSettled?: () => void
-    }
+    callback?: SyncDraftCallback,
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
   handleRefreshWorkflowDraft: () => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (params: any, callback?: IOtherOptions,) => void
+  handleRun: (params: any, callback?: IOtherOptions, options?: any) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
-  fetchInspectVars: () => Promise<void>
+  handleWorkflowTriggerScheduleRunInWorkflow: (nodeId?: string) => void
+  handleWorkflowTriggerWebhookRunInWorkflow: (params: { nodeId: string }) => void
+  handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
+  handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
+  availableNodesMetaData?: AvailableNodesMetaData
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
+  exportCheck?: () => Promise<void>
+  handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
+  fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
-  fetchInspectVarValue: (selector: ValueSelector) => Promise<void>
+  fetchInspectVarValue: (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => Promise<void>
   editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
   appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
@@ -49,8 +66,9 @@ type CommonHooksFnMap = {
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
   configsMap?: {
-    conversationVarsUrl: string
-    systemVarsUrl: string
+    flowId: string
+    flowType: FlowType
+    fileSettings: FileUpload
   }
 }
 
@@ -70,6 +88,19 @@ export const createHooksStore = ({
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
+  handleWorkflowTriggerScheduleRunInWorkflow = noop,
+  handleWorkflowTriggerWebhookRunInWorkflow = noop,
+  handleWorkflowTriggerPluginRunInWorkflow = noop,
+  handleWorkflowRunAllTriggersInWorkflow = noop,
+  availableNodesMetaData = {
+    nodes: [],
+  },
+  getWorkflowRunAndTraceUrl = () => ({
+    runUrl: '',
+    traceUrl: '',
+  }),
+  exportCheck = async () => noop(),
+  handleExportDSL = async () => noop(),
   fetchInspectVars = async () => noop(),
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
@@ -85,6 +116,7 @@ export const createHooksStore = ({
   invalidateSysVarValues = noop,
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
+  configsMap,
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -99,6 +131,14 @@ export const createHooksStore = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
     fetchInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,
@@ -114,17 +154,14 @@ export const createHooksStore = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    configsMap,
   }))
 }
 
 export function useHooksStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(HooksStoreContext)
+  const store = use(HooksStoreContext)
   if (!store)
     throw new Error('Missing HooksStoreContext.Provider in the tree')
 
   return useZustandStore(store, selector)
-}
-
-export const useHooksStoreApi = () => {
-  return useContext(HooksStoreContext)!
 }

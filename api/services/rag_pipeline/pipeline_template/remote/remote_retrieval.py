@@ -1,0 +1,76 @@
+import logging
+from typing import Any, override
+
+import httpx
+
+from configs import dify_config
+from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
+from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
+from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
+
+logger = logging.getLogger(__name__)
+
+
+class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
+    """
+    Retrieval recommended app from dify official
+    """
+
+    @override
+    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
+        try:
+            return self.fetch_pipeline_template_detail_from_dify_official(template_id)
+        except Exception as e:
+            logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
+
+    @override
+    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+        del current_tenant_id
+        try:
+            return self.fetch_pipeline_templates_from_dify_official(language)
+        except Exception as e:
+            logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
+
+    @override
+    def get_type(self) -> str:
+        return PipelineTemplateType.REMOTE
+
+    @classmethod
+    def fetch_pipeline_template_detail_from_dify_official(cls, template_id: str) -> dict[str, Any]:
+        """
+        Fetch pipeline template detail from dify official.
+
+        :param template_id: Pipeline template ID
+        :return: Template detail dict
+        :raises ValueError: When upstream returns a non-200 status code
+        """
+        domain = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN
+        url = f"{domain}/pipeline-templates/{template_id}"
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
+        if response.status_code != 200:
+            raise ValueError(
+                "fetch pipeline template detail failed,"
+                + f" status_code: {response.status_code},"
+                + f" response: {response.text[:1000]}"
+            )
+        data: dict[str, Any] = response.json()
+        return data
+
+    @classmethod
+    def fetch_pipeline_templates_from_dify_official(cls, language: str) -> dict[str, Any]:
+        """
+        Fetch pipeline templates from dify official.
+        :param language: language
+        :return:
+        """
+        domain = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN
+        url = f"{domain}/pipeline-templates?language={language}"
+        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
+        if response.status_code != 200:
+            raise ValueError(f"fetch pipeline templates failed, status code: {response.status_code}")
+
+        result: dict[str, Any] = response.json()
+
+        return result

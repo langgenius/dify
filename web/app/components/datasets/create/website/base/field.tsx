@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import Input from './input'
-import cn from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
+import { Infotip } from '@/app/components/base/infotip'
+import Input from './text-input'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   label: string
   labelClassName?: string
@@ -15,7 +15,7 @@ type Props = {
   placeholder?: string
   isNumber?: boolean
   tooltip?: string
-}
+}>
 
 const Field: FC<Props> = ({
   className,
@@ -30,16 +30,16 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className)}>
-      <div className='flex py-[7px]'>
-        <div className={cn(labelClassName, 'flex h-[16px] items-center text-[13px] font-semibold text-text-secondary')}>{label} </div>
-        {isRequired && <span className='ml-0.5 text-xs font-semibold text-text-destructive'>*</span>}
+      <div className="flex py-[7px]">
+        <div className={cn(labelClassName, 'flex h-[16px] items-center text-[13px] font-semibold text-text-secondary')}>
+          {label}
+          {' '}
+        </div>
+        {isRequired && <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>}
         {tooltip && (
-          <Tooltip
-            popupContent={
-              <div className='w-[200px]'>{tooltip}</div>
-            }
-            triggerClassName='ml-0.5 w-4 h-4'
-          />
+          <Infotip aria-label={tooltip} className="ml-0.5" popupClassName="w-[200px]">
+            {tooltip}
+          </Infotip>
         )}
       </div>
       <Input

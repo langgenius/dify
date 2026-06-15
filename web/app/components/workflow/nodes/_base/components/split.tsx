@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
-}
+}>
 
 const Split: FC<Props> = ({
   className,

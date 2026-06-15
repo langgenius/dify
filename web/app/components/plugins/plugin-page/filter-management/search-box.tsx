@@ -1,7 +1,8 @@
 'use client'
 
-import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+
 type SearchBoxProps = {
   searchQuery: string
   onChange: (query: string) => void
@@ -15,11 +16,11 @@ const SearchBox: React.FC<SearchBoxProps> = ({
 
   return (
     <Input
-      wrapperClassName='flex w-[200px] items-center rounded-lg'
-      className='bg-components-input-bg-normal'
+      wrapperClassName="flex w-[200px] items-center rounded-lg"
+      className="bg-components-input-bg-normal"
       showLeftIcon
       value={searchQuery}
-      placeholder={t('plugin.search')}
+      placeholder={t('search', { ns: 'plugin' })}
       onChange={(e) => {
         onChange(e.target.value)
       }}

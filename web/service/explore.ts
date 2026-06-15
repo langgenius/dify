@@ -1,46 +1,73 @@
-import { del, get, patch, post } from './base'
-import type { App, AppCategory } from '@/models/explore'
-import type { AccessMode } from '@/models/access-control'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { ExploreAppDetailResponse } from '@/contract/console/explore'
+import type { AppMeta } from '@/models/share'
+import { consoleClient } from './client'
 
-export const fetchAppList = () => {
-  return get<{
-    categories: AppCategory[]
-    recommended_apps: App[]
-  }>('/explore/apps')
+export const fetchAppList = (language?: string) => {
+  if (!language)
+    return consoleClient.explore.apps({})
+
+  return consoleClient.explore.apps({
+    query: { language },
+  })
 }
 
-export const fetchAppDetail = (id: string): Promise<any> => {
-  return get(`/explore/apps/${id}`)
+export const fetchAppDetail = async (id: string): Promise<ExploreAppDetailResponse> => {
+  const response = await consoleClient.explore.appDetail({
+    params: { id },
+  })
+  if (!response)
+    throw new Error('Recommended app not found')
+  return response
 }
 
-export const fetchInstalledAppList = (app_id?: string | null) => {
-  return get(`/installed-apps${app_id ? `?app_id=${app_id}` : ''}`)
-}
+export const fetchInstalledAppList = (appId?: string | null) => {
+  if (!appId)
+    return consoleClient.explore.installedApps({})
 
-export const installApp = (id: string) => {
-  return post('/installed-apps', {
-    body: {
-      app_id: id,
-    },
+  return consoleClient.explore.installedApps({
+    query: { app_id: appId },
   })
 }
 
 export const uninstallApp = (id: string) => {
-  return del(`/installed-apps/${id}`)
+  return consoleClient.explore.uninstallInstalledApp({
+    params: { id },
+  })
 }
 
 export const updatePinStatus = (id: string, isPinned: boolean) => {
-  return patch(`/installed-apps/${id}`, {
+  return consoleClient.explore.updateInstalledApp({
+    params: { id },
     body: {
       is_pinned: isPinned,
     },
   })
 }
 
-export const getToolProviders = () => {
-  return get('/workspaces/current/tool-providers')
+export const getAppAccessModeByAppId = (appId: string) => {
+  return consoleClient.explore.appAccessMode({
+    query: { appId },
+  })
 }
 
-export const getAppAccessModeByAppId = (appId: string) => {
-  return get<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+export const fetchInstalledAppParams = (appId: string) => {
+  return consoleClient.explore.installedAppParameters({
+    params: { appId },
+  }) as Promise<ChatConfig>
+}
+
+export const fetchInstalledAppMeta = (appId: string) => {
+  return consoleClient.explore.installedAppMeta({
+    params: { appId },
+  }) as Promise<AppMeta>
+}
+
+export const fetchBanners = (language?: string) => {
+  if (!language)
+    return consoleClient.explore.banners({})
+
+  return consoleClient.explore.banners({
+    query: { language },
+  })
 }

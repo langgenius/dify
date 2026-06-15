@@ -1,9 +1,11 @@
 import logging
 
-from flask_restful import reqparse
 from werkzeug.exceptions import InternalServerError
 
-from controllers.web import api
+from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
     NotWorkflowAppError,
@@ -20,7 +22,9 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_redis import redis_client
+from graphon.graph_engine.manager import GraphEngineManager
+from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -28,8 +32,26 @@ from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
+register_schema_models(web_ns, WorkflowRunPayload)
+register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
 
+
+@web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
+    @web_ns.doc("Run Workflow")
+    @web_ns.doc(description="Execute a workflow with provided inputs and files.")
+    @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "App Not Found",
+            500: "Internal Server Error",
+        }
+    )
+    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """
         Run workflow
@@ -38,10 +60,8 @@ class WorkflowRunApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        args = parser.parse_args()
+        payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate(
@@ -62,11 +82,30 @@ class WorkflowRunApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@web_ns.route("/workflows/tasks/<string:task_id>/stop")
 class WorkflowTaskStopApi(WebApiResource):
+    @web_ns.doc("Stop Workflow Task")
+    @web_ns.doc(description="Stop a running workflow task.")
+    @web_ns.doc(
+        params={
+            "task_id": {"description": "Task ID to stop", "type": "string", "required": True},
+        }
+    )
+    @web_ns.doc(
+        responses={
+            200: "Success",
+            400: "Bad Request",
+            401: "Unauthorized",
+            403: "Forbidden",
+            404: "Task Not Found",
+            500: "Internal Server Error",
+        }
+    )
+    @web_ns.response(200, "Success", web_ns.models[SimpleResultResponse.__name__])
     def post(self, app_model: App, end_user: EndUser, task_id: str):
         """
         Stop workflow task
@@ -75,10 +114,11 @@ class WorkflowTaskStopApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        # Stop using both mechanisms for backward compatibility
+        # Legacy stop flag mechanism (without user check)
+        AppQueueManager.set_stop_flag_no_user_check(task_id)
+
+        # New graph engine command channel mechanism
+        GraphEngineManager(redis_client).send_stop_command(task_id)
 
         return {"result": "success"}
-
-
-api.add_resource(WorkflowRunApi, "/workflows/run")
-api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")

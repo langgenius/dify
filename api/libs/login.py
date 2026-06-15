@@ -1,20 +1,112 @@
-from functools import wraps
-from typing import Any
+from __future__ import annotations
 
-from flask import current_app, g, has_request_context, request
-from flask_login.config import EXEMPT_METHODS  # type: ignore
+from collections.abc import Callable
+from functools import wraps
+from typing import TYPE_CHECKING, Any, Concatenate, cast, overload
+
+from flask import Response, current_app, g, has_request_context, request
+from flask_login.config import EXEMPT_METHODS
+from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
-from models.account import Account
-from models.model import EndUser
+from dify_app import DifyApp
+from extensions.ext_login import DifyLoginManager
+from libs.token import check_csrf_token
+from models import Account
 
-#: A proxy for the current user. If no user is logged in, this will be an
-#: anonymous user
-current_user: Any = LocalProxy(lambda: _get_user())
+if TYPE_CHECKING:
+    from models.model import EndUser
 
 
-def login_required(func):
+def _resolve_current_user() -> EndUser | Account | None:
+    """
+    Resolve the current user proxy to its underlying user object.
+    This keeps unit tests working when they patch `current_user` directly
+    instead of bootstrapping a full Flask-Login manager.
+    """
+    user_proxy = current_user
+    get_current_object = getattr(user_proxy, "_get_current_object", None)
+    return get_current_object() if callable(get_current_object) else user_proxy  # type: ignore
+
+
+def _get_login_manager() -> DifyLoginManager:
+    """Return the project login manager with Dify's narrowed unauthorized contract."""
+    app = cast(DifyApp, current_app)
+    return app.login_manager
+
+
+def current_account_with_tenant() -> tuple[Account, str]:
+    """
+    Resolve the underlying account for the current user proxy and ensure tenant context exists.
+    Allows tests to supply plain Account mocks without the LocalProxy helper.
+    """
+    user = _resolve_current_user()
+
+    if not isinstance(user, Account):
+        raise ValueError("current_user must be an Account instance")
+    assert user.current_tenant_id is not None, "The tenant information should be loaded."
+    return user, user.current_tenant_id
+
+
+def current_account_with_tenant_optional() -> tuple[Account | None, str | None]:
+    try:
+        user = _resolve_current_user()
+    except Unauthorized:
+        return None, None
+
+    if not isinstance(user, Account):
+        return None, None
+    if not bool(getattr(user, "is_authenticated", False)):
+        return None, None
+    return user, user.current_tenant_id
+
+
+def resolve_account_fallback(
+    current_user: Account | None = None,
+    current_tenant_id: str | None = None,
+    *,
+    fallback_tenant_id: str | None = None,
+) -> tuple[Account, str]:
+    """
+    If the provided current user and tenant ID is None, fallback to current_account_with_tenant.
+    This is useful for those service layers whose controllers are not migrated to use DI for
+    resolving current user yet.
+
+    TODO: this should be removed after all ctrls (especially service API) are migrated
+    """
+    if current_user is not None:
+        tenant_id = current_tenant_id or fallback_tenant_id
+        if tenant_id is None:
+            raise ValueError("current_tenant_id is required when current_user is provided.")
+        return current_user, tenant_id
+    return current_account_with_tenant()
+
+
+def resolve_tenant_id_fallback(current_tenant_id: str | None = None) -> str:
+    """
+    If the provided tenant ID is None, fallback to the tenant resolved from current_account_with_tenant.
+    This is useful for tenant-only service paths whose controllers are not all migrated to tenant injection yet.
+
+    TODO: this should be removed after all ctrls (especially service API) are migrated
+    """
+    if current_tenant_id is not None:
+        return current_tenant_id
+    _, tenant_id = current_account_with_tenant()
+    return tenant_id
+
+
+@overload
+def login_required[T, **P, R](
+    func: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R | Response]: ...
+
+
+@overload
+def login_required[**P, R](func: Callable[P, R]) -> Callable[P, R | Response]: ...
+
+
+def login_required[R](func: Callable[..., R]) -> Callable[..., R | Response]:
     """
     If you decorate a view with this, it will ensure that the current user is
     logged in and authenticated before calling the actual view. (If they are
@@ -49,17 +141,23 @@ def login_required(func):
     """
 
     @wraps(func)
-    def decorated_view(*args, **kwargs):
+    def decorated_view(*args: Any, **kwargs: Any) -> R | Response:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain Flask view functions.
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
-            pass
-        elif not current_user.is_authenticated:
-            return current_app.login_manager.unauthorized()  # type: ignore
-
-        # flask 1.x compatibility
-        # current_app.ensure_sync is only available in Flask >= 2.0
-        if callable(getattr(current_app, "ensure_sync", None)):
             return current_app.ensure_sync(func)(*args, **kwargs)
-        return func(*args, **kwargs)
+
+        user = _resolve_current_user()
+        if user is None or not user.is_authenticated:
+            # `DifyLoginManager` guarantees that the registered unauthorized handler
+            # is surfaced here as a concrete Flask `Response`.
+            unauthorized_response: Response = _get_login_manager().unauthorized()
+            return unauthorized_response
+        g._login_user = user
+        # we put csrf validation here for less conflicts
+        # TODO: maybe find a better place for it.
+        check_csrf_token(request, user.id)
+        return current_app.ensure_sync(func)(*args, **kwargs)
 
     return decorated_view
 
@@ -67,8 +165,14 @@ def login_required(func):
 def _get_user() -> EndUser | Account | None:
     if has_request_context():
         if "_login_user" not in g:
-            current_app.login_manager._load_user()  # type: ignore
+            _get_login_manager().load_user_from_request_context()
 
-        return g._login_user  # type: ignore
+        return g._login_user
 
     return None
+
+
+#: A proxy for the current user. If no user is logged in, this will be an
+#: anonymous user
+# NOTE: Any here, but use _get_current_object to check the fields
+current_user: Any = LocalProxy(lambda: _get_user())

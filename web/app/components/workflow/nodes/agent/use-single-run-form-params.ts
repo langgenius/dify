@@ -1,19 +1,19 @@
-import type { MutableRefObject } from 'react'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { useMemo } from 'react'
-import useNodeCrud from '../_base/hooks/use-node-crud'
+import type { RefObject } from 'react'
 import type { AgentNodeType } from './types'
-import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { useStrategyInfo } from './use-config'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import { useStrategyInfo } from './use-config'
 
 type Params = {
-  id: string,
-  payload: AgentNodeType,
+  id: string
+  payload: AgentNodeType
   runInputData: Record<string, any>
-  runInputDataRef: MutableRefObject<Record<string, any>>
+  runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
@@ -60,7 +60,7 @@ const useSingleRunFormParams = ({
     if (varInputs!.length > 0) {
       forms.push(
         {
-          label: t('workflow.nodes.llm.singleRun.variable')!,
+          label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
           inputs: varInputs!,
           values: runInputData,
           onChange: setRunInputData,
@@ -76,8 +76,14 @@ const useSingleRunFormParams = ({
     return formatTracing([runResult], t)[0]
   }, [runResult, t])
 
-    const getDependentVars = () => {
-    return varInputs.map(item => item.variable.slice(1, -1).split('.'))
+  const getDependentVars = () => {
+    return varInputs.map((item) => {
+      // Guard against null/undefined variable to prevent app crash
+      if (!item.variable || typeof item.variable !== 'string')
+        return []
+
+      return item.variable.slice(1, -1).split('.')
+    }).filter(arr => arr.length > 0)
   }
 
   return {

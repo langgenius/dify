@@ -1,6 +1,6 @@
-import { useContext } from 'react'
-import { createStore, useStore } from 'zustand'
 import type { SchemaRoot } from '../../../types'
+import { use } from 'react'
+import { createStore, useStore } from 'zustand'
 import { VisualEditorContext } from './context'
 
 type VisualEditorStore = {
@@ -26,7 +26,7 @@ export const createVisualEditorStore = () => createStore<VisualEditorStore>(set 
 }))
 
 export const useVisualEditorStore = <T>(selector: (state: VisualEditorStore) => T): T => {
-  const store = useContext(VisualEditorContext)
+  const store = use(VisualEditorContext)
   if (!store)
     throw new Error('Missing VisualEditorContext.Provider in the tree')
 

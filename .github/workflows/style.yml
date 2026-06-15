@@ -1,9 +1,7 @@
 name: Style check
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_call:
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -14,21 +12,20 @@ permissions:
   statuses: write
   contents: read
 
-
 jobs:
   python-style:
     name: Python Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             api/**
@@ -36,115 +33,152 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          uv-lockfile: api/uv.lock
           enable-cache: false
+          python-version: "3.12"
+          cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv sync --project api --dev
 
-      - name: Ruff check
+      - name: Run Import Linter
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          uv run --directory api ruff --version
-          uv run --directory api ruff check --diff ./
-          uv run --directory api ruff format --check --diff ./
+        run: uv run --directory api --dev lint-imports
+
+      - name: Run Response Contract Linter
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
+
+      - name: Run Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: make type-check-core
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
-      - name: Lint hints
-        if: failure()
-        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
-
   web-style:
     name: Web Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: ./web
+    permissions:
+      checks: write
+      pull-requests: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          files: web/**
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-          run_install: false
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        if: steps.changed-files.outputs.any_changed == 'true'
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/package.json
-
-      - name: Web dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm install --frozen-lockfile
-
-      - name: Web style check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: pnpm run lint
-
-  docker-compose-template:
-    name: Docker Compose Template
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
-            docker/generate_docker_compose
-            docker/.env.example
-            docker/docker-compose-template.yaml
-            docker/docker-compose.yaml
+            web/**
+            e2e/**
+            sdks/nodejs-client/**
+            packages/**
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            .nvmrc
+            .github/workflows/style.yml
+            .github/actions/setup-web/**
 
-      - name: Generate Docker Compose
+      - name: Setup web environment
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          cd docker
-          ./generate_docker_compose
+        uses: ./.github/actions/setup-web
 
-      - name: Check for changes
+      - name: Web tsslint
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: git diff --exit-code
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: vp run lint:tss
+
+      - name: Web dead code check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip
+
+  ts-common-style:
+    name: TS Common
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      checks: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            web/**
+            cli/**
+            e2e/**
+            sdks/nodejs-client/**
+            packages/**
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            .nvmrc
+            eslint.config.mjs
+            .github/workflows/style.yml
+            .github/actions/setup-web/**
+
+      - name: Setup web environment
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup-web
+
+      - name: Restore ESLint cache
+        if: steps.changed-files.outputs.any_changed == 'true'
+        id: eslint-cache-restore
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .eslintcache
+          key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
+
+      - name: Style check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run lint:ci
+
+      - name: Type check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run type-check
+
+      - name: Save ESLint cache
+        if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .eslintcache
+          key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
 
   superlinter:
     name: SuperLinter
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v46
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             **.sh
@@ -155,7 +189,7 @@ jobs:
             .editorconfig
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@v8
+        uses: super-linter/super-linter/slim@9e863354e3ff62e0727d37183162c4a88873df41 # v8.6.0
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning

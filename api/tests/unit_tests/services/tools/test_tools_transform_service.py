@@ -1,10 +1,12 @@
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, patch
 
 from core.tools.__base.tool import Tool
-from core.tools.entities.api_entities import ToolApiEntity
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolParameter
+from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderType
 from services.tools.tools_transform_service import ToolTransformService
+
+MODULE = "services.tools.tools_transform_service"
 
 
 class TestToolTransformService:
@@ -299,3 +301,298 @@ class TestToolTransformService:
         param2 = result.parameters[1]
         assert param2.name == "param2"
         assert param2.label == "Runtime Param 2"
+
+
+class TestWorkflowProviderToUserProvider:
+    """Test cases for ToolTransformService.workflow_provider_to_user_provider method"""
+
+    def test_workflow_provider_to_user_provider_with_workflow_app_id(self):
+        """Test that workflow_provider_to_user_provider correctly sets workflow_app_id."""
+        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+
+        # Create mock workflow tool provider controller
+        workflow_app_id = "app_123"
+        provider_id = "provider_123"
+        mock_controller = Mock(spec=WorkflowToolProviderController)
+        mock_controller.provider_id = provider_id
+        mock_controller.entity = Mock()
+        mock_controller.entity.identity = Mock()
+        mock_controller.entity.identity.author = "test_author"
+        mock_controller.entity.identity.name = "test_workflow_tool"
+        mock_controller.entity.identity.description = I18nObject(en_US="Test description")
+        mock_controller.entity.identity.icon = {"type": "emoji", "content": "🔧"}
+        mock_controller.entity.identity.icon_dark = None
+        mock_controller.entity.identity.label = I18nObject(en_US="Test Workflow Tool")
+
+        # Call the method
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=mock_controller,
+            labels=["label1", "label2"],
+            workflow_app_id=workflow_app_id,
+        )
+
+        # Verify the result
+        assert isinstance(result, ToolProviderApiEntity)
+        assert result.id == provider_id
+        assert result.author == "test_author"
+        assert result.name == "test_workflow_tool"
+        assert result.type == ToolProviderType.WORKFLOW
+        assert result.workflow_app_id == workflow_app_id
+        assert result.labels == ["label1", "label2"]
+        assert result.is_team_authorization is True
+        assert result.plugin_id is None
+        assert result.plugin_unique_identifier is None
+        assert result.tools == []
+
+    def test_workflow_provider_to_user_provider_without_workflow_app_id(self):
+        """Test that workflow_provider_to_user_provider works when workflow_app_id is not provided."""
+        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+
+        # Create mock workflow tool provider controller
+        provider_id = "provider_123"
+        mock_controller = Mock(spec=WorkflowToolProviderController)
+        mock_controller.provider_id = provider_id
+        mock_controller.entity = Mock()
+        mock_controller.entity.identity = Mock()
+        mock_controller.entity.identity.author = "test_author"
+        mock_controller.entity.identity.name = "test_workflow_tool"
+        mock_controller.entity.identity.description = I18nObject(en_US="Test description")
+        mock_controller.entity.identity.icon = {"type": "emoji", "content": "🔧"}
+        mock_controller.entity.identity.icon_dark = None
+        mock_controller.entity.identity.label = I18nObject(en_US="Test Workflow Tool")
+
+        # Call the method without workflow_app_id
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=mock_controller,
+            labels=["label1"],
+        )
+
+        # Verify the result
+        assert isinstance(result, ToolProviderApiEntity)
+        assert result.id == provider_id
+        assert result.workflow_app_id is None
+        assert result.labels == ["label1"]
+
+    def test_workflow_provider_to_user_provider_workflow_app_id_none(self):
+        """Test that workflow_provider_to_user_provider handles None workflow_app_id explicitly."""
+        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+
+        # Create mock workflow tool provider controller
+        provider_id = "provider_123"
+        mock_controller = Mock(spec=WorkflowToolProviderController)
+        mock_controller.provider_id = provider_id
+        mock_controller.entity = Mock()
+        mock_controller.entity.identity = Mock()
+        mock_controller.entity.identity.author = "test_author"
+        mock_controller.entity.identity.name = "test_workflow_tool"
+        mock_controller.entity.identity.description = I18nObject(en_US="Test description")
+        mock_controller.entity.identity.icon = {"type": "emoji", "content": "🔧"}
+        mock_controller.entity.identity.icon_dark = None
+        mock_controller.entity.identity.label = I18nObject(en_US="Test Workflow Tool")
+
+        # Call the method with explicit None values
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=mock_controller,
+            labels=None,
+            workflow_app_id=None,
+        )
+
+        # Verify the result
+        assert isinstance(result, ToolProviderApiEntity)
+        assert result.id == provider_id
+        assert result.workflow_app_id is None
+        assert result.labels == []
+
+    def test_workflow_provider_to_user_provider_preserves_other_fields(self):
+        """Test that workflow_provider_to_user_provider preserves all other entity fields."""
+        from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+
+        # Create mock workflow tool provider controller with various fields
+        workflow_app_id = "app_456"
+        provider_id = "provider_456"
+        mock_controller = Mock(spec=WorkflowToolProviderController)
+        mock_controller.provider_id = provider_id
+        mock_controller.entity = Mock()
+        mock_controller.entity.identity = Mock()
+        mock_controller.entity.identity.author = "another_author"
+        mock_controller.entity.identity.name = "another_workflow_tool"
+        mock_controller.entity.identity.description = I18nObject(
+            en_US="Another description", zh_Hans="Another description"
+        )
+        mock_controller.entity.identity.icon = {"type": "emoji", "content": "⚙️"}
+        mock_controller.entity.identity.icon_dark = {"type": "emoji", "content": "🔧"}
+        mock_controller.entity.identity.label = I18nObject(
+            en_US="Another Workflow Tool", zh_Hans="Another Workflow Tool"
+        )
+
+        # Call the method
+        result = ToolTransformService.workflow_provider_to_user_provider(
+            provider_controller=mock_controller,
+            labels=["automation", "workflow"],
+            workflow_app_id=workflow_app_id,
+        )
+
+        # Verify all fields are preserved correctly
+        assert isinstance(result, ToolProviderApiEntity)
+        assert result.id == provider_id
+        assert result.author == "another_author"
+        assert result.name == "another_workflow_tool"
+        assert result.description.en_US == "Another description"
+        assert result.description.zh_Hans == "Another description"
+        assert result.icon == {"type": "emoji", "content": "⚙️"}
+        assert result.icon_dark == {"type": "emoji", "content": "🔧"}
+        assert result.label.en_US == "Another Workflow Tool"
+        assert result.label.zh_Hans == "Another Workflow Tool"
+        assert result.type == ToolProviderType.WORKFLOW
+        assert result.workflow_app_id == workflow_app_id
+        assert result.labels == ["automation", "workflow"]
+        assert result.masked_credentials == {}
+        assert result.is_team_authorization is True
+        assert result.allow_delete is True
+        assert result.plugin_id is None
+        assert result.plugin_unique_identifier is None
+        assert result.tools == []
+
+
+class TestGetToolProviderIconUrl:
+    def test_builtin_provider_returns_console_url(self):
+        with patch(f"{MODULE}.dify_config") as cfg:
+            cfg.CONSOLE_API_URL = "https://app.dify.ai"
+            url = ToolTransformService.get_tool_provider_icon_url("builtin", "google", "icon.png")
+
+        assert "/builtin/google/icon" in url
+        assert url.startswith("https://app.dify.ai/console/api/workspaces/current/tool-provider")
+
+    def test_builtin_provider_with_no_console_url(self):
+        with patch(f"{MODULE}.dify_config") as cfg:
+            cfg.CONSOLE_API_URL = None
+            url = ToolTransformService.get_tool_provider_icon_url("builtin", "slack", "icon.png")
+
+        assert "/builtin/slack/icon" in url
+
+    def test_api_provider_parses_json_icon(self):
+        icon_json = '{"background": "#fff", "content": "A"}'
+        result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", icon_json)
+        assert result == {"background": "#fff", "content": "A"}
+
+    def test_api_provider_returns_dict_icon_directly(self):
+        icon = {"background": "#000", "content": "B"}
+        result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", icon)
+        assert result == icon
+
+    def test_api_provider_returns_fallback_on_invalid_json(self):
+        result = ToolTransformService.get_tool_provider_icon_url("api", "my-api", "not-json")
+        assert result == {"background": "#252525", "content": "\ud83d\ude01"}
+
+    def test_workflow_provider_behaves_like_api(self):
+        icon = {"background": "#123", "content": "W"}
+        assert ToolTransformService.get_tool_provider_icon_url("workflow", "wf", icon) == icon
+
+    def test_mcp_returns_icon_as_is(self):
+        assert ToolTransformService.get_tool_provider_icon_url("mcp", "srv", "icon-value") == "icon-value"
+
+    def test_unknown_type_returns_empty(self):
+        assert ToolTransformService.get_tool_provider_icon_url("unknown", "x", "i") == ""
+
+
+class TestRepackProvider:
+    def test_repacks_dict_provider_icon(self):
+        provider = {"type": "builtin", "name": "google", "icon": "old"}
+        with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/new-url") as mock_fn:
+            ToolTransformService.repack_provider("t1", provider)
+
+        assert provider["icon"] == "/new-url"
+        mock_fn.assert_called_once_with(provider_type="builtin", provider_name="google", icon="old")
+
+    def test_repacks_tool_provider_api_entity_without_plugin(self):
+        entity = MagicMock(spec=ToolProviderApiEntity)
+        entity.plugin_id = None
+        entity.type = ToolProviderType.BUILT_IN
+        entity.name = "slack"
+        entity.icon = "icon.svg"
+        entity.icon_dark = "dark.svg"
+
+        with patch.object(ToolTransformService, "get_tool_provider_icon_url", return_value="/url"):
+            ToolTransformService.repack_provider("t1", entity)
+
+        assert entity.icon == "/url"
+        assert entity.icon_dark == "/url"
+
+
+class TestConvertMcpSchemaToParameter:
+    def test_simple_object_schema(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+                "count": {"type": "integer", "description": "Result count"},
+            },
+            "required": ["query"],
+        }
+
+        params = ToolTransformService.convert_mcp_schema_to_parameter(schema)
+
+        assert len(params) == 2
+        query_param = next(p for p in params if p.name == "query")
+        count_param = next(p for p in params if p.name == "count")
+        assert query_param.required is True
+        assert count_param.required is False
+        assert count_param.type.value == "number"
+
+    def test_float_maps_to_number(self):
+        schema = {"type": "object", "properties": {"rate": {"type": "float"}}, "required": []}
+        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "number"
+
+    def test_array_type_attaches_input_schema(self):
+        prop = {"type": "array", "description": "Items", "items": {"type": "string"}}
+        schema = {"type": "object", "properties": {"items": prop}, "required": []}
+        param = ToolTransformService.convert_mcp_schema_to_parameter(schema)[0]
+        assert param.input_schema is not None
+
+    def test_non_object_schema_returns_empty(self):
+        assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "string"}) == []
+
+    def test_missing_properties_returns_empty(self):
+        assert ToolTransformService.convert_mcp_schema_to_parameter({"type": "object"}) == []
+
+    def test_list_type_uses_first_element(self):
+        schema = {"type": "object", "properties": {"f": {"type": ["string", "null"]}}, "required": []}
+        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].type.value == "string"
+
+    def test_missing_description_defaults_empty(self):
+        schema = {"type": "object", "properties": {"f": {"type": "string"}}, "required": []}
+        assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].llm_description == ""
+
+
+class TestApiProviderToController:
+    def test_api_key_header_auth(self):
+        db_provider = MagicMock()
+        db_provider.credentials = {"auth_type": "api_key_header"}
+        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+            ctrl_cls.from_db.return_value = MagicMock()
+            ToolTransformService.api_provider_to_controller(db_provider)
+        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER)
+
+    def test_api_key_query_auth(self):
+        db_provider = MagicMock()
+        db_provider.credentials = {"auth_type": "api_key_query"}
+        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+            ctrl_cls.from_db.return_value = MagicMock()
+            ToolTransformService.api_provider_to_controller(db_provider)
+        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_QUERY)
+
+    def test_legacy_api_key_maps_to_header(self):
+        db_provider = MagicMock()
+        db_provider.credentials = {"auth_type": "api_key"}
+        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+            ctrl_cls.from_db.return_value = MagicMock()
+            ToolTransformService.api_provider_to_controller(db_provider)
+        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.API_KEY_HEADER)
+
+    def test_unknown_auth_defaults_to_none(self):
+        db_provider = MagicMock()
+        db_provider.credentials = {"auth_type": "something_else"}
+        with patch(f"{MODULE}.ApiToolProviderController") as ctrl_cls:
+            ctrl_cls.from_db.return_value = MagicMock()
+            ToolTransformService.api_provider_to_controller(db_provider)
+        ctrl_cls.from_db.assert_called_once_with(db_provider=db_provider, auth_type=ApiProviderAuthType.NONE)

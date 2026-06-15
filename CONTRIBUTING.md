@@ -34,11 +34,11 @@ Don't forget to link an existing issue or open a new issue in the PR's descripti
 
 How we prioritize:
 
-  | Issue Type                                                   | Priority        |
-  | ------------------------------------------------------------ | --------------- |
-  | Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical        |
-  | Non-critical bugs, performance boosts                        | Medium Priority |
-  | Minor fixes (typos, confusing but working UI)                | Low Priority    |
+| Issue Type | Priority |
+| ------------------------------------------------------------ | --------------- |
+| Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical |
+| Non-critical bugs, performance boosts | Medium Priority |
+| Minor fixes (typos, confusing but working UI) | Low Priority |
 
 ### Feature requests
 
@@ -52,28 +52,32 @@ How we prioritize:
 
 How we prioritize:
 
-  | Feature Type                                                 | Priority        |
-  | ------------------------------------------------------------ | --------------- |
-  | High-Priority Features as being labeled by a team member     | High Priority   |
-  | Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
-  | Non-core features and minor enhancements                     | Low Priority    |
-  | Valuable but not immediate                                   | Future-Feature  |
+| Feature Type | Priority |
+| ------------------------------------------------------------ | --------------- |
+| High-Priority Features as being labeled by a team member | High Priority |
+| Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
+| Non-core features and minor enhancements | Low Priority |
+| Valuable but not immediate | Future-Feature |
+
 ## Submitting your PR
 
 ### Pull Request Process
 
 1. Fork the repository
-2. Before you draft a PR, please create an issue to discuss the changes you want to make
-3. Create a new branch for your changes
-4. Please add tests for your changes accordingly
-5. Ensure your code passes the existing tests
-6. Please link the issue in the PR description, `fixes #<issue_number>`
-7. Get merged! 
+1. Before you draft a PR, please create an issue to discuss the changes you want to make
+1. Create a new branch for your changes
+1. Please add tests for your changes accordingly
+1. Ensure your code passes the existing tests
+1. Please link the issue in the PR description, `fixes #<issue_number>`
+1. Get merged!
+
 ### Setup the project
 
 #### Frontend
 
 For setting up the frontend service, please refer to our comprehensive [guide](https://github.com/langgenius/dify/blob/main/web/README.md) in the `web/README.md` file. This document provides detailed instructions to help you set up the frontend environment properly.
+
+**Testing**: All React components must have comprehensive test coverage. See [web/docs/test.md](https://github.com/langgenius/dify/blob/main/web/docs/test.md) for the canonical frontend testing guidelines and follow every requirement described there.
 
 #### Backend
 
@@ -82,12 +86,14 @@ For setting up the backend service, kindly refer to our detailed [instructions](
 #### Other things to note
 
 We recommend reviewing this document carefully before proceeding with the setup, as it contains essential information about:
+
 - Prerequisites and dependencies
 - Installation steps
 - Configuration details
 - Common troubleshooting tips
 
 Feel free to reach out if you encounter any issues during the setup process.
+
 ## Getting Help
 
 If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the related GitHub issue, or hop onto our [Discord](https://discord.gg/8Tpq4AcN9c) for a quick chat.

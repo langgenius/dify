@@ -1,0 +1,1 @@
+# Core trigger module initialization

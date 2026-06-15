@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: string
   errorMsg?: string
-}
+}>
 
 const ErrorMessage: FC<Props> = ({
   className,
@@ -17,12 +17,12 @@ const ErrorMessage: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className, 'border-t border-divider-subtle bg-dataset-warning-message-bg px-4 py-2 opacity-40')}>
-      <div className='flex h-5 items-center'>
-        <AlertTriangle className='mr-2 h-4 w-4 text-text-warning-secondary' />
-        <div className='system-md-medium text-text-warning'>{title}</div>
+      <div className="flex h-5 items-center">
+        <AlertTriangle className="mr-2 size-4 text-text-warning-secondary" />
+        <div className="system-md-medium text-text-warning">{title}</div>
       </div>
       {errorMsg && (
-        <div className='system-xs-regular mt-1 pl-6 text-text-secondary'>{errorMsg}</div>
+        <div className="mt-1 pl-6 system-xs-regular text-text-secondary">{errorMsg}</div>
       )}
     </div>
   )

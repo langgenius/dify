@@ -1,22 +1,19 @@
-import {
-  memo,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 import type { BlockEnum, ToolWithProvider } from '../types'
-import IndexBar, { groupItems } from './index-bar'
-import type { ToolDefaultValue, ToolValue } from './types'
-import type { ToolTypeEnum } from './types'
-import { ViewType } from './view-type-select'
-import Empty from '@/app/components/tools/add-tool-modal/empty'
+import type { ToolActionPreviewPayload } from './tool/action-item'
+import type { ToolDefaultValue, ToolTypeEnum, ToolValue } from './types'
+import { cn } from '@langgenius/dify-ui/cn'
+import { createPreviewCardHandle, PreviewCard } from '@langgenius/dify-ui/preview-card'
+import { memo, useMemo, useRef } from 'react'
+import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
-import ToolListTreeView from './tool/tool-list-tree-view/list'
+import IndexBar, { groupItems } from './index-bar'
+import { ToolActionPreviewCard } from './tool/action-item'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
-import classNames from '@/utils/classnames'
+import ToolListTreeView from './tool/tool-list-tree-view/list'
+import { ViewType } from './view-type-select'
 
 type ToolsProps = {
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]
@@ -27,9 +24,8 @@ type ToolsProps = {
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
-  canChooseMCPTool?: boolean
 }
-const Blocks = ({
+const Tools = ({
   onSelect,
   canNotSelectMultiple,
   onSelectMultiple,
@@ -41,11 +37,9 @@ const Blocks = ({
   className,
   indexBarClassName,
   selectedTools,
-  canChooseMCPTool,
 }: ToolsProps) => {
-  // const tools: any = []
-  const { t } = useTranslation()
   const language = useGetLanguage()
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<ToolActionPreviewPayload>(), [])
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
 
@@ -65,14 +59,14 @@ const Blocks = ({
     }
   }
   */
-  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language][0])
+  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language]![0]!)
   const treeViewToolsData = useMemo(() => {
     const result: Record<string, ToolWithProvider[]> = {}
     Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
         if (!result[groupName])
           result[groupName] = []
-        result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
+        result[groupName].push(...(withLetterAndGroupViewToolsData[letter]![groupName] ?? []))
       })
     })
     return result
@@ -81,8 +75,8 @@ const Blocks = ({
   const listViewToolData = useMemo(() => {
     const result: ToolWithProvider[] = []
     letters.forEach((letter) => {
-      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
-        result.push(...withLetterAndGroupViewToolsData[letter][groupName].map((item) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]!).forEach((groupName) => {
+        result.push(...withLetterAndGroupViewToolsData[letter]![groupName]!.map((item) => {
           return {
             ...item,
             letter,
@@ -94,49 +88,51 @@ const Blocks = ({
     return result
   }, [withLetterAndGroupViewToolsData, letters])
 
-  const toolRefs = useRef({})
+  const toolRefsRef = useRef<Record<string, HTMLDivElement | null>>({})
 
   return (
-    <div className={classNames('max-w-[100%] p-1', className)}>
-      {
-        !tools.length && hasSearchText && (
-          <div className='mt-2 flex h-[22px] items-center px-3 text-xs font-medium text-text-secondary'>{t('workflow.tabs.noResult')}</div>
-        )
-      }
+    <div className={cn('max-w-full p-1', className)}>
       {!tools.length && !hasSearchText && (
-        <div className='py-10'>
-          <Empty type={toolType!} isAgent={isAgent}/>
+        <div className="py-10">
+          <Empty type={toolType!} isAgent={isAgent} />
         </div>
       )}
       {!!tools.length && (
-        isFlatView ? (
-          <ToolListFlatView
-            toolRefs={toolRefs}
-            letters={letters}
-            payload={listViewToolData}
-            isShowLetterIndex={isShowLetterIndex}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-            indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
-          />
-        ) : (
-          <ToolListTreeView
-            payload={treeViewToolsData}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-          />
-        )
+        isFlatView
+          ? (
+              <ToolListFlatView
+                toolRefs={toolRefsRef}
+                letters={letters}
+                payload={listViewToolData}
+                previewCardHandle={previewCardHandle}
+                isShowLetterIndex={isShowLetterIndex}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+                indexBar={<IndexBar letters={letters} itemRefs={toolRefsRef} className={indexBarClassName} />}
+              />
+            )
+          : (
+              <ToolListTreeView
+                payload={treeViewToolsData}
+                previewCardHandle={previewCardHandle}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+              />
+            )
       )}
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => (
+          <ToolActionPreviewCard payload={payload as ToolActionPreviewPayload | undefined} />
+        )}
+      </PreviewCard>
     </div>
   )
 }
 
-export default memo(Blocks)
+export default memo(Tools)

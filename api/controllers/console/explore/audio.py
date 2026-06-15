@@ -4,6 +4,9 @@ from flask import request
 from werkzeug.exceptions import InternalServerError
 
 import services
+from controllers.common.controller_schemas import TextToAudioPayload
+from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -17,7 +20,8 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.model_runtime.errors.invoke import InvokeError
+from graphon.model_runtime.errors.invoke import InvokeError
+from models.model import InstalledApp
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -26,10 +30,24 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
+from .. import console_ns
 
+logger = logging.getLogger(__name__)
+
+register_schema_model(console_ns, TextToAudioPayload)
+register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscriptResponse)
+
+
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/audio-to-text",
+    endpoint="installed_app_audio",
+)
 class ChatAudioApi(InstalledAppResource):
-    def post(self, installed_app):
+    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
+    def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
 
         file = request.files["file"]
 
@@ -38,7 +56,7 @@ class ChatAudioApi(InstalledAppResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -59,31 +77,32 @@ class ChatAudioApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()
 
 
+@console_ns.route(
+    "/installed-apps/<uuid:installed_app_id>/text-to-audio",
+    endpoint="installed_app_text",
+)
 class ChatTextApi(InstalledAppResource):
-    def post(self, installed_app):
-        from flask_restful import reqparse
-
+    @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
+    def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         try:
-            parser = reqparse.RequestParser()
-            parser.add_argument("message_id", type=str, required=False, location="json")
-            parser.add_argument("voice", type=str, location="json")
-            parser.add_argument("text", type=str, location="json")
-            parser.add_argument("streaming", type=bool, location="json")
-            args = parser.parse_args()
+            payload = TextToAudioPayload.model_validate(console_ns.payload or {})
 
-            message_id = args.get("message_id", None)
-            text = args.get("text", None)
-            voice = args.get("voice", None)
+            message_id = payload.message_id
+            text = payload.text
+            voice = payload.voice
 
             response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logger.exception("App model config broken.")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -104,5 +123,5 @@ class ChatTextApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logger.exception("internal server error.")
             raise InternalServerError()

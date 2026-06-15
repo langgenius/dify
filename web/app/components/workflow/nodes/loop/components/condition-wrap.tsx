@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Node, NodeOutPutVar, Var } from '../../../types'
+import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator, handleRemoveSubVariableCondition } from '../types'
-import type { Node, NodeOutPutVar, Var } from '../../../types'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
-import ConditionList from './condition-list'
-import ConditionAdd from './condition-add'
 import { SUB_VARIABLES } from './../default'
-import cn from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import { PortalSelect as Select } from '@/app/components/base/select'
+import ConditionAdd from './condition-add'
+import ConditionList from './condition-list'
 
-type Props = {
+type Props = Readonly<{
   isSubVariable?: boolean
   conditionId?: string
   conditions: Condition[]
@@ -33,7 +34,7 @@ type Props = {
   nodeId: string
   availableNodes: Node[]
   availableVars: NodeOutPutVar[]
-}
+}>
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,
@@ -75,13 +76,13 @@ const ConditionWrap: FC<Props> = ({
         <div
           className={cn(
             'group relative rounded-[10px] bg-components-panel-bg',
-            !isSubVariable && 'min-h-[40px] px-3 py-1 ',
+            !isSubVariable && 'min-h-[40px] px-3 py-1',
             isSubVariable && 'px-1 py-2',
           )}
         >
           {
             conditions && !!conditions.length && (
-              <div className='mb-2'>
+              <div className="mb-2">
                 <ConditionList
                   disabled={readOnly}
                   conditionId={conditionId}
@@ -109,33 +110,44 @@ const ConditionWrap: FC<Props> = ({
             !conditions.length && !isSubVariable && 'mt-1',
             !conditions.length && isSubVariable && 'mt-2',
             conditions.length > 1 && !isSubVariable && 'ml-[60px]',
-          )}>
+          )}
+          >
             {isSubVariable
               ? (
-                <Select
-                  popupInnerClassName='w-[165px] max-h-none'
-                  onSelect={value => handleAddSubVariableCondition?.(conditionId!, value.value as string)}
-                  items={subVarOptions}
-                  value=''
-                  renderTrigger={() => (
-                    <Button
-                      size='small'
-                      disabled={readOnly}
+                  <Select
+                    value={null}
+                    disabled={readOnly}
+                    onValueChange={value => value && handleAddSubVariableCondition?.(conditionId!, value)}
+                  >
+                    <SelectTrigger
+                      render={<div />}
+                      nativeButton={false}
+                      className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                     >
-                      <RiAddLine className='mr-1 h-3.5 w-3.5' />
-                      {t('workflow.nodes.ifElse.addSubVariable')}
-                    </Button>
-                  )}
-                  hideChecked
-                />
-              )
+                      <Button
+                        size="small"
+                        disabled={readOnly}
+                      >
+                        <RiAddLine className="mr-1 size-3.5" />
+                        {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
+                      </Button>
+                    </SelectTrigger>
+                    <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
+                      {subVarOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          <SelectItemText>{option.name}</SelectItemText>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )
               : (
-                <ConditionAdd
-                  disabled={readOnly}
-                  variables={availableVars}
-                  onSelectVariable={handleAddCondition!}
-                />
-              )}
+                  <ConditionAdd
+                    disabled={readOnly}
+                    variables={availableVars}
+                    onSelectVariable={handleAddCondition!}
+                  />
+                )}
           </div>
         </div>
       </div>

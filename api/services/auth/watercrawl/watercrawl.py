@@ -1,13 +1,14 @@
 import json
+from typing import override
 from urllib.parse import urljoin
 
-import requests
+import httpx
 
-from services.auth.api_key_auth_base import ApiKeyAuthBase
+from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
 
 class WatercrawlAuth(ApiKeyAuthBase):
-    def __init__(self, credentials: dict):
+    def __init__(self, credentials: AuthCredentials):
         super().__init__(credentials)
         auth_type = credentials.get("auth_type")
         if auth_type != "x-api-key":
@@ -18,6 +19,7 @@ class WatercrawlAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
+    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         url = urljoin(self.base_url, "/api/v1/core/crawl-requests/")
@@ -31,7 +33,7 @@ class WatercrawlAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "X-API-KEY": self.api_key}
 
     def _get_request(self, url, headers):
-        return requests.get(url, headers=headers)
+        return httpx.get(url, headers=headers)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:

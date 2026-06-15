@@ -1,19 +1,15 @@
-import type { AssignerNodeType } from './types'
+import type { AssignerNodeOperation, AssignerNodeType } from './types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { AssignerNodeInputType, WriteMode } from './types'
 
-export const checkNodeValid = (payload: AssignerNodeType) => {
-  return true
-}
+export type OperationName = I18nKeysByPrefix<'workflow', 'nodes.assigner.operations.'>
 
-export const formatOperationName = (type: string) => {
-  if (type === 'over-write')
-    return 'Overwrite'
-  return type.charAt(0).toUpperCase() + type.slice(1)
-}
+export type Item
+  = | { value: 'divider', name: 'divider' }
+    | { value: string | number, name: OperationName }
 
-type Item = {
-  value: string | number
-  name: string
+export function isOperationItem(item: Item): item is { value: string | number, name: OperationName } {
+  return item.value !== 'divider'
 }
 
 export const getOperationItems = (
@@ -43,7 +39,7 @@ export const getOperationItems = (
     ]
   }
 
-  if (writeModeTypes && ['string', 'object'].includes(assignedVarType || '')) {
+  if (writeModeTypes && ['string', 'boolean', 'object'].includes(assignedVarType || '')) {
     return writeModeTypes.map(type => ({
       value: type,
       name: type,
@@ -66,18 +62,49 @@ const convertOldWriteMode = (oldMode: string): WriteMode => {
   }
 }
 
+const normalizeVariableSelector = (value: unknown) => {
+  return Array.isArray(value) ? value : []
+}
+
+export const normalizeOperationItems = (items: unknown): AssignerNodeOperation[] => {
+  if (!Array.isArray(items))
+    return []
+
+  return items.map((item) => {
+    const operationItem = (item || {}) as Partial<AssignerNodeOperation>
+    const inputType = operationItem.input_type === AssignerNodeInputType.constant
+      ? AssignerNodeInputType.constant
+      : AssignerNodeInputType.variable
+
+    return {
+      variable_selector: normalizeVariableSelector(operationItem.variable_selector),
+      input_type: inputType,
+      operation: Object.values(WriteMode).includes(operationItem.operation as WriteMode)
+        ? operationItem.operation as WriteMode
+        : WriteMode.overwrite,
+      value: inputType === AssignerNodeInputType.variable
+        ? normalizeVariableSelector(operationItem.value)
+        : operationItem.value,
+    }
+  })
+}
+
 export const convertV1ToV2 = (payload: any): AssignerNodeType => {
-  if (payload.version === '2' && payload.items)
-    return payload as AssignerNodeType
+  if (payload.version === '2' && payload.items) {
+    return {
+      ...payload,
+      items: normalizeOperationItems(payload.items),
+    } as AssignerNodeType
+  }
 
   return {
+    ...payload,
     version: '2',
-    items: [{
+    items: normalizeOperationItems([{
       variable_selector: payload.assigned_variable_selector || [],
       input_type: AssignerNodeInputType.variable,
       operation: convertOldWriteMode(payload.write_mode),
       value: payload.input_variable_selector || [],
-    }],
-    ...payload,
+    }]),
   }
 }

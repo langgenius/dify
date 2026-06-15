@@ -176,6 +176,6 @@ const examples = [
       }
     }`,
   },
-]
+] as const
 
 export default examples

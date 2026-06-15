@@ -1,3 +1,11 @@
+import type { PluginPayload } from '../types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
+import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import {
   memo,
   useCallback,
@@ -6,41 +14,44 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiExternalLinkLine } from '@remixicon/react'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Modal from '@/app/components/base/modal/modal'
-import { CredentialTypeEnum } from '../types'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { useToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
-import type { PluginPayload } from '../types'
+import PermissionSelector from '@/app/components/base/permission-selector'
+import { PermissionLevel } from '@/models/permission'
+import { useMembers } from '@/service/use-common'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { CredentialTypeEnum } from '../types'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
   onClose?: () => void
-  editValues?: Record<string, any>
+  editValues?: Record<string, unknown>
   onRemove?: () => void
   disabled?: boolean
   onUpdate?: () => void
+  formSchemas?: FormSchema[]
 }
 const ApiKeyModal = ({
   pluginPayload,
+  open = true,
+  onOpenChange,
   onClose,
   editValues,
   onRemove,
   disabled,
   onUpdate,
+  formSchemas: formSchemasFromProps = [],
 }: ApiKeyModalProps) => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const [doingAction, setDoingAction] = useState(false)
   const doingActionRef = useRef(doingAction)
   const handleSetDoingAction = useCallback((value: boolean) => {
@@ -48,24 +59,37 @@ const ApiKeyModal = ({
     setDoingAction(value)
   }, [])
   const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
+    (editValues?.__visibility__ as PermissionLevel) ?? PermissionLevel.allTeamMembers,
+  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    (editValues?.__partial_member_list__ as string[]) ?? [],
+  )
+  // Only need member list when creating (the permission selector is hidden on edit).
+  const { data: membersData } = useMembers()
+  const memberList = membersData?.accounts ?? []
+  const mergedData = useMemo(() => {
+    if (formSchemasFromProps?.length)
+      return formSchemasFromProps
+
+    return data
+  }, [formSchemasFromProps, data])
   const formSchemas = useMemo(() => {
     return [
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: t('plugin.auth.authorizationName'),
+        label: t('auth.authorizationName', { ns: 'plugin' }),
         required: false,
       },
-      ...data,
+      ...mergedData,
     ]
-  }, [data, t])
+  }, [mergedData, t])
   const defaultValues = formSchemas.reduce((acc, schema) => {
     if (schema.default)
       acc[schema.name] = schema.default
     return acc
-  }, {} as Record<string, any>)
-  const helpField = formSchemas.find(schema => schema.url && schema.help)
-  const renderI18nObject = useRenderI18nObject()
+  }, {} as Record<string, unknown>)
   const { mutateAsync: addPluginCredential } = useAddPluginCredentialHook(pluginPayload)
   const { mutateAsync: updatePluginCredential } = useUpdatePluginCredentialHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
@@ -86,10 +110,14 @@ const ApiKeyModal = ({
       const {
         __name__,
         __credential_id__,
+        __visibility__,
+        __partial_member_list__,
+        __created_by__,
         ...restValues
       } = values
 
       handleSetDoingAction(true)
+      // Visibility is settable only at creation. On edit we don't send it.
       if (editValues) {
         await updatePluginCredential({
           credentials: restValues,
@@ -98,83 +126,135 @@ const ApiKeyModal = ({
         })
       }
       else {
+        const permissionPayload = {
+          visibility: permission,
+          ...(permission === PermissionLevel.partialMembers
+            ? { partial_member_list: selectedMemberIDs.map(id => ({ user_id: id })) }
+            : {}),
+        }
         await addPluginCredential({
           credentials: restValues,
           type: CredentialTypeEnum.API_KEY,
           name: __name__ || '',
+          ...permissionPayload,
         })
       }
-      notify({
-        type: 'success',
-        message: t('common.api.actionSuccess'),
-      })
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
 
+      onOpenChange?.(false)
       onClose?.()
       onUpdate?.()
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onUpdate, updatePluginCredential, notify, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onOpenChange, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction, permission, selectedMemberIDs])
+
+  const isDisabled = disabled || isLoading || doingAction
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    onOpenChange?.(nextOpen)
+    if (!nextOpen)
+      onClose?.()
+  }, [onClose, onOpenChange])
 
   return (
-    <Modal
-      size='md'
-      title={t('plugin.auth.useApiAuth')}
-      subTitle={t('plugin.auth.useApiAuthDesc')}
-      onClose={onClose}
-      onCancel={onClose}
-      footerSlot={
-        helpField && (
-          <a
-            className='system-xs-regular mr-2 flex items-center py-2 text-text-accent'
-            href={helpField?.url}
-            target='_blank'
-          >
-            <span className='break-all'>
-              {renderI18nObject(helpField?.help as any)}
-            </span>
-            <RiExternalLinkLine className='ml-1 h-3 w-3' />
-          </a>
-        )
-      }
-      bottomSlot={
-        <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
-          <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
-          {t('common.modelProvider.encrypted.front')}
-          <a
-            className='mx-1 text-text-accent'
-            target='_blank' rel='noopener noreferrer'
-            href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-          >
-            PKCS1_OAEP
-          </a>
-          {t('common.modelProvider.encrypted.back')}
-        </div>
-      }
-      onConfirm={handleConfirm}
-      showExtraButton={!!editValues}
-      onExtraButtonClick={onRemove}
-      disabled={disabled || isLoading || doingAction}
+    <Dialog
+      open={open}
+      onOpenChange={handleOpenChange}
     >
-      {
-        isLoading && (
-          <div className='flex h-40 items-center justify-center'>
-            <Loading />
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
+      >
+        <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
+          <div className="relative shrink-0 p-6 pr-14 pb-3">
+            <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
+              {t('auth.useApiAuth', { ns: 'plugin' })}
+            </DialogTitle>
+            <div className="mt-1 system-xs-regular text-text-tertiary">
+              {t('auth.useApiAuthDesc', { ns: 'plugin' })}
+            </div>
+            <DialogCloseButton
+              className="top-5 right-5 size-8 rounded-lg"
+            />
           </div>
-        )
-      }
-      {
-        !isLoading && !!data.length && (
-          <AuthForm
-            ref={formRef}
-            formSchemas={formSchemas}
-            defaultValues={editValues || defaultValues}
-            disabled={disabled}
-          />
-        )
-      }
-    </Modal>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
+            {pluginPayload.detail && (
+              <ReadmeEntrance pluginDetail={pluginPayload.detail} presentation="dialog" />
+            )}
+            {
+              isLoading && (
+                <div className="flex h-40 items-center justify-center">
+                  <Loading />
+                </div>
+              )
+            }
+            {
+              !isLoading && !!mergedData.length && (
+                <AuthForm
+                  ref={formRef}
+                  formSchemas={formSchemas}
+                  defaultValues={editValues || defaultValues}
+                  disabled={disabled}
+                />
+              )
+            }
+            {!isLoading && !editValues && (
+              <div className="mt-4 px-1">
+                <div className="mb-1 system-sm-semibold text-text-secondary">
+                  {t('auth.whoCanUse', { ns: 'plugin' })}
+                </div>
+                <PermissionSelector
+                  disabled={disabled}
+                  permission={permission}
+                  value={selectedMemberIDs}
+                  memberList={memberList}
+                  onChange={v => setPermission(v)}
+                  onMemberSelect={setSelectedMemberIDs}
+                  hidePartialMembers
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 justify-between p-6 pt-5">
+            <div />
+            <div className="flex items-center">
+              {editValues && (
+                <>
+                  <Button
+                    data-testid="modal-extra"
+                    variant="primary"
+                    onClick={onRemove}
+                    disabled={isDisabled}
+                  >
+                    {t('operation.remove', { ns: 'common' })}
+                  </Button>
+                  <div className="mx-3 h-4 w-px bg-divider-regular"></div>
+                </>
+              )}
+              <Button
+                onClick={() => handleOpenChange(false)}
+                disabled={isDisabled}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                data-testid="modal-confirm"
+                className="ml-2"
+                variant="primary"
+                onClick={handleConfirm}
+                disabled={isDisabled}
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <EncryptedBottom />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

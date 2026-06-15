@@ -1,6 +1,6 @@
-import { RiFileTextLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
 import type { DataSourceNotionPage } from '@/models/common'
+import { cn } from '@langgenius/dify-ui/cn'
+import { RiFileTextLine } from '@remixicon/react'
 
 type IconTypes = 'workspace' | 'page'
 type NotionIconProps = {
@@ -20,18 +20,18 @@ const NotionIcon = ({
       if (src.startsWith('https://') || src.startsWith('http://')) {
         return (
           <img
-            alt='workspace icon'
+            alt="workspace icon"
             src={src}
-            className={cn('block h-5 w-5 object-cover', className)}
+            className={cn('block size-5 object-cover', className)}
           />
         )
       }
       return (
-        <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src}</div>
+        <div className={cn('flex size-5 items-center justify-center', className)}>{src}</div>
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0].toLocaleUpperCase()}</div>
+      <div className={cn('flex size-5 items-center justify-center rounded-sm bg-gray-200 text-xs font-medium text-gray-500', className)}>{name?.[0]!.toLocaleUpperCase()}</div>
     )
   }
 
@@ -39,19 +39,19 @@ const NotionIcon = ({
     if (src?.type === 'url') {
       return (
         <img
-          alt='page icon'
+          alt="page icon"
           src={src.url || ''}
-          className={cn('block h-5 w-5 object-cover', className)}
+          className={cn('block size-5 object-cover', className)}
         />
       )
     }
     return (
-      <div className={cn('flex h-5 w-5 items-center justify-center', className)}>{src?.emoji}</div>
+      <div className={cn('flex size-5 items-center justify-center', className)}>{src?.emoji}</div>
     )
   }
 
   return (
-    <RiFileTextLine className={cn('h-5 w-5 text-text-tertiary', className)} />
+    <RiFileTextLine className={cn('size-5 text-text-tertiary', className)} />
   )
 }
 

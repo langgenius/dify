@@ -1,3 +1,5 @@
+from typing import override
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -14,12 +16,13 @@ from core.app.entities.queue_entities import (
 
 
 class WorkflowAppQueueManager(AppQueueManager):
-    def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom, app_mode: str) -> None:
+    def __init__(self, task_id: str, user_id: str, invoke_from: InvokeFrom, app_mode: str):
         super().__init__(task_id, user_id, invoke_from)
 
         self._app_mode = app_mode
 
-    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
+    @override
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
         """
         Publish event to queue
         :param event:

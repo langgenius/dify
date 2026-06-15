@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -9,4 +7,4 @@ class DocumentContext(BaseModel):
     """
 
     content: str
-    score: Optional[float] = None
+    score: float | None = None

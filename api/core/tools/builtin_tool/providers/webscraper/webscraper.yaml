@@ -6,9 +6,9 @@ identity:
     zh_Hans: 网页抓取
     pt_BR: WebScraper
   description:
-    en_US: Web Scrapper tool kit is used to scrape web
+    en_US: Web Scraper tool kit is used to scrape web
     zh_Hans: 一个用于抓取网页的工具。
-    pt_BR: Web Scrapper tool kit is used to scrape web
+    pt_BR: Web Scraper tool kit is used to scrape web
   icon: icon.svg
   tags:
     - productivity

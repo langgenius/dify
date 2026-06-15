@@ -1,15 +1,17 @@
 'use client'
 
-import type { ChatConfig } from '@/app/components/base/chat/types'
-import Loading from '@/app/components/base/loading'
-import { AccessMode } from '@/models/access-control'
-import type { AppData, AppMeta } from '@/models/share'
-import { useGetWebAppAccessModeByCode } from '@/service/use-share'
-import { usePathname, useSearchParams } from 'next/navigation'
 import type { FC, PropsWithChildren } from 'react'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AppData, AppMeta } from '@/models/share'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { useState } from 'react'
 import { create } from 'zustand'
+import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
+import Loading from '@/app/components/base/loading'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { AccessMode } from '@/models/access-control'
+import { usePathname, useSearchParams } from '@/next/navigation'
+import { useGetWebAppAccessModeByCode } from '@/service/use-share'
 
 type WebAppStore = {
   shareCode: string | null
@@ -24,6 +26,10 @@ type WebAppStore = {
   updateWebAppMeta: (appMeta: AppMeta | null) => void
   userCanAccessApp: boolean
   updateUserCanAccessApp: (canAccess: boolean) => void
+  embeddedUserId: string | null
+  updateEmbeddedUserId: (userId: string | null) => void
+  embeddedConversationId: string | null
+  updateEmbeddedConversationId: (conversationId: string | null) => void
 }
 
 export const useWebAppStore = create<WebAppStore>(set => ({
@@ -39,6 +45,11 @@ export const useWebAppStore = create<WebAppStore>(set => ({
   updateWebAppMeta: (appMeta: AppMeta | null) => set(() => ({ appMeta })),
   userCanAccessApp: false,
   updateUserCanAccessApp: (canAccess: boolean) => set(() => ({ userCanAccessApp: canAccess })),
+  embeddedUserId: null,
+  updateEmbeddedUserId: (userId: string | null) => set(() => ({ embeddedUserId: userId })),
+  embeddedConversationId: null,
+  updateEmbeddedConversationId: (conversationId: string | null) =>
+    set(() => ({ embeddedConversationId: conversationId })),
 }))
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
@@ -55,28 +66,58 @@ const getShareCodeFromPathname = (pathname: string): string | null => {
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
+  const { isPending: isGlobalPending } = useQuery(systemFeaturesQueryOptions())
   const updateWebAppAccessMode = useWebAppStore(state => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore(state => state.updateShareCode)
+  const updateEmbeddedUserId = useWebAppStore(state => state.updateEmbeddedUserId)
+  const updateEmbeddedConversationId = useWebAppStore(state => state.updateEmbeddedConversationId)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const redirectUrlParam = searchParams.get('redirect_url')
-  const [shareCode, setShareCode] = useState<string | null>(null)
+  const searchParamsString = searchParams.toString()
+
+  // Compute shareCode directly
+  const shareCode = getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
   useEffect(() => {
-    const shareCodeFromRedirect = getShareCodeFromRedirectUrl(redirectUrlParam)
-    const shareCodeFromPathname = getShareCodeFromPathname(pathname)
-    const newShareCode = shareCodeFromRedirect || shareCodeFromPathname
-    setShareCode(newShareCode)
-    updateShareCode(newShareCode)
-  }, [pathname, redirectUrlParam, updateShareCode])
-  const { isFetching, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+    updateShareCode(shareCode)
+  }, [shareCode, updateShareCode])
+
+  useEffect(() => {
+    let cancelled = false
+    const syncEmbeddedUserId = async () => {
+      try {
+        const { user_id, conversation_id } = await getProcessedSystemVariablesFromUrlParams()
+        if (!cancelled) {
+          updateEmbeddedUserId(user_id || null)
+          updateEmbeddedConversationId(conversation_id || null)
+        }
+      }
+      catch {
+        if (!cancelled) {
+          updateEmbeddedUserId(null)
+          updateEmbeddedConversationId(null)
+        }
+      }
+    }
+    syncEmbeddedUserId()
+    return () => {
+      cancelled = true
+    }
+  }, [searchParamsString, updateEmbeddedUserId, updateEmbeddedConversationId])
+
+  const { isLoading, data: accessModeResult } = useGetWebAppAccessModeByCode(shareCode)
+
   useEffect(() => {
     if (accessModeResult?.accessMode)
       updateWebAppAccessMode(accessModeResult.accessMode)
-  }, [accessModeResult, updateWebAppAccessMode])
-  if (isFetching) {
-    return <div className='flex h-full w-full items-center justify-center'>
-      <Loading />
-    </div>
+  }, [accessModeResult, updateWebAppAccessMode, shareCode])
+
+  if (isGlobalPending || isLoading) {
+    return (
+      <div className="flex size-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return (
     <>

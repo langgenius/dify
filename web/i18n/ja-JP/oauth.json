@@ -1,0 +1,19 @@
+{
+  "connect": "接続する",
+  "continue": "続行",
+  "error.authAppInfoFetchFailed": "認証のためのアプリ情報の取得に失敗しました",
+  "error.authorizeFailed": "認証に失敗しました",
+  "error.invalidParams": "無効なパラメータ",
+  "login": "ログイン",
+  "scopes.avatar": "アバター",
+  "scopes.email": "メール",
+  "scopes.languagePreference": "言語の好み",
+  "scopes.name": "名前",
+  "scopes.timezone": "タイムゾーン",
+  "switchAccount": "アカウントを切り替える",
+  "tips.common": "私たちはあなたのプライバシーを尊重し、この情報を私たちの開発者ツールによる体験を向上させるためにのみ使用します。",
+  "tips.loggedIn": "このアプリはあなたのDify Cloudアカウントから以下の情報にアクセスしたいと思っています。",
+  "tips.needLogin": "ログインして認証してください",
+  "tips.notLoggedIn": "このアプリはあなたのDify Cloudアカウントにアクセスしたいです",
+  "unknownApp": "不明なアプリ"
+}

@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import UpgradeBtn from '../upgrade-btn'
-import { Plan } from '../type'
-import cn from '@/utils/classnames'
+import { cn } from '@langgenius/dify-ui/cn'
+import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
+import { Plan } from '../type'
+import UpgradeBtn from '../upgrade-btn'
 
-type Props = {
+type Props = Readonly<{
   onClick?: () => void
   isDisplayOnly?: boolean
-}
+}>
 
 const HeaderBillingBtn: FC<Props> = ({
   onClick,
@@ -48,8 +48,8 @@ const HeaderBillingBtn: FC<Props> = ({
     <div
       onClick={handleClick}
       className={cn(
+        'flex h-[22px] items-center rounded-md border border-divider-regular px-2 text-xs font-semibold uppercase',
         classNames,
-        'flex h-[22px] items-center rounded-md border px-2 text-xs font-semibold uppercase',
         isDisplayOnly ? 'cursor-default' : 'cursor-pointer',
       )}
     >

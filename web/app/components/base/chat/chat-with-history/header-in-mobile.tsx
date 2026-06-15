@@ -1,19 +1,23 @@
+import type { ConversationItem } from '@/models/share'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiMenuLine,
-} from '@remixicon/react'
+import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
+import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
+import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { useChatWithHistoryContext } from './context'
+import MobileOperationDropdown from './header/mobile-operation-dropdown'
 import Operation from './header/operation'
 import Sidebar from './sidebar'
-import MobileOperationDropdown from './header/mobile-operation-dropdown'
-import AppIcon from '@/app/components/base/app-icon'
-import ActionButton from '@/app/components/base/action-button'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
-import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import Confirm from '@/app/components/base/confirm'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import type { ConversationItem } from '@/models/share'
 
 const HeaderInMobile = () => {
   const {
@@ -50,6 +54,7 @@ const HeaderInMobile = () => {
     setShowConfirm(null)
   }, [])
   const handleDelete = useCallback(() => {
+    /* v8 ignore next 2 -- @preserve */
     if (showConfirm)
       handleDeleteConversation(showConfirm.id, { onSuccess: handleCancelConfirm })
   }, [showConfirm, handleDeleteConversation, handleCancelConfirm])
@@ -57,6 +62,7 @@ const HeaderInMobile = () => {
     setShowRename(null)
   }, [])
   const handleRename = useCallback((newName: string) => {
+    /* v8 ignore next 2 -- @preserve */
     if (showRename)
       handleRenameConversation(showRename.id, newName, { onSuccess: handleCancelRename })
   }, [showRename, handleRenameConversation, handleCancelRename])
@@ -65,22 +71,22 @@ const HeaderInMobile = () => {
 
   return (
     <>
-      <div className='flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3'>
-        <ActionButton size='l' className='shrink-0' onClick={() => setShowSidebar(true)}>
-          <RiMenuLine className='h-[18px] w-[18px]' />
+      <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
+        <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
+          <div className="i-ri-menu-line h-[18px] w-[18px]" />
         </ActionButton>
-        <div className='flex grow items-center justify-center'>
+        <div className="flex grow items-center justify-center">
           {!currentConversationId && (
             <>
               <AppIcon
-                className='mr-2'
-                size='tiny'
+                className="mr-2"
+                size="tiny"
                 icon={appData?.site.icon}
                 iconType={appData?.site.icon_type}
                 imageUrl={appData?.site.icon_url}
                 background={appData?.site.icon_background}
               />
-              <div className='system-md-semibold truncate text-text-secondary'>
+              <div className="truncate system-md-semibold text-text-secondary">
                 {appData?.site.title}
               </div>
             </>
@@ -104,38 +110,51 @@ const HeaderInMobile = () => {
         />
       </div>
       {showSidebar && (
-        <div className='fixed inset-0 z-50 flex bg-background-overlay p-1'
+        <div
+          className="fixed inset-0 z-50 flex bg-background-overlay p-1"
           onClick={() => setShowSidebar(false)}
+          data-testid="mobile-sidebar-overlay"
         >
-          <div className='flex h-full w-[calc(100vw_-_40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm' onClick={e => e.stopPropagation()}>
+          <div className="flex h-full w-[calc(100vw-40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs" onClick={e => e.stopPropagation()} data-testid="sidebar-content">
             <Sidebar />
           </div>
         </div>
       )}
       {showChatSettings && (
-        <div className='fixed inset-0 z-50 flex justify-end bg-background-overlay p-1'
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-background-overlay p-1"
           onClick={() => setShowChatSettings(false)}
+          data-testid="mobile-chat-settings-overlay"
         >
-          <div className='flex h-full w-[calc(100vw_-_40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm' onClick={e => e.stopPropagation()}>
-            <div className='flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3'>
-              <Message3Fill className='h-6 w-6 shrink-0' />
-              <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
+          <div className="flex h-full w-[calc(100vw-40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-xs" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
+              <div className="i-custom-public-other-message-3-fill size-6 shrink-0" />
+              <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
             </div>
-            <div className='p-4'>
+            <div className="p-4">
               <InputsFormContent />
             </div>
           </div>
         </div>
       )}
-      {!!showConfirm && (
-        <Confirm
-          title={t('share.chat.deleteConversation.title')}
-          content={t('share.chat.deleteConversation.content') || ''}
-          isShow
-          onCancel={handleCancelConfirm}
-          onConfirm={handleDelete}
-        />
-      )}
+      <AlertDialog open={!!showConfirm} onOpenChange={open => !open && handleCancelConfirm()}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('chat.deleteConversation.title', { ns: 'share' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('chat.deleteConversation.content', { ns: 'share' }) || ''}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton onClick={handleDelete}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {showRename && (
         <RenameModal
           isShow
