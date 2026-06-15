@@ -19,7 +19,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -348,6 +348,43 @@ class AgentRosterService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         )
+
+    def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve the Agent App hidden behind an app-backed Agent id.
+
+        The public /agent route uses Agent ids, while the runtime and legacy app
+        APIs still operate on App ids internally. Only app-backed roster Agents
+        are accepted here; workflow-only Agents and historical standalone roster
+        Agents are not Agent App resources.
+        """
+        agent = self._session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.app_id.is_not(None),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        if agent is None or agent.app_id is None:
+            raise AgentNotFoundError()
+
+        app = self._session.scalar(
+            select(App)
+            .where(
+                App.tenant_id == tenant_id,
+                App.id == agent.app_id,
+                App.mode == AppMode.AGENT,
+                App.status == AppStatus.NORMAL,
+            )
+            .limit(1)
+        )
+        if app is None:
+            raise AgentNotFoundError()
+        return app
 
     def list_workflows_referencing_app_agent(self, *, tenant_id: str, app_id: str) -> list[AgentReferencingWorkflow]:
         """List the workflow apps that reference this Agent App's bound Agent.
