@@ -87,6 +87,10 @@ vi.mock('@/service/use-tools', () => ({
   useAllMCPTools: () => ({ data: [] }),
 }))
 
+vi.mock('@/hooks/use-theme', () => ({
+  default: () => ({ theme: 'light' }),
+}))
+
 const duckDuckGoSearchAction = {
   id: 'duckduckgo-search',
   name: 'DuckDuckGo Search',
@@ -208,6 +212,38 @@ describe('AgentPromptEditor', () => {
 
       expect(store.get(agentComposerPromptAtom)).toBe('Run [§cli_tool:cli-1:Release CLI§] and [§tool:duckduckgo/ddg_search:DuckDuckGo Search§]')
     })
+
+    it('should render selected tool reference icons from configured tools', () => {
+      renderAgentPromptEditor('Run tools')
+
+      const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
+      const renderIcon = promptEditorProps.rosterReferenceBlock?.renderIcon
+      expect(renderIcon).toBeDefined()
+
+      const { container, rerender } = render(
+        <>
+          {renderIcon?.({
+            kind: 'tool',
+            id: 'duckduckgo/ddg_search',
+            label: 'DuckDuckGo Search',
+          })}
+        </>,
+      )
+
+      expect(container.querySelector('.i-simple-icons-duckduckgo')).toBeInTheDocument()
+
+      rerender(
+        <>
+          {renderIcon?.({
+            kind: 'cli_tool',
+            id: 'cli-1',
+            label: 'Lark CLI',
+          })}
+        </>,
+      )
+
+      expect(container.querySelector('.i-ri-terminal-box-line')).toBeInTheDocument()
+    })
   })
 
   // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
@@ -218,9 +254,9 @@ describe('AgentPromptEditor', () => {
       expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
         disableBracePicker: true,
         disableSlashPicker: true,
-        rosterReferenceBlock: {
+        rosterReferenceBlock: expect.objectContaining({
           show: true,
-        },
+        }),
       }))
 
       expect(fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })).toBe(true)

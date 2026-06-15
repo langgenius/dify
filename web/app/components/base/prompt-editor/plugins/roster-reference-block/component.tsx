@@ -1,5 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
+import { use } from 'react'
+import { RosterReferenceBlockContext } from './context'
 import {
   getRosterReferenceFileIconType,
   getRosterReferenceIconClassName,
@@ -13,12 +15,17 @@ type RosterReferenceBlockComponentProps = {
 const RosterReferenceBlockComponent = ({
   text,
 }: RosterReferenceBlockComponentProps) => {
+  const rosterReferenceBlock = use(RosterReferenceBlockContext)
   const token = parseRosterReferenceToken(text)
 
   if (!token)
     return null
 
   const isKnowledge = token.kind === 'knowledge'
+  const customIcon = rosterReferenceBlock?.renderIcon?.(token)
+  const defaultIcon = token.kind === 'file'
+    ? <FileTreeIcon type={getRosterReferenceFileIconType(token.label)} className="size-4" />
+    : <span className={cn(isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />
 
   return (
     <span
@@ -36,9 +43,7 @@ const RosterReferenceBlockComponent = ({
           isKnowledge && 'border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
         )}
       >
-        {token.kind === 'file'
-          ? <FileTreeIcon type={getRosterReferenceFileIconType(token.label)} className="size-4" />
-          : <span className={cn(isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />}
+        {customIcon || defaultIcon}
       </span>
       <span className="max-w-48 truncate system-xs-medium text-text-accent">
         {token.label}

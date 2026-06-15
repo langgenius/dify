@@ -3,6 +3,7 @@ import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
+import type { RosterReferenceToken } from './plugins/roster-reference-block/utils'
 import type {
   Node,
   NodeOutPutVar,
@@ -61,6 +62,7 @@ export type VariableBlockType = {
 
 export type RosterReferenceBlockType = {
   show?: boolean
+  renderIcon?: (token: RosterReferenceToken) => React.ReactNode
 }
 
 export type ExternalToolBlockType = {

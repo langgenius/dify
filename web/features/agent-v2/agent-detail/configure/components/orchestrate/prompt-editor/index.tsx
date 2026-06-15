@@ -1,7 +1,10 @@
 'use client'
 
 import type { KeyboardEvent, MouseEvent } from 'react'
+import type { AgentTool } from '../tools/types'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
+import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -10,11 +13,15 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { useKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { usePrompt } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { useSkills } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { useTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
@@ -44,6 +51,62 @@ function AgentPromptPlaceholder({
         {insertLabel}
       </span>
     </span>
+  )
+}
+
+function getProviderToolFromToken(token: RosterReferenceToken, tools: AgentTool[]) {
+  if (token.kind !== 'tool' && token.kind !== 'tool-all')
+    return
+
+  return tools.find(tool =>
+    tool.kind === 'provider'
+    && (
+      token.id === `${tool.id}/*`
+      || tool.actions.some(action => token.id === `${tool.id}/${action.toolName}`)
+    ),
+  )
+}
+
+function AgentPromptRosterReferenceIcon({
+  token,
+  tools,
+}: {
+  token: RosterReferenceToken
+  tools: AgentTool[]
+}) {
+  const { theme } = useTheme()
+
+  if (token.kind === 'cli_tool') {
+    return (
+      <span
+        aria-hidden
+        className="i-ri-terminal-box-line size-3.5 shrink-0 text-text-primary-on-surface"
+      />
+    )
+  }
+
+  const providerTool = getProviderToolFromToken(token, tools)
+  if (!providerTool || providerTool.kind !== 'provider')
+    return null
+
+  const icon = theme === Theme.dark && providerTool.iconDark ? providerTool.iconDark : providerTool.icon
+
+  if (icon) {
+    return (
+      <BlockIcon
+        className="shrink-0"
+        type={BlockEnum.Tool}
+        size="xs"
+        toolIcon={icon}
+      />
+    )
+  }
+
+  return (
+    <span
+      aria-hidden
+      className={cn('size-3.5 shrink-0', providerTool.iconClassName)}
+    />
   )
 }
 
@@ -175,6 +238,13 @@ export function AgentPromptEditor() {
     closeSlashMenu()
   }
 
+  const renderRosterReferenceIcon = useCallback((token: RosterReferenceToken) => {
+    if (token.kind !== 'tool' && token.kind !== 'tool-all' && token.kind !== 'cli_tool')
+      return null
+
+    return <AgentPromptRosterReferenceIcon token={token} tools={tools} />
+  }, [tools])
+
   useEffect(() => {
     if (!isSlashMenuOpen)
       return
@@ -277,6 +347,7 @@ export function AgentPromptEditor() {
               }}
               rosterReferenceBlock={{
                 show: true,
+                renderIcon: renderRosterReferenceIcon,
               }}
               disableSlashPicker
               disableBracePicker

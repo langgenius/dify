@@ -59,6 +59,7 @@ import {
   RequestURLBlockReplacementBlock,
 } from './plugins/request-url-block'
 import RosterReferenceBlock from './plugins/roster-reference-block'
+import { RosterReferenceBlockContext } from './plugins/roster-reference-block/context'
 import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
@@ -132,7 +133,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   onEditorChange,
 }) => {
   return (
-    <>
+    <RosterReferenceBlockContext value={rosterReferenceBlock}>
       <RichTextPlugin
         contentEditable={(
           <ContentEditable
@@ -263,7 +264,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       {floatingAnchorElem && (
         <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
       )}
-    </>
+    </RosterReferenceBlockContext>
   )
 }
 
