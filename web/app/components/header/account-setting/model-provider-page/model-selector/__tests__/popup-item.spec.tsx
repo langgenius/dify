@@ -36,7 +36,7 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ modelItem }: { modelItem: ModelItem }) => <span>{modelItem.label.en_US}</span>,
+  default: ({ modelItem, nameClassName }: { modelItem: ModelItem, nameClassName?: string }) => <span className={nameClassName}>{modelItem.label.en_US}</span>,
 }))
 
 vi.mock('../feature-icon', () => ({
@@ -206,6 +206,18 @@ describe('PopupItem', () => {
     fireEvent.click(screen.getByText('GPT-4'))
 
     expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it('should strike through deprecated model name', () => {
+    renderWithCombobox(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({ models: [makeModelItem({ deprecated: true })] })}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('GPT-4')).toHaveClass('line-through')
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {

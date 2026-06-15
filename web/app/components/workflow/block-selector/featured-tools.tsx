@@ -12,11 +12,12 @@ import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
+import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import Tools from './tools'
@@ -136,7 +137,7 @@ const FeaturedTools = ({
 
           {showEmptyState && (
             <p className="py-2 system-xs-regular text-text-tertiary">
-              <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'tool' })} target="_blank" rel="noopener noreferrer">
+              <Link className="text-text-accent" href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedPlugins', { ns: 'workflow' })}
               </Link>
             </p>

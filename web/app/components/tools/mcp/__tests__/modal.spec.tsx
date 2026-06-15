@@ -11,18 +11,6 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
 }))
 
-// Mock the plugins service to avoid React Query issues from TabSlider
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({
-    data: { pages: [] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    isLoading: false,
-    isSuccess: true,
-  }),
-}))
-
 const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {

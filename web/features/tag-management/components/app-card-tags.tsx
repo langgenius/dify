@@ -15,7 +15,7 @@ export const AppCardTags = ({
   onTagsChange,
 }: AppCardTagsProps) => {
   return (
-    <div className="group/tag-area relative min-w-0 overflow-hidden">
+    <div className="group/tag-area relative w-full min-w-0 overflow-hidden">
       <TagSelector
         placement="bottom-start"
         type="app"

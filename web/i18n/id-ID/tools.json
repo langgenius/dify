@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Ditambahkan",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Tidak ada strategi agen yang tersedia",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Lihat panduan",
   "copyToolName": "Salin Nama",
   "createCustomTool": "Buat Alat Kustom",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Jenis Autentikasi",
   "createTool.authHeaderPrefix.types.basic": "Dasar",
   "createTool.authHeaderPrefix.types.bearer": "Pembawa",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Pengaturan",
   "setBuiltInTools.string": "tali",
   "setBuiltInTools.toolDescription": "Deskripsi alat",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Parameter",
   "test.parametersValue": "Parameter & Nilai",
   "test.testResult": "Hasil Tes",
@@ -211,5 +214,12 @@
   "toolRemoved": "Alat dihapus",
   "type.builtIn": "Perkakas",
   "type.custom": "Adat",
-  "type.workflow": "Alur Kerja"
+  "type.workflow": "Alur Kerja",
+  "workflowToolEmpty.description": "Untuk menggunakan workflow sebagai alat, publikasikan dulu dari Studio. Setelah itu workflow akan muncul di sini dan dapat ditambahkan ke aplikasi apa pun.",
+  "workflowToolEmpty.goToStudio": "Buka Studio",
+  "workflowToolEmpty.learnMore": "Butuh bantuan? Pelajari cara memublikasikan workflow sebagai alat →",
+  "workflowToolEmpty.step1": "Buat workflow di Studio",
+  "workflowToolEmpty.step2": "Klik “Workflow as Tool” di menu publikasi agar tersedia sebagai alat",
+  "workflowToolEmpty.step3": "Kembali ke sini untuk mengelola dan menggunakannya kembali",
+  "workflowToolEmpty.title": "Belum ada workflow yang dipublikasikan sebagai alat"
 }

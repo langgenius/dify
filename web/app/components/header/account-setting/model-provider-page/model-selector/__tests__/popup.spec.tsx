@@ -158,8 +158,9 @@ vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => 
   default: () => ({ check: mockCheck }),
 }))
 
+const mockGetMarketplaceUrl = vi.hoisted(() => vi.fn(() => 'https://marketplace.example.com'))
 vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(() => 'https://marketplace.example.com'),
+  getMarketplaceUrl: mockGetMarketplaceUrl,
 }))
 
 vi.mock('../../utils', async () => {
@@ -250,7 +251,7 @@ describe('Popup', () => {
     const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
     await user.click(input)
     await user.keyboard('not-found')
-    expect(screen.getByText('No model found for \u201Cnot-found\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
 
     const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
     expect(clearButton)!.toBeInTheDocument()
@@ -286,7 +287,7 @@ describe('Popup', () => {
     expect(screen.getByText('anthropic')).toBeInTheDocument()
     expect(screen.getByText('claude-3')).toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
-    expect(screen.queryByText('No model found for \u201Cclaude\u201D')).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.selector\.noModelFoundForSearch/)).not.toBeInTheDocument()
   })
 
   it('should show empty search placeholder when no provider or model name matches', () => {
@@ -309,7 +310,7 @@ describe('Popup', () => {
       { target: { value: 'mistral' } },
     )
 
-    expect(screen.getByText('No model found for \u201Cmistral\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
     expect(screen.queryByText('openai')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
   })
@@ -574,7 +575,7 @@ describe('Popup', () => {
       { target: { value: 'openai' } },
     )
 
-    expect(screen.getByText('No model found for \u201Copenai\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
     expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
     expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
   })
@@ -635,7 +636,7 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('No model found for \u201C\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
 
     unmount()
     mockSupportFunctionCall.mockReturnValue(true)
@@ -666,7 +667,7 @@ describe('Popup', () => {
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('No model found for \u201C\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
   })
 
   it('should match model labels from fallback languages when current language key is missing', () => {
@@ -805,7 +806,19 @@ describe('Popup', () => {
     expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
   })
 
-  it('should show empty state when no providers are configured', () => {
+  it('should hide provider settings footer when requested by the caller', () => {
+    renderPopup(
+      <PopupHarness
+        hideProviderSettingsFooter
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
+  })
+
+  it('should open provider settings from empty state when no providers are configured', () => {
     const onHide = vi.fn()
     renderPopup(
       <PopupHarness
@@ -824,6 +837,22 @@ describe('Popup', () => {
     })
   })
 
+  it('should only close the empty state selector when current account settings tab is provider', () => {
+    mockSearchParams.current = new URLSearchParams('action=showSettings&tab=provider')
+    const onHide = vi.fn()
+    renderPopup(
+      <PopupHarness
+        modelList={[]}
+        onHide={onHide}
+      />,
+    )
+
+    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
+
+    expect(onHide).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+  })
+
   it('should render marketplace providers that are not installed', () => {
     mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
 
@@ -838,6 +867,7 @@ describe('Popup', () => {
     expect(screen.getByText('TestAnthropic'))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/))!.toBeInTheDocument()
+    expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('/plugins/model', expect.objectContaining({ theme: expect.any(String) }))
   })
 
   it('should hide marketplace providers when marketplace is disabled', () => {

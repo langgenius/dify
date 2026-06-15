@@ -104,6 +104,7 @@ const Action: FC<Props> = ({
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
+        invalidateInstalledPluginList()
         onDelete()
       }
     }
@@ -113,7 +114,7 @@ const Action: FC<Props> = ({
     finally {
       hideDeleting()
     }
-  }, [hideDeleteConfirm, hideDeleting, installationId, onDelete, showDeleting])
+  }, [hideDeleteConfirm, hideDeleting, installationId, invalidateInstalledPluginList, onDelete, showDeleting])
   return (
     <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
@@ -179,7 +180,7 @@ const Action: FC<Props> = ({
         />
       )}
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
-        <AlertDialogContent>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
               {t(`${i18nPrefix}.delete`, { ns: 'plugin' })}

@@ -22,6 +22,9 @@ type ModelSelectorProps = {
   scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
+  hideProviderSettingsFooter?: boolean
+  onConfigureEmptyState?: () => void
+  showModelMeta?: boolean
 }
 function ModelSelector({
   defaultModel,
@@ -34,6 +37,9 @@ function ModelSelector({
   scopeFeatures = [],
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
+  hideProviderSettingsFooter,
+  onConfigureEmptyState,
+  showModelMeta,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -97,6 +103,11 @@ function ModelSelector({
     setInputValue('')
     onHide?.()
   }, [onHide])
+  const handleConfigureEmptyState = useCallback(() => {
+    setOpen(false)
+    setInputValue('')
+    onConfigureEmptyState?.()
+  }, [onConfigureEmptyState])
 
   return (
     <Combobox<ModelSelectorValue>
@@ -125,6 +136,7 @@ function ModelSelector({
           className={triggerClassName}
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+          showModelMeta={showModelMeta}
         />
       </ComboboxTrigger>
       <ComboboxContent
@@ -137,6 +149,8 @@ function ModelSelector({
           inputValue={inputValue}
           modelList={modelList}
           scopeFeatures={scopeFeatures}
+          hideProviderSettingsFooter={hideProviderSettingsFooter}
+          onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

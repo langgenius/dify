@@ -57,7 +57,7 @@ const MembersPage = () => {
   return (
     <>
       <div className="flex flex-col">
-        <div className="mb-4 flex items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-3 pr-5">
+        <div className="mb-6 flex items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 pr-5 pl-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[20px]">
             <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">{currentWorkspace?.name[0]?.toLocaleUpperCase()}</span>
           </div>
@@ -126,8 +126,8 @@ const MembersPage = () => {
         <div className="overflow-visible lg:overflow-visible">
           <div className="flex min-w-[480px] items-center border-b border-divider-regular py-[7px]">
             <div className="grow px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
-            <div className="w-[104px] shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
-            <div className="w-[96px] shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
+            <div className="w-[120px] shrink-0 px-2 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
+            <div className="w-[96px] shrink-0 px-2 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
           </div>
           <div className="relative min-w-[480px]">
             {
@@ -144,7 +144,7 @@ const MembersPage = () => {
                       <div className="system-xs-regular text-text-tertiary">{account.email}</div>
                     </div>
                   </div>
-                  <div className="flex w-[104px] shrink-0 items-center py-2 system-sm-regular text-text-secondary">{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
+                  <div className="flex w-[120px] shrink-0 items-center px-2 py-2 system-sm-regular text-text-secondary">{formatTimeFromNow(Number((account.last_active_at || account.created_at)) * 1000)}</div>
                   <div className="flex w-[96px] shrink-0 items-center">
                     {isCurrentWorkspaceOwner && account.role === 'owner' && isAllowTransferWorkspace && (
                       <TransferOwnership onOperate={() => setShowTransferOwnershipModal(true)}></TransferOwnership>

@@ -130,6 +130,10 @@ vi.mock('@/app/components/base/premium-badge', () => ({
   default: ({ children }: { children: React.ReactNode }) => <span data-testid="premium-badge">{children}</span>,
 }))
 
+vi.mock('@/config', () => ({
+  IS_CLOUD_EDITION: true,
+}))
+
 vi.mock('@/app/components/workflow/hooks', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
@@ -260,9 +264,10 @@ describe('Popup', () => {
     })
 
     it('should render "Publish As" button', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
     })
   })
 

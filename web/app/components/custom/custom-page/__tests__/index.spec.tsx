@@ -17,6 +17,14 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomPage from '../index'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
     branding: {

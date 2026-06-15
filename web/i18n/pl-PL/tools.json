@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Dodane",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Brak dostępnej strategii agenta",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Zobacz przewodnik",
   "copyToolName": "Kopiuj nazwę",
   "createCustomTool": "Utwórz niestandardowe narzędzie",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Typ autoryzacji",
   "createTool.authHeaderPrefix.types.basic": "Podstawowa",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Ustawienia",
   "setBuiltInTools.string": "ciąg znaków",
   "setBuiltInTools.toolDescription": "Opis narzędzia",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Parametry",
   "test.parametersValue": "Parametry i Wartość",
   "test.testResult": "Wyniki testu",
@@ -211,5 +214,12 @@
   "toolRemoved": "Narzędzie usunięte",
   "type.builtIn": "Wbudowane",
   "type.custom": "Niestandardowe",
-  "type.workflow": "Przepływ pracy"
+  "type.workflow": "Przepływ pracy",
+  "workflowToolEmpty.description": "Aby użyć workflow jako narzędzia, najpierw opublikuj go w Studio. Potem pojawi się tutaj i będzie można dodać go do dowolnej aplikacji.",
+  "workflowToolEmpty.goToStudio": "Przejdź do Studio",
+  "workflowToolEmpty.learnMore": "Potrzebujesz pomocy? Dowiedz się, jak opublikować workflow jako narzędzie →",
+  "workflowToolEmpty.step1": "Zbuduj workflow w Studio",
+  "workflowToolEmpty.step2": "Kliknij „Workflow as Tool” w menu publikowania, aby udostępnić go jako narzędzie",
+  "workflowToolEmpty.step3": "Wróć tutaj, aby nim zarządzać i używać ponownie",
+  "workflowToolEmpty.title": "Nie opublikowano jeszcze żadnych workflow jako narzędzi"
 }

@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Thêm",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Không có chiến lược đại lý nào",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Xem hướng dẫn",
   "copyToolName": "Sao chép tên",
   "createCustomTool": "Tạo công cụ tùy chỉnh",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Loại xác thực",
   "createTool.authHeaderPrefix.types.basic": "Cơ bản",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Cài đặt",
   "setBuiltInTools.string": "chuỗi",
   "setBuiltInTools.toolDescription": "Mô tả công cụ",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Tham số",
   "test.parametersValue": "Tham số & Giá trị",
   "test.testResult": "Kết quả kiểm tra",
@@ -211,5 +214,12 @@
   "toolRemoved": "Công cụ đã bị xóa",
   "type.builtIn": "Tích hợp sẵn",
   "type.custom": "Tùy chỉnh",
-  "type.workflow": "Quy trình làm việc"
+  "type.workflow": "Quy trình làm việc",
+  "workflowToolEmpty.description": "Để dùng workflow như một công cụ, hãy xuất bản từ Studio trước. Sau đó nó sẽ xuất hiện ở đây và có thể thêm vào bất kỳ ứng dụng nào.",
+  "workflowToolEmpty.goToStudio": "Đi tới Studio",
+  "workflowToolEmpty.learnMore": "Cần trợ giúp? Tìm hiểu cách xuất bản workflow làm công cụ →",
+  "workflowToolEmpty.step1": "Tạo workflow trong Studio",
+  "workflowToolEmpty.step2": "Nhấp “Workflow as Tool” trong menu xuất bản để cho phép dùng như công cụ",
+  "workflowToolEmpty.step3": "Quay lại đây để quản lý và tái sử dụng",
+  "workflowToolEmpty.title": "Chưa có workflow nào được xuất bản dưới dạng công cụ"
 }

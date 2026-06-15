@@ -4,6 +4,7 @@ import pytest
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from tasks.remove_app_and_related_data_task import (
+    _delete_app_stars,
     _delete_app_workflow_archive_logs,
     _delete_archived_workflow_run_files,
     _delete_draft_variable_offload_data,
@@ -85,6 +86,27 @@ class TestDeleteWorkflowArchiveLogs:
         mock_session = MagicMock()
 
         delete_func(mock_session, "log-1")
+
+        mock_session.execute.assert_called_once()
+
+
+class TestDeleteAppStars:
+    @patch("tasks.remove_app_and_related_data_task._delete_records")
+    def test_delete_app_stars_calls_delete_records(self, mock_delete_records):
+        tenant_id = "tenant-1"
+        app_id = "app-1"
+
+        _delete_app_stars(tenant_id, app_id)
+
+        mock_delete_records.assert_called_once()
+        query_sql, params, delete_func, name = mock_delete_records.call_args[0]
+        assert "app_stars" in query_sql
+        assert params == {"tenant_id": tenant_id, "app_id": app_id}
+        assert name == "app star"
+
+        mock_session = MagicMock()
+
+        delete_func(mock_session, "star-1")
 
         mock_session.execute.assert_called_once()
 

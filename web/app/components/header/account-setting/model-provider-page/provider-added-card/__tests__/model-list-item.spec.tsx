@@ -42,7 +42,7 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="model-name">{children}</div>,
+  default: ({ children, nameClassName }: { children: React.ReactNode, nameClassName?: string }) => <div data-testid="model-name" className={nameClassName}>{children}</div>,
 }))
 
 vi.mock('../../model-auth', () => ({
@@ -160,6 +160,7 @@ describe('ModelListItem', () => {
 
     // Assert
     expect(container.querySelector('.opacity-60')).toBeInTheDocument()
+    expect(screen.getByTestId('model-name')).toHaveClass('line-through')
     expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
   })
 

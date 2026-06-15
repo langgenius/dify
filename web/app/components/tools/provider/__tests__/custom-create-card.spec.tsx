@@ -2,7 +2,7 @@ import type { CustomCollectionBackend } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthType } from '../../types'
-import CustomCreateCard from '../custom-create-card'
+import CustomCreateCard, { NewCustomToolButton } from '../custom-create-card'
 
 // Mock workspace manager state
 let mockIsWorkspaceManager = true
@@ -96,7 +96,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Card should be visible with create text
-      expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
+      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
     })
 
     it('should not render anything when user is not workspace manager', () => {
@@ -114,7 +114,7 @@ describe('CustomCreateCard', () => {
     it('should render without crashing', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      expect(screen.getByText(/createCustomTool/i)).toBeInTheDocument()
+      expect(screen.getByText(/createSwaggerAPIAsTool/i)).toBeInTheDocument()
     })
 
     it('should render add icon', () => {
@@ -128,9 +128,36 @@ describe('CustomCreateCard', () => {
     it('should have proper card styling', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const card = document.querySelector('.min-h-\\[135px\\]')
+      const card = screen.getByText('tools.createSwaggerAPIAsTool').closest('.col-span-1')
       expect(card).toBeInTheDocument()
-      expect(card).toHaveClass('cursor-pointer')
+      expect(card).toHaveClass('h-[120px]', 'border-[0.5px]', 'border-components-panel-border', 'shadow-md')
+      expect(card).toHaveClass('min-w-0')
+      expect(card).not.toHaveClass('flex-1')
+    })
+
+    it('should render documentation link with Swagger API as Tool text', () => {
+      render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
+
+      const docLink = screen.getByText('tools.swaggerAPIAsToolTip').closest('a')
+      expect(docLink).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
+      expect(docLink).toHaveAttribute('target', '_blank')
+      expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
+    })
+  })
+
+  describe('Toolbar Button Rendering', () => {
+    it('should render toolbar add button for workspace managers', () => {
+      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      expect(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i })).toBeInTheDocument()
+    })
+
+    it('should open modal when toolbar add button is clicked', () => {
+      render(<NewCustomToolButton onRefreshData={mockOnRefreshData} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /tools\.addSwaggerAPIAsTool/i }))
+
+      expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
     })
   })
 
@@ -140,7 +167,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Click on the card area (the group div)
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
@@ -150,7 +177,7 @@ describe('CustomCreateCard', () => {
     it('should pass null payload to modal', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       expect(screen.getByTestId('modal-payload')).toHaveTextContent('null')
@@ -160,7 +187,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
 
@@ -176,7 +203,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -191,7 +218,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -206,7 +233,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
       expect(screen.getByTestId('edit-custom-collection-modal')).toBeInTheDocument()
 
@@ -222,7 +249,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -237,7 +264,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -262,7 +289,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Submit form
@@ -283,7 +310,7 @@ describe('CustomCreateCard', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
       // Open modal
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       fireEvent.click(cardClickArea!)
 
       // Close modal without submitting
@@ -295,7 +322,7 @@ describe('CustomCreateCard', () => {
     it('should handle rapid open/close of modal', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const cardClickArea = document.querySelector('.group.grow')
+      const cardClickArea = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
 
       // Rapid open/close
       fireEvent.click(cardClickArea!)
@@ -311,14 +338,15 @@ describe('CustomCreateCard', () => {
     it('should have hover styles on card', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const card = document.querySelector('.transition-all.duration-200')
+      const card = screen.getByRole('button', { name: 'tools.createSwaggerAPIAsTool' })
       expect(card).toBeInTheDocument()
+      expect(card).toHaveClass('hover:bg-components-panel-on-panel-item-bg-hover')
     })
 
     it('should have group hover styles on icon container', () => {
       render(<CustomCreateCard onRefreshData={mockOnRefreshData} />)
 
-      const iconContainer = document.querySelector('.group-hover\\:border-state-accent-hover-alt')
+      const iconContainer = document.querySelector('.group-hover\\:text-text-accent')
       expect(iconContainer).toBeInTheDocument()
     })
   })

@@ -1,46 +1,73 @@
+import type { PluginCategoryEnum } from '../types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
-import { PermissionType } from '../types'
+import { hasPluginPermission, useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
 
-const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
-  if (!permission)
-    return false
+export const useCanSetPluginSettings = () => {
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
 
-  if (permission === PermissionType.noOne)
-    return false
-
-  if (permission === PermissionType.everyone)
-    return true
-
-  return isAdmin
+  return {
+    canSetPermissions: isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
+  }
 }
 
-const useReferenceSetting = () => {
+export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
-  const { data } = useReferenceSettings()
-  // console.log(data)
-  const { permission: permissions } = data || {}
+  const { canSetPermissions } = useCanSetPluginSettings()
+  const permissionQuery = usePluginPermissionSettings()
+  const { data: permissions } = permissionQuery
+  const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } = useMutationPluginPermissionSettings({
+    onSuccess: () => {
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
+    },
+  })
+
+  return {
+    permission: permissions,
+    setPluginPermissionSettings,
+    canManagement: hasPluginPermission(permissions?.install_permission, canSetPermissions),
+    canDebugger: hasPluginPermission(permissions?.debug_permission, canSetPermissions),
+    canSetPermissions,
+    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching,
+    permissionError: permissionQuery.error,
+    isPermissionUpdatePending,
+  }
+}
+
+const useReferenceSetting = (category: PluginCategoryEnum) => {
+  const { t } = useTranslation()
+  const permissionAccess = usePluginSettingsAccess()
+  const autoUpgradeQuery = usePluginAutoUpgradeSettings(category)
+  const data = permissionAccess.permission && autoUpgradeQuery.data?.auto_upgrade
+    ? {
+        permission: permissionAccess.permission,
+        auto_upgrade: autoUpgradeQuery.data.auto_upgrade,
+      }
+    : undefined
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
+    category,
+    currentReferenceSetting: data,
     onSuccess: () => {
       invalidateReferenceSettings()
       toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
-  const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
 
   return {
     referenceSetting: data,
     setReferenceSettings: updateReferenceSetting,
-    canManagement: hasPermission(permissions?.install_permission, isAdmin),
-    canDebugger: hasPermission(permissions?.debug_permission, isAdmin),
-    canSetPermissions: isAdmin,
+    canManagement: permissionAccess.canManagement,
+    canDebugger: permissionAccess.canDebugger,
+    canSetPermissions: permissionAccess.canSetPermissions,
+    isPermissionLoading: permissionAccess.isPermissionLoading,
+    permissionError: permissionAccess.permissionError,
+    isReferenceSettingLoading: autoUpgradeQuery.isLoading || autoUpgradeQuery.isFetching,
+    referenceSettingError: autoUpgradeQuery.error,
     isUpdatePending,
   }
 }
@@ -50,7 +77,12 @@ export const useCanInstallPluginFromMarketplace = () => {
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { canManagement } = useReferenceSetting()
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
+  const { data: permissions } = usePluginPermissionSettings()
+  const canManagement = hasPluginPermission(
+    permissions?.install_permission,
+    isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
+  )
 
   const canInstallPluginFromMarketplace = useMemo(() => {
     return enable_marketplace && canManagement

@@ -4,6 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useRouter } from '@/next/navigation'
 import Divider from '../../base/divider'
 
@@ -95,7 +96,7 @@ const WorkflowToolConfigureButton = ({
                 <Button
                   size="small"
                   className="w-[140px]"
-                  onClick={() => router.push('/tools?category=workflow')}
+                  onClick={() => router.push(buildIntegrationPath('workflow-tool'))}
                   disabled={disabled}
                 >
                   {t('common.manageInTools', { ns: 'workflow' })}

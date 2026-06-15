@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Dependency, InstallStatus, Plugin } from '../../types'
+import type { Dependency, InstallStatus, Plugin, VersionProps } from '../../types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { InstallStep } from '../../types'
@@ -28,9 +28,11 @@ const ReadyToInstall: FC<Props> = ({
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
   const [installStatus, setInstallStatus] = useState<InstallStatus[]>([])
-  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatus[]) => {
+  const [installedVersionInfo, setInstalledVersionInfo] = useState<VersionProps[]>([])
+  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => {
     setInstallStatus(installStatus)
     setInstalledPlugins(plugins)
+    setInstalledVersionInfo(versionInfo)
     onStepChange(InstallStep.installed)
     setIsInstalling(false)
   }, [onStepChange, setIsInstalling])
@@ -49,6 +51,7 @@ const ReadyToInstall: FC<Props> = ({
         <Installed
           list={installedPlugins}
           installStatus={installStatus}
+          versionInfo={installedVersionInfo}
           onCancel={onClose}
         />
       )}

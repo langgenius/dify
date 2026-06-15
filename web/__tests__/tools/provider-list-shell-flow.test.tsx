@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
-import ProviderList from '@/app/components/tools/provider-list'
+import ProviderList from '@/app/components/integrations/tool-provider-list'
 import { CollectionType } from '@/app/components/tools/types'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 

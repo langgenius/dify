@@ -4,17 +4,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useHover } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { usePathname } from '@/next/navigation'
 import Divider from '../base/divider'
 import AppInfo, { AppInfoView } from './app-info'
-import AppSidebarDropdown from './app-sidebar-dropdown'
 import DatasetInfo from './dataset-info'
-import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
@@ -56,19 +52,6 @@ const AppDetailNav = ({
 
   const isHoveringSidebar = useHover(sidebarRef)
 
-  // Check if the current path is a workflow canvas & fullscreen
-  const pathname = usePathname()
-  const inWorkflowCanvas = pathname.endsWith('/workflow')
-  const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
-  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
-  const { eventEmitter } = useEventEmitterContextContext()
-
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload)
-  })
-
   useEffect(() => {
     if (appSidebarExpand) {
       localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
@@ -82,25 +65,6 @@ const AppDetailNav = ({
   }, {
     ignoreInputs: true,
   })
-
-  if (inWorkflowCanvas && hideHeader) {
-    return (
-      <div className="flex w-0 shrink-0">
-        <AppSidebarDropdown
-          navigation={navigation}
-          appInfoActions={appInfoActions}
-        />
-      </div>
-    )
-  }
-
-  if (isPipelineCanvas && hideHeader) {
-    return (
-      <div className="flex w-0 shrink-0">
-        <DatasetSidebarDropdown navigation={navigation} />
-      </div>
-    )
-  }
 
   return (
     <div

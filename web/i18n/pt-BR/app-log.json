@@ -73,7 +73,7 @@
   "title": "Registros",
   "triggerBy.appRun": "Aplicativo Web",
   "triggerBy.debugging": "Depuração",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Integração",
   "triggerBy.ragPipelineDebugging": "Depuração RAG",
   "triggerBy.ragPipelineRun": "Pipeline RAG",
   "triggerBy.schedule": "Agenda",

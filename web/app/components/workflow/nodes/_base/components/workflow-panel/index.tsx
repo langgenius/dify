@@ -31,6 +31,7 @@ import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
@@ -68,7 +69,6 @@ import {
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -362,11 +362,11 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [setShowAccountSettingModal])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [openIntegrationsSetting])
 
   const {
     appendNodeInspectVars,

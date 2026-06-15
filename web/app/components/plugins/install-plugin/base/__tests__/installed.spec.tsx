@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { PluginCategoryEnum } from '../../../types'
 
 vi.mock('../../../card', () => ({
   default: ({ installed, installFailed, titleLeft }: { installed: boolean, installFailed: boolean, titleLeft?: React.ReactNode }) => (
@@ -64,6 +65,39 @@ describe('Installed', () => {
 
     fireEvent.click(screen.getByText('common.operation.close'))
     expect(mockOnCancel).toHaveBeenCalled()
+  })
+
+  it('should keep close action when installed category matches integrations context', () => {
+    const mockOnCancel = vi.fn()
+    const payload = {
+      category: PluginCategoryEnum.extension,
+      name: 'test-plugin',
+      version: '1.0.0',
+    } as never
+    render(<Installed payload={payload} installContextCategory={PluginCategoryEnum.extension} isFailed={false} onCancel={mockOnCancel} />)
+
+    fireEvent.click(screen.getByText('common.operation.close'))
+
+    expect(mockOnCancel).toHaveBeenCalled()
+    expect(screen.getByText('common.operation.close').closest('a')).not.toBeInTheDocument()
+  })
+
+  it('should navigate to the installed category when integrations context differs', () => {
+    const mockOnCancel = vi.fn()
+    const payload = {
+      category: PluginCategoryEnum.extension,
+      name: 'test-plugin',
+      version: '1.0.0',
+    } as never
+    render(<Installed payload={payload} installContextCategory={PluginCategoryEnum.trigger} isFailed={false} onCancel={mockOnCancel} />)
+
+    expect(screen.getByText('installModal.installedSuccessfullyWithPageDesc')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('plugin.installModal.viewDetails'))
+
+    expect(mockOnCancel).toHaveBeenCalled()
+    expect(screen.getByText('plugin.installModal.viewDetails').closest('a')).toHaveAttribute('href', '/integrations/extension')
+    expect(document.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
   })
 
   it('should show version badge in card', () => {

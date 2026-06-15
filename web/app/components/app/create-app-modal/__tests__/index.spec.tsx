@@ -16,6 +16,7 @@ import CreateAppModal from '../index'
 const hotkeyMocks = vi.hoisted(() => ({
   handlers: new Map<string, () => void>(),
 }))
+const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -45,6 +46,9 @@ vi.mock('@/utils/create-app-tracking', () => ({
 }))
 vi.mock('@/service/apps', () => ({
   createApp: vi.fn(),
+}))
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppList: () => mockInvalidateAppList,
 }))
 const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
@@ -171,6 +175,7 @@ describe('CreateAppModal', () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush))
   })
 

@@ -56,13 +56,14 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components',
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () => ({
-  default: ({ detailUrl, onInfo, onCheckVersion, onRemove }: {
+  default: ({ detailUrl, onInfo, onCheckVersion, onRemove, destructiveRemove }: {
     detailUrl: string
     onInfo: () => void
     onCheckVersion: () => void
     onRemove: () => void
+    destructiveRemove?: boolean
   }) => (
-    <div data-testid="operation-dropdown" data-detail-url={detailUrl}>
+    <div data-testid="operation-dropdown" data-detail-url={detailUrl} data-destructive-remove={String(Boolean(destructiveRemove))}>
       <button type="button" onClick={onInfo}>info</button>
       <button type="button" onClick={onCheckVersion}>check version</button>
       <button type="button" onClick={onRemove}>remove</button>
@@ -178,6 +179,12 @@ describe('ProviderCardActions', () => {
       'data-detail-url',
       'https://marketplace.example.com/plugins/langgenius/provider-plugin',
     )
+  })
+
+  it('should request destructive remove styling for the operation dropdown', () => {
+    render(<ProviderCardActions detail={createDetail()} />)
+
+    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute('data-destructive-remove', 'true')
   })
 
   it('should relay operation dropdown actions', () => {

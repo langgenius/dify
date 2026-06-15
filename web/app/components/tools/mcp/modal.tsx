@@ -5,6 +5,8 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
@@ -14,8 +16,6 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import Input from '@/app/components/base/input'
-import TabSlider from '@/app/components/base/tab-slider'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
@@ -251,13 +251,26 @@ const MCPModalContent: FC<MCPModalContentProps> = ({
         )}
 
         {/* Auth Method Tabs */}
-        <TabSlider
+        <SegmentedControl<MCPAuthMethod>
+          value={[state.authMethod]}
+          onValueChange={(nextValue) => {
+            const nextAuthMethod = nextValue[0]
+            if (nextAuthMethod)
+              actions.setAuthMethod(nextAuthMethod)
+          }}
+          aria-label={t('mcp.modal.authentication', { ns: 'tools' })}
           className="w-full"
-          itemClassName={isActive => `flex-1 ${isActive && 'text-text-accent-light-mode-only'}`}
-          value={state.authMethod}
-          onChange={actions.setAuthMethod}
-          options={authMethods}
-        />
+        >
+          {authMethods.map(option => (
+            <SegmentedControlItem<MCPAuthMethod>
+              key={option.value}
+              value={option.value}
+              className="flex-1"
+            >
+              {option.text}
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
 
         {/* Tab Content */}
         {state.authMethod === MCPAuthMethod.authentication && (

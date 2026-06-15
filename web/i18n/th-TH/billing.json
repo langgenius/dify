@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "แผน",
   "plansCommon.triggerEvents.professional": "{{count,number}} เหตุการณ์ที่ก่อให้เกิดต่อเดือน",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} เหตุการณ์ทริกเกอร์",
-  "plansCommon.triggerEvents.tooltip": "จำนวนเหตุการณ์ที่เริ่มเวิร์กโฟลว์โดยอัตโนมัติผ่านปลั๊กอิน ตารางเวลา หรือทริกเกอร์เว็บฮุก",
+  "plansCommon.triggerEvents.tooltip": "จำนวนเหตุการณ์ที่เริ่มเวิร์กโฟลว์โดยอัตโนมัติผ่านการผสานรวม ตารางเวลา หรือทริกเกอร์เว็บฮุก",
   "plansCommon.triggerEvents.unlimited": "เหตุการณ์ทริกเกอร์ไม่จำกัด",
   "plansCommon.unavailable": "ไม่",
   "plansCommon.unlimited": "จำกัด",

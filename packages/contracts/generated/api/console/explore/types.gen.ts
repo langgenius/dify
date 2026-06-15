@@ -9,6 +9,10 @@ export type RecommendedAppListResponse = {
   recommended_apps: Array<RecommendedAppResponse>
 }
 
+export type LearnDifyAppListResponse = {
+  recommended_apps: Array<RecommendedAppResponse>
+}
+
 export type RecommendedAppDetailResponse = {
   [key: string]: unknown
 }
@@ -60,6 +64,22 @@ export type GetExploreAppsResponses = {
 }
 
 export type GetExploreAppsResponse = GetExploreAppsResponses[keyof GetExploreAppsResponses]
+
+export type GetExploreAppsLearnDifyData = {
+  body?: never
+  path?: never
+  query?: {
+    language?: string
+  }
+  url: '/explore/apps/learn-dify'
+}
+
+export type GetExploreAppsLearnDifyResponses = {
+  200: LearnDifyAppListResponse
+}
+
+export type GetExploreAppsLearnDifyResponse
+  = GetExploreAppsLearnDifyResponses[keyof GetExploreAppsLearnDifyResponses]
 
 export type GetExploreAppsByAppIdData = {
   body?: never

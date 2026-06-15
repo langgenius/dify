@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "planuri",
   "plansCommon.triggerEvents.professional": "{{count,number}} Evenimente declanșatoare/lună",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Evenimente Declanșatoare",
-  "plansCommon.triggerEvents.tooltip": "Numărul de evenimente care pornesc automat fluxuri de lucru prin declanșatoare Plugin, Programare sau Webhook.",
+  "plansCommon.triggerEvents.tooltip": "Numărul de evenimente care pornesc automat fluxuri de lucru prin declanșatoare Integrare, Programare sau Webhook.",
   "plansCommon.triggerEvents.unlimited": "Evenimente de declanșare nelimitate",
   "plansCommon.unavailable": "Indisponibil",
   "plansCommon.unlimited": "Nelimitat",

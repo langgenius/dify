@@ -41,8 +41,26 @@ describe('Item Component', () => {
 
       // Assert
       expect(screen.getByText('Test Credential')).toBeInTheDocument()
-      expect(screen.getByText('connected')).toBeInTheDocument()
+      expect(screen.getByText('common.dataSource.notion.connected')).toBeInTheDocument()
       expect(screen.getByRole('button')).toBeInTheDocument() // Dropdown trigger
+    })
+
+    it('should render default badge without a leading avatar', () => {
+      // Act
+      const { container } = render(
+        <Item
+          credentialItem={{
+            ...mockCredentialItem,
+            is_default: true,
+            avatar_url: 'avatar-url',
+          }}
+          onAction={mockOnAction}
+        />,
+      )
+
+      // Assert
+      expect(container.querySelector('img')).not.toBeInTheDocument()
+      expect(screen.getByText('plugin.auth.default')).toBeInTheDocument()
     })
   })
 

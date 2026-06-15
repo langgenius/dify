@@ -9,8 +9,8 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useModalContextSelector } from '@/context/modal-context'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
@@ -37,7 +37,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
-  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
+  const openIntegrationsSetting = useIntegrationsSetting()
   const datasetDetail = useDatasetDetailContextWithSelector(state => state.dataset)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
@@ -121,7 +121,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {step === 1 && (
                 <StepOne
                   authedDataSourceList={dataSourceList?.result || []}
-                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })}
+                  onSetting={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}
                   dataSourceTypeDisable={!!datasetDetail?.data_source_type}
@@ -145,7 +145,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {(step === 2 && (!datasetId || (datasetId && !!datasetDetail))) && (
                 <StepTwo
                   isAPIKeySet={!!embeddingsDefaultModel}
-                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onSetting={() => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                   indexingType={datasetDetail?.indexing_technique}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}

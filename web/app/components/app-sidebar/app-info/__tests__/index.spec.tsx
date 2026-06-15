@@ -5,6 +5,9 @@ import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppInfo from '..'
 
+const mockDetailPanel = vi.hoisted(() => vi.fn())
+const mockModals = vi.hoisted(() => vi.fn())
+
 let mockIsCurrentWorkspaceEditor = true
 const mockSetPanelOpen = vi.fn()
 
@@ -27,15 +30,17 @@ vi.mock('../app-info-trigger', () => ({
 }))
 
 vi.mock('../app-info-detail-panel', () => ({
-  default: React.memo(({ show, onClose }: { show: boolean, onClose: () => void }) => (
-    show ? <div data-testid="detail-panel"><button type="button" onClick={onClose}>Close Panel</button></div> : null
-  )),
+  default: React.memo((props: { show: boolean, onClose: () => void }) => {
+    mockDetailPanel(props)
+    return props.show ? <div data-testid="detail-panel"><button type="button" onClick={props.onClose}>Close Panel</button></div> : null
+  }),
 }))
 
 vi.mock('../app-info-modals', () => ({
-  default: React.memo(({ activeModal }: { activeModal: string | null }) => (
-    activeModal ? <div data-testid="modals" data-modal={activeModal} /> : null
-  )),
+  default: React.memo((props: { activeModal: string | null }) => {
+    mockModals(props)
+    return props.activeModal ? <div data-testid="modals" data-modal={props.activeModal} /> : null
+  }),
 }))
 
 const mockAppDetail: App & Partial<AppSSO> = {
@@ -92,6 +97,12 @@ describe('AppInfo', () => {
     expect(screen.getByTestId('trigger'))!.toBeInTheDocument()
   })
 
+  it('should not mount detail layer while the app info panel is closed', () => {
+    render(<AppInfo expand />)
+    expect(mockDetailPanel).not.toHaveBeenCalled()
+    expect(mockModals).not.toHaveBeenCalled()
+  })
+
   it('should not render trigger when onlyShowDetail is true', () => {
     render(<AppInfo expand onlyShowDetail />)
     expect(screen.queryByTestId('trigger')).not.toBeInTheDocument()
@@ -133,6 +144,7 @@ describe('AppInfo', () => {
     mockUseAppInfoActions.panelOpen = true
     render(<AppInfo expand />)
     expect(screen.getByTestId('detail-panel'))!.toBeInTheDocument()
+    expect(mockDetailPanel).toHaveBeenCalled()
   })
 
   it('should show detail panel based on openState when onlyShowDetail', () => {
@@ -143,5 +155,7 @@ describe('AppInfo', () => {
   it('should hide detail panel when openState is false and onlyShowDetail', () => {
     render(<AppInfo expand onlyShowDetail openState={false} />)
     expect(screen.queryByTestId('detail-panel')).not.toBeInTheDocument()
+    expect(mockDetailPanel).not.toHaveBeenCalled()
+    expect(mockModals).not.toHaveBeenCalled()
   })
 })

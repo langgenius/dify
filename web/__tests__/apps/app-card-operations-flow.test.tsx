@@ -100,6 +100,10 @@ vi.mock('@/service/use-apps', () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
   }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -277,21 +281,13 @@ describe('App Card Operations Flow', () => {
     it('should navigate to app config page when card is clicked', () => {
       renderAppCard({ id: 'app-123', mode: AppModeEnum.CHAT })
 
-      const card = screen.getByText('Test Chat App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/configuration')
+      expect(screen.getByRole('link', { name: 'Test Chat App' })).toHaveAttribute('href', '/app/app-123/configuration')
     })
 
     it('should navigate to workflow page for workflow apps', () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      const card = screen.getByText('WF App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-wf/workflow')
+      expect(screen.getByRole('link', { name: 'WF App' })).toHaveAttribute('href', '/app/app-wf/workflow')
     })
   })
 

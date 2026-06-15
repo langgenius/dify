@@ -102,6 +102,23 @@ describe('Chip', () => {
       expect(screen.getByRole('combobox', { name: 'Archived' }))!.toBeInTheDocument()
     })
 
+    it('should use triggerName only for the closed trigger label', async () => {
+      const { container, user } = renderChip({
+        items: [
+          { value: 'all', name: 'All Items', triggerName: 'Item Types' },
+          { value: 'active', name: 'Active' },
+        ],
+        value: 'all',
+      })
+
+      expect(screen.getByRole('combobox', { name: 'Item Types' }))!.toBeInTheDocument()
+
+      await openPanel(user, container)
+
+      expect(await screen.findByRole('option', { name: 'All Items' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: 'Item Types' })).not.toBeInTheDocument()
+    })
+
     it('should show left icon by default', () => {
       const { container } = renderChip()
 

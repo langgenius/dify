@@ -65,7 +65,7 @@ const Installed: FC<Props> = ({
     onCancel()
   }
 
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const handleInstall = async () => {
     if (isInstalling)
       return
@@ -76,10 +76,12 @@ const Installed: FC<Props> = ({
       if (hasInstalled)
         await uninstallPlugin(installedInfoPayload.installedId)
 
+      const response = await installPackageFromLocal(uniqueIdentifier)
       const {
         all_installed,
         task_id,
-      } = await installPackageFromLocal(uniqueIdentifier)
+      } = response
+      handleInstallTaskStart(response)
       const taskId = task_id
       const isInstalled = all_installed
 
@@ -87,7 +89,6 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
-      handleRefetch()
       const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,

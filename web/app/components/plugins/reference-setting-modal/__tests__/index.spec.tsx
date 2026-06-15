@@ -80,17 +80,6 @@ vi.mock('../auto-update-setting', () => ({
   },
 }))
 
-// Mock config default value
-vi.mock('../auto-update-setting/config', () => ({
-  defaultValue: {
-    strategy_setting: AUTO_UPDATE_STRATEGY.disabled,
-    upgrade_time_of_day: 0,
-    upgrade_mode: AUTO_UPDATE_MODE.update_all,
-    exclude_plugins: [],
-    include_plugins: [],
-  },
-}))
-
 // ================================
 // Test Data Factories
 // ================================
@@ -298,21 +287,6 @@ describe('reference-setting-modal', () => {
         // Assert
         expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('latest')
       })
-
-      it('should use default auto_upgrade when payload.auto_upgrade is undefined', () => {
-        // Arrange
-        const payload = {
-          permission: createMockPermissions(),
-          auto_upgrade: undefined as unknown as AutoUpdateConfig,
-        }
-
-        // Act
-        render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
-
-        // Assert - should use default value (disabled)
-        // Assert - should use default value (disabled)
-        expect(screen.getByTestId('auto-update-strategy'))!.toHaveTextContent('disabled')
-      })
     })
 
     describe('User Interactions', () => {
@@ -490,15 +464,6 @@ describe('reference-setting-modal', () => {
     })
 
     describe('Edge Cases and Error Handling', () => {
-      it('should handle null payload gracefully', () => {
-        // Arrange
-        const payload = null as unknown as ReferenceSetting
-
-        // Act & Assert - should not crash
-        render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
-        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
-      })
-
       it('should handle undefined permission values', () => {
         // Arrange
         const payload = {

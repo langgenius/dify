@@ -14,7 +14,18 @@ vi.mock('../hydration-server', () => ({
 }))
 
 vi.mock('../description', () => ({
-  default: () => <div data-testid="description">Description</div>,
+  default: ({
+    isMarketplacePlatform,
+    marketplaceNav,
+  }: {
+    isMarketplacePlatform?: boolean
+    marketplaceNav?: React.ReactNode
+  }) => (
+    <div data-testid="description" data-marketplace-platform={String(!!isMarketplacePlatform)}>
+      Description
+      {marketplaceNav}
+    </div>
+  ),
 }))
 
 vi.mock('../list/list-wrapper', () => ({
@@ -91,5 +102,19 @@ describe('Marketplace', () => {
 
     const stickyWrapper = getByTestId('sticky-wrapper')
     expect(stickyWrapper.getAttribute('data-classname')).toBeNull()
+  })
+
+  it('should render platform layout without sticky wrapper', async () => {
+    const Marketplace = (await import('../index')).default
+    const element = await Marketplace({
+      isMarketplacePlatform: true,
+      marketplaceNav: <div data-testid="marketplace-nav">Nav</div>,
+    })
+
+    const { getByTestId, queryByTestId } = render(element as React.ReactElement)
+
+    expect(getByTestId('description')).toHaveAttribute('data-marketplace-platform', 'true')
+    expect(getByTestId('marketplace-nav')).toBeInTheDocument()
+    expect(queryByTestId('sticky-wrapper')).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { ProviderContextState } from './provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -66,11 +67,11 @@ export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
   const queryClient = useQueryClient()
-  const { data: providersData } = useModelProviders()
+  const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
   const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
-  const [plan, setPlan] = useState(defaultPlan)
+  const [plan, setPlan] = useState<ProviderContextState['plan']>(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [isFetchedPlanInfo, setIsFetchedPlanInfo] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
@@ -111,7 +112,7 @@ export const ProviderContextProvider = ({
       setEnableReplaceWebAppLogo(data.can_replace_logo ?? false)
 
       if (data.billing?.enabled) {
-        setPlan(parseCurrentPlan(data) as any)
+        setPlan(parseCurrentPlan(data))
         setIsFetchedPlan(true)
       }
 
@@ -187,6 +188,7 @@ export const ProviderContextProvider = ({
   return (
     <ProviderContext.Provider value={{
       modelProviders: providersData?.data || [],
+      isLoadingModelProviders,
       refreshModelProviders,
       textGenerationModelList: textGenerationModelList?.data || [],
       isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),

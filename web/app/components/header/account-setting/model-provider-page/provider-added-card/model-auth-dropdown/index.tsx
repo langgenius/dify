@@ -1,5 +1,5 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
-import type { CardVariant, CredentialPanelState } from '../use-credential-panel-state'
+import type { CredentialPanelState } from '../use-credential-panel-state'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Popover,
@@ -8,6 +8,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getButtonConfig } from './button-config'
 import DropdownContent from './dropdown-content'
 
 type ModelAuthDropdownProps = {
@@ -15,28 +16,6 @@ type ModelAuthDropdownProps = {
   state: CredentialPanelState
   isChangingPriority: boolean
   onChangePriority: (key: PreferredProviderTypeEnum) => void
-}
-
-function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: (key: string, opts?: Record<string, string>) => string) {
-  if (variant === 'api-required-add') {
-    return {
-      text: t('modelProvider.auth.addApiKey', { ns: 'common' }),
-      variant: 'primary' as const,
-    }
-  }
-
-  if (variant === 'api-required-configure') {
-    return {
-      text: t('operation.config', { ns: 'common' }),
-      variant: 'secondary-accent' as const,
-    }
-  }
-
-  const text = hasCredentials
-    ? t('operation.config', { ns: 'common' })
-    : t('modelProvider.auth.addApiKey', { ns: 'common' })
-
-  return { text, variant: 'secondary' as const }
 }
 
 function ModelAuthDropdown({
@@ -57,13 +36,13 @@ function ModelAuthDropdown({
       <PopoverTrigger
         render={(
           <Button
-            className="flex grow"
+            className="flex w-full min-w-0 justify-center px-2"
             size="small"
             variant={buttonConfig.variant}
             title={buttonConfig.text}
           >
             <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
-            <span className="w-0 grow truncate text-left">
+            <span className="min-w-0 truncate">
               {buttonConfig.text}
             </span>
           </Button>

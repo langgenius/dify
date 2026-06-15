@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
 import type { IWorkspace } from '@/models/common'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useWorkspacesContext } from '@/context/workspace-context'
-import { switchWorkspace } from '@/service/common'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
+import { consoleQuery } from '@/service/client'
 import WorkplaceSelector from '../index'
 
 const toastMocks = vi.hoisted(() => ({
+  mockSwitchWorkspace: vi.fn(),
   mockNotify: vi.fn(),
 }))
 
@@ -25,13 +27,39 @@ const selectMocks = vi.hoisted(() => ({
   }),
 }))
 
-vi.mock('@/context/workspace-context', () => ({
-  useWorkspacesContext: vi.fn(),
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
+  const consoleQuery = new Proxy(actual.consoleQuery, {
+    get(target, prop, receiver) {
+      if (prop === 'workspaces') {
+        return {
+          get: {
+            queryKey: () => workspacesQueryKey,
+            queryOptions: () => ({
+              queryKey: workspacesQueryKey,
+              queryFn: () => new Promise(() => {}),
+            }),
+          },
+          switch: {
+            post: {
+              mutationOptions: () => ({
+                mutationFn: (variables: unknown) => toastMocks.mockSwitchWorkspace(variables),
+              }),
+            },
+          },
+        }
+      }
 
-vi.mock('@/service/common', () => ({
-  switchWorkspace: vi.fn(),
-}))
+      return Reflect.get(target, prop, receiver)
+    },
+  })
+
+  return {
+    ...actual,
+    consoleQuery,
+  }
+})
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
@@ -93,24 +121,31 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
 })
 
 describe('WorkplaceSelector', () => {
-  const mockWorkspaces: IWorkspace[] = [
+  const defaultWorkspaces: IWorkspace[] = [
     { id: '1', name: 'Workspace 1', current: true, plan: 'professional', status: 'normal', created_at: Date.now() },
     { id: '2', name: 'Workspace 2', current: false, plan: 'sandbox', status: 'normal', created_at: Date.now() },
   ]
 
-  const { mockNotify } = toastMocks
+  const { mockNotify, mockSwitchWorkspace } = toastMocks
   const mockAssign = vi.fn()
+  let mockWorkspaces: IWorkspace[] = []
 
   beforeEach(() => {
     vi.clearAllMocks()
     selectMocks.state = selectMocks.reset()
-    vi.mocked(useWorkspacesContext).mockReturnValue({
-      workspaces: mockWorkspaces,
-    })
+    mockWorkspaces = defaultWorkspaces
     vi.stubGlobal('location', { ...window.location, assign: mockAssign })
   })
 
-  const renderComponent = () => render(<WorkplaceSelector />)
+  const renderComponent = () => {
+    const queryClient = createTestQueryClient()
+    queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <WorkplaceSelector />
+      </QueryClientProvider>,
+    )
+  }
 
   describe('Rendering', () => {
     it('should render current workspace and available workspace options', () => {
@@ -126,7 +161,7 @@ describe('WorkplaceSelector', () => {
 
   describe('Workspace Switching', () => {
     it('should switch workspace successfully', async () => {
-      vi.mocked(switchWorkspace).mockResolvedValue({
+      mockSwitchWorkspace.mockResolvedValue({
         result: 'success',
         new_tenant: mockWorkspaces[1]!,
       })
@@ -134,8 +169,7 @@ describe('WorkplaceSelector', () => {
       renderComponent()
       fireEvent.click(screen.getByTestId('workspace-option-2'))
 
-      await waitFor(() => expect(switchWorkspace).toHaveBeenCalledWith({
-        url: '/workspaces/switch',
+      await waitFor(() => expect(mockSwitchWorkspace).toHaveBeenCalledWith({
         body: { tenant_id: '2' },
       }))
 
@@ -152,11 +186,11 @@ describe('WorkplaceSelector', () => {
       renderComponent()
       fireEvent.click(screen.getByTestId('workspace-option-1'))
 
-      expect(switchWorkspace).not.toHaveBeenCalled()
+      expect(mockSwitchWorkspace).not.toHaveBeenCalled()
     })
 
     it('should handle switching error correctly', async () => {
-      vi.mocked(switchWorkspace).mockRejectedValue(new Error('Failed'))
+      mockSwitchWorkspace.mockRejectedValue(new Error('Failed'))
 
       renderComponent()
       fireEvent.click(screen.getByTestId('workspace-option-2'))
@@ -172,21 +206,17 @@ describe('WorkplaceSelector', () => {
 
   describe('Edge Cases', () => {
     it('should not crash when no workspace has current value', () => {
-      vi.mocked(useWorkspacesContext).mockReturnValue({
-        workspaces: [
-          { id: '1', name: 'Workspace 1', current: false, plan: 'professional', status: 'normal', created_at: Date.now() },
-        ],
-      })
+      mockWorkspaces = [
+        { id: '1', name: 'Workspace 1', current: false, plan: 'professional', status: 'normal', created_at: Date.now() },
+      ]
 
       expect(() => renderComponent()).not.toThrow()
     })
 
     it('should not crash when workspace name is empty string', () => {
-      vi.mocked(useWorkspacesContext).mockReturnValue({
-        workspaces: [
-          { id: '1', name: '', current: true, plan: 'sandbox', status: 'normal', created_at: Date.now() },
-        ],
-      })
+      mockWorkspaces = [
+        { id: '1', name: '', current: true, plan: 'sandbox', status: 'normal', created_at: Date.now() },
+      ]
 
       expect(() => renderComponent()).not.toThrow()
     })

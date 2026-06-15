@@ -69,6 +69,14 @@ describe('ModelName', () => {
 
       expect(container).toBeEmptyDOMElement()
     })
+
+    it('should apply custom class to model name only', () => {
+      const modelItem = createModelItem()
+
+      render(<ModelName modelItem={modelItem} nameClassName="line-through" showMode />)
+
+      expect(screen.getByText('English Model')).toHaveClass('line-through')
+    })
   })
 
   // Badges that surface model metadata to the user.

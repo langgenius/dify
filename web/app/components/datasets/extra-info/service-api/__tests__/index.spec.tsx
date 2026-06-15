@@ -63,7 +63,7 @@ describe('ServiceApi', () => {
 
     it('should render Indicator component', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
+      const triggerContainer = container.querySelector('.relative.flex.h-6')
       expect(triggerContainer).toBeInTheDocument()
     })
 
@@ -75,7 +75,7 @@ describe('ServiceApi', () => {
 
     it('should render with border and background styles', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const trigger = container.querySelector('[class*="border-components-button-secondary-border-hover"]')
+      const trigger = container.querySelector('[class*="text-text-tertiary"]')
       expect(trigger).toBeInTheDocument()
     })
   })
@@ -83,13 +83,13 @@ describe('ServiceApi', () => {
   describe('Props Variations', () => {
     it('should show Indicator when apiBaseUrl is provided', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
+      const triggerContainer = container.querySelector('.relative.flex.h-6')
       expect(triggerContainer).toBeInTheDocument()
     })
 
     it('should show Indicator when apiBaseUrl is empty', () => {
       const { container } = render(<ServiceApi apiBaseUrl="" />)
-      const triggerContainer = container.querySelector('.relative.flex.h-8')
+      const triggerContainer = container.querySelector('.relative.flex.h-6')
       expect(triggerContainer).toBeInTheDocument()
     })
 
