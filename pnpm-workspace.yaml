@@ -85,10 +85,12 @@ catalog:
   '@remixicon/react': 4.9.0
   '@rgrove/parse-xml': 4.2.0
   '@sentry/react': 10.57.0
+  '@storybook/addon-a11y': 10.4.4
   '@storybook/addon-docs': 10.4.4
   '@storybook/addon-links': 10.4.4
   '@storybook/addon-onboarding': 10.4.4
   '@storybook/addon-themes': 10.4.4
+  '@storybook/addon-vitest': 10.4.4
   '@storybook/nextjs-vite': 10.4.4
   '@storybook/react': 10.4.4
   '@storybook/react-vite': 10.4.4
