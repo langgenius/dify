@@ -39,6 +39,8 @@ export type AgentLogItemWithChildren = AgentLogItem & {
   children: AgentLogItemWithChildren[]
 }
 
+export type HumanInputResolvedValue = string | FileResponse | FileResponse[]
+
 export type NodeTracing = {
   id: string
   index: number
