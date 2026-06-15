@@ -242,6 +242,8 @@
   "members.name": "NAMA",
   "members.normal": "Biasa",
   "members.normalTip": "Hanya dapat menggunakan aplikasi, tidak dapat membuat aplikasi",
+  "members.viewer": "Penampil",
+  "members.viewerTip": "Dapat melihat alur kerja dalam mode hanya-baca, tidak dapat mengedit",
   "members.ok": "OKE",
   "members.owner": "Pemilik",
   "members.pending": "Tertunda...",

@@ -10,6 +10,7 @@ import { useProviderContext } from '@/context/provider-context'
 
 const roleI18nKeyMap = {
   normal: 'members.normal',
+  viewer: 'members.viewer',
   editor: 'members.editor',
   admin: 'members.admin',
   dataset_operator: 'members.datasetOperator',
@@ -61,6 +62,26 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               <div className="text-sm/5 text-text-secondary">{t('members.normal', { ns: 'common' })}</div>
               <div className="text-xs leading-[18px] text-text-tertiary">{t('members.normalTip', { ns: 'common' })}</div>
               {value === 'normal' && (
+                <div
+                  aria-hidden="true"
+                  className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"
+                />
+              )}
+            </div>
+          </button>
+          <button
+            type="button"
+            aria-pressed={value === 'viewer'}
+            className="w-full cursor-pointer rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover"
+            onClick={() => {
+              onChange('viewer')
+              setOpen(false)
+            }}
+          >
+            <div className="relative pl-5">
+              <div className="text-sm/5 text-text-secondary">{t('members.viewer', { ns: 'common' })}</div>
+              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.viewerTip', { ns: 'common' })}</div>
+              {value === 'viewer' && (
                 <div
                   aria-hidden="true"
                   className="absolute top-0.5 left-0 i-custom-vender-line-general-check size-4 text-text-accent"

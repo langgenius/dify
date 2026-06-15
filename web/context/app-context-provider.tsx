@@ -30,7 +30,7 @@ type AppContextProviderProps = {
   children: ReactNode
 }
 
-const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
+const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal', 'viewer'])
 
 const resolveWorkspaceRole = (role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] => {
   if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
@@ -95,6 +95,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
+  const isCurrentWorkspaceViewer = useMemo(() => currentWorkspace.role === 'viewer', [currentWorkspace.role])
 
   const mutateUserProfile = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
@@ -180,6 +181,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceOwner,
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
+      isCurrentWorkspaceViewer,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
       isValidatingCurrentWorkspace,

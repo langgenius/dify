@@ -242,6 +242,8 @@
   "members.name": "नाम",
   "members.normal": "सामान्य",
   "members.normalTip": "केवल ऐप्स का उपयोग कर सकते हैं, ऐप्स नहीं बना सकते",
+  "members.viewer": "व्यूअर",
+  "members.viewerTip": "वर्कफ़्लो को केवल-पढ़ने के मोड में देख सकते हैं, संपादित नहीं कर सकते",
   "members.ok": "ठीक है",
   "members.owner": "मालिक",
   "members.pending": "लंबित...",

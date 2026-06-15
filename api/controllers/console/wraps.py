@@ -349,6 +349,30 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     return decorated_function
 
 
+def view_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
+    """Allow read-only access to roles that may view (but not necessarily edit) a resource.
+
+    This permits every editing role (`OWNER`, `ADMIN`, `EDITOR`) as well as the read-only
+    `VIEWER` role. Use it on GET endpoints that should be reachable by viewers while keeping
+    write/run endpoints guarded by `edit_permission_required`.
+    """
+
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+
+        user = current_user._get_current_object()  # type: ignore
+        if not isinstance(user, Account):
+            raise Forbidden()
+        if not current_user.has_view_permission:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):

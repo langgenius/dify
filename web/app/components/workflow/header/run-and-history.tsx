@@ -9,6 +9,7 @@ import {
   useNodesReadOnly,
   useWorkflowStartRun,
 } from '../hooks'
+import { useStore } from '../store'
 import Checklist from './checklist'
 import RunMode from './run-mode'
 import ViewHistory from './view-history'
@@ -53,6 +54,9 @@ const RunAndHistory = ({
   components,
 }: RunAndHistoryProps) => {
   const { nodesReadOnly } = useNodesReadOnly()
+  // The read-only `viewer` role may not view run history (its API would 403),
+  // so hide the run-history entry together with its divider.
+  const isViewerReadOnly = useStore(s => s.isViewerReadOnly)
   const { RunMode: CustomRunMode } = components || {}
 
   return (
@@ -65,8 +69,12 @@ const RunAndHistory = ({
       {
         showPreviewButton && <PreviewMode />
       }
-      <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
-      <ViewHistory {...viewHistoryProps} />
+      {!isViewerReadOnly && (
+        <>
+          <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
+          <ViewHistory {...viewHistoryProps} />
+        </>
+      )}
       <Checklist disabled={nodesReadOnly} />
     </div>
   )

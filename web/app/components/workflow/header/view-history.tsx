@@ -54,14 +54,19 @@ const ViewHistory = ({
   const workflowStore = useWorkflowStore()
   const setControlMode = useStore(s => s.setControlMode)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  // The read-only `viewer` role may not view run history (its API would 403).
+  const isViewerReadOnly = useStore(s => s.isViewerReadOnly)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const shouldFetchHistory = open && !!historyUrl
+  const shouldFetchHistory = open && !!historyUrl && !isViewerReadOnly
   const {
     data,
     isLoading,
   } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
+
+  if (isViewerReadOnly)
+    return null
 
   return (
     (

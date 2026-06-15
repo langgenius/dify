@@ -242,6 +242,8 @@
   "members.name": "이름",
   "members.normal": "일반",
   "members.normalTip": "앱 사용만 가능하고 앱 빌드는 불가능",
+  "members.viewer": "뷰어",
+  "members.viewerTip": "워크플로를 읽기 전용 모드로 볼 수 있으며 편집할 수 없습니다",
   "members.ok": "확인",
   "members.owner": "소유자",
   "members.pending": "대기 중...",

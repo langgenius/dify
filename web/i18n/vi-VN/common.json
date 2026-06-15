@@ -242,6 +242,8 @@
   "members.name": "TÊN",
   "members.normal": "Bình thường",
   "members.normalTip": "Chỉ có thể sử dụng ứng dụng, không thể xây dựng ứng dụng",
+  "members.viewer": "Người xem",
+  "members.viewerTip": "Có thể xem quy trình làm việc ở chế độ chỉ đọc, không thể chỉnh sửa",
   "members.ok": "OK",
   "members.owner": "Chủ sở hữu",
   "members.pending": "Đang chờ...",

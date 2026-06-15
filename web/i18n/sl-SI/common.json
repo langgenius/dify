@@ -242,6 +242,8 @@
   "members.name": "IME",
   "members.normal": "Običajni uporabnik",
   "members.normalTip": "Lahko uporablja samo aplikacije, ne more ustvarjati aplikacij",
+  "members.viewer": "Pregledovalec",
+  "members.viewerTip": "Poteke dela si lahko ogleda v načinu samo za branje, ne more pa jih urejati",
   "members.ok": "V redu",
   "members.owner": "Lastnik",
   "members.pending": "V teku...",

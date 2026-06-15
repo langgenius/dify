@@ -41,7 +41,7 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   last_active_at?: string
   created_at?: string
   status: 'pending' | 'active' | 'banned' | 'closed'
-  role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator' | 'viewer'
 }
 
 enum ProviderName {
@@ -91,7 +91,7 @@ export type IWorkspace = {
 }
 
 export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
-  role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal'
+  role: 'owner' | 'admin' | 'editor' | 'dataset_operator' | 'normal' | 'viewer'
   providers: Provider[]
   trial_credits: number
   trial_credits_used: number

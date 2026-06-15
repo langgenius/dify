@@ -12,6 +12,10 @@ export type VersionSliceShape = {
   setCurrentVersion: (currentVersion: VersionHistory) => void
   isRestoring: boolean
   setIsRestoring: (isRestoring: boolean) => void
+  // True when the current user may only view the workflow (e.g. the `viewer` role).
+  // Forces the whole canvas into read-only mode regardless of run/history state.
+  isViewerReadOnly: boolean
+  setIsViewerReadOnly: (isViewerReadOnly: boolean) => void
 }
 
 export const createVersionSlice: StateCreator<VersionSliceShape> = set => ({
@@ -23,4 +27,6 @@ export const createVersionSlice: StateCreator<VersionSliceShape> = set => ({
   setCurrentVersion: currentVersion => set(() => ({ currentVersion })),
   isRestoring: false,
   setIsRestoring: isRestoring => set(() => ({ isRestoring })),
+  isViewerReadOnly: false,
+  setIsViewerReadOnly: isViewerReadOnly => set(() => ({ isViewerReadOnly })),
 })

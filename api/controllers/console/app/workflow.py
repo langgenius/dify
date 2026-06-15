@@ -31,8 +31,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
-    with_current_tenant_id,
-    with_current_user,
+    view_permission_required,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -437,7 +436,7 @@ class DraftWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -1065,7 +1064,7 @@ class PublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get published workflow
@@ -1134,7 +1133,7 @@ class DefaultBlockConfigsApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App):
         """
         Get default block config
@@ -1160,7 +1159,7 @@ class DefaultBlockConfigApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @edit_permission_required
+    @view_permission_required
     def get(self, app_model: App, block_type: str):
         """
         Get default block config
@@ -1263,9 +1262,9 @@ class PublishedAllWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @with_current_user
-    @edit_permission_required
-    def get(self, current_user: Account, app_model: App):
+
+    @view_permission_required
+    def get(self, app_model: App):
         """
         Get published workflows
         """

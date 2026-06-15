@@ -31,6 +31,7 @@ const MembersPage = () => {
     editor: t('members.editor', { ns: 'common' }),
     dataset_operator: t('members.datasetOperator', { ns: 'common' }),
     normal: t('members.normal', { ns: 'common' }),
+    viewer: t('members.viewer', { ns: 'common' }),
   }
   const locale = useLocale()
 

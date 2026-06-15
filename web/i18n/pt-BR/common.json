@@ -242,6 +242,8 @@
   "members.name": "NOME",
   "members.normal": "Normal",
   "members.normalTip": "Só pode usar aplicativos, não pode criar aplicativos",
+  "members.viewer": "Visualizador",
+  "members.viewerTip": "Pode visualizar workflows em modo somente leitura, não pode editar",
   "members.ok": "OK",
   "members.owner": "Proprietário",
   "members.pending": "Pendente...",

@@ -242,6 +242,8 @@
   "members.name": "ІМ'Я",
   "members.normal": "Звичайний",
   "members.normalTip": "Може лише використовувати програми, не може створювати програми",
+  "members.viewer": "Глядач",
+  "members.viewerTip": "Може переглядати робочі процеси в режимі лише для читання, але не може редагувати",
   "members.ok": "ОК",
   "members.owner": "Власник",
   "members.pending": "В очікуванні...",

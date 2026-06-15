@@ -440,6 +440,7 @@ export const useNodesReadOnly = () => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
+  const isViewerReadOnly = useStore(s => s.isViewerReadOnly)
 
   const getNodesReadOnly = useCallback((): boolean => {
     const {
@@ -447,6 +448,7 @@ export const useNodesReadOnly = () => {
       historyWorkflowData,
       isRestoring,
       canvasReadOnly,
+      isViewerReadOnly,
     } = workflowStore.getState()
 
     return !!(
@@ -455,6 +457,7 @@ export const useNodesReadOnly = () => {
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
+      || isViewerReadOnly
     )
   }, [workflowStore])
 
@@ -465,6 +468,7 @@ export const useNodesReadOnly = () => {
       || workflowRunningData?.result.status === WorkflowRunningStatus.Paused
       || historyWorkflowData
       || isRestoring
+      || isViewerReadOnly
     ),
     getNodesReadOnly,
   }

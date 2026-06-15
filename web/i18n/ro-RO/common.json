@@ -242,6 +242,8 @@
   "members.name": "NUME",
   "members.normal": "Normal",
   "members.normalTip": "Poate doar utiliza aplicații, nu poate construi aplicații",
+  "members.viewer": "Vizualizator",
+  "members.viewerTip": "Poate vizualiza fluxurile de lucru în mod doar-citire, nu le poate edita",
   "members.ok": "OK",
   "members.owner": "Proprietar",
   "members.pending": "În așteptare...",
