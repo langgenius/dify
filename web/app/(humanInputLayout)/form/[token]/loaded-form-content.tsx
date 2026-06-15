@@ -6,18 +6,18 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { produce } from 'immer'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
 import { getButtonStyle, getRenderedFormInputs, hasInvalidRequiredHumanInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import BrandingFooter from './branding-footer'
 
 type LoadedFormContentProps = {
   formData: FormData
   isSubmitting: boolean
   onSubmit: (inputs: Record<string, HumanInputFieldValue>, actionID: string, formInputs: FormData['inputs']) => void
   removeWebappBrand?: boolean
+  replaceWebappLogo?: string | null
 }
 
 const LoadedFormContent = ({
@@ -25,15 +25,25 @@ const LoadedFormContent = ({
   isSubmitting,
   onSubmit,
   removeWebappBrand,
+  replaceWebappLogo,
 }: LoadedFormContentProps) => {
-  const { t } = useTranslation()
   const renderedFormInputs = getRenderedFormInputs(formData.inputs, formData.form_content)
   const [inputs, setInputs] = useState<Record<string, HumanInputFieldValue>>(() =>
     initializeInputs(renderedFormInputs, formData.resolved_default_values),
   )
 
   const contentList = useMemo(() => {
-    return splitByOutputVar(formData.form_content)
+    const contentCounts = new Map<string, number>()
+
+    return splitByOutputVar(formData.form_content).map((content) => {
+      const occurrence = (contentCounts.get(content) || 0) + 1
+      contentCounts.set(content, occurrence)
+
+      return {
+        key: `${content}-${occurrence}`,
+        content,
+      }
+    })
   }, [formData.form_content])
 
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
@@ -63,9 +73,9 @@ const LoadedFormContent = ({
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
         <div className="rounded-[20px] border border-divider-subtle bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">
-          {contentList.map((content, index) => (
+          {contentList.map(({ key, content }) => (
             <ContentItem
-              key={index}
+              key={key}
               content={content}
               formInputFields={formData.inputs}
               inputs={inputs}
@@ -86,14 +96,10 @@ const LoadedFormContent = ({
           </div>
           <ExpirationTime expirationTime={formData.expiration_time * 1000} />
         </div>
-        {!removeWebappBrand && (
-          <div className="flex flex-row-reverse px-2 py-3">
-            <div className="flex shrink-0 items-center gap-1.5 px-1">
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-              <DifyLogo size="small" />
-            </div>
-          </div>
-        )}
+        <BrandingFooter
+          removeWebappBrand={removeWebappBrand}
+          replaceWebappLogo={replaceWebappLogo}
+        />
       </div>
     </div>
   )
