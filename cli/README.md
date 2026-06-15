@@ -10,13 +10,13 @@ Per-commit `edge` builds are published to Cloudflare R2. The installer script li
 curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> sh
 ```
 
-| Env               | Default        | Purpose                                        |
-| ----------------- | -------------- | ---------------------------------------------- |
-| `DIFYCTL_R2_BASE` | — (required)   | R2 public base, e.g. `https://pub-….r2.dev`.   |
-| `DIFYCTL_CHANNEL` | `edge`         | Channel to install.                            |
-| `DIFYCTL_PREFIX`  | `$HOME/.local` | Install root; binary → `<prefix>/bin/difyctl`. |
-| `DIFYCTL_VERSION` | latest         | Pin an exact published version.                |
-| `DIFYCTL_COMMIT`  | latest         | Pin by git commit (short or full sha).         |
+| Env                   | Default            | Purpose                                               |
+| --------------------- | ------------------ | ----------------------------------------------------- |
+| `DIFYCTL_R2_BASE`     | — (required)       | R2 public base, e.g. `https://pub-….r2.dev`.          |
+| `DIFYCTL_CHANNEL`     | `edge`             | Channel to install.                                   |
+| `DIFYCTL_INSTALL_DIR` | `$HOME/.local/bin` | Directory the binary is written to (`<dir>/difyctl`). |
+| `DIFYCTL_VERSION`     | latest             | Pin an exact published version.                       |
+| `DIFYCTL_COMMIT`      | latest             | Pin by git commit (short or full sha).                |
 
 By default the channel pointer (latest build) is installed. Set `DIFYCTL_COMMIT` (e.g. `ce4af86`) or `DIFYCTL_VERSION` to install a specific past build — both resolve through the channel's `index.json`:
 

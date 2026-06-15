@@ -5,7 +5,7 @@
 # Env:
 #   DIFYCTL_R2_BASE  (required)  R2 public base, e.g. https://pub-….r2.dev
 #   DIFYCTL_CHANNEL  (default edge)
-#   DIFYCTL_PREFIX   (default $HOME/.local)  install root; binary -> <prefix>/bin/difyctl
+#   DIFYCTL_INSTALL_DIR  (default $HOME/.local/bin)  directory the binary is written to as <dir>/difyctl
 #   DIFYCTL_VERSION  pin an exact published version (e.g. 0.1.0-edge.ce4af868)
 #   DIFYCTL_COMMIT   pin by git commit (short or full sha); resolved via index.json
 # With no pin the channel pointer (latest) is installed. A pin resolves through
@@ -87,15 +87,14 @@ fetch_verify_install() {
   curl -fsSL "$1" -o "$tmp_b" || die "download failed: $1"
   sha256_check "$tmp_b" "$2"
 
-  bin_dir="${prefix}/bin"
-  mkdir -p "$bin_dir"
+  mkdir -p "$install_dir"
   chmod +x "$tmp_b"
-  mv "$tmp_b" "${bin_dir}/difyctl" 2>/dev/null || { cp "$tmp_b" "${bin_dir}/difyctl"; rm -f "$tmp_b"; }
+  mv "$tmp_b" "${install_dir}/difyctl" 2>/dev/null || { cp "$tmp_b" "${install_dir}/difyctl"; rm -f "$tmp_b"; }
 
-  printf 'difyctl %s (channel %s) installed: %s\n' "$3" "$4" "${bin_dir}/difyctl"
+  printf 'difyctl %s (channel %s) installed: %s\n' "$3" "$4" "${install_dir}/difyctl"
   case ":${PATH}:" in
-    *":${bin_dir}:"*) ;;
-    *) printf 'note: add %s to your PATH\n' "$bin_dir" ;;
+    *":${install_dir}:"*) ;;
+    *) printf 'note: add %s to your PATH\n' "$install_dir" ;;
   esac
 }
 
@@ -144,7 +143,7 @@ install_main() {
   [ -n "${DIFYCTL_R2_BASE:-}" ] || die "set DIFYCTL_R2_BASE to the R2 public base (e.g. https://pub-….r2.dev)"
   base="${DIFYCTL_R2_BASE%/}"
   channel="${DIFYCTL_CHANNEL:-edge}"
-  prefix="${DIFYCTL_PREFIX:-${HOME}/.local}"
+  install_dir="${DIFYCTL_INSTALL_DIR:-${HOME}/.local/bin}"
   target="$(detect_target)"
 
   if [ -n "${DIFYCTL_VERSION:-}" ] || [ -n "${DIFYCTL_COMMIT:-}" ]; then
