@@ -1,7 +1,7 @@
 'use client'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
-import type { SiteInfo } from '@/models/share'
+import type { CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -25,7 +25,10 @@ import { useParams } from '@/next/navigation'
 import { useGetHumanInputForm, useSubmitHumanInputForm } from '@/service/use-share'
 
 export type FormData = {
-  site: { site: SiteInfo }
+  site: {
+    site: SiteInfo
+    custom_config?: Record<string, CustomConfigValueType> | null
+  }
   form_content: string
   inputs: FormInputItem[]
   resolved_default_values: Record<string, string>
@@ -45,6 +48,8 @@ const FormContent = () => {
   const { mutate: submitForm, isPending: isSubmitting } = useSubmitHumanInputForm()
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
+
+  const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
 
   const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
@@ -111,15 +116,17 @@ const FormContent = () => {
             </div>
             <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">{t('humanInput.submissionID', { id: token, ns: 'share' })}</div>
           </div>
-          <div className="flex flex-row-reverse px-2 py-3">
-            <div className={cn(
-              'flex shrink-0 items-center gap-1.5 px-1',
-            )}
-            >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-              <DifyLogo size="small" />
+          {!removeWebappBrand && (
+            <div className="flex flex-row-reverse px-2 py-3">
+              <div className={cn(
+                'flex shrink-0 items-center gap-1.5 px-1',
+              )}
+              >
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+                <DifyLogo size="small" />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     )
@@ -272,15 +279,17 @@ const FormContent = () => {
           </div>
           <ExpirationTime expirationTime={formData.expiration_time * 1000} />
         </div>
-        <div className="flex flex-row-reverse px-2 py-3">
-          <div className={cn(
-            'flex shrink-0 items-center gap-1.5 px-1',
-          )}
-          >
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-            <DifyLogo size="small" />
+        {!removeWebappBrand && (
+          <div className="flex flex-row-reverse px-2 py-3">
+            <div className={cn(
+              'flex shrink-0 items-center gap-1.5 px-1',
+            )}
+            >
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <DifyLogo size="small" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
