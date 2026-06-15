@@ -12,11 +12,19 @@ curl -fsSL <BASE>/difyctl/install.sh | DIFYCTL_R2_BASE=<BASE> sh
 
 | Env               | Default        | Purpose                                        |
 | ----------------- | -------------- | ---------------------------------------------- |
-| `DIFYCTL_R2_BASE` | — (required)   | R2 public base, e.g. `https://pub-….r2.dev`.   |
-| `DIFYCTL_CHANNEL` | `edge`         | Channel to install.                            |
-| `DIFYCTL_PREFIX`  | `$HOME/.local` | Install root; binary → `<prefix>/bin/difyctl`. |
+| `DIFYCTL_R2_BASE` | — (required)   | R2 public base, e.g. `https://pub-….r2.dev`.       |
+| `DIFYCTL_CHANNEL` | `edge`         | Channel to install.                                |
+| `DIFYCTL_PREFIX`  | `$HOME/.local` | Install root; binary → `<prefix>/bin/difyctl`.     |
+| `DIFYCTL_VERSION` | latest         | Pin an exact published version.                    |
+| `DIFYCTL_COMMIT`  | latest         | Pin by git commit (short or full sha).             |
 
-Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm <BASE>/difyctl/install.ps1 | iex`
+By default the channel pointer (latest build) is installed. Set `DIFYCTL_COMMIT` (e.g. `ce4af86`) or `DIFYCTL_VERSION` to install a specific past build — both resolve through the channel's `index.json`:
+
+```sh
+curl -fsSL <BASE>/difyctl/install.sh | DIFYCTL_R2_BASE=<BASE> DIFYCTL_COMMIT=ce4af86 sh
+```
+
+Windows: `$env:DIFYCTL_R2_BASE='<BASE>'; irm <BASE>/difyctl/install.ps1 | iex` (same env vars, e.g. `$env:DIFYCTL_COMMIT='ce4af86'`).
 
 Re-run to upgrade. For tagged `rc`/`stable` builds, use the GitHub installer (`install-cli.sh`).
 

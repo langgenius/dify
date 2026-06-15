@@ -21,6 +21,34 @@ const MANIFEST = [
   '}',
 ].join('\n')
 
+const INDEX = [
+  '{',
+  '  "schema": 1,',
+  '  "channel": "edge",',
+  '  "updated": "2026-06-15T00:00:00Z",',
+  '  "builds": [',
+  '    {',
+  '      "version": "0.1.0-edge.ce4af868",',
+  '      "commit": "ce4af868d653f405070fabb3be3303430cc030ad",',
+  '      "buildDate": "2026-06-15T00:00:00Z",',
+  '      "dir": "0.1.0-edge.ce4af868"',
+  '    },',
+  '    {',
+  '      "version": "0.1.0-edge.aaaa111",',
+  '      "commit": "aaaa111bbbbcccc000011112222333344445555",',
+  '      "buildDate": "2026-06-14T00:00:00Z",',
+  '      "dir": "0.1.0-edge.aaaa111"',
+  '    }',
+  '  ]',
+  '}',
+].join('\n')
+
+const CHECKSUMS = [
+  'deadbeef  difyctl-v0.1.0-edge.ce4af868-linux-x64',
+  'cafef00d  difyctl-v0.1.0-edge.ce4af868-darwin-arm64',
+  'beadc0de  difyctl-v0.1.0-edge.ce4af868-windows-x64.exe',
+].join('\n')
+
 function lib(program: string, env: Record<string, string> = {}): { code: number, stdout: string, stderr: string } {
   const full = `. "${SCRIPT}"\n${program}`
   const r = spawnSync('sh', ['-c', full], {
@@ -65,5 +93,37 @@ describe('install-r2 manifest parsing', () => {
     // sha256('hello') = 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
     const r = lib('f="$(mktemp)"; printf \'hello\' > "$f"; sha256_check "$f" 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 && echo OK')
     expect(r.stdout).toBe('OK')
+  })
+})
+
+describe('install-r2 version/commit pin', () => {
+  it('index_resolve matches a build by exact version', () => {
+    const r = lib(`printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" version 0.1.0-edge.aaaa111`)
+    expect(r.stdout).toBe('0.1.0-edge.aaaa111\t0.1.0-edge.aaaa111')
+  })
+
+  it('index_resolve matches a build by commit prefix', () => {
+    const r = lib(`printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" commit ce4af868`)
+    expect(r.stdout).toBe('0.1.0-edge.ce4af868\t0.1.0-edge.ce4af868')
+  })
+
+  it('index_resolve matches the full 40-char commit too', () => {
+    const r = lib(`printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" commit aaaa111bbbbcccc000011112222333344445555`)
+    expect(r.stdout).toBe('0.1.0-edge.aaaa111\t0.1.0-edge.aaaa111')
+  })
+
+  it('index_resolve prints nothing when no build matches', () => {
+    const r = lib(`printf '%s' '${INDEX}' > "$tmp_m"; index_resolve "$tmp_m" commit ffffff`)
+    expect(r.stdout).toBe('')
+  })
+
+  it('checksums_target extracts sha and asset for a posix target', () => {
+    const r = lib(`printf '%s' '${CHECKSUMS}' > "$tmp_m"; checksums_target "$tmp_m" darwin-arm64`)
+    expect(r.stdout).toBe('cafef00d\tdifyctl-v0.1.0-edge.ce4af868-darwin-arm64')
+  })
+
+  it('checksums_target does not bleed x64 into arm64', () => {
+    const r = lib(`printf '%s' '${CHECKSUMS}' > "$tmp_m"; checksums_target "$tmp_m" linux-x64`)
+    expect(r.stdout).toBe('deadbeef\tdifyctl-v0.1.0-edge.ce4af868-linux-x64')
   })
 })
