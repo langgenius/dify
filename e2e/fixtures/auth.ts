@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
+import { waitForAppsConsole } from '../support/apps'
 import { defaultBaseURL, defaultLocale } from '../test-env'
 
 export type AuthSessionMetadata = {
@@ -13,6 +14,7 @@ export type AuthSessionMetadata = {
 }
 
 export const AUTH_BOOTSTRAP_TIMEOUT_MS = 120_000
+const AUTH_FLOW_TIMEOUT_MS = AUTH_BOOTSTRAP_TIMEOUT_MS - 5_000
 const e2eRoot = fileURLToPath(new URL('..', import.meta.url))
 
 export const authDir = path.join(e2eRoot, '.auth')
@@ -117,7 +119,7 @@ const completeLogin = async (page: Page, baseURL: string, deadline: number) => {
 
 export const ensureAuthenticatedState = async (browser: Browser, configuredBaseURL?: string) => {
   const baseURL = resolveBaseURL(configuredBaseURL)
-  const deadline = Date.now() + AUTH_BOOTSTRAP_TIMEOUT_MS
+  const deadline = Date.now() + AUTH_FLOW_TIMEOUT_MS
 
   await mkdir(authDir, { recursive: true })
 
@@ -149,9 +151,7 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
       await completeInstall(page, baseURL, deadline)
     else await completeLogin(page, baseURL, deadline)
 
-    await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible({
-      timeout: getRemainingTimeout(deadline),
-    })
+    await waitForAppsConsole(page, getRemainingTimeout(deadline))
 
     await context.storageState({ path: authStatePath })
 
