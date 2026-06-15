@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.drive import (
     DifyDriveFileConfig,
     DifyDriveLayerConfig,
@@ -217,6 +218,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
                 drive_config=drive_config,
+                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
@@ -494,6 +496,20 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         if agent_soul.sandbox.provider or sandbox_config
         else None,
     )
+
+
+def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
+    """Enable the dify.ask_human deferred tool when the soul configures human involvement.
+
+    HITL is opt-in: only when at least one human contact is configured does the
+    model get the ``ask_human`` tool (recipients for the resulting form come from
+    those contacts, ENG-635). Returns ``None`` to leave the tool off entirely.
+    The tool/field guardrails use the layer defaults; ``human.tools`` semantics are
+    out of scope this round.
+    """
+    if not agent_soul.human.contacts:
+        return None
+    return DifyAskHumanLayerConfig()
 
 
 def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, str]]) -> None:
