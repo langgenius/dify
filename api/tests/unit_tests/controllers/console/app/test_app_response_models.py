@@ -336,9 +336,7 @@ def test_create_agent_app_response_includes_bound_agent_id(app_module, monkeypat
 
     app_module.console_ns.payload = payload
     try:
-        response, status = _unwrap(app_module.AppListApi().post)(
-            app_module.AppListApi(), "tenant-1", SimpleNamespace(id="account-1")
-        )
+        response, status = _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
     finally:
         app_module.console_ns.payload = None
 
