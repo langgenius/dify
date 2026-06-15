@@ -7646,51 +7646,6 @@
       "count": 1
     }
   },
-  "web/i18n/de-DE/billing.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/i18n/en-US/app-debug.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/i18n/fr-FR/app-debug.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/i18n/fr-FR/plugin-trigger.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/i18n/fr-FR/tools.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/i18n/pt-BR/common.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/i18n/ru-RU/common.json": {
-    "no-irregular-whitespace": {
-      "count": 2
-    }
-  },
-  "web/i18n/uk-UA/app-debug.json": {
-    "no-irregular-whitespace": {
-      "count": 1
-    }
-  },
-  "web/models/access-control.ts": {
-    "erasable-syntax-only/enums": {
-      "count": 2
-    }
-  },
   "web/models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
