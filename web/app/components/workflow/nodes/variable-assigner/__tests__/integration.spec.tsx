@@ -32,7 +32,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/add-variable-popup', (
   default: ({ onSelect }: any) => (
     <button
       type="button"
-      onClick={() => onSelect(['source-node', 'pickedVar'], { variable: 'pickedVar', type: VarType.string })}
+      onClick={() =>
+        onSelect(['source-node', 'pickedVar'], { variable: 'pickedVar', type: VarType.string })
+      }
     >
       confirm-add-variable
     </button>
@@ -48,23 +50,35 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
         onClick={() => {
           onOpen?.()
           if (isAddBtnTrigger)
-            onChange(['source-node', 'groupVar'], 'variable', { variable: 'groupVar', type: VarType.string })
-          else
-            onChange(['source-node', 'updatedVar'])
+            onChange(['source-node', 'groupVar'], 'variable', {
+              variable: 'groupVar',
+              type: VarType.string,
+            })
+          else onChange(['source-node', 'updatedVar'])
         }}
       >
-        {isAddBtnTrigger ? 'add-variable-from-picker' : (placeholder || 'pick-var')}
+        {isAddBtnTrigger ? 'add-variable-from-picker' : placeholder || 'pick-var'}
       </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/remove-button', () => ({
-  default: ({ onClick }: any) => <button type="button" onClick={onClick}>remove-variable</button>,
+  default: ({ onClick }: any) => (
+    <button type="button" onClick={onClick}>
+      remove-variable
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, operations, children, className }: any) => <div className={className}><div>{title}</div><div>{operations}</div>{children}</div>,
+  default: ({ title, operations, children, className }: any) => (
+    <div className={className}>
+      <div>{title}</div>
+      <div>{operations}</div>
+      {children}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
@@ -77,14 +91,17 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm', () => ({
-  default: ({ isShow, onCancel, onConfirm }: any) => isShow
-    ? (
-        <div>
-          <button type="button" onClick={onCancel}>cancel-remove</button>
-          <button type="button" onClick={onConfirm}>confirm-remove</button>
-        </div>
-      )
-    : null,
+  default: ({ isShow, onCancel, onConfirm }: any) =>
+    isShow ? (
+      <div>
+        <button type="button" onClick={onCancel}>
+          cancel-remove
+        </button>
+        <button type="button" onClick={onConfirm}>
+          confirm-remove
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/variable-label', () => ({
@@ -113,7 +130,9 @@ vi.mock('../use-config', () => ({
 const mockUseConfig = vi.mocked(useConfig)
 const mockToastError = vi.mocked(toast.error)
 
-const createData = (overrides: Partial<VariableAssignerNodeType> = {}): VariableAssignerNodeType => ({
+const createData = (
+  overrides: Partial<VariableAssignerNodeType> = {},
+): VariableAssignerNodeType => ({
   title: 'Variable Assigner',
   desc: '',
   type: BlockEnum.VariableAssigner,
@@ -140,7 +159,9 @@ const createData = (overrides: Partial<VariableAssignerNodeType> = {}): Variable
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   handleListOrTypeChange: vi.fn(),
@@ -209,32 +230,17 @@ describe('variable-assigner path', () => {
         data: { title: 'Source Node', type: BlockEnum.Answer },
       } as any
       const { rerender, container } = render(
-        <NodeVariableItem
-          node={node}
-          variable={['env', 'API_KEY']}
-          writeMode="append"
-        />,
+        <NodeVariableItem node={node} variable={['env', 'API_KEY']} writeMode="append" />,
       )
 
       expect(container).toHaveTextContent('Source Node')
       expect(container).toHaveTextContent('API_KEY')
       expect(container).toHaveTextContent('workflow.nodes.assigner.operations.append')
 
-      rerender(
-        <NodeVariableItem
-          node={node}
-          variable={['sys', 'query']}
-          isException
-        />,
-      )
+      rerender(<NodeVariableItem node={node} variable={['sys', 'query']} isException />)
       expect(container).toHaveTextContent('sys.query')
 
-      rerender(
-        <NodeVariableItem
-          node={node}
-          variable={['rag', 'metadata']}
-        />,
-      )
+      rerender(<NodeVariableItem node={node} variable={['rag', 'metadata']} />)
       expect(container).toHaveTextContent('metadata')
     })
 
@@ -243,12 +249,7 @@ describe('variable-assigner path', () => {
       const onChange = vi.fn()
       const onOpen = vi.fn()
       const { rerender } = render(
-        <VarList
-          readonly={false}
-          nodeId="assigner-node"
-          list={[]}
-          onChange={onChange}
-        />,
+        <VarList readonly={false} nodeId="assigner-node" list={[]} onChange={onChange} />,
       )
 
       expect(screen.getByText('workflow.nodes.variableAssigner.noVarTip')).toBeInTheDocument()
@@ -266,7 +267,10 @@ describe('variable-assigner path', () => {
 
       await user.click(screen.getByRole('button', { name: 'pick-var' }))
       expect(onOpen).toHaveBeenCalledWith(0)
-      expect(onChange).toHaveBeenLastCalledWith([['source-node', 'updatedVar']], ['source-node', 'updatedVar'])
+      expect(onChange).toHaveBeenLastCalledWith(
+        [['source-node', 'updatedVar']],
+        ['source-node', 'updatedVar'],
+      )
 
       await user.click(screen.getByRole('button', { name: 'remove-variable' }))
       expect(onChange).toHaveBeenLastCalledWith([])
@@ -375,7 +379,9 @@ describe('variable-assigner path', () => {
       )
 
       expect(screen.getByText('workflow.nodes.variableAssigner.title')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'add-variable-from-picker' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'add-variable-from-picker' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render empty and populated node groups with hover states', async () => {
@@ -395,7 +401,11 @@ describe('variable-assigner path', () => {
         />,
         {
           nodes: [
-            { id: 'source-node', position: { x: 0, y: 0 }, data: { title: 'Source Node', type: BlockEnum.Answer } as any },
+            {
+              id: 'source-node',
+              position: { x: 0, y: 0 },
+              data: { title: 'Source Node', type: BlockEnum.Answer } as any,
+            },
           ],
           edges: [],
           initialStoreState: {
@@ -455,7 +465,11 @@ describe('variable-assigner path', () => {
         />,
         {
           nodes: [
-            { id: 'agent-node', position: { x: 0, y: 0 }, data: { title: 'Agent Node', type: BlockEnum.Agent } as any },
+            {
+              id: 'agent-node',
+              position: { x: 0, y: 0 },
+              data: { title: 'Agent Node', type: BlockEnum.Agent } as any,
+            },
           ],
           edges: [],
           initialStoreState: {
@@ -498,15 +512,19 @@ describe('variable-assigner path', () => {
       mockUseConfig.mockReturnValue(groupedConfig)
 
       const { rerender } = render(
-        <Panel
-          id="assigner-node"
-          data={createData()}
-          panelProps={panelProps}
-        />,
+        <Panel id="assigner-node" data={createData()} panelProps={panelProps} />,
       )
 
-      expect(screen.getByText('Group1.output:string:workflow.nodes.variableAssigner.outputVars.varDescribe:{"groupName":"Group1"}')).toBeInTheDocument()
-      expect(screen.getByText('Group2.output:number:workflow.nodes.variableAssigner.outputVars.varDescribe:{"groupName":"Group2"}')).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Group1.output:string:workflow.nodes.variableAssigner.outputVars.varDescribe:{"groupName":"Group1"}',
+        ),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Group2.output:number:workflow.nodes.variableAssigner.outputVars.varDescribe:{"groupName":"Group2"}',
+        ),
+      ).toBeInTheDocument()
 
       await user.click(screen.getByRole('switch'))
       expect(groupedConfig.handleGroupEnabledChange).toHaveBeenCalled()
@@ -531,16 +549,16 @@ describe('variable-assigner path', () => {
       })
       mockUseConfig.mockReturnValue(singleConfig)
 
-      rerender(
-        <Panel
-          id="assigner-node"
-          data={singleConfig.inputs}
-          panelProps={panelProps}
-        />,
-      )
+      rerender(<Panel id="assigner-node" data={singleConfig.inputs} panelProps={panelProps} />)
 
-      expect(screen.queryByText('Group1.output:string:workflow.nodes.variableAssigner.outputVars.varDescribe:{"groupName":"Group1"}')).not.toBeInTheDocument()
-      expect(screen.getByText('workflow.nodes.variableAssigner.aggregationGroup')).toBeInTheDocument()
+      expect(
+        screen.queryByText(
+          'Group1.output:string:workflow.nodes.variableAssigner.outputVars.varDescribe:{"groupName":"Group1"}',
+        ),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.variableAssigner.aggregationGroup'),
+      ).toBeInTheDocument()
     })
   })
 })

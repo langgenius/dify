@@ -4,7 +4,10 @@ import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FormTypeEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  FormTypeEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarType as ToolVarType } from '../../tool/types'
 import { ModelBar } from '../components/model-bar'
@@ -14,12 +17,20 @@ import Panel from '../panel'
 import { AgentFeature } from '../types'
 import useConfig from '../use-config'
 
-let mockTextGenerationModels: Array<{ provider: string, models: Array<{ model: string }> }> | undefined = []
-let mockModerationModels: Array<{ provider: string, models: Array<{ model: string }> }> | undefined = []
-let mockRerankModels: Array<{ provider: string, models: Array<{ model: string }> }> | undefined = []
-let mockSpeech2TextModels: Array<{ provider: string, models: Array<{ model: string }> }> | undefined = []
-let mockTextEmbeddingModels: Array<{ provider: string, models: Array<{ model: string }> }> | undefined = []
-let mockTtsModels: Array<{ provider: string, models: Array<{ model: string }> }> | undefined = []
+let mockTextGenerationModels:
+  | Array<{ provider: string; models: Array<{ model: string }> }>
+  | undefined = []
+let mockModerationModels:
+  | Array<{ provider: string; models: Array<{ model: string }> }>
+  | undefined = []
+let mockRerankModels: Array<{ provider: string; models: Array<{ model: string }> }> | undefined = []
+let mockSpeech2TextModels:
+  | Array<{ provider: string; models: Array<{ model: string }> }>
+  | undefined = []
+let mockTextEmbeddingModels:
+  | Array<{ provider: string; models: Array<{ model: string }> }>
+  | undefined = []
+let mockTtsModels: Array<{ provider: string; models: Array<{ model: string }> }> | undefined = []
 
 let mockBuiltInTools: Array<any> | undefined = []
 let mockCustomTools: Array<any> | undefined = []
@@ -31,23 +42,21 @@ const mockResetEditor = vi.fn()
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: (modelType: ModelTypeEnum) => {
-    if (modelType === ModelTypeEnum.textGeneration)
-      return { data: mockTextGenerationModels }
-    if (modelType === ModelTypeEnum.moderation)
-      return { data: mockModerationModels }
-    if (modelType === ModelTypeEnum.rerank)
-      return { data: mockRerankModels }
-    if (modelType === ModelTypeEnum.speech2text)
-      return { data: mockSpeech2TextModels }
-    if (modelType === ModelTypeEnum.textEmbedding)
-      return { data: mockTextEmbeddingModels }
+    if (modelType === ModelTypeEnum.textGeneration) return { data: mockTextGenerationModels }
+    if (modelType === ModelTypeEnum.moderation) return { data: mockModerationModels }
+    if (modelType === ModelTypeEnum.rerank) return { data: mockRerankModels }
+    if (modelType === ModelTypeEnum.speech2text) return { data: mockSpeech2TextModels }
+    if (modelType === ModelTypeEnum.textEmbedding) return { data: mockTextEmbeddingModels }
     return { data: mockTtsModels }
   },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   default: ({ defaultModel, modelList }: any) => (
-    <div>{defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}:{modelList.length}</div>
+    <div>
+      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}:
+      {modelList.length}
+    </div>
   ),
 }))
 
@@ -79,30 +88,48 @@ vi.mock('@/hooks/use-i18n', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/group', () => ({
-  Group: ({ label, children }: any) => <div><div>{label}</div>{children}</div>,
+  Group: ({ label, children }: any) => (
+    <div>
+      <div>{label}</div>
+      {children}
+    </div>
+  ),
   GroupLabel: ({ className, children }: any) => <div className={className}>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/setting-item', () => ({
-  SettingItem: ({ label, status, tooltip, children }: any) => <div>{label}:{status}:{tooltip}:{children}</div>,
+  SettingItem: ({ label, status, tooltip, children }: any) => (
+    <div>
+      {label}:{status}:{tooltip}:{children}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
-  default: ({ title, children }: any) => <div><div>{title}</div>{children}</div>,
+  default: ({ title, children }: any) => (
+    <div>
+      <div>{title}</div>
+      {children}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/agent-strategy', () => ({
   AgentStrategy: ({ onStrategyChange }: any) => (
     <button
       type="button"
-      onClick={() => onStrategyChange({
-        agent_strategy_provider_name: 'provider/updated',
-        agent_strategy_name: 'updated-strategy',
-        agent_strategy_label: 'Updated Strategy',
-        agent_output_schema: { properties: { extra: { type: 'string', description: 'extra output' } } },
-        plugin_unique_identifier: 'provider/updated:1.0.0',
-        meta: { version: '2.0.0' },
-      })}
+      onClick={() =>
+        onStrategyChange({
+          agent_strategy_provider_name: 'provider/updated',
+          agent_strategy_name: 'updated-strategy',
+          agent_strategy_label: 'Updated Strategy',
+          agent_output_schema: {
+            properties: { extra: { type: 'string', description: 'extra output' } },
+          },
+          plugin_unique_identifier: 'provider/updated:1.0.0',
+          meta: { version: '2.0.0' },
+        })
+      }
     >
       change-strategy
     </button>
@@ -114,7 +141,16 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
-  default: ({ onChange }: any) => <button type="button" onClick={() => onChange({ window: { enabled: true, size: 8 }, query_prompt_template: 'history' })}>change-memory</button>,
+  default: ({ onChange }: any) => (
+    <button
+      type="button"
+      onClick={() =>
+        onChange({ window: { enabled: true, size: 8 }, query_prompt_template: 'history' })
+      }
+    >
+      change-memory
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
@@ -127,9 +163,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { setControlPromptEditorRerenderKey: typeof mockResetEditor }) => unknown) => selector({
-    setControlPromptEditorRerenderKey: mockResetEditor,
-  }),
+  useStore: (
+    selector: (state: { setControlPromptEditorRerenderKey: typeof mockResetEditor }) => unknown,
+  ) =>
+    selector({
+      setControlPromptEditorRerenderKey: mockResetEditor,
+    }),
 }))
 
 vi.mock('@/utils/plugin-version-feature', () => ({
@@ -178,7 +217,9 @@ const createData = (overrides: Partial<AgentNodeType> = {}): AgentNodeType => ({
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   setInputs: vi.fn(),
@@ -240,9 +281,21 @@ describe('agent path', () => {
     mockSpeech2TextModels = []
     mockTextEmbeddingModels = []
     mockTtsModels = []
-    mockBuiltInTools = [{ name: 'author/tool-a', is_team_authorization: true, icon: 'https://example.com/icon-a.png' }]
+    mockBuiltInTools = [
+      {
+        name: 'author/tool-a',
+        is_team_authorization: true,
+        icon: 'https://example.com/icon-a.png',
+      },
+    ]
     mockCustomTools = []
-    mockWorkflowTools = [{ id: 'author/tool-b', is_team_authorization: false, icon: { content: 'B', background: '#fff' } }]
+    mockWorkflowTools = [
+      {
+        id: 'author/tool-b',
+        is_team_authorization: false,
+        icon: { content: 'B', background: '#fff' },
+      },
+    ]
     mockMcpTools = []
     mockMarketplaceIcon = 'https://example.com/marketplace.png'
     mockUseConfig.mockReturnValue(createConfigResult())
@@ -289,12 +342,7 @@ describe('agent path', () => {
     })
 
     it('should render strategy, models, and toolbox entries in the node', () => {
-      const { container } = render(
-        <Node
-          id="agent-node"
-          data={createData()}
-        />,
-      )
+      const { container } = render(<Node id="agent-node" data={createData()} />)
 
       expect(screen.getByText(/workflow\.nodes\.agent\.strategy\.shortLabel/)).toBeInTheDocument()
       expect(container).toHaveTextContent('React Agent')
@@ -309,25 +357,23 @@ describe('agent path', () => {
       const config = createConfigResult()
       mockUseConfig.mockReturnValue(config)
 
-      render(
-        <Panel
-          id="agent-node"
-          data={createData()}
-          panelProps={panelProps}
-        />,
-      )
+      render(<Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
       expect(screen.getByText('workflow.nodes.agent.strategy.label')).toBeInTheDocument()
-      expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+      expect(
+        screen.getByText('text:String:workflow.nodes.agent.outputVars.text'),
+      ).toBeInTheDocument()
       expect(screen.getByText('jsonField:String:json output')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'change-strategy' }))
-      expect(config.setInputs).toHaveBeenCalledWith(expect.objectContaining({
-        agent_strategy_provider_name: 'provider/updated',
-        agent_strategy_name: 'updated-strategy',
-        agent_strategy_label: 'Updated Strategy',
-        plugin_unique_identifier: 'provider/updated:1.0.0',
-      }))
+      expect(config.setInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agent_strategy_provider_name: 'provider/updated',
+          agent_strategy_name: 'updated-strategy',
+          agent_strategy_label: 'Updated Strategy',
+          plugin_unique_identifier: 'provider/updated:1.0.0',
+        }),
+      )
       expect(mockResetEditor).toHaveBeenCalledTimes(1)
 
       await user.click(screen.getByRole('button', { name: 'change-memory' }))

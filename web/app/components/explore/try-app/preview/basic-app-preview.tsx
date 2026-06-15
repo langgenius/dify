@@ -16,7 +16,12 @@ import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import {
+  ANNOTATION_DEFAULT,
+  DEFAULT_AGENT_SETTING,
+  DEFAULT_CHAT_PROMPT_CONFIG,
+  DEFAULT_COMPLETION_PROMPT_CONFIG,
+} from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
@@ -53,26 +58,26 @@ const defaultModelConfig = {
   dataSets: [],
   agentConfig: DEFAULT_AGENT_SETTING,
 }
-const BasicAppPreview: FC<Props> = ({
-  appId,
-}) => {
+const BasicAppPreview: FC<Props> = ({ appId }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
   const { data: appDetail, isLoading: isLoadingAppDetail } = useGetTryAppInfo(appId)
-  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useAllToolProviders()
+  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } =
+    useAllToolProviders()
   const collectionList = collectionListFromServer?.map((item) => {
     return {
       ...item,
-      icon: basePath && typeof item.icon == 'string' && !item.icon.includes(basePath) ? `${basePath}${item.icon}` : item.icon,
+      icon:
+        basePath && typeof item.icon == 'string' && !item.icon.includes(basePath)
+          ? `${basePath}${item.icon}`
+          : item.icon,
     }
   })
   const datasetIds = (() => {
-    if (isLoadingAppDetail)
-      return []
+    if (isLoadingAppDetail) return []
     const modelConfig = appDetail?.model_config
-    if (!modelConfig)
-      return []
+    if (!modelConfig) return []
     let datasets: any = null
 
     if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
@@ -86,13 +91,15 @@ const BasicAppPreview: FC<Props> = ({
 
     return []
   })()
-  const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(appId, datasetIds)
+  const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(
+    appId,
+    datasetIds,
+  )
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
 
   const modelConfig: ModelConfig = ((modelConfig?: BackendModelConfig) => {
-    if (isLoading || !modelConfig)
-      return defaultModelConfig
+    if (isLoading || !modelConfig) return defaultModelConfig
 
     const model = modelConfig.model
 
@@ -105,24 +112,22 @@ const BasicAppPreview: FC<Props> = ({
         prompt_variables: userInputsFormToPromptVariables(
           [
             ...(modelConfig.user_input_form as any),
-            ...(
-              modelConfig.external_data_tools?.length
-                ? modelConfig.external_data_tools.map((item) => {
-                    return {
-                      external_data_tool: {
-                        variable: item.variable as string,
-                        label: item.label as string,
-                        enabled: item.enabled,
-                        type: item.type as string,
-                        config: item.config,
-                        required: true,
-                        icon: item.icon,
-                        icon_background: item.icon_background,
-                      },
-                    }
-                  })
-                : []
-            ),
+            ...(modelConfig.external_data_tools?.length
+              ? modelConfig.external_data_tools.map((item) => {
+                  return {
+                    external_data_tool: {
+                      variable: item.variable as string,
+                      label: item.label as string,
+                      enabled: item.enabled,
+                      type: item.type as string,
+                      config: item.config,
+                      required: true,
+                      icon: item.icon,
+                      icon_background: item.icon_background,
+                    },
+                  }
+                })
+              : []),
           ],
           modelConfig.dataset_query_variable,
         ),
@@ -139,45 +144,69 @@ const BasicAppPreview: FC<Props> = ({
       annotation_reply: modelConfig.annotation_reply,
       external_data_tools: modelConfig.external_data_tools,
       dataSets,
-      agentConfig: appDetail?.mode === 'agent-chat'
-        ? ({
-            max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
-            ...modelConfig.agent_mode,
-            // remove dataset
-            enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
-            tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
-              return !tool.dataset
-            }).map((tool: any) => {
-              const toolInCollectionList = collectionList?.find(c => tool.provider_id === c.id)
-              return {
-                ...tool,
-                isDeleted: appDetail?.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
-                notAuthor: toolInCollectionList?.is_team_authorization === false,
-                ...(tool.provider_type === 'builtin'
-                  ? {
-                      provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                      provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                    }
-                  : {}),
-              }
-            }),
-          }) : DEFAULT_AGENT_SETTING,
+      agentConfig:
+        appDetail?.mode === 'agent-chat'
+          ? {
+              max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
+              ...modelConfig.agent_mode,
+              // remove dataset
+              enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
+              tools: modelConfig.agent_mode?.tools
+                .filter((tool: any) => {
+                  return !tool.dataset
+                })
+                .map((tool: any) => {
+                  const toolInCollectionList = collectionList?.find(
+                    (c) => tool.provider_id === c.id,
+                  )
+                  return {
+                    ...tool,
+                    isDeleted: appDetail?.deleted_tools?.some(
+                      (deletedTool: any) =>
+                        deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name,
+                    ),
+                    notAuthor: toolInCollectionList?.is_team_authorization === false,
+                    ...(tool.provider_type === 'builtin'
+                      ? {
+                          provider_id: correctToolProvider(
+                            tool.provider_name,
+                            !!toolInCollectionList,
+                          ),
+                          provider_name: correctToolProvider(
+                            tool.provider_name,
+                            !!toolInCollectionList,
+                          ),
+                        }
+                      : {}),
+                  }
+                }),
+            }
+          : DEFAULT_AGENT_SETTING,
     }
-    return (newModelConfig as any)
+    return newModelConfig as any
   })(appDetail?.model_config)
   const mode = appDetail?.mode
   // const isChatApp = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
 
   // chat configuration
-  const promptMode = modelConfig?.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
+  const promptMode =
+    modelConfig?.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
   const isAdvancedMode = promptMode === PromptMode.advanced
   const isAgent = mode === 'agent-chat'
-  const chatPromptConfig = isAdvancedMode ? (modelConfig?.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG)) : undefined
+  const chatPromptConfig = isAdvancedMode
+    ? modelConfig?.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG)
+    : undefined
   const suggestedQuestions = modelConfig?.suggested_questions || []
   const moreLikeThisConfig = modelConfig?.more_like_this || { enabled: false }
-  const suggestedQuestionsAfterAnswerConfig = modelConfig?.suggested_questions_after_answer || { enabled: false }
+  const suggestedQuestionsAfterAnswerConfig = modelConfig?.suggested_questions_after_answer || {
+    enabled: false,
+  }
   const speechToTextConfig = modelConfig?.speech_to_text || { enabled: false }
-  const textToSpeechConfig = modelConfig?.text_to_speech || { enabled: false, voice: '', language: '' }
+  const textToSpeechConfig = modelConfig?.text_to_speech || {
+    enabled: false,
+    voice: '',
+    language: '',
+  }
   const citationConfig = modelConfig?.retriever_resource || { enabled: false }
   const annotationConfig = modelConfig?.annotation_reply || {
     id: '',
@@ -190,21 +219,18 @@ const BasicAppPreview: FC<Props> = ({
   }
   const moderationConfig = modelConfig?.sensitive_word_avoidance || { enabled: false }
   // completion configuration
-  const completionPromptConfig = modelConfig?.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any
+  const completionPromptConfig =
+    modelConfig?.completion_prompt_config || (clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
 
   // prompt & model config
   const inputs = {}
   const query = ''
   const completionParams = useState<FormValue>({})
 
-  const {
-    currentModel: currModel,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    {
-      provider: modelConfig.provider,
-      model: modelConfig.model_id,
-    },
-  )
+  const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
+    provider: modelConfig.provider,
+    model: modelConfig.model_id,
+  })
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
@@ -233,13 +259,25 @@ const BasicAppPreview: FC<Props> = ({
           detail: modelConfig.file_upload?.image?.detail || Resolution.high,
           enabled: !!modelConfig.file_upload?.image?.enabled,
           number_limits: modelConfig.file_upload?.image?.number_limits || 3,
-          transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          transfer_methods: modelConfig.file_upload?.image?.transfer_methods || [
+            'local_file',
+            'remote_url',
+          ],
         },
         enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
         allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
-        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...(FILE_EXTS[SupportUploadFileTypes.image] ?? []), ...(FILE_EXTS[SupportUploadFileTypes.video] ?? [])].map(ext => `.${ext}`),
-        allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
+        allowed_file_extensions:
+          modelConfig.file_upload?.allowed_file_extensions ||
+          [
+            ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+            ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
+          ].map((ext) => `.${ext}`),
+        allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods ||
+          modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        number_limits:
+          modelConfig.file_upload?.number_limits ||
+          modelConfig.file_upload?.image?.number_limits ||
+          3,
         fileUploadConfig: {},
       } as FileUpload,
       suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
@@ -340,7 +378,10 @@ const BasicAppPreview: FC<Props> = ({
               <Config />
             </div>
             {!isMobile && (
-              <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              <div
+                className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
+                style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
+              >
                 <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
                     isAPIKeySet
