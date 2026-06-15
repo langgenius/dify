@@ -7839,17 +7839,7 @@
       "count": 1
     }
   },
-  "web/service/access-control/__tests__/use-app-access-config.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/__tests__/use-dataset-access-config.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7874,17 +7864,7 @@
       "count": 1
     }
   },
-  "web/service/access-control/use-app-access-config.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/use-app-access-control.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/use-dataset-access-config.ts": {
     "no-restricted-imports": {
       "count": 1
     }
