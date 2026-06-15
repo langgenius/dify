@@ -7,6 +7,7 @@ import { playwright } from 'vite-plus/test/browser-playwright'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 const configDir = path.join(dirname, '.storybook')
+const isCI = !!process.env.CI
 
 export default defineConfig({
   plugins: [react()],
@@ -21,7 +22,33 @@ export default defineConfig({
     ],
   },
   test: {
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.stories.{ts,tsx}',
+        'src/**/__tests__/**',
+        'src/themes/**',
+        'src/styles/**',
+      ],
+      reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
+    },
     projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          globals: true,
+          setupFiles: ['./vitest.setup.ts'],
+          include: ['src/**/__tests__/**/*.spec.{ts,tsx}'],
+          browser: {
+            enabled: true,
+            provider: playwright(),
+            instances: [{ browser: 'chromium' }],
+            headless: true,
+          },
+        },
+      },
       {
         extends: true,
         plugins: [
@@ -30,7 +57,7 @@ export default defineConfig({
           }),
         ],
         test: {
-          name: `storybook:${configDir}`,
+          name: 'storybook',
           browser: {
             enabled: true,
             provider: playwright(),
