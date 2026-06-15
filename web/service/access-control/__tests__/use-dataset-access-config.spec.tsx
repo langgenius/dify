@@ -139,6 +139,13 @@ describe('use-dataset-access-config', () => {
           scope: 'specific',
         },
       })
+      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
+        input: {
+          params: {
+            datasetId: 'dataset-1',
+          },
+        },
+      })
     })
   })
 })

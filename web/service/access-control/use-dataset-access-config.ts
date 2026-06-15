@@ -65,6 +65,8 @@ export const useUpdateDatasetUserAccessSettings = (datasetId: string) => {
 }
 
 export const useUpdateDatasetOpenScope = (datasetId: string) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-dataset-open-scope', datasetId],
     mutationFn: (openScope: ResourceOpenScope) => consoleClient.rbacAccessConfig.datasets.updateOpenScope({
@@ -75,5 +77,16 @@ export const useUpdateDatasetOpenScope = (datasetId: string) => {
         scope: openScope,
       },
     }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.rbacAccessConfig.datasets.userAccessSettings.queryKey({
+          input: {
+            params: {
+              datasetId,
+            },
+          },
+        }),
+      })
+    },
   })
 }

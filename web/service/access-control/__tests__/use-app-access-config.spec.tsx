@@ -139,6 +139,13 @@ describe('use-app-access-config', () => {
           scope: 'all',
         },
       })
+      expect(mocks.userAccessSettingsQueryKey).toHaveBeenCalledWith({
+        input: {
+          params: {
+            appId: 'app-1',
+          },
+        },
+      })
     })
   })
 })
