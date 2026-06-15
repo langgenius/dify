@@ -12,6 +12,7 @@ type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 let mockMediaType: MediaTypeValue = MediaType.pc
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/explore',
   useRouter: () => ({
     replace: mockReplace,
     push: mockPush,
