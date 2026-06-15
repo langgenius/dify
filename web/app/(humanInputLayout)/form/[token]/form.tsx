@@ -35,6 +35,9 @@ const FormContent = () => {
   const { isSubmitting, submit, success } = useFormSubmit(token)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
+  const replaceWebappLogo = typeof formData?.site?.custom_config?.replace_webapp_logo === 'string'
+    ? formData.site.custom_config.replace_webapp_logo
+    : null
 
   const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
@@ -54,6 +57,7 @@ const FormContent = () => {
         subtitle={t('humanInput.recorded', { ns: 'share' })}
         submissionID={token}
         removeWebappBrand={removeWebappBrand}
+        replaceWebappLogo={replaceWebappLogo}
       />
     )
   }
@@ -105,6 +109,7 @@ const FormContent = () => {
       isSubmitting={isSubmitting}
       onSubmit={submit}
       removeWebappBrand={removeWebappBrand}
+      replaceWebappLogo={replaceWebappLogo}
     />
   )
 }
