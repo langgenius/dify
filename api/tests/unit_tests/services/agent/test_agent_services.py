@@ -787,6 +787,7 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch):
     assert service._load_versions_by_id([]) == {}
 
     assert created.name == "Analyst"
+    assert created.source == AgentSource.ROSTER
     assert created.active_config_snapshot_id is not None
     assert created.active_config_has_model is False
     assert backing_agent.active_config_snapshot_id is not None
