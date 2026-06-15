@@ -27,6 +27,7 @@
   "creation.createKnowledge": "ナレッジベースを作成する",
   "creation.errorTip": "ナレッジベースの作成に失敗しました",
   "creation.importDSL": "DSLファイルからインポートする",
+  "creation.pageTitle": "ナレッジパイプラインを作成",
   "creation.successTip": "ナレッジベースが正常に作成されました",
   "deletePipeline.content": "パイプラインテンプレートの削除は元に戻せません。",
   "deletePipeline.title": "このパイプラインテンプレートを削除してもよろしいですか？",

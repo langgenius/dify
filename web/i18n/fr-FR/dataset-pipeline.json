@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Créer des connaissances",
   "creation.errorTip": "Échec de la création d’une base de connaissances",
   "creation.importDSL": "Importation à partir d’un fichier DSL",
+  "creation.pageTitle": "Créer un pipeline de connaissances",
   "creation.successTip": "Création réussie d’une base de connaissances",
   "deletePipeline.content": "La suppression du modèle de pipeline est irréversible.",
   "deletePipeline.title": "Êtes-vous sûr de supprimer ce modèle de pipeline ?",

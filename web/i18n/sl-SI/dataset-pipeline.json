@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Ustvarite znanje",
   "creation.errorTip": "Ustvarjanje zbirke znanja ni uspelo",
   "creation.importDSL": "Uvoz iz datoteke DSL",
+  "creation.pageTitle": "Ustvari cevovod znanja",
   "creation.successTip": "Uspešno ustvarjena baza znanja",
   "deletePipeline.content": "Brisanje predloge cevovoda je nepovratno.",
   "deletePipeline.title": "Ali ste prepričani, da boste izbrisali to predlogo cevovoda?",

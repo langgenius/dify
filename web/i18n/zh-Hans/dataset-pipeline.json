@@ -27,6 +27,7 @@
   "creation.createKnowledge": "创建知识流水线",
   "creation.errorTip": "创建知识流水线失败",
   "creation.importDSL": "从 DSL 文件导入",
+  "creation.pageTitle": "创建知识流水线",
   "creation.successTip": "成功创建知识流水线",
   "deletePipeline.content": "删除知识流水线模板是不可逆的。",
   "deletePipeline.title": "要删除此知识流水线模板吗？",

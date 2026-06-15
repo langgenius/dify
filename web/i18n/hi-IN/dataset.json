@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "और जानें",
   "nTo1RetrievalLegacyLinkText": "N-से-1 पुनर्प्राप्ति सितंबर में आधिकारिक तौर पर बंद कर दी जाएगी।",
   "noExternalKnowledge": "अभी तक कोई बाहरी ज्ञान एपीआई नहीं है, बनाने के लिए यहां क्लिक करें",
+  "pageTitle.connectExternalKnowledgeBase": "बाहरी ज्ञान आधार कनेक्ट करें",
   "parentMode.fullDoc": "पूर्ण-दस्तावेज़",
   "parentMode.paragraph": "अनुच्‍छेद",
   "partialEnabled_one": "कुल {{count}} दस्तावेज़, {{num}} उपलब्ध",

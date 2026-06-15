@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Tạo kiến thức",
   "creation.errorTip": "Không thể tạo Cơ sở kiến thức",
   "creation.importDSL": "Nhập từ tệp DSL",
+  "creation.pageTitle": "Tạo quy trình tri thức",
   "creation.successTip": "Tạo thành công Cơ sở tri thức",
   "deletePipeline.content": "Xóa mẫu quy trình là không thể đảo ngược.",
   "deletePipeline.title": "Bạn có chắc chắn xóa mẫu quy trình này không?",

@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Створюйте знання",
   "creation.errorTip": "Не вдалося створити базу знань",
   "creation.importDSL": "Імпорт із файлу DSL",
+  "creation.pageTitle": "Створити конвеєр знань",
   "creation.successTip": "Успішно створили Базу знань",
   "deletePipeline.content": "Видалення шаблону трубопроводу є незворотнім.",
   "deletePipeline.title": "Ви впевнені, що видалили цей шаблон пайплайну?",

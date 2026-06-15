@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "ศึกษาเพิ่มเติม",
   "nTo1RetrievalLegacyLinkText": "การดึงข้อมูล N-to-1 จะเลิกใช้อย่างเป็นทางการในเดือนกันยายน",
   "noExternalKnowledge": "ยังไม่มี External Knowledge API คลิกที่นี่เพื่อสร้าง",
+  "pageTitle.connectExternalKnowledgeBase": "เชื่อมต่อฐานความรู้ภายนอก",
   "parentMode.fullDoc": "เอกสารฉบับเต็ม",
   "parentMode.paragraph": "วรรค",
   "partialEnabled_one": "รวม {{count}} เอกสาร, {{num}} ใช้งานได้",

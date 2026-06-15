@@ -19,6 +19,10 @@ vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
+}))
+
 vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: vi.fn(),
 }))

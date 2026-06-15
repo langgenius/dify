@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Узнать больше",
   "nTo1RetrievalLegacyLinkText": " Поиск N-к-1 будет официально прекращен в сентябре.",
   "noExternalKnowledge": "У нас еще нет External Knowledge API, нажмите здесь, чтобы создать",
+  "pageTitle.connectExternalKnowledgeBase": "Подключить внешнюю базу знаний",
   "parentMode.fullDoc": "Полный документ",
   "parentMode.paragraph": "Параграф",
   "partialEnabled_one": "Всего {{count}} документов, доступно {{num}}",

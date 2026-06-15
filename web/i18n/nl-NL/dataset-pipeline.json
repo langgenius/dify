@@ -27,6 +27,7 @@
   "creation.createKnowledge": "Create Knowledge",
   "creation.errorTip": "Failed to create a Knowledge Base",
   "creation.importDSL": "Import from a DSL file",
+  "creation.pageTitle": "Knowledge Pipeline maken",
   "creation.successTip": "Successfully created a Knowledge Base",
   "deletePipeline.content": "Deleting the pipeline template is irreversible.",
   "deletePipeline.title": "Are you sure to delete this pipeline template?",

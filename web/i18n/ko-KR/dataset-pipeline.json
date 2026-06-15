@@ -27,6 +27,7 @@
   "creation.createKnowledge": "지식 창출",
   "creation.errorTip": "기술 자료를 만들지 못했습니다.",
   "creation.importDSL": "DSL 파일에서 가져오기",
+  "creation.pageTitle": "지식 파이프라인 생성",
   "creation.successTip": "기술 자료를 성공적으로 만들었습니다.",
   "deletePipeline.content": "파이프라인 템플릿을 삭제하는 것은 되돌릴 수 없습니다.",
   "deletePipeline.title": "이 파이프라인 템플릿을 삭제하시겠습니까?",

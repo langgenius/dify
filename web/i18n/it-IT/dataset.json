@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Scopri di più",
   "nTo1RetrievalLegacyLinkText": "Il recupero N-a-1 sarà ufficialmente deprecato a settembre.",
   "noExternalKnowledge": "Non esiste ancora un'API di conoscenza esterna, fai clic qui per creare",
+  "pageTitle.connectExternalKnowledgeBase": "Connetti base di conoscenza esterna",
   "parentMode.fullDoc": "Full-doc",
   "parentMode.paragraph": "Paragrafo",
   "partialEnabled_one": "Totale di {{count}} documenti, {{num}} disponibili",

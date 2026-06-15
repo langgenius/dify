@@ -27,6 +27,7 @@
   "creation.createKnowledge": "ایجاد دانش",
   "creation.errorTip": "ایجاد پایگاه دانش ناموفق است",
   "creation.importDSL": "ایمپورت از یک فایل DSL",
+  "creation.pageTitle": "ایجاد پایپ‌لاین دانش",
   "creation.successTip": "با موفقیت یک پایگاه دانش ایجاد کرد",
   "deletePipeline.content": "حذف الگوی خط لوله برگشت ناپذیر است.",
   "deletePipeline.title": "آیا مطمئن هستید که این الگوی خط لوله را حذف می کنید؟",

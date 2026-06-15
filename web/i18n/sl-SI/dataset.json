@@ -146,6 +146,7 @@
   "nTo1RetrievalLegacyLink": "Izvedite več",
   "nTo1RetrievalLegacyLinkText": "N-to-1 pridobivanje bo uradno ukinjeno septembra.",
   "noExternalKnowledge": "Zunanjega API-ja za znanje še ni, kliknite tukaj za ustvarjanje",
+  "pageTitle.connectExternalKnowledgeBase": "Poveži zunanjo bazo znanja",
   "parentMode.fullDoc": "Celoten dokument",
   "parentMode.paragraph": "Odstavek",
   "partialEnabled_one": "Skupno {{count}} dokumentov, na voljo {{num}}",
