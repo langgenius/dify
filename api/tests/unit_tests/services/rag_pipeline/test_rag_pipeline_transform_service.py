@@ -1,4 +1,3 @@
-from pytest import LogCaptureFixture
 import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -482,7 +481,7 @@ def _make_service():
     return RagPipelineTransformService.__new__(RagPipelineTransformService)
 
 
-def test_deal_dependencies_skips_marketplace_when_disabled(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+def test_deal_dependencies_skips_marketplace_when_disabled(mocker: MockerFixture, caplog: pytest.LogCaptureFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.dify_config.MARKETPLACE_ENABLED",
         False,
