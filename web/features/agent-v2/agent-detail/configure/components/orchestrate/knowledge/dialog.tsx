@@ -285,7 +285,10 @@ export function AgentKnowledgeRetrievalDialog({
               <DatasetList
                 list={selectedDatasets}
                 onChange={setSelectedDatasets}
+                settingsDrawerBackdropClassName="bg-background-overlay"
+                settingsDrawerBackdropForceRender
                 settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
+                settingsModalHeight="100%"
               />
             </Field>
           </div>

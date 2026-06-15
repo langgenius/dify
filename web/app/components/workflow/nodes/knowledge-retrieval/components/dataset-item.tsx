@@ -33,7 +33,10 @@ type Props = Readonly<{
   onChange: (dataSet: DataSet) => void
   readonly?: boolean
   editable?: boolean
+  settingsDrawerBackdropClassName?: string
+  settingsDrawerBackdropForceRender?: boolean
   settingsDrawerPopupClassName?: string
+  settingsModalHeight?: string
 }>
 
 const DatasetItem: FC<Props> = ({
@@ -42,7 +45,10 @@ const DatasetItem: FC<Props> = ({
   onChange,
   readonly,
   editable = true,
+  settingsDrawerBackdropClassName,
+  settingsDrawerBackdropForceRender,
   settingsDrawerPopupClassName,
+  settingsModalHeight,
 }) => {
   const media = useBreakpoints()
   const { t } = useTranslation()
@@ -149,7 +155,13 @@ const DatasetItem: FC<Props> = ({
           }}
         >
           <DrawerPortal>
-            <DrawerBackdrop className={cn(!isMobile && 'bg-transparent')} />
+            <DrawerBackdrop
+              forceRender={settingsDrawerBackdropForceRender}
+              className={cn(
+                !settingsDrawerBackdropClassName && !isMobile && 'bg-transparent',
+                settingsDrawerBackdropClassName,
+              )}
+            />
             <DrawerViewport>
               <DrawerPopup className={cn(
                 'p-0! data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[640px] data-[swipe-direction=right]:rounded-xl',
@@ -159,6 +171,7 @@ const DatasetItem: FC<Props> = ({
                 <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
                   <SettingsModal
                     currentDataset={payload}
+                    height={settingsModalHeight}
                     onCancel={hideSettingsModal}
                     onSave={handleSave}
                   />
