@@ -17469,6 +17469,7 @@ Model class for provider quota configuration.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
+| mode | string |  | No |
 | name | string |  | Yes |
 | role | string |  | No |
 | version_note | string |  | No |

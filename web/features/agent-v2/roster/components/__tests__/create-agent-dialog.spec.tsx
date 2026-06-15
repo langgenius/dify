@@ -45,6 +45,7 @@ describe('CreateAgentDialog', () => {
     expect(mutationMock.mutate).toHaveBeenCalledWith({
       body: {
         name: 'Research Agent',
+        mode: 'agent',
         description: 'Find and summarize market materials.',
         role: 'Researcher',
         icon_type: 'emoji',

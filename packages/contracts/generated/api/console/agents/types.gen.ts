@@ -18,6 +18,7 @@ export type RosterAgentCreatePayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: AgentIconType | null
+  mode?: 'agent'
   name: string
   role?: string
   version_note?: string | null

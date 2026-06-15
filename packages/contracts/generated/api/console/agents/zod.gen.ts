@@ -697,6 +697,7 @@ export const zRosterAgentCreatePayload = z.object({
   icon: z.string().max(255).nullish(),
   icon_background: z.string().max(255).nullish(),
   icon_type: zAgentIconType.nullish(),
+  mode: z.literal('agent').optional().default('agent'),
   name: z.string().min(1).max(255),
   role: z.string().max(255).optional().default(''),
   version_note: z.string().nullish(),

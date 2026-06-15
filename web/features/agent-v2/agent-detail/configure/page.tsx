@@ -1,16 +1,19 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useHydrateAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/store'
-import { useAppFeatures as useAgentComposerAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
-import { useCurrentModel, useModel } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { consoleQuery } from '@/service/client'
+import {
+  useAgentConfigureAppFeatures,
+  useAgentConfigureCurrentModel,
+  useAgentConfigureModel,
+  useHydrateAgentConfigureDraft,
+} from './atoms'
 import { AgentOrchestratePanel } from './components/orchestrate'
 import { AgentPreviewChat } from './components/preview/chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
@@ -39,59 +42,27 @@ function AgentConfigurePageContent({
   const [showChatFeatures, setShowChatFeatures] = useState(false)
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
-  const configureModelState = useModel()
-  const setConfigureModel = configureModelState[1]
-  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
-    input: {
-      params: {
-        agent_id: agentId,
-      },
-    },
-  }))
-  const appId = agentQuery.data?.app_id
-  const composerQuery = useQuery(consoleQuery.apps.byAppId.agentComposer.get.queryOptions({
-    input: appId
-      ? {
-          params: {
-            app_id: appId,
-          },
-        }
-      : skipToken,
-  }))
-  const activeVersionId = composerQuery.data?.active_config_snapshot.id ?? agentQuery.data?.active_config_snapshot_id
-  const versionQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
-    input: activeVersionId && !composerQuery.data?.agent_soul
-      ? {
-          params: {
-            agent_id: agentId,
-            version_id: activeVersionId,
-          },
-        }
-      : skipToken,
-  }))
-  const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
-  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot ?? versionDetail ?? agentQuery.data?.active_config_snapshot
-  const agentSoulConfig = composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot
-  const draftAppFeatures = useAgentComposerAppFeatures()
-  // eslint-disable-next-line react/use-state -- Hydrates Jotai composer atoms; despite the suffix this is not a useState wrapper.
-  useHydrateAgentSoulConfigFormState({
+  const {
+    agentQuery,
+    composerQuery,
+    versionQuery,
+    appId,
+    activeVersionId,
+    activeConfigSnapshot,
+    agentSoulConfig,
+  } = useAgentConfigureData(agentId)
+  const draftAppFeatures = useAgentConfigureAppFeatures()
+
+  useHydrateAgentConfigureDraft({
     agentId,
     activeVersionId,
     config: agentSoulConfig,
   })
   const {
-    data: defaultTextGenerationModel,
-  } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const defaultModel = defaultTextGenerationModel
-    ? {
-        provider: defaultTextGenerationModel.provider.provider,
-        model: defaultTextGenerationModel.model,
-      }
-    : undefined
-  const currentModel = useCurrentModel(defaultModel)
-  const {
+    currentModel,
+    setConfigureModel,
     textGenerationModelList,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
+  } = useAgentConfigureModelOptions()
   const {
     isPublishing,
     publishDraft,
@@ -102,12 +73,7 @@ function AgentConfigurePageContent({
     currentModel,
     enabled: composerQuery.isSuccess,
   })
-  const previewAgentSoulConfig = agentSoulConfig && draftAppFeatures
-    ? {
-        ...agentSoulConfig,
-        app_features: draftAppFeatures,
-      }
-    : agentSoulConfig
+  const previewAgentSoulConfig = getPreviewAgentSoulConfig(agentSoulConfig, draftAppFeatures)
 
   return (
     <section
@@ -166,4 +132,85 @@ function AgentConfigurePageContent({
       </div>
     </section>
   )
+}
+
+function useAgentConfigureData(agentId: string) {
+  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  }))
+  const appId = agentQuery.data?.app_id
+  const composerQuery = useQuery(consoleQuery.apps.byAppId.agentComposer.get.queryOptions({
+    input: appId
+      ? {
+          params: {
+            app_id: appId,
+          },
+        }
+      : skipToken,
+  }))
+  const activeVersionId = composerQuery.data?.active_config_snapshot.id ?? agentQuery.data?.active_config_snapshot_id
+  const shouldLoadPublishedVersion = !composerQuery.data?.agent_soul
+  const versionQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
+    input: activeVersionId && shouldLoadPublishedVersion
+      ? {
+          params: {
+            agent_id: agentId,
+            version_id: activeVersionId,
+          },
+        }
+      : skipToken,
+  }))
+  const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
+  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot ?? versionDetail ?? agentQuery.data?.active_config_snapshot
+  const agentSoulConfig = composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot
+
+  return {
+    agentQuery,
+    composerQuery,
+    versionQuery,
+    appId,
+    activeVersionId,
+    activeConfigSnapshot,
+    agentSoulConfig,
+  }
+}
+
+function useAgentConfigureModelOptions() {
+  const [, setConfigureModel] = useAgentConfigureModel()
+  const {
+    data: defaultTextGenerationModel,
+  } = useDefaultModel(ModelTypeEnum.textGeneration)
+  const defaultModel = defaultTextGenerationModel
+    ? {
+        provider: defaultTextGenerationModel.provider.provider,
+        model: defaultTextGenerationModel.model,
+      }
+    : undefined
+  const currentModel = useAgentConfigureCurrentModel(defaultModel)
+  const {
+    textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
+
+  return {
+    currentModel,
+    setConfigureModel,
+    textGenerationModelList,
+  }
+}
+
+function getPreviewAgentSoulConfig(
+  agentSoulConfig: AgentSoulConfig | undefined,
+  draftAppFeatures: AgentSoulConfig['app_features'] | undefined,
+) {
+  if (!agentSoulConfig || !draftAppFeatures)
+    return agentSoulConfig
+
+  return {
+    ...agentSoulConfig,
+    app_features: draftAppFeatures,
+  }
 }

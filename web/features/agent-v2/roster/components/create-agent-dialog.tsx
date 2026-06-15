@@ -1,5 +1,6 @@
 'use client'
 
+import type { RosterAgentCreatePayload } from '@dify/contracts/api/console/agents/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -52,15 +53,18 @@ export function CreateAgentDialog() {
     if (!trimmedName || createAgentMutation.isPending)
       return
 
+    const body = {
+      name: trimmedName,
+      mode: 'agent',
+      description: formValues.description?.trim() ?? '',
+      role: formValues.role?.trim() ?? '',
+      icon_type: agentIcon.type,
+      icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
+      icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
+    } satisfies RosterAgentCreatePayload
+
     createAgentMutation.mutate({
-      body: {
-        name: trimmedName,
-        description: formValues.description?.trim() ?? '',
-        role: formValues.role?.trim() ?? '',
-        icon_type: agentIcon.type,
-        icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
-        icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-      },
+      body,
     }, {
       onSuccess: () => {
         toast.success(t('roster.createSuccess'))
