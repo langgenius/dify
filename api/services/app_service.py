@@ -703,7 +703,7 @@ class AppService:
         :param app: App instance
         """
         app_was_deleted.send(app)
- 
+
         backing_agent = self._get_backing_agent_for_update(app)
         if backing_agent is not None:
             now = naive_utc_now()
