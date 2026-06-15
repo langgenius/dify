@@ -15,8 +15,8 @@ concurrency:
 jobs:
   publish:
     name: build + publish edge to R2
-    runs-on: depot-ubuntu-24.04
-    if: github.repository == 'langgenius/dify'
+    runs-on: ${{ github.repository == 'langgenius/dify' && 'depot-ubuntu-24.04' || 'ubuntu-24.04' }}
+    if: vars.R2_BUCKET != ''
     defaults:
       run:
         shell: bash
