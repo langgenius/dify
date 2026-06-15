@@ -14,11 +14,6 @@ def rbac_permission_required[**P, R](
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Check enterprise RBAC permissions for the current user.
 
-    Community edition: always a no-op — the decorated view is called
-    unconditionally.  Enterprise edition replaces this with a real gate that
-    calls the external ``check-access`` endpoint and raises ``Forbidden`` on
-    denial.
-
     Args:
         resource_type: The :class:`RBACResourceScope` member (app/dataset/workspace).
         scene: The :class:`RBACPermission` permission point.
