@@ -106,7 +106,8 @@ def _create_workflow_run_from_execution(
     workflow_run.status = execution.status
     workflow_run.outputs = (
         json.dumps(json_converter.to_json_encodable(execution.outputs), ensure_ascii=False)
-        if execution.outputs else "{}"
+        if execution.outputs
+        else "{}"
     )
     workflow_run.error = execution.error_message
     workflow_run.elapsed_time = execution.elapsed_time
