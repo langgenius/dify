@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "plans",
   "plansCommon.triggerEvents.professional": "{{count,number}} Trigger Events/month",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Trigger Events",
-  "plansCommon.triggerEvents.tooltip": "The number of events that automatically start workflows through Plugin, Schedule, or Webhook triggers.",
+  "plansCommon.triggerEvents.tooltip": "The number of events that automatically start workflows through Integratie, Schedule, or Webhook triggers.",
   "plansCommon.triggerEvents.unlimited": "Unlimited Trigger Events",
   "plansCommon.unavailable": "Unavailable",
   "plansCommon.unlimited": "Unlimited",

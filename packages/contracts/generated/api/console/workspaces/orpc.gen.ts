@@ -67,6 +67,11 @@ import {
   zGetWorkspacesCurrentPermissionResponse,
   zGetWorkspacesCurrentPluginAssetQuery,
   zGetWorkspacesCurrentPluginAssetResponse,
+  zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery,
+  zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse,
+  zGetWorkspacesCurrentPluginByCategoryListPath,
+  zGetWorkspacesCurrentPluginByCategoryListQuery,
+  zGetWorkspacesCurrentPluginByCategoryListResponse,
   zGetWorkspacesCurrentPluginDebuggingKeyResponse,
   zGetWorkspacesCurrentPluginFetchManifestQuery,
   zGetWorkspacesCurrentPluginFetchManifestResponse,
@@ -79,7 +84,6 @@ import {
   zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery,
   zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse,
   zGetWorkspacesCurrentPluginPermissionFetchResponse,
-  zGetWorkspacesCurrentPluginPreferencesFetchResponse,
   zGetWorkspacesCurrentPluginReadmeQuery,
   zGetWorkspacesCurrentPluginReadmeResponse,
   zGetWorkspacesCurrentPluginTasksByTaskIdPath,
@@ -214,6 +218,10 @@ import {
   zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeBody,
   zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypePath,
   zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse,
+  zPostWorkspacesCurrentPluginAutoUpgradeChangeBody,
+  zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse,
+  zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody,
+  zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse,
   zPostWorkspacesCurrentPluginInstallGithubBody,
   zPostWorkspacesCurrentPluginInstallGithubResponse,
   zPostWorkspacesCurrentPluginInstallMarketplaceBody,
@@ -228,10 +236,6 @@ import {
   zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse,
   zPostWorkspacesCurrentPluginPermissionChangeBody,
   zPostWorkspacesCurrentPluginPermissionChangeResponse,
-  zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeBody,
-  zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse,
-  zPostWorkspacesCurrentPluginPreferencesChangeBody,
-  zPostWorkspacesCurrentPluginPreferencesChangeResponse,
   zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath,
   zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse,
   zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath,
@@ -1487,7 +1491,58 @@ export const asset = {
   get: get20,
 }
 
+export const post26 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginAutoUpgradeChange',
+    path: '/workspaces/current/plugin/auto-upgrade/change',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeChangeBody }))
+  .output(zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse)
+
+export const change = {
+  post: post26,
+}
+
+export const post27 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesCurrentPluginAutoUpgradeExclude',
+    path: '/workspaces/current/plugin/auto-upgrade/exclude',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody }))
+  .output(zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse)
+
+export const exclude = {
+  post: post27,
+}
+
 export const get21 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginAutoUpgradeFetch',
+    path: '/workspaces/current/plugin/auto-upgrade/fetch',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery }))
+  .output(zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse)
+
+export const fetch_ = {
+  get: get21,
+}
+
+export const autoUpgrade = {
+  change,
+  exclude,
+  fetch: fetch_,
+}
+
+export const get22 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1498,10 +1553,10 @@ export const get21 = oc
   .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
 
 export const debuggingKey = {
-  get: get21,
+  get: get22,
 }
 
-export const get22 = oc
+export const get23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1513,10 +1568,10 @@ export const get22 = oc
   .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
 
 export const fetchManifest = {
-  get: get22,
+  get: get23,
 }
 
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1528,10 +1583,10 @@ export const get23 = oc
   .output(zGetWorkspacesCurrentPluginIconResponse)
 
 export const icon = {
-  get: get23,
+  get: get24,
 }
 
-export const post26 = oc
+export const post28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1543,10 +1598,10 @@ export const post26 = oc
   .output(zPostWorkspacesCurrentPluginInstallGithubResponse)
 
 export const github = {
-  post: post26,
+  post: post28,
 }
 
-export const post27 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1558,10 +1613,10 @@ export const post27 = oc
   .output(zPostWorkspacesCurrentPluginInstallMarketplaceResponse)
 
 export const marketplace = {
-  post: post27,
+  post: post29,
 }
 
-export const post28 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1573,7 +1628,7 @@ export const post28 = oc
   .output(zPostWorkspacesCurrentPluginInstallPkgResponse)
 
 export const pkg = {
-  post: post28,
+  post: post30,
 }
 
 export const install = {
@@ -1582,7 +1637,7 @@ export const install = {
   pkg,
 }
 
-export const post29 = oc
+export const post31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1594,14 +1649,14 @@ export const post29 = oc
   .output(zPostWorkspacesCurrentPluginListInstallationsIdsResponse)
 
 export const ids = {
-  post: post29,
+  post: post31,
 }
 
 export const installations = {
   ids,
 }
 
-export const post30 = oc
+export const post32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1613,10 +1668,10 @@ export const post30 = oc
   .output(zPostWorkspacesCurrentPluginListLatestVersionsResponse)
 
 export const latestVersions = {
-  post: post30,
+  post: post32,
 }
 
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1628,12 +1683,12 @@ export const get24 = oc
   .output(zGetWorkspacesCurrentPluginListResponse)
 
 export const list2 = {
-  get: get24,
+  get: get25,
   installations,
   latestVersions,
 }
 
-export const get25 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1645,14 +1700,14 @@ export const get25 = oc
   .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
 
 export const pkg2 = {
-  get: get25,
+  get: get26,
 }
 
 export const marketplace2 = {
   pkg: pkg2,
 }
 
-export const get26 = oc
+export const get27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1664,13 +1719,13 @@ export const get26 = oc
   .output(zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse)
 
 export const dynamicOptions = {
-  get: get26,
+  get: get27,
 }
 
 /**
  * Fetch dynamic options using credentials directly (for edit mode)
  */
-export const post31 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1685,7 +1740,7 @@ export const post31 = oc
   .output(zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse)
 
 export const dynamicOptionsWithCredentials = {
-  post: post31,
+  post: post33,
 }
 
 export const parameters = {
@@ -1693,7 +1748,7 @@ export const parameters = {
   dynamicOptionsWithCredentials,
 }
 
-export const post32 = oc
+export const post34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1704,11 +1759,11 @@ export const post32 = oc
   .input(z.object({ body: zPostWorkspacesCurrentPluginPermissionChangeBody }))
   .output(zPostWorkspacesCurrentPluginPermissionChangeResponse)
 
-export const change = {
-  post: post32,
+export const change2 = {
+  post: post34,
 }
 
-export const get27 = oc
+export const get28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1718,65 +1773,11 @@ export const get27 = oc
   })
   .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
 
-export const fetch_ = {
-  get: get27,
-}
-
-export const permission2 = {
-  change,
-  fetch: fetch_,
-}
-
-export const post33 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginPreferencesAutoupgradeExclude',
-    path: '/workspaces/current/plugin/preferences/autoupgrade/exclude',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeBody }))
-  .output(zPostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse)
-
-export const exclude = {
-  post: post33,
-}
-
-export const autoupgrade = {
-  exclude,
-}
-
-export const post34 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postWorkspacesCurrentPluginPreferencesChange',
-    path: '/workspaces/current/plugin/preferences/change',
-    tags: ['console'],
-  })
-  .input(z.object({ body: zPostWorkspacesCurrentPluginPreferencesChangeBody }))
-  .output(zPostWorkspacesCurrentPluginPreferencesChangeResponse)
-
-export const change2 = {
-  post: post34,
-}
-
-export const get28 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getWorkspacesCurrentPluginPreferencesFetch',
-    path: '/workspaces/current/plugin/preferences/fetch',
-    tags: ['console'],
-  })
-  .output(zGetWorkspacesCurrentPluginPreferencesFetchResponse)
-
 export const fetch2 = {
   get: get28,
 }
 
-export const preferences = {
-  autoupgrade,
+export const permission2 = {
   change: change2,
   fetch: fetch2,
 }
@@ -1973,8 +1974,33 @@ export const upload = {
   pkg: pkg3,
 }
 
+export const get32 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesCurrentPluginByCategoryList',
+    path: '/workspaces/current/plugin/{category}/list',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentPluginByCategoryListPath,
+      query: zGetWorkspacesCurrentPluginByCategoryListQuery.optional(),
+    }),
+  )
+  .output(zGetWorkspacesCurrentPluginByCategoryListResponse)
+
+export const list3 = {
+  get: get32,
+}
+
+export const byCategory = {
+  list: list3,
+}
+
 export const plugin2 = {
   asset,
+  autoUpgrade,
   debuggingKey,
   fetchManifest,
   icon,
@@ -1983,15 +2009,15 @@ export const plugin2 = {
   marketplace: marketplace2,
   parameters,
   permission: permission2,
-  preferences,
   readme,
   tasks,
   uninstall,
   upgrade,
   upload,
+  byCategory,
 }
 
-export const get32 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2002,7 +2028,7 @@ export const get32 = oc
   .output(zGetWorkspacesCurrentToolLabelsResponse)
 
 export const toolLabels = {
-  get: get32,
+  get: get33,
 }
 
 export const post44 = oc
@@ -2035,7 +2061,7 @@ export const delete9 = {
   post: post45,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2046,11 +2072,11 @@ export const get33 = oc
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiGetQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiGetResponse)
 
-export const get34 = {
-  get: get33,
+export const get35 = {
+  get: get34,
 }
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2062,7 +2088,7 @@ export const get35 = oc
   .output(zGetWorkspacesCurrentToolProviderApiRemoteResponse)
 
 export const remote = {
-  get: get35,
+  get: get36,
 }
 
 export const post46 = oc
@@ -2099,7 +2125,7 @@ export const test = {
   pre,
 }
 
-export const get36 = oc
+export const get37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2111,7 +2137,7 @@ export const get36 = oc
   .output(zGetWorkspacesCurrentToolProviderApiToolsResponse)
 
 export const tools = {
-  get: get36,
+  get: get37,
 }
 
 export const post48 = oc
@@ -2132,7 +2158,7 @@ export const update2 = {
 export const api = {
   add,
   delete: delete9,
-  get: get34,
+  get: get35,
   remote,
   schema,
   test,
@@ -2160,7 +2186,7 @@ export const add2 = {
   post: post49,
 }
 
-export const get37 = oc
+export const get38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2177,10 +2203,10 @@ export const get37 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse)
 
 export const info = {
-  get: get37,
+  get: get38,
 }
 
-export const get38 = oc
+export const get39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2200,7 +2226,7 @@ export const get38 = oc
   )
 
 export const byCredentialType = {
-  get: get38,
+  get: get39,
 }
 
 export const schema2 = {
@@ -2212,7 +2238,7 @@ export const credential = {
   schema: schema2,
 }
 
-export const get39 = oc
+export const get40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2229,7 +2255,7 @@ export const get39 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse)
 
 export const credentials3 = {
-  get: get39,
+  get: get40,
 }
 
 export const post50 = oc
@@ -2272,7 +2298,7 @@ export const delete10 = {
   post: post51,
 }
 
-export const get40 = oc
+export const get41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2284,10 +2310,10 @@ export const get40 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse)
 
 export const icon2 = {
-  get: get40,
+  get: get41,
 }
 
-export const get41 = oc
+export const get42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2299,10 +2325,10 @@ export const get41 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse)
 
 export const info2 = {
-  get: get41,
+  get: get42,
 }
 
-export const get42 = oc
+export const get43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2316,7 +2342,7 @@ export const get42 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse)
 
 export const clientSchema = {
-  get: get42,
+  get: get43,
 }
 
 export const delete11 = oc
@@ -2334,7 +2360,7 @@ export const delete11 = oc
   )
   .output(zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
 
-export const get43 = oc
+export const get44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2365,7 +2391,7 @@ export const post52 = oc
 
 export const customClient = {
   delete: delete11,
-  get: get43,
+  get: get44,
   post: post52,
 }
 
@@ -2374,7 +2400,7 @@ export const oauth = {
   customClient,
 }
 
-export const get44 = oc
+export const get45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2386,7 +2412,7 @@ export const get44 = oc
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse)
 
 export const tools2 = {
-  get: get44,
+  get: get45,
 }
 
 export const post53 = oc
@@ -2441,7 +2467,7 @@ export const auth = {
   post: post54,
 }
 
-export const get45 = oc
+export const get46 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2453,14 +2479,14 @@ export const get45 = oc
   .output(zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse)
 
 export const byProviderId = {
-  get: get45,
+  get: get46,
 }
 
 export const tools3 = {
   byProviderId,
 }
 
-export const get46 = oc
+export const get47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2472,7 +2498,7 @@ export const get46 = oc
   .output(zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse)
 
 export const byProviderId2 = {
-  get: get46,
+  get: get47,
 }
 
 export const update4 = {
@@ -2551,7 +2577,7 @@ export const delete13 = {
   post: post57,
 }
 
-export const get47 = oc
+export const get48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2562,11 +2588,11 @@ export const get47 = oc
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
-export const get48 = {
-  get: get47,
+export const get49 = {
+  get: get48,
 }
 
-export const get49 = oc
+export const get50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2578,7 +2604,7 @@ export const get49 = oc
   .output(zGetWorkspacesCurrentToolProviderWorkflowToolsResponse)
 
 export const tools4 = {
-  get: get49,
+  get: get50,
 }
 
 export const post58 = oc
@@ -2599,7 +2625,7 @@ export const update5 = {
 export const workflow = {
   create: create2,
   delete: delete13,
-  get: get48,
+  get: get49,
   tools: tools4,
   update: update5,
 }
@@ -2611,7 +2637,7 @@ export const toolProvider = {
   workflow,
 }
 
-export const get50 = oc
+export const get51 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2623,10 +2649,10 @@ export const get50 = oc
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {
-  get: get50,
+  get: get51,
 }
 
-export const get51 = oc
+export const get52 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2637,10 +2663,10 @@ export const get51 = oc
   .output(zGetWorkspacesCurrentToolsApiResponse)
 
 export const api2 = {
-  get: get51,
+  get: get52,
 }
 
-export const get52 = oc
+export const get53 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2651,10 +2677,10 @@ export const get52 = oc
   .output(zGetWorkspacesCurrentToolsBuiltinResponse)
 
 export const builtin2 = {
-  get: get52,
+  get: get53,
 }
 
-export const get53 = oc
+export const get54 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2665,10 +2691,10 @@ export const get53 = oc
   .output(zGetWorkspacesCurrentToolsMcpResponse)
 
 export const mcp2 = {
-  get: get53,
+  get: get54,
 }
 
-export const get54 = oc
+export const get55 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2679,7 +2705,7 @@ export const get54 = oc
   .output(zGetWorkspacesCurrentToolsWorkflowResponse)
 
 export const workflow2 = {
-  get: get54,
+  get: get55,
 }
 
 export const tools5 = {
@@ -2689,7 +2715,7 @@ export const tools5 = {
   workflow: workflow2,
 }
 
-export const get55 = oc
+export const get56 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2701,13 +2727,13 @@ export const get55 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderIconResponse)
 
 export const icon3 = {
-  get: get55,
+  get: get56,
 }
 
 /**
  * Get info for a trigger provider
  */
-export const get56 = oc
+export const get57 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2720,7 +2746,7 @@ export const get56 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderInfoResponse)
 
 export const info3 = {
-  get: get56,
+  get: get57,
 }
 
 /**
@@ -2741,7 +2767,7 @@ export const delete14 = oc
 /**
  * Get OAuth client configuration for a provider
  */
-export const get57 = oc
+export const get58 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2775,7 +2801,7 @@ export const post59 = oc
 
 export const client = {
   delete: delete14,
-  get: get57,
+  get: get58,
   post: post59,
 }
 
@@ -2842,7 +2868,7 @@ export const create3 = {
 /**
  * Get the request logs for a subscription instance for a trigger provider
  */
-export const get58 = oc
+export const get59 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2863,7 +2889,7 @@ export const get58 = oc
   )
 
 export const bySubscriptionBuilderId2 = {
-  get: get58,
+  get: get59,
 }
 
 export const logs = {
@@ -2937,7 +2963,7 @@ export const verifyAndUpdate = {
 /**
  * Get a subscription instance for a trigger provider
  */
-export const get59 = oc
+export const get60 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2958,7 +2984,7 @@ export const get59 = oc
   )
 
 export const bySubscriptionBuilderId5 = {
-  get: get59,
+  get: get60,
 }
 
 export const builder = {
@@ -2973,7 +2999,7 @@ export const builder = {
 /**
  * List all trigger subscriptions for the current tenant's provider
  */
-export const get60 = oc
+export const get61 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -2985,14 +3011,14 @@ export const get60 = oc
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse)
 
-export const list3 = {
-  get: get60,
+export const list4 = {
+  get: get61,
 }
 
 /**
  * Initiate OAuth authorization flow for a trigger provider
  */
-export const get61 = oc
+export const get62 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3009,7 +3035,7 @@ export const get61 = oc
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
 
 export const authorize = {
-  get: get61,
+  get: get62,
 }
 
 export const oauth3 = {
@@ -3050,7 +3076,7 @@ export const verify = {
 
 export const subscriptions = {
   builder,
-  list: list3,
+  list: list4,
   oauth: oauth3,
   verify,
 }
@@ -3126,7 +3152,7 @@ export const triggerProvider = {
 /**
  * List all trigger providers for the current tenant
  */
-export const get62 = oc
+export const get63 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3138,7 +3164,7 @@ export const get62 = oc
   .output(zGetWorkspacesCurrentTriggersResponse)
 
 export const triggers = {
-  get: get62,
+  get: get63,
 }
 
 export const post67 = oc
@@ -3237,7 +3263,7 @@ export const switch3 = {
   post: post71,
 }
 
-export const get63 = oc
+export const get64 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3249,7 +3275,7 @@ export const get63 = oc
   .output(zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse)
 
 export const byLang = {
-  get: get63,
+  get: get64,
 }
 
 export const byIconType = {
@@ -3268,7 +3294,7 @@ export const byTenantId = {
   modelProviders: modelProviders2,
 }
 
-export const get64 = oc
+export const get65 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -3279,7 +3305,7 @@ export const get64 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get64,
+  get: get65,
   current,
   customConfig,
   info: info4,

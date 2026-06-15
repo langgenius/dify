@@ -14,7 +14,7 @@ type HostChoice = { host: string, accounts: number, active: boolean }
 
 export async function runUseHost(opts: UseHostOptions): Promise<void> {
   const cs = colorScheme(colorEnabled(opts.io.isErrTTY))
-  const reg = Registry.load()
+  const reg = await Registry.load()
   const hosts = Object.keys(reg.hosts)
   if (hosts.length === 0)
     throw notLoggedInError()
@@ -28,7 +28,7 @@ export async function runUseHost(opts: UseHostOptions): Promise<void> {
   }
 
   reg.setHost(target)
-  reg.save()
+  await reg.save()
   opts.io.out.write(`${cs.successIcon()} Active host is now ${target}\n`)
 }
 

@@ -1,12 +1,10 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
+import { openBlankAppCreation } from '../../../support/apps'
 
 When('I start creating a blank app', async function (this: DifyWorld) {
-  const page = this.getPage()
-
-  await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible()
-  await page.getByRole('button', { name: 'Create from Blank' }).click()
+  await openBlankAppCreation(this.getPage())
 })
 
 When('I enter a unique E2E app name', async function (this: DifyWorld) {

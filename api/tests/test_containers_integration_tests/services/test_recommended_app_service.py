@@ -263,6 +263,54 @@ class TestRecommendedAppServiceGetDetail:
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
 
+# ── Pure logic tests: get_learn_dify_apps ──────────────────────────────
+
+
+class TestRecommendedAppServiceGetLearnDifyApps:
+    def test_returns_database_learn_dify_apps_without_remote_factory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        expected_app = RecommendedAppPayload(app_id="app-1", category="Workflow")
+        mock_database_retrieval = MagicMock()
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = {
+            "recommended_apps": [expected_app],
+            "categories": ["Workflow"],
+        }
+        monkeypatch.setattr(service_module, "DatabaseRecommendAppRetrieval", mock_database_retrieval)
+        monkeypatch.setattr(
+            service_module.FeatureService,
+            "get_system_features",
+            MagicMock(return_value=SimpleNamespace(enable_trial_app=False)),
+        )
+        factory_mock = MagicMock()
+        monkeypatch.setattr(service_module.RecommendAppRetrievalFactory, "get_recommend_app_factory", factory_mock)
+
+        result = RecommendedAppService.get_learn_dify_apps(db.session, "en-US")
+
+        assert result == {"recommended_apps": [expected_app]}
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.assert_called_once_with("en-US")
+        factory_mock.assert_not_called()
+
+    def test_sets_can_trial_when_trial_feature_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        app = RecommendedAppPayload(app_id="app-1", category="Workflow")
+        mock_database_retrieval = MagicMock()
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = {
+            "recommended_apps": [app],
+            "categories": ["Workflow"],
+        }
+        monkeypatch.setattr(service_module, "DatabaseRecommendAppRetrieval", mock_database_retrieval)
+        monkeypatch.setattr(
+            service_module.FeatureService,
+            "get_system_features",
+            MagicMock(return_value=SimpleNamespace(enable_trial_app=True)),
+        )
+        can_trial_mock = MagicMock(return_value=True)
+        monkeypatch.setattr(RecommendedAppService, "_can_trial_app", can_trial_mock)
+
+        result = RecommendedAppService.get_learn_dify_apps(db.session, "en-US")
+
+        assert result["recommended_apps"][0]["can_trial"] is True
+        can_trial_mock.assert_called_once_with(db.session, "app-1")
+
+
 # ── Integration tests: trial app features (real DB) ────────────────────
 
 

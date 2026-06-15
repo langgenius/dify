@@ -1,22 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AppNavItem from '../index'
 
-const mockPush = vi.fn()
-
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-}))
-
-vi.mock('ahooks', async () => {
-  const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
-  return {
-    ...actual,
-    useHover: () => false,
-  }
-})
-
 const baseProps = {
   isMobile: false,
   name: 'My App',
@@ -53,12 +37,22 @@ describe('AppNavItem', () => {
   })
 
   describe('User Interactions', () => {
-    it('should navigate to installed app when item is clicked', () => {
+    it('should render installed app navigation as a link', () => {
       render(<AppNavItem {...baseProps} />)
 
-      fireEvent.click(screen.getByText('My App'))
+      const link = screen.getByRole('link', { name: 'My App' })
 
-      expect(mockPush).toHaveBeenCalledWith('/explore/installed/app-123')
+      expect(link).toHaveAttribute('href', '/installed/app-123')
+    })
+
+    it('should only show the row focus ring when the app link receives focus', () => {
+      render(<AppNavItem {...baseProps} />)
+
+      const row = screen.getByText('My App').closest('.group')
+
+      expect(row).toHaveClass('has-[>a:focus-visible]:ring-2')
+      expect(row).toHaveClass('has-[>a:focus-visible]:ring-state-accent-solid')
+      expect(row).not.toHaveClass('focus-within:ring-2')
     })
 
     it('should call onDelete with app id when delete action is clicked', async () => {

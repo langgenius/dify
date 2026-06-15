@@ -192,6 +192,27 @@ class SimpleProviderEntityResponse(BaseModel):
         return self
 
 
+class ProviderEntityResponse(BaseModel):
+    """Runtime provider response with codegen-safe model pricing schemas."""
+
+    provider: str
+    provider_name: str = ""
+    label: I18nObject
+    description: I18nObject | None = None
+    icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
+    background: str | None = None
+    help: ProviderHelpEntity | None = None
+    supported_model_types: Sequence[ModelType]
+    configurate_methods: list[ConfigurateMethod]
+    models: list[AIModelEntityResponse] = []
+    provider_credential_schema: ProviderCredentialSchema | None = None
+    model_credential_schema: ModelCredentialSchema | None = None
+    position: dict[str, list[str]] | None = {}
+
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
+
+
 class DefaultModelResponse(BaseModel):
     """
     Default model entity.

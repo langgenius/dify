@@ -24,7 +24,7 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
   const store = opts.store ?? getTokenStore(reg.token_storage)
   let bearer = ''
   try {
-    bearer = store.read(active.host, active.email)
+    bearer = await store.read(active.host, active.email)
   }
   catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
 
@@ -38,7 +38,7 @@ export async function runLogout(opts: LogoutOptions): Promise<void> {
     }
   }
 
-  reg.forget(active, store)
+  await reg.forget(active, store)
 
   if (revokeWarning !== '')
     opts.io.err.write(revokeWarning)

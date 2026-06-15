@@ -235,11 +235,11 @@ describe('VoiceInput', () => {
       })
     })
 
-    it('should use installed-apps URL when pathname includes explore/installed', async () => {
+    it('should use installed-apps URL when pathname is an installed app route', async () => {
       const user = userEvent.setup()
       vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
       mockState.params = { appId: 'app-123' }
-      mockState.pathname = '/explore/installed'
+      mockState.pathname = '/installed/app-123'
 
       render(<VoiceInput onConverted={onConverted} onCancel={onCancel} />)
       await user.click(await screen.findByTestId('voice-input-stop'))
@@ -449,7 +449,7 @@ describe('VoiceInput', () => {
     })
   })
 
-  it('should handle pathname with explore/installed correctly when appId exists', async () => {
+  it('should handle legacy explore installed pathname when appId exists', async () => {
     const user = userEvent.setup()
     vi.mocked(audioToText).mockResolvedValueOnce({ text: 'test' })
     mockState.params = { appId: 'app-id-123' }
