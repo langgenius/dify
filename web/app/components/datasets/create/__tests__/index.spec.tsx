@@ -33,6 +33,9 @@ vi.mock('@/next/link', () => {
 // Mock modal context
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
   useModalContextSelector: (selector: (state: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown) => {
     const state = {
       setShowAccountSettingModal: mockSetShowAccountSettingModal,

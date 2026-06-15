@@ -20,6 +20,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 
 type DSLPayload = {
@@ -43,6 +44,7 @@ export const useImportDSL = () => {
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCurrentWorkspaceEditor = useSelector(s => s.isCurrentWorkspaceEditor)
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
@@ -89,6 +91,7 @@ export const useImportDSL = () => {
           toast.warning(message, { description })
         onSuccess?.(response)
         setNeedRefresh('1')
+        invalidateAppList()
         await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id, mode: app_mode }, push)
       }
@@ -112,7 +115,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching])
+  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching, setNeedRefresh, invalidateAppList])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -140,6 +143,7 @@ export const useImportDSL = () => {
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
+        invalidateAppList()
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
@@ -154,7 +158,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching])
+  }, [t, handleCheckPluginDependencies, isCurrentWorkspaceEditor, push, isFetching, setNeedRefresh, invalidateAppList])
 
   return {
     handleImportDSL,

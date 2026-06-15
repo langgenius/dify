@@ -88,7 +88,7 @@ export const TagSearchContent = ({
       <div className="p-1">
         <button
           type="button"
-          className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+          className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => {
             onOpenTagManagement?.()
             onClose?.()

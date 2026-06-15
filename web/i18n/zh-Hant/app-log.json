@@ -73,7 +73,7 @@
   "title": "日誌",
   "triggerBy.appRun": "網頁應用程式",
   "triggerBy.debugging": "除錯",
-  "triggerBy.plugin": "插件",
+  "triggerBy.plugin": "集成",
   "triggerBy.ragPipelineDebugging": "RAG 除錯",
   "triggerBy.ragPipelineRun": "RAG 流程",
   "triggerBy.schedule": "時間表",

@@ -22,6 +22,7 @@ import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -46,6 +47,7 @@ const Apps = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
@@ -139,6 +141,7 @@ const Apps = ({
       if (app.app_id)
         await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
+      invalidateAppList()
       getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
     }
     catch {

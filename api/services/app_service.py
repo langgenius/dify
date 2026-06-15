@@ -23,7 +23,7 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models import Account
+from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
@@ -36,17 +36,27 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 logger = logging.getLogger(__name__)
 
+AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 
-class AppListParams(BaseModel):
+
+class AppListBaseParams(BaseModel):
     page: int = Field(default=1, ge=1)
     limit: int = Field(default=20, ge=1, le=100)
     mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
+    sort_by: AppListSortBy = "last_modified"
     name: str | None = None
     tag_ids: list[str] | None = None
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
+
+
+class AppListParams(AppListBaseParams):
     status: str | None = None
     openapi_visible: bool = False
+
+
+class StarredAppListParams(AppListBaseParams):
+    pass
 
 
 class CreateAppParams(BaseModel):
@@ -62,6 +72,83 @@ class CreateAppParams(BaseModel):
 
 
 class AppService:
+    @staticmethod
+    def _build_app_list_filters(
+        user_id: str, tenant_id: str, params: AppListBaseParams
+    ) -> list[sa.ColumnElement[bool]]:
+        filters = [App.tenant_id == tenant_id, App.is_universal == False]
+
+        if params.mode == "workflow":
+            filters.append(App.mode == AppMode.WORKFLOW)
+        elif params.mode == "completion":
+            filters.append(App.mode == AppMode.COMPLETION)
+        elif params.mode == "chat":
+            filters.append(App.mode == AppMode.CHAT)
+        elif params.mode == "advanced-chat":
+            filters.append(App.mode == AppMode.ADVANCED_CHAT)
+        elif params.mode == "agent-chat":
+            filters.append(App.mode == AppMode.AGENT_CHAT)
+        elif params.mode == "agent":
+            filters.append(App.mode == AppMode.AGENT)
+
+        if isinstance(params, AppListParams):
+            if params.status:
+                filters.append(App.status == params.status)
+            # OpenAPI surface visibility gate. Pushed into the query so
+            # `pagination.total` reflects only apps the openapi caller can
+            # actually reach; post-filtering by enable_api after the page
+            # arrives would make `total` page-dependent.
+            if params.openapi_visible:
+                filters.append(App.enable_api.is_(True))
+
+        if params.is_created_by_me:
+            filters.append(App.created_by == user_id)
+        if params.creator_ids:
+            filters.append(App.created_by.in_(params.creator_ids))
+        if params.name:
+            from libs.helper import escape_like_pattern
+
+            name = params.name[:30]
+            escaped_name = escape_like_pattern(name)
+            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
+        if params.tag_ids and len(params.tag_ids) > 0:
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
+            if target_ids and len(target_ids) > 0:
+                filters.append(App.id.in_(target_ids))
+            else:
+                return []
+
+        return filters
+
+    @staticmethod
+    def _build_app_list_order_by(sort_by: AppListSortBy) -> sa.ColumnElement[Any]:
+        return {
+            "last_modified": App.updated_at.desc(),
+            "recently_created": App.created_at.desc(),
+            "earliest_created": App.created_at.asc(),
+        }[sort_by]
+
+    @staticmethod
+    def get_starred_app_ids(
+        session: Session | scoped_session,
+        *,
+        tenant_id: str,
+        account_id: str,
+        app_ids: Sequence[str],
+    ) -> set[str]:
+        """Return app IDs starred by this account within the tenant."""
+        if not app_ids:
+            return set()
+
+        starred_app_ids = session.scalars(
+            select(AppStar.app_id).where(
+                AppStar.tenant_id == tenant_id,
+                AppStar.account_id == account_id,
+                AppStar.app_id.in_(list(app_ids)),
+            )
+        ).all()
+        return set(starred_app_ids)
+
     @staticmethod
     def get_app_by_id(
         session: Session | scoped_session,
@@ -109,60 +196,103 @@ class AppService:
 
     def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
         """
-        Get app list with pagination
+        Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
         :param tenant_id: tenant id
         :param params: query parameters
         :return:
         """
-        filters = [App.tenant_id == tenant_id, App.is_universal == False]
+        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        if not filters:
+            return None
 
-        if params.mode == "workflow":
-            filters.append(App.mode == AppMode.WORKFLOW)
-        elif params.mode == "completion":
-            filters.append(App.mode == AppMode.COMPLETION)
-        elif params.mode == "chat":
-            filters.append(App.mode == AppMode.CHAT)
-        elif params.mode == "advanced-chat":
-            filters.append(App.mode == AppMode.ADVANCED_CHAT)
-        elif params.mode == "agent-chat":
-            filters.append(App.mode == AppMode.AGENT_CHAT)
-        elif params.mode == "agent":
-            filters.append(App.mode == AppMode.AGENT)
-
-        if params.status:
-            filters.append(App.status == params.status)
-        # OpenAPI surface visibility gate. Pushed into the query so
-        # `pagination.total` reflects only apps the openapi caller can
-        # actually reach — post-filtering by enable_api after the page
-        # arrives would make `total` page-dependent.
-        if params.openapi_visible:
-            filters.append(App.enable_api.is_(True))
-        if params.is_created_by_me:
-            filters.append(App.created_by == user_id)
-        if params.creator_ids:
-            filters.append(App.created_by.in_(params.creator_ids))
-        if params.name:
-            from libs.helper import escape_like_pattern
-
-            name = params.name[:30]
-            escaped_name = escape_like_pattern(name)
-            filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
-        if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
-            if target_ids and len(target_ids) > 0:
-                filters.append(App.id.in_(target_ids))
-            else:
-                return None
+        order_by = self._build_app_list_order_by(params.sort_by)
 
         app_models = db.paginate(
-            sa.select(App).where(*filters).order_by(App.created_at.desc()),
+            sa.select(App).where(*filters).order_by(order_by),
             page=params.page,
             per_page=params.limit,
             error_out=False,
         )
 
+        app_ids = [str(app.id) for app in app_models.items]
+        starred_app_ids = self.get_starred_app_ids(
+            db.session,
+            tenant_id=tenant_id,
+            account_id=user_id,
+            app_ids=app_ids,
+        )
+        for app in app_models.items:
+            app.is_starred = str(app.id) in starred_app_ids
+
         return app_models
+
+    def get_paginate_starred_apps(
+        self, user_id: str, tenant_id: str, params: StarredAppListParams
+    ) -> Pagination | None:
+        """
+        Get apps starred by the current account with pagination, filters, and explicit sort order.
+        """
+        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        if not filters:
+            return None
+
+        order_by = self._build_app_list_order_by(params.sort_by)
+        app_models = db.paginate(
+            sa.select(App)
+            .join(
+                AppStar,
+                sa.and_(
+                    AppStar.tenant_id == App.tenant_id,
+                    AppStar.app_id == App.id,
+                    AppStar.account_id == user_id,
+                ),
+            )
+            .where(AppStar.tenant_id == tenant_id, *filters)
+            .order_by(order_by),
+            page=params.page,
+            per_page=params.limit,
+            error_out=False,
+        )
+
+        for app in app_models.items:
+            app.is_starred = True
+
+        return app_models
+
+    @staticmethod
+    def star_app(session: Session, *, app: App, account_id: str) -> None:
+        """Create the account's app star if it does not already exist."""
+        existing_star = session.scalar(
+            select(AppStar)
+            .where(
+                AppStar.tenant_id == app.tenant_id,
+                AppStar.app_id == app.id,
+                AppStar.account_id == account_id,
+            )
+            .limit(1)
+        )
+        if existing_star:
+            return
+
+        session.add(AppStar(tenant_id=app.tenant_id, app_id=app.id, account_id=account_id))
+
+    @staticmethod
+    def unstar_app(session: Session, *, app: App, account_id: str) -> None:
+        """Remove the account's app star if present."""
+        existing_star = session.scalar(
+            select(AppStar)
+            .where(
+                AppStar.tenant_id == app.tenant_id,
+                AppStar.app_id == app.id,
+                AppStar.account_id == account_id,
+            )
+            .limit(1)
+        )
+        if not existing_star:
+            return
+
+        session.delete(existing_star)
 
     def create_app(self, tenant_id: str, params: CreateAppParams, account: Account) -> App:
         """

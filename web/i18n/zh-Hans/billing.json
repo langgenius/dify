@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "套餐",
   "plansCommon.triggerEvents.professional": "{{count,number}} 触发器事件数/月",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} 触发器事件数",
-  "plansCommon.triggerEvents.tooltip": "通过插件、定时触发器、Webhook 等来自动触发工作流的事件数。",
+  "plansCommon.triggerEvents.tooltip": "通过集成、定时触发器、Webhook 等来自动触发工作流的事件数。",
   "plansCommon.triggerEvents.unlimited": "无限触发器事件数",
   "plansCommon.unavailable": "不可用",
   "plansCommon.unlimited": "无限制",

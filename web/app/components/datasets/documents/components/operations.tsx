@@ -19,7 +19,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -201,6 +200,19 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
   }, [closeOperationsMenu, handleDownload])
   const menuActionClassName = cn(s.actionItem, 'border-none bg-transparent')
   const menuDeleteActionClassName = cn(menuActionClassName, s.deleteActionItem, 'group')
+  const handleSettingsClick = useCallback((evt: React.MouseEvent<HTMLElement>) => {
+    evt.preventDefault()
+    evt.stopPropagation()
+    evt.nativeEvent.stopImmediatePropagation?.()
+    closeOperationsMenu()
+    router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)
+  }, [closeOperationsMenu, datasetId, detail.id, router])
+  const settingsMenuItem = (
+    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleSettingsClick}>
+      <span aria-hidden className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
+      <span className={s.actionName}>{t('list.action.settings', { ns: 'datasetDocuments' })}</span>
+    </button>
+  )
   return (
     <div className="flex items-center" onClick={e => e.stopPropagation()}>
       {isListScene && !embeddingAvailable && (<Switch checked={false} onCheckedChange={noop} disabled={true} size="md" />)}
@@ -221,25 +233,6 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
       )}
       {embeddingAvailable && (
         <>
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <button
-                  type="button"
-                  aria-label={t('list.action.settings', { ns: 'datasetDocuments' })}
-                  className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
-                    ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                    : 'border-none bg-transparent p-0.5 hover:bg-state-base-hover')}
-                  onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
-                >
-                  <span aria-hidden className="i-ri-equalizer-2-line size-4 text-components-button-secondary-text" />
-                </button>
-              )}
-            />
-            <TooltipContent className="system-xs-medium text-text-secondary">
-              {t('list.action.settings', { ns: 'datasetDocuments' })}
-            </TooltipContent>
-          </Tooltip>
           <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
             <DropdownMenuTrigger
               aria-label={t('operation.more', { ns: 'common' })}
@@ -271,6 +264,13 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                       <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </button>
+                    {IS_CE_EDITION && (
+                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
+                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary" />
+                        <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
+                      </button>
+                    )}
+                    {settingsMenuItem}
                     {data_source_type === DataSourceType.FILE && (
                       <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
                         <span aria-hidden className="i-ri-download-2-line size-4 text-text-tertiary" />
@@ -283,21 +283,18 @@ const Operations = ({ embeddingAvailable, datasetId, detail, selectedIds, onSele
                         <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </button>
                     )}
-                    {IS_CE_EDITION && (
-                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={() => handleMenuOperation('summary')}>
-                        <span aria-hidden className="i-custom-vender-knowledge-search-lines-sparkle size-4 text-text-tertiary" />
-                        <span className={s.actionName}>{t('list.action.summary', { ns: 'datasetDocuments' })}</span>
-                      </button>
-                    )}
                     <Divider className="my-1" />
                   </>
                 )}
-                {archived && data_source_type === DataSourceType.FILE && (
+                {archived && (
                   <>
-                    <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
-                      <span aria-hidden className="i-ri-download-2-line size-4 text-text-tertiary" />
-                      <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
-                    </button>
+                    {settingsMenuItem}
+                    {data_source_type === DataSourceType.FILE && (
+                      <button type="button" className={cn(menuActionClassName, 'text-left')} onClick={handleDownloadClick}>
+                        <span aria-hidden className="i-ri-download-2-line size-4 text-text-tertiary" />
+                        <span className={s.actionName}>{t('list.action.download', { ns: 'datasetDocuments' })}</span>
+                      </button>
+                    )}
                     <Divider className="my-1" />
                   </>
                 )}

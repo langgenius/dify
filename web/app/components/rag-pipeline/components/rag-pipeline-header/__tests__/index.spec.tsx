@@ -9,6 +9,14 @@ import Publisher from '../publisher'
 import Popup from '../publisher/popup'
 import RunMode from '../run-mode'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const mockSetShowInputFieldPanel = vi.fn()
 const mockSetShowEnvPanel = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()

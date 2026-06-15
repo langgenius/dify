@@ -29,6 +29,7 @@ import {
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -240,7 +241,7 @@ const AppPublisher = ({
         throw new Error('App not found')
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0]!.id}`
+        return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {

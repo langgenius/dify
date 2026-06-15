@@ -73,7 +73,7 @@
   "title": "Günlükler",
   "triggerBy.appRun": "WebUygulama",
   "triggerBy.debugging": "Hata ayıklama",
-  "triggerBy.plugin": "Eklenti",
+  "triggerBy.plugin": "Entegrasyon",
   "triggerBy.ragPipelineDebugging": "RAG Hata Ayıklama",
   "triggerBy.ragPipelineRun": "RAG Boru Hattı",
   "triggerBy.schedule": "Program",

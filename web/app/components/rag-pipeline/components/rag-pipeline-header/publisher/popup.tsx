@@ -12,7 +12,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiArrowRightUpLine, RiHammerLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
+import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useBoolean } from 'ahooks'
 import { memo, useCallback, useState } from 'react'
@@ -23,6 +23,7 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -145,7 +146,8 @@ const Popup = ({
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      setShowPricingModal()
+      if (IS_CLOUD_EDITION)
+        setShowPricingModal()
     }
     else {
       onShowPublishAsKnowledgePipelineModal?.()
@@ -210,11 +212,11 @@ const Popup = ({
         <Divider className="my-2" />
         <Button className="w-full hover:bg-state-accent-hover hover:text-text-accent" variant="tertiary" onClick={handleClickPublishAsKnowledgePipeline} disabled={!publishedAt || isPublishingAsCustomizedPipeline}>
           <div className="flex grow items-center gap-x-2 overflow-hidden">
-            <RiHammerLine className="size-4 shrink-0" />
+            <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4 shrink-0" />
             <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
               {t('common.publishAs', { ns: 'pipeline' })}
             </span>
-            {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
+            {IS_CLOUD_EDITION && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
                 <SparklesSoft aria-hidden="true" className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
                 <span className="p-0.5 system-2xs-medium">

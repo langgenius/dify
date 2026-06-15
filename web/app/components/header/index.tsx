@@ -7,7 +7,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
@@ -70,9 +69,7 @@ const Header = () => {
           <div className="flex items-center">
             {renderLogo()}
             <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
-            <WorkspaceProvider>
-              <WorkplaceSelector />
-            </WorkspaceProvider>
+            <WorkplaceSelector />
             {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
           </div>
           <div className="flex items-center">
@@ -97,9 +94,7 @@ const Header = () => {
       <div className="flex min-w-0 flex-1 items-center pr-2 pl-3 min-[1280px]:pr-3">
         {renderLogo()}
         <div className="mx-1.5 shrink-0 font-light text-divider-deep">/</div>
-        <WorkspaceProvider>
-          <WorkplaceSelector />
-        </WorkspaceProvider>
+        <WorkplaceSelector />
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
       <div className="flex items-center space-x-2">

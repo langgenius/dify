@@ -1270,7 +1270,7 @@ describe('useChat', () => {
 
   describe('createAudioPlayerManager branch cases', () => {
     it('should handle ttsUrl generation for appId with installed apps', async () => {
-      vi.mocked(usePathname).mockReturnValue('/explore/installed/app')
+      vi.mocked(usePathname).mockReturnValue('/installed/app-1')
       vi.mocked(useParams).mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
 
       let callbacks: HookCallbacks

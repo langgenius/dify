@@ -6,8 +6,7 @@ import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import { GotoAnything } from '@/app/components/goto-anything'
-import Header from '@/app/components/header'
-import HeaderWrapper from '@/app/components/header/header-wrapper'
+import MainNavLayout from '@/app/components/main-nav/layout'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import WorkflowGeneratorMount from '@/app/components/workflow/workflow-generator/mount'
@@ -31,12 +30,11 @@ const Layout = async ({ children }: { children: ReactNode }) => {
           <EventEmitterContextProvider>
             <ProviderContextProvider>
               <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                <RoleRouteGuard>
-                  {children}
-                </RoleRouteGuard>
+                <MainNavLayout>
+                  <RoleRouteGuard>
+                    {children}
+                  </RoleRouteGuard>
+                </MainNavLayout>
                 <InSiteMessageNotification />
                 <PartnerStack />
                 <ReadmePanel />

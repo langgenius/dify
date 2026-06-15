@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "плани",
   "plansCommon.triggerEvents.professional": "{{count,number}} тригерні події/місяць",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Тригери подій",
-  "plansCommon.triggerEvents.tooltip": "Кількість подій, які автоматично запускають робочі процеси через тригери Плагіна, Розкладу або Вебхука.",
+  "plansCommon.triggerEvents.tooltip": "Кількість подій, які автоматично запускають робочі процеси через тригери Інтеграціяа, Розкладу або Вебхука.",
   "plansCommon.triggerEvents.unlimited": "Необмежена кількість тригерних подій",
   "plansCommon.unavailable": "Недоступний",
   "plansCommon.unlimited": "Безлімітний",

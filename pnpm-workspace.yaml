@@ -146,6 +146,7 @@ catalog:
   echarts-for-react: 3.0.6
   elkjs: 0.11.1
   embla-carousel-autoplay: 8.6.0
+  embla-carousel-fade: 8.6.0
   embla-carousel-react: 8.6.0
   emoji-mart: 5.6.0
   es-toolkit: 1.47.1
@@ -187,6 +188,7 @@ catalog:
   mermaid: 11.15.0
   mime: 4.1.0
   mitt: 3.0.1
+  motion: 12.40.0
   negotiator: 1.0.0
   next: 16.2.9
   next-themes: 0.4.6

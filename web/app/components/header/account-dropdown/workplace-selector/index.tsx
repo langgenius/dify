@@ -10,11 +10,11 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanBadge } from '@/app/components/header/plan-badge'
-import { useWorkspacesContext } from '@/context/workspace-context'
-import { switchWorkspace } from '@/service/common'
+import { consoleQuery } from '@/service/client'
 import { basePath } from '@/utils/var'
 
 type WorkplaceSelectorContentProps = {
@@ -64,14 +64,16 @@ WorkplaceSelectorContent.displayName = 'WorkplaceSelectorContent'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
-  const { workspaces } = useWorkspacesContext()
+  const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
+  const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
+  const workspaces = workspacesData?.workspaces ?? []
   const currentWorkspace = workspaces.find(v => v.current)
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
       if (currentWorkspace?.id === tenant_id)
         return
-      await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
+      await switchWorkspaceMutation.mutateAsync({ body: { tenant_id } })
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       location.assign(`${location.origin}${basePath}`)
     }
@@ -97,7 +99,7 @@ const WorkplaceSelector = () => {
               {currentWorkspace?.name[0]?.toLocaleUpperCase()}
             </span>
           </div>
-          <div className="max-w-[149px] min-w-0 truncate system-sm-medium text-text-secondary max-[800px]:hidden">
+          <div className="max-w-[149px] min-w-0 truncate system-sm-medium text-text-secondary max-[800px]:hidden" title={currentWorkspace?.name}>
             {currentWorkspace?.name}
           </div>
         </div>

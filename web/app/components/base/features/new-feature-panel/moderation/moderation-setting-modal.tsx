@@ -12,8 +12,8 @@ import Divider from '@/app/components/base/divider'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDocLink, useLocale } from '@/context/i18n'
-import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
 import FormGeneration from './form-generation'
@@ -41,15 +41,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
+  const { data: modelProviders, isPending: isLoading } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const handleOpenSettingsModal = () => {
-    setShowAccountSettingModal({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.PROVIDER,
-      onCancelCallback: () => {
-        refetchModelProviders()
-      },
     })
   }
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')

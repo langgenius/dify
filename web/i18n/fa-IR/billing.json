@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "طرح‌ها",
   "plansCommon.triggerEvents.professional": "{{count,number}} رویدادهای فعال‌سازی/ماه",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} رویدادهای محرک",
-  "plansCommon.triggerEvents.tooltip": "تعداد رویدادهایی که به‌طور خودکار گردش‌های کاری را از طریق افزونه، برنامه‌زمان‌بندی یا ماشه‌های وب‌هوک آغاز می‌کنند.",
+  "plansCommon.triggerEvents.tooltip": "تعداد رویدادهایی که به‌طور خودکار گردش‌های کاری را از طریق یکپارچه‌سازی، برنامه‌زمان‌بندی یا ماشه‌های وب‌هوک آغاز می‌کنند.",
   "plansCommon.triggerEvents.unlimited": "رویدادهای ماشه‌ای نامحدود",
   "plansCommon.unavailable": "غیرقابل دسترس",
   "plansCommon.unlimited": "نامحدود",

@@ -5,7 +5,6 @@ import AppDetailNav from '..'
 
 let mockAppSidebarExpand = 'expand'
 const mockSetAppSidebarExpand = vi.fn()
-let mockPathname = '/app/123/overview'
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
@@ -17,10 +16,6 @@ vi.mock('@/app/components/app/store', () => ({
 
 vi.mock('zustand/react/shallow', () => ({
   useShallow: (fn: unknown) => fn,
-}))
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
 }))
 
 let mockIsHovering = true
@@ -41,16 +36,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
 }))
 
-let mockSubscriptionCallback: ((v: unknown) => void) | null = null
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (cb: (v: unknown) => void) => { mockSubscriptionCallback = cb },
-    },
-  }),
-}))
-
 vi.mock('../../base/divider', () => ({
   default: ({ className }: { className?: string }) => <hr data-testid="divider" className={className} />,
 }))
@@ -64,21 +49,9 @@ vi.mock('../app-info', () => ({
   ),
 }))
 
-vi.mock('../app-sidebar-dropdown', () => ({
-  default: ({ navigation }: { navigation: unknown[] }) => (
-    <div data-testid="app-sidebar-dropdown" data-nav-count={navigation.length} />
-  ),
-}))
-
 vi.mock('../dataset-info', () => ({
   default: ({ expand }: { expand: boolean }) => (
     <div data-testid="dataset-info" data-expand={expand} />
-  ),
-}))
-
-vi.mock('../dataset-sidebar-dropdown', () => ({
-  default: ({ navigation }: { navigation: unknown[] }) => (
-    <div data-testid="dataset-sidebar-dropdown" data-nav-count={navigation.length} />
   ),
 }))
 
@@ -107,7 +80,6 @@ describe('AppDetailNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAppSidebarExpand = 'expand'
-    mockPathname = '/app/123/overview'
     mockIsHovering = true
     mockKeyPressCallback = null
   })
@@ -185,40 +157,6 @@ describe('AppDetailNav', () => {
     })
   })
 
-  describe('Workflow canvas mode', () => {
-    it('should render AppSidebarDropdown when in workflow canvas with hidden header', () => {
-      mockPathname = '/app/123/workflow'
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.getByTestId('app-sidebar-dropdown')).toBeInTheDocument()
-      expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
-    })
-
-    it('should render normal sidebar when workflow canvas is not maximized', () => {
-      mockPathname = '/app/123/workflow'
-      localStorage.setItem('workflow-canvas-maximize', 'false')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.queryByTestId('app-sidebar-dropdown')).not.toBeInTheDocument()
-      expect(screen.getByTestId('app-info')).toBeInTheDocument()
-    })
-  })
-
-  describe('Pipeline canvas mode', () => {
-    it('should render DatasetSidebarDropdown when in pipeline canvas with hidden header', () => {
-      mockPathname = '/dataset/123/pipeline'
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.getByTestId('dataset-sidebar-dropdown')).toBeInTheDocument()
-      expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
-    })
-  })
-
   describe('Navigation mode', () => {
     it('should pass expand mode to nav links when expanded', () => {
       render(<AppDetailNav navigation={navigation} />)
@@ -268,28 +206,6 @@ describe('AppDetailNav', () => {
       ]
       render(<AppDetailNav navigation={navWithDisabled} />)
       expect(screen.getByTestId('nav-link-Disabled')).toBeInTheDocument()
-    })
-  })
-
-  describe('Event emitter subscription', () => {
-    it('should handle workflow-canvas-maximize event', () => {
-      mockPathname = '/app/123/workflow'
-      render(<AppDetailNav navigation={navigation} />)
-
-      const cb = mockSubscriptionCallback
-      expect(cb).not.toBeNull()
-      act(() => {
-        cb!({ type: 'workflow-canvas-maximize', payload: true })
-      })
-    })
-
-    it('should ignore non-maximize events', () => {
-      render(<AppDetailNav navigation={navigation} />)
-
-      const cb = mockSubscriptionCallback
-      act(() => {
-        cb!({ type: 'other-event' })
-      })
     })
   })
 

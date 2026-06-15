@@ -203,13 +203,23 @@ describe('Operations', () => {
   })
 
   describe('settings navigation', () => {
-    it('should navigate to settings when settings button is clicked', async () => {
+    it('should not render a standalone settings button', () => {
       render(<Operations {...defaultProps} />)
-      // Get the first button which is the settings button
-      const buttons = screen.getAllByRole('button')
-      const settingsButton = buttons[0]
+
+      expect(screen.queryByRole('button', { name: 'datasetDocuments.list.action.settings' })).not.toBeInTheDocument()
+    })
+
+    it('should navigate to settings when settings menu item is clicked', async () => {
+      render(<Operations {...defaultProps} />)
+      const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
+      if (moreButton) {
+        await act(async () => {
+          fireEvent.click(moreButton)
+        })
+      }
+      const settingsButton = screen.getByText('datasetDocuments.list.action.settings')
       await act(async () => {
-        fireEvent.click(settingsButton!)
+        fireEvent.click(settingsButton)
       })
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1/settings')
     })
@@ -453,6 +463,15 @@ describe('Operations', () => {
       })
     })
 
+    it('should show settings above download in the operations menu', async () => {
+      render(<Operations {...defaultProps} />)
+      await openPopover()
+      const settingsButton = screen.getByText('datasetDocuments.list.action.settings').parentElement
+      const downloadButton = screen.getByText('datasetDocuments.list.action.download').parentElement
+
+      expect(settingsButton?.compareDocumentPosition(downloadButton!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    })
+
     it('should show download option for archived file data source', async () => {
       render(
         <Operations
@@ -462,6 +481,18 @@ describe('Operations', () => {
       )
       await openPopover()
       expect(screen.getByText('datasetDocuments.list.action.download'))!.toBeInTheDocument()
+    })
+
+    it('should show settings for archived non-file data source', async () => {
+      render(
+        <Operations
+          {...defaultProps}
+          detail={{ ...defaultDetail, archived: true, data_source_type: 'notion_import' }}
+        />,
+      )
+      await openPopover()
+      expect(screen.getByText('datasetDocuments.list.action.settings'))!.toBeInTheDocument()
+      expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
     })
 
     it('should download archived file when download is clicked', async () => {

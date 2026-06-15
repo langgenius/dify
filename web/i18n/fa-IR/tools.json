@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "افزوده شد",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "هیچ استراتژی عاملی موجود نیست",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "مشاهده راهنما",
   "copyToolName": "کپی نام",
   "createCustomTool": "ایجاد ابزار سفارشی",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "نوع مجوز",
   "createTool.authHeaderPrefix.types.basic": "پایه",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "تنظیمات",
   "setBuiltInTools.string": "رشته",
   "setBuiltInTools.toolDescription": "توضیحات ابزار",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "پارامترها",
   "test.parametersValue": "پارامترها و مقدار",
   "test.testResult": "نتایج آزمایش",
@@ -211,5 +214,12 @@
   "toolRemoved": "ابزار حذف شد",
   "type.builtIn": "سفارشی شده",
   "type.custom": "سفارشی",
-  "type.workflow": "جریان کار"
+  "type.workflow": "جریان کار",
+  "workflowToolEmpty.description": "برای استفاده از گردش کار به عنوان ابزار، ابتدا آن را از Studio منتشر کنید. سپس اینجا نمایش داده می‌شود و می‌توان آن را به هر برنامه‌ای اضافه کرد.",
+  "workflowToolEmpty.goToStudio": "رفتن به Studio",
+  "workflowToolEmpty.learnMore": "به کمک نیاز دارید؟ یاد بگیرید چگونه گردش کار را به عنوان ابزار منتشر کنید →",
+  "workflowToolEmpty.step1": "در Studio یک گردش کار بسازید",
+  "workflowToolEmpty.step2": "در منوی انتشار روی “Workflow as Tool” کلیک کنید تا به عنوان ابزار در دسترس باشد",
+  "workflowToolEmpty.step3": "برای مدیریت و استفاده دوباره به اینجا برگردید",
+  "workflowToolEmpty.title": "هنوز هیچ گردش کاری به عنوان ابزار منتشر نشده است"
 }

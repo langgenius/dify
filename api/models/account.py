@@ -301,6 +301,7 @@ class TenantAccountJoin(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False, onupdate=func.current_timestamp()
     )
+    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
 class AccountIntegrate(TypeBase):
@@ -389,6 +390,14 @@ class TenantPluginPermission(TypeBase):
 
 
 class TenantPluginAutoUpgradeStrategy(TypeBase):
+    class PluginCategory(enum.StrEnum):
+        TOOL = "tool"
+        MODEL = "model"
+        EXTENSION = "extension"
+        AGENT_STRATEGY = "agent-strategy"
+        DATASOURCE = "datasource"
+        TRIGGER = "trigger"
+
     class StrategySetting(enum.StrEnum):
         DISABLED = "disabled"
         FIX_ONLY = "fix_only"
@@ -402,13 +411,20 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
     __tablename__ = "tenant_plugin_auto_upgrade_strategies"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_plugin_auto_upgrade_strategy_pkey"),
-        sa.UniqueConstraint("tenant_id", name="unique_tenant_plugin_auto_upgrade_strategy"),
+        sa.UniqueConstraint("tenant_id", "category", name="unique_tenant_plugin_auto_upgrade_strategy"),
+        sa.Index("idx_tenant_plugin_auto_upgrade_strategy_time", "upgrade_time_of_day"),
     )
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    category: Mapped[PluginCategory] = mapped_column(
+        EnumText(PluginCategory, length=32),
+        nullable=False,
+        server_default="tool",
+        default=PluginCategory.TOOL,
+    )
     strategy_setting: Mapped[StrategySetting] = mapped_column(
         EnumText(StrategySetting, length=16),
         nullable=False,

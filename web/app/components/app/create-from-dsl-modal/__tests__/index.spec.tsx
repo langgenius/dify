@@ -1,5 +1,11 @@
 /* eslint-disable ts/no-explicit-any */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
@@ -11,6 +17,7 @@ const mockImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockHandleCheckPluginDependencies = vi.fn()
 const mockGetRedirection = vi.fn()
+const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
   success: vi.fn(),
@@ -66,6 +73,9 @@ vi.mock('@/service/apps', () => ({
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
   importDSLConfirm: (...args: unknown[]) => mockImportDSLConfirm(...args),
 }))
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppList: () => mockInvalidateAppList,
+}))
 
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
@@ -98,14 +108,11 @@ vi.mock('@/utils/app-redirection', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (...args: unknown[]) => toastMocks.call(...args),
-    {
-      success: (...args: unknown[]) => toastMocks.success(...args),
-      error: (...args: unknown[]) => toastMocks.error(...args),
-      warning: (...args: unknown[]) => toastMocks.warning(...args),
-    },
-  ),
+  toast: Object.assign((...args: unknown[]) => toastMocks.call(...args), {
+    success: (...args: unknown[]) => toastMocks.success(...args),
+    error: (...args: unknown[]) => toastMocks.error(...args),
+    warning: (...args: unknown[]) => toastMocks.warning(...args),
+  }),
 }))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
@@ -136,7 +143,8 @@ describe('CreateFromDSLModal', () => {
     vi.useRealTimers()
   })
 
-  const getCreateButton = () => screen.getByRole('button', { name: /newApp\.Create/i })
+  const getCreateButton = () =>
+    screen.getByRole('button', { name: /newApp\.Create/i })
 
   it('should render the file tab and show the dropped file', async () => {
     render(
@@ -156,12 +164,7 @@ describe('CreateFromDSLModal', () => {
 
   it('should switch tabs, close from the header icon, and ignore shortcuts without valid input', async () => {
     const handleClose = vi.fn()
-    render(
-      <CreateFromDSLModal
-        show
-        onClose={handleClose}
-      />,
-    )
+    render(<CreateFromDSLModal show onClose={handleClose} />)
 
     triggerHotkey('Mod+Enter')
     expect(mockImportDSL).not.toHaveBeenCalled()
@@ -169,9 +172,16 @@ describe('CreateFromDSLModal', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('importFromDSLUrl'))
     })
-    expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('importFromDSLUrlPlaceholder'),
+    )!.toBeInTheDocument()
 
-    const closeTrigger = screen.getByText('importApp').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
+    const closeTrigger = screen
+      .getByText('importApp')
+      .parentElement
+      ?.querySelector(
+        '.cursor-pointer.items-center',
+      ) as HTMLElement
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
@@ -209,9 +219,12 @@ describe('CreateFromDSLModal', () => {
       />,
     )
 
-    fireEvent.change(screen.getByPlaceholderText('importFromDSLUrlPlaceholder'), {
-      target: { value: 'https://example.com/app.yml' },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText('importFromDSLUrlPlaceholder'),
+      {
+        target: { value: 'https://example.com/app.yml' },
+      },
+    )
 
     await act(async () => {
       fireEvent.click(getCreateButton())
@@ -221,12 +234,20 @@ describe('CreateFromDSLModal', () => {
       mode: DSLImportMode.YAML_URL,
       yaml_url: 'https://example.com/app.yml',
     })
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload', appMode: AppModeEnum.CHAT })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_upload',
+      appMode: AppModeEnum.CHAT,
+    })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
-    expect(mockGetRedirection).toHaveBeenCalledWith(true, { id: 'app-1', mode: 'chat' }, mockPush)
+    expect(mockGetRedirection).toHaveBeenCalledWith(
+      true,
+      { id: 'app-1', mode: 'chat' },
+      mockPush,
+    )
   })
 
   it('should import from a file with the loaded file content', async () => {
@@ -272,7 +293,10 @@ describe('CreateFromDSLModal', () => {
       expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
 
-    const removeButton = screen.getByText('demo.yml').closest('.group')?.querySelector('button') as HTMLButtonElement
+    const removeButton = screen
+      .getByText('demo.yml')
+      .closest('.group')
+      ?.querySelector('button') as HTMLButtonElement
     await act(async () => {
       fireEvent.click(removeButton)
     })
@@ -318,16 +342,24 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
 
-    expect(screen.getAllByText('newApp.appCreateDSLErrorTitle')[0])!.toBeInTheDocument()
+    expect(
+      screen.getAllByText('newApp.appCreateDSLErrorTitle')[0],
+    )!.toBeInTheDocument()
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!,
+      )
     })
 
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload', appMode: AppModeEnum.WORKFLOW })
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_upload',
+      appMode: AppModeEnum.WORKFLOW,
+    })
   })
 
   it('should close the DSL mismatch modal when dialog requests close', async () => {
@@ -356,13 +388,17 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
 
-    expect(screen.getByText('newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('newApp.appCreateDSLErrorTitle'),
+    )!.toBeInTheDocument()
 
     vi.useRealTimers()
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
     await waitFor(() => {
-      expect(screen.queryByText('newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('newApp.appCreateDSLErrorTitle'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -392,21 +428,35 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
 
-    expect(screen.getByText('newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
+    expect(
+      screen.getByText('newApp.appCreateDSLErrorTitle'),
+    )!.toBeInTheDocument()
 
     vi.useRealTimers()
-    fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!)
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!,
+    )
 
     await waitFor(() => {
-      expect(screen.queryByText('newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('newApp.appCreateDSLErrorTitle'),
+      ).not.toBeInTheDocument()
     })
   })
 
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
-    let resolveImport!: (value: { id: string, status: DSLImportStatus, app_id: string, app_mode: string }) => void
-    mockImportDSL.mockImplementationOnce(() => new Promise((resolve) => {
-      resolveImport = resolve as typeof resolveImport
-    }))
+    let resolveImport!: (value: {
+      id: string
+      status: DSLImportStatus
+      app_id: string
+      app_mode: string
+    }) => void
+    mockImportDSL.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveImport = resolve as typeof resolveImport
+        }),
+    )
 
     render(
       <CreateFromDSLModal
@@ -531,7 +581,10 @@ describe('CreateFromDSLModal', () => {
       current_dsl_version: '2.0.0',
     })
     mockImportDSLConfirm
-      .mockResolvedValueOnce({ status: DSLImportStatus.FAILED, error: 'Confirm failed' })
+      .mockResolvedValueOnce({
+        status: DSLImportStatus.FAILED,
+        error: 'Confirm failed',
+      })
       .mockRejectedValueOnce(new Error('boom'))
 
     render(
@@ -548,20 +601,28 @@ describe('CreateFromDSLModal', () => {
       vi.advanceTimersByTime(300)
     })
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!)
-    expect(screen.queryByText('newApp.appCreateDSLErrorTitle')).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'newApp.Cancel' }).at(-1)!,
+    )
+    expect(
+      screen.queryByText('newApp.appCreateDSLErrorTitle'),
+    ).not.toBeInTheDocument()
 
     await act(async () => {
       fireEvent.click(getCreateButton())
       vi.advanceTimersByTime(300)
     })
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!,
+      )
     })
     expect(toastMocks.error).toHaveBeenCalledWith('Confirm failed')
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!)
+      fireEvent.click(
+        screen.getAllByRole('button', { name: 'newApp.Confirm' })[0]!,
+      )
     })
     expect(toastMocks.error).toHaveBeenCalledTimes(2)
     expect(toastMocks.error).toHaveBeenLastCalledWith('newApp.appCreateFailed')

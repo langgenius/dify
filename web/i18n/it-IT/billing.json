@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "piani",
   "plansCommon.triggerEvents.professional": "{{count,number}} Eventi attivati/mese",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Eventi di attivazione",
-  "plansCommon.triggerEvents.tooltip": "Il numero di eventi che avviano automaticamente i flussi di lavoro tramite trigger Plugin, Pianificazione o Webhook.",
+  "plansCommon.triggerEvents.tooltip": "Il numero di eventi che avviano automaticamente i flussi di lavoro tramite trigger Integrazione, Pianificazione o Webhook.",
   "plansCommon.triggerEvents.unlimited": "Eventi di attivazione illimitati",
   "plansCommon.unavailable": "Non Disponibile",
   "plansCommon.unlimited": "Illimitato",

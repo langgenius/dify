@@ -53,6 +53,12 @@ def make_tenant(
     return tenant
 
 
+def make_membership(*, last_opened_at=None) -> MagicMock:
+    membership = MagicMock()
+    membership.last_opened_at = last_opened_at
+    return membership
+
+
 def make_account_with_tenant(tenant: Tenant) -> Account:
     account = make_account()
     account._current_tenant = tenant
@@ -66,13 +72,17 @@ class TestTenantListApi:
 
         tenant1 = make_tenant("t1", name="Tenant 1")
         tenant2 = make_tenant("t2", name="Tenant 2")
+        last_opened_at = naive_utc_now()
         user = make_account()
 
         with (
             app.test_request_context("/workspaces"),
             patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
+                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
+                return_value=[
+                    (tenant1, make_membership(last_opened_at=last_opened_at)),
+                    (tenant2, make_membership()),
+                ],
             ),
             patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
@@ -92,7 +102,9 @@ class TestTenantListApi:
         assert len(result["workspaces"]) == 2
         assert result["workspaces"][0]["current"] is True
         assert result["workspaces"][0]["plan"] == CloudPlan.TEAM
+        assert result["workspaces"][0]["last_opened_at"] == int(last_opened_at.timestamp())
         assert result["workspaces"][1]["plan"] == CloudPlan.PROFESSIONAL
+        assert result["workspaces"][1]["last_opened_at"] is None
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
         get_features_mock.assert_not_called()
 
@@ -116,8 +128,8 @@ class TestTenantListApi:
         with (
             app.test_request_context("/workspaces"),
             patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
+                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
+                return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
             ),
             patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
@@ -159,8 +171,8 @@ class TestTenantListApi:
         with (
             app.test_request_context("/workspaces"),
             patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
+                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
+                return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
             ),
             patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", True),
@@ -198,8 +210,8 @@ class TestTenantListApi:
         with (
             app.test_request_context("/workspaces"),
             patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant],
+                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
+                return_value=[(tenant, make_membership())],
             ),
             patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
@@ -226,8 +238,8 @@ class TestTenantListApi:
         with (
             app.test_request_context("/workspaces"),
             patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
-                return_value=[tenant1, tenant2],
+                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
+                return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
             ),
             patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),
             patch("controllers.console.workspace.workspace.dify_config.BILLING_ENABLED", False),
@@ -251,7 +263,7 @@ class TestTenantListApi:
         with (
             app.test_request_context("/workspaces"),
             patch(
-                "controllers.console.workspace.workspace.TenantService.get_join_tenants",
+                "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
                 return_value=[],
             ),
             patch("controllers.console.workspace.workspace.dify_config.ENTERPRISE_ENABLED", True),

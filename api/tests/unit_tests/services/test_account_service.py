@@ -65,6 +65,7 @@ class TestAccountAssociatedDataFactory:
         tenant_join.account_id = account_id
         tenant_join.current = current
         tenant_join.role = role
+        tenant_join.last_opened_at = kwargs.pop("last_opened_at", None)
         for key, value in kwargs.items():
             setattr(tenant_join, key, value)
         return tenant_join
@@ -489,11 +490,13 @@ class TestAccountService:
         # Mock datetime
         with (
             patch("services.account_service.datetime") as mock_datetime,
+            patch("services.account_service.naive_utc_now") as mock_naive_utc_now,
             patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
         ):
             mock_now = datetime.now()
             mock_datetime.now.return_value = mock_now
             mock_datetime.UTC = "UTC"
+            mock_naive_utc_now.return_value = mock_now
 
             # Execute test
             result = AccountService.load_user("user-123")
@@ -501,6 +504,7 @@ class TestAccountService:
             # Verify results
             assert result == mock_account
             assert mock_available_tenant.current is True
+            assert mock_available_tenant.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db_dependencies["db"])
             mock_refresh_last_active.assert_called_once_with(mock_account)
 
@@ -922,11 +926,16 @@ class TestTenantService:
             # Mock scalar for the join query
             mock_db.session.scalar.return_value = mock_tenant_join
 
-            # Execute test
-            TenantService.switch_tenant(mock_account, "tenant-456")
+            with patch("services.account_service.naive_utc_now") as mock_naive_utc_now:
+                mock_now = datetime(2026, 6, 5, 11, 0, 0)
+                mock_naive_utc_now.return_value = mock_now
+
+                # Execute test
+                TenantService.switch_tenant(mock_account, "tenant-456")
 
             # Verify tenant was switched
             assert mock_tenant_join.current is True
+            assert mock_tenant_join.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db)
 
     def test_switch_tenant_no_tenant_id(self):

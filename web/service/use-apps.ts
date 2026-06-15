@@ -80,6 +80,35 @@ export const useDeleteAppMutation = () => {
   })
 }
 
+export const useToggleAppStarMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ appId, isStarred }: { appId: string, isStarred: boolean }) => {
+      return isStarred
+        ? consoleClient.apps.unstar({
+            params: { appId },
+          })
+        : consoleClient.apps.star({
+            params: { appId },
+          })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.list.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.starredList.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: useAppFullListKey,
+        }),
+      ])
+    },
+  })
+}
+
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
     queryKey: [NAME_SPACE, 'statistics', metric, appId, params],

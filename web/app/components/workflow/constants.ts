@@ -1,7 +1,6 @@
 import type { Var } from './types'
 import { BlockEnum, VarType } from './types'
 
-export const MAX_ITERATION_PARALLEL_NUM = 10
 export const MIN_ITERATION_PARALLEL_NUM = 1
 export const DEFAULT_ITER_TIMES = 1
 export const DEFAULT_LOOP_TIMES = 1
@@ -10,10 +9,6 @@ export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
-export const AUTO_LAYOUT_OFFSET = {
-  x: -42,
-  y: 243,
-}
 export const ITERATION_NODE_Z_INDEX = 1
 export const ITERATION_CHILDREN_Z_INDEX = 1002
 export const ITERATION_PADDING = {
@@ -34,7 +29,6 @@ export const LOOP_PADDING = {
 
 export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
 export const NODE_LAYOUT_VERTICAL_PADDING = 60
-export const NODE_LAYOUT_MIN_DISTANCE = 100
 
 export const isInWorkflowPage = () => {
   const pathname = globalThis.location.pathname

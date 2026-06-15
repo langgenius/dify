@@ -12,6 +12,15 @@ export const fetchAppList = (language?: string) => {
   })
 }
 
+export const fetchLearnDifyAppList = (language?: string) => {
+  if (!language)
+    return consoleClient.explore.learnDifyApps({})
+
+  return consoleClient.explore.learnDifyApps({
+    query: { language },
+  })
+}
+
 export const fetchAppDetail = async (id: string): Promise<ExploreAppDetailResponse> => {
   const response = await consoleClient.explore.appDetail({
     params: { id },

@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "เพิ่ม",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "ไม่มีกลยุทธ์เอเจนต์",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "ดูคู่มือ",
   "copyToolName": "คัดลอกชื่อ",
   "createCustomTool": "สร้างเครื่องมือที่กําหนดเอง",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "ประเภทการรับรองความถูกต้อง",
   "createTool.authHeaderPrefix.types.basic": "พื้นฐาน",
   "createTool.authHeaderPrefix.types.bearer": "ผู้ถือ",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "ฉาก",
   "setBuiltInTools.string": "เชือก",
   "setBuiltInTools.toolDescription": "คําอธิบายเครื่องมือ",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "พารามิเตอร์",
   "test.parametersValue": "พารามิเตอร์และค่า",
   "test.testResult": "ผลการทดสอบ",
@@ -211,5 +214,12 @@
   "toolRemoved": "เครื่องมือถูกลบออก",
   "type.builtIn": "ในตัว",
   "type.custom": "ธรรมเนียม",
-  "type.workflow": "เวิร์กโฟลว์"
+  "type.workflow": "เวิร์กโฟลว์",
+  "workflowToolEmpty.description": "หากต้องการใช้เวิร์กโฟลว์เป็นเครื่องมือ ให้เผยแพร่จาก Studio ก่อน จากนั้นจะแสดงที่นี่และเพิ่มไปยังแอปใดก็ได้",
+  "workflowToolEmpty.goToStudio": "ไปที่ Studio",
+  "workflowToolEmpty.learnMore": "ต้องการความช่วยเหลือ? เรียนรู้วิธีเผยแพร่เวิร์กโฟลว์เป็นเครื่องมือ →",
+  "workflowToolEmpty.step1": "สร้างเวิร์กโฟลว์ใน Studio",
+  "workflowToolEmpty.step2": "คลิก “Workflow as Tool” ในเมนูเผยแพร่เพื่อให้ใช้งานเป็นเครื่องมือได้",
+  "workflowToolEmpty.step3": "กลับมาที่นี่เพื่อจัดการและนำกลับมาใช้ใหม่",
+  "workflowToolEmpty.title": "ยังไม่มีเวิร์กโฟลว์ที่เผยแพร่เป็นเครื่องมือ"
 }

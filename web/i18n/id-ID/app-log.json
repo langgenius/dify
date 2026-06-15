@@ -73,7 +73,7 @@
   "title": "Log",
   "triggerBy.appRun": "Aplikasi Web",
   "triggerBy.debugging": "Men-debug",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Integrasi",
   "triggerBy.ragPipelineDebugging": "Debugging RAG",
   "triggerBy.ragPipelineRun": "Rangkaian RAG",
   "triggerBy.schedule": "Jadwal",

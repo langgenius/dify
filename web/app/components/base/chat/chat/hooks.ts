@@ -31,6 +31,7 @@ import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -218,7 +219,7 @@ export const useChat = (
       ttsIsPublic = true
     }
     else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
+      if (isInstalledAppPath(pathname))
         ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`

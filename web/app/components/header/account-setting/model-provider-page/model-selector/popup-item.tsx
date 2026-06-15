@@ -164,6 +164,7 @@ function PopupItem({
               <ModelName
                 className={cn('system-sm-medium text-text-secondary', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
                 modelItem={modelItem}
+                nameClassName={modelItem.deprecated ? 'line-through' : undefined}
               />
             </div>
             {

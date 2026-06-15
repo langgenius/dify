@@ -31,9 +31,9 @@ from controllers.console.wraps import (
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import TimestampField, dump_response, to_timestamp
+from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
 from libs.login import login_required
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -219,6 +219,7 @@ tenants_fields = {
     "plan": fields.String,
     "status": fields.String,
     "created_at": TimestampField,
+    "last_opened_at": OptionalTimestampField,
     "current": fields.Boolean,
 }
 
@@ -234,7 +235,12 @@ class TenantListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        tenants = TenantService.get_join_tenants(current_user)
+        tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
+            (tenant, membership)
+            for tenant, membership in TenantService.get_workspaces_for_account(db.session, current_user.id)
+            if tenant.status == TenantStatus.NORMAL
+        ]
+        tenants = [tenant for tenant, _ in tenant_rows]
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
         is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
@@ -247,7 +253,7 @@ class TenantListApi(Resource):
                 if not tenant_plans:
                     logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
 
-        for tenant in tenants:
+        for tenant, membership in tenant_rows:
             plan: str = CloudPlan.SANDBOX
             if is_saas:
                 tenant_plan = tenant_plans.get(tenant.id)
@@ -266,6 +272,7 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
+                "last_opened_at": membership.last_opened_at,
                 "plan": plan,
                 "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }

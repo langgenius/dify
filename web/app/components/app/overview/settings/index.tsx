@@ -6,6 +6,7 @@ import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -17,9 +18,9 @@ import { Trans, useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -141,6 +142,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
+  const showUpgradeAction = IS_CLOUD_EDITION && enableBilling && isFreePlan
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
 
   const handleLanguageChange = (nextValue: string | null) => {
@@ -394,7 +396,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <div className="flex grow items-center">
                       <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
                       {/* upgrade button */}
-                      {enableBilling && isFreePlan && (
+                      {showUpgradeAction && (
                         <div className="h-[18px] select-none">
                           <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                             <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />

@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} ĐÃ BAO GỒM",
-  "events.description": "Các sự kiện mà plugin kích hoạt này có thể đăng ký",
+  "events.description": "Các sự kiện mà tích hợp kích hoạt này có thể đăng ký",
   "events.empty": "Không có sự kiện nào",
   "events.event": "Sự kiện",
   "events.events": "Sự kiện",

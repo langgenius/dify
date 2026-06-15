@@ -73,7 +73,7 @@
   "title": "ログ",
   "triggerBy.appRun": "ウェブアプリ",
   "triggerBy.debugging": "デバッグ",
-  "triggerBy.plugin": "プラグイン",
+  "triggerBy.plugin": "インテグレーション",
   "triggerBy.ragPipelineDebugging": "RAGデバッグ",
   "triggerBy.ragPipelineRun": "RAGパイプライン",
   "triggerBy.schedule": "スケジュール",

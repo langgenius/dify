@@ -19,11 +19,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import FeaturedTools from './featured-tools'
@@ -317,7 +317,7 @@ const AllTools = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
+            href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
