@@ -113,6 +113,23 @@ describe('useWorkflowStartRun', () => {
     expect(mockSetShowInputsPanel).toHaveBeenCalledWith(false)
   })
 
+  it('should not sync or run when only the start placeholder exists', async () => {
+    mockGetNodes.mockReturnValue([
+      { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+    ])
+
+    const { result } = renderHook(() => useWorkflowStartRun())
+
+    await act(async () => {
+      await result.current.handleWorkflowStartRunInWorkflow()
+    })
+
+    expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockHandleRun).not.toHaveBeenCalled()
+    expect(mockSetShowDebugAndPreviewPanel).not.toHaveBeenCalled()
+    expect(mockSetShowInputsPanel).not.toHaveBeenCalled()
+  })
+
   it('should open the input panel instead of running immediately when start inputs are required', async () => {
     mockGetNodes.mockReturnValue([
       { id: 'inset-s-1', data: { type: BlockEnum.Start, variables: [{ name: 'query' }] } },

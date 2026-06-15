@@ -10,12 +10,17 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import {
+  useNodes,
+  useStoreApi,
+} from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   BlockEnum,
+  isTriggerNode,
 } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
+import { TabsEnum } from '../block-selector/types'
 import {
   useAvailableBlocks,
   useIsChatMode,
@@ -50,10 +55,18 @@ const AddBlock = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const [open, setOpen] = useState(false)
+  const nodes = useNodes()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const flowType = useHooksStore(s => s.configsMap?.flowType)
   const showStartTab = flowType !== FlowType.ragPipeline && !isChatMode
+  const hasEntryNode = nodes.some((node) => {
+    const nodeData = node.data as { type?: BlockEnum }
+    const nodeType = nodeData.type
+    return nodeType === BlockEnum.Start || (nodeType ? isTriggerNode(nodeType) : false)
+  })
+
+  const defaultActiveTab = showStartTab && !hasEntryNode ? TabsEnum.Start : undefined
 
   const handleOpenChange = useCallback((open: boolean) => {
     setOpen(open)
@@ -121,6 +134,7 @@ const AddBlock = ({
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
+      defaultActiveTab={defaultActiveTab}
     />
   )
 }

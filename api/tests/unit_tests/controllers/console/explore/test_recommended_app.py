@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from flask import Flask
 
@@ -37,7 +37,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("en-US")
+        service_mock.assert_called_once_with(ANY, "en-US")
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -56,7 +56,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("fr-FR")
+        service_mock.assert_called_once_with(ANY, "fr-FR")
         assert result == result_data
 
     def test_get_fallback_to_default_language(self, app: Flask):
@@ -75,7 +75,7 @@ class TestRecommendedAppListApi:
         ):
             result = method(api, make_account(None))
 
-        service_mock.assert_called_once_with(module.languages[0])
+        service_mock.assert_called_once_with(ANY, module.languages[0])
         assert result == result_data
 
 
@@ -96,7 +96,7 @@ class TestRecommendedAppApi:
         ):
             result = method(api, "11111111-1111-1111-1111-111111111111")
 
-        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111")
+        service_mock.assert_called_once_with(ANY, "11111111-1111-1111-1111-111111111111")
         assert result == result_data
 
 

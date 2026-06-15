@@ -1,9 +1,9 @@
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from configs import dify_config
-from extensions.ext_database import db
 from models.model import AccountTrialAppRecord, TrialApp
 from services.feature_service import FeatureService
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
@@ -11,7 +11,7 @@ from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFa
 
 class RecommendedAppService:
     @classmethod
-    def get_recommended_apps_and_categories(cls, language: str):
+    def get_recommended_apps_and_categories(cls, session: scoped_session, language: str):
         """
         Get recommended apps and categories.
         :param language: language
@@ -31,7 +31,7 @@ class RecommendedAppService:
             apps = result["recommended_apps"]
             for app in apps:
                 app_id = app["app_id"]
-                trial_app_model = db.session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
+                trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
                 if trial_app_model:
                     app["can_trial"] = True
                 else:
@@ -39,7 +39,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def get_recommend_app_detail(cls, app_id: str) -> dict[str, Any] | None:
+    def get_recommend_app_detail(cls, session: scoped_session, app_id: str) -> dict[str, Any] | None:
         """
         Get recommend app detail.
         :param app_id: app id
@@ -52,7 +52,7 @@ class RecommendedAppService:
             return None
         if FeatureService.get_system_features().enable_trial_app:
             app_id = result["id"]
-            trial_app_model = db.session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
+            trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
             if trial_app_model:
                 result["can_trial"] = True
             else:
@@ -60,20 +60,20 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def add_trial_app_record(cls, app_id: str, account_id: str):
+    def add_trial_app_record(cls, session: scoped_session, app_id: str, account_id: str):
         """
         Add trial app record.
         :param app_id: app id
         :return:
         """
-        account_trial_app_record = db.session.scalar(
+        account_trial_app_record = session.scalar(
             select(AccountTrialAppRecord)
             .where(AccountTrialAppRecord.app_id == app_id, AccountTrialAppRecord.account_id == account_id)
             .limit(1)
         )
         if account_trial_app_record:
             account_trial_app_record.count += 1
-            db.session.commit()
+            session.commit()
         else:
-            db.session.add(AccountTrialAppRecord(app_id=app_id, count=1, account_id=account_id))
-            db.session.commit()
+            session.add(AccountTrialAppRecord(app_id=app_id, count=1, account_id=account_id))
+            session.commit()

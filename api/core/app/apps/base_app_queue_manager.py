@@ -41,7 +41,7 @@ class AppQueueManager(ABC):
         self._invoke_from = invoke_from
         self.invoke_from = invoke_from  # Public accessor for invoke_from
 
-        user_prefix = "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
+        user_prefix = "account" if self._invoke_from.runs_as_account() else "end-user"
         self._task_belong_cache_key = AppQueueManager._generate_task_belong_cache_key(self._task_id)
         redis_client.setex(self._task_belong_cache_key, 1800, f"{user_prefix}-{self._user_id}")
 

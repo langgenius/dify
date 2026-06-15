@@ -1,12 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-control-shared'
+import { formLabelClassName, textControlCompoundFocusClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -80,7 +80,7 @@ type ComboboxTriggerProps
     & VariantProps<typeof comboboxTriggerVariants>
     & {
       className?: string
-      icon?: ReactNode | false
+      icon?: React.ReactNode | false
     }
 
 export function ComboboxTrigger({
@@ -113,7 +113,7 @@ const comboboxInputGroupVariants = cva(
   [
     'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
@@ -286,7 +286,7 @@ export function ComboboxIcon({
 }
 
 type ComboboxContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -365,7 +365,7 @@ export function ComboboxItem({
   )
 }
 
-export type ComboboxItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 export function ComboboxItemText({
   className,
@@ -383,7 +383,7 @@ export function ComboboxItemIndicator({
   className,
   children,
   ...props
-}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: ReactNode }) {
+}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: React.ReactNode }) {
   return (
     <BaseCombobox.ItemIndicator
       className={cn(overlayIndicatorClassName, className)}

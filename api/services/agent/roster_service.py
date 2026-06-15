@@ -18,8 +18,10 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
+from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
@@ -37,6 +39,7 @@ class AgentReferencingWorkflow(TypedDict):
     app_name: str
     app_mode: str
     workflow_id: str
+    workflow_version: str
     node_ids: list[str]
 
 
@@ -45,11 +48,17 @@ class AgentRosterService:
         self._session = session
 
     @staticmethod
-    def serialize_agent(agent: Agent, active_version: AgentConfigSnapshot | None = None) -> dict[str, Any]:
+    def serialize_agent(
+        agent: Agent,
+        active_version: AgentConfigSnapshot | None = None,
+        published_references: list[AgentReferencingWorkflow] | None = None,
+    ) -> dict[str, Any]:
+        published_references = published_references or []
         return {
             "id": agent.id,
             "name": agent.name,
             "description": agent.description,
+            "role": agent.role or "",
             "icon_type": agent.icon_type.value if agent.icon_type else None,
             "icon": agent.icon,
             "icon_background": agent.icon_background,
@@ -68,6 +77,9 @@ class AgentRosterService:
             "archived_at": to_timestamp(agent.archived_at),
             "created_at": to_timestamp(agent.created_at),
             "updated_at": to_timestamp(agent.updated_at),
+            "published_reference_count": len(published_references),
+            "published_node_reference_count": sum(len(item["node_ids"]) for item in published_references),
+            "published_references": published_references,
         }
 
     @staticmethod
@@ -84,9 +96,8 @@ class AgentRosterService:
             "created_at": to_timestamp(version.created_at),
         }
 
-    def list_roster_agents(
-        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
-    ) -> dict[str, Any]:
+    @staticmethod
+    def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
         stmt = select(Agent).where(
             Agent.tenant_id == tenant_id,
             Agent.scope == AgentScope.ROSTER,
@@ -97,12 +108,21 @@ class AgentRosterService:
 
             escaped_keyword = escape_like_pattern(keyword)
             stmt = stmt.where(Agent.name.ilike(f"%{escaped_keyword}%", escape="\\"))
-        stmt = stmt.order_by(Agent.updated_at.desc())
+        return stmt.order_by(Agent.updated_at.desc())
+
+    def list_roster_agents(
+        self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None
+    ) -> dict[str, Any]:
+        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword)
 
         total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
         versions_by_id = self._load_versions_by_id(
             [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
+        )
+        published_references_by_agent_id = self._load_published_references_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
         )
 
         data = []
@@ -110,7 +130,13 @@ class AgentRosterService:
             active_version = (
                 versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None
             )
-            data.append(self.serialize_agent(agent, active_version))
+            data.append(
+                self.serialize_agent(
+                    agent,
+                    active_version,
+                    published_references_by_agent_id.get(agent.id, []),
+                )
+            )
 
         return {
             "data": data,
@@ -123,7 +149,26 @@ class AgentRosterService:
     def list_invite_options(
         self, *, tenant_id: str, page: int = 1, limit: int = 20, keyword: str | None = None, app_id: str | None = None
     ) -> dict[str, Any]:
-        result = self.list_roster_agents(tenant_id=tenant_id, page=page, limit=limit, keyword=keyword)
+        stmt = self._build_roster_agents_stmt(tenant_id=tenant_id, keyword=keyword).where(
+            Agent.active_config_has_model.is_(True)
+        )
+        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        agents = list(self._session.scalars(stmt.offset((page - 1) * limit).limit(limit)).all())
+        versions_by_id = self._load_versions_by_id(
+            [agent.active_config_snapshot_id for agent in agents if agent.active_config_snapshot_id]
+        )
+        published_references_by_agent_id = self._load_published_references_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
+        data = [
+            self.serialize_agent(
+                agent,
+                versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
+                published_references_by_agent_id.get(agent.id, []),
+            )
+            for agent in agents
+        ]
         usage_by_agent_id: dict[str, list[str]] = {}
         if app_id:
             draft_workflow = self._session.scalar(
@@ -136,7 +181,7 @@ class AgentRosterService:
                 .limit(1)
             )
             if draft_workflow:
-                agent_ids = [item["id"] for item in result["data"]]
+                agent_ids = [item["id"] for item in data]
                 if agent_ids:
                     bindings = self._session.scalars(
                         select(WorkflowAgentNodeBinding).where(
@@ -149,12 +194,18 @@ class AgentRosterService:
                         if binding.agent_id:
                             usage_by_agent_id.setdefault(binding.agent_id, []).append(binding.node_id)
 
-        for item in result["data"]:
+        for item in data:
             existing_node_ids = usage_by_agent_id.get(item["id"], [])
             item["is_in_current_workflow"] = bool(existing_node_ids)
             item["in_current_workflow_count"] = len(existing_node_ids)
             item["existing_node_ids"] = existing_node_ids
-        return result
+        return {
+            "data": data,
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_more": page * limit < total,
+        }
 
     def create_roster_agent(
         self,
@@ -170,6 +221,7 @@ class AgentRosterService:
             tenant_id=tenant_id,
             name=payload.name,
             description=payload.description,
+            role=payload.role,
             icon_type=payload.icon_type,
             icon=payload.icon,
             icon_background=payload.icon_background,
@@ -209,6 +261,7 @@ class AgentRosterService:
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
 
         try:
             self._session.commit()
@@ -241,6 +294,7 @@ class AgentRosterService:
             tenant_id=tenant_id,
             name=name,
             description=description,
+            role="",
             icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
@@ -279,6 +333,7 @@ class AgentRosterService:
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
         self._session.flush()
         return agent
 
@@ -306,48 +361,18 @@ class AgentRosterService:
         if agent is None:
             return []
 
-        bindings = self._session.scalars(
-            select(WorkflowAgentNodeBinding).where(
-                WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                WorkflowAgentNodeBinding.agent_id == agent.id,
-                WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
-            )
-        ).all()
-        if not bindings:
-            return []
-
-        # Collapse the per-version / per-node rows into one entry per workflow app.
-        node_ids_by_workflow: dict[tuple[str, str], set[str]] = {}
-        for binding in bindings:
-            node_ids_by_workflow.setdefault((binding.app_id, binding.workflow_id), set()).add(binding.node_id)
-
-        referenced_app_ids = {workflow_app_id for workflow_app_id, _ in node_ids_by_workflow}
-        apps = {app.id: app for app in self._session.scalars(select(App).where(App.id.in_(referenced_app_ids))).all()}
-
-        result: list[AgentReferencingWorkflow] = []
-        for (workflow_app_id, workflow_id), node_ids in node_ids_by_workflow.items():
-            app = apps.get(workflow_app_id)
-            if app is None:
-                # Orphaned binding (workflow app deleted): skip rather than 500.
-                continue
-            result.append(
-                AgentReferencingWorkflow(
-                    app_id=workflow_app_id,
-                    app_name=app.name,
-                    app_mode=str(app.mode),
-                    workflow_id=workflow_id,
-                    node_ids=sorted(node_ids),
-                )
-            )
-        result.sort(key=lambda item: item["app_name"].lower())
-        return result
+        return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=[agent.id]).get(agent.id, [])
 
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         active_version = self._get_version(
             tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
-        return self.serialize_agent(agent, active_version)
+        published_references_by_agent_id = self._load_published_references_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id],
+        )
+        return self.serialize_agent(agent, active_version, published_references_by_agent_id.get(agent.id, []))
 
     def update_roster_agent(
         self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
@@ -449,6 +474,68 @@ class AgentRosterService:
         if not version:
             raise AgentVersionNotFoundError()
         return version
+
+    def _load_published_references_by_agent_id(
+        self, *, tenant_id: str, agent_ids: list[str]
+    ) -> dict[str, list[AgentReferencingWorkflow]]:
+        if not agent_ids:
+            return {}
+
+        bindings = list(
+            self._session.scalars(
+                select(WorkflowAgentNodeBinding).where(
+                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                    WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
+                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
+                    WorkflowAgentNodeBinding.workflow_version != Workflow.VERSION_DRAFT,
+                )
+            ).all()
+        )
+        if not bindings:
+            return {}
+
+        app_ids = {binding.app_id for binding in bindings}
+        apps = {
+            app.id: app
+            for app in self._session.scalars(
+                select(App).where(
+                    App.tenant_id == tenant_id,
+                    App.id.in_(app_ids),
+                    App.status == AppStatus.NORMAL,
+                )
+            ).all()
+        }
+
+        grouped: dict[str, dict[tuple[str, str], AgentReferencingWorkflow]] = {}
+        for binding in bindings:
+            if not binding.agent_id:
+                continue
+            app = apps.get(binding.app_id)
+            if app is None or app.workflow_id != binding.workflow_id:
+                continue
+            by_workflow = grouped.setdefault(binding.agent_id, {})
+            key = (binding.app_id, binding.workflow_id)
+            item = by_workflow.setdefault(
+                key,
+                AgentReferencingWorkflow(
+                    app_id=binding.app_id,
+                    app_name=app.name,
+                    app_mode=str(app.mode),
+                    workflow_id=binding.workflow_id,
+                    workflow_version=binding.workflow_version,
+                    node_ids=[],
+                ),
+            )
+            item["node_ids"].append(binding.node_id)
+
+        result: dict[str, list[AgentReferencingWorkflow]] = {}
+        for agent_id, by_workflow in grouped.items():
+            references = list(by_workflow.values())
+            for reference in references:
+                reference["node_ids"] = sorted(set(reference["node_ids"]))
+            references.sort(key=lambda item: (item["app_name"].lower(), item["workflow_id"]))
+            result[agent_id] = references
+        return result
 
     def _load_versions_by_id(self, version_ids: list[str]) -> dict[str, AgentConfigSnapshot]:
         if not version_ids:

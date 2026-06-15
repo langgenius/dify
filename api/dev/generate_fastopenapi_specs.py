@@ -1,4 +1,4 @@
-"""Generate FastOpenAPI OpenAPI 3.0 specs without booting the full backend."""
+"""Generate FastOpenAPI OpenAPI 3.1 specs without booting the full backend."""
 
 from __future__ import annotations
 

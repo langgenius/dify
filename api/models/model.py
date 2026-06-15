@@ -1178,12 +1178,12 @@ class Conversation(Base):
     def inputs(self, value: Mapping[str, Any]):
         inputs = dict(value)
         for k, v in inputs.items():
-            if isinstance(v, File):
-                inputs[k] = v.model_dump()
-            elif isinstance(v, list):
-                v_list = v
-                if all(isinstance(item, File) for item in v_list):
-                    inputs[k] = [item.model_dump() for item in v_list if isinstance(item, File)]
+            match v:
+                case File():
+                    inputs[k] = v.model_dump()
+                case list():
+                    if all(isinstance(item, File) for item in v):
+                        inputs[k] = [item.model_dump() for item in v if isinstance(item, File)]
         self._inputs = inputs
 
     @property

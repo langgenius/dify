@@ -24,7 +24,7 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
-class ApiToolProviderController(ToolProviderController):
+class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTool]):
     provider_id: str
     tenant_id: str
     tools: list[ApiTool] = Field(default_factory=list)
