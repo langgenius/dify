@@ -17,23 +17,34 @@ publish_main() {
   local pointer_prefix="difyctl/${channel}"
   local base_url="${R2_PUBLIC_BASE}/${key}"
 
+  local current="" new_index="" prune_list="" manifest=""
+  trap 'rm -f "$current" "$new_index" "$prune_list" "$manifest"' RETURN
+
   # 1. binaries (+ checksums) — immutable
   aws_s3 s3 sync "$DIST_DIR" "s3://${R2_BUCKET}/${key}/" \
     --content-type application/octet-stream \
     --cache-control "public, max-age=31536000, immutable"
 
-  # 2. HEAD-verify each expected target asset exists on R2
-  local id exe asset
-  while IFS=$'\t' read -r _bun id exe; do
-    [ "$exe" = "1" ] && asset="difyctl-v${version}-${id}.exe" || asset="difyctl-v${version}-${id}"
+  # 2. HEAD-verify each expected target asset exists on R2. Materialize targets
+  #    first: a process-substitution producer failure is NOT caught by set -e,
+  #    which would let us flip the pointer having verified nothing. Asset names
+  #    come from release-naming.mjs (the SSOT) — never re-encoded here.
+  local targets
+  targets="$(node "${_dir}/release-naming.mjs" targets)"
+  [ -n "$targets" ] || { echo "release-r2-publish: no release targets resolved" >&2; exit 1; }
+  local verified=0 _bun id _exe asset
+  while IFS=$'\t' read -r _bun id _exe; do
+    asset="$(node "${_dir}/release-naming.mjs" asset "$version" "$id")"
     aws_s3 s3api head-object --bucket "$R2_BUCKET" --key "${key}/${asset}" >/dev/null
-  done < <(node "${_dir}/release-naming.mjs" targets)
+    verified=$((verified + 1))
+  done <<< "$targets"
+  [ "$verified" -gt 0 ] || { echo "release-r2-publish: verified zero targets" >&2; exit 1; }
 
   # 3. index.json: fetch current, prepend, truncate; capture prune dirs on stderr.
   #    release-r2-edge.mjs treats an empty/"-"/missing file as "no ledger yet".
-  local current; current="$(mktemp)"
+  current="$(mktemp)"
   curl -fsSL "${R2_PUBLIC_BASE}/${pointer_prefix}/index.json" -o "$current" 2>/dev/null || echo '-' > "$current"
-  local new_index prune_list; new_index="$(mktemp)"; prune_list="$(mktemp)"
+  new_index="$(mktemp)"; prune_list="$(mktemp)"
   node "${_dir}/release-r2-edge.mjs" index --current "$current" --channel "$channel" \
     --version "$version" --commit "${DIFYCTL_COMMIT:-unknown}" --build-date "${DIFYCTL_BUILD_DATE:-unknown}" \
     >"$new_index" 2>"$prune_list"
@@ -41,7 +52,7 @@ publish_main() {
     --content-type application/json --cache-control "public, max-age=60, must-revalidate"
 
   # 4. manifest.json — THE COMMIT POINT (pointer flips last)
-  local manifest; manifest="$(mktemp)"
+  manifest="$(mktemp)"
   node "${_dir}/release-r2-edge.mjs" manifest --channel "$channel" --version "$version" \
     --commit "${DIFYCTL_COMMIT:-unknown}" --build-date "${DIFYCTL_BUILD_DATE:-unknown}" \
     --base-url "$base_url" --checksums "${DIST_DIR}/difyctl-v${version}-checksums.txt" >"$manifest"

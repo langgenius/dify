@@ -25,6 +25,7 @@ function runPublish(): { code: number, order: string[], stderr: string } {
     '  case "$*" in',
     '    *release-naming.mjs*targets*)',
     "      printf 'bun-linux-x64\\tlinux-x64\\t0\\nbun-linux-arm64\\tlinux-arm64\\t0\\nbun-darwin-x64\\tdarwin-x64\\t0\\nbun-darwin-arm64\\tdarwin-arm64\\t0\\nbun-windows-x64\\twindows-x64\\t1\\n' ;;",
+    "    *release-naming.mjs*' asset '*)  printf 'difyctl-vX\\n' ;;",
     "    *release-r2-edge.mjs*' index '*)    echo '{}'; echo 'stale-dir' >&2 ;;",
     "    *release-r2-edge.mjs*' manifest '*) echo '{}' ;;",
     '    *) : ;;',
@@ -54,11 +55,34 @@ function runPublish(): { code: number, order: string[], stderr: string } {
 
 describe('release-r2-publish order', () => {
   it('uploads binaries, verifies, then index, then manifest, then installers, then prunes', () => {
-    const { order } = runPublish()
+    const { code, order } = runPublish()
+    expect(code).toBe(0)
     expect(order.indexOf('sync-binaries')).toBeLessThan(order.indexOf('head-verify'))
     expect(order.indexOf('head-verify')).toBeLessThan(order.indexOf('put-index'))
     expect(order.indexOf('put-index')).toBeLessThan(order.indexOf('put-manifest'))
-    expect(order.indexOf('put-manifest')).toBeLessThan(order.indexOf('prune'))
+    expect(order.indexOf('put-manifest')).toBeLessThan(order.indexOf('put-install'))
+    expect(order.indexOf('put-install')).toBeLessThan(order.indexOf('prune'))
     expect(order.indexOf('sync-binaries')).toBeLessThan(order.indexOf('put-manifest'))
+  })
+
+  it('exits non-zero when no targets resolve (head-verify safety gate)', () => {
+    const stub = [
+      'aws() { :; }',
+      'curl() { echo "{}"; }',
+      'node() { case "$*" in *release-naming.mjs*targets*) : ;; *) echo "{}" ;; esac; }',
+    ].join('\n')
+    const program = [stub, `. "${SCRIPT}"`, 'publish_main edge 0.1.0-edge.2fd7b82'].join('\n')
+    const r = spawnSync('bash', ['-c', program], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        RELEASE_PUBLISH_LIB: '1',
+        R2_S3_ENDPOINT: 'https://endpoint.example',
+        R2_BUCKET: 'cli-dev',
+        R2_PUBLIC_BASE: 'https://pub.example.r2.dev',
+        DIST_DIR: '/tmp',
+      },
+    })
+    expect(r.status).not.toBe(0)
   })
 })
