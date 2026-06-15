@@ -43,6 +43,18 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'unicorn/number-literal-case': 'off',
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'none',
+          ignoreRestSiblings: true,
+          vars: 'all',
+          varsIgnorePattern: '^_',
+        },
+      ],
     },
   },
   {

@@ -286,8 +286,10 @@ function generateTypeDefinitions(
     // Add UseDifyNodesPath helper type after UseDifyPath
     if (section === 'use-dify') {
       lines.push('// UseDify node paths (without prefix)')
-      // eslint-disable-next-line no-template-curly-in-string
-      lines.push('type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : never')
+      lines.push(
+        // eslint-disable-next-line no-template-curly-in-string
+        'type ExtractNodesPath<T> = T extends `/use-dify/nodes/${infer Path}` ? Path : never',
+      )
       lines.push('export type UseDifyNodesPath = ExtractNodesPath<UseDifyPath>')
       lines.push('')
     }

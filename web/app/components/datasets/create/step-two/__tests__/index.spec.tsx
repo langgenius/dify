@@ -168,13 +168,14 @@ vi.mock('@/config', async () => {
   return { ...actual, IS_CE_EDITION: true }
 })
 
+type PreviewPickerFile = { id: string; name: string }
+
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({
-  // eslint-disable-next-line ts/no-explicit-any
-  default: ({ onChange, value, files }: { onChange: (item: any) => void, value: any, files: any[] }) => (
+  default: ({ onChange, value, files }: { onChange: (item: PreviewPickerFile) => void, value?: PreviewPickerFile, files?: PreviewPickerFile[] }) => (
     <div data-testid="preview-picker">
       <span>{value?.name}</span>
-      {files?.map((f: { id: string, name: string }) => (
+      {files?.map((f) => (
         <button key={f.id} data-testid={`picker-${f.id}`} onClick={() => onChange(f)}>
           {f.name}
         </button>

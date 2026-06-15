@@ -15,6 +15,10 @@ const generatedIgnores = [
   'web/next-env.d.ts',
 ]
 const eslintIgnoredInputs = ['eslint-suppressions.json', 'web/public/**', 'web/types/doc-paths.ts']
+const formatterUnstableInputs = [
+  'cli/src/commands/AGENTS.md',
+  'web/app/components/develop/template/*.mdx',
+]
 
 export default defineConfig({
   staged: {
@@ -22,7 +26,7 @@ export default defineConfig({
     [formatOnlyFiles]: format,
   },
   fmt: {
-    ignorePatterns: [...generatedIgnores, ...eslintIgnoredInputs],
+    ignorePatterns: [...generatedIgnores, ...eslintIgnoredInputs, ...formatterUnstableInputs],
     singleQuote: true,
     semi: false,
     sortPackageJson: true,

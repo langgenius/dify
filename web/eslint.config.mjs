@@ -92,6 +92,30 @@ export default antfu(
   {
     rules: {
       'node/prefer-global/process': 'off',
+      'unicorn/number-literal-case': 'off',
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'none',
+          ignoreRestSiblings: true,
+          vars: 'all',
+          varsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+  {
+    files: [GLOB_MARKDOWN_CODE],
+    rules: {
+      'unused-imports/no-unused-vars': 'off',
+    },
+  },
+  {
+    files: [GLOB_MARKDOWN],
+    rules: {
+      'unused-imports/no-unused-vars': 'off',
     },
   },
   {
