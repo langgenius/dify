@@ -6,6 +6,7 @@ import type { AgentFileNode } from '../../data'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -145,7 +146,7 @@ function AgentFileUploader({
       {file && (
         <div className="group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-hover">
           <div className="flex items-center justify-center p-3">
-            <span aria-hidden className="i-ri-file-3-fill size-6 shrink-0 text-text-tertiary" />
+            <FileTreeIcon type={getFileIconType(file.name, file.type)} />
           </div>
           <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
             <span className="max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">{file.name}</span>
