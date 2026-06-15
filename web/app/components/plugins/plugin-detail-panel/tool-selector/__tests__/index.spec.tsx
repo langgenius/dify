@@ -45,36 +45,39 @@ let mockManifestData: Record<string, unknown> | null = null
 let mockInstalledPlugins: Array<{ source: PluginSource }> = []
 
 vi.mock('@/service/use-plugins', () => ({
-  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[], enabled: boolean }) => ({
-    data: enabled && pluginIds.length > 0
-      ? { plugins: mockInstalledPlugins }
-      : undefined,
+  useCheckInstalled: ({ pluginIds, enabled }: { pluginIds: string[]; enabled: boolean }) => ({
+    data: enabled && pluginIds.length > 0 ? { plugins: mockInstalledPlugins } : undefined,
   }),
   usePluginManifestInfo: () => ({ data: mockManifestData }),
   useInvalidateInstalledPluginList: () => vi.fn(),
 }))
 
 // Mock tool credential services
-const mockFetchBuiltInToolCredentialSchema = vi.fn().mockResolvedValue([
-  { name: 'api_key', type: 'string', required: false, label: { en_US: 'API Key' } },
-])
+const mockFetchBuiltInToolCredentialSchema = vi
+  .fn()
+  .mockResolvedValue([
+    { name: 'api_key', type: 'string', required: false, label: { en_US: 'API Key' } },
+  ])
 const mockFetchBuiltInToolCredential = vi.fn().mockResolvedValue({})
 
 vi.mock('@/service/tools', () => ({
-  fetchBuiltInToolCredentialSchema: (...args: unknown[]) => mockFetchBuiltInToolCredentialSchema(...args),
+  fetchBuiltInToolCredentialSchema: (...args: unknown[]) =>
+    mockFetchBuiltInToolCredentialSchema(...args),
   fetchBuiltInToolCredential: (...args: unknown[]) => mockFetchBuiltInToolCredential(...args),
 }))
 
 // Mock form schema utils - necessary for controlling test data
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   generateFormValue: vi.fn().mockReturnValue({}),
-  getPlainValue: vi.fn().mockImplementation(v => v),
-  getStructureValue: vi.fn().mockImplementation(v => v),
+  getPlainValue: vi.fn().mockImplementation((v) => v),
+  getStructureValue: vi.fn().mockImplementation((v) => v),
   toolParametersToFormSchemas: vi.fn().mockReturnValue([]),
-  toolCredentialToFormSchemas: vi.fn().mockImplementation(schemas => schemas.map((s: { required?: boolean }) => ({
-    ...s,
-    required: s.required || false,
-  }))),
+  toolCredentialToFormSchemas: vi.fn().mockImplementation((schemas) =>
+    schemas.map((s: { required?: boolean }) => ({
+      ...s,
+      required: s.required || false,
+    })),
+  ),
   addDefaultValue: vi.fn().mockImplementation((credential, _schemas) => credential),
 }))
 
@@ -131,10 +134,7 @@ vi.mock('@/app/components/workflow/nodes/tool/components/tool-form', () => ({
   }) => (
     <div data-testid="tool-form">
       <span data-testid="tool-form-value">{JSON.stringify(value)}</span>
-      <button
-        data-testid="change-settings-btn"
-        onClick={() => onChange({ setting1: 'new-value' })}
-      >
+      <button data-testid="change-settings-btn" onClick={() => onChange({ setting1: 'new-value' })}>
         Change Settings
       </button>
     </div>
@@ -161,13 +161,7 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 
 // Popover positioning is mocked for deterministic panel tests.
 vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({
-    children,
-    open,
-  }: {
-    children: ReactNode
-    open?: boolean
-  }) => (
+  Popover: ({ children, open }: { children: ReactNode; open?: boolean }) => (
     <div data-testid="popover" data-open={open}>
       {children}
     </div>
@@ -182,14 +176,14 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
     onClick?: () => void
   }) => (
     <div data-testid="popover-trigger" onClick={onClick}>
-      {render
-        ? (
-            <>
-              {render}
-              {children}
-            </>
-          )
-        : children}
+      {render ? (
+        <>
+          {render}
+          {children}
+        </>
+      ) : (
+        children
+      )}
     </div>
   ),
   PopoverContent: ({ children }: { children: ReactNode }) => (
@@ -211,10 +205,7 @@ vi.mock('../components/reasoning-config-form', () => ({
   }) => (
     <div data-testid="reasoning-config-form">
       <span data-testid="params-value">{JSON.stringify(value)}</span>
-      <button
-        data-testid="change-params-btn"
-        onClick={() => onChange({ param1: 'new-param' })}
-      >
+      <button data-testid="change-params-btn" onClick={() => onChange({ param1: 'new-param' })}>
         Change Params
       </button>
     </div>
@@ -253,11 +244,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button'
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/switch-plugin-version', () => ({
-  SwitchPluginVersion: ({
-    onChange,
-  }: {
-    onChange?: () => void
-  }) => (
+  SwitchPluginVersion: ({ onChange }: { onChange?: () => void }) => (
     <button data-testid="switch-version-btn" onClick={onChange}>
       Switch Version
     </button>
@@ -270,9 +257,8 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 
 // Mock Dialog to avoid Base UI focus/portal behavior in tests
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: ReactNode, open?: boolean }) => (
-    open ? <div>{children}</div> : null
-  ),
+  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { children: ReactNode }) => (
     <div data-testid="modal">{children}</div>
   ),
@@ -280,14 +266,20 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
 }))
 
 // Mock VisualEditor - complex component with many dependencies
-vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor', () => ({
-  default: () => <div data-testid="visual-editor" />,
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor',
+  () => ({
+    default: () => <div data-testid="visual-editor" />,
+  }),
+)
 
-vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context', () => ({
-  MittProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-  VisualEditorContextProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context',
+  () => ({
+    MittProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+    VisualEditorContextProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  }),
+)
 
 // Mock Form - complex model provider form
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
@@ -304,7 +296,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
       <input
         data-testid="form-input"
         value={JSON.stringify(value)}
-        onChange={e => onChange(JSON.parse(e.target.value || '{}'))}
+        onChange={(e) => onChange(JSON.parse(e.target.value || '{}'))}
       />
       {fieldMoreInfo && (
         <div data-testid="field-more-info">
@@ -319,15 +311,19 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
 // Mock Toast - need to track notify calls for assertions
 const mockToastNotify = vi.fn()
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
-    success: (message: string) => mockToastNotify({ type: 'success', message }),
-    error: (message: string) => mockToastNotify({ type: 'error', message }),
-    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-    info: (message: string) => mockToastNotify({ type: 'info', message }),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
 }))
 
 // ==================== Test Utilities ====================
@@ -345,9 +341,7 @@ const createTestQueryClient = () =>
 const createWrapper = () => {
   const testQueryClient = createTestQueryClient()
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
 }
 
@@ -365,19 +359,20 @@ const createToolValue = (overrides: Partial<ToolValue> = {}): ToolValue => ({
   ...overrides,
 })
 
-const createToolDefaultValue = (overrides: Partial<ToolDefaultValue> = {}): ToolDefaultValue => ({
-  provider_id: 'test-provider/tool',
-  provider_type: CollectionType.builtIn,
-  provider_name: 'Test Provider',
-  tool_name: 'test-tool',
-  tool_label: 'Test Tool',
-  tool_description: 'A test tool',
-  title: 'Test Tool Title',
-  is_team_authorization: true,
-  params: {},
-  paramSchemas: [],
-  ...overrides,
-} as ToolDefaultValue)
+const createToolDefaultValue = (overrides: Partial<ToolDefaultValue> = {}): ToolDefaultValue =>
+  ({
+    provider_id: 'test-provider/tool',
+    provider_type: CollectionType.builtIn,
+    provider_name: 'Test Provider',
+    tool_name: 'test-tool',
+    tool_label: 'Test Tool',
+    tool_description: 'A test tool',
+    title: 'Test Tool Title',
+    is_team_authorization: true,
+    params: {},
+    paramSchemas: [],
+    ...overrides,
+  }) as ToolDefaultValue
 
 // Helper to create mock ToolFormSchema for testing
 const createMockFormSchema = (name: string) => ({
@@ -391,26 +386,27 @@ const createMockFormSchema = (name: string) => ({
   show_on: [],
 })
 
-const createToolWithProvider = (overrides: Record<string, unknown> = {}): ToolWithProvider => ({
-  id: 'test-provider/tool',
-  name: 'test-provider',
-  type: CollectionType.builtIn,
-  icon: 'test-icon',
-  is_team_authorization: true,
-  allow_delete: true,
-  tools: [
-    {
-      name: 'test-tool',
-      label: { en_US: 'Test Tool' },
-      description: { en_US: 'A test tool' },
-      parameters: [
-        { name: 'setting1', form: 'user', type: 'string' },
-        { name: 'param1', form: 'llm', type: 'string' },
-      ],
-    },
-  ],
-  ...overrides,
-} as unknown as ToolWithProvider)
+const createToolWithProvider = (overrides: Record<string, unknown> = {}): ToolWithProvider =>
+  ({
+    id: 'test-provider/tool',
+    name: 'test-provider',
+    type: CollectionType.builtIn,
+    icon: 'test-icon',
+    is_team_authorization: true,
+    allow_delete: true,
+    tools: [
+      {
+        name: 'test-tool',
+        label: { en_US: 'Test Tool' },
+        description: { en_US: 'A test tool' },
+        parameters: [
+          { name: 'setting1', form: 'user', type: 'string' },
+          { name: 'param1', form: 'llm', type: 'string' },
+        ],
+      },
+    ],
+    ...overrides,
+  }) as unknown as ToolWithProvider
 
 const defaultProps = {
   onSelect: vi.fn(),
@@ -427,20 +423,14 @@ describe('usePluginInstalledCheck Hook', () => {
   })
 
   it('should return inMarketPlace as false when manifest is null', () => {
-    const { result } = renderHook(
-      () => usePluginInstalledCheck({}),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => usePluginInstalledCheck({}), { wrapper: createWrapper() })
 
     expect(result.current.inMarketPlace).toBe(false)
     expect(result.current.manifest).toBeUndefined()
   })
 
   it('should handle empty provider name', () => {
-    const { result } = renderHook(
-      () => usePluginInstalledCheck({}),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => usePluginInstalledCheck({}), { wrapper: createWrapper() })
 
     expect(result.current.inMarketPlace).toBe(false)
   })
@@ -464,10 +454,9 @@ describe('useToolSelectorState Hook', () => {
   describe('Initial State', () => {
     it('should initialize with correct default values', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.isShow).toBe(false)
       expect(result.current.isShowChooseTool).toBe(false)
@@ -480,10 +469,9 @@ describe('useToolSelectorState Hook', () => {
   describe('State Setters', () => {
     it('should update isShow state', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.setIsShow(true)
@@ -494,10 +482,9 @@ describe('useToolSelectorState Hook', () => {
 
     it('should update isShowChooseTool state', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.setIsShowChooseTool(true)
@@ -508,10 +495,9 @@ describe('useToolSelectorState Hook', () => {
 
     it('should update currType state', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.setCurrType('params')
@@ -525,10 +511,9 @@ describe('useToolSelectorState Hook', () => {
     it('should call onSelect when handleDescriptionChange is triggered', () => {
       const onSelect = vi.fn()
       const value = createToolValue()
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.handleDescriptionChange('new description')
@@ -544,27 +529,23 @@ describe('useToolSelectorState Hook', () => {
     it('should call onSelect when handleEnabledChange is triggered', () => {
       const onSelect = vi.fn()
       const value = createToolValue({ enabled: false })
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.handleEnabledChange(true)
       })
 
-      expect(onSelect).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: true }),
-      )
+      expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ enabled: true }))
     })
 
     it('should call onSelect when handleAuthorizationItemClick is triggered', () => {
       const onSelect = vi.fn()
       const value = createToolValue()
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.handleAuthorizationItemClick('credential-123')
@@ -578,13 +559,14 @@ describe('useToolSelectorState Hook', () => {
     it('should call onSelect when handleSettingsFormChange is triggered', () => {
       const onSelect = vi.fn()
       const value = createToolValue()
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
-        result.current.handleSettingsFormChange({ key: { type: VarKindType.constant, value: 'value' } })
+        result.current.handleSettingsFormChange({
+          key: { type: VarKindType.constant, value: 'value' },
+        })
       })
 
       expect(onSelect).toHaveBeenCalledWith(
@@ -597,27 +579,29 @@ describe('useToolSelectorState Hook', () => {
     it('should call onSelect when handleParamsFormChange is triggered', () => {
       const onSelect = vi.fn()
       const value = createToolValue()
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
-        result.current.handleParamsFormChange({ param: { value: { type: VarKindType.constant, value: 'value' } } })
+        result.current.handleParamsFormChange({
+          param: { value: { type: VarKindType.constant, value: 'value' } },
+        })
       })
 
       expect(onSelect).toHaveBeenCalledWith(
-        expect.objectContaining({ parameters: { param: { value: { type: VarKindType.constant, value: 'value' } } } }),
+        expect.objectContaining({
+          parameters: { param: { value: { type: VarKindType.constant, value: 'value' } } },
+        }),
       )
     })
 
     it('should call onSelectMultiple when handleSelectMultipleTool is triggered', () => {
       const onSelect = vi.fn()
       const onSelectMultiple = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect, onSelectMultiple }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect, onSelectMultiple }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.handleSelectMultipleTool([createToolDefaultValue()])
@@ -630,20 +614,18 @@ describe('useToolSelectorState Hook', () => {
   describe('Computed Values', () => {
     it('should return empty settings value when no settings', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.getSettingsValue()).toEqual({})
     })
 
     it('should compute showTabSlider correctly', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Without currentProvider, should be false
       expect(result.current.showTabSlider).toBe(false)
@@ -716,48 +698,27 @@ describe('ToolItem Component', () => {
     })
 
     it('should display provider name and tool label', () => {
-      render(
-        <ToolItem
-          open={false}
-          providerName="org/provider"
-          toolLabel="My Tool"
-        />,
-      )
+      render(<ToolItem open={false} providerName="org/provider" toolLabel="My Tool" />)
       expect(screen.getByText('provider')).toBeInTheDocument()
       expect(screen.getByText('My Tool')).toBeInTheDocument()
     })
 
     it('should show MCP provider show name for MCP tools', () => {
       render(
-        <ToolItem
-          open={false}
-          isMCPTool
-          providerShowName="MCP Provider"
-          toolLabel="My Tool"
-        />,
+        <ToolItem open={false} isMCPTool providerShowName="MCP Provider" toolLabel="My Tool" />,
       )
       expect(screen.getByText('MCP Provider')).toBeInTheDocument()
     })
 
     it('should render string icon correctly', () => {
-      render(
-        <ToolItem
-          open={false}
-          icon="https://example.com/icon.png"
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} icon="https://example.com/icon.png" toolLabel="Tool" />)
       const iconElement = document.querySelector('[style*="background-image"]')
       expect(iconElement).toBeInTheDocument()
     })
 
     it('should render object icon correctly', () => {
       render(
-        <ToolItem
-          open={false}
-          icon={{ content: '🔧', background: '#fff' }}
-          toolLabel="Tool"
-        />,
+        <ToolItem open={false} icon={{ content: '🔧', background: '#fff' }} toolLabel="Tool" />,
       )
       // AppIcon should be rendered
       expect(document.querySelector('.rounded-lg')).toBeInTheDocument()
@@ -773,13 +734,7 @@ describe('ToolItem Component', () => {
   describe('User Interactions', () => {
     it('should call onDelete when delete button is clicked', async () => {
       const onDelete = vi.fn()
-      render(
-        <ToolItem
-          open={false}
-          onDelete={onDelete}
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} onDelete={onDelete} toolLabel="Tool" />)
 
       // Find the delete button (hidden by default, shown on hover)
       const deleteBtn = document.querySelector('[class*="hover:text-text-destructive"]')
@@ -812,11 +767,7 @@ describe('ToolItem Component', () => {
 
       render(
         <div onClick={parentClick}>
-          <ToolItem
-            open={false}
-            onDelete={onDelete}
-            toolLabel="Tool"
-          />
+          <ToolItem open={false} onDelete={onDelete} toolLabel="Tool" />
         </div>,
       )
 
@@ -830,97 +781,48 @@ describe('ToolItem Component', () => {
 
   describe('Conditional Rendering', () => {
     it('should show switch only when showSwitch is true and no errors', () => {
-      const { rerender } = render(
-        <ToolItem open={false} showSwitch={false} toolLabel="Tool" />,
-      )
+      const { rerender } = render(<ToolItem open={false} showSwitch={false} toolLabel="Tool" />)
       expect(document.querySelector('.mr-1')).not.toBeInTheDocument()
 
-      rerender(
-        <ToolItem open={false} showSwitch toolLabel="Tool" />,
-      )
+      rerender(<ToolItem open={false} showSwitch toolLabel="Tool" />)
       expect(document.querySelector('.mr-1')).toBeInTheDocument()
     })
 
     it('should show not authorized button when noAuth is true', () => {
-      render(
-        <ToolItem
-          open={false}
-          noAuth
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} noAuth toolLabel="Tool" />)
       expect(screen.getByText(/notAuthorized/i)).toBeInTheDocument()
     })
 
     it('should show auth removed button when authRemoved is true', () => {
-      render(
-        <ToolItem
-          open={false}
-          authRemoved
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} authRemoved toolLabel="Tool" />)
       expect(screen.getByText(/authRemoved/i)).toBeInTheDocument()
     })
 
     it('should show install button when uninstalled', () => {
-      render(
-        <ToolItem
-          open={false}
-          uninstalled
-          installInfo="plugin@1.0.0"
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} uninstalled installInfo="plugin@1.0.0" toolLabel="Tool" />)
       expect(screen.getByTestId('install-plugin-btn')).toBeInTheDocument()
     })
 
     it('should show version switch when versionMismatch', () => {
-      render(
-        <ToolItem
-          open={false}
-          versionMismatch
-          installInfo="plugin@1.0.0"
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} versionMismatch installInfo="plugin@1.0.0" toolLabel="Tool" />)
       expect(screen.getByTestId('switch-version-btn')).toBeInTheDocument()
     })
 
     it('should show error icon when isError is true', () => {
-      render(
-        <ToolItem
-          open={false}
-          isError
-          errorTip="Error occurred"
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} isError errorTip="Error occurred" toolLabel="Tool" />)
       // RiErrorWarningFill should be rendered
       expect(document.querySelector('.text-text-destructive')).toBeInTheDocument()
     })
 
     it('should apply opacity when transparent states are true', () => {
-      render(
-        <ToolItem
-          open={false}
-          uninstalled
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} uninstalled toolLabel="Tool" />)
       expect(document.querySelector('.opacity-50')).toBeInTheDocument()
     })
 
     it('should show MCP tooltip when isMCPTool is true and MCP not allowed', () => {
       // Set MCP tool not allowed
       mockMCPToolAllowed = false
-      render(
-        <ToolItem
-          open={false}
-          isMCPTool
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} isMCPTool toolLabel="Tool" />)
       // McpToolNotSupportTooltip should be rendered (line 128)
       expect(screen.getByTestId('mcp-not-support-tooltip')).toBeInTheDocument()
       // Reset
@@ -930,12 +832,7 @@ describe('ToolItem Component', () => {
     it('should apply opacity-30 to icon when isMCPTool and not allowed with string icon', () => {
       mockMCPToolAllowed = false
       const { container } = render(
-        <ToolItem
-          open={false}
-          isMCPTool
-          icon="https://example.com/icon.png"
-          toolLabel="Tool"
-        />,
+        <ToolItem open={false} isMCPTool icon="https://example.com/icon.png" toolLabel="Tool" />,
       )
       // Should have opacity-30 class on the icon container (line 80)
       const iconContainer = container.querySelector('.shrink-0.opacity-30')
@@ -977,40 +874,21 @@ describe('ToolItem Component', () => {
 
     it('should apply opacity-30 to default icon when isMCPTool and not allowed without icon', () => {
       mockMCPToolAllowed = false
-      render(
-        <ToolItem
-          open={false}
-          isMCPTool
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} isMCPTool toolLabel="Tool" />)
       // Should have opacity-30 class on default icon container (lines 89-97)
       expect(document.querySelector('.opacity-30')).toBeInTheDocument()
       mockMCPToolAllowed = true
     })
 
     it('should show switch when showSwitch is true without MCP tip', () => {
-      const { container } = render(
-        <ToolItem
-          open={false}
-          showSwitch
-          toolLabel="Tool"
-        />,
-      )
+      const { container } = render(<ToolItem open={false} showSwitch toolLabel="Tool" />)
       // Switch wrapper should be rendered when showSwitch is true and no MCP tip
       expect(container.querySelector('.mr-1')).toBeInTheDocument()
     })
 
     it('should show MCP tooltip instead of switch when isMCPTool and not allowed', () => {
       mockMCPToolAllowed = false
-      render(
-        <ToolItem
-          open={false}
-          showSwitch
-          isMCPTool
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} showSwitch isMCPTool toolLabel="Tool" />)
       // MCP tooltip should be rendered
       expect(screen.getByTestId('mcp-not-support-tooltip')).toBeInTheDocument()
       mockMCPToolAllowed = true
@@ -1059,21 +937,14 @@ describe('ToolAuthorizationSection Component', () => {
 
   describe('Rendering', () => {
     it('should render null when currentProvider is undefined', () => {
-      const { container } = render(
-        <ToolAuthorizationSection
-          onAuthorizationItemClick={vi.fn()}
-        />,
-      )
+      const { container } = render(<ToolAuthorizationSection onAuthorizationItemClick={vi.fn()} />)
       expect(container.firstChild).toBeNull()
     })
 
     it('should render null when provider type is not builtIn', () => {
       const provider = createToolWithProvider({ type: CollectionType.custom })
       const { container } = render(
-        <ToolAuthorizationSection
-          currentProvider={provider}
-          onAuthorizationItemClick={vi.fn()}
-        />,
+        <ToolAuthorizationSection currentProvider={provider} onAuthorizationItemClick={vi.fn()} />,
       )
       expect(container.firstChild).toBeNull()
     })
@@ -1081,10 +952,7 @@ describe('ToolAuthorizationSection Component', () => {
     it('should render null when allow_delete is false', () => {
       const provider = createToolWithProvider({ allow_delete: false })
       const { container } = render(
-        <ToolAuthorizationSection
-          currentProvider={provider}
-          onAuthorizationItemClick={vi.fn()}
-        />,
+        <ToolAuthorizationSection currentProvider={provider} onAuthorizationItemClick={vi.fn()} />,
       )
       expect(container.firstChild).toBeNull()
     })
@@ -1095,10 +963,7 @@ describe('ToolAuthorizationSection Component', () => {
         allow_delete: true,
       })
       render(
-        <ToolAuthorizationSection
-          currentProvider={provider}
-          onAuthorizationItemClick={vi.fn()}
-        />,
+        <ToolAuthorizationSection currentProvider={provider} onAuthorizationItemClick={vi.fn()} />,
       )
       expect(screen.getByTestId('plugin-auth-in-agent')).toBeInTheDocument()
     })
@@ -1161,22 +1026,14 @@ describe('ToolSettingsPanel Component', () => {
     it('should render null when not team authorized', () => {
       const provider = createToolWithProvider({ is_team_authorization: false })
       const { container } = render(
-        <ToolSettingsPanel
-          {...defaultSettingsPanelProps}
-          currentProvider={provider}
-        />,
+        <ToolSettingsPanel {...defaultSettingsPanelProps} currentProvider={provider} />,
       )
       expect(container.firstChild).toBeNull()
     })
 
     it('should render settings form when has settings schemas', () => {
       const provider = createToolWithProvider({ is_team_authorization: true })
-      render(
-        <ToolSettingsPanel
-          {...defaultSettingsPanelProps}
-          currentProvider={provider}
-        />,
-      )
+      render(<ToolSettingsPanel {...defaultSettingsPanelProps} currentProvider={provider} />)
       expect(screen.getByTestId('tool-form')).toBeInTheDocument()
     })
 
@@ -1355,12 +1212,7 @@ describe('ToolBaseForm Component', () => {
 
     it('should call onSelectTool when tool is selected', () => {
       const onSelectTool = vi.fn()
-      render(
-        <ToolBaseForm
-          {...defaultBaseFormProps}
-          onSelectTool={onSelectTool}
-        />,
-      )
+      render(<ToolBaseForm {...defaultBaseFormProps} onSelectTool={onSelectTool} />)
 
       fireEvent.click(screen.getByTestId('select-tool-btn'))
       expect(onSelectTool).toHaveBeenCalled()
@@ -1368,12 +1220,7 @@ describe('ToolBaseForm Component', () => {
 
     it('should call onSelectMultipleTool when multiple tools are selected', () => {
       const onSelectMultipleTool = vi.fn()
-      render(
-        <ToolBaseForm
-          {...defaultBaseFormProps}
-          onSelectMultipleTool={onSelectMultipleTool}
-        />,
-      )
+      render(<ToolBaseForm {...defaultBaseFormProps} onSelectMultipleTool={onSelectMultipleTool} />)
 
       fireEvent.click(screen.getByTestId('select-multiple-btn'))
       expect(onSelectMultipleTool).toHaveBeenCalled()
@@ -1422,26 +1269,17 @@ describe('ToolSelector Component', () => {
 
   describe('Props', () => {
     it('should apply isEdit mode title', () => {
-      render(
-        <ToolSelector {...defaultProps} isEdit />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} isEdit />, { wrapper: createWrapper() })
       expect(screen.getByText(/toolSetting/i)).toBeInTheDocument()
     })
 
     it('should apply default title when not in edit mode', () => {
-      render(
-        <ToolSelector {...defaultProps} isEdit={false} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} isEdit={false} />, { wrapper: createWrapper() })
       expect(screen.getByText(/title/i)).toBeInTheDocument()
     })
 
     it('should pass nodeId to settings panel', () => {
-      render(
-        <ToolSelector {...defaultProps} nodeId="test-node-id" />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} nodeId="test-node-id" />, { wrapper: createWrapper() })
       // The component should receive and use the nodeId
       expect(screen.getByTestId('popover-content')).toBeInTheDocument()
     })
@@ -1463,10 +1301,7 @@ describe('ToolSelector Component', () => {
     })
 
     it('should use internal state when no trigger', () => {
-      render(
-        <ToolSelector {...defaultProps} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByTestId('popover')).toHaveAttribute('data-open', 'false')
     })
   })
@@ -1474,10 +1309,7 @@ describe('ToolSelector Component', () => {
   describe('User Interactions', () => {
     it('should call onSelect when tool is selected', () => {
       const onSelect = vi.fn()
-      render(
-        <ToolSelector {...defaultProps} onSelect={onSelect} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} onSelect={onSelect} />, { wrapper: createWrapper() })
 
       fireEvent.click(screen.getByTestId('select-tool-btn'))
       expect(onSelect).toHaveBeenCalled()
@@ -1485,10 +1317,9 @@ describe('ToolSelector Component', () => {
 
     it('should call onSelectMultiple when multiple tools are selected', () => {
       const onSelectMultiple = vi.fn()
-      render(
-        <ToolSelector {...defaultProps} onSelectMultiple={onSelectMultiple} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} onSelectMultiple={onSelectMultiple} />, {
+        wrapper: createWrapper(),
+      })
 
       fireEvent.click(screen.getByTestId('select-multiple-btn'))
       expect(onSelectMultiple).toHaveBeenCalled()
@@ -1499,11 +1330,7 @@ describe('ToolSelector Component', () => {
       const value = createToolValue()
 
       const { container } = render(
-        <ToolSelector
-          {...defaultProps}
-          value={value}
-          onDelete={onDelete}
-        />,
+        <ToolSelector {...defaultProps} value={value} onDelete={onDelete} />,
         { wrapper: createWrapper() },
       )
 
@@ -1514,10 +1341,9 @@ describe('ToolSelector Component', () => {
 
     it('should not trigger when disabled', () => {
       const onSelect = vi.fn()
-      render(
-        <ToolSelector {...defaultProps} disabled onSelect={onSelect} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} disabled onSelect={onSelect} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click on portal trigger
       fireEvent.click(screen.getByTestId('popover-trigger'))
@@ -1531,10 +1357,9 @@ describe('ToolSelector Component', () => {
       // ToolSelector is wrapped with React.memo
       // This test verifies the component doesn't re-render unnecessarily
       const onSelect = vi.fn()
-      const { rerender } = render(
-        <ToolSelector {...defaultProps} onSelect={onSelect} />,
-        { wrapper: createWrapper() },
-      )
+      const { rerender } = render(<ToolSelector {...defaultProps} onSelect={onSelect} />, {
+        wrapper: createWrapper(),
+      })
 
       // Re-render with same props
       rerender(<ToolSelector {...defaultProps} onSelect={onSelect} />)
@@ -1554,72 +1379,42 @@ describe('Edge Cases', () => {
 
   describe('ToolSelector with undefined values', () => {
     it('should handle undefined value prop', () => {
-      render(
-        <ToolSelector {...defaultProps} value={undefined} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} value={undefined} />, { wrapper: createWrapper() })
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle undefined selectedTools', () => {
-      render(
-        <ToolSelector {...defaultProps} selectedTools={undefined} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} selectedTools={undefined} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle empty nodeOutputVars', () => {
-      render(
-        <ToolSelector {...defaultProps} nodeOutputVars={[]} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} nodeOutputVars={[]} />, { wrapper: createWrapper() })
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
 
     it('should handle empty availableNodes', () => {
-      render(
-        <ToolSelector {...defaultProps} availableNodes={[]} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} availableNodes={[]} />, { wrapper: createWrapper() })
       expect(screen.getByTestId('popover')).toBeInTheDocument()
     })
   })
 
   describe('ToolItem with edge case props', () => {
     it('should handle all error states combined', () => {
-      render(
-        <ToolItem
-          open={false}
-          isError
-          uninstalled
-          versionMismatch
-          noAuth
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} isError uninstalled versionMismatch noAuth toolLabel="Tool" />)
       // Should show error state (highest priority)
       expect(document.querySelector('.text-text-destructive')).toBeInTheDocument()
     })
 
     it('should handle empty provider name', () => {
-      render(
-        <ToolItem
-          open={false}
-          providerName=""
-          toolLabel="Tool"
-        />,
-      )
+      render(<ToolItem open={false} providerName="" toolLabel="Tool" />)
       expect(screen.getByText('Tool')).toBeInTheDocument()
     })
 
     it('should handle special characters in tool label', () => {
-      render(
-        <ToolItem
-          open={false}
-          toolLabel="Tool <script>alert('xss')</script>"
-        />,
-      )
+      render(<ToolItem open={false} toolLabel="Tool <script>alert('xss')</script>" />)
       // Should render safely without XSS
       expect(screen.getByText(/Tool/)).toBeInTheDocument()
     })
@@ -1724,10 +1519,9 @@ describe('Edge Cases', () => {
     it('useToolSelectorState should handle empty description change', () => {
       const onSelect = vi.fn()
       const value = createToolValue()
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.handleDescriptionChange('')
@@ -1760,27 +1554,21 @@ describe('SchemaModal Component', () => {
       }
 
       render(
-        <SchemaModal
-          isShow={true}
-          schema={mockSchema}
-          rootName="TestSchema"
-          onClose={vi.fn()}
-        />,
+        <SchemaModal isShow={true} schema={mockSchema} rootName="TestSchema" onClose={vi.fn()} />,
       )
 
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
     it('should not render when isShow is false', () => {
-      const mockSchema: SchemaRoot = { type: Type.object, properties: {}, additionalProperties: false }
+      const mockSchema: SchemaRoot = {
+        type: Type.object,
+        properties: {},
+        additionalProperties: false,
+      }
 
       render(
-        <SchemaModal
-          isShow={false}
-          schema={mockSchema}
-          rootName="TestSchema"
-          onClose={vi.fn()}
-        />,
+        <SchemaModal isShow={false} schema={mockSchema} rootName="TestSchema" onClose={vi.fn()} />,
       )
 
       expect(screen.queryByTestId('modal')).not.toBeInTheDocument()
@@ -1788,15 +1576,14 @@ describe('SchemaModal Component', () => {
 
     it('should call onClose when close button is clicked', () => {
       const onClose = vi.fn()
-      const mockSchema: SchemaRoot = { type: Type.object, properties: {}, additionalProperties: false }
+      const mockSchema: SchemaRoot = {
+        type: Type.object,
+        properties: {},
+        additionalProperties: false,
+      }
 
       render(
-        <SchemaModal
-          isShow={true}
-          schema={mockSchema}
-          rootName="TestSchema"
-          onClose={onClose}
-        />,
+        <SchemaModal isShow={true} schema={mockSchema} rootName="TestSchema" onClose={onClose} />,
       )
 
       // Find and click close button (the one with absolute positioning)
@@ -1848,9 +1635,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
     })
 
     it('should call onCancel when cancel button is clicked', async () => {
@@ -1865,13 +1655,16 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for loading to complete and click cancel
-      await waitFor(() => {
-        const cancelBtn = screen.queryByText(/cancel/i)
-        if (cancelBtn) {
-          fireEvent.click(cancelBtn)
-          expect(onCancel).toHaveBeenCalled()
-        }
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          const cancelBtn = screen.queryByText(/cancel/i)
+          if (cancelBtn) {
+            fireEvent.click(cancelBtn)
+            expect(onCancel).toHaveBeenCalled()
+          }
+        },
+        { timeout: 2000 },
+      )
     })
 
     it('should call onSaved when save button is clicked with valid data', async () => {
@@ -1886,9 +1679,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for loading to complete
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
 
       // Click save
       const saveBtn = screen.getByText(/save/i)
@@ -1908,13 +1704,16 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for loading to complete
-      await waitFor(() => {
-        const fieldMoreInfo = screen.queryByTestId('field-more-info')
-        if (fieldMoreInfo) {
-          // Should render link for item with url
-          expect(fieldMoreInfo.querySelector('a')).toBeInTheDocument()
-        }
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          const fieldMoreInfo = screen.queryByTestId('field-more-info')
+          if (fieldMoreInfo) {
+            // Should render link for item with url
+            expect(fieldMoreInfo.querySelector('a')).toBeInTheDocument()
+          }
+        },
+        { timeout: 2000 },
+      )
     })
 
     it('should update form value when onChange is called', async () => {
@@ -1927,9 +1726,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for form to load
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
 
       // Trigger onChange via mock form
       const formInput = screen.getByTestId('form-input')
@@ -1960,9 +1762,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for form to load
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
 
       // Click save without filling required field
       const saveBtn = screen.getByText(/save/i)
@@ -1992,9 +1797,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for form to load
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
 
       // Click save
       const saveBtn = screen.getByText(/save/i)
@@ -2024,9 +1832,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for form to load and click save
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
 
       const saveBtn = screen.getByText(/save/i)
       fireEvent.click(saveBtn)
@@ -2052,9 +1863,12 @@ describe('ToolCredentialsForm Component', () => {
       )
 
       // Wait for form to load
-      await waitFor(() => {
-        expect(screen.getByTestId('credential-form')).toBeInTheDocument()
-      }, { timeout: 2000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('credential-form')).toBeInTheDocument()
+        },
+        { timeout: 2000 },
+      )
 
       // Trigger onChange via mock form
       const formInput = screen.getByTestId('form-input')
@@ -2075,13 +1889,7 @@ describe('Additional Coverage Tests', () => {
 
   describe('ToolItem Mouse Events', () => {
     it('should set deleting state on mouse over', () => {
-      const { container } = render(
-        <ToolItem
-          open={false}
-          onDelete={vi.fn()}
-          toolLabel="Tool"
-        />,
-      )
+      const { container } = render(<ToolItem open={false} onDelete={vi.fn()} toolLabel="Tool" />)
 
       const deleteBtn = container.querySelector('[class*="hover:text-text-destructive"]')
       if (deleteBtn) {
@@ -2094,13 +1902,7 @@ describe('Additional Coverage Tests', () => {
     })
 
     it('should reset deleting state on mouse leave', () => {
-      const { container } = render(
-        <ToolItem
-          open={false}
-          onDelete={vi.fn()}
-          toolLabel="Tool"
-        />,
-      )
+      const { container } = render(<ToolItem open={false} onDelete={vi.fn()} toolLabel="Tool" />)
 
       const deleteBtn = container.querySelector('[class*="hover:text-text-destructive"]')
       if (deleteBtn) {
@@ -2170,8 +1972,28 @@ describe('Additional Coverage Tests', () => {
           {
             name: 'test-tool',
             parameters: [
-              { name: 'setting1', form: 'user', label: { en_US: 'Setting 1', zh_Hans: '设置1' }, human_description: { en_US: '', zh_Hans: '' }, type: 'string', llm_description: '', required: false, multiple: false, default: '' },
-              { name: 'param1', form: 'llm', label: { en_US: 'Param 1', zh_Hans: '参数1' }, human_description: { en_US: '', zh_Hans: '' }, type: 'string', llm_description: '', required: false, multiple: false, default: '' },
+              {
+                name: 'setting1',
+                form: 'user',
+                label: { en_US: 'Setting 1', zh_Hans: '设置1' },
+                human_description: { en_US: '', zh_Hans: '' },
+                type: 'string',
+                llm_description: '',
+                required: false,
+                multiple: false,
+                default: '',
+              },
+              {
+                name: 'param1',
+                form: 'llm',
+                label: { en_US: 'Param 1', zh_Hans: '参数1' },
+                human_description: { en_US: '', zh_Hans: '' },
+                type: 'string',
+                llm_description: '',
+                required: false,
+                multiple: false,
+                default: '',
+              },
             ],
           },
         ],
@@ -2183,10 +2005,9 @@ describe('Additional Coverage Tests', () => {
       const onSelect = vi.fn()
       const value = createToolValue({ provider_name: 'test-provider/tool', tool_name: 'test-tool' })
 
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Clean up
       mockBuildInTools!.pop()
@@ -2196,10 +2017,9 @@ describe('Additional Coverage Tests', () => {
 
     it('should call handleInstall and invalidate caches', async () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.handleInstall()
@@ -2212,10 +2032,9 @@ describe('Additional Coverage Tests', () => {
     it('should return empty manifestIcon when manifest is null', () => {
       mockManifestData = null
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Without manifest, should return empty string
       expect(result.current.manifestIcon).toBe('')
@@ -2234,10 +2053,9 @@ describe('Additional Coverage Tests', () => {
 
       const onSelect = vi.fn()
       const value = createToolValue({ provider_name: 'test/plugin' })
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // With manifest, should return icon URL - this covers line 103
       expect(result.current.manifest).toBeDefined()
@@ -2248,16 +2066,35 @@ describe('Additional Coverage Tests', () => {
 
     it('should handle tool selection with paramSchemas filtering', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       const toolWithSchemas: ToolDefaultValue = {
         ...createToolDefaultValue(),
         paramSchemas: [
-          { name: 'setting1', form: 'user', label: { en_US: 'Setting 1' }, human_description: { en_US: '' }, type: 'string', llm_description: '', required: false, multiple: false, default: '' },
-          { name: 'param1', form: 'llm', label: { en_US: 'Param 1' }, human_description: { en_US: '' }, type: 'string', llm_description: '', required: false, multiple: false, default: '' },
+          {
+            name: 'setting1',
+            form: 'user',
+            label: { en_US: 'Setting 1' },
+            human_description: { en_US: '' },
+            type: 'string',
+            llm_description: '',
+            required: false,
+            multiple: false,
+            default: '',
+          },
+          {
+            name: 'param1',
+            form: 'llm',
+            label: { en_US: 'Param 1' },
+            human_description: { en_US: '' },
+            type: 'string',
+            llm_description: '',
+            required: false,
+            multiple: false,
+            default: '',
+          },
         ],
       }
 
@@ -2305,12 +2142,14 @@ describe('Additional Coverage Tests', () => {
       mockMcpTools = [mcpProvider]
 
       const onSelect = vi.fn()
-      const value = createToolValue({ provider_name: 'builtin-provider/tool', tool_name: 'builtin-tool' })
+      const value = createToolValue({
+        provider_name: 'builtin-provider/tool',
+        tool_name: 'builtin-tool',
+      })
 
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Should find the builtin provider
       expect(result.current.currentProvider).toBeDefined()
@@ -2346,10 +2185,9 @@ describe('Additional Coverage Tests', () => {
       const onSelect = vi.fn()
       const value = createToolValue({ provider_name: 'test-provider/tool', tool_name: 'test-tool' })
 
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Verify currentToolSettings filters to user form only (lines 69-72)
       expect(result.current.currentToolSettings).toBeDefined()
@@ -2362,10 +2200,9 @@ describe('Additional Coverage Tests', () => {
 
     it('should return empty arrays when currentProvider is undefined', () => {
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Without a provider, settings and params should be empty
       expect(result.current.currentToolSettings).toEqual([])
@@ -2380,10 +2217,9 @@ describe('Additional Coverage Tests', () => {
       mockMcpTools = undefined
 
       const onSelect = vi.fn()
-      const { result } = renderHook(
-        () => useToolSelectorState({ onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Should not crash and currentProvider should be undefined
       expect(result.current.currentProvider).toBeUndefined()
@@ -2417,12 +2253,14 @@ describe('Additional Coverage Tests', () => {
 
       const onSelect = vi.fn()
       // Use a tool_name that doesn't exist in the provider
-      const value = createToolValue({ provider_name: 'test-provider/tool', tool_name: 'non-existent-tool' })
+      const value = createToolValue({
+        provider_name: 'test-provider/tool',
+        tool_name: 'non-existent-tool',
+      })
 
-      const { result } = renderHook(
-        () => useToolSelectorState({ value, onSelect }),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useToolSelectorState({ value, onSelect }), {
+        wrapper: createWrapper(),
+      })
 
       // Provider should be found but tool should not
       expect(result.current.currentProvider).toBeDefined()
@@ -2524,10 +2362,7 @@ describe('Additional Coverage Tests', () => {
     })
 
     it('should not set isShow when disabled', () => {
-      render(
-        <ToolSelector {...defaultProps} disabled />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} disabled />, { wrapper: createWrapper() })
 
       // Click on the trigger
       const trigger = screen.getByTestId('popover-trigger')
@@ -2539,10 +2374,7 @@ describe('Additional Coverage Tests', () => {
 
     it('should handle trigger click when provider and tool exist', () => {
       // This requires mocking the tools data
-      render(
-        <ToolSelector {...defaultProps} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} />, { wrapper: createWrapper() })
 
       // Without provider/tool, clicking should not open
       const trigger = screen.getByTestId('popover-trigger')
@@ -2553,10 +2385,9 @@ describe('Additional Coverage Tests', () => {
 
     it('should early return from handleTriggerClick when disabled', () => {
       // Test to ensure disabled state prevents opening
-      const { rerender } = render(
-        <ToolSelector {...defaultProps} disabled={false} />,
-        { wrapper: createWrapper() },
-      )
+      const { rerender } = render(<ToolSelector {...defaultProps} disabled={false} />, {
+        wrapper: createWrapper(),
+      })
 
       // Rerender with disabled=true
       rerender(<ToolSelector {...defaultProps} disabled={true} />)
@@ -2593,10 +2424,9 @@ describe('Additional Coverage Tests', () => {
         tool_name: 'test-tool',
       })
 
-      render(
-        <ToolSelector {...defaultProps} value={value} disabled={false} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} value={value} disabled={false} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click on the trigger - this should call handleTriggerClick
       const trigger = screen.getByTestId('popover-trigger')
@@ -2631,10 +2461,9 @@ describe('Additional Coverage Tests', () => {
         tool_name: 'test-tool',
       })
 
-      render(
-        <ToolSelector {...defaultProps} value={value} disabled={true} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} value={value} disabled={true} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click should not open because disabled=true
       const trigger = screen.getByTestId('popover-trigger')
@@ -2669,10 +2498,7 @@ describe('Integration Tests', () => {
   describe('Full Flow: Tool Selection', () => {
     it('should complete full tool selection flow', async () => {
       const onSelect = vi.fn()
-      render(
-        <ToolSelector {...defaultProps} onSelect={onSelect} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} onSelect={onSelect} />, { wrapper: createWrapper() })
 
       // Click to select a tool
       fireEvent.click(screen.getByTestId('select-tool-btn'))
@@ -2688,10 +2514,9 @@ describe('Integration Tests', () => {
 
     it('should complete full multiple tool selection flow', async () => {
       const onSelectMultiple = vi.fn()
-      render(
-        <ToolSelector {...defaultProps} onSelectMultiple={onSelectMultiple} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} onSelectMultiple={onSelectMultiple} />, {
+        wrapper: createWrapper(),
+      })
 
       // Click to select multiple tools
       fireEvent.click(screen.getByTestId('select-multiple-btn'))
@@ -2712,10 +2537,9 @@ describe('Integration Tests', () => {
       const onSelect = vi.fn()
       const value = createToolValue()
 
-      render(
-        <ToolSelector {...defaultProps} value={value} onSelect={onSelect} />,
-        { wrapper: createWrapper() },
-      )
+      render(<ToolSelector {...defaultProps} value={value} onSelect={onSelect} />, {
+        wrapper: createWrapper(),
+      })
 
       // Find and change the description textarea
       const textarea = screen.getByRole('textbox')

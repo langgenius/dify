@@ -8,7 +8,7 @@ const mockSearchBox = vi.fn()
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
 }))
 
@@ -29,15 +29,17 @@ describe('SearchBoxWrapper', () => {
     render(<SearchBoxWrapper />)
 
     expect(screen.getByTestId('search-box')).toBeInTheDocument()
-    expect(mockSearchBox).toHaveBeenCalledWith(expect.objectContaining({
-      wrapperClassName: 'z-11 mx-auto w-[640px] shrink-0',
-      inputClassName: 'w-full',
-      search: 'plugin search',
-      onSearchChange: mockHandleSearchPluginTextChange,
-      tags: ['agent', 'rag'],
-      onTagsChange: mockHandleFilterPluginTagsChange,
-      placeholder: 'plugin.searchPlugins',
-      usedInMarketplace: true,
-    }))
+    expect(mockSearchBox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        wrapperClassName: 'z-11 mx-auto w-[640px] shrink-0',
+        inputClassName: 'w-full',
+        search: 'plugin search',
+        onSearchChange: mockHandleSearchPluginTextChange,
+        tags: ['agent', 'rag'],
+        onTagsChange: mockHandleFilterPluginTagsChange,
+        placeholder: 'plugin.searchPlugins',
+        usedInMarketplace: true,
+      }),
+    )
   })
 })

@@ -8,7 +8,12 @@ describe('EncryptedBottom', () => {
   })
 
   it('passes keys', async () => {
-    render(<EncryptedBottom frontTextKey="provider.encrypted.front" backTextKey="provider.encrypted.back" />)
+    render(
+      <EncryptedBottom
+        frontTextKey="provider.encrypted.front"
+        backTextKey="provider.encrypted.back"
+      />,
+    )
     expect(await screen.findByText(/provider.encrypted.front/i)).toBeInTheDocument()
     expect(await screen.findByText(/provider.encrypted.back/i)).toBeInTheDocument()
   })

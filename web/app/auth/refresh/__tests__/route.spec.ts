@@ -30,10 +30,11 @@ const getSetCookieHeaders = (headers: Headers) => {
   return setCookie ? [setCookie] : []
 }
 
-const createRequest = (url: string, cookie?: string) => ({
-  url,
-  headers: new Headers(cookie ? { cookie } : undefined),
-}) as Request
+const createRequest = (url: string, cookie?: string) =>
+  ({
+    url,
+    headers: new Headers(cookie ? { cookie } : undefined),
+  }) as Request
 
 describe('auth refresh route', () => {
   beforeEach(() => {
@@ -56,10 +57,12 @@ describe('auth refresh route', () => {
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await import('../route')
 
-    const response = await GET(createRequest(
-      'http://localhost:3000/auth/refresh?redirect_url=%2Fapps%3Fcategory%3Dworkflow',
-      'refresh_token=old-refresh',
-    ))
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=%2Fapps%3Fcategory%3Dworkflow',
+        'refresh_token=old-refresh',
+      ),
+    )
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:5001/console/api/refresh-token',
@@ -83,10 +86,12 @@ describe('auth refresh route', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     const { GET } = await import('../route')
 
-    const response = await GET(createRequest(
-      'http://localhost:3000/auth/refresh?redirect_url=%2Fapps',
-      'refresh_token=expired',
-    ))
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=%2Fapps',
+        'refresh_token=expired',
+      ),
+    )
 
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
@@ -97,10 +102,12 @@ describe('auth refresh route', () => {
     vi.stubGlobal('fetch', fetchMock)
     const { GET } = await import('../route')
 
-    const response = await GET(createRequest(
-      'http://localhost:3000/auth/refresh?redirect_url=https%3A%2F%2Fevil.example',
-      'refresh_token=expired',
-    ))
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=https%3A%2F%2Fevil.example',
+        'refresh_token=expired',
+      ),
+    )
 
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
@@ -110,10 +117,12 @@ describe('auth refresh route', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     const { GET } = await import('../route')
 
-    const response = await GET(createRequest(
-      'http://internal-service:3000/auth/refresh?redirect_url=%2F',
-      'refresh_token=expired',
-    ))
+    const response = await GET(
+      createRequest(
+        'http://internal-service:3000/auth/refresh?redirect_url=%2F',
+        'refresh_token=expired',
+      ),
+    )
 
     expect(response.status).toBe(303)
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')

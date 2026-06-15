@@ -2,10 +2,7 @@ import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { intersectionBy } from 'es-toolkit/compat'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -19,10 +16,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.knowledgeRetrieval'
 
-const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
   const {
@@ -56,11 +50,16 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   } = useConfig(id, data)
 
   const metadataList = useMemo(() => {
-    return intersectionBy(...selectedDatasets.filter((dataset) => {
-      return !!dataset.doc_metadata
-    }).map((dataset) => {
-      return dataset.doc_metadata!
-    }), 'name')
+    return intersectionBy(
+      ...selectedDatasets
+        .filter((dataset) => {
+          return !!dataset.doc_metadata
+        })
+        .map((dataset) => {
+          return dataset.doc_metadata!
+        }),
+      'name',
+    )
   }, [selectedDatasets])
 
   return (
@@ -93,7 +92,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.knowledge`, { ns: 'workflow' })}
           required
-          operations={(
+          operations={
             <div className="flex items-center space-x-1">
               <RetrievalConfig
                 payload={{
@@ -111,15 +110,12 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onRerankModelOpenChange={setRerankModelOpen}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className="h-3 w-px bg-divider-regular"></div>)}
+              {!readOnly && <div className="h-3 w-px bg-divider-regular"></div>}
               {!readOnly && (
-                <AddKnowledge
-                  selectedIds={inputs.dataset_ids}
-                  onChange={handleOnDatasetsChange}
-                />
+                <AddKnowledge selectedIds={inputs.dataset_ids} onChange={handleOnDatasetsChange} />
               )}
             </div>
-          )}
+          }
         >
           <DatasetList
             list={selectedDatasets}
@@ -190,7 +186,6 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 },
               ]}
             />
-
           </>
         </OutputVars>
       </div>

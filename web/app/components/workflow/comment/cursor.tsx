@@ -5,12 +5,11 @@ import { useStore } from '../store'
 import { ControlMode } from '../types'
 
 export const CommentCursor: FC = memo(() => {
-  const controlMode = useStore(s => s.controlMode)
-  const mousePosition = useStore(s => s.mousePosition)
-  const isCommentPlacing = useStore(s => s.isCommentPlacing)
+  const controlMode = useStore((s) => s.controlMode)
+  const mousePosition = useStore((s) => s.mousePosition)
+  const isCommentPlacing = useStore((s) => s.isCommentPlacing)
 
-  if (controlMode !== ControlMode.Comment || isCommentPlacing)
-    return null
+  if (controlMode !== ControlMode.Comment || isCommentPlacing) return null
 
   return (
     <div

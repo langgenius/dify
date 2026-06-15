@@ -56,13 +56,7 @@ type ItemProps = {
   onRename?: () => void
   onDelete?: () => void
 }
-const Item: FC<ItemProps> = ({
-  readonly,
-  disabled,
-  payload,
-  onRename,
-  onDelete,
-}) => {
+const Item: FC<ItemProps> = ({ readonly, disabled, payload, onRename, onDelete }) => {
   const { t } = useTranslation()
   const iconClassName = getIconClassName(payload.type)
 
@@ -72,10 +66,8 @@ const Item: FC<ItemProps> = ({
 
   const deleteBtnRef = useRef<HTMLButtonElement>(null)
   const isDeleteHovering = useHover(deleteBtnRef)
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
+  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
+    useBoolean(false)
   const handleDelete = useCallback(() => {
     hideDeleteConfirm()
     onDelete?.()
@@ -98,12 +90,16 @@ const Item: FC<ItemProps> = ({
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
           <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
-          <div className="max-w-[250px] truncate system-sm-medium text-text-primary">{payload.name}</div>
+          <div className="max-w-[250px] truncate system-sm-medium text-text-primary">
+            {payload.name}
+          </div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
           <div className="ml-2 shrink-0 system-xs-regular text-text-tertiary group-hover/item:hidden">
-            {disabled ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' }) : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
+            {disabled
+              ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' })
+              : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
         <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
@@ -125,7 +121,10 @@ const Item: FC<ItemProps> = ({
             <RiDeleteBinLine className="size-4" aria-hidden="true" />
           </button>
         </div>
-        <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+        <AlertDialog
+          open={isShowDeleteConfirm}
+          onOpenChange={(open) => !open && hideDeleteConfirm()}
+        >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
               <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -136,7 +135,9 @@ const Item: FC<ItemProps> = ({
               </AlertDialogDescription>
             </div>
             <AlertDialogActions>
-              <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+              <AlertDialogCancelButton>
+                {t('operation.cancel', { ns: 'common' })}
+              </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t('operation.confirm', { ns: 'common' })}
               </AlertDialogConfirmButton>
@@ -162,23 +163,29 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
   const [templeName, setTempleName] = useState('')
-  const handleRename = useCallback((payload: MetadataItemWithValueLength) => {
-    return () => {
-      setCurrPayload(payload)
-      setTempleName(payload.name)
-      setIsShowRenameModal(true)
-    }
-  }, [setCurrPayload, setIsShowRenameModal])
+  const handleRename = useCallback(
+    (payload: MetadataItemWithValueLength) => {
+      return () => {
+        setCurrPayload(payload)
+        setTempleName(payload.name)
+        setIsShowRenameModal(true)
+      }
+    },
+    [setCurrPayload, setIsShowRenameModal],
+  )
 
   const [open, setOpen] = useState(false)
-  const handleAdd = useCallback(async (data: BuiltInMetadataItem) => {
-    await onAdd(data)
-    toast.success(t('api.actionSuccess', { ns: 'common' }))
-    setOpen(false)
-  }, [onAdd, t])
+  const handleAdd = useCallback(
+    async (data: BuiltInMetadataItem) => {
+      await onAdd(data)
+      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      setOpen(false)
+    },
+    [onAdd, t],
+  )
 
   const handleRenamed = useCallback(async () => {
-    const item = userMetadata.find(p => p.id === currPayload?.id)
+    const item = userMetadata.find((p) => p.id === currPayload?.id)
     if (item) {
       await onRename({
         ...item,
@@ -189,12 +196,15 @@ const DatasetMetadataDrawer: FC<Props> = ({
     setIsShowRenameModal(false)
   }, [userMetadata, currPayload?.id, onRename, templeName, t])
 
-  const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
-    return async () => {
-      await onRemove(payload.id)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
-    }
-  }, [onRemove, t])
+  const handleDelete = useCallback(
+    (payload: MetadataItemWithValueLength) => {
+      return async () => {
+        await onRemove(payload.id)
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
+      }
+    },
+    [onRemove, t],
+  )
 
   return (
     <Drawer
@@ -202,8 +212,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       modal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DrawerPortal>
@@ -221,22 +230,24 @@ const DatasetMetadataDrawer: FC<Props> = ({
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-                <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
+                <div className="system-sm-regular text-text-tertiary">
+                  {t(`${i18nPrefix}.description`, { ns: 'dataset' })}
+                </div>
                 <CreateMetadataModal
                   open={open}
                   setOpen={setOpen}
-                  trigger={(
+                  trigger={
                     <Button variant="primary" className="mt-3">
                       <RiAddLine className="mr-1" />
                       {t(`${i18nPrefix}.addMetaData`, { ns: 'dataset' })}
                     </Button>
-                  )}
+                  }
                   hasBack
                   onSave={handleAdd}
                 />
 
                 <div className="mt-3 space-y-1">
-                  {userMetadata.map(payload => (
+                  {userMetadata.map((payload) => (
                     <Item
                       key={payload.id}
                       payload={payload}
@@ -247,18 +258,20 @@ const DatasetMetadataDrawer: FC<Props> = ({
                 </div>
 
                 <div className="mt-3 flex h-6 items-center">
-                  <Switch
-                    checked={isBuiltInEnabled}
-                    onCheckedChange={onIsBuiltInEnabledChange}
-                  />
-                  <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
-                  <Infotip aria-label={t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })} popupClassName="max-w-[100px]">
+                  <Switch checked={isBuiltInEnabled} onCheckedChange={onIsBuiltInEnabledChange} />
+                  <div className="mr-0.5 ml-2 system-sm-semibold text-text-secondary">
+                    {t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}
+                  </div>
+                  <Infotip
+                    aria-label={t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}
+                    popupClassName="max-w-[100px]"
+                  >
                     {t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}
                   </Infotip>
                 </div>
 
                 <div className="mt-1 space-y-1">
-                  {builtInMetadata.map(payload => (
+                  {builtInMetadata.map((payload) => (
                     <Item
                       key={payload.name}
                       readonly
@@ -272,8 +285,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   <Dialog
                     open
                     onOpenChange={(open) => {
-                      if (!open)
-                        setIsShowRenameModal(false)
+                      if (!open) setIsShowRenameModal(false)
                     }}
                   >
                     <DialogContent className="overflow-hidden! border-none text-left align-middle">
@@ -285,7 +297,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                         <Input
                           aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
                           value={templeName}
-                          onChange={e => setTempleName(e.target.value)}
+                          onChange={(e) => setTempleName(e.target.value)}
                           placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
                         />
                       </Field>
@@ -299,11 +311,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                         >
                           {t('operation.cancel', { ns: 'common' })}
                         </Button>
-                        <Button
-                          onClick={handleRenamed}
-                          variant="primary"
-                          disabled={!templeName}
-                        >
+                        <Button onClick={handleRenamed} variant="primary" disabled={!templeName}>
                           {t('operation.save', { ns: 'common' })}
                         </Button>
                       </div>

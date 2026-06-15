@@ -1,17 +1,17 @@
 @reference "../../../../styles/globals.css";
 
 .filePreview {
-  @apply flex flex-col border-l border-components-panel-border shrink-0 bg-background-default-lighter;
+  @apply flex shrink-0 flex-col border-l border-components-panel-border bg-background-default-lighter;
 }
 
 .previewHeader {
-  @apply border-b border-divider-subtle shrink-0;
+  @apply shrink-0 border-b border-divider-subtle;
   margin: 42px 32px 0;
   padding-bottom: 16px;
 }
 
 .previewHeader .title {
-  @apply flex justify-between items-center text-text-primary;
+  @apply flex items-center justify-between text-text-primary;
 }
 
 .previewHeader .fileName {
@@ -19,7 +19,7 @@
 }
 
 .previewContent {
-  @apply overflow-y-auto grow text-text-secondary;
+  @apply grow overflow-y-auto text-text-secondary;
   padding: 20px 32px;
 }
 

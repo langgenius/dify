@@ -15,10 +15,7 @@ export const UnsubmittedHumanInputContent = ({
   return (
     <>
       {/* Form */}
-      <HumanInputForm
-        formData={formData}
-        onSubmit={onSubmit}
-      />
+      <HumanInputForm formData={formData} onSubmit={onSubmit} />
       {/* Tips */}
       {(showEmailTip || showDebugModeTip) && (
         <Tips

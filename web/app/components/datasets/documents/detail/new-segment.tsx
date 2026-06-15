@@ -39,19 +39,23 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [attachments, setAttachments] = useState<FileEntity[]>([])
-  const { datasetId, documentId } = useParams<{ datasetId: string, documentId: string }>()
+  const { datasetId, documentId } = useParams<{ datasetId: string; documentId: string }>()
   const [keywords, setKeywords] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [addAnother, setAddAnother] = useState(true)
-  const fullScreen = useSegmentListContext(s => s.fullScreen)
-  const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
-  const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+  const fullScreen = useSegmentListContext((s) => s.fullScreen)
+  const toggleFullScreen = useSegmentListContext((s) => s.toggleFullScreen)
+  const indexingTechnique = useDatasetDetailContextWithSelector(
+    (s) => s.dataset?.indexing_technique,
+  )
   const [imageUploaderKey, setImageUploaderKey] = useState(() => Date.now())
 
-  const handleCancel = useCallback((actionType: 'esc' | 'add' = 'esc') => {
-    if (actionType === 'esc' || !addAnother)
-      onCancel()
-  }, [onCancel, addAnother])
+  const handleCancel = useCallback(
+    (actionType: 'esc' | 'add' = 'esc') => {
+      if (actionType === 'esc' || !addAnother) onCancel()
+    },
+    [onCancel, addAnother],
+  )
 
   const onAttachmentsChange = useCallback((attachments: FileEntity[]) => {
     setAttachments(attachments)
@@ -71,8 +75,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
 
       params.content = question
       params.answer = answer
-    }
-    else {
+    } else {
       if (!question.trim()) {
         return toast.error(t('segment.contentEmpty', { ns: 'datasetDocuments' }))
       }
@@ -80,36 +83,53 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
       params.content = question
     }
 
-    if (keywords?.length)
-      params.keywords = keywords
+    if (keywords?.length) params.keywords = keywords
 
     if (attachments.length)
-      params.attachment_ids = attachments.filter(item => Boolean(item.uploadedId)).map(item => item.uploadedId!)
+      params.attachment_ids = attachments
+        .filter((item) => Boolean(item.uploadedId))
+        .map((item) => item.uploadedId!)
 
     setLoading(true)
-    await addSegment({ datasetId, documentId, body: params }, {
-      onSuccess() {
-        toast.success(t('segment.chunkAdded', { ns: 'datasetDocuments' }), {
-          actionProps: {
-            children: t('operation.view', { ns: 'common' }),
-            onClick: viewNewlyAddedChunk,
-          },
-        })
-        handleCancel('add')
-        setQuestion('')
-        setAnswer('')
-        setAttachments([])
-        setImageUploaderKey(Date.now())
-        setKeywords([])
-        onSave()
+    await addSegment(
+      { datasetId, documentId, body: params },
+      {
+        onSuccess() {
+          toast.success(t('segment.chunkAdded', { ns: 'datasetDocuments' }), {
+            actionProps: {
+              children: t('operation.view', { ns: 'common' }),
+              onClick: viewNewlyAddedChunk,
+            },
+          })
+          handleCancel('add')
+          setQuestion('')
+          setAnswer('')
+          setAttachments([])
+          setImageUploaderKey(Date.now())
+          setKeywords([])
+          onSave()
+        },
+        onSettled() {
+          setLoading(false)
+        },
       },
-      onSettled() {
-        setLoading(false)
-      },
-    })
-  }, [docForm, keywords, addSegment, datasetId, documentId, question, answer, attachments, t, handleCancel, onSave, viewNewlyAddedChunk])
+    )
+  }, [
+    docForm,
+    keywords,
+    addSegment,
+    datasetId,
+    documentId,
+    question,
+    answer,
+    attachments,
+    t,
+    handleCancel,
+    onSave,
+    viewNewlyAddedChunk,
+  ])
 
-  const count = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
+  const count = docForm === ChunkingMode.qa ? question.length + answer.length : question.length
   const wordCountText = `${formatNumber(count)} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
 
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
@@ -117,7 +137,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   return (
     <div className="flex h-full flex-col">
       <div
-        className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4')}
+        className={cn(
+          'flex items-center justify-between',
+          fullScreen ? 'border border-divider-subtle py-3 pr-4 pl-6' : 'pt-3 pr-3 pl-4',
+        )}
       >
         <div className="flex flex-col">
           <div className="system-xl-semibold text-text-primary">
@@ -160,14 +183,26 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           </button>
         </div>
       </div>
-      <div className={cn('flex grow', fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3')}>
-        <div className={cn('overflow-hidden break-all whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div
+        className={cn(
+          'flex grow',
+          fullScreen
+            ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6'
+            : 'flex-col gap-y-1 px-4 py-3',
+        )}
+      >
+        <div
+          className={cn(
+            'overflow-hidden break-all whitespace-pre-line',
+            fullScreen ? 'w-1/2' : 'grow',
+          )}
+        >
           <ChunkContent
             docForm={docForm}
             question={question}
             answer={answer}
-            onQuestionChange={question => setQuestion(question)}
-            onAnswerChange={answer => setAnswer(answer)}
+            onQuestionChange={(question) => setQuestion(question)}
+            onAnswerChange={(answer) => setAnswer(answer)}
             isEditMode={true}
           />
         </div>
@@ -183,7 +218,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
               actionType="add"
               keywords={keywords}
               isEditMode={true}
-              onKeywordsChange={keywords => setKeywords(keywords)}
+              onKeywordsChange={(keywords) => setKeywords(keywords)}
             />
           )}
         </div>

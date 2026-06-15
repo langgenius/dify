@@ -83,30 +83,18 @@ Create the test file at: ${testPath}
   buildFocusPoints(analysis) {
     const points = []
 
-    if (analysis.hasState)
-      points.push('- Testing state management and updates')
-    if (analysis.hasEffects)
-      points.push('- Testing side effects and cleanup')
-    if (analysis.hasCallbacks)
-      points.push('- Testing callback stability and memoization')
-    if (analysis.hasMemo)
-      points.push('- Testing memoization logic and dependencies')
-    if (analysis.hasEvents)
-      points.push('- Testing user interactions and event handlers')
-    if (analysis.hasRouter)
-      points.push('- Mocking Next.js router hooks')
-    if (analysis.hasAPI)
-      points.push('- Mocking API calls')
-    if (analysis.hasForwardRef)
-      points.push('- Testing ref forwarding behavior')
-    if (analysis.hasComponentMemo)
-      points.push('- Testing component memoization')
-    if (analysis.hasSuspense)
-      points.push('- Testing Suspense boundaries and lazy loading')
-    if (analysis.hasPortal)
-      points.push('- Testing Portal rendering')
-    if (analysis.hasImperativeHandle)
-      points.push('- Testing imperative handle methods')
+    if (analysis.hasState) points.push('- Testing state management and updates')
+    if (analysis.hasEffects) points.push('- Testing side effects and cleanup')
+    if (analysis.hasCallbacks) points.push('- Testing callback stability and memoization')
+    if (analysis.hasMemo) points.push('- Testing memoization logic and dependencies')
+    if (analysis.hasEvents) points.push('- Testing user interactions and event handlers')
+    if (analysis.hasRouter) points.push('- Mocking Next.js router hooks')
+    if (analysis.hasAPI) points.push('- Mocking API calls')
+    if (analysis.hasForwardRef) points.push('- Testing ref forwarding behavior')
+    if (analysis.hasComponentMemo) points.push('- Testing component memoization')
+    if (analysis.hasSuspense) points.push('- Testing Suspense boundaries and lazy loading')
+    if (analysis.hasPortal) points.push('- Testing Portal rendering')
+    if (analysis.hasImperativeHandle) points.push('- Testing imperative handle methods')
     points.push('- Testing edge cases and error handling')
     points.push('- Testing all prop variations')
 
@@ -124,16 +112,14 @@ Create the test file at: ${testPath}
       guidelines.push('   - Require comprehensive test coverage')
       guidelines.push('   - Add regression tests for all use cases')
       guidelines.push('   - Consider integration tests with dependent components')
-    }
-    else if (analysis.usageCount > 50) {
+    } else if (analysis.usageCount > 50) {
       guidelines.push('🟠 VERY HIGH USAGE component:')
       guidelines.push(`   - Referenced ${analysis.usageCount} times in the codebase`)
       guidelines.push('   - Changes may affect many parts of the application')
       guidelines.push('   - Comprehensive test coverage is CRITICAL')
       guidelines.push('   - Add tests for all common usage patterns')
       guidelines.push('   - Consider regression tests')
-    }
-    else if (analysis.usageCount > 20) {
+    } else if (analysis.usageCount > 20) {
       guidelines.push('🟡 HIGH USAGE component:')
       guidelines.push(`   - Referenced ${analysis.usageCount} times in the codebase`)
       guidelines.push('   - Test coverage is important to prevent widespread bugs')
@@ -146,8 +132,7 @@ Create the test file at: ${testPath}
       guidelines.push('   - Splitting component into smaller pieces before testing')
       guidelines.push('   - Creating integration tests for complex workflows')
       guidelines.push('   - Using test.each() for data-driven tests')
-    }
-    else if (analysis.complexity > 50) {
+    } else if (analysis.complexity > 50) {
       guidelines.push(`⚠️  MODERATE Total Complexity (${analysis.complexity}/100). Consider:`)
       guidelines.push('   - Breaking tests into multiple describe blocks')
       guidelines.push('   - Testing integration scenarios')
@@ -156,12 +141,15 @@ Create the test file at: ${testPath}
 
     // ===== Max Function Complexity Warning =====
     if (analysis.maxComplexity > 75) {
-      guidelines.push(`🔴 HIGH Single Function Complexity (max: ${analysis.maxComplexity}/100). Consider:`)
+      guidelines.push(
+        `🔴 HIGH Single Function Complexity (max: ${analysis.maxComplexity}/100). Consider:`,
+      )
       guidelines.push('   - Breaking down the complex function into smaller helpers')
       guidelines.push('   - Extracting logic into custom hooks or utility functions')
-    }
-    else if (analysis.maxComplexity > 50) {
-      guidelines.push(`⚠️  MODERATE Single Function Complexity (max: ${analysis.maxComplexity}/100). Consider:`)
+    } else if (analysis.maxComplexity > 50) {
+      guidelines.push(
+        `⚠️  MODERATE Single Function Complexity (max: ${analysis.maxComplexity}/100). Consider:`,
+      )
       guidelines.push('   - Simplifying conditional logic')
       guidelines.push('   - Using early returns to reduce nesting')
     }
@@ -173,14 +161,12 @@ Create the test file at: ${testPath}
       guidelines.push('   - Test useEffect dependencies array')
       guidelines.push('   - Test cleanup functions (return from useEffect)')
       guidelines.push('   - Use waitFor() for async state changes')
-    }
-    else if (analysis.hasState) {
+    } else if (analysis.hasState) {
       guidelines.push('📊 State management detected:')
       guidelines.push('   - Test initial state values')
       guidelines.push('   - Test all state transitions')
       guidelines.push('   - Test state reset/cleanup scenarios')
-    }
-    else if (analysis.hasEffects) {
+    } else if (analysis.hasEffects) {
       guidelines.push('⚡ Side effects detected:')
       guidelines.push('   - Test effect execution conditions')
       guidelines.push('   - Verify dependencies array correctness')
@@ -190,12 +176,9 @@ Create the test file at: ${testPath}
     // ===== Performance Optimization =====
     if (analysis.hasCallbacks || analysis.hasMemo || analysis.hasComponentMemo) {
       const features = []
-      if (analysis.hasCallbacks)
-        features.push('useCallback')
-      if (analysis.hasMemo)
-        features.push('useMemo')
-      if (analysis.hasComponentMemo)
-        features.push('React.memo')
+      if (analysis.hasCallbacks) features.push('useCallback')
+      if (analysis.hasMemo) features.push('useMemo')
+      if (analysis.hasComponentMemo) features.push('React.memo')
 
       guidelines.push(`🚀 Performance optimization (${features.join(', ')}):`)
       guidelines.push('   - Verify callbacks maintain referential equality')
@@ -308,7 +291,7 @@ class TestReviewPromptBuilder {
     const formattedOriginalPrompt = originalPromptSection
       ? originalPromptSection
           .split('\n')
-          .map(line => (line.trim().length > 0 ? `  ${line}` : ''))
+          .map((line) => (line.trim().length > 0 ? `  ${line}` : ''))
           .join('\n')
           .trimEnd()
       : '  (original generation prompt unavailable)'
@@ -429,14 +412,15 @@ function main() {
     if (resolvedFile) {
       absolutePath = resolvedFile.absolutePath
       componentPath = resolvedFile.componentPath
-    }
-    else {
+    } else {
       // List available files for user to choose
       const availableFiles = listAnalyzableFiles(absolutePath)
-      console.error(`❌ Error: Directory does not contain a recognizable entry file: ${componentPath}`)
+      console.error(
+        `❌ Error: Directory does not contain a recognizable entry file: ${componentPath}`,
+      )
       if (availableFiles.length > 0) {
         console.error(`\n   Available files to analyze:`)
-        availableFiles.forEach(f => console.error(`   - ${path.join(componentPath, f)}`))
+        availableFiles.forEach((f) => console.error(`   - ${path.join(componentPath, f)}`))
         console.error(`\n   Please specify the exact file path, e.g.:`)
         console.error(`   pnpm analyze-component ${path.join(componentPath, availableFiles[0])}`)
       }
@@ -545,11 +529,9 @@ This component is too complex to test effectively. Please consider:
 
   try {
     const checkPbcopy = spawnSync('which', ['pbcopy'], { stdio: 'pipe' })
-    if (checkPbcopy.status !== 0)
-      return
+    if (checkPbcopy.status !== 0) return
     const copyContent = extractCopyContent(prompt)
-    if (!copyContent)
-      return
+    if (!copyContent) return
 
     const result = spawnSync('pbcopy', [], {
       input: copyContent,
@@ -563,16 +545,14 @@ This component is too complex to test effectively. Please consider:
       console.log('   - GitHub Copilot Chat: Cmd+I')
       console.log('   - Or any other AI coding tool\n')
     }
-  }
-  catch {
+  } catch {
     // pbcopy failed, but don't break the script
   }
 }
 
 function inferTestPath(componentPath) {
   const ext = path.extname(componentPath)
-  if (!ext)
-    return `${componentPath}.spec.ts`
+  if (!ext) return `${componentPath}.spec.ts`
   return componentPath.replace(ext, `.spec${ext}`)
 }
 

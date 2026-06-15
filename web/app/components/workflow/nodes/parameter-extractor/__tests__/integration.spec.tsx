@@ -7,9 +7,7 @@ import type { PanelProps } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { CollectionType } from '@/app/components/tools/types'
 import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../../../types'
@@ -22,7 +20,8 @@ import Panel from '../panel'
 import { ParamType, ReasoningModeType } from '../types'
 import useConfig from '../use-config'
 
-const reasoningModeFunctionToolCallingLabel = 'workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
+const reasoningModeFunctionToolCallingLabel =
+  'workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
 const reasoningModePromptLabel = 'workflow.nodes.parameterExtractor.reasoningModePrompt'
 
 type MockToolCollection = {
@@ -57,10 +56,7 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     trigger?: (open: boolean) => ReactNode
     onSelect?: (type: BlockEnum, value?: ToolDefaultValue) => void
   }) => (
-    <button
-      type="button"
-      onClick={() => onSelect?.(BlockEnum.Tool, mockSelectedToolInfo)}
-    >
+    <button type="button" onClick={() => onSelect?.(BlockEnum.Tool, mockSelectedToolInfo)}>
       {trigger ? trigger(mockBlockSelectorOpen) : 'select-tool'}
     </button>
   ),
@@ -79,58 +75,53 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
     <div>{defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'no-model'}</div>
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
-  default: ({
-    setModel,
-    onCompletionParamsChange,
-  }: {
-    setModel: (model: { provider: string, modelId: string, mode?: string }) => void
-    onCompletionParamsChange: (params: Record<string, unknown>) => void
-  }) => (
-    <div>
-      <button
-        type="button"
-        onClick={() => setModel({ provider: 'anthropic', modelId: 'claude-3-7-sonnet', mode: AppModeEnum.CHAT })}
-      >
-        set-model
-      </button>
-      <button
-        type="button"
-        onClick={() => onCompletionParamsChange({ temperature: 0.2 })}
-      >
-        set-params
-      </button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    __esModule: true,
+    default: ({
+      setModel,
+      onCompletionParamsChange,
+    }: {
+      setModel: (model: { provider: string; modelId: string; mode?: string }) => void
+      onCompletionParamsChange: (params: Record<string, unknown>) => void
+    }) => (
+      <div>
+        <button
+          type="button"
+          onClick={() =>
+            setModel({
+              provider: 'anthropic',
+              modelId: 'claude-3-7-sonnet',
+              mode: AppModeEnum.CHAT,
+            })
+          }
+        >
+          set-model
+        </button>
+        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
+          set-params
+        </button>
+      </div>
+    ),
+  }),
+)
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   __esModule: true,
-  Dialog: ({
-    children,
-    open,
-  }: {
-    children: ReactNode
-    open?: boolean
-  }) => open !== false
-    ? (
-        <div data-testid="base-modal">
-          {children}
-        </div>
-      )
-    : null,
+  Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) =>
+    open !== false ? <div data-testid="base-modal">{children}</div> : null,
   DialogContent: ({ children }: { children: ReactNode }) => <>{children}</>,
   DialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
-  FieldCollapse: ({ title, children }: { title: ReactNode, children: ReactNode }) => (
+  FieldCollapse: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
     <div>
       <div>{title}</div>
       {children}
@@ -140,7 +131,15 @@ vi.mock('@/app/components/workflow/nodes/_base/components/collapse', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   __esModule: true,
-  default: ({ title, operations, children }: { title: ReactNode, operations?: ReactNode, children: ReactNode }) => (
+  default: ({
+    title,
+    operations,
+    children,
+  }: {
+    title: ReactNode
+    operations?: ReactNode
+    children: ReactNode
+  }) => (
     <div>
       <div>{title}</div>
       <div>{operations}</div>
@@ -152,7 +151,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
@@ -167,22 +166,29 @@ vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => 
     onConfigChange,
   }: {
     onEnabledChange: (enabled: boolean) => void
-    onConfigChange: (value: { variable_selector: string[], detail: string }) => void
+    onConfigChange: (value: { variable_selector: string[]; detail: string }) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>vision-toggle</button>
-      <button type="button" onClick={() => onConfigChange({ variable_selector: ['node-1', 'image'], detail: 'high' })}>vision-config</button>
+      <button type="button" onClick={() => onEnabledChange(true)}>
+        vision-toggle
+      </button>
+      <button
+        type="button"
+        onClick={() => onConfigChange({ variable_selector: ['node-1', 'image'], detail: 'high' })}
+      >
+        vision-config
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
   __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: { enabled: boolean }) => void
-  }) => <button type="button" onClick={() => onChange({ enabled: true })}>memory-config</button>,
+  default: ({ onChange }: { onChange: (value: { enabled: boolean }) => void }) => (
+    <button type="button" onClick={() => onChange({ enabled: true })}>
+      memory-config
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => ({
@@ -201,7 +207,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
       <textarea
         aria-label="instruction-editor"
         value={value}
-        onChange={event => onChange(event.target.value)}
+        onChange={(event) => onChange(event.target.value)}
       />
     </div>
   ),
@@ -209,11 +215,11 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: string[]) => void
-  }) => <button type="button" onClick={() => onChange(['node-1', 'query'])}>pick-var</button>,
+  default: ({ onChange }: { onChange: (value: string[]) => void }) => (
+    <button type="button" onClick={() => onChange(['node-1', 'query'])}>
+      pick-var
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placeholder', () => ({
@@ -223,18 +229,16 @@ vi.mock('@/app/components/workflow/nodes/_base/components/list-no-data-placehold
 
 vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
   __esModule: true,
-  default: ({
-    title,
-    onSelect,
-  }: {
-    title: string
-    onSelect: () => void
-  }) => <button type="button" onClick={onSelect}>{title}</button>,
+  default: ({ title, onSelect }: { title: string; onSelect: () => void }) => (
+    <button type="button" onClick={onSelect}>
+      {title}
+    </button>
+  ),
 }))
 
 vi.mock('@/app/components/app/configuration/config-var/config-modal/field', () => ({
   __esModule: true,
-  default: ({ title, children }: { title: ReactNode, children: ReactNode }) => (
+  default: ({ title, children }: { title: ReactNode; children: ReactNode }) => (
     <div>
       <div>{title}</div>
       {children}
@@ -244,16 +248,12 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal/field', () =
 
 vi.mock('@/app/components/app/configuration/config-var/config-select', () => ({
   __esModule: true,
-  default: ({
-    options,
-    onChange,
-  }: {
-    options: string[]
-    onChange: (value: string[]) => void
-  }) => (
+  default: ({ options, onChange }: { options: string[]; onChange: (value: string[]) => void }) => (
     <div>
       <div>{options.join(',')}</div>
-      <button type="button" onClick={() => onChange([...options, 'published'])}>set-options</button>
+      <button type="button" onClick={() => onChange([...options, 'published'])}>
+        set-options
+      </button>
     </div>
   ),
 }))
@@ -309,7 +309,9 @@ const createParam = (overrides: Partial<Param> = {}): Param => ({
   ...overrides,
 })
 
-const createData = (overrides: Partial<ParameterExtractorNodeType> = {}): ParameterExtractorNodeType => ({
+const createData = (
+  overrides: Partial<ParameterExtractorNodeType> = {},
+): ParameterExtractorNodeType => ({
   title: 'Parameter Extractor',
   desc: '',
   type: BlockEnum.ParameterExtractor,
@@ -329,7 +331,9 @@ const createData = (overrides: Partial<ParameterExtractorNodeType> = {}): Parame
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   handleInputVarChange: vi.fn(),
   filterVar: (_varPayload: Var) => true,
@@ -407,7 +411,9 @@ describe('parameter-extractor path', () => {
 
       render(<ImportFromTool onImport={onImport} />)
 
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+      )
 
       expect(onImport).toHaveBeenCalledWith([
         {
@@ -428,7 +434,9 @@ describe('parameter-extractor path', () => {
 
       render(<ImportFromTool onImport={onImport} />)
 
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+      )
 
       expect(onImport).not.toHaveBeenCalled()
     })
@@ -447,7 +455,9 @@ describe('parameter-extractor path', () => {
           tools: [
             {
               name: 'search',
-              parameters: [createToolParameter({ name: 'custom_city', llm_description: 'Custom city' })],
+              parameters: [
+                createToolParameter({ name: 'custom_city', llm_description: 'Custom city' }),
+              ],
             },
           ],
         },
@@ -455,7 +465,9 @@ describe('parameter-extractor path', () => {
 
       render(<ImportFromTool onImport={onImport} />)
 
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+      )
 
       expect(onImport).toHaveBeenLastCalledWith([
         {
@@ -483,14 +495,18 @@ describe('parameter-extractor path', () => {
           tools: [
             {
               name: 'transform',
-              parameters: [createToolParameter({ name: 'workflow_city', llm_description: 'Workflow city' })],
+              parameters: [
+                createToolParameter({ name: 'workflow_city', llm_description: 'Workflow city' }),
+              ],
             },
           ],
         },
       ]
 
       render(<ImportFromTool onImport={onImport} />)
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+      )
 
       expect(onImport).toHaveBeenLastCalledWith([
         {
@@ -514,50 +530,51 @@ describe('parameter-extractor path', () => {
 
       render(<ImportFromTool onImport={onImport} />)
 
-      expect(screen.getByText('workflow.nodes.parameterExtractor.importFromTool')).toHaveClass('bg-state-base-hover')
+      expect(screen.getByText('workflow.nodes.parameterExtractor.importFromTool')).toHaveClass(
+        'bg-state-base-hover',
+      )
 
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+      )
 
       expect(onImport).toHaveBeenCalledWith([])
     })
 
     it('should show the empty state for an empty parameter list', () => {
-      render(
-        <ExtractParameter
-          readonly={false}
-          list={[]}
-          onChange={vi.fn()}
-        />,
-      )
+      render(<ExtractParameter readonly={false} list={[]} onChange={vi.fn()} />)
 
-      expect(screen.getByText('workflow.nodes.parameterExtractor.extractParametersNotSet')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.parameterExtractor.extractParametersNotSet'),
+      ).toBeInTheDocument()
     })
 
     it('should edit and delete parameters from the list', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
       const { container, rerender } = render(
-        <ExtractParameter
-          readonly={false}
-          list={[createParam()]}
-          onChange={onChange}
-        />,
+        <ExtractParameter readonly={false} list={[createParam()]} onChange={onChange} />,
       )
 
       const editAndDeleteButtons = container.querySelectorAll('.cursor-pointer.rounded-md.p-1')
       fireEvent.click(editAndDeleteButtons[0] as HTMLElement)
       fireEvent.change(screen.getByDisplayValue('city'), { target: { value: 'city_name' } })
-      fireEvent.change(screen.getByDisplayValue('City name'), { target: { value: 'Updated city description' } })
+      fireEvent.change(screen.getByDisplayValue('City name'), {
+        target: { value: 'Updated city description' },
+      })
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(onChange).toHaveBeenCalledWith([
-        {
-          name: 'city_name',
-          type: ParamType.string,
-          description: 'Updated city description',
-          required: false,
-        },
-      ], undefined)
+      expect(onChange).toHaveBeenCalledWith(
+        [
+          {
+            name: 'city_name',
+            type: ParamType.string,
+            description: 'Updated city description',
+            required: false,
+          },
+        ],
+        undefined,
+      )
 
       onChange.mockClear()
 
@@ -597,32 +614,33 @@ describe('parameter-extractor path', () => {
     })
 
     it('should render the add trigger for new parameters', () => {
-      render(
-        <AddExtractParameter
-          type="add"
-          onSave={vi.fn()}
-        />,
-      )
+      render(<AddExtractParameter type="add" onSave={vi.fn()} />)
 
-      expect(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'workflow.nodes.parameterExtractor.addExtractParameter',
+        }),
+      ).toBeInTheDocument()
     })
 
     it('should reject invalid names and reset add modal fields after canceling', async () => {
       const user = userEvent.setup()
       const onCancel = vi.fn()
 
-      render(
-        <AddExtractParameter
-          type="add"
-          onSave={vi.fn()}
-          onCancel={onCancel}
-        />,
+      render(<AddExtractParameter type="add" onSave={vi.fn()} onCancel={onCancel} />)
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflow.nodes.parameterExtractor.addExtractParameter',
+        }),
       )
 
-      await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
-
-      const nameInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')
-      const descriptionInput = screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')
+      const nameInput = screen.getByPlaceholderText(
+        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
+      )
+      const descriptionInput = screen.getByPlaceholderText(
+        'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
+      )
 
       fireEvent.change(nameInput, { target: { value: '1bad' } })
       expect(mockToastError).toHaveBeenCalled()
@@ -635,9 +653,21 @@ describe('parameter-extractor path', () => {
       expect(onCancel).toHaveBeenCalledTimes(1)
       expect(screen.queryByTestId('base-modal')).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
-      expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder')).toHaveValue('')
-      expect(screen.getByPlaceholderText('workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder')).toHaveValue('')
+      await user.click(
+        screen.getByRole('button', {
+          name: 'workflow.nodes.parameterExtractor.addExtractParameter',
+        }),
+      )
+      expect(
+        screen.getByPlaceholderText(
+          'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
+        ),
+      ).toHaveValue('')
+      expect(
+        screen.getByPlaceholderText(
+          'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
+        ),
+      ).toHaveValue('')
     })
 
     it('should require select options before saving a select parameter', async () => {
@@ -686,13 +716,16 @@ describe('parameter-extractor path', () => {
       await user.click(screen.getByRole('button', { name: 'set-options' }))
       await user.click(await screen.findByRole('button', { name: 'common.operation.save' }))
 
-      expect(onSave).toHaveBeenCalledWith({
-        name: 'approval_status',
-        type: ParamType.select,
-        description: 'Status',
-        options: ['draft', 'published'],
-        required: false,
-      }, undefined)
+      expect(onSave).toHaveBeenCalledWith(
+        {
+          name: 'approval_status',
+          type: ParamType.select,
+          description: 'Status',
+          options: ['draft', 'published'],
+          required: false,
+        },
+        undefined,
+      )
     })
 
     it('should persist rename metadata and required state for edited parameters', async () => {
@@ -716,12 +749,15 @@ describe('parameter-extractor path', () => {
       await user.click(screen.getByRole('switch'))
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-      expect(onSave).toHaveBeenCalledWith({
-        name: 'approval_status',
-        type: ParamType.string,
-        description: 'Status description',
-        required: true,
-      }, undefined)
+      expect(onSave).toHaveBeenCalledWith(
+        {
+          name: 'approval_status',
+          type: ParamType.string,
+          description: 'Status description',
+          required: true,
+        },
+        undefined,
+      )
     })
   })
 
@@ -730,12 +766,7 @@ describe('parameter-extractor path', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
 
-      render(
-        <ReasoningModePicker
-          type={ReasoningModeType.prompt}
-          onChange={onChange}
-        />,
-      )
+      render(<ReasoningModePicker type={ReasoningModeType.prompt} onChange={onChange} />)
 
       await user.click(screen.getByRole('button', { name: reasoningModeFunctionToolCallingLabel }))
       await user.click(screen.getByRole('button', { name: reasoningModePromptLabel }))
@@ -745,12 +776,7 @@ describe('parameter-extractor path', () => {
     })
 
     it('should render the selected model on the node only when configured', () => {
-      const { rerender } = render(
-        <Node
-          id="parameter-node"
-          data={createData()}
-        />,
-      )
+      const { rerender } = render(<Node id="parameter-node" data={createData()} />)
 
       expect(screen.getByText('openai:gpt-4o')).toBeInTheDocument()
 
@@ -795,33 +821,34 @@ describe('parameter-extractor path', () => {
         },
       ]
 
-      mockUseConfig.mockReturnValueOnce(createConfigResult({
-        inputs: createData({
-          parameters: [createParam({ name: 'city' }), createParam({ name: 'budget', type: ParamType.number })],
+      mockUseConfig.mockReturnValueOnce(
+        createConfigResult({
+          inputs: createData({
+            parameters: [
+              createParam({ name: 'city' }),
+              createParam({ name: 'budget', type: ParamType.number }),
+            ],
+          }),
+          handleModelChanged,
+          handleCompletionParamsChange,
+          handleInputVarChange,
+          handleImportFromTool,
+          handleInstructionChange,
+          handleMemoryChange,
+          handleReasoningModeChange,
+          handleVisionResolutionEnabledChange,
+          handleVisionResolutionChange,
         }),
-        handleModelChanged,
-        handleCompletionParamsChange,
-        handleInputVarChange,
-        handleImportFromTool,
-        handleInstructionChange,
-        handleMemoryChange,
-        handleReasoningModeChange,
-        handleVisionResolutionEnabledChange,
-        handleVisionResolutionChange,
-      }))
-
-      render(
-        <Panel
-          id="parameter-node"
-          data={createData()}
-          panelProps={panelProps}
-        />,
       )
+
+      render(<Panel id="parameter-node" data={createData()} panelProps={panelProps} />)
 
       await user.click(screen.getByRole('button', { name: 'set-model' }))
       await user.click(screen.getByRole('button', { name: 'set-params' }))
       await user.click(screen.getByRole('button', { name: 'pick-var' }))
-      await user.click(screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
+      )
       await user.click(screen.getByRole('button', { name: 'vision-toggle' }))
       await user.click(screen.getByRole('button', { name: 'vision-config' }))
       fireEvent.change(screen.getByLabelText('instruction-editor'), {

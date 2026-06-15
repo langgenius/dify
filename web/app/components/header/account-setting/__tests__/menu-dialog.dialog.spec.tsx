@@ -15,7 +15,7 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
     latestOnOpenChange = onOpenChange
     return <div data-testid="dialog">{children}</div>
   },
-  DialogContent: ({ children, className }: { children: ReactNode, className?: string }) => (
+  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
 }))

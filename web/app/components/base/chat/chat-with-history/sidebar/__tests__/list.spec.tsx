@@ -5,11 +5,7 @@ import List from '../list'
 
 // Mock Item to verify its usage
 vi.mock('../item', () => ({
-  default: ({ item }: { item: { name: string } }) => (
-    <div data-testid="mock-item">
-      {item.name}
-    </div>
-  ),
+  default: ({ item }: { item: { name: string } }) => <div data-testid="mock-item">{item.name}</div>,
 }))
 
 describe('List', () => {

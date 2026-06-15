@@ -41,10 +41,12 @@ const AppDetailNav = ({
   iconType = 'app',
   appInfoActions,
 }: IAppDetailNavProps) => {
-  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
-    appSidebarExpand: state.appSidebarExpand,
-    setAppSidebarExpand: state.setAppSidebarExpand,
-  })))
+  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(
+    useShallow((state) => ({
+      appSidebarExpand: state.appSidebarExpand,
+      setAppSidebarExpand: state.setAppSidebarExpand,
+    })),
+  )
   const sidebarRef = React.useRef<HTMLDivElement>(null)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -65,8 +67,7 @@ const AppDetailNav = ({
   const { eventEmitter } = useEventEmitterContextContext()
 
   eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload)
+    if (v?.type === 'workflow-canvas-maximize') setHideHeader(v.payload)
   })
 
   useEffect(() => {
@@ -76,20 +77,21 @@ const AppDetailNav = ({
     }
   }, [appSidebarExpand, setAppSidebarExpand])
 
-  useHotkey('Mod+B', (e) => {
-    e.preventDefault()
-    handleToggle()
-  }, {
-    ignoreInputs: true,
-  })
+  useHotkey(
+    'Mod+B',
+    (e) => {
+      e.preventDefault()
+      handleToggle()
+    },
+    {
+      ignoreInputs: true,
+    },
+  )
 
   if (inWorkflowCanvas && hideHeader) {
     return (
       <div className="flex w-0 shrink-0">
-        <AppSidebarDropdown
-          navigation={navigation}
-          appInfoActions={appInfoActions}
-        />
+        <AppSidebarDropdown navigation={navigation} appInfoActions={appInfoActions} />
       </div>
     )
   }
@@ -110,28 +112,16 @@ const AppDetailNav = ({
         expand ? 'w-[216px]' : 'w-14',
       )}
     >
-      <div
-        className={cn(
-          'shrink-0',
-          expand ? 'p-2' : 'p-1',
-        )}
-      >
+      <div className={cn('shrink-0', expand ? 'p-2' : 'p-1')}>
         {renderHeader
           ? renderHeader(appSidebarExpand)
-          : iconType === 'app' && (
-            appInfoActions
-              ? (
-                  <AppInfoView
-                    expand={expand}
-                    actions={appInfoActions}
-                    renderDetail={false}
-                  />
-                )
-              : <AppInfo expand={expand} />
-          )}
-        {!renderHeader && iconType !== 'app' && (
-          <DatasetInfo expand={expand} />
-        )}
+          : iconType === 'app' &&
+            (appInfoActions ? (
+              <AppInfoView expand={expand} actions={appInfoActions} renderDetail={false} />
+            ) : (
+              <AppInfo expand={expand} />
+            ))}
+        {!renderHeader && iconType !== 'app' && <DatasetInfo expand={expand} />}
       </div>
       <div className="relative px-4 py-2">
         <Divider
@@ -152,12 +142,7 @@ const AppDetailNav = ({
           />
         )}
       </div>
-      <nav
-        className={cn(
-          'flex grow flex-col gap-y-0.5',
-          expand ? 'px-3 py-2' : 'p-3',
-        )}
-      >
+      <nav className={cn('flex grow flex-col gap-y-0.5', expand ? 'px-3 py-2' : 'p-3')}>
         {renderNavigation
           ? renderNavigation(appSidebarExpand)
           : navigation.map((item, index) => {

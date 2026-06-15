@@ -1,4 +1,10 @@
-import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
+import type {
+  ParametersSchema,
+  PluginMeta,
+  PluginTriggerSubscriptionConstructor,
+  SupportedCreationMethods,
+  TriggerEvent,
+} from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
@@ -102,7 +108,7 @@ export type DataSourceItem = {
     identity: {
       author: string
       description: TypeWithI18N
-      icon: string | { background: string, content: string }
+      icon: string | { background: string; content: string }
       label: TypeWithI18N
       name: string
       tags: string[]
@@ -111,7 +117,7 @@ export type DataSourceItem = {
       description: TypeWithI18N
       identity: {
         author: string
-        icon?: string | { background: string, content: string }
+        icon?: string | { background: string; content: string }
         label: TypeWithI18N
         name: string
         provider: string
@@ -127,8 +133,14 @@ export type DataSourceItem = {
 }
 
 type TriggerCredentialField = {
-  type: 'secret-input' | 'text-input' | 'select' | 'boolean'
-    | 'app-selector' | 'model-selector' | 'tools-selector'
+  type:
+    | 'secret-input'
+    | 'text-input'
+    | 'select'
+    | 'boolean'
+    | 'app-selector'
+    | 'model-selector'
+    | 'tools-selector'
   name: string
   scope?: string | null
   required: boolean
@@ -236,10 +248,10 @@ type LogRequest = {
 }
 
 type LogRequestHeaders = {
-  'Host': string
+  Host: string
   'User-Agent': string
   'Content-Length': string
-  'Accept': string
+  Accept: string
   'Content-Type': string
   'X-Forwarded-For': string
   'X-Forwarded-Host': string

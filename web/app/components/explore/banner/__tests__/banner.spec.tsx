@@ -13,7 +13,7 @@ const mockCarouselListeners = new Set<() => void>()
 
 const setMockSelectedIndex = (index: number) => {
   mockSelectedIndex = index
-  mockCarouselListeners.forEach(listener => listener())
+  mockCarouselListeners.forEach((listener) => listener())
 }
 
 vi.mock('@/service/use-explore', () => ({
@@ -34,7 +34,12 @@ vi.mock('@/app/components/base/amplitude', () => ({
 
 vi.mock('@/app/components/base/carousel', () => ({
   Carousel: Object.assign(
-    ({ children, onMouseEnter, onMouseLeave, className }: {
+    ({
+      children,
+      onMouseEnter,
+      onMouseLeave,
+      className,
+    }: {
       children: React.ReactNode
       onMouseEnter?: () => void
       onMouseLeave?: () => void
@@ -81,7 +86,14 @@ vi.mock('@/app/components/base/carousel', () => ({
 }))
 
 vi.mock('../banner-item', () => ({
-  BannerItem: ({ banner, autoplayDelay, isPaused, sort, language, accountId }: {
+  BannerItem: ({
+    banner,
+    autoplayDelay,
+    isPaused,
+    sort,
+    language,
+    accountId,
+  }: {
     banner: BannerType
     autoplayDelay: number
     sort: number
@@ -98,24 +110,27 @@ vi.mock('../banner-item', () => ({
       data-language={language}
       data-account-id={accountId}
     >
-      BannerItem:
-      {' '}
-      {banner.content.title}
+      BannerItem: {banner.content.title}
     </div>
   ),
 }))
 
-const createMockBanner = (id: string, status: string = 'enabled', title: string = 'Test Banner'): BannerType => ({
-  id,
-  status,
-  link: 'https://example.com',
-  content: {
-    'category': 'Featured',
-    title,
-    'description': 'Test description',
-    'img-src': 'https://example.com/image.png',
-  },
-} as BannerType)
+const createMockBanner = (
+  id: string,
+  status: string = 'enabled',
+  title: string = 'Test Banner',
+): BannerType =>
+  ({
+    id,
+    status,
+    link: 'https://example.com',
+    content: {
+      category: 'Featured',
+      title,
+      description: 'Test description',
+      'img-src': 'https://example.com/image.png',
+    },
+  }) as BannerType
 
 describe('Banner', () => {
   beforeEach(() => {
@@ -123,11 +138,13 @@ describe('Banner', () => {
     vi.useFakeTimers()
     mockSelectedIndex = 0
     mockCarouselListeners.clear()
-    mockUseSelector.mockImplementation(selector => selector({
-      userProfile: {
-        id: 'account-123',
-      },
-    }))
+    mockUseSelector.mockImplementation((selector) =>
+      selector({
+        userProfile: {
+          id: 'account-123',
+        },
+      }),
+    )
   })
 
   afterEach(() => {
@@ -192,10 +209,7 @@ describe('Banner', () => {
 
     it('returns null when all banners are disabled', () => {
       mockUseGetBanners.mockReturnValue({
-        data: [
-          createMockBanner('1', 'disabled'),
-          createMockBanner('2', 'disabled'),
-        ],
+        data: [createMockBanner('1', 'disabled'), createMockBanner('2', 'disabled')],
         isLoading: false,
         isError: false,
       })
@@ -290,40 +304,50 @@ describe('Banner', () => {
       render(<Banner />)
 
       expect(mockTrackEvent).toHaveBeenCalledTimes(1)
-      expect(mockTrackEvent).toHaveBeenNthCalledWith(1, 'explore_banner_impression', expect.objectContaining({
-        banner_id: '1',
-        title: 'Enabled Banner 1',
-        sort: 1,
-        link: 'https://example.com',
-        page: 'explore',
-        language: 'en-US',
-        account_id: 'account-123',
-        event_time: expect.any(Number),
-      }))
+      expect(mockTrackEvent).toHaveBeenNthCalledWith(
+        1,
+        'explore_banner_impression',
+        expect.objectContaining({
+          banner_id: '1',
+          title: 'Enabled Banner 1',
+          sort: 1,
+          link: 'https://example.com',
+          page: 'explore',
+          language: 'en-US',
+          account_id: 'account-123',
+          event_time: expect.any(Number),
+        }),
+      )
 
       act(() => {
         setMockSelectedIndex(1)
       })
 
       expect(mockTrackEvent).toHaveBeenCalledTimes(2)
-      expect(mockTrackEvent).toHaveBeenNthCalledWith(2, 'explore_banner_impression', expect.objectContaining({
-        banner_id: '3',
-        title: 'Enabled Banner 2',
-        sort: 2,
-        link: 'https://example.com',
-        page: 'explore',
-        language: 'en-US',
-        account_id: 'account-123',
-        event_time: expect.any(Number),
-      }))
+      expect(mockTrackEvent).toHaveBeenNthCalledWith(
+        2,
+        'explore_banner_impression',
+        expect.objectContaining({
+          banner_id: '3',
+          title: 'Enabled Banner 2',
+          sort: 2,
+          link: 'https://example.com',
+          page: 'explore',
+          language: 'en-US',
+          account_id: 'account-123',
+          event_time: expect.any(Number),
+        }),
+      )
     })
 
     it('does not track impressions when account id is unavailable', () => {
-      mockUseSelector.mockImplementation(selector => selector({
-        userProfile: {
-          id: '',
-        },
-      }))
+      mockUseSelector.mockImplementation((selector) =>
+        selector({
+          userProfile: {
+            id: '',
+          },
+        }),
+      )
       mockUseGetBanners.mockReturnValue({
         data: [createMockBanner('1', 'enabled', 'Enabled Banner 1')],
         isLoading: false,

@@ -1,4 +1,9 @@
-import type { AccessControlAccount, AccessControlGroup, AccessMode, Subject } from '@/models/access-control'
+import type {
+  AccessControlAccount,
+  AccessControlGroup,
+  AccessMode,
+  Subject,
+} from '@/models/access-control'
 import type { App } from '@/types/app'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -10,7 +15,10 @@ const NAME_SPACE = 'access-control'
 export const useAppWhiteListSubjects = (appId: string | undefined, enabled: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-subjects', appId],
-    queryFn: () => get<{ groups: AccessControlGroup[], members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
+    queryFn: () =>
+      get<{ groups: AccessControlGroup[]; members: AccessControlAccount[] }>(
+        `/enterprise/webapp/app/subjects?appId=${appId}`,
+      ),
     enabled: !!appId && enabled,
     staleTime: 0,
     gcTime: 0,
@@ -24,23 +32,26 @@ type SearchResults = {
   hasMore: boolean
 }
 
-export const useSearchForWhiteListCandidates = (query: { keyword?: string, groupId?: AccessControlGroup['id'], resultsPerPage?: number }, enabled: boolean) => {
+export const useSearchForWhiteListCandidates = (
+  query: { keyword?: string; groupId?: AccessControlGroup['id']; resultsPerPage?: number },
+  enabled: boolean,
+) => {
   return useInfiniteQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-candidates', query],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()
       Object.keys(query).forEach((key) => {
         const typedKey = key as keyof typeof query
-        if (query[typedKey])
-          params.append(key, `${query[typedKey]}`)
+        if (query[typedKey]) params.append(key, `${query[typedKey]}`)
       })
       params.append('pageNumber', `${pageParam}`)
-      return get<SearchResults>(`/enterprise/webapp/app/subject/search?${new URLSearchParams(params).toString()}`)
+      return get<SearchResults>(
+        `/enterprise/webapp/app/subject/search?${new URLSearchParams(params).toString()}`,
+      )
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      if (lastPage.hasMore)
-        return lastPage.currPage + 1
+      if (lastPage.hasMore) return lastPage.currPage + 1
       return undefined
     },
     gcTime: 0,
@@ -70,7 +81,15 @@ export const useUpdateAccessMode = () => {
   })
 }
 
-export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
+export const useGetUserCanAccessApp = ({
+  appId,
+  isInstalledApp = true,
+  enabled,
+}: {
+  appId?: string
+  isInstalledApp?: boolean
+  enabled?: boolean
+}) => {
   // useQuery (not useSuspenseQuery) to keep this service hook's call contract
   // unchanged from the zustand era: callers should not need a Suspense boundary.
   // First-fetch undefined is bridged via `?? false` so the inner queryKey is stable.
@@ -79,10 +98,8 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId, webappAuthEnabled, isInstalledApp],
     queryFn: () => {
-      if (webappAuthEnabled)
-        return getUserCanAccess(appId!, isInstalledApp)
-      else
-        return { result: true }
+      if (webappAuthEnabled) return getUserCanAccess(appId!, isInstalledApp)
+      else return { result: true }
     },
     enabled: enabled !== undefined ? enabled : !!appId,
     staleTime: 0,

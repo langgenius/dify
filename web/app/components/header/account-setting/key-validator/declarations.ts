@@ -6,7 +6,7 @@ export const ValidatedStatus = {
   Exceed: 'exceed',
 } as const
 
-export type ValidatedStatus = typeof ValidatedStatus[keyof typeof ValidatedStatus]
+export type ValidatedStatus = (typeof ValidatedStatus)[keyof typeof ValidatedStatus]
 
 export type ValidatedStatusState = {
   status?: ValidatedStatus

@@ -8,23 +8,19 @@ export type SyncCallback = SyncDraftCallback
 
 export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
-  const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
-  const doSyncWorkflowDraft = useHooksStore(s => s.doSyncWorkflowDraft)
-  const syncWorkflowDraftWhenPageClose = useHooksStore(s => s.syncWorkflowDraftWhenPageClose)
+  const debouncedSyncWorkflowDraft = useStore((s) => s.debouncedSyncWorkflowDraft)
+  const doSyncWorkflowDraft = useHooksStore((s) => s.doSyncWorkflowDraft)
+  const syncWorkflowDraftWhenPageClose = useHooksStore((s) => s.syncWorkflowDraftWhenPageClose)
 
-  const handleSyncWorkflowDraft = useCallback((
-    sync?: boolean,
-    notRefreshWhenSyncError?: boolean,
-    callback?: SyncDraftCallback,
-  ) => {
-    if (getNodesReadOnly())
-      return
+  const handleSyncWorkflowDraft = useCallback(
+    (sync?: boolean, notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
+      if (getNodesReadOnly()) return
 
-    if (sync)
-      doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
-    else
-      debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
-  }, [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly])
+      if (sync) doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
+      else debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
+    },
+    [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly],
+  )
 
   return {
     doSyncWorkflowDraft,

@@ -38,8 +38,7 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T =>
-    selector(appStoreState),
+  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
 vi.mock('@/app/components/workflow/hooks', () => ({

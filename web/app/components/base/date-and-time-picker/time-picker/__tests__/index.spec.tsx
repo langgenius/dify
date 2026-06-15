@@ -5,13 +5,22 @@ import TimePicker from '../index'
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, className }: {
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    className,
+  }: {
     children?: React.ReactNode
     onClick?: () => void
     disabled?: boolean
     className?: string
   }) => (
-    <button onClick={onClick as (() => void) | undefined} disabled={disabled as boolean | undefined} className={className as string | undefined}>
+    <button
+      onClick={onClick as (() => void) | undefined}
+      disabled={disabled as boolean | undefined}
+      className={className as string | undefined}
+    >
       {children}
     </button>
   ),
@@ -34,25 +43,13 @@ describe('TimePicker', () => {
   })
 
   it('renders formatted value for string input (Issue #26692 regression)', () => {
-    render(
-      <TimePicker
-        {...baseProps}
-        value="18:45"
-        timezone="UTC"
-      />,
-    )
+    render(<TimePicker {...baseProps} value="18:45" timezone="UTC" />)
 
     expect(screen.getByDisplayValue('06:45 PM'))!.toBeInTheDocument()
   })
 
   it('confirms cleared value when confirming without selection', () => {
-    render(
-      <TimePicker
-        {...baseProps}
-        value={dayjs('2024-01-01T03:30:00Z')}
-        timezone="UTC"
-      />,
-    )
+    render(<TimePicker {...baseProps} value={dayjs('2024-01-01T03:30:00Z')} timezone="UTC" />)
 
     const input = screen.getByRole('textbox')
     fireEvent.click(input)
@@ -70,13 +67,7 @@ describe('TimePicker', () => {
 
   it('selecting current time emits timezone-aware value', () => {
     const onChange = vi.fn()
-    render(
-      <TimePicker
-        {...baseProps}
-        onChange={onChange}
-        timezone="America/New_York"
-      />,
-    )
+    render(<TimePicker {...baseProps} onChange={onChange} timezone="America/New_York" />)
 
     // Open the picker first to access content
     fireEvent.click(screen.getByRole('textbox'))
@@ -125,14 +116,7 @@ describe('TimePicker', () => {
 
     it('should call onClear when clear is clicked while picker is closed', () => {
       const onClear = vi.fn()
-      render(
-        <TimePicker
-          {...baseProps}
-          onClear={onClear}
-          value="10:00 AM"
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} onClear={onClear} value="10:00 AM" timezone="UTC" />)
 
       const clearButton = screen.getByRole('button', { name: /operation\.clear/i })
       fireEvent.click(clearButton)
@@ -142,14 +126,7 @@ describe('TimePicker', () => {
 
     it('should not call onClear when clear is clicked while picker is open', () => {
       const onClear = vi.fn()
-      render(
-        <TimePicker
-          {...baseProps}
-          onClear={onClear}
-          value="10:00 AM"
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} onClear={onClear} value="10:00 AM" timezone="UTC" />)
 
       // Open picker first
       fireEvent.click(screen.getByRole('textbox'))
@@ -162,14 +139,7 @@ describe('TimePicker', () => {
 
     it('should sync selectedTime from value when opening with stale state', () => {
       const onChange = vi.fn()
-      render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value="10:00 AM"
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} onChange={onChange} value="10:00 AM" timezone="UTC" />)
 
       const input = screen.getByRole('textbox')
       // Open - this triggers handleClickTrigger which syncs selectedTime from value
@@ -227,24 +197,14 @@ describe('TimePicker', () => {
   // Props tests
   describe('Props', () => {
     it('should show custom placeholder when provided', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          placeholder="Select time"
-        />,
-      )
+      render(<TimePicker {...baseProps} placeholder="Select time" />)
 
       const input = screen.getByRole('textbox')
       expect(input)!.toHaveAttribute('placeholder', 'Select time')
     })
 
     it('should render with triggerFullWidth prop without errors', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          triggerFullWidth={true}
-        />,
-      )
+      render(<TimePicker {...baseProps} triggerFullWidth={true} />)
 
       // Verify the component renders successfully with triggerFullWidth
       // Verify the component renders successfully with triggerFullWidth
@@ -258,26 +218,14 @@ describe('TimePicker', () => {
         </div>
       ))
 
-      render(
-        <TimePicker
-          {...baseProps}
-          renderTrigger={renderTrigger}
-        />,
-      )
+      render(<TimePicker {...baseProps} renderTrigger={renderTrigger} />)
 
       expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
       expect(renderTrigger).toHaveBeenCalled()
     })
 
     it('should render with notClearable prop without errors', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          notClearable={true}
-          value="10:00 AM"
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} notClearable={true} value="10:00 AM" timezone="UTC" />)
 
       // In test env the icon stays in DOM, but must remain hidden when notClearable is set
       // In test env the icon stays in DOM, but must remain hidden when notClearable is set
@@ -320,13 +268,15 @@ describe('TimePicker', () => {
 
     const getHourAndMinuteLists = () => {
       const allLists = screen.getAllByRole('list')
-      const hourList = allLists.find(list =>
-        within(list).queryByText('01')
-        && within(list).queryByText('12')
-        && !within(list).queryByText('59'))
-      const minuteList = allLists.find(list =>
-        within(list).queryByText('00')
-        && within(list).queryByText('59'))
+      const hourList = allLists.find(
+        (list) =>
+          within(list).queryByText('01') &&
+          within(list).queryByText('12') &&
+          !within(list).queryByText('59'),
+      )
+      const minuteList = allLists.find(
+        (list) => within(list).queryByText('00') && within(list).queryByText('59'),
+      )
 
       expect(hourList).toBeTruthy()
       expect(minuteList).toBeTruthy()
@@ -419,13 +369,7 @@ describe('TimePicker', () => {
 
     it('should create new time when selecting hour without prior selectedTime', () => {
       const onChange = vi.fn()
-      render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} onChange={onChange} timezone="UTC" />)
 
       openPicker()
 
@@ -445,13 +389,7 @@ describe('TimePicker', () => {
 
     it('should handle minute selection without prior selectedTime', () => {
       const onChange = vi.fn()
-      render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} onChange={onChange} timezone="UTC" />)
 
       openPicker()
 
@@ -470,13 +408,7 @@ describe('TimePicker', () => {
 
     it('should handle period selection without prior selectedTime', () => {
       const onChange = vi.fn()
-      render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} onChange={onChange} timezone="UTC" />)
 
       openPicker()
 
@@ -520,22 +452,10 @@ describe('TimePicker', () => {
       const onChangeB = vi.fn()
 
       const { rerender } = render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChangeA}
-          value={value}
-          timezone="UTC"
-        />,
+        <TimePicker {...baseProps} onChange={onChangeA} value={value} timezone="UTC" />,
       )
 
-      rerender(
-        <TimePicker
-          {...baseProps}
-          onChange={onChangeB}
-          value={value}
-          timezone="UTC"
-        />,
-      )
+      rerender(<TimePicker {...baseProps} onChange={onChangeB} value={value} timezone="UTC" />)
 
       expect(onChangeA).not.toHaveBeenCalled()
       expect(onChangeB).not.toHaveBeenCalled()
@@ -555,12 +475,7 @@ describe('TimePicker', () => {
       )
 
       rerender(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value={invalidValue}
-          timezone="UTC"
-        />,
+        <TimePicker {...baseProps} onChange={onChange} value={invalidValue} timezone="UTC" />,
       )
 
       expect(onChange).not.toHaveBeenCalled()
@@ -571,22 +486,12 @@ describe('TimePicker', () => {
       const onChange = vi.fn()
       const value = dayjs('2024-01-01T10:30:00Z')
       const { rerender } = render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value={value}
-          timezone="UTC"
-        />,
+        <TimePicker {...baseProps} onChange={onChange} value={value} timezone="UTC" />,
       )
 
       // Change timezone without changing value (same reference)
       rerender(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value={value}
-          timezone="America/New_York"
-        />,
+        <TimePicker {...baseProps} onChange={onChange} value={value} timezone="America/New_York" />,
       )
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -629,22 +534,10 @@ describe('TimePicker', () => {
 
     it('should handle timezone change when value is undefined', () => {
       const onChange = vi.fn()
-      const { rerender } = render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          timezone="UTC"
-        />,
-      )
+      const { rerender } = render(<TimePicker {...baseProps} onChange={onChange} timezone="UTC" />)
 
       // Change timezone without a value
-      rerender(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          timezone="America/New_York"
-        />,
-      )
+      rerender(<TimePicker {...baseProps} onChange={onChange} timezone="America/New_York" />)
 
       // onChange should not be called when value is undefined
       expect(onChange).not.toHaveBeenCalled()
@@ -688,12 +581,7 @@ describe('TimePicker', () => {
       )
 
       rerender(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value={undefined}
-          timezone={undefined}
-        />,
+        <TimePicker {...baseProps} onChange={onChange} value={undefined} timezone={undefined} />,
       )
 
       fireEvent.click(screen.getByRole('textbox'))
@@ -710,23 +598,11 @@ describe('TimePicker', () => {
       const onChange = vi.fn()
       const value = dayjs('2024-01-01T10:30:00Z')
       const { rerender } = render(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value={value}
-          timezone="UTC"
-        />,
+        <TimePicker {...baseProps} onChange={onChange} value={value} timezone="UTC" />,
       )
 
       // Rerender with same props
-      rerender(
-        <TimePicker
-          {...baseProps}
-          onChange={onChange}
-          value={value}
-          timezone="UTC"
-        />,
-      )
+      rerender(<TimePicker {...baseProps} onChange={onChange} value={value} timezone="UTC" />)
 
       expect(onChange).not.toHaveBeenCalled()
     })
@@ -770,38 +646,20 @@ describe('TimePicker', () => {
     })
 
     it('should format dayjs value correctly', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          value={dayjs('2024-01-01T14:30:00Z')}
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} value={dayjs('2024-01-01T14:30:00Z')} timezone="UTC" />)
 
       expect(screen.getByDisplayValue('02:30 PM'))!.toBeInTheDocument()
     })
 
     it('should format string value correctly', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          value="09:15"
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} value="09:15" timezone="UTC" />)
 
       expect(screen.getByDisplayValue('09:15 AM'))!.toBeInTheDocument()
     })
 
     it('should return empty display value for an unparsable truthy string', () => {
       const invalidValue = 123 as unknown as TimePickerProps['value']
-      render(
-        <TimePicker
-          {...baseProps}
-          value={invalidValue}
-          timezone="UTC"
-        />,
-      )
+      render(<TimePicker {...baseProps} value={invalidValue} timezone="UTC" />)
 
       expect(screen.getByRole('textbox'))!.toHaveValue('')
     })
@@ -809,13 +667,7 @@ describe('TimePicker', () => {
 
   describe('Timezone Label Integration', () => {
     it('should not display timezone label by default', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          value="12:00 AM"
-          timezone="Asia/Shanghai"
-        />,
-      )
+      render(<TimePicker {...baseProps} value="12:00 AM" timezone="Asia/Shanghai" />)
 
       expect(screen.queryByTitle(/Timezone: Asia\/Shanghai/)).not.toBeInTheDocument()
     })
@@ -835,12 +687,7 @@ describe('TimePicker', () => {
 
     it('should display timezone label when showTimezone is true', () => {
       render(
-        <TimePicker
-          {...baseProps}
-          value="12:00 AM"
-          timezone="Asia/Shanghai"
-          showTimezone={true}
-        />,
+        <TimePicker {...baseProps} value="12:00 AM" timezone="Asia/Shanghai" showTimezone={true} />,
       )
 
       const timezoneLabel = screen.getByTitle(/Timezone: Asia\/Shanghai/)
@@ -849,13 +696,7 @@ describe('TimePicker', () => {
     })
 
     it('should not display timezone label when showTimezone is true but timezone is not provided', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          value="12:00 AM"
-          showTimezone={true}
-        />,
-      )
+      render(<TimePicker {...baseProps} value="12:00 AM" showTimezone={true} />)
 
       expect(screen.queryByTitle(/Timezone:/)).not.toBeInTheDocument()
     })

@@ -10,9 +10,12 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 // Mock child components that require API calls
-vi.mock('@/app/components/datasets/common/document-status-with-action/auto-disabled-document', () => ({
-  default: () => <div data-testid="auto-disabled-document">AutoDisabledDocument</div>,
-}))
+vi.mock(
+  '@/app/components/datasets/common/document-status-with-action/auto-disabled-document',
+  () => ({
+    default: () => <div data-testid="auto-disabled-document">AutoDisabledDocument</div>,
+  }),
+)
 
 vi.mock('@/app/components/datasets/common/document-status-with-action/index-failed', () => ({
   default: () => <div data-testid="index-failed">IndexFailed</div>,

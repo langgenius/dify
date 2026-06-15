@@ -6,13 +6,8 @@ type AppInfoDetailDrawerProps = {
   children: ReactNode
 }
 
-export function AppInfoDetailDrawer({
-  open,
-  onClose,
-  children,
-}: AppInfoDetailDrawerProps) {
-  if (!open)
-    return null
+export function AppInfoDetailDrawer({ open, onClose, children }: AppInfoDetailDrawerProps) {
+  if (!open) return null
 
   return (
     <div className="absolute inset-0 z-50">

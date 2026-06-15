@@ -54,10 +54,7 @@ const SnippetChildren = ({
         onSaveAndExitEditing={onSaveAndExitEditing}
       />
 
-      <SnippetWorkflowPanel
-        snippetId={snippetId}
-        fields={fields}
-      />
+      <SnippetWorkflowPanel snippetId={snippetId} fields={fields} />
     </>
   )
 }

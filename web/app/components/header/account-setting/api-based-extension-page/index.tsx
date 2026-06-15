@@ -8,16 +8,21 @@ import { Empty } from './empty'
 import { Item } from './item'
 import { ApiBasedExtensionModal } from './modal'
 
-type ApiBasedExtensionDialogState = {
-  mode: 'create'
-} | {
-  mode: 'edit'
-  apiBasedExtension: ApiBasedExtensionResponse
-} | null
+type ApiBasedExtensionDialogState =
+  | {
+      mode: 'create'
+    }
+  | {
+      mode: 'edit'
+      apiBasedExtension: ApiBasedExtensionResponse
+    }
+  | null
 
 export function ApiBasedExtensionPage() {
   const { t } = useTranslation()
-  const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(consoleQuery.apiBasedExtension.get.queryOptions())
+  const { data: apiBasedExtensions = [], isPending: isLoading } = useQuery(
+    consoleQuery.apiBasedExtension.get.queryOptions(),
+  )
   const [dialogState, setDialogState] = useState<ApiBasedExtensionDialogState>(null)
 
   const handleOpenApiBasedExtensionModal = () => {
@@ -35,57 +40,38 @@ export function ApiBasedExtensionPage() {
     setDialogState(null)
   }
   const handleApiBasedExtensionModalOpenChange = (open: boolean) => {
-    if (!open)
-      setDialogState(null)
+    if (!open) setDialogState(null)
   }
 
   return (
     <div>
-      {
-        !isLoading && !apiBasedExtensions.length && (
-          <Empty />
-        )
-      }
-      {
-        !isLoading && !!apiBasedExtensions.length && (
-          apiBasedExtensions.map(item => (
-            <Item
-              key={item.id}
-              apiBasedExtension={item}
-              onEdit={handleEditApiBasedExtension}
-            />
-          ))
-        )
-      }
-      <Button
-        variant="secondary"
-        className="w-full"
-        onClick={handleOpenApiBasedExtensionModal}
-      >
+      {!isLoading && !apiBasedExtensions.length && <Empty />}
+      {!isLoading &&
+        !!apiBasedExtensions.length &&
+        apiBasedExtensions.map((item) => (
+          <Item key={item.id} apiBasedExtension={item} onEdit={handleEditApiBasedExtension} />
+        ))}
+      <Button variant="secondary" className="w-full" onClick={handleOpenApiBasedExtensionModal}>
         <span className="mr-1 i-ri-add-line size-4" aria-hidden="true" />
         {t('apiBasedExtension.add', { ns: 'common' })}
       </Button>
-      {
-        dialogState?.mode === 'create' && (
-          <ApiBasedExtensionModal
-            open
-            mode="create"
-            onOpenChange={handleApiBasedExtensionModalOpenChange}
-            onSaved={handleApiBasedExtensionSaved}
-          />
-        )
-      }
-      {
-        dialogState?.mode === 'edit' && (
-          <ApiBasedExtensionModal
-            open
-            mode="edit"
-            apiBasedExtension={dialogState.apiBasedExtension}
-            onOpenChange={handleApiBasedExtensionModalOpenChange}
-            onSaved={handleApiBasedExtensionSaved}
-          />
-        )
-      }
+      {dialogState?.mode === 'create' && (
+        <ApiBasedExtensionModal
+          open
+          mode="create"
+          onOpenChange={handleApiBasedExtensionModalOpenChange}
+          onSaved={handleApiBasedExtensionSaved}
+        />
+      )}
+      {dialogState?.mode === 'edit' && (
+        <ApiBasedExtensionModal
+          open
+          mode="edit"
+          apiBasedExtension={dialogState.apiBasedExtension}
+          onOpenChange={handleApiBasedExtensionModalOpenChange}
+          onSaved={handleApiBasedExtensionSaved}
+        />
+      )}
     </div>
   )
 }

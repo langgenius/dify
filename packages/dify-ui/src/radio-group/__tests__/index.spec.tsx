@@ -37,13 +37,19 @@ describe('RadioGroup', () => {
 
     const screen = await render(<StorageDemo />)
 
-    await expect.element(screen.getByRole('radio', { name: 'SSD' })).toHaveAttribute('aria-checked', 'true')
+    await expect
+      .element(screen.getByRole('radio', { name: 'SSD' }))
+      .toHaveAttribute('aria-checked', 'true')
 
     clickElement(screen.getByRole('radio', { name: 'HDD' }).element())
 
     await vi.waitFor(async () => {
-      await expect.element(screen.getByRole('radio', { name: 'SSD' })).toHaveAttribute('aria-checked', 'false')
-      await expect.element(screen.getByRole('radio', { name: 'HDD' })).toHaveAttribute('aria-checked', 'true')
+      await expect
+        .element(screen.getByRole('radio', { name: 'SSD' }))
+        .toHaveAttribute('aria-checked', 'false')
+      await expect
+        .element(screen.getByRole('radio', { name: 'HDD' }))
+        .toHaveAttribute('aria-checked', 'true')
     })
   })
 
@@ -69,7 +75,9 @@ describe('RadioGroup', () => {
       </FieldRoot>,
     )
 
-    await expect.element(screen.getByRole('radiogroup', { name: 'Storage type' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('radiogroup', { name: 'Storage type' }))
+      .toBeInTheDocument()
 
     const hdd = screen.getByRole('radio', { name: 'HDD' })
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')

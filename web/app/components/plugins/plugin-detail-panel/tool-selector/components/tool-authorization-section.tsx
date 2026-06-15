@@ -2,10 +2,7 @@
 import type { FC } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import Divider from '@/app/components/base/divider'
-import {
-  AuthCategory,
-  PluginAuthInAgent,
-} from '@/app/components/plugins/plugin-auth'
+import { AuthCategory, PluginAuthInAgent } from '@/app/components/plugins/plugin-auth'
 import { CollectionType } from '@/app/components/tools/types'
 
 type ToolAuthorizationSectionProps = {
@@ -20,12 +17,12 @@ const ToolAuthorizationSection: FC<ToolAuthorizationSectionProps> = ({
   onAuthorizationItemClick,
 }) => {
   // Only show for built-in providers that allow deletion
-  const shouldShow = currentProvider
-    && currentProvider.type === CollectionType.builtIn
-    && currentProvider.allow_delete
+  const shouldShow =
+    currentProvider &&
+    currentProvider.type === CollectionType.builtIn &&
+    currentProvider.allow_delete
 
-  if (!shouldShow)
-    return null
+  if (!shouldShow) return null
 
   return (
     <>

@@ -43,18 +43,14 @@ export default function CheckCode() {
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))
         router.push(`/webapp-reset-password/check-code?${params.toString()}`)
-      }
-      else if (res.code === 'account_not_found') {
+      } else if (res.code === 'account_not_found') {
         toast.error(t('error.registrationNotAllowed', { ns: 'login' }))
-      }
-      else {
+      } else {
         toast.error(res.data)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
-    }
-    finally {
+    } finally {
       setIsLoading(false)
     }
   }
@@ -65,7 +61,9 @@ export default function CheckCode() {
         <RiLockPasswordLine className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('resetPassword', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">
+          {t('resetPassword', { ns: 'login' })}
+        </h2>
         <p className="mt-2 body-md-regular text-text-secondary">
           {t('resetPasswordDesc', { ns: 'login' })}
         </p>
@@ -74,19 +72,39 @@ export default function CheckCode() {
       <form onSubmit={noop}>
         <input type="text" className="hidden" />
         <div className="mb-2">
-          <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</label>
+          <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+            {t('email', { ns: 'login' })}
+          </label>
           <div className="mt-1">
-            <Input id="email" type="email" disabled={loading} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              disabled={loading}
+              value={email}
+              placeholder={t('emailPlaceholder', { ns: 'login' }) as string}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="mt-3">
-            <Button loading={loading} disabled={loading} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('sendVerificationCode', { ns: 'login' })}</Button>
+            <Button
+              loading={loading}
+              disabled={loading}
+              variant="primary"
+              className="w-full"
+              onClick={handleGetEMailVerificationCode}
+            >
+              {t('sendVerificationCode', { ns: 'login' })}
+            </Button>
           </div>
         </div>
       </form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
-      <Link href={`/webapp-signin?${searchParams.toString()}`} className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary">
+      <Link
+        href={`/webapp-signin?${searchParams.toString()}`}
+        className="flex h-9 items-center justify-center text-text-tertiary hover:text-text-primary"
+      >
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>

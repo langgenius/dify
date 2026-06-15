@@ -64,13 +64,9 @@ const MOCK_CHAT_ITEM: IChatItem = {
   conversationId: 'conv-123',
 }
 
-const AgentLogModalDemo = ({
-  width = 960,
-}: {
-  width?: number
-}) => {
+const AgentLogModalDemo = ({ width = 960 }: { width?: number }) => {
   const originalFetchRef = useRef<typeof globalThis.fetch>(null)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const setAppDetail = useAppStore((state) => state.setAppDetail)
 
   useEffect(() => {
     setAppDetail({
@@ -93,8 +89,7 @@ const AgentLogModalDemo = ({
         })
       }
 
-      if (originalFetchRef.current)
-        return originalFetchRef.current(request)
+      if (originalFetchRef.current) return originalFetchRef.current(request)
 
       throw new Error(`Unhandled request: ${url}`)
     }
@@ -102,8 +97,7 @@ const AgentLogModalDemo = ({
     globalThis.fetch = handler as typeof globalThis.fetch
 
     return () => {
-      if (originalFetchRef.current)
-        globalThis.fetch = originalFetchRef.current
+      if (originalFetchRef.current) globalThis.fetch = originalFetchRef.current
       setAppDetail(undefined)
     }
   }, [setAppDetail])
@@ -131,7 +125,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Agent execution viewer showing iterations, tool calls, and metadata. Fetch responses are mocked for Storybook.',
+        component:
+          'Agent execution viewer showing iterations, tool calls, and metadata. Fetch responses are mocked for Storybook.',
       },
     },
   },

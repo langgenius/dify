@@ -5,11 +5,15 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig as NodeModelConfig } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AgentStrategy, Model, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+  AgentStrategy,
+  Model,
+  ModelModeType,
+  RETRIEVE_TYPE,
+  ToolItem,
+  TtsAutoPlay,
+} from '@/types/app'
 
 export type Inputs = Record<string, string | number | object | boolean>
 

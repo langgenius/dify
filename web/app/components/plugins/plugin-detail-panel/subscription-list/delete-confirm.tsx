@@ -32,11 +32,9 @@ export const DeleteConfirm = (props: Props) => {
   const [inputName, setInputName] = useState('')
 
   const handleOpenChange = (open: boolean) => {
-    if (isDeleting)
-      return
+    if (isDeleting) return
 
-    if (!open)
-      onClose(false)
+    if (!open) onClose(false)
   }
 
   const onConfirm = () => {
@@ -51,7 +49,11 @@ export const DeleteConfirm = (props: Props) => {
         onClose(true)
       },
       onError: (error: unknown) => {
-        toast.error(error instanceof Error ? error.message : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }))
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
+        )
       },
     })
   }
@@ -75,8 +77,11 @@ export const DeleteConfirm = (props: Props) => {
               </div>
               <Input
                 value={inputName}
-                onChange={e => setInputName(e.target.value)}
-                placeholder={t(`${tPrefix}.confirmInputPlaceholder`, { ns: 'pluginTrigger', name: currentName })}
+                onChange={(e) => setInputName(e.target.value)}
+                placeholder={t(`${tPrefix}.confirmInputPlaceholder`, {
+                  ns: 'pluginTrigger',
+                  name: currentName,
+                })}
               />
             </div>
           )}

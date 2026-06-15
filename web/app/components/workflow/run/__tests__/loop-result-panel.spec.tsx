@@ -6,13 +6,7 @@ import LoopResultPanel from '../loop-result-panel'
 const mockTracingPanel = vi.fn()
 
 vi.mock('../tracing-panel', () => ({
-  default: ({
-    list,
-    className,
-  }: {
-    list: NodeTracing[]
-    className?: string
-  }) => {
+  default: ({ list, className }: { list: NodeTracing[]; className?: string }) => {
     mockTracingPanel({ list, className })
     return <div data-testid="tracing-panel">{list.length}</div>
   },
@@ -61,10 +55,7 @@ describe('LoopResultPanel', () => {
 
     const { container } = render(
       <LoopResultPanel
-        list={[
-          [createNodeTracing('1')],
-          [createNodeTracing('2'), createNodeTracing('3')],
-        ]}
+        list={[[createNodeTracing('1')], [createNodeTracing('2'), createNodeTracing('3')]]}
         onHide={onHide}
         onBack={onBack}
         noWrap
@@ -94,17 +85,12 @@ describe('LoopResultPanel', () => {
     const parentClick = vi.fn()
     const { container } = render(
       <div onClick={parentClick}>
-        <LoopResultPanel
-          list={[[createNodeTracing('1')]]}
-          onHide={vi.fn()}
-          onBack={vi.fn()}
-        />
+        <LoopResultPanel list={[[createNodeTracing('1')]]} onHide={vi.fn()} onBack={vi.fn()} />
       </div>,
     )
 
     const overlay = container.querySelector('.absolute.inset-0')
-    if (!overlay)
-      throw new Error('Expected overlay wrapper to be rendered')
+    if (!overlay) throw new Error('Expected overlay wrapper to be rendered')
 
     fireEvent.click(overlay)
 

@@ -39,7 +39,7 @@ describe('KeyValidator', () => {
       value: 'initial-key',
       validate: formValidate,
       handleFocus: (_value, setValue) => {
-        setValue(prev => ({ ...prev, apiKey: 'focused-key' }))
+        setValue((prev) => ({ ...prev, apiKey: 'focused-key' }))
       },
     },
   ]

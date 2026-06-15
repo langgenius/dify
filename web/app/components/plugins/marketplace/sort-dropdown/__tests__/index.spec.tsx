@@ -1,7 +1,4 @@
-import type {
-  MouseEventHandler,
-  ReactNode,
-} from 'react'
+import type { MouseEventHandler, ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import SortDropdown from '../index'
@@ -24,7 +21,7 @@ vi.mock('#i18n', () => ({
   }),
 }))
 
-let mockSort: { sortBy: string, sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
+let mockSort: { sortBy: string; sortOrder: string } = { sortBy: 'install_count', sortOrder: 'DESC' }
 const mockHandleSortChange = vi.fn()
 
 vi.mock('../../atoms', () => ({
@@ -33,24 +30,34 @@ vi.mock('../../atoms', () => ({
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div data-testid="dropdown-wrapper" data-open={open}>
           {children}
         </div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, className }: { children: ReactNode, className?: string }) => {
+    DropdownMenuTrigger: ({ children, className }: { children: ReactNode; className?: string }) => {
       const { open, setOpen } = useDropdownMenuContext()
       return (
         <button

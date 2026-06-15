@@ -7,10 +7,7 @@ type CheckboxFieldProps = {
   labelClassName?: string
 }
 
-const CheckboxField = ({
-  label,
-  labelClassName,
-}: CheckboxFieldProps) => {
+const CheckboxField = ({ label, labelClassName }: CheckboxFieldProps) => {
   const field = useFieldContext<boolean>()
 
   return (
@@ -18,15 +15,10 @@ const CheckboxField = ({
       <span className="flex h-6 shrink-0 items-center">
         <Checkbox
           checked={field.state.value}
-          onCheckedChange={checked => field.handleChange(checked)}
+          onCheckedChange={(checked) => field.handleChange(checked)}
         />
       </span>
-      <span
-        className={cn(
-          'grow pt-1 system-sm-medium text-text-secondary',
-          labelClassName,
-        )}
-      >
+      <span className={cn('grow pt-1 system-sm-medium text-text-secondary', labelClassName)}>
         {label}
       </span>
     </label>

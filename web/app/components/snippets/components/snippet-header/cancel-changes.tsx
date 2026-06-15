@@ -18,10 +18,7 @@ type CancelChangesProps = {
   onCancel: () => void | Promise<void>
 }
 
-const CancelChanges = ({
-  canDiscardChanges,
-  onCancel,
-}: CancelChangesProps) => {
+const CancelChanges = ({ canDiscardChanges, onCancel }: CancelChangesProps) => {
   const { t } = useTranslation('snippet')
   const [open, setOpen] = useState(false)
   const [isDiscarding, setIsDiscarding] = useState(false)
@@ -31,8 +28,7 @@ const CancelChanges = ({
     try {
       await onCancel()
       setOpen(false)
-    }
-    finally {
+    } finally {
       setIsDiscarding(false)
     }
   }, [onCancel])
@@ -42,9 +38,7 @@ const CancelChanges = ({
       {canDiscardChanges && (
         <>
           <AlertDialog open={open} onOpenChange={setOpen}>
-            <AlertDialogTrigger
-              className="system-sm-semibold text-text-accent hover:text-text-accent-secondary"
-            >
+            <AlertDialogTrigger className="system-sm-semibold text-text-accent hover:text-text-accent-secondary">
               {t('discardDraft')}
             </AlertDialogTrigger>
             <AlertDialogContent className="w-160">

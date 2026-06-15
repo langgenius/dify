@@ -12,13 +12,15 @@ type Props = Readonly<{
 }>
 
 export const getIcon = (type: RETRIEVE_METHOD) => {
-  return ({
-    [RETRIEVE_METHOD.semantic]: retrievalIcon.vector,
-    [RETRIEVE_METHOD.fullText]: retrievalIcon.fullText,
-    [RETRIEVE_METHOD.hybrid]: retrievalIcon.hybrid,
-    [RETRIEVE_METHOD.invertedIndex]: retrievalIcon.vector,
-    [RETRIEVE_METHOD.keywordSearch]: retrievalIcon.vector,
-  })[type] || retrievalIcon.vector
+  return (
+    {
+      [RETRIEVE_METHOD.semantic]: retrievalIcon.vector,
+      [RETRIEVE_METHOD.fullText]: retrievalIcon.fullText,
+      [RETRIEVE_METHOD.hybrid]: retrievalIcon.hybrid,
+      [RETRIEVE_METHOD.invertedIndex]: retrievalIcon.vector,
+      [RETRIEVE_METHOD.keywordSearch]: retrievalIcon.vector,
+    }[type] || retrievalIcon.vector
+  )
 }
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({
@@ -27,7 +29,9 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const type = value.search_method
-  const icon = <img className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(type)} alt="" />
+  const icon = (
+    <img className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(type)} alt="" />
+  )
   return (
     <div className="space-y-2">
       <RadioCard
@@ -36,12 +40,16 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         description={t(`retrieval.${type}.description`, { ns: 'dataset' })}
         noRadio
         chosenConfigWrapClassName="pb-3!"
-        chosenConfig={(
+        chosenConfig={
           <div className="flex flex-wrap text-xs leading-[18px] font-normal">
             {value.reranking_model.reranking_model_name && (
               <div className="mr-8 flex space-x-1">
-                <div className="text-gray-500">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
-                <div className="font-medium text-gray-800">{value.reranking_model.reranking_model_name}</div>
+                <div className="text-gray-500">
+                  {t('modelProvider.rerankModel.key', { ns: 'common' })}
+                </div>
+                <div className="font-medium text-gray-800">
+                  {value.reranking_model.reranking_model_name}
+                </div>
               </div>
             )}
 
@@ -51,11 +59,13 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
             </div>
 
             <div className="mr-8 flex space-x-1">
-              <div className="text-gray-500">{t('datasetConfig.score_threshold', { ns: 'appDebug' })}</div>
+              <div className="text-gray-500">
+                {t('datasetConfig.score_threshold', { ns: 'appDebug' })}
+              </div>
               <div className="font-medium text-gray-800">{value.score_threshold}</div>
             </div>
           </div>
-        )}
+        }
       />
     </div>
   )

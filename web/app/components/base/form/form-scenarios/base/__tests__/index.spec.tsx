@@ -2,13 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import BaseForm from '../index'
 import { BaseFieldType } from '../types'
 
-const baseConfigurations = [{
-  type: BaseFieldType.textInput,
-  variable: 'name',
-  label: 'Name',
-  required: false,
-  showConditions: [],
-}]
+const baseConfigurations = [
+  {
+    type: BaseFieldType.textInput,
+    variable: 'name',
+    label: 'Name',
+    required: false,
+    showConditions: [],
+  },
+]
 
 describe('BaseForm', () => {
   it('should render configured fields', () => {
@@ -57,25 +59,25 @@ describe('BaseForm', () => {
     )
 
     expect(screen.getByRole('button', { name: /save form/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /common.operation.submit/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common.operation.submit/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('should handle native form submit and block invalid submission', async () => {
     const onSubmit = vi.fn()
-    const requiredConfig = [{
-      type: BaseFieldType.textInput,
-      variable: 'name',
-      label: 'Name',
-      required: true,
-      showConditions: [],
-      maxLength: 2,
-    }]
+    const requiredConfig = [
+      {
+        type: BaseFieldType.textInput,
+        variable: 'name',
+        label: 'Name',
+        required: true,
+        showConditions: [],
+        maxLength: 2,
+      },
+    ]
     const { container } = render(
-      <BaseForm
-        initialData={{ name: 'ok' }}
-        configurations={requiredConfig}
-        onSubmit={onSubmit}
-      />,
+      <BaseForm initialData={{ name: 'ok' }} configurations={requiredConfig} onSubmit={onSubmit} />,
     )
 
     const form = container.querySelector('form')

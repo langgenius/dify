@@ -4,84 +4,104 @@ import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import { supportFunctionCall } from '@/utils/tool-call'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-} from '../../hooks'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useStore } from '../../store'
 import { ChangeType, VarType } from '../../types'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
-  const {
-    deleteNodeInspectorVars,
-    renameInspectVarName,
-  } = useInspectVarsCrud()
+  const { deleteNodeInspectorVars, renameInspectVarName } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
+  const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type]
 
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({
+    user: '',
+    assistant: '',
+  })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
   const inputRef = useRef(inputs)
 
-  const setInputs = useCallback((newInputs: ParameterExtractorNodeType) => {
-    if (newInputs.memory && !newInputs.memory.role_prefix) {
-      const newPayload = produce(newInputs, (draft) => {
-        draft.memory!.role_prefix = defaultRolePrefix
-      })
-      doSetInputs(newPayload)
-      inputRef.current = newPayload
-      return
-    }
-    doSetInputs(newInputs)
-    inputRef.current = newInputs
-  }, [doSetInputs, defaultRolePrefix])
+  const setInputs = useCallback(
+    (newInputs: ParameterExtractorNodeType) => {
+      if (newInputs.memory && !newInputs.memory.role_prefix) {
+        const newPayload = produce(newInputs, (draft) => {
+          draft.memory!.role_prefix = defaultRolePrefix
+        })
+        doSetInputs(newPayload)
+        inputRef.current = newPayload
+        return
+      }
+      doSetInputs(newInputs)
+      inputRef.current = newInputs
+    },
+    [doSetInputs, defaultRolePrefix],
+  )
 
   const filterVar = useCallback((varPayload: Var) => {
     return [VarType.string].includes(varPayload.type)
   }, [])
 
-  const handleInputVarChange = useCallback((newInputVar: ValueSelector | string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.query = newInputVar as ValueSelector || []
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleInputVarChange = useCallback(
+    (newInputVar: ValueSelector | string) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.query = (newInputVar as ValueSelector) || []
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleExactParamsChange = useCallback((newParams: Param[], moreInfo?: MoreInfo) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.parameters = newParams
-    })
-    setInputs(newInputs)
+  const handleExactParamsChange = useCallback(
+    (newParams: Param[], moreInfo?: MoreInfo) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.parameters = newParams
+      })
+      setInputs(newInputs)
 
-    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload) {
-      handleOutVarRenameChange(id, [id, moreInfo.payload.beforeKey], [id, moreInfo.payload.afterKey!])
-      renameInspectVarName(id, moreInfo.payload.beforeKey, moreInfo.payload.afterKey!)
-    }
-    else {
+      if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload) {
+        handleOutVarRenameChange(
+          id,
+          [id, moreInfo.payload.beforeKey],
+          [id, moreInfo.payload.afterKey!],
+        )
+        renameInspectVarName(id, moreInfo.payload.beforeKey, moreInfo.payload.afterKey!)
+      } else {
+        deleteNodeInspectorVars(id)
+      }
+    },
+    [
+      deleteNodeInspectorVars,
+      handleOutVarRenameChange,
+      id,
+      inputs,
+      renameInspectVarName,
+      setInputs,
+    ],
+  )
+
+  const addExtractParameter = useCallback(
+    (payload: Param) => {
+      const newInputs = produce(inputs, (draft) => {
+        if (!draft.parameters) draft.parameters = []
+        draft.parameters.push(payload)
+      })
+      setInputs(newInputs)
       deleteNodeInspectorVars(id)
-    }
-  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, renameInspectVarName, setInputs])
-
-  const addExtractParameter = useCallback((payload: Param) => {
-    const newInputs = produce(inputs, (draft) => {
-      if (!draft.parameters)
-        draft.parameters = []
-      draft.parameters.push(payload)
-    })
-    setInputs(newInputs)
-    deleteNodeInspectorVars(id)
-  }, [deleteNodeInspectorVars, id, inputs, setInputs])
+    },
+    [deleteNodeInspectorVars, id, inputs, setInputs],
+  )
 
   // model
   const model = inputs.model || {
@@ -111,34 +131,39 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     },
   })
 
-  const appendDefaultPromptConfig = useCallback((draft: ParameterExtractorNodeType, defaultConfig: any, _passInIsChatMode?: boolean) => {
-    const promptTemplates = defaultConfig.prompt_templates
-    if (!isChatModel) {
-      setDefaultRolePrefix({
-        user: promptTemplates.completion_model.conversation_histories_role.user_prefix,
-        assistant: promptTemplates.completion_model.conversation_histories_role.assistant_prefix,
-      })
-    }
-  }, [isChatModel])
+  const appendDefaultPromptConfig = useCallback(
+    (draft: ParameterExtractorNodeType, defaultConfig: any, _passInIsChatMode?: boolean) => {
+      const promptTemplates = defaultConfig.prompt_templates
+      if (!isChatModel) {
+        setDefaultRolePrefix({
+          user: promptTemplates.completion_model.conversation_histories_role.user_prefix,
+          assistant: promptTemplates.completion_model.conversation_histories_role.assistant_prefix,
+        })
+      }
+    },
+    [isChatModel],
+  )
 
   const [modelChanged, setModelChanged] = useState(false)
-  const {
-    currentProvider,
-    currentModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+  const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
+    ModelTypeEnum.textGeneration,
+  )
 
-  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      draft.model.provider = model.provider
-      draft.model.name = model.modelId
-      draft.model.mode = model.mode!
-      const isModeChange = model.mode !== inputRef.current.model?.mode
-      if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
-    })
-    setInputs(newInputs)
-    setModelChanged(true)
-  }, [setInputs, defaultConfig, appendDefaultPromptConfig])
+  const handleModelChanged = useCallback(
+    (model: { provider: string; modelId: string; mode?: string }) => {
+      const newInputs = produce(inputRef.current, (draft) => {
+        draft.model.provider = model.provider
+        draft.model.name = model.modelId
+        draft.model.mode = model.mode!
+        const isModeChange = model.mode !== inputRef.current.model?.mode
+        if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
+          appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
+      })
+      setInputs(newInputs)
+      setModelChanged(true)
+    },
+    [setInputs, defaultConfig, appendDefaultPromptConfig],
+  )
 
   useEffect(() => {
     if (currentProvider?.provider && currentModel?.model && !model.provider) {
@@ -152,20 +177,15 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
 
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
-    if (!modelChanged)
-      return
+    if (!modelChanged) return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
   }, [isVisionModel, modelChanged])
 
-  const {
-    currentModel: currModel,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    {
-      provider: model.provider,
-      model: model.name,
-    },
-  )
+  const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
+    provider: model.provider,
+    model: model.name,
+  })
 
   const isSupportFunctionCall = supportFunctionCall(currModel?.features)
 
@@ -173,27 +193,30 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     return [VarType.number, VarType.string].includes(varPayload.type)
   }, [])
 
-  const {
-    availableVars,
-    availableNodesWithParent,
-  } = useAvailableVarList(id, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: filterInputVar,
   })
 
-  const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.model.completion_params = newParams
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleCompletionParamsChange = useCallback(
+    (newParams: Record<string, any>) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.model.completion_params = newParams
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleInstructionChange = useCallback((newInstruction: string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.instruction = newInstruction
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleInstructionChange = useCallback(
+    (newInstruction: string) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.instruction = newInstruction
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
   const hasSetBlockStatus = {
     history: false,
@@ -201,26 +224,35 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     context: false,
   }
 
-  const handleMemoryChange = useCallback((newMemory?: Memory) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.memory = newMemory
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleMemoryChange = useCallback(
+    (newMemory?: Memory) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.memory = newMemory
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleReasoningModeChange = useCallback((newReasoningMode: ReasoningModeType) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.reasoning_mode = newReasoningMode
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleReasoningModeChange = useCallback(
+    (newReasoningMode: ReasoningModeType) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.reasoning_mode = newReasoningMode
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
-  const handleImportFromTool = useCallback((params: Param[]) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.parameters = params
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  const handleImportFromTool = useCallback(
+    (params: Param[]) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.parameters = params
+      })
+      setInputs(newInputs)
+    },
+    [inputs, setInputs],
+  )
 
   return {
     readOnly,

@@ -11,19 +11,16 @@ const ContactFields = withForm({
         <div className="flex flex-col gap-4">
           <form.AppField
             name="contact.email"
-            children={field => <field.TextField label="Email" />}
+            children={(field) => <field.TextField label="Email" />}
           />
           <form.AppField
             name="contact.phone"
-            children={field => <field.TextField label="Phone" />}
+            children={(field) => <field.TextField label="Phone" />}
           />
           <form.AppField
             name="contact.preferredContactMethod"
-            children={field => (
-              <field.SelectField
-                label="Preferred Contact Method"
-                options={ContactMethods}
-              />
+            children={(field) => (
+              <field.SelectField label="Preferred Contact Method" options={ContactMethods} />
             )}
           />
         </div>

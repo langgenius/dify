@@ -1,13 +1,6 @@
-import type {
-  BlockEnum,
-  OnSelectBlock,
-} from '../../types'
+import type { BlockEnum, OnSelectBlock } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import { memo, useCallback, useState } from 'react'
 import BlockSelector from '../../block-selector'
 import { useNodesInteractions } from '../../hooks'
 
@@ -15,28 +8,28 @@ type InsertBlockProps = {
   startNodeId: string
   availableBlocksTypes: BlockEnum[]
 }
-const InsertBlock = ({
-  startNodeId,
-  availableBlocksTypes,
-}: InsertBlockProps) => {
+const InsertBlock = ({ startNodeId, availableBlocksTypes }: InsertBlockProps) => {
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleInsert = useCallback<OnSelectBlock>((nodeType, pluginDefaultValue) => {
-    handleNodeAdd(
-      {
-        nodeType,
-        pluginDefaultValue,
-      },
-      {
-        nextNodeId: startNodeId,
-        nextNodeTargetHandle: 'target',
-      },
-    )
-  }, [startNodeId, handleNodeAdd])
+  const handleInsert = useCallback<OnSelectBlock>(
+    (nodeType, pluginDefaultValue) => {
+      handleNodeAdd(
+        {
+          nodeType,
+          pluginDefaultValue,
+        },
+        {
+          nextNodeId: startNodeId,
+          nextNodeTargetHandle: 'target',
+        },
+      )
+    },
+    [startNodeId, handleNodeAdd],
+  )
 
   return (
     <div

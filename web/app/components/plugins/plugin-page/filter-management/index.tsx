@@ -16,7 +16,7 @@ type FilterManagementProps = {
 }
 
 const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) => {
-  const initFilters = usePluginPageContext(v => v.filters) as FilterState
+  const initFilters = usePluginPageContext((v) => v.filters) as FilterState
   const [filters, setFilters] = useState<FilterState>(initFilters)
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
@@ -29,15 +29,12 @@ const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) =
     <div className="flex items-center gap-2 self-stretch">
       <CategoriesFilter
         value={filters.categories}
-        onChange={categories => updateFilters({ categories })}
+        onChange={(categories) => updateFilters({ categories })}
       />
-      <TagFilter
-        value={filters.tags}
-        onChange={tags => updateFilters({ tags })}
-      />
+      <TagFilter value={filters.tags} onChange={(tags) => updateFilters({ tags })} />
       <SearchBox
         searchQuery={filters.searchQuery}
-        onChange={searchQuery => updateFilters({ searchQuery })}
+        onChange={(searchQuery) => updateFilters({ searchQuery })}
       />
     </div>
   )

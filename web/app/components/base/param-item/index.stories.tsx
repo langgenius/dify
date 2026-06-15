@@ -45,15 +45,18 @@ const PARAMS: ParamConfig[] = [
 ]
 
 const ParamItemPlayground = () => {
-  const [state, setState] = useState<Record<string, { value: number, enabled: boolean }>>(() => {
-    return PARAMS.reduce((acc, item) => {
-      acc[item.id] = { value: item.value, enabled: true }
-      return acc
-    }, {} as Record<string, { value: number, enabled: boolean }>)
+  const [state, setState] = useState<Record<string, { value: number; enabled: boolean }>>(() => {
+    return PARAMS.reduce(
+      (acc, item) => {
+        acc[item.id] = { value: item.value, enabled: true }
+        return acc
+      },
+      {} as Record<string, { value: number; enabled: boolean }>,
+    )
   })
 
   const handleChange = (id: string, value: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       [id]: {
         ...prev[id]!,
@@ -63,7 +66,7 @@ const ParamItemPlayground = () => {
   }
 
   const handleToggle = (id: string, enabled: boolean) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       [id]: {
         ...prev[id]!,
@@ -80,7 +83,7 @@ const ParamItemPlayground = () => {
           {JSON.stringify(state, null, 0)}
         </code>
       </div>
-      {PARAMS.map(param => (
+      {PARAMS.map((param) => (
         <ParamItem
           key={param.id}
           className="rounded-xl border border-transparent px-3 py-2 hover:border-divider-subtle hover:bg-background-default-subtle"
@@ -108,7 +111,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Slider + numeric input pairing used for model parameter tuning. Supports optional enable toggles per parameter.',
+        component:
+          'Slider + numeric input pairing used for model parameter tuning. Supports optional enable toggles per parameter.',
       },
     },
   },

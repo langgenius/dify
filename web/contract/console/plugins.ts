@@ -7,11 +7,13 @@ export const pluginCheckInstalledContract = base
     path: '/workspaces/current/plugin/list/installations/ids',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      plugin_ids: string[]
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        plugin_ids: string[]
+      }
+    }>(),
+  )
   .output(type<{ plugins: PluginDetail[] }>())
 
 export const pluginLatestVersionsContract = base
@@ -19,9 +21,11 @@ export const pluginLatestVersionsContract = base
     path: '/workspaces/current/plugin/list/latest-versions',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      plugin_ids: string[]
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        plugin_ids: string[]
+      }
+    }>(),
+  )
   .output(type<InstalledLatestVersionResponse>())

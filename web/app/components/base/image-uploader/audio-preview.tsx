@@ -7,19 +7,14 @@ type AudioPreviewProps = {
   title: string
   onCancel: () => void
 }
-const AudioPreview: FC<AudioPreviewProps> = ({
-  url,
-  title,
-  onCancel,
-}) => {
+const AudioPreview: FC<AudioPreviewProps> = ({ url, title, onCancel }) => {
   const { t } = useTranslation()
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
       disablePointerDismissal
     >
@@ -31,14 +26,16 @@ const AudioPreview: FC<AudioPreviewProps> = ({
           aria-label={title}
           data-testid="audio-preview-overlay"
           tabIndex={-1}
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          <audio controls title={title} autoPlay={false} preload="metadata" data-testid="audio-element">
-            <source
-              type="audio/mpeg"
-              src={url}
-              className="max-h-full max-w-full"
-            />
+          <audio
+            controls
+            title={title}
+            autoPlay={false}
+            preload="metadata"
+            data-testid="audio-element"
+          >
+            <source type="audio/mpeg" src={url} className="max-h-full max-w-full" />
           </audio>
         </div>
         <button

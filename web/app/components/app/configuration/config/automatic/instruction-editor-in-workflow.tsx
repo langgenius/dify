@@ -28,15 +28,19 @@ const InstructionEditorInWorkflow: FC<Props> = ({
   isShowCurrentBlock,
 }) => {
   const workflowStore = useWorkflowStore()
-  const filterVar = useCallback((payload: Var, selector: ValueSelector) => {
-    const { nodesWithInspectVars } = workflowStore.getState()
-    const nodeId = selector?.[0]
-    return !!nodesWithInspectVars.find(node => node.nodeId === nodeId) && payload.type !== VarType.file && payload.type !== VarType.arrayFile
-  }, [workflowStore])
-  const {
-    availableVars,
-    availableNodes,
-  } = useAvailableVarList(nodeId, {
+  const filterVar = useCallback(
+    (payload: Var, selector: ValueSelector) => {
+      const { nodesWithInspectVars } = workflowStore.getState()
+      const nodeId = selector?.[0]
+      return (
+        !!nodesWithInspectVars.find((node) => node.nodeId === nodeId) &&
+        payload.type !== VarType.file &&
+        payload.type !== VarType.arrayFile
+      )
+    },
+    [workflowStore],
+  )
+  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
   })

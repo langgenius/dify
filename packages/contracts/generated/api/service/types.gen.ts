@@ -727,19 +727,19 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
+export type FormInputConfig =
   | ({
-    type: 'select'
-  } & SelectInputConfig)
+      type: 'paragraph'
+    } & ParagraphInputConfig)
   | ({
-    type: 'file'
-  } & FileInputConfig)
+      type: 'select'
+    } & SelectInputConfig)
   | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type GeneratedAppResponse = JsonValue
 
@@ -894,16 +894,16 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
 
 export type JsonValueType = unknown
 
@@ -990,38 +990,38 @@ export type MetadataUpdatePayload = {
   name: string
 }
 
-export type ModelFeature
-  = | 'agent-thought'
-    | 'audio'
-    | 'document'
-    | 'multi-tool-call'
-    | 'polling'
-    | 'stream-tool-call'
-    | 'structured-output'
-    | 'tool-call'
-    | 'video'
-    | 'vision'
+export type ModelFeature =
+  | 'agent-thought'
+  | 'audio'
+  | 'document'
+  | 'multi-tool-call'
+  | 'polling'
+  | 'stream-tool-call'
+  | 'structured-output'
+  | 'tool-call'
+  | 'video'
+  | 'vision'
 
-export type ModelPropertyKey
-  = | 'audio_type'
-    | 'context_size'
-    | 'default_voice'
-    | 'file_upload_limit'
-    | 'max_characters_per_chunk'
-    | 'max_chunks'
-    | 'max_workers'
-    | 'mode'
-    | 'supported_file_extensions'
-    | 'voices'
-    | 'word_limit'
+export type ModelPropertyKey =
+  | 'audio_type'
+  | 'context_size'
+  | 'default_voice'
+  | 'file_upload_limit'
+  | 'max_characters_per_chunk'
+  | 'max_chunks'
+  | 'max_workers'
+  | 'mode'
+  | 'supported_file_extensions'
+  | 'voices'
+  | 'word_limit'
 
-export type ModelStatus
-  = | 'active'
-    | 'credential-removed'
-    | 'disabled'
-    | 'no-configure'
-    | 'no-permission'
-    | 'quota-exceeded'
+export type ModelStatus =
+  | 'active'
+  | 'credential-removed'
+  | 'disabled'
+  | 'no-configure'
+  | 'no-permission'
+  | 'quota-exceeded'
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
 
@@ -1121,11 +1121,11 @@ export type ResultResponse = {
   result: string
 }
 
-export type RetrievalMethod
-  = | 'full_text_search'
-    | 'hybrid_search'
-    | 'keyword_search'
-    | 'semantic_search'
+export type RetrievalMethod =
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'keyword_search'
+  | 'semantic_search'
 
 export type RetrievalModel = {
   metadata_filtering_conditions?: MetadataFilteringCondition | null
@@ -1418,8 +1418,8 @@ export type WorkflowAppLogPartialResponse = {
   created_from?: string | null
   details?:
     | {
-      [key: string]: unknown
-    }
+        [key: string]: unknown
+      }
     | Array<unknown>
     | string
     | number
@@ -1480,8 +1480,8 @@ export type WorkflowRunResponse = {
   id: string
   inputs?:
     | {
-      [key: string]: unknown
-    }
+        [key: string]: unknown
+      }
     | Array<unknown>
     | string
     | number
@@ -1569,8 +1569,8 @@ export type PostAppsAnnotationReplyByActionResponses = {
   200: AnnotationJobStatusResponse
 }
 
-export type PostAppsAnnotationReplyByActionResponse
-  = PostAppsAnnotationReplyByActionResponses[keyof PostAppsAnnotationReplyByActionResponses]
+export type PostAppsAnnotationReplyByActionResponse =
+  PostAppsAnnotationReplyByActionResponses[keyof PostAppsAnnotationReplyByActionResponses]
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
   body?: never
@@ -1591,8 +1591,8 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
   200: AnnotationJobStatusResponse
 }
 
-export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
-  = GetAppsAnnotationReplyByActionStatusByJobIdResponses[keyof GetAppsAnnotationReplyByActionStatusByJobIdResponses]
+export type GetAppsAnnotationReplyByActionStatusByJobIdResponse =
+  GetAppsAnnotationReplyByActionStatusByJobIdResponses[keyof GetAppsAnnotationReplyByActionStatusByJobIdResponses]
 
 export type GetAppsAnnotationsData = {
   body?: never
@@ -1613,8 +1613,8 @@ export type GetAppsAnnotationsResponses = {
   200: AnnotationList
 }
 
-export type GetAppsAnnotationsResponse
-  = GetAppsAnnotationsResponses[keyof GetAppsAnnotationsResponses]
+export type GetAppsAnnotationsResponse =
+  GetAppsAnnotationsResponses[keyof GetAppsAnnotationsResponses]
 
 export type PostAppsAnnotationsData = {
   body: AnnotationCreatePayload
@@ -1631,8 +1631,8 @@ export type PostAppsAnnotationsResponses = {
   201: Annotation
 }
 
-export type PostAppsAnnotationsResponse
-  = PostAppsAnnotationsResponses[keyof PostAppsAnnotationsResponses]
+export type PostAppsAnnotationsResponse =
+  PostAppsAnnotationsResponses[keyof PostAppsAnnotationsResponses]
 
 export type DeleteAppsAnnotationsByAnnotationIdData = {
   body?: never
@@ -1653,8 +1653,8 @@ export type DeleteAppsAnnotationsByAnnotationIdResponses = {
   204: void
 }
 
-export type DeleteAppsAnnotationsByAnnotationIdResponse
-  = DeleteAppsAnnotationsByAnnotationIdResponses[keyof DeleteAppsAnnotationsByAnnotationIdResponses]
+export type DeleteAppsAnnotationsByAnnotationIdResponse =
+  DeleteAppsAnnotationsByAnnotationIdResponses[keyof DeleteAppsAnnotationsByAnnotationIdResponses]
 
 export type PutAppsAnnotationsByAnnotationIdData = {
   body: AnnotationCreatePayload
@@ -1675,8 +1675,8 @@ export type PutAppsAnnotationsByAnnotationIdResponses = {
   200: Annotation
 }
 
-export type PutAppsAnnotationsByAnnotationIdResponse
-  = PutAppsAnnotationsByAnnotationIdResponses[keyof PutAppsAnnotationsByAnnotationIdResponses]
+export type PutAppsAnnotationsByAnnotationIdResponse =
+  PutAppsAnnotationsByAnnotationIdResponses[keyof PutAppsAnnotationsByAnnotationIdResponses]
 
 export type PostAudioToTextData = {
   body?: never
@@ -1738,8 +1738,8 @@ export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostChatMessagesByTaskIdStopResponse
-  = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
+export type PostChatMessagesByTaskIdStopResponse =
+  PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
 
 export type PostCompletionMessagesData = {
   body: CompletionRequestPayload
@@ -1759,8 +1759,8 @@ export type PostCompletionMessagesResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
+export type PostCompletionMessagesResponse =
+  PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -1780,8 +1780,8 @@ export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopResponse
-  = PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+export type PostCompletionMessagesByTaskIdStopResponse =
+  PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -1823,8 +1823,8 @@ export type DeleteConversationsByCIdResponses = {
   204: void
 }
 
-export type DeleteConversationsByCIdResponse
-  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+export type DeleteConversationsByCIdResponse =
+  DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
 
 export type PostConversationsByCIdNameData = {
   body: ConversationRenamePayload
@@ -1844,8 +1844,8 @@ export type PostConversationsByCIdNameResponses = {
   200: SimpleConversation
 }
 
-export type PostConversationsByCIdNameResponse
-  = PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
+export type PostConversationsByCIdNameResponse =
+  PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
 
 export type GetConversationsByCIdVariablesData = {
   body?: never
@@ -1869,8 +1869,8 @@ export type GetConversationsByCIdVariablesResponses = {
   200: ConversationVariableInfiniteScrollPaginationResponse
 }
 
-export type GetConversationsByCIdVariablesResponse
-  = GetConversationsByCIdVariablesResponses[keyof GetConversationsByCIdVariablesResponses]
+export type GetConversationsByCIdVariablesResponse =
+  GetConversationsByCIdVariablesResponses[keyof GetConversationsByCIdVariablesResponses]
 
 export type PutConversationsByCIdVariablesByVariableIdData = {
   body: ConversationVariableUpdatePayload
@@ -1892,8 +1892,8 @@ export type PutConversationsByCIdVariablesByVariableIdResponses = {
   200: ConversationVariableResponse
 }
 
-export type PutConversationsByCIdVariablesByVariableIdResponse
-  = PutConversationsByCIdVariablesByVariableIdResponses[keyof PutConversationsByCIdVariablesByVariableIdResponses]
+export type PutConversationsByCIdVariablesByVariableIdResponse =
+  PutConversationsByCIdVariablesByVariableIdResponses[keyof PutConversationsByCIdVariablesByVariableIdResponses]
 
 export type GetDatasetsData = {
   body?: never
@@ -1954,8 +1954,8 @@ export type PostDatasetsPipelineFileUploadResponses = {
   201: PipelineUploadFileResponse
 }
 
-export type PostDatasetsPipelineFileUploadResponse
-  = PostDatasetsPipelineFileUploadResponses[keyof PostDatasetsPipelineFileUploadResponses]
+export type PostDatasetsPipelineFileUploadResponse =
+  PostDatasetsPipelineFileUploadResponses[keyof PostDatasetsPipelineFileUploadResponses]
 
 export type DeleteDatasetsTagsData = {
   body: TagDeletePayload
@@ -1973,8 +1973,8 @@ export type DeleteDatasetsTagsResponses = {
   204: void
 }
 
-export type DeleteDatasetsTagsResponse
-  = DeleteDatasetsTagsResponses[keyof DeleteDatasetsTagsResponses]
+export type DeleteDatasetsTagsResponse =
+  DeleteDatasetsTagsResponses[keyof DeleteDatasetsTagsResponses]
 
 export type GetDatasetsTagsData = {
   body?: never
@@ -2045,8 +2045,8 @@ export type PostDatasetsTagsBindingResponses = {
   204: void
 }
 
-export type PostDatasetsTagsBindingResponse
-  = PostDatasetsTagsBindingResponses[keyof PostDatasetsTagsBindingResponses]
+export type PostDatasetsTagsBindingResponse =
+  PostDatasetsTagsBindingResponses[keyof PostDatasetsTagsBindingResponses]
 
 export type PostDatasetsTagsUnbindingData = {
   body: TagUnbindingPayload
@@ -2064,8 +2064,8 @@ export type PostDatasetsTagsUnbindingResponses = {
   204: void
 }
 
-export type PostDatasetsTagsUnbindingResponse
-  = PostDatasetsTagsUnbindingResponses[keyof PostDatasetsTagsUnbindingResponses]
+export type PostDatasetsTagsUnbindingResponse =
+  PostDatasetsTagsUnbindingResponses[keyof PostDatasetsTagsUnbindingResponses]
 
 export type DeleteDatasetsByDatasetIdData = {
   body?: never
@@ -2086,8 +2086,8 @@ export type DeleteDatasetsByDatasetIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdResponse
-  = DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
+export type DeleteDatasetsByDatasetIdResponse =
+  DeleteDatasetsByDatasetIdResponses[keyof DeleteDatasetsByDatasetIdResponses]
 
 export type GetDatasetsByDatasetIdData = {
   body?: never
@@ -2108,8 +2108,8 @@ export type GetDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
 }
 
-export type GetDatasetsByDatasetIdResponse
-  = GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
+export type GetDatasetsByDatasetIdResponse =
+  GetDatasetsByDatasetIdResponses[keyof GetDatasetsByDatasetIdResponses]
 
 export type PatchDatasetsByDatasetIdData = {
   body: DatasetUpdatePayload
@@ -2130,8 +2130,8 @@ export type PatchDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
 }
 
-export type PatchDatasetsByDatasetIdResponse
-  = PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
+export type PatchDatasetsByDatasetIdResponse =
+  PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
   body: {
@@ -2154,8 +2154,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFileResponse
-  = PostDatasetsByDatasetIdDocumentCreateByFileResponses[keyof PostDatasetsByDatasetIdDocumentCreateByFileResponses]
+export type PostDatasetsByDatasetIdDocumentCreateByFileResponse =
+  PostDatasetsByDatasetIdDocumentCreateByFileResponses[keyof PostDatasetsByDatasetIdDocumentCreateByFileResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
   body: DocumentTextCreatePayload
@@ -2175,8 +2175,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByTextResponse
-  = PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
+export type PostDatasetsByDatasetIdDocumentCreateByTextResponse =
+  PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
   body: {
@@ -2199,8 +2199,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFile2Response
-  = PostDatasetsByDatasetIdDocumentCreateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Responses]
+export type PostDatasetsByDatasetIdDocumentCreateByFile2Response =
+  PostDatasetsByDatasetIdDocumentCreateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Responses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
   body: DocumentTextCreatePayload
@@ -2220,8 +2220,8 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByText2Response
-  = PostDatasetsByDatasetIdDocumentCreateByText2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByText2Responses]
+export type PostDatasetsByDatasetIdDocumentCreateByText2Response =
+  PostDatasetsByDatasetIdDocumentCreateByText2Responses[keyof PostDatasetsByDatasetIdDocumentCreateByText2Responses]
 
 export type GetDatasetsByDatasetIdDocumentsData = {
   body?: never
@@ -2246,8 +2246,8 @@ export type GetDatasetsByDatasetIdDocumentsResponses = {
   200: DocumentListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsResponse
-  = GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
+export type GetDatasetsByDatasetIdDocumentsResponse =
+  GetDatasetsByDatasetIdDocumentsResponses[keyof GetDatasetsByDatasetIdDocumentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
   body: DocumentBatchDownloadZipPayload
@@ -2268,8 +2268,8 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
   200: BinaryFileResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
-  = PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
+export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse =
+  PostDatasetsByDatasetIdDocumentsDownloadZipResponses[keyof PostDatasetsByDatasetIdDocumentsDownloadZipResponses]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataData = {
   body: MetadataOperationData
@@ -2289,8 +2289,8 @@ export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   200: DatasetMetadataActionResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsMetadataResponse
-  = PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
+export type PostDatasetsByDatasetIdDocumentsMetadataResponse =
+  PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
   body: DocumentStatusPayload
@@ -2313,8 +2313,8 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponses = {
   200: SimpleResultResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponse
-  = PatchDatasetsByDatasetIdDocumentsStatusByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionResponses]
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponse =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionResponses[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusData = {
   body?: never
@@ -2335,8 +2335,8 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses = {
   200: DocumentStatusListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
-  = GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses]
+export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse =
+  GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -2358,8 +2358,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: never
@@ -2383,8 +2383,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   200: DocumentDetailResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
   body?: {
@@ -2408,8 +2408,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   200: DocumentAndBatchResponse
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
   body?: never
@@ -2431,8 +2431,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
   200: UrlResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body?: never
@@ -2458,8 +2458,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
   200: SegmentListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
   body: SegmentCreatePayload
@@ -2481,8 +2481,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
   200: SegmentCreateListResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
@@ -2504,8 +2504,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdRes
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body?: never
@@ -2527,8 +2527,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdRespon
   200: SegmentDetailResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData = {
   body: SegmentUpdatePayload
@@ -2550,8 +2550,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdRespo
   200: SegmentDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body?: never
@@ -2577,8 +2577,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
   200: ChildChunkListResponse
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksData = {
   body: ChildChunkCreatePayload
@@ -2600,11 +2600,11 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
   200: ChildChunkDetailResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses]
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body?: never
     path: {
       child_chunk_id: string
@@ -2616,22 +2616,22 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
+  {
     401: unknown
     404: unknown
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
     204: void
   }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdData =
+  {
     body: ChildChunkUpdatePayload
     path: {
       child_chunk_id: string
@@ -2643,19 +2643,19 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
     url: '/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
+  {
     401: unknown
     404: unknown
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
-  = {
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
+  {
     200: ChildChunkDetailResponse
   }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
   body?: {
@@ -2679,8 +2679,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = 
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
   body: DocumentTextUpdate
@@ -2701,8 +2701,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = 
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
   body?: {
@@ -2726,8 +2726,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses =
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
   body: DocumentTextUpdate
@@ -2748,8 +2748,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses =
   200: DocumentAndBatchResponse
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses]
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload
@@ -2769,8 +2769,8 @@ export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdHitTestingResponse
-  = PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
+export type PostDatasetsByDatasetIdHitTestingResponse =
+  PostDatasetsByDatasetIdHitTestingResponses[keyof PostDatasetsByDatasetIdHitTestingResponses]
 
 export type GetDatasetsByDatasetIdMetadataData = {
   body?: never
@@ -2790,8 +2790,8 @@ export type GetDatasetsByDatasetIdMetadataResponses = {
   200: DatasetMetadataListResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataResponse
-  = GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
+export type GetDatasetsByDatasetIdMetadataResponse =
+  GetDatasetsByDatasetIdMetadataResponses[keyof GetDatasetsByDatasetIdMetadataResponses]
 
 export type PostDatasetsByDatasetIdMetadataData = {
   body: MetadataArgs
@@ -2811,8 +2811,8 @@ export type PostDatasetsByDatasetIdMetadataResponses = {
   201: DatasetMetadataResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataResponse
-  = PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
+export type PostDatasetsByDatasetIdMetadataResponse =
+  PostDatasetsByDatasetIdMetadataResponses[keyof PostDatasetsByDatasetIdMetadataResponses]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInData = {
   body?: never
@@ -2831,8 +2831,8 @@ export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
   200: DatasetMetadataBuiltInFieldsResponse
 }
 
-export type GetDatasetsByDatasetIdMetadataBuiltInResponse
-  = GetDatasetsByDatasetIdMetadataBuiltInResponses[keyof GetDatasetsByDatasetIdMetadataBuiltInResponses]
+export type GetDatasetsByDatasetIdMetadataBuiltInResponse =
+  GetDatasetsByDatasetIdMetadataBuiltInResponses[keyof GetDatasetsByDatasetIdMetadataBuiltInResponses]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   body?: never
@@ -2853,8 +2853,8 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
   200: DatasetMetadataActionResponse
 }
 
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponse =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionResponses[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionResponses]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
   body?: never
@@ -2875,8 +2875,8 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   204: void
 }
 
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
   body: MetadataUpdatePayload
@@ -2897,8 +2897,8 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   200: DatasetMetadataResponse
 }
 
-export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse
-  = PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponse =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdResponses[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdResponses]
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
   body?: never
@@ -2919,8 +2919,8 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses = {
   200: DatasourcePluginListResponse
 }
 
-export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponse
-  = GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses]
+export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponse =
+  GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses]
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
   body: DatasourceNodeRunPayload
@@ -2940,8 +2940,8 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses =
   200: GeneratedAppResponse
 }
 
-export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
-  = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses]
+export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse =
+  PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses]
 
 export type PostDatasetsByDatasetIdPipelineRunData = {
   body: PipelineRunApiEntity
@@ -2960,8 +2960,8 @@ export type PostDatasetsByDatasetIdPipelineRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostDatasetsByDatasetIdPipelineRunResponse
-  = PostDatasetsByDatasetIdPipelineRunResponses[keyof PostDatasetsByDatasetIdPipelineRunResponses]
+export type PostDatasetsByDatasetIdPipelineRunResponse =
+  PostDatasetsByDatasetIdPipelineRunResponses[keyof PostDatasetsByDatasetIdPipelineRunResponses]
 
 export type PostDatasetsByDatasetIdRetrieveData = {
   body: HitTestingPayload
@@ -2981,8 +2981,8 @@ export type PostDatasetsByDatasetIdRetrieveResponses = {
   200: HitTestingResponse
 }
 
-export type PostDatasetsByDatasetIdRetrieveResponse
-  = PostDatasetsByDatasetIdRetrieveResponses[keyof PostDatasetsByDatasetIdRetrieveResponses]
+export type PostDatasetsByDatasetIdRetrieveResponse =
+  PostDatasetsByDatasetIdRetrieveResponses[keyof PostDatasetsByDatasetIdRetrieveResponses]
 
 export type GetDatasetsByDatasetIdTagsData = {
   body?: never
@@ -3001,8 +3001,8 @@ export type GetDatasetsByDatasetIdTagsResponses = {
   200: DatasetBoundTagListResponse
 }
 
-export type GetDatasetsByDatasetIdTagsResponse
-  = GetDatasetsByDatasetIdTagsResponses[keyof GetDatasetsByDatasetIdTagsResponses]
+export type GetDatasetsByDatasetIdTagsResponse =
+  GetDatasetsByDatasetIdTagsResponses[keyof GetDatasetsByDatasetIdTagsResponses]
 
 export type GetEndUsersByEndUserIdData = {
   body?: never
@@ -3022,8 +3022,8 @@ export type GetEndUsersByEndUserIdResponses = {
   200: EndUserDetail
 }
 
-export type GetEndUsersByEndUserIdResponse
-  = GetEndUsersByEndUserIdResponses[keyof GetEndUsersByEndUserIdResponses]
+export type GetEndUsersByEndUserIdResponse =
+  GetEndUsersByEndUserIdResponses[keyof GetEndUsersByEndUserIdResponses]
 
 export type PostFilesUploadData = {
   body?: never
@@ -3066,8 +3066,8 @@ export type GetFilesByFileIdPreviewResponses = {
   200: BinaryFileResponse
 }
 
-export type GetFilesByFileIdPreviewResponse
-  = GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
+export type GetFilesByFileIdPreviewResponse =
+  GetFilesByFileIdPreviewResponses[keyof GetFilesByFileIdPreviewResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never
@@ -3088,8 +3088,8 @@ export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormTokenResponse
-  = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
   body: HumanInputFormSubmitPayload
@@ -3111,8 +3111,8 @@ export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse
-  = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
 
 export type GetInfoData = {
   body?: never
@@ -3172,8 +3172,8 @@ export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksResponse
-  = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
+export type PostMessagesByMessageIdFeedbacksResponse =
+  PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
 export type GetMessagesByMessageIdSuggestedData = {
   body?: never
@@ -3195,8 +3195,8 @@ export type GetMessagesByMessageIdSuggestedResponses = {
   200: SimpleResultStringListResponse
 }
 
-export type GetMessagesByMessageIdSuggestedResponse
-  = GetMessagesByMessageIdSuggestedResponses[keyof GetMessagesByMessageIdSuggestedResponses]
+export type GetMessagesByMessageIdSuggestedResponse =
+  GetMessagesByMessageIdSuggestedResponses[keyof GetMessagesByMessageIdSuggestedResponses]
 
 export type GetMetaData = {
   body?: never
@@ -3293,8 +3293,8 @@ export type GetWorkflowByTaskIdEventsResponses = {
   200: EventStreamResponse
 }
 
-export type GetWorkflowByTaskIdEventsResponse
-  = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
+export type GetWorkflowByTaskIdEventsResponse =
+  GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
 
 export type GetWorkflowsLogsData = {
   body?: never
@@ -3361,8 +3361,8 @@ export type GetWorkflowsRunByWorkflowRunIdResponses = {
   200: WorkflowRunResponse
 }
 
-export type GetWorkflowsRunByWorkflowRunIdResponse
-  = GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
+export type GetWorkflowsRunByWorkflowRunIdResponse =
+  GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
   body?: never
@@ -3382,8 +3382,8 @@ export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopResponse
-  = PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
+export type PostWorkflowsTasksByTaskIdStopResponse =
+  PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
 
 export type PostWorkflowsByWorkflowIdRunData = {
   body: WorkflowRunPayload
@@ -3406,8 +3406,8 @@ export type PostWorkflowsByWorkflowIdRunResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostWorkflowsByWorkflowIdRunResponse
-  = PostWorkflowsByWorkflowIdRunResponses[keyof PostWorkflowsByWorkflowIdRunResponses]
+export type PostWorkflowsByWorkflowIdRunResponse =
+  PostWorkflowsByWorkflowIdRunResponses[keyof PostWorkflowsByWorkflowIdRunResponses]
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
   body?: never
@@ -3426,5 +3426,5 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
   200: ProviderWithModelsListResponse
 }
 
-export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse
-  = GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]
+export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
+  GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]

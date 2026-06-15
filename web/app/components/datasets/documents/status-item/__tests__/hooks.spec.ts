@@ -14,7 +14,16 @@ describe('useIndexStatus', () => {
   it('should return all expected status keys', () => {
     const { result } = renderHook(() => useIndexStatus())
 
-    const expectedKeys = ['queuing', 'indexing', 'paused', 'error', 'available', 'enabled', 'disabled', 'archived']
+    const expectedKeys = [
+      'queuing',
+      'indexing',
+      'paused',
+      'error',
+      'available',
+      'enabled',
+      'disabled',
+      'archived',
+    ]
     const keys = Object.keys(result.current)
     expect(keys).toEqual(expect.arrayContaining(expectedKeys))
   })

@@ -14,11 +14,7 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 const renderWithProvider = (ui: React.ReactElement) => {
-  return render(
-    <FileContextProvider>
-      {ui}
-    </FileContextProvider>,
-  )
+  return render(<FileContextProvider>{ui}</FileContextProvider>)
 }
 
 describe('ImageInput (image-uploader-in-chunk)', () => {

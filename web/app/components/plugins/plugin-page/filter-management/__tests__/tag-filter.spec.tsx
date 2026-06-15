@@ -9,11 +9,12 @@ vi.mock('../../../hooks', () => ({
       { name: 'rag', label: 'RAG' },
       { name: 'search', label: 'Search' },
     ],
-    getTagLabel: (name: string) => ({
-      agent: 'Agent',
-      rag: 'RAG',
-      search: 'Search',
-    }[name] ?? name),
+    getTagLabel: (name: string) =>
+      ({
+        agent: 'Agent',
+        rag: 'RAG',
+        search: 'Search',
+      })[name] ?? name,
   }),
 }))
 
@@ -44,7 +45,9 @@ describe('TagFilter', () => {
     fireEvent.click(screen.getByTestId('popover-trigger'))
     const portal = screen.getByTestId('popover-content')
 
-    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), { target: { value: 'ra' } })
+    fireEvent.change(screen.getByPlaceholderText('pluginTags.searchTags'), {
+      target: { value: 'ra' },
+    })
 
     expect(within(portal).queryByText('Agent')).not.toBeInTheDocument()
     expect(within(portal).getByText('RAG')).toBeInTheDocument()

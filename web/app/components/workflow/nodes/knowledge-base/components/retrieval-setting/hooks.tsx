@@ -1,7 +1,4 @@
-import type {
-  HybridSearchModeOption,
-  Option,
-} from './type'
+import type { HybridSearchModeOption, Option } from './type'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,11 +6,7 @@ import {
   HybridSearch,
   VectorSearch,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import {
-  HybridSearchModeEnum,
-  IndexMethodEnum,
-  RetrievalSearchMethodEnum,
-} from '../../types'
+import { HybridSearchModeEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../../types'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const { t } = useTranslation()
@@ -69,27 +62,22 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
     }
   }, [t])
 
-  return useMemo(() => ({
-    options: indexMethod === IndexMethodEnum.ECONOMICAL
-      ? [
-          InvertedIndexOption,
-        ]
-      : [
-          VectorSearchOption,
-          FullTextSearchOption,
-          HybridSearchOption,
-        ],
-    hybridSearchModeOptions: [
+  return useMemo(
+    () => ({
+      options:
+        indexMethod === IndexMethodEnum.ECONOMICAL
+          ? [InvertedIndexOption]
+          : [VectorSearchOption, FullTextSearchOption, HybridSearchOption],
+      hybridSearchModeOptions: [WeightedScoreModeOption, RerankModelModeOption],
+    }),
+    [
+      VectorSearchOption,
+      FullTextSearchOption,
+      HybridSearchOption,
+      InvertedIndexOption,
+      indexMethod,
       WeightedScoreModeOption,
       RerankModelModeOption,
     ],
-  }), [
-    VectorSearchOption,
-    FullTextSearchOption,
-    HybridSearchOption,
-    InvertedIndexOption,
-    indexMethod,
-    WeightedScoreModeOption,
-    RerankModelModeOption,
-  ])
+  )
 }

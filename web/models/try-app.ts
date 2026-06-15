@@ -9,7 +9,7 @@ export type TryAppInfo = {
   mode: AppModeEnum
   site: SiteInfo
   model_config: ModelConfig
-  deleted_tools: { id: string, tool_name: string }[]
+  deleted_tools: { id: string; tool_name: string }[]
 }
 
 export type TryAppFlowPreview = {

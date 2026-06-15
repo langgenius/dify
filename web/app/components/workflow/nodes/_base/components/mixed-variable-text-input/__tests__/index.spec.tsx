@@ -1,8 +1,5 @@
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { render } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import MixedVariableTextInput from '../index'
@@ -10,12 +7,7 @@ import MixedVariableTextInput from '../index'
 let capturedPromptEditorProps: PromptEditorProps[] = []
 
 vi.mock('@/app/components/base/prompt-editor', () => ({
-  default: ({
-    editable,
-    value,
-    workflowVariableBlock,
-    onChange,
-  }: PromptEditorProps) => {
+  default: ({ editable, value, workflowVariableBlock, onChange }: PromptEditorProps) => {
     capturedPromptEditorProps.push({
       editable,
       value,
@@ -27,7 +19,9 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
       <div data-testid="prompt-editor">
         <div data-testid="editable-flag">{editable ? 'editable' : 'readonly'}</div>
         <div data-testid="value-flag">{value || 'empty'}</div>
-        <button type="button" onClick={() => onChange?.('updated text')}>trigger-change</button>
+        <button type="button" onClick={() => onChange?.('updated text')}>
+          trigger-change
+        </button>
       </div>
     )
   },
@@ -40,11 +34,13 @@ describe('MixedVariableTextInput', () => {
   })
 
   it('should pass workflow variable metadata to the prompt editor and include system variables for start nodes', () => {
-    const nodesOutputVars: NodeOutPutVar[] = [{
-      nodeId: 'node-1',
-      title: 'Question Node',
-      vars: [],
-    }]
+    const nodesOutputVars: NodeOutPutVar[] = [
+      {
+        nodeId: 'node-1',
+        title: 'Question Node',
+        vars: [],
+      },
+    ]
     const availableNodes: Node[] = [
       {
         id: 'start-node',
@@ -67,10 +63,7 @@ describe('MixedVariableTextInput', () => {
     ]
 
     render(
-      <MixedVariableTextInput
-        nodesOutputVars={nodesOutputVars}
-        availableNodes={availableNodes}
-      />,
+      <MixedVariableTextInput nodesOutputVars={nodesOutputVars} availableNodes={availableNodes} />,
     )
 
     const latestProps = capturedPromptEditorProps.at(-1)
@@ -82,7 +75,7 @@ describe('MixedVariableTextInput', () => {
         title: 'Start Node',
         type: 'start',
       },
-      'sys': {
+      sys: {
         title: 'workflow.blocks.start',
         type: 'start',
       },
@@ -96,11 +89,7 @@ describe('MixedVariableTextInput', () => {
   it('should forward read-only state, current value, and change callbacks', async () => {
     const onChange = vi.fn()
     const { findByRole, getByTestId } = render(
-      <MixedVariableTextInput
-        readOnly
-        value="seed value"
-        onChange={onChange}
-      />,
+      <MixedVariableTextInput readOnly value="seed value" onChange={onChange} />,
     )
 
     expect(getByTestId('editable-flag')).toHaveTextContent('readonly')

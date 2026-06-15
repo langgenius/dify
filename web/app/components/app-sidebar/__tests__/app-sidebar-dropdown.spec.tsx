@@ -8,9 +8,10 @@ import AppSidebarDropdown from '../app-sidebar-dropdown'
 let mockAppDetail: (App & Partial<AppSSO>) | undefined
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+    }),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -20,22 +21,40 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
-  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    isOpen: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+        <div data-testid="dropdown-menu" data-open={open}>
+          {children}
+        </div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+    DropdownMenuTrigger: ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode
+      onClick?: React.MouseEventHandler<HTMLButtonElement>
+    }) => {
       const { isOpen, setOpen } = useDropdownMenuContext()
       return (
         <button
@@ -50,12 +69,14 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
         </button>
       )
     },
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="dropdown-content">{children}</div>
+    ),
   }
 })
 
 vi.mock('../../base/app-icon', () => ({
-  default: ({ size, icon }: { size: string, icon: string }) => (
+  default: ({ size, icon }: { size: string; icon: string }) => (
     <div data-testid="app-icon" data-size={size} data-icon={icon} />
   ),
 }))
@@ -65,35 +86,47 @@ vi.mock('../../base/divider', () => ({
 }))
 
 vi.mock('../app-info', () => ({
-  default: ({ expand, onlyShowDetail, openState }: {
+  default: ({
+    expand,
+    onlyShowDetail,
+    openState,
+  }: {
     expand: boolean
     onlyShowDetail?: boolean
     openState?: boolean
   }) => (
-    <div data-testid="app-info" data-expand={expand} data-only-detail={onlyShowDetail} data-open={openState} />
+    <div
+      data-testid="app-info"
+      data-expand={expand}
+      data-only-detail={onlyShowDetail}
+      data-open={openState}
+    />
   ),
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href, mode }: { name: string, href: string, mode?: string }) => (
-    <a data-testid={`nav-link-${name}`} href={href} data-mode={mode}>{name}</a>
+  default: ({ name, href, mode }: { name: string; href: string; mode?: string }) => (
+    <a data-testid={`nav-link-${name}`} href={href} data-mode={mode}>
+      {name}
+    </a>
   ),
 }))
 
 const MockIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />
 
-const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> => ({
-  id: 'app-1',
-  name: 'Test App',
-  mode: AppModeEnum.CHAT,
-  icon: '🤖',
-  icon_type: 'emoji',
-  icon_background: '#FFEAD5',
-  icon_url: '',
-  description: '',
-  use_icon_as_answer_icon: false,
-  ...overrides,
-} as App & Partial<AppSSO>)
+const createAppDetail = (overrides: Partial<App> = {}): App & Partial<AppSSO> =>
+  ({
+    id: 'app-1',
+    name: 'Test App',
+    mode: AppModeEnum.CHAT,
+    icon: '🤖',
+    icon_type: 'emoji',
+    icon_background: '#FFEAD5',
+    icon_url: '',
+    description: '',
+    use_icon_as_answer_icon: false,
+    ...overrides,
+  }) as App & Partial<AppSSO>
 
 const navigation = [
   { name: 'Overview', href: '/overview', icon: MockIcon, selectedIcon: MockIcon },
@@ -115,7 +148,7 @@ describe('AppSidebarDropdown', () => {
   it('should render trigger with app icon', () => {
     render(<AppSidebarDropdown navigation={navigation} />)
     const icons = screen.getAllByTestId('app-icon')
-    const smallIcon = icons.find(i => i.getAttribute('data-size') === 'small')
+    const smallIcon = icons.find((i) => i.getAttribute('data-size') === 'small')
     expect(smallIcon).toBeInTheDocument()
   })
 
@@ -166,7 +199,7 @@ describe('AppSidebarDropdown', () => {
   it('should render large app icon in dropdown content', () => {
     render(<AppSidebarDropdown navigation={navigation} />)
     const icons = screen.getAllByTestId('app-icon')
-    const largeIcon = icons.find(icon => icon.getAttribute('data-size') === 'large')
+    const largeIcon = icons.find((icon) => icon.getAttribute('data-size') === 'large')
     expect(largeIcon).toBeInTheDocument()
   })
 
@@ -176,8 +209,7 @@ describe('AppSidebarDropdown', () => {
 
     const appName = screen.getByText('Test App')
     const appInfoArea = appName.closest('[class*="cursor-pointer"]')
-    if (appInfoArea)
-      await user.click(appInfoArea)
+    if (appInfoArea) await user.click(appInfoArea)
   })
 
   it('should display workflow mode label', () => {

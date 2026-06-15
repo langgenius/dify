@@ -3,10 +3,7 @@
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
 import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
-import {
-  Select,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
+import { Select, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdown/workplace-selector'
@@ -28,11 +25,11 @@ const AppliedEducationContent = ({
   onSwitchWorkspace,
 }: AppliedEducationContentProps) => {
   const { t } = useTranslation()
-  const currentWorkspaceInList = workspaces.find(workspace => workspace.current)
+  const currentWorkspaceInList = workspaces.find((workspace) => workspace.current)
   const workspacePlan = Object.values(Plan).includes(currentWorkspaceInList?.plan as Plan)
-    ? currentWorkspaceInList?.plan as Plan
+    ? (currentWorkspaceInList?.plan as Plan)
     : Object.values(Plan).includes(plan as Plan)
-      ? plan as Plan
+      ? (plan as Plan)
       : Plan.sandbox
   const workspaceName = currentWorkspaceInList?.name || currentWorkspace?.name
   const workspaceId = currentWorkspaceInList?.id || currentWorkspace?.id
@@ -66,8 +63,7 @@ const AppliedEducationContent = ({
           <Select
             value={workspaceId ?? ''}
             onValueChange={(value) => {
-              if (value)
-                onSwitchWorkspace(value)
+              if (value) onSwitchWorkspace(value)
             }}
           >
             <SelectTrigger className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover">
@@ -77,15 +73,15 @@ const AppliedEducationContent = ({
                     {workspaceName?.[0]?.toLocaleUpperCase()}
                   </span>
                 </span>
-                <span className="min-w-0 truncate system-md-semibold text-text-primary">{workspaceName}</span>
+                <span className="min-w-0 truncate system-md-semibold text-text-primary">
+                  {workspaceName}
+                </span>
                 <PlanBadge plan={workspacePlan} />
               </span>
             </SelectTrigger>
             <WorkplaceSelectorContent workspaces={workspaces} />
           </Select>
-          <div className="mt-3 pr-5">
-            {action}
-          </div>
+          <div className="mt-3 pr-5">{action}</div>
         </div>
       </div>
     </div>

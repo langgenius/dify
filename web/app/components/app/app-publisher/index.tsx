@@ -1,6 +1,9 @@
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
-import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
+import type {
+  WorkflowHiddenStartVariable,
+  WorkflowLaunchInputValue,
+} from '@/app/components/app/overview/app-card-utils'
 import type { CollaborationUpdate } from '@/app/components/workflow/collaboration/types/collaboration'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
@@ -9,22 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import {
-
-  memo,
-  use,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, use, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/app-card-sections'
 import {
   buildWorkflowLaunchUrl,
   createWorkflowLaunchInitialValues,
   isWorkflowLaunchInputSupported,
-
 } from '@/app/components/app/overview/app-card-utils'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -87,9 +81,9 @@ const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
-type AppPublisherPublishHandler
-  = | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
-    | ((params?: unknown) => Promise<unknown> | unknown)
+type AppPublisherPublishHandler =
+  | ((params?: AppPublisherPublishParams) => Promise<unknown> | unknown)
+  | ((params?: unknown) => Promise<unknown> | unknown)
 
 type AppPublisherRestoreHandler = () => Promise<unknown> | unknown
 
@@ -124,20 +118,24 @@ const AppPublisher = ({
   const [embeddingModalOpen, setEmbeddingModalOpen] = useState(false)
   const [workflowLaunchDialogOpen, setWorkflowLaunchDialogOpen] = useState(false)
   const [workflowLaunchTargetUrl, setWorkflowLaunchTargetUrl] = useState('')
-  const [workflowLaunchValues, setWorkflowLaunchValues] = useState<Record<string, WorkflowLaunchInputValue>>({})
+  const [workflowLaunchValues, setWorkflowLaunchValues] = useState<
+    Record<string, WorkflowLaunchInputValue>
+  >({})
   const [publishingToMarketplace, setPublishingToMarketplace] = useState(false)
 
   const workflowStore = use(WorkflowContext)
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
+  const setAppDetail = useAppStore((s) => s.setAppDetail)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
 
   const appURL = getPublisherAppUrl({ appBaseUrl: appBaseURL, accessToken, mode: appDetail?.mode })
-  const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(appDetail?.mode || AppModeEnum.CHAT)
+  const isChatApp = [AppModeEnum.CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.COMPLETION].includes(
+    appDetail?.mode || AppModeEnum.CHAT,
+  )
   const hiddenLaunchVariables = useMemo<WorkflowHiddenStartVariable[]>(
-    () => (inputs ?? []).filter(input => input.hide === true),
+    () => (inputs ?? []).filter((input) => input.hide === true),
     [inputs],
   )
   const supportedWorkflowLaunchVariables = useMemo(
@@ -145,7 +143,7 @@ const AppPublisher = ({
     [hiddenLaunchVariables],
   )
   const unsupportedWorkflowLaunchVariables = useMemo(
-    () => hiddenLaunchVariables.filter(variable => !isWorkflowLaunchInputSupported(variable)),
+    () => hiddenLaunchVariables.filter((variable) => !isWorkflowLaunchInputSupported(variable)),
     [hiddenLaunchVariables],
   )
   const initialWorkflowLaunchValues = useMemo(
@@ -153,167 +151,197 @@ const AppPublisher = ({
     [supportedWorkflowLaunchVariables],
   )
 
-  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
-  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const {
+    data: userCanAccessApp,
+    isLoading: isGettingUserCanAccessApp,
+    refetch,
+  } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
+  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } =
+    useAppWhiteListSubjects(
+      appDetail?.id,
+      open &&
+        systemFeatures.webapp_auth.enabled &&
+        appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS,
+    )
   const invalidateAppWorkflow = useInvalidateAppWorkflow()
   const openAsyncWindow = useAsyncWindowOpen()
 
-  const isAppAccessSet = useMemo(() => isPublisherAccessConfigured(appDetail, appAccessSubjects), [appAccessSubjects, appDetail])
+  const isAppAccessSet = useMemo(
+    () => isPublisherAccessConfigured(appDetail, appAccessSubjects),
+    [appAccessSubjects, appDetail],
+  )
 
-  const noAccessPermission = useMemo(() => Boolean(
-    systemFeatures.webapp_auth.enabled
-    && appDetail
-    && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS
-    && !userCanAccessApp?.result,
-  ), [systemFeatures, appDetail, userCanAccessApp])
-  const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
-  const disabledFunctionTooltip = useMemo(() => getDisabledFunctionTooltip({
-    t,
-    publishedAt,
-    missingStartNode,
-    noAccessPermission,
-  }), [missingStartNode, noAccessPermission, publishedAt, t])
+  const noAccessPermission = useMemo(
+    () =>
+      Boolean(
+        systemFeatures.webapp_auth.enabled &&
+        appDetail &&
+        appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS &&
+        !userCanAccessApp?.result,
+      ),
+    [systemFeatures, appDetail, userCanAccessApp],
+  )
+  const disabledFunctionButton = useMemo(
+    () => !publishedAt || missingStartNode || noAccessPermission,
+    [publishedAt, missingStartNode, noAccessPermission],
+  )
+  const disabledFunctionTooltip = useMemo(
+    () =>
+      getDisabledFunctionTooltip({
+        t,
+        publishedAt,
+        missingStartNode,
+        noAccessPermission,
+      }),
+    [missingStartNode, noAccessPermission, publishedAt, t],
+  )
 
   useEffect(() => {
-    if (systemFeatures.webapp_auth.enabled && open && appDetail)
-      refetch()
+    if (systemFeatures.webapp_auth.enabled && open && appDetail) refetch()
   }, [open, appDetail, refetch, systemFeatures])
 
-  const handlePublish = useCallback(async (params?: ModelAndParameter | PublishWorkflowParams) => {
-    try {
-      await onPublish?.(params)
-      setPublished(true)
+  const handlePublish = useCallback(
+    async (params?: ModelAndParameter | PublishWorkflowParams) => {
+      try {
+        await onPublish?.(params)
+        setPublished(true)
 
-      const appId = appDetail?.id
-      const socket = appId ? webSocketClient.getSocket(appId) : null
-      if (appId)
-        invalidateAppWorkflow(appId)
-      else
-        console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
-      if (socket) {
-        const timestamp = Date.now()
-        socket.emit('collaboration_event', {
-          type: 'app_publish_update',
-          data: {
-            action: 'published',
+        const appId = appDetail?.id
+        const socket = appId ? webSocketClient.getSocket(appId) : null
+        if (appId) invalidateAppWorkflow(appId)
+        else console.warn('[app-publisher] missing appId, skip workflow invalidate and socket emit')
+        if (socket) {
+          const timestamp = Date.now()
+          socket.emit('collaboration_event', {
+            type: 'app_publish_update',
+            data: {
+              action: 'published',
+              timestamp,
+            },
             timestamp,
-          },
-          timestamp,
-        })
-      }
-      else if (appId) {
-        console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
-      }
+          })
+        } else if (appId) {
+          console.warn('[app-publisher] socket not ready, skip collaboration_event emit', { appId })
+        }
 
-      trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
-    }
-    catch (error) {
-      console.warn('[app-publisher] publish failed', error)
-      setPublished(false)
-    }
-  }, [appDetail, onPublish, invalidateAppWorkflow])
+        trackEvent('app_published_time', {
+          action_mode: 'app',
+          app_id: appDetail?.id,
+          app_name: appDetail?.name,
+        })
+      } catch (error) {
+        console.warn('[app-publisher] publish failed', error)
+        setPublished(false)
+      }
+    },
+    [appDetail, onPublish, invalidateAppWorkflow],
+  )
 
   const handleRestore = useCallback(async () => {
     try {
       await onRestore?.()
       setOpen(false)
-    }
-    catch { }
+    } catch {}
   }, [onRestore])
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (disabled) {
-      setOpen(false)
-      return
-    }
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (disabled) {
+        setOpen(false)
+        return
+      }
 
-    onToggle?.(nextOpen)
-    setOpen(nextOpen)
+      onToggle?.(nextOpen)
+      setOpen(nextOpen)
 
-    if (nextOpen)
-      setPublished(false)
-  }, [disabled, onToggle])
+      if (nextOpen) setPublished(false)
+    },
+    [disabled, onToggle],
+  )
 
   const handleOpenInExplore = useCallback(async () => {
-    await openAsyncWindow(async () => {
-      if (!appDetail?.id)
-        throw new Error('App not found')
-      const { installed_apps } = await fetchInstalledAppList(appDetail.id)
-      if (installed_apps?.length > 0)
-        return `${basePath}/explore/installed/${installed_apps[0]!.id}`
-      throw new Error('No app found in Explore')
-    }, {
-      onError: (err) => {
-        toast.error(`${err.message || err}`)
+    await openAsyncWindow(
+      async () => {
+        if (!appDetail?.id) throw new Error('App not found')
+        const { installed_apps } = await fetchInstalledAppList(appDetail.id)
+        if (installed_apps?.length > 0)
+          return `${basePath}/explore/installed/${installed_apps[0]!.id}`
+        throw new Error('No app found in Explore')
       },
-    })
+      {
+        onError: (err) => {
+          toast.error(`${err.message || err}`)
+        },
+      },
+    )
   }, [appDetail?.id, openAsyncWindow])
 
   const handleAccessControlUpdate = useCallback(async () => {
-    if (!appDetail)
-      return
+    if (!appDetail) return
     try {
       const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
       setAppDetail(res)
-    }
-    finally {
+    } finally {
       setShowAppAccessControl(false)
     }
   }, [appDetail, setAppDetail])
 
-  const handleOpenWorkflowLaunchDialog = useCallback((targetUrl: string) => {
-    setWorkflowLaunchValues(initialWorkflowLaunchValues)
-    setWorkflowLaunchTargetUrl(targetUrl)
-    setWorkflowLaunchDialogOpen(true)
-  }, [initialWorkflowLaunchValues])
+  const handleOpenWorkflowLaunchDialog = useCallback(
+    (targetUrl: string) => {
+      setWorkflowLaunchValues(initialWorkflowLaunchValues)
+      setWorkflowLaunchTargetUrl(targetUrl)
+      setWorkflowLaunchDialogOpen(true)
+    },
+    [initialWorkflowLaunchValues],
+  )
 
-  const handleWorkflowLaunchValueChange = useCallback((variable: string, value: WorkflowLaunchInputValue) => {
-    setWorkflowLaunchValues(prev => ({
-      ...prev,
-      [variable]: value,
-    }))
-  }, [])
+  const handleWorkflowLaunchValueChange = useCallback(
+    (variable: string, value: WorkflowLaunchInputValue) => {
+      setWorkflowLaunchValues((prev) => ({
+        ...prev,
+        [variable]: value,
+      }))
+    },
+    [],
+  )
 
-  const handleWorkflowLaunchConfirm = useCallback(async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const handleWorkflowLaunchConfirm = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
 
-    const targetUrl = await buildWorkflowLaunchUrl({
-      accessibleUrl: workflowLaunchTargetUrl,
-      variables: supportedWorkflowLaunchVariables,
-      values: workflowLaunchValues,
-    })
+      const targetUrl = await buildWorkflowLaunchUrl({
+        accessibleUrl: workflowLaunchTargetUrl,
+        variables: supportedWorkflowLaunchVariables,
+        values: workflowLaunchValues,
+      })
 
-    window.open(targetUrl, '_blank')
-    setWorkflowLaunchDialogOpen(false)
-  }, [supportedWorkflowLaunchVariables, workflowLaunchTargetUrl, workflowLaunchValues])
+      window.open(targetUrl, '_blank')
+      setWorkflowLaunchDialogOpen(false)
+    },
+    [supportedWorkflowLaunchVariables, workflowLaunchTargetUrl, workflowLaunchValues],
+  )
   const handlePublishToMarketplace = useCallback(async () => {
-    if (!appDetail?.id || publishingToMarketplace)
-      return
+    if (!appDetail?.id || publishingToMarketplace) return
     setPublishingToMarketplace(true)
     try {
       const res = await publishToCreatorsPlatform({ appID: appDetail.id })
-      if (res.redirect_url)
-        window.open(res.redirect_url, '_blank')
-    }
-    catch {
+      if (res.redirect_url) window.open(res.redirect_url, '_blank')
+    } catch {
       toast.error(t('common.publishToMarketplaceFailed', { ns: 'workflow' }))
-    }
-    finally {
+    } finally {
       setPublishingToMarketplace(false)
     }
   }, [appDetail?.id, publishingToMarketplace, t])
 
   useHotkey('Mod+Shift+P', (e) => {
     e.preventDefault()
-    if (publishDisabled || published)
-      return
+    if (publishDisabled || published) return
     handlePublish()
   })
 
   useEffect(() => {
     const appId = appDetail?.id
-    if (!appId)
-      return
+    if (!appId) return
 
     const unsubscribe = collaborationManager.onAppPublishUpdate((update: CollaborationUpdate) => {
       const action = typeof update.data.action === 'string' ? update.data.action : undefined
@@ -334,16 +362,24 @@ const AppPublisher = ({
   }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
 
   const hasPublishedVersion = !!publishedAt
-  const workflowToolMessage = !hasPublishedVersion || !workflowToolAvailable
-    ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' })
-    : undefined
-  const workflowToolVisible = appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const workflowToolMessage =
+    !hasPublishedVersion || !workflowToolAvailable
+      ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' })
+      : undefined
+  const workflowToolVisible =
+    appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
   const workflowToolPublished = !!toolPublished
   const closeWorkflowToolDrawer = useCallback(() => setWorkflowToolDrawerOpen(false), [])
-  const workflowToolIcon = useMemo(() => ({
-    content: (appDetail?.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-    background: (appDetail?.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-  }), [appDetail?.icon, appDetail?.icon_background, appDetail?.icon_type])
+  const workflowToolIcon = useMemo(
+    () => ({
+      content: (appDetail?.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
+      background:
+        (appDetail?.icon_type === 'image'
+          ? appDefaultIconBackground
+          : appDetail?.icon_background) || appDefaultIconBackground,
+    }),
+    [appDetail?.icon, appDetail?.icon_background, appDetail?.icon_type],
+  )
   const workflowTool = useConfigureButton({
     enabled: workflowToolVisible,
     published: workflowToolPublished,
@@ -362,30 +398,27 @@ const AppPublisher = ({
     handleOpenChange(false)
     setWorkflowToolDrawerOpen(true)
   }, [handleOpenChange])
-  const upgradeHighlightStyle = useMemo(() => ({
-    background: 'linear-gradient(97deg, var(--components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -3.64%, var(--components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45.14%)',
-    WebkitBackgroundClip: 'text',
-    backgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  }), [])
+  const upgradeHighlightStyle = useMemo(
+    () => ({
+      background:
+        'linear-gradient(97deg, var(--components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -3.64%, var(--components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45.14%)',
+      WebkitBackgroundClip: 'text',
+      backgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+    }),
+    [],
+  )
 
   return (
     <>
-      <Popover
-        open={open}
-        onOpenChange={handleOpenChange}
-      >
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger
-          render={(
-            <Button
-              variant="primary"
-              className="py-2 pr-2 pl-3"
-              disabled={disabled}
-            >
+          render={
+            <Button variant="primary" className="py-2 pr-2 pl-3" disabled={disabled}>
               {t('common.publish', { ns: 'workflow' })}
               <span className="i-ri-arrow-down-s-line size-4 text-components-button-primary-text" />
             </Button>
-          )}
+          }
         />
         <PopoverContent
           placement="bottom-end"
@@ -412,7 +445,10 @@ const AppPublisher = ({
             <PublisherAccessSection
               enabled={systemFeatures.webapp_auth.enabled}
               isAppAccessSet={isAppAccessSet}
-              isLoading={Boolean(systemFeatures.webapp_auth.enabled && (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects))}
+              isLoading={Boolean(
+                systemFeatures.webapp_auth.enabled &&
+                (isGettingUserCanAccessApp || isGettingAppWhiteListSubjects),
+              )}
               accessMode={appDetail?.access_mode}
               onClick={() => {
                 handleOpenChange(false)
@@ -439,7 +475,11 @@ const AppPublisher = ({
               missingStartNode={missingStartNode}
               published={published}
               publishedAt={publishedAt}
-              showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
+              showBatchRunConfig={
+                hiddenLaunchVariables.length > 0 &&
+                (appDetail?.mode === AppModeEnum.WORKFLOW ||
+                  appDetail?.mode === AppModeEnum.COMPLETION)
+              }
               showRunConfig={hiddenLaunchVariables.length > 0}
               toolPublished={toolPublished}
               workflowToolAvailable={workflowToolAvailable}
@@ -472,7 +512,15 @@ const AppPublisher = ({
           accessToken={accessToken}
           hiddenInputs={hiddenLaunchVariables}
         />
-        {showAppAccessControl && <AccessControl app={appDetail!} onConfirm={handleAccessControlUpdate} onClose={() => { setShowAppAccessControl(false) }} />}
+        {showAppAccessControl && (
+          <AccessControl
+            app={appDetail!}
+            onConfirm={handleAccessControlUpdate}
+            onClose={() => {
+              setShowAppAccessControl(false)
+            }}
+          />
+        )}
         <WorkflowLaunchDialog
           t={t}
           open={workflowLaunchDialogOpen}

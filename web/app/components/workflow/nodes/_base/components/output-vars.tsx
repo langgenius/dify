@@ -15,13 +15,7 @@ type Props = Readonly<{
   onCollapse?: (collapsed: boolean) => void
 }>
 
-const OutputVars: FC<Props> = ({
-  title,
-  children,
-  operations,
-  collapsed,
-  onCollapse,
-}) => {
+const OutputVars: FC<Props> = ({ title, children, operations, collapsed, onCollapse }) => {
   const { t } = useTranslation()
   return (
     <FieldCollapse
@@ -46,13 +40,7 @@ type VarItemProps = {
   isIndent?: boolean
 }
 
-export const VarItem: FC<VarItemProps> = ({
-  name,
-  type,
-  description,
-  subItems,
-  isIndent,
-}) => {
+export const VarItem: FC<VarItemProps> = ({ name, type, description, subItems, isIndent }) => {
   return (
     <div className={cn('flex', isIndent && 'relative left-[-7px]')}>
       {isIndent && <TreeIndentLine depth={1} />}

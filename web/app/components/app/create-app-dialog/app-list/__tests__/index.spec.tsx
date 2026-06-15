@@ -34,29 +34,51 @@ vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => mockUseExploreAppList(),
 }))
 vi.mock('@/app/components/app/type-selector', () => ({
-  default: ({ value, onChange }: { value: AppModeEnum[], onChange: (value: AppModeEnum[]) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: AppModeEnum[]
+    onChange: (value: AppModeEnum[]) => void
+  }) => (
     <div>
-      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>{value.join(',')}</button>
-      <button data-testid="type-selector-advanced" onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}>advanced</button>
-      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>agent</button>
-      <button data-testid="type-selector-completion" onClick={() => onChange([AppModeEnum.COMPLETION])}>completion</button>
-      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>workflow</button>
+      <button data-testid="type-selector-chat" onClick={() => onChange([AppModeEnum.CHAT])}>
+        {value.join(',')}
+      </button>
+      <button
+        data-testid="type-selector-advanced"
+        onClick={() => onChange([AppModeEnum.ADVANCED_CHAT])}
+      >
+        advanced
+      </button>
+      <button data-testid="type-selector-agent" onClick={() => onChange([AppModeEnum.AGENT_CHAT])}>
+        agent
+      </button>
+      <button
+        data-testid="type-selector-completion"
+        onClick={() => onChange([AppModeEnum.COMPLETION])}
+      >
+        completion
+      </button>
+      <button data-testid="type-selector-workflow" onClick={() => onChange([AppModeEnum.WORKFLOW])}>
+        workflow
+      </button>
     </div>
   ),
 }))
 vi.mock('../../app-card', () => ({
-  default: ({ app, onCreate }: { app: { app: { name: string } }, onCreate: () => void }) => (
-    <div
-      data-testid="app-card"
-      data-name={app.app.name}
-      onClick={onCreate}
-    >
+  default: ({ app, onCreate }: { app: { app: { name: string } }; onCreate: () => void }) => (
+    <div data-testid="app-card" data-name={app.app.name} onClick={onCreate}>
       {app.app.name}
     </div>
   ),
 }))
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  default: ({ onConfirm, onHide, show }: {
+  default: ({
+    onConfirm,
+    onHide,
+    show,
+  }: {
     onConfirm: (payload: {
       name: string
       icon_type: string
@@ -66,25 +88,28 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
     }) => Promise<void>
     onHide: () => void
     show: boolean
-  }) => show
-    ? (
-        <div data-testid="create-from-template-modal">
-          <button
-            data-testid="confirm-create"
-            onClick={() => onConfirm({
+  }) =>
+    show ? (
+      <div data-testid="create-from-template-modal">
+        <button
+          data-testid="confirm-create"
+          onClick={() =>
+            onConfirm({
               name: 'Created App',
               icon_type: 'emoji',
               icon: '🙂',
               icon_background: '#fff',
               description: 'created from template',
-            })}
-          >
-            confirm-create
-          </button>
-          <button data-testid="hide-create-modal" onClick={onHide}>hide-create-modal</button>
-        </div>
-      )
-    : null,
+            })
+          }
+        >
+          confirm-create
+        </button>
+        <button data-testid="hide-create-modal" onClick={onHide}>
+          hide-create-modal
+        </button>
+      </div>
+    ) : null,
 }))
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -103,7 +128,8 @@ vi.mock('@/service/explore', () => ({
 }))
 vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   usePluginDependencies: () => ({
-    handleCheckPluginDependencies: (...args: unknown[]) => mockHandleCheckPluginDependencies(...args),
+    handleCheckPluginDependencies: (...args: unknown[]) =>
+      mockHandleCheckPluginDependencies(...args),
   }),
 }))
 vi.mock('@/utils/app-redirection', () => ({
@@ -240,10 +266,12 @@ describe('Apps', () => {
 
     await waitFor(() => {
       expect(mockFetchAppDetail).toHaveBeenCalledWith('Alpha')
-      expect(mockImportDSL).toHaveBeenCalledWith(expect.objectContaining({
-        yaml_content: 'dsl',
-        name: 'Created App',
-      }))
+      expect(mockImportDSL).toHaveBeenCalledWith(
+        expect.objectContaining({
+          yaml_content: 'dsl',
+          name: 'Created App',
+        }),
+      )
     })
 
     expect(mockTrackCreateApp).toHaveBeenCalledWith({
@@ -255,10 +283,14 @@ describe('Apps', () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
-    expect(mockGetRedirection).toHaveBeenCalledWith(true, {
-      id: 'created-app-id',
-      mode: AppModeEnum.CHAT,
-    }, mockPush)
+    expect(mockGetRedirection).toHaveBeenCalledWith(
+      true,
+      {
+        id: 'created-app-id',
+        mode: AppModeEnum.CHAT,
+      },
+      mockPush,
+    )
   })
 
   it('shows an error toast when importing the template fails', async () => {

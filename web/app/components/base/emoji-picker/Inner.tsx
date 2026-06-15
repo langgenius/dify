@@ -2,9 +2,7 @@
 import type { EmojiMartData } from '@emoji-mart/data'
 import type { ChangeEvent } from 'react'
 import data from '@emoji-mart/data'
-import {
-  MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { cn } from '@langgenius/dify-ui/cn'
 import { init } from 'emoji-mart'
 import * as React from 'react'
@@ -23,12 +21,7 @@ type IEmojiPickerInnerProps = {
   className?: string
 }
 
-function EmojiPickerInner({
-  emoji,
-  background,
-  onSelect,
-  className,
-}: IEmojiPickerInnerProps) {
+function EmojiPickerInner({ emoji, background, onSelect, className }: IEmojiPickerInnerProps) {
   const { categories } = data as EmojiMartData
   const [selectedEmoji, setSelectedEmoji] = useState(emoji || '')
   const [selectedBackground, setSelectedBackground] = useState(background || defaultEmojiBackground)
@@ -46,8 +39,7 @@ function EmojiPickerInner({
 
   const handleBackgroundSelect = (background: string) => {
     setSelectedBackground(background)
-    if (selectedEmoji)
-      onSelect?.(selectedEmoji, background)
+    if (selectedEmoji) onSelect?.(selectedEmoji, background)
   }
 
   return (
@@ -65,8 +57,7 @@ function EmojiPickerInner({
             onChange={async (e: ChangeEvent<HTMLInputElement>) => {
               if (e.target.value === '') {
                 setIsSearching(false)
-              }
-              else {
+              } else {
                 setIsSearching(true)
                 const emojis = await searchEmoji(e.target.value)
                 setSearchedEmojis(emojis)
@@ -127,7 +118,6 @@ function EmojiPickerInner({
                     </button>
                   )
                 })}
-
               </div>
             </div>
           )
@@ -136,26 +126,26 @@ function EmojiPickerInner({
 
       {/* Color Select */}
       <div className={cn('flex items-center justify-between p-3 pb-0')}>
-        <p id={styleColorsLabelId} className="mb-2 system-xs-medium-uppercase text-text-primary">Choose Style</p>
-        {showStyleColors
-          ? (
-              <button
-                type="button"
-                aria-labelledby={styleColorsLabelId}
-                aria-expanded="true"
-                className="i-heroicons-chevron-down size-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary"
-                onClick={() => setShowStyleColors(!showStyleColors)}
-              />
-            )
-          : (
-              <button
-                type="button"
-                aria-labelledby={styleColorsLabelId}
-                aria-expanded="false"
-                className="i-heroicons-chevron-up size-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary"
-                onClick={() => setShowStyleColors(!showStyleColors)}
-              />
-            )}
+        <p id={styleColorsLabelId} className="mb-2 system-xs-medium-uppercase text-text-primary">
+          Choose Style
+        </p>
+        {showStyleColors ? (
+          <button
+            type="button"
+            aria-labelledby={styleColorsLabelId}
+            aria-expanded="true"
+            className="i-heroicons-chevron-down size-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary"
+            onClick={() => setShowStyleColors(!showStyleColors)}
+          />
+        ) : (
+          <button
+            type="button"
+            aria-labelledby={styleColorsLabelId}
+            aria-expanded="false"
+            className="i-heroicons-chevron-up size-4 cursor-pointer border-none bg-transparent p-0 text-text-quaternary"
+            onClick={() => setShowStyleColors(!showStyleColors)}
+          />
+        )}
       </div>
       {showStyleColors && (
         <div className="grid w-full grid-cols-8 gap-1 px-3">
@@ -165,23 +155,19 @@ function EmojiPickerInner({
                 type="button"
                 key={color}
                 aria-label={color}
-                className={
-                  cn(
-                    'cursor-pointer',
-                    'border-none bg-transparent p-0',
-                    'ring-components-input-border-hover ring-offset-1 hover:ring-1',
-                    'inline-flex size-10 items-center justify-center rounded-lg',
-                    color === selectedBackground ? 'ring-1 ring-components-input-border-hover' : '',
-                  )
-                }
+                className={cn(
+                  'cursor-pointer',
+                  'border-none bg-transparent p-0',
+                  'ring-components-input-border-hover ring-offset-1 hover:ring-1',
+                  'inline-flex size-10 items-center justify-center rounded-lg',
+                  color === selectedBackground ? 'ring-1 ring-components-input-border-hover' : '',
+                )}
                 onClick={() => {
                   handleBackgroundSelect(color)
                 }}
               >
                 <span
-                  className={cn(
-                    'flex size-8 items-center justify-center rounded-lg p-1',
-                  )}
+                  className={cn('flex size-8 items-center justify-center rounded-lg p-1')}
                   style={{ background: color }}
                 >
                   {selectedEmoji !== '' && <em-emoji id={selectedEmoji} />}

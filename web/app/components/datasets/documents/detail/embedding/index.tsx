@@ -18,13 +18,28 @@ type EmbeddingDetailProps = {
   retrievalMethod?: RETRIEVE_METHOD
   detailUpdate: VoidFunction
 }
-const EmbeddingDetail: FC<EmbeddingDetailProps> = ({ datasetId: dstId, documentId: docId, detailUpdate, indexingType, retrievalMethod }) => {
+const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
+  datasetId: dstId,
+  documentId: docId,
+  detailUpdate,
+  indexingType,
+  retrievalMethod,
+}) => {
   const { t } = useTranslation()
-  const contextDatasetId = useDocumentContext(s => s.datasetId)
-  const contextDocumentId = useDocumentContext(s => s.documentId)
+  const contextDatasetId = useDocumentContext((s) => s.datasetId)
+  const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId
   const documentId = docId ?? contextDocumentId
-  const { data: indexingStatus, isEmbedding, isCompleted, isPaused, isError, percent, resetStatus, refetch } = useEmbeddingStatus({
+  const {
+    data: indexingStatus,
+    isEmbedding,
+    isCompleted,
+    isPaused,
+    isError,
+    percent,
+    resetStatus,
+    refetch,
+  } = useEmbeddingStatus({
     datasetId,
     documentId,
     onComplete: detailUpdate,
@@ -64,10 +79,33 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({ datasetId: dstId, documentI
   return (
     <>
       <div className="flex flex-col gap-y-2 px-16 py-12">
-        <StatusHeader isEmbedding={isEmbedding} isCompleted={isCompleted} isPaused={isPaused} isError={isError} onPause={handlePause} onResume={handleResume} isPauseLoading={pauseMutation.isPending} isResumeLoading={resumeMutation.isPending} />
-        <ProgressBar percent={percent} isEmbedding={isEmbedding} isCompleted={isCompleted} isPaused={isPaused} isError={isError} />
-        <SegmentProgress completedSegments={indexingStatus?.completed_segments} totalSegments={indexingStatus?.total_segments} percent={percent} />
-        <RuleDetail sourceData={ruleDetail} indexingType={indexingType} retrievalMethod={retrievalMethod} />
+        <StatusHeader
+          isEmbedding={isEmbedding}
+          isCompleted={isCompleted}
+          isPaused={isPaused}
+          isError={isError}
+          onPause={handlePause}
+          onResume={handleResume}
+          isPauseLoading={pauseMutation.isPending}
+          isResumeLoading={resumeMutation.isPending}
+        />
+        <ProgressBar
+          percent={percent}
+          isEmbedding={isEmbedding}
+          isCompleted={isCompleted}
+          isPaused={isPaused}
+          isError={isError}
+        />
+        <SegmentProgress
+          completedSegments={indexingStatus?.completed_segments}
+          totalSegments={indexingStatus?.total_segments}
+          percent={percent}
+        />
+        <RuleDetail
+          sourceData={ruleDetail}
+          indexingType={indexingType}
+          retrievalMethod={retrievalMethod}
+        />
       </div>
       <EmbeddingSkeleton />
     </>

@@ -44,26 +44,22 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
         'admin',
         'editor',
         'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
+        ...(datasetOperatorEnabled ? (['dataset_operator'] as const) : []),
       ]
     }
     if (operatorRole === 'admin') {
-      return [
-        ...nonOwnerRoles,
-        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
-      ]
+      return [...nonOwnerRoles, ...(datasetOperatorEnabled ? (['dataset_operator'] as const) : [])]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
-  const canRemoveMember = operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
+  const canRemoveMember =
+    operatorRole === 'owner' || (operatorRole === 'admin' && isNonOwnerRole(member.role))
   const handleDeleteMemberOrCancelInvitation = async () => {
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    }
-    catch {
-    }
+    } catch {}
   }
   const handleUpdateMemberRole = async (role: string) => {
     try {
@@ -73,17 +69,16 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
       })
       onOperate()
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    }
-    catch {
-    }
+    } catch {}
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover"
-      >
+      <DropdownMenuTrigger className="group flex size-full cursor-pointer items-center justify-between border-none bg-transparent px-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover data-popup-open:bg-state-base-hover">
         {RoleMap[member.role] || RoleMap.normal}
-        <span aria-hidden className="i-ri-arrow-down-s-line hidden size-4 shrink-0 group-hover:block group-data-popup-open:block" />
+        <span
+          aria-hidden
+          className="i-ri-arrow-down-s-line hidden size-4 shrink-0 group-hover:block group-data-popup-open:block"
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
@@ -91,18 +86,27 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
         popupClassName="inline-flex flex-col rounded-xl p-0"
       >
         <div className="p-1">
-          {roleList.map(role => (
+          {roleList.map((role) => (
             <DropdownMenuItem
               key={role}
               className="h-auto items-start gap-2 rounded-lg px-3 py-2"
               onClick={() => handleUpdateMemberRole(role)}
             >
-              {role === member.role
-                ? <span aria-hidden className="mt-[2px] i-ri-check-line h-4 w-4 shrink-0 text-text-accent" />
-                : <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />}
+              {role === member.role ? (
+                <span
+                  aria-hidden
+                  className="mt-[2px] i-ri-check-line h-4 w-4 shrink-0 text-text-accent"
+                />
+              ) : (
+                <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
+              )}
               <div>
-                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
-                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
+                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">
+                  {t(roleI18nKeyMap[role].label, { ns: 'common' })}
+                </div>
+                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">
+                  {t(roleI18nKeyMap[role].tip, { ns: 'common' })}
+                </div>
               </div>
             </DropdownMenuItem>
           ))}
@@ -117,8 +121,12 @@ const Operation = ({ member, operatorRole, onOperate }: IOperationProps) => {
               >
                 <span aria-hidden className="mt-[2px] h-4 w-4 shrink-0" />
                 <div>
-                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
-                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                  <div className="system-sm-semibold whitespace-nowrap text-text-secondary">
+                    {t('members.removeFromTeam', { ns: 'common' })}
+                  </div>
+                  <div className="system-xs-regular whitespace-nowrap text-text-tertiary">
+                    {t('members.removeFromTeamTip', { ns: 'common' })}
+                  </div>
                 </div>
               </DropdownMenuItem>
             </div>

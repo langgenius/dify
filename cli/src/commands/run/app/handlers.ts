@@ -9,7 +9,7 @@ export const RUN_MODES = {
   Workflow: 'workflow',
 } as const
 
-export type RunMode = typeof RUN_MODES[keyof typeof RUN_MODES]
+export type RunMode = (typeof RUN_MODES)[keyof typeof RUN_MODES]
 
 export type AppRunObject = FormattedPrintable
 
@@ -39,8 +39,7 @@ function textForMode(mode: string, raw: Record<string, unknown>): string {
 function renderChat(raw: Record<string, unknown>): string {
   const out: string[] = []
   const answer = pickString(raw, 'answer')
-  if (answer !== undefined)
-    out.push(answer)
+  if (answer !== undefined) out.push(answer)
   out.push('')
   return out.join('\n')
 }
@@ -56,8 +55,7 @@ function renderWorkflow(raw: Record<string, unknown>): string {
     if (outputs !== undefined) {
       if (typeof outputs === 'object' && outputs !== null) {
         const entries = Object.entries(outputs as Record<string, unknown>)
-        if (entries.length === 1 && typeof entries[0]![1] === 'string')
-          return `${entries[0]![1]}\n`
+        if (entries.length === 1 && typeof entries[0]![1] === 'string') return `${entries[0]![1]}\n`
       }
       return `${JSON.stringify(outputs)}\n`
     }
@@ -65,10 +63,12 @@ function renderWorkflow(raw: Record<string, unknown>): string {
   return `${JSON.stringify(raw)}\n`
 }
 
-export function chatConversationHint(resp: Record<string, unknown>, cs: ColorScheme): string | undefined {
+export function chatConversationHint(
+  resp: Record<string, unknown>,
+  cs: ColorScheme,
+): string | undefined {
   const cid = pickString(resp, 'conversation_id')
-  if (cid === undefined || cid === '')
-    return undefined
+  if (cid === undefined || cid === '') return undefined
   return `${cs.magenta('hint:')} continue this conversation with --conversation ${cs.cyan(cid)}\n`
 }
 

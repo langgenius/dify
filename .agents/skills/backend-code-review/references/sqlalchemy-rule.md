@@ -1,12 +1,14 @@
 # Rule Catalog — SQLAlchemy Patterns
 
 ## Scope
+
 - Covers: SQLAlchemy session and transaction lifecycle, query construction, tenant scoping, raw SQL boundaries, and write-path concurrency safeguards.
 - Does NOT cover: table/model schema and migration design details (handled by `db-schema-rule.md`).
 
 ## Rules
 
 ### Use Session context manager with explicit transaction control behavior
+
 - Category: best practices
 - Severity: critical
 - Description: Session and transaction lifecycle must be explicit and bounded on write paths. Missing commits can silently drop intended updates, while ad-hoc or long-lived transactions increase contention, lock duration, and deadlock risk.
@@ -16,6 +18,7 @@
   - Keep transaction windows short: avoid network I/O, heavy computation, or unrelated work inside the transaction.
 - Example:
   - Bad:
+
     ```python
     # Missing commit: write may never be persisted.
     with Session(db.engine, expire_on_commit=False) as session:
@@ -28,7 +31,9 @@
         run.status = "cancelled"
         call_external_api()
     ```
+
   - Good:
+
     ```python
     # Option 1: explicit commit.
     with Session(db.engine, expire_on_commit=False) as session:
@@ -46,6 +51,7 @@
     ```
 
 ### Enforce tenant_id scoping on shared-resource queries
+
 - Category: security
 - Severity: critical
 - Description: Reads and writes against shared tables must be scoped by `tenant_id` to prevent cross-tenant data leakage or corruption.
@@ -66,6 +72,7 @@
     ```
 
 ### Prefer SQLAlchemy expressions over raw SQL by default
+
 - Category: maintainability
 - Severity: suggestion
 - Description: Raw SQL should be exceptional. ORM/Core expressions are easier to evolve, safer to compose, and more consistent with the codebase.
@@ -88,6 +95,7 @@
     ```
 
 ### Protect write paths with concurrency safeguards
+
 - Category: quality
 - Severity: critical
 - Description: Multi-writer paths without explicit concurrency control can silently overwrite data. Choose the safeguard based on contention level, lock scope, and throughput cost instead of defaulting to one strategy.
@@ -104,6 +112,7 @@
     session.commit()  # silently overwrites concurrent updates
     ```
   - Good:
+
     ```python
     # 1) Optimistic lock (low contention, retry on conflict)
     result = session.execute(

@@ -45,7 +45,9 @@ vi.mock('reactflow', async () => {
   }
 })
 
-const createOperation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+const createOperation = (
+  overrides: Partial<AssignerNodeOperation> = {},
+): AssignerNodeOperation => ({
   variable_selector: ['conversation', 'count'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -73,10 +75,16 @@ describe('useConfig', () => {
     const { result } = renderHook(() => useConfig('assigner-node', createPayload()))
 
     expect(result.current.readOnly).toBe(false)
-    expect(result.current.writeModeTypes).toEqual([WriteMode.overwrite, WriteMode.clear, WriteMode.set])
+    expect(result.current.writeModeTypes).toEqual([
+      WriteMode.overwrite,
+      WriteMode.clear,
+      WriteMode.set,
+    ])
     expect(result.current.writeModeTypesNum).toEqual(writeModeTypesNum)
     expect(result.current.getAssignedVarType(['conversation', 'count'])).toBe(VarType.arrayString)
-    expect(result.current.getToAssignedVarType(VarType.arrayString, WriteMode.append)).toBe(VarType.string)
+    expect(result.current.getToAssignedVarType(VarType.arrayString, WriteMode.append)).toBe(
+      VarType.string,
+    )
     expect(result.current.filterVar(VarType.string)({ type: VarType.any } as never)).toBe(true)
   })
 
@@ -86,33 +94,53 @@ describe('useConfig', () => {
 
     result.current.handleOperationListChanges(nextItems)
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      version: '2',
-      items: nextItems,
-    }))
-    expect(result.current.filterAssignedVar({ isLoopVariable: true } as never, ['node', 'value'])).toBe(true)
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: '2',
+        items: nextItems,
+      }),
+    )
+    expect(
+      result.current.filterAssignedVar({ isLoopVariable: true } as never, ['node', 'value']),
+    ).toBe(true)
     expect(result.current.filterAssignedVar({} as never, ['conversation', 'name'])).toBe(true)
-    expect(result.current.filterToAssignedVar({ type: VarType.string } as never, VarType.arrayString, WriteMode.append)).toBe(true)
-    expect(result.current.filterToAssignedVar({ type: VarType.number } as never, VarType.arrayString, WriteMode.append)).toBe(false)
+    expect(
+      result.current.filterToAssignedVar(
+        { type: VarType.string } as never,
+        VarType.arrayString,
+        WriteMode.append,
+      ),
+    ).toBe(true)
+    expect(
+      result.current.filterToAssignedVar(
+        { type: VarType.number } as never,
+        VarType.arrayString,
+        WriteMode.append,
+      ),
+    ).toBe(false)
   })
 
   it('should normalize collaboration-restored null selectors before exposing inputs', () => {
     const dirtyPayload = createPayload({
       version: '2',
-      items: [createOperation({
-        variable_selector: null as unknown as AssignerNodeOperation['variable_selector'],
-        input_type: AssignerNodeInputType.variable,
-        value: null,
-      })],
+      items: [
+        createOperation({
+          variable_selector: null as unknown as AssignerNodeOperation['variable_selector'],
+          input_type: AssignerNodeInputType.variable,
+          value: null,
+        }),
+      ],
     })
 
     const { result } = renderHook(() => useConfig('assigner-node', dirtyPayload))
 
-    expect(result.current.inputs.items).toEqual([expect.objectContaining({
-      variable_selector: [],
-      input_type: AssignerNodeInputType.variable,
-      operation: WriteMode.overwrite,
-      value: [],
-    })])
+    expect(result.current.inputs.items).toEqual([
+      expect.objectContaining({
+        variable_selector: [],
+        input_type: AssignerNodeInputType.variable,
+        operation: WriteMode.overwrite,
+        value: [],
+      }),
+    ])
   })
 })

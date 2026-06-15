@@ -8,7 +8,13 @@ import {
 } from '../../declarations'
 import { isDestructiveVariant, useCredentialPanelState } from '../use-credential-panel-state'
 
-const mockTrialCredits = { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false, nextCreditResetDate: undefined }
+const mockTrialCredits = {
+  credits: 100,
+  totalCredits: 10_000,
+  isExhausted: false,
+  isLoading: false,
+  nextCreditResetDate: undefined,
+}
 const mockTrialModels = ['langgenius/openai/openai', 'langgenius/anthropic/anthropic']
 
 vi.mock('../use-trial-credits', () => ({
@@ -25,26 +31,32 @@ const renderPanelHook = (provider: ModelProvider | undefined) =>
     trialModels: mockTrialModels,
   })
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'langgenius/openai/openai',
-  provider_credential_schema: { credential_form_schemas: [] },
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-    current_credential_id: 'cred-1',
-    current_credential_name: 'My Key',
-    available_credentials: [{ credential_id: 'cred-1', credential_name: 'My Key' }],
-  },
-  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-  supported_model_types: ['llm'],
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'langgenius/openai/openai',
+    provider_credential_schema: { credential_form_schemas: [] },
+    custom_configuration: {
+      status: CustomConfigurationStatusEnum.active,
+      current_credential_id: 'cred-1',
+      current_credential_name: 'My Key',
+      available_credentials: [{ credential_id: 'cred-1', credential_name: 'My Key' }],
+    },
+    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+    preferred_provider_type: PreferredProviderTypeEnum.system,
+    configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+    supported_model_types: ['llm'],
+    ...overrides,
+  }) as unknown as ModelProvider
 
 describe('useCredentialPanelState', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    Object.assign(mockTrialCredits, { credits: 100, totalCredits: 10_000, isExhausted: false, isLoading: false })
+    Object.assign(mockTrialCredits, {
+      credits: 100,
+      totalCredits: 10_000,
+      isExhausted: false,
+      isLoading: false,
+    })
   })
 
   // Credits priority variants
@@ -197,7 +209,11 @@ describe('useCredentialPanelState', () => {
   describe('apiKeyOnly priority (non-cloud / system disabled / not in trial_models)', () => {
     it('should return apiKeyOnly when system config disabled', () => {
       const provider = createProvider({
-        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
       })
 
       const { result } = renderPanelHook(provider)
@@ -209,7 +225,11 @@ describe('useCredentialPanelState', () => {
     it('should return apiKeyOnly when provider not in trial_models even if system enabled', () => {
       const provider = createProvider({
         provider: 'langgenius/minimax/minimax',
-        system_configuration: { enabled: true, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: true,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
         preferred_provider_type: PreferredProviderTypeEnum.system,
       })
 
@@ -245,7 +265,11 @@ describe('useCredentialPanelState', () => {
 
     it('should hide priority switcher when system config disabled', () => {
       const provider = createProvider({
-        system_configuration: { enabled: false, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
       })
 
       const { result } = renderPanelHook(provider)
@@ -256,7 +280,11 @@ describe('useCredentialPanelState', () => {
     it('should hide priority switcher when provider not in trial_models', () => {
       const provider = createProvider({
         provider: 'langgenius/zhipuai/zhipuai',
-        system_configuration: { enabled: true, current_quota_type: CurrentSystemQuotaTypeEnum.trial, quota_configurations: [] },
+        system_configuration: {
+          enabled: true,
+          current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+          quota_configurations: [],
+        },
       })
 
       const { result } = renderPanelHook(provider)

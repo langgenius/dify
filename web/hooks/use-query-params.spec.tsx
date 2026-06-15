@@ -13,8 +13,12 @@ import {
 // Mock isServer to allow runtime control in tests
 const mockIsServer = vi.hoisted(() => ({ value: false }))
 vi.mock('@/utils/client', () => ({
-  get isServer() { return mockIsServer.value },
-  get isClient() { return !mockIsServer.value },
+  get isServer() {
+    return mockIsServer.value
+  },
+  get isClient() {
+    return !mockIsServer.value
+  },
 }))
 
 const renderWithAdapter = <T,>(hook: () => T, searchParams = '') => {
@@ -319,10 +323,7 @@ describe('useQueryParams hooks', () => {
 
     it('should return raw package id when JSON parsing fails', () => {
       // Arrange
-      const { result } = renderWithAdapter(
-        () => usePluginInstallation(),
-        '?package-ids=org/plugin',
-      )
+      const { result } = renderWithAdapter(() => usePluginInstallation(), '?package-ids=org/plugin')
 
       // Act
       const [state] = result.current

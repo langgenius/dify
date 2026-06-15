@@ -109,11 +109,13 @@ const workflowCommentListContract = base
     path: '/apps/{appId}/workflow/comments',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<{ data: WorkflowCommentList[] }>())
 
 const workflowCommentCreateContract = base
@@ -121,12 +123,14 @@ const workflowCommentCreateContract = base
     path: '/apps/{appId}/workflow/comments',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-    body: CreateCommentParams
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+      body: CreateCommentParams
+    }>(),
+  )
   .output(type<WorkflowCommentCreateRes>())
 
 const workflowCommentDetailContract = base
@@ -134,12 +138,14 @@ const workflowCommentDetailContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+      }
+    }>(),
+  )
   .output(type<WorkflowCommentDetail>())
 
 const workflowCommentUpdateContract = base
@@ -147,13 +153,15 @@ const workflowCommentUpdateContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}',
     method: 'PUT',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-    }
-    body: UpdateCommentParams
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+      }
+      body: UpdateCommentParams
+    }>(),
+  )
   .output(type<WorkflowCommentUpdateRes>())
 
 const workflowCommentDeleteContract = base
@@ -161,12 +169,14 @@ const workflowCommentDeleteContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}',
     method: 'DELETE',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+      }
+    }>(),
+  )
   .output(type<CommonResponse>())
 
 const workflowCommentResolveContract = base
@@ -174,12 +184,14 @@ const workflowCommentResolveContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}/resolve',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+      }
+    }>(),
+  )
   .output(type<WorkflowCommentResolveRes>())
 
 const workflowCommentReplyCreateContract = base
@@ -187,13 +199,15 @@ const workflowCommentReplyCreateContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}/replies',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-    }
-    body: CreateReplyParams
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+      }
+      body: CreateReplyParams
+    }>(),
+  )
   .output(type<WorkflowCommentReplyCreateRes>())
 
 const workflowCommentReplyUpdateContract = base
@@ -201,14 +215,16 @@ const workflowCommentReplyUpdateContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}/replies/{replyId}',
     method: 'PUT',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-      replyId: string
-    }
-    body: CreateReplyParams
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+        replyId: string
+      }
+      body: CreateReplyParams
+    }>(),
+  )
   .output(type<WorkflowCommentReplyUpdateRes>())
 
 const workflowCommentReplyDeleteContract = base
@@ -216,13 +232,15 @@ const workflowCommentReplyDeleteContract = base
     path: '/apps/{appId}/workflow/comments/{commentId}/replies/{replyId}',
     method: 'DELETE',
   })
-  .input(type<{
-    params: {
-      appId: string
-      commentId: string
-      replyId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+        commentId: string
+        replyId: string
+      }
+    }>(),
+  )
   .output(type<CommonResponse>())
 
 const workflowCommentMentionUsersContract = base
@@ -230,11 +248,13 @@ const workflowCommentMentionUsersContract = base
     path: '/apps/{appId}/workflow/comments/mention-users',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<{ users: UserProfile[] }>())
 
 export const workflowCommentContracts = {

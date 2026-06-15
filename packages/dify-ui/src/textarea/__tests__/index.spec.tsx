@@ -1,18 +1,16 @@
 import type * as React from 'react'
 import { render } from 'vitest-browser-react'
-import {
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-  FieldRoot,
-} from '../../field'
+import { FieldDescription, FieldError, FieldLabel, FieldRoot } from '../../field'
 import { Form } from '../../form'
 import { Textarea } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 const setTextareaValue = (element: HTMLElement | SVGElement, value: string) => {
   const textarea = asHTMLElement(element) as HTMLTextAreaElement
-  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype,
+    'value',
+  )?.set
   valueSetter?.call(textarea, value)
   textarea.dispatchEvent(new Event('input', { bubbles: true }))
 }
@@ -31,7 +29,9 @@ describe('Textarea', () => {
 
     await expect.element(textarea).toHaveValue('A workspace for support automation.')
     await expect.element(textarea).toHaveAccessibleDescription('Shown to workspace members.')
-    await expect.element(textarea).toHaveClass('min-h-20', 'overflow-auto', 'rounded-lg', 'system-sm-regular')
+    await expect
+      .element(textarea)
+      .toHaveClass('min-h-20', 'overflow-auto', 'rounded-lg', 'system-sm-regular')
     expect(asHTMLElement(textarea.element()).tagName).toBe('TEXTAREA')
   })
 
@@ -43,13 +43,9 @@ describe('Textarea', () => {
       </label>,
     )
 
-    await expect.element(screen.getByRole('textbox', { name: 'Prompt' })).toHaveClass(
-      'rounded-[10px]',
-      'px-4',
-      'py-2',
-      'system-md-regular',
-      'resize-none',
-    )
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Prompt' }))
+      .toHaveClass('rounded-[10px]', 'px-4', 'py-2', 'system-md-regular', 'resize-none')
   })
 
   it('should call onValueChange and stay controlled until value changes', async () => {
@@ -95,7 +91,9 @@ describe('Textarea', () => {
 
     await vi.waitFor(async () => {
       await expect.element(screen.getByText('Summary is required.')).toBeInTheDocument()
-      await expect.element(screen.getByRole('textbox', { name: 'Summary' })).toHaveAttribute('aria-invalid', 'true')
+      await expect
+        .element(screen.getByRole('textbox', { name: 'Summary' }))
+        .toHaveAttribute('aria-invalid', 'true')
     })
     expect(onFormSubmit).not.toHaveBeenCalled()
 
@@ -103,7 +101,12 @@ describe('Textarea', () => {
       <Form aria-label="dataset form" onFormSubmit={onFormSubmit}>
         <FieldRoot name="summary">
           <FieldLabel>Summary</FieldLabel>
-          <Textarea key="valid-summary" required minLength={10} defaultValue="Long enough summary" />
+          <Textarea
+            key="valid-summary"
+            required
+            minLength={10}
+            defaultValue="Long enough summary"
+          />
           <FieldError match="valueMissing">Summary is required.</FieldError>
           <FieldError match="tooShort">Summary is too short.</FieldError>
         </FieldRoot>
@@ -158,9 +161,9 @@ describe('Textarea', () => {
     )
 
     const profileSummary = screen.getByRole('textbox', { name: 'Profile summary' })
-    expect(
-      asHTMLElement(screen.getByText('Profile summary').element()).getAttribute('for'),
-    ).toBe('profile-summary')
+    expect(asHTMLElement(screen.getByText('Profile summary').element()).getAttribute('for')).toBe(
+      'profile-summary',
+    )
     await expect.element(profileSummary).toHaveAttribute('id', 'profile-summary')
     await expect.element(profileSummary).toHaveAttribute('name', 'profileSummary')
     await expect.element(profileSummary).toHaveAttribute('rows', '6')

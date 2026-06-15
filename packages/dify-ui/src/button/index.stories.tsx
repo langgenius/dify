@@ -95,7 +95,8 @@ export const Loading: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+        story:
+          'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
       },
     },
   },

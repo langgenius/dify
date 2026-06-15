@@ -9,19 +9,15 @@ const resolveSafeRedirectPath = (request: Request) => {
   const requestUrl = new URL(request.url)
   const redirectUrl = requestUrl.searchParams.get('redirect_url')
 
-  if (!redirectUrl)
-    return DEFAULT_REDIRECT_PATH
+  if (!redirectUrl) return DEFAULT_REDIRECT_PATH
 
   try {
     const target = new URL(redirectUrl, requestUrl.origin)
-    if (target.origin !== requestUrl.origin)
-      return DEFAULT_REDIRECT_PATH
-    if (target.pathname === AUTH_REFRESH_PATH)
-      return DEFAULT_REDIRECT_PATH
+    if (target.origin !== requestUrl.origin) return DEFAULT_REDIRECT_PATH
+    if (target.pathname === AUTH_REFRESH_PATH) return DEFAULT_REDIRECT_PATH
 
     return `${target.pathname}${target.search}`
-  }
-  catch {
+  } catch {
     return DEFAULT_REDIRECT_PATH
   }
 }
@@ -43,11 +39,10 @@ const getSetCookieHeaders = (headers: Headers) => {
 const createRedirectResponse = (pathname: string, setCookies: string[] = []) => {
   const headers = new Headers({
     'Cache-Control': 'no-store',
-    'Location': pathname,
+    Location: pathname,
   })
 
-  for (const cookie of setCookies)
-    headers.append('Set-Cookie', cookie)
+  for (const cookie of setCookies) headers.append('Set-Cookie', cookie)
 
   return new Response(null, {
     status: 303,
@@ -63,8 +58,7 @@ export async function GET(request: Request) {
   const refreshUrl = resolveServerConsoleApiUrl(REFRESH_TOKEN_PATH)
   const cookie = request.headers.get('cookie')
 
-  if (!refreshUrl || !cookie)
-    return createSigninRedirectResponse(redirectPath)
+  if (!refreshUrl || !cookie) return createSigninRedirectResponse(redirectPath)
 
   try {
     const response = await fetch(refreshUrl, {
@@ -76,12 +70,10 @@ export async function GET(request: Request) {
       cache: 'no-store',
     })
 
-    if (!response.ok)
-      return createSigninRedirectResponse(redirectPath)
+    if (!response.ok) return createSigninRedirectResponse(redirectPath)
 
     return createRedirectResponse(redirectPath, getSetCookieHeaders(response.headers))
-  }
-  catch {
+  } catch {
     return createSigninRedirectResponse(redirectPath)
   }
 }

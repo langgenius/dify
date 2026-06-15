@@ -1,9 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  CollapsiblePanel,
-  CollapsibleRoot,
-  CollapsibleTrigger,
-} from '../index'
+import { CollapsiblePanel, CollapsibleRoot, CollapsibleTrigger } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
@@ -17,7 +13,9 @@ describe('Collapsible wrappers', () => {
     )
 
     await expect.element(screen.getByTestId('collapsible-root')).toBeInTheDocument()
-    await expect.element(screen.getByRole('button', { name: 'Recovery keys' })).toHaveAttribute('data-panel-open', '')
+    await expect
+      .element(screen.getByRole('button', { name: 'Recovery keys' }))
+      .toHaveAttribute('data-panel-open', '')
     await expect.element(screen.getByText('Panel content')).toBeInTheDocument()
   })
 
@@ -46,7 +44,9 @@ describe('Collapsible wrappers', () => {
       </CollapsibleRoot>,
     )
 
-    await expect.element(screen.getByRole('button', { name: 'Custom' })).toHaveClass('custom-trigger')
+    await expect
+      .element(screen.getByRole('button', { name: 'Custom' }))
+      .toHaveClass('custom-trigger')
     expect(screen.getByText('Custom panel').element()).toHaveClass('custom-panel')
     expect(screen.container.querySelector('.custom-root')).toBeInTheDocument()
   })
@@ -59,7 +59,9 @@ describe('Collapsible wrappers', () => {
       </CollapsibleRoot>,
     )
 
-    await expect.element(screen.getByRole('button', { name: 'Styled trigger' })).toHaveAttribute('data-panel-open', '')
+    await expect
+      .element(screen.getByRole('button', { name: 'Styled trigger' }))
+      .toHaveAttribute('data-panel-open', '')
     await expect.element(screen.getByText('Styled panel')).toBeInTheDocument()
   })
 

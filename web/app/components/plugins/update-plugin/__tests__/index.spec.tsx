@@ -87,15 +87,23 @@ const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
 
 // Mock InstallFromGitHub component
 vi.mock('../../install-plugin/install-from-github', () => ({
-  default: ({ updatePayload, onClose, onSuccess }: {
+  default: ({
+    updatePayload,
+    onClose,
+    onSuccess,
+  }: {
     updatePayload: UpdateFromGitHubPayload
     onClose: () => void
     onSuccess: () => void
   }) => (
     <div data-testid="install-from-github">
       <span data-testid="github-payload">{JSON.stringify(updatePayload)}</span>
-      <button data-testid="github-close" onClick={onClose}>Close</button>
-      <button data-testid="github-success" onClick={onSuccess}>Success</button>
+      <button data-testid="github-close" onClick={onClose}>
+        Close
+      </button>
+      <button data-testid="github-success" onClick={onSuccess}>
+        Success
+      </button>
     </div>
   ),
 }))
@@ -104,7 +112,9 @@ vi.mock('../../install-plugin/install-from-github', () => ({
 // Test Data Factories
 // ================================
 
-const createMockPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createMockPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -142,7 +152,9 @@ const createMockPluginDeclaration = (overrides: Partial<PluginDeclaration> = {})
   ...overrides,
 })
 
-const createMockMarketPlacePayload = (overrides: Partial<UpdateFromMarketPlacePayload> = {}): UpdateFromMarketPlacePayload => ({
+const createMockMarketPlacePayload = (
+  overrides: Partial<UpdateFromMarketPlacePayload> = {},
+): UpdateFromMarketPlacePayload => ({
   category: PluginCategoryEnum.tool,
   originalPackageInfo: {
     id: 'original-id',
@@ -155,15 +167,27 @@ const createMockMarketPlacePayload = (overrides: Partial<UpdateFromMarketPlacePa
   ...overrides,
 })
 
-const createMockGitHubPayload = (overrides: Partial<UpdateFromGitHubPayload> = {}): UpdateFromGitHubPayload => ({
+const createMockGitHubPayload = (
+  overrides: Partial<UpdateFromGitHubPayload> = {},
+): UpdateFromGitHubPayload => ({
   originalPackageInfo: {
     id: 'github-original-id',
     repo: 'owner/repo',
     version: '1.0.0',
     package: 'test-package.difypkg',
     releases: [
-      { tag_name: 'v1.0.0', assets: [{ id: 1, name: 'plugin.difypkg', browser_download_url: 'https://github.com/test' }] },
-      { tag_name: 'v2.0.0', assets: [{ id: 2, name: 'plugin.difypkg', browser_download_url: 'https://github.com/test' }] },
+      {
+        tag_name: 'v1.0.0',
+        assets: [
+          { id: 1, name: 'plugin.difypkg', browser_download_url: 'https://github.com/test' },
+        ],
+      },
+      {
+        tag_name: 'v2.0.0',
+        assets: [
+          { id: 2, name: 'plugin.difypkg', browser_download_url: 'https://github.com/test' },
+        ],
+      },
     ],
   },
   ...overrides,
@@ -175,21 +199,18 @@ const createMockGitHubPayload = (overrides: Partial<UpdateFromGitHubPayload> = {
 // Helper Functions
 // ================================
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 // ================================
@@ -343,13 +364,7 @@ describe('update-plugin', () => {
         const onCancel = vi.fn()
 
         // Act
-        render(
-          <FromGitHub
-            payload={payload}
-            onSave={onSave}
-            onCancel={onCancel}
-          />,
-        )
+        render(<FromGitHub payload={payload} onSave={onSave} onCancel={onCancel} />)
 
         // Assert
         expect(screen.getByTestId('install-from-github')).toBeInTheDocument()
@@ -370,11 +385,7 @@ describe('update-plugin', () => {
 
         // Act
         render(
-          <FromGitHub
-            payload={createMockGitHubPayload()}
-            onSave={vi.fn()}
-            onCancel={onCancel}
-          />,
+          <FromGitHub payload={createMockGitHubPayload()} onSave={vi.fn()} onCancel={onCancel} />,
         )
         fireEvent.click(screen.getByTestId('github-close'))
 
@@ -388,11 +399,7 @@ describe('update-plugin', () => {
 
         // Act
         render(
-          <FromGitHub
-            payload={createMockGitHubPayload()}
-            onSave={onSave}
-            onCancel={vi.fn()}
-          />,
+          <FromGitHub payload={createMockGitHubPayload()} onSave={onSave} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByTestId('github-success'))
 
@@ -413,11 +420,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={vi.fn()} />,
         )
 
         // Assert
@@ -440,11 +443,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={vi.fn()} />,
         )
 
         // Assert
@@ -457,11 +456,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={vi.fn()} />,
         )
 
         // Assert
@@ -486,8 +481,12 @@ describe('update-plugin', () => {
         )
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.title')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.description')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.title'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.description'),
+        ).toBeInTheDocument()
       })
 
       it('should not show downgrade warning modal when isShowDowngradeWarningModal is false', () => {
@@ -505,7 +504,9 @@ describe('update-plugin', () => {
         )
 
         // Assert
-        expect(screen.queryByText('plugin.autoUpdate.pluginDowngradeWarning.title')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('plugin.autoUpdate.pluginDowngradeWarning.title'),
+        ).not.toBeInTheDocument()
         expect(screen.getByText('plugin.upgrade.title')).toBeInTheDocument()
       })
     })
@@ -518,11 +519,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={onCancel}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={onCancel} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
@@ -541,11 +538,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={onSave}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={onSave} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -565,11 +558,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={vi.fn()} />,
         )
 
         // Assert - button should show Update before clicking
@@ -580,7 +569,9 @@ describe('update-plugin', () => {
 
         // Assert - Cancel button should be hidden during upgrade
         await waitFor(() => {
-          expect(screen.queryByRole('button', { name: 'common.operation.cancel' })).not.toBeInTheDocument()
+          expect(
+            screen.queryByRole('button', { name: 'common.operation.cancel' }),
+          ).not.toBeInTheDocument()
         })
       })
 
@@ -595,11 +586,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={onSave}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={onSave} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -621,11 +608,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={onSave}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={onSave} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -648,11 +631,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={onCancel}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={onCancel} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
@@ -670,11 +649,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={vi.fn()}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={vi.fn()} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -699,11 +674,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={onSave}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={onSave} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -712,7 +683,9 @@ describe('update-plugin', () => {
           expect(mockCheck).toHaveBeenCalled()
         })
         await waitFor(() => {
-          expect(toastErrorSpy).toHaveBeenCalledWith('Installation failed due to dependency conflict')
+          expect(toastErrorSpy).toHaveBeenCalledWith(
+            'Installation failed due to dependency conflict',
+          )
         })
         // onSave should NOT be called when task fails
         expect(onSave).not.toHaveBeenCalled()
@@ -727,11 +700,13 @@ describe('update-plugin', () => {
         mockUpdateFromMarketPlace.mockResolvedValue({
           task: {
             status: TaskStatus.failed,
-            plugins: [{
-              plugin_unique_identifier: 'test-target-id',
-              status: TaskStatus.failed,
-              message: 'failed to init environment',
-            }],
+            plugins: [
+              {
+                plugin_unique_identifier: 'test-target-id',
+                status: TaskStatus.failed,
+                message: 'failed to init environment',
+              },
+            ],
           },
         })
         const onSave = vi.fn()
@@ -739,11 +714,7 @@ describe('update-plugin', () => {
 
         // Act
         renderWithQueryClient(
-          <UpdateFromMarketplace
-            payload={payload}
-            onSave={onSave}
-            onCancel={vi.fn()}
-          />,
+          <UpdateFromMarketplace payload={payload} onSave={onSave} onCancel={vi.fn()} />,
         )
         fireEvent.click(screen.getByRole('button', { name: 'plugin.upgrade.upgrade' }))
 
@@ -763,7 +734,9 @@ describe('update-plugin', () => {
     describe('Component Memoization', () => {
       it('should be memoized with React.memo', () => {
         expect(UpdateFromMarketplace).toBeDefined()
-        expect((UpdateFromMarketplace as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
+        expect((UpdateFromMarketplace as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
+          'Symbol',
+        )
       })
     })
 
@@ -787,7 +760,9 @@ describe('update-plugin', () => {
             isShowDowngradeWarningModal={true}
           />,
         )
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }),
+        )
 
         // Assert
         await waitFor(() => {
@@ -819,7 +794,9 @@ describe('update-plugin', () => {
             isShowDowngradeWarningModal={true}
           />,
         )
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }),
+        )
 
         // Assert - mutateAsync should NOT be called when pluginId is undefined
         await waitFor(() => {
@@ -846,8 +823,12 @@ describe('update-plugin', () => {
         )
 
         // Assert
-        expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.title')).toBeInTheDocument()
-        expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.description')).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.title'),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.description'),
+        ).toBeInTheDocument()
       })
 
       it('should render all three action buttons', () => {
@@ -862,8 +843,14 @@ describe('update-plugin', () => {
 
         // Assert
         expect(screen.getByRole('button', { name: 'app.newApp.Cancel' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade' })).toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' })).toBeInTheDocument()
+        expect(
+          screen.getByRole('button', {
+            name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade',
+          }),
+        ).toBeInTheDocument()
+        expect(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }),
+        ).toBeInTheDocument()
       })
     })
 
@@ -898,7 +885,11 @@ describe('update-plugin', () => {
             onExcludeAndDowngrade={vi.fn()}
           />,
         )
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade' }))
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: 'plugin.autoUpdate.pluginDowngradeWarning.downgrade',
+          }),
+        )
 
         // Assert
         expect(onJustDowngrade).toHaveBeenCalledTimes(1)
@@ -916,7 +907,9 @@ describe('update-plugin', () => {
             onExcludeAndDowngrade={onExcludeAndDowngrade}
           />,
         )
-        fireEvent.click(screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'plugin.autoUpdate.pluginDowngradeWarning.exclude' }),
+        )
 
         // Assert
         expect(onExcludeAndDowngrade).toHaveBeenCalledTimes(1)
@@ -999,7 +992,9 @@ describe('update-plugin', () => {
         const onShowChange = vi.fn()
 
         // Act
-        render(<PluginVersionPicker {...defaultProps} disabled={true} onShowChange={onShowChange} />)
+        render(
+          <PluginVersionPicker {...defaultProps} disabled={true} onShowChange={onShowChange} />,
+        )
         fireEvent.click(screen.getByText('Select Version'))
 
         // Assert
@@ -1023,7 +1018,7 @@ describe('update-plugin', () => {
         )
         // Click on version 2.0.0
         const versionElements = screen.getAllByText(/^\d+\.\d+\.\d+$/)
-        const version2Element = versionElements.find(el => el.textContent === '2.0.0')
+        const version2Element = versionElements.find((el) => el.textContent === '2.0.0')
         if (version2Element) {
           fireEvent.click(version2Element.closest('div[class*="cursor-pointer"]')!)
         }
@@ -1052,7 +1047,7 @@ describe('update-plugin', () => {
         )
         // Click on current version 1.0.0
         const versionElements = screen.getAllByText(/^\d+\.\d+\.\d+$/)
-        const version1Element = versionElements.find(el => el.textContent === '1.0.0')
+        const version1Element = versionElements.find((el) => el.textContent === '1.0.0')
         if (version1Element) {
           fireEvent.click(version1Element.closest('div[class*="cursor"]')!)
         }
@@ -1076,7 +1071,7 @@ describe('update-plugin', () => {
         )
         // Click on version 1.0.0 (downgrade)
         const versionElements = screen.getAllByText(/^\d+\.\d+\.\d+$/)
-        const version1Element = versionElements.find(el => el.textContent === '1.0.0')
+        const version1Element = versionElements.find((el) => el.textContent === '1.0.0')
         if (version1Element) {
           fireEvent.click(version1Element.closest('div[class*="cursor-pointer"]')!)
         }
@@ -1093,13 +1088,7 @@ describe('update-plugin', () => {
     describe('Props', () => {
       it('should support custom placement', () => {
         // Act
-        render(
-          <PluginVersionPicker
-            {...defaultProps}
-            isShow={true}
-            placement="top-end"
-          />,
-        )
+        render(<PluginVersionPicker {...defaultProps} isShow={true} placement="top-end" />)
 
         // Assert
         expect(screen.getByText('plugin.detailPanel.switchVersion')).toBeInTheDocument()
@@ -1108,12 +1097,7 @@ describe('update-plugin', () => {
       it('should support custom offset', () => {
         // Act
         render(
-          <PluginVersionPicker
-            {...defaultProps}
-            isShow={true}
-            sideOffset={10}
-            alignOffset={20}
-          />,
+          <PluginVersionPicker {...defaultProps} isShow={true} sideOffset={10} alignOffset={20} />,
         )
 
         // Assert
@@ -1124,7 +1108,9 @@ describe('update-plugin', () => {
     describe('Component Memoization', () => {
       it('should be memoized with React.memo', () => {
         expect(PluginVersionPicker).toBeDefined()
-        expect((PluginVersionPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
+        expect((PluginVersionPicker as { $$typeof?: symbol }).$$typeof?.toString()).toContain(
+          'Symbol',
+        )
       })
     })
   })
@@ -1166,20 +1152,23 @@ describe('update-plugin', () => {
 
     it('should handle empty version list in PluginVersionPicker', () => {
       // Override the mock temporarily
-      vi.mocked(vi.importActual('@/service/use-plugins') as unknown as Record<string, unknown>).useVersionListOfPlugin = () => ({
+      vi.mocked(
+        vi.importActual('@/service/use-plugins') as unknown as Record<string, unknown>,
+      ).useVersionListOfPlugin = () => ({
         data: { data: { versions: [] } },
       })
 
       // Act
       render(
-        <PluginVersionPicker {...{
-          isShow: true,
-          onShowChange: vi.fn(),
-          pluginID: 'test',
-          currentVersion: '1.0.0',
-          trigger: <span>Select</span>,
-          onSelect: vi.fn(),
-        }}
+        <PluginVersionPicker
+          {...{
+            isShow: true,
+            onShowChange: vi.fn(),
+            pluginID: 'test',
+            currentVersion: '1.0.0',
+            trigger: <span>Select</span>,
+            onSelect: vi.fn(),
+          }}
         />,
       )
 

@@ -2,17 +2,10 @@ import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  Button,
-} from '@langgenius/dify-ui/button'
+import { Button } from '@langgenius/dify-ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
@@ -37,7 +30,9 @@ const ConfigProvider = ({
   const notAllowCustomCredential = provider.allow_custom_token === false
 
   const renderTrigger = useCallback(() => {
-    const text = hasCredential ? t('operation.config', { ns: 'common' }) : t('operation.setup', { ns: 'common' })
+    const text = hasCredential
+      ? t('operation.config', { ns: 'common' })
+      : t('operation.setup', { ns: 'common' })
     const Item = (
       <Button
         className="flex grow"
@@ -46,18 +41,14 @@ const ConfigProvider = ({
         title={text}
       >
         <RiEqualizer2Line className="mr-1 size-3.5 shrink-0" />
-        <span className="w-0 grow truncate text-left">
-          {text}
-        </span>
+        <span className="w-0 grow truncate text-left">{text}</span>
       </Button>
     )
     if (notAllowCustomCredential && !hasCredential) {
       return (
         <Tooltip>
           <TooltipTrigger render={Item} />
-          <TooltipContent>
-            {t('auth.credentialUnavailable', { ns: 'plugin' })}
-          </TooltipContent>
+          <TooltipContent>{t('auth.credentialUnavailable', { ns: 'plugin' })}</TooltipContent>
         </Tooltip>
       )
     }

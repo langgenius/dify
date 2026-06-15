@@ -1,5 +1,8 @@
 import type { ComponentProps } from 'react'
-import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CredentialFormSchema,
+  FormOption,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, screen } from '@testing-library/react'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -19,29 +22,29 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 const createSchema = (
-  overrides: Partial<CredentialFormSchema & {
+  overrides: Partial<
+    CredentialFormSchema & {
+      _type?: FormTypeEnum
+      multiple?: boolean
+      options?: FormOption[]
+    }
+  > = {},
+) =>
+  ({
+    label: { en_US: 'Field', zh_Hans: '字段' },
+    name: 'field',
+    required: false,
+    show_on: [],
+    type: FormTypeEnum.textInput,
+    variable: 'field',
+    ...overrides,
+  }) as CredentialFormSchema & {
     _type?: FormTypeEnum
     multiple?: boolean
     options?: FormOption[]
-  }> = {},
-) => ({
-  label: { en_US: 'Field', zh_Hans: '字段' },
-  name: 'field',
-  required: false,
-  show_on: [],
-  type: FormTypeEnum.textInput,
-  variable: 'field',
-  ...overrides,
-}) as CredentialFormSchema & {
-  _type?: FormTypeEnum
-  multiple?: boolean
-  options?: FormOption[]
-}
+  }
 
-const createOption = (
-  value: string,
-  overrides: Partial<FormOption> = {},
-): FormOption => ({
+const createOption = (value: string, overrides: Partial<FormOption> = {}): FormOption => ({
   label: { en_US: value, zh_Hans: value },
   show_on: [],
   value,

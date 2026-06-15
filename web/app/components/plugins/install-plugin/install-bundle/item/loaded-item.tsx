@@ -43,7 +43,9 @@ const LoadedItem: FC<Props> = ({
         className="grow"
         payload={{
           ...payload,
-          icon: isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon` : getIconUrl(payload.icon),
+          icon: isFromMarketPlace
+            ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon`
+            : getIconUrl(payload.icon),
         }}
         titleLeft={payload.version ? <Version {...versionInfo} /> : null}
         limitedInstall={!canInstall}

@@ -12,9 +12,7 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
 
   const handleDayClick = (day: number | 'last') => {
     const current = selectedDays || []
-    const newSelected = current.includes(day)
-      ? current.filter(d => d !== day)
-      : [...current, day]
+    const newSelected = current.includes(day) ? current.filter((d) => d !== day) : [...current, day]
     // Ensure at least one day is selected (consistent with WeekdaySelector)
     onChange(newSelected.length > 0 ? newSelected : [day])
   }
@@ -39,52 +37,51 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
       <div className="space-y-1.5">
         {rows.map((row, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-7 gap-1.5">
-            {row.map(day => (
-              day === 'last'
-                ? (
-                    <div
-                      key={day}
-                      className={`col-span-2 flex min-w-0 items-center rounded-lg border bg-components-option-card-option-bg text-xs transition-colors ${
-                        isDaySelected(day)
-                          ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                          : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleDayClick(day)}
-                        className="min-w-0 flex-1 py-1"
-                      >
-                        {t('nodes.triggerSchedule.lastDay', { ns: 'workflow' })}
-                      </button>
-                      <Infotip
-                        aria-label={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
-                        className="mr-1 size-3"
-                        iconClassName="h-3 w-3"
-                      >
-                        {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
-                      </Infotip>
-                    </div>
-                  )
-                : (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => handleDayClick(day)}
-                      className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
-                        isDaySelected(day)
-                          ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
-                          : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  )
-            ))}
+            {row.map((day) =>
+              day === 'last' ? (
+                <div
+                  key={day}
+                  className={`col-span-2 flex min-w-0 items-center rounded-lg border bg-components-option-card-option-bg text-xs transition-colors ${
+                    isDaySelected(day)
+                      ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
+                      : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleDayClick(day)}
+                    className="min-w-0 flex-1 py-1"
+                  >
+                    {t('nodes.triggerSchedule.lastDay', { ns: 'workflow' })}
+                  </button>
+                  <Infotip
+                    aria-label={t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                    className="mr-1 size-3"
+                    iconClassName="h-3 w-3"
+                  >
+                    {t('nodes.triggerSchedule.lastDayTooltip', { ns: 'workflow' })}
+                  </Infotip>
+                </div>
+              ) : (
+                <button
+                  key={day}
+                  type="button"
+                  onClick={() => handleDayClick(day)}
+                  className={`rounded-lg border bg-components-option-card-option-bg py-1 text-xs transition-colors ${
+                    isDaySelected(day)
+                      ? 'border-util-colors-blue-brand-blue-brand-600 text-text-secondary'
+                      : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
+                  }`}
+                >
+                  {day}
+                </button>
+              ),
+            )}
             {/* Fill empty cells in the last row (Last day takes 2 cols, so need 1 less) */}
-            {rowIndex === rows.length - 1 && Array.from({ length: 7 - row.length - 1 }, (_, i) => (
-              <div key={`empty-${i}`} className="invisible"></div>
-            ))}
+            {rowIndex === rows.length - 1 &&
+              Array.from({ length: 7 - row.length - 1 }, (_, i) => (
+                <div key={`empty-${i}`} className="invisible"></div>
+              ))}
           </div>
         ))}
       </div>

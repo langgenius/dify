@@ -1,4 +1,10 @@
-import getCroppedImg, { checkIsAnimatedImage, createImage, getMimeType, getRadianAngle, rotateSize } from '../utils'
+import getCroppedImg, {
+  checkIsAnimatedImage,
+  createImage,
+  getMimeType,
+  getRadianAngle,
+  rotateSize,
+} from '../utils'
 
 type ImageLoadEventType = 'load' | 'error'
 
@@ -11,23 +17,21 @@ class MockImageElement {
   private listeners: Record<string, EventListener[]> = {}
 
   addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
-    const eventListener = typeof listener === 'function' ? listener : listener.handleEvent.bind(listener)
-    if (!this.listeners[type])
-      this.listeners[type] = []
+    const eventListener =
+      typeof listener === 'function' ? listener : listener.handleEvent.bind(listener)
+    if (!this.listeners[type]) this.listeners[type] = []
     this.listeners[type].push(eventListener)
   }
 
   setAttribute(name: string, value: string) {
-    if (name === 'crossOrigin')
-      this.crossOriginValue = value
+    if (name === 'crossOrigin') this.crossOriginValue = value
   }
 
   set src(value: string) {
     this.srcValue = value
     queueMicrotask(() => {
       const event = new Event(MockImageElement.nextEvent)
-      for (const listener of this.listeners[MockImageElement.nextEvent] ?? [])
-        listener(event)
+      for (const listener of this.listeners[MockImageElement.nextEvent] ?? []) listener(event)
     })
   }
 
@@ -42,7 +46,10 @@ type CanvasMock = {
   toBlobMock: ReturnType<typeof vi.fn>
 }
 
-const createCanvasMock = (context: CanvasRenderingContext2D | null, blob: Blob | null = new Blob(['ok'])): CanvasMock => {
+const createCanvasMock = (
+  context: CanvasRenderingContext2D | null,
+  blob: Blob | null = new Blob(['ok']),
+): CanvasMock => {
   const getContextMock = vi.fn(() => context)
   const toBlobMock = vi.fn((callback: BlobCallback) => callback(blob))
   return {
@@ -81,15 +88,16 @@ describe('utils', () => {
   })
 
   const mockCanvasCreation = (canvases: HTMLCanvasElement[]) => {
-    vi.spyOn(document, 'createElement').mockImplementation((...args: Parameters<Document['createElement']>) => {
-      if (args[0] === 'canvas') {
-        const nextCanvas = canvases.shift()
-        if (!nextCanvas)
-          throw new Error('Unexpected canvas creation')
-        return nextCanvas as ReturnType<Document['createElement']>
-      }
-      return originalCreateElement(...args)
-    })
+    vi.spyOn(document, 'createElement').mockImplementation(
+      (...args: Parameters<Document['createElement']>) => {
+        if (args[0] === 'canvas') {
+          const nextCanvas = canvases.shift()
+          if (!nextCanvas) throw new Error('Unexpected canvas creation')
+          return nextCanvas as ReturnType<Document['createElement']>
+        }
+        return originalCreateElement(...args)
+      },
+    )
   }
 
   describe('createImage', () => {
@@ -249,7 +257,11 @@ describe('utils', () => {
       mockCanvasCreation([sourceCanvas.element])
 
       await expect(
-        getCroppedImg('https://example.com/image.png', { x: 0, y: 0, width: 10, height: 10 }, 'avatar.png'),
+        getCroppedImg(
+          'https://example.com/image.png',
+          { x: 0, y: 0, width: 10, height: 10 },
+          'avatar.png',
+        ),
       ).rejects.toThrow('Could not create a canvas context')
     })
 
@@ -261,7 +273,11 @@ describe('utils', () => {
       mockCanvasCreation([sourceCanvas.element, croppedCanvas.element])
 
       await expect(
-        getCroppedImg('https://example.com/image.png', { x: 0, y: 0, width: 10, height: 10 }, 'avatar.png'),
+        getCroppedImg(
+          'https://example.com/image.png',
+          { x: 0, y: 0, width: 10, height: 10 },
+          'avatar.png',
+        ),
       ).rejects.toThrow('Could not create a canvas context')
     })
 
@@ -273,7 +289,11 @@ describe('utils', () => {
       mockCanvasCreation([sourceCanvas.element, croppedCanvas.element])
 
       await expect(
-        getCroppedImg('https://example.com/image.jpg', { x: 0, y: 0, width: 10, height: 10 }, 'avatar.jpg'),
+        getCroppedImg(
+          'https://example.com/image.jpg',
+          { x: 0, y: 0, width: 10, height: 10 },
+          'avatar.jpg',
+        ),
       ).rejects.toThrow('Could not create a blob')
     })
   })
@@ -288,13 +308,17 @@ describe('utils', () => {
       globalThis.FileReader = originalFileReader
     })
     it('should return true for .gif files', async () => {
-      const gifFile = new File([new Uint8Array([0x47, 0x49, 0x46])], 'animation.gif', { type: 'image/gif' })
+      const gifFile = new File([new Uint8Array([0x47, 0x49, 0x46])], 'animation.gif', {
+        type: 'image/gif',
+      })
       const result = await checkIsAnimatedImage(gifFile)
       expect(result).toBe(true)
     })
 
     it('should return false for non-gif, non-webp files', async () => {
-      const pngFile = new File([new Uint8Array([0x89, 0x50, 0x4E, 0x47])], 'image.png', { type: 'image/png' })
+      const pngFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'image.png', {
+        type: 'image/png',
+      })
       const result = await checkIsAnimatedImage(pngFile)
       expect(result).toBe(false)
     })
@@ -315,9 +339,9 @@ describe('utils', () => {
       bytes[11] = 0x50 // P
       // ANIM chunk at offset 12
       bytes[12] = 0x41 // A
-      bytes[13] = 0x4E // N
+      bytes[13] = 0x4e // N
       bytes[14] = 0x49 // I
-      bytes[15] = 0x4D // M
+      bytes[15] = 0x4d // M
 
       const webpFile = new File([bytes], 'animated.webp', { type: 'image/webp' })
       const result = await checkIsAnimatedImage(webpFile)

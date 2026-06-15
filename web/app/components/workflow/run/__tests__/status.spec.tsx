@@ -31,8 +31,7 @@ vi.mock('react-i18next', () => ({
     }
     components?: Record<string, React.ReactNode>
   }) => {
-    if (i18nKey !== 'nodes.common.errorHandle.partialSucceeded.tip')
-      return <span>{i18nKey}</span>
+    if (i18nKey !== 'nodes.common.errorHandle.partialSucceeded.tip') return <span>{i18nKey}</span>
 
     const tracingLink = components?.tracingLink
     const tracingNode = isValidElement(tracingLink)
@@ -41,14 +40,7 @@ vi.mock('react-i18next', () => ({
 
     return (
       <span>
-        There are
-        {' '}
-        {values?.num}
-        {' '}
-        nodes in the process running abnormally, please go to
-        {' '}
-        {tracingNode}
-        {' '}
+        There are {values?.num} nodes in the process running abnormally, please go to {tracingNode}{' '}
         to check the logs.
       </span>
     )
@@ -60,10 +52,13 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/service/use-log', () => ({
-  useWorkflowPausedDetails: (params: { workflowRunId: string, enabled?: boolean }) => mockUseWorkflowPausedDetails(params),
+  useWorkflowPausedDetails: (params: { workflowRunId: string; enabled?: boolean }) =>
+    mockUseWorkflowPausedDetails(params),
 }))
 
-const createPausedDetails = (overrides: Partial<WorkflowPausedDetailsResponse> = {}): WorkflowPausedDetailsResponse => ({
+const createPausedDetails = (
+  overrides: Partial<WorkflowPausedDetailsResponse> = {},
+): WorkflowPausedDetailsResponse => ({
   paused_at: '2026-03-18T00:00:00Z',
   paused_nodes: [],
   ...overrides,
@@ -113,20 +108,34 @@ describe('Status', () => {
 
     expect(screen.getByText('FAIL')).toBeInTheDocument()
     expect(screen.getByText('Something broke')).toBeInTheDocument()
-    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 2 nodes in the process running abnormally, please go to TRACING to check the logs.')).toHaveLength(2)
+    expect(
+      screen.getAllByText(
+        (_, element) =>
+          element?.textContent ===
+          'There are 2 nodes in the process running abnormally, please go to TRACING to check the logs.',
+      ),
+    ).toHaveLength(2)
   })
 
   it('renders the partial-succeeded warning summary', () => {
     render(<Status status="partial-succeeded" exceptionCounts={3} />)
 
     expect(screen.getByText('PARTIAL SUCCESS')).toBeInTheDocument()
-    expect(screen.getAllByText((_, element) => element?.textContent === 'There are 3 nodes in the process running abnormally, please go to TRACING to check the logs.')).toHaveLength(2)
+    expect(
+      screen.getAllByText(
+        (_, element) =>
+          element?.textContent ===
+          'There are 3 nodes in the process running abnormally, please go to TRACING to check the logs.',
+      ),
+    ).toHaveLength(2)
   })
 
   it('opens the tracing tab when clicking the TRACING link', () => {
     const onOpenTracingTab = vi.fn()
 
-    render(<Status status="partial-succeeded" exceptionCounts={3} onOpenTracingTab={onOpenTracingTab} />)
+    render(
+      <Status status="partial-succeeded" exceptionCounts={3} onOpenTracingTab={onOpenTracingTab} />,
+    )
 
     fireEvent.click(screen.getByRole('link', { name: 'TRACING' }))
 
@@ -185,7 +194,13 @@ describe('Status', () => {
 
     expect(screen.getByText('workflow.nodes.humanInput.log.reasonContent')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.humanInput.log.backstageInputURL')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'https://example.com/a' })).toHaveAttribute('href', 'https://example.com/a')
-    expect(screen.getByRole('link', { name: 'https://example.com/b' })).toHaveAttribute('href', 'https://example.com/b')
+    expect(screen.getByRole('link', { name: 'https://example.com/a' })).toHaveAttribute(
+      'href',
+      'https://example.com/a',
+    )
+    expect(screen.getByRole('link', { name: 'https://example.com/b' })).toHaveAttribute(
+      'href',
+      'https://example.com/b',
+    )
   })
 })

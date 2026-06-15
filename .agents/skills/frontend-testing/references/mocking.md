@@ -54,12 +54,12 @@ See [Zustand Store Testing](#zustand-store-testing) section for full details.
 
 ## Mock Placement
 
-| Location | Purpose |
-|----------|---------|
-| `web/vitest.setup.ts` | Global mocks shared by all tests (`react-i18next`, `zustand`, clipboard, FloatingPortal, Monaco, localStorage`) |
-| `web/__mocks__/zustand.ts` | Zustand mock implementation (auto-resets stores after each test) |
-| `web/__mocks__/` | Reusable mock factories shared across multiple test files |
-| Test file | Test-specific mocks, inline with `vi.mock()` |
+| Location                   | Purpose                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `web/vitest.setup.ts`      | Global mocks shared by all tests (`react-i18next`, `zustand`, clipboard, FloatingPortal, Monaco, localStorage`) |
+| `web/__mocks__/zustand.ts` | Zustand mock implementation (auto-resets stores after each test)                                                |
+| `web/__mocks__/`           | Reusable mock factories shared across multiple test files                                                       |
+| Test file                  | Test-specific mocks, inline with `vi.mock()`                                                                    |
 
 Modules are not mocked automatically. Use `vi.mock` in test files, or add global mocks in `web/vitest.setup.ts`.
 
@@ -85,10 +85,12 @@ The global mock provides:
 ```typescript
 import { createReactI18nextMock } from '@/test/i18n-mock'
 
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'my.custom.key': 'Custom translation',
-  'button.save': 'Save',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'my.custom.key': 'Custom translation',
+    'button.save': 'Save',
+  }),
+)
 ```
 
 **Avoid**: Manually defining `useTranslation` mocks that just return the key - the global mock already does this.
@@ -189,16 +191,16 @@ const mockedApi = vi.mocked(api)
 describe('Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    
+
     // Setup default mock implementation
     mockedApi.fetchData.mockResolvedValue({ data: [] })
   })
 
   it('should show data on success', async () => {
     mockedApi.fetchData.mockResolvedValue({ data: [{ id: 1 }] })
-    
+
     render(<Component />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('1')).toBeInTheDocument()
     })
@@ -206,9 +208,9 @@ describe('Component', () => {
 
   it('should show error on failure', async () => {
     mockedApi.fetchData.mockRejectedValue(new Error('Network error'))
-    
+
     render(<Component />)
-    
+
     await waitFor(() => {
       expect(screen.getByText(/error/i)).toBeInTheDocument()
     })
@@ -231,9 +233,9 @@ describe('GithubComponent', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-    
+
     render(<GithubComponent />)
-    
+
     await waitFor(() => {
       expect(screen.getByText('dify')).toBeInTheDocument()
     })
@@ -246,9 +248,9 @@ describe('GithubComponent', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-    
+
     render(<GithubComponent />)
-    
+
     await waitFor(() => {
       expect(screen.getByText(/error/i)).toBeInTheDocument()
     })
@@ -267,25 +269,25 @@ import { createMockProviderContextValue, createMockPlan } from '@/__mocks__/prov
 describe('Component with Context', () => {
   it('should render for free plan', () => {
     const mockContext = createMockPlan('sandbox')
-    
+
     render(
       <ProviderContext.Provider value={mockContext}>
         <Component />
       </ProviderContext.Provider>
     )
-    
+
     expect(screen.getByText('Upgrade')).toBeInTheDocument()
   })
 
   it('should render for pro plan', () => {
     const mockContext = createMockPlan('professional')
-    
+
     render(
       <ProviderContext.Provider value={mockContext}>
         <Component />
       </ProviderContext.Provider>
     )
-    
+
     expect(screen.queryByText('Upgrade')).not.toBeInTheDocument()
   })
 })
@@ -411,7 +413,7 @@ Manual mocking conflicts with the global Zustand mock and loses store functional
 ```typescript
 // ❌ WRONG: Don't mock the store module
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector) => mockSelector(selector),  // Missing getState, setState!
+  useStore: (selector) => mockSelector(selector), // Missing getState, setState!
 }))
 
 // ❌ WRONG: This conflicts with global zustand mock
@@ -439,14 +441,11 @@ const mockStore = {
 }
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: Object.assign(
-    (selector: (state: typeof mockStore) => unknown) => selector(mockStore),
-    {
-      getState: () => mockStore,
-      setState: vi.fn(),
-      subscribe: vi.fn(),
-    },
-  ),
+  useStore: Object.assign((selector: (state: typeof mockStore) => unknown) => selector(mockStore), {
+    getState: () => mockStore,
+    setState: vi.fn(),
+    subscribe: vi.fn(),
+  }),
 }))
 ```
 
@@ -528,7 +527,7 @@ it('should display project owner', () => {
   const project = createMockProject({
     owner: createMockUser({ name: 'John Doe' }),
   })
-  
+
   render(<ProjectCard project={project} />)
   expect(screen.getByText('John Doe')).toBeInTheDocument()
 })

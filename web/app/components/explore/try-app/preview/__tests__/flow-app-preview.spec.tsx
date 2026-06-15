@@ -14,7 +14,12 @@ vi.mock('@/app/components/workflow/workflow-preview', () => ({
     miniMapToRight,
     nodes,
     edges,
-  }: { className?: string, miniMapToRight?: boolean, nodes?: unknown[], edges?: unknown[] }) => (
+  }: {
+    className?: string
+    miniMapToRight?: boolean
+    nodes?: unknown[]
+    edges?: unknown[]
+  }) => (
     <div
       data-testid="workflow-preview"
       className={className}

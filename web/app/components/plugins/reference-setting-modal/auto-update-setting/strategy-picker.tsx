@@ -17,10 +17,7 @@ type Props = Readonly<{
   value: AUTO_UPDATE_STRATEGY
   onChange: (value: AUTO_UPDATE_STRATEGY) => void
 }>
-const StrategyPicker = ({
-  value,
-  onChange,
-}: Props) => {
+const StrategyPicker = ({ value, onChange }: Props) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const options = [
@@ -40,31 +37,21 @@ const StrategyPicker = ({
       description: t(`${i18nPrefix}.latest.description`, { ns: 'plugin' }),
     },
   ]
-  const selectedOption = options.find(option => option.value === value)
+  const selectedOption = options.find((option) => option.value === value)
   const handleValueChange = (nextValue: string) => {
     onChange(nextValue as AUTO_UPDATE_STRATEGY)
     setOpen(false)
   }
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger render={<Button size="small" />}>
         {selectedOption?.label}
         <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="top-end"
-        sideOffset={4}
-        popupClassName="w-[280px] p-1"
-      >
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={handleValueChange}
-        >
-          {options.map(option => (
+      <DropdownMenuContent placement="top-end" sideOffset={4} popupClassName="w-[280px] p-1">
+        <DropdownMenuRadioGroup value={value} onValueChange={handleValueChange}>
+          {options.map((option) => (
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}

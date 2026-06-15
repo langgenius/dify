@@ -1,7 +1,10 @@
 /* eslint-disable ts/no-explicit-any */
 import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
+import {
+  AccountProfileQueryProvider,
+  createAccountProfileQueryClient,
+} from '@/test/account-profile-query'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import ConversationList from '../list'
@@ -73,16 +76,17 @@ vi.mock('@/service/annotation', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    currentLogItem: mockCurrentLogItem,
-    setCurrentLogItem: mockSetCurrentLogItem,
-    showMessageLogModal: mockShowMessageLogModal,
-    setShowPromptLogModal: mockSetShowPromptLogModal,
-    setShowAgentLogModal: mockSetShowAgentLogModal,
-    setShowMessageLogModal: mockSetShowMessageLogModal,
-    showPromptLogModal: mockShowPromptLogModal,
-    currentLogModalActiveTab: mockCurrentLogModalActiveTab,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      currentLogItem: mockCurrentLogItem,
+      setCurrentLogItem: mockSetCurrentLogItem,
+      showMessageLogModal: mockShowMessageLogModal,
+      setShowPromptLogModal: mockSetShowPromptLogModal,
+      setShowAgentLogModal: mockSetShowAgentLogModal,
+      setShowMessageLogModal: mockSetShowMessageLogModal,
+      showPromptLogModal: mockShowPromptLogModal,
+      currentLogModalActiveTab: mockCurrentLogModalActiveTab,
+    }),
 }))
 
 vi.mock('@/app/components/base/loading', () => ({
@@ -94,8 +98,10 @@ vi.mock('@/app/components/app/log/model-info', () => ({
 }))
 
 vi.mock('@/app/components/app/log/var-panel', () => ({
-  default: ({ varList }: { varList: Array<{ label: string, value: string }> }) => (
-    <div data-testid="var-panel">{varList.map(item => `${item.label}:${item.value}`).join(',')}</div>
+  default: ({ varList }: { varList: Array<{ label: string; value: string }> }) => (
+    <div data-testid="var-panel">
+      {varList.map((item) => `${item.label}:${item.value}`).join(',')}
+    </div>
   ),
 }))
 
@@ -109,11 +115,13 @@ vi.mock('@/app/components/app/text-generate/item', () => ({
     onFeedback,
   }: {
     content: string
-    onFeedback: (value: { rating: string, content?: string }) => Promise<boolean>
+    onFeedback: (value: { rating: string; content?: string }) => Promise<boolean>
   }) => (
     <div data-testid="text-generation">
       <div>{content}</div>
-      <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>completion-feedback</button>
+      <button onClick={() => void onFeedback({ rating: 'like', content: 'great' })}>
+        completion-feedback
+      </button>
     </div>
   ),
 }))
@@ -128,17 +136,33 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     switchSibling,
   }: {
     chatList: Array<{ id: string }>
-    onFeedback: (mid: string, value: { rating: string, content?: string }) => Promise<boolean>
-    onAnnotationAdded: (annotationId: string, authorName: string, query: string, answer: string, index: number) => void
+    onFeedback: (mid: string, value: { rating: string; content?: string }) => Promise<boolean>
+    onAnnotationAdded: (
+      annotationId: string,
+      authorName: string,
+      query: string,
+      answer: string,
+      index: number,
+    ) => void
     onAnnotationEdited: (query: string, answer: string, index: number) => void
     onAnnotationRemoved: (index: number) => Promise<boolean>
     switchSibling: (siblingMessageId: string) => void
   }) => (
     <div data-testid="chat-panel">
       <div>{chatList.length}</div>
-      <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>chat-feedback</button>
-      <button onClick={() => onAnnotationAdded('annotation-2', 'Admin', 'Edited question', 'Edited answer', 1)}>chat-add-annotation</button>
-      <button onClick={() => onAnnotationEdited('Updated question', 'Updated answer', 1)}>chat-edit-annotation</button>
+      <button onClick={() => void onFeedback('message-1', { rating: 'like', content: 'nice' })}>
+        chat-feedback
+      </button>
+      <button
+        onClick={() =>
+          onAnnotationAdded('annotation-2', 'Admin', 'Edited question', 'Edited answer', 1)
+        }
+      >
+        chat-add-annotation
+      </button>
+      <button onClick={() => onAnnotationEdited('Updated question', 'Updated answer', 1)}>
+        chat-edit-annotation
+      </button>
       <button onClick={() => void onAnnotationRemoved(1)}>chat-remove-annotation</button>
       <button onClick={() => switchSibling('message-2')}>chat-switch-sibling</button>
     </div>
@@ -238,11 +262,7 @@ const renderConversationList = ({
   const queryClient = createAccountProfileQueryClient({ timezone: 'Asia/Shanghai' })
   return renderWithNuqs(
     <AccountProfileQueryProvider queryClient={queryClient}>
-      <ConversationList
-        appDetail={appDetail}
-        logs={logs}
-        onRefresh={mockOnRefresh}
-      />
+      <ConversationList appDetail={appDetail} logs={logs} onRefresh={mockOnRefresh} />
     </AccountProfileQueryProvider>,
     { searchParams },
   )

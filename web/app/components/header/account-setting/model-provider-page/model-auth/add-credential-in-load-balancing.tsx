@@ -7,12 +7,12 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelModalModeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 type AddCredentialInLoadBalancingProps = {
@@ -35,29 +35,34 @@ const AddCredentialInLoadBalancing = ({
   onRemove,
 }: AddCredentialInLoadBalancingProps) => {
   const { t } = useTranslation()
-  const {
-    available_credentials,
-  } = modelCredential
+  const { available_credentials } = modelCredential
   const isCustomModel = configurationMethod === ConfigurationMethodEnum.customizableModel
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const handleUpdate = useCallback((payload?: any, formValues?: Record<string, any>) => {
-    onUpdate?.(payload, formValues)
-  }, [onUpdate])
+  const handleUpdate = useCallback(
+    (payload?: any, formValues?: Record<string, any>) => {
+      onUpdate?.(payload, formValues)
+    },
+    [onUpdate],
+  )
 
-  const renderTrigger = useCallback((open?: boolean) => {
-    const Item = (
-      <div className={cn(
-        'flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-accent hover:bg-state-base-hover',
-        open && 'bg-state-base-hover',
-      )}
-      >
-        <RiAddLine className="mr-2 size-4" />
-        {t('modelProvider.auth.addCredential', { ns: 'common' })}
-      </div>
-    )
+  const renderTrigger = useCallback(
+    (open?: boolean) => {
+      const Item = (
+        <div
+          className={cn(
+            'flex h-8 items-center rounded-lg px-3 system-sm-medium text-text-accent hover:bg-state-base-hover',
+            open && 'bg-state-base-hover',
+          )}
+        >
+          <RiAddLine className="mr-2 size-4" />
+          {t('modelProvider.auth.addCredential', { ns: 'common' })}
+        </div>
+      )
 
-    return Item
-  }, [t, isCustomModel])
+      return Item
+    },
+    [t, isCustomModel],
+  )
 
   return (
     <Authorized
@@ -79,12 +84,14 @@ const AddCredentialInLoadBalancing = ({
       ]}
       showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={isCustomModel
-        ? {
-            __model_name: model.model,
-            __model_type: model.model_type,
-          }
-        : undefined}
+      currentCustomConfigurationModelFixedFields={
+        isCustomModel
+          ? {
+              __model_name: model.model,
+              __model_type: model.model_type,
+            }
+          : undefined
+      }
       onItemClick={onSelectCredential}
       placement="bottom-start"
       popupTitle={isCustomModel ? t('modelProvider.auth.modelCredentials', { ns: 'common' }) : ''}

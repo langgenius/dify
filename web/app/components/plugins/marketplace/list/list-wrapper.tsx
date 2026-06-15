@@ -8,9 +8,7 @@ import List from './index'
 type ListWrapperProps = {
   showInstallButton?: boolean
 }
-const ListWrapper = ({
-  showInstallButton,
-}: ListWrapperProps) => {
+const ListWrapper = ({ showInstallButton }: ListWrapperProps) => {
   const { t } = useTranslation()
 
   const {
@@ -28,37 +26,29 @@ const ListWrapper = ({
       style={{ scrollbarGutter: 'stable' }}
       className="relative flex grow flex-col bg-background-default-subtle px-12 py-2"
     >
-      {
-        plugins && (
-          <div className="mb-4 flex items-center pt-3">
-            <div className="title-xl-semi-bold text-text-primary">{t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}</div>
-            <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
-            <SortDropdown />
+      {plugins && (
+        <div className="mb-4 flex items-center pt-3">
+          <div className="title-xl-semi-bold text-text-primary">
+            {t('marketplace.pluginsResult', { ns: 'plugin', num: pluginsTotal })}
           </div>
-        )
-      }
-      {
-        isLoading && page === 1 && (
-          <div className="absolute top-1/2 left-1/2 -translate-1/2">
-            <Loading />
-          </div>
-        )
-      }
-      {
-        (!isLoading || page > 1) && (
-          <List
-            marketplaceCollections={marketplaceCollections || []}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-            plugins={plugins}
-            showInstallButton={showInstallButton}
-          />
-        )
-      }
-      {
-        isFetchingNextPage && (
-          <Loading className="my-3" />
-        )
-      }
+          <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
+          <SortDropdown />
+        </div>
+      )}
+      {isLoading && page === 1 && (
+        <div className="absolute top-1/2 left-1/2 -translate-1/2">
+          <Loading />
+        </div>
+      )}
+      {(!isLoading || page > 1) && (
+        <List
+          marketplaceCollections={marketplaceCollections || []}
+          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+          plugins={plugins}
+          showInstallButton={showInstallButton}
+        />
+      )}
+      {isFetchingNextPage && <Loading className="my-3" />}
     </div>
   )
 }

@@ -27,7 +27,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/utils/var', async importOriginal => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   getMarketplaceUrl: () => 'https://marketplace.test/tools',
 }))
@@ -69,15 +69,19 @@ describe('AllTools', () => {
         searchText=""
         tags={[]}
         onSelect={vi.fn()}
-        buildInTools={[createToolProvider({
-          id: 'provider-built-in',
-          label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
-        })]}
-        customTools={[createToolProvider({
-          id: 'provider-custom',
-          type: 'custom',
-          label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
-        })]}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-built-in',
+            label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+          }),
+        ]}
+        customTools={[
+          createToolProvider({
+            id: 'provider-custom',
+            type: 'custom',
+            label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
+          }),
+        ]}
         workflowTools={[]}
         mcpTools={[]}
       />,

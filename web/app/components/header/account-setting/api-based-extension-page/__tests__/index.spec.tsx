@@ -40,7 +40,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
     isPending: false,
     mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
     },
   })),
 }))
@@ -153,7 +153,9 @@ describe('ApiBasedExtensionPage', () => {
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
 
       // Assert
-      expect(screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should close add modal when create mutation succeeds', async () => {
@@ -172,9 +174,18 @@ describe('ApiBasedExtensionPage', () => {
       // Act
       render(<ApiBasedExtensionPage />)
       fireEvent.click(screen.getByText('common.apiBasedExtension.add'))
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        { target: { value: 'New Ext' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        { target: { value: 'https://api.test' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        { target: { value: 'secret-key' } },
+      )
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -186,13 +197,20 @@ describe('ApiBasedExtensionPage', () => {
             api_key: 'secret-key',
           },
         })
-        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+        ).not.toBeInTheDocument()
       })
     })
 
     it('should close edit modal when update mutation succeeds', async () => {
       // Arrange
-      const extension: ApiBasedExtensionResponse = { id: '1', name: 'Extension 1', api_endpoint: 'url1', api_key: 'long-api-key' }
+      const extension: ApiBasedExtensionResponse = {
+        id: '1',
+        name: 'Extension 1',
+        api_endpoint: 'url1',
+        api_key: 'long-api-key',
+      }
       mockUpdateApiBasedExtension.mockResolvedValue({ ...extension, name: 'Updated' })
       mockApiBasedExtensionsQuery.mockReturnValue({
         data: [extension],
@@ -217,7 +235,9 @@ describe('ApiBasedExtensionPage', () => {
             api_key: '[__HIDDEN__]',
           },
         })
-        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.editTitle' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.editTitle' }),
+        ).not.toBeInTheDocument()
       })
     })
   })

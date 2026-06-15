@@ -15,16 +15,12 @@ export type { Locale }
 export const setLocaleOnClient = async (locale: Locale, reloadPage = true) => {
   Cookies.set(LOCALE_COOKIE_NAME, locale, { expires: 365 })
   await changeLanguage(locale)
-  if (reloadPage)
-    location.reload()
+  if (reloadPage) location.reload()
 }
 
 export const renderI18nObject = (obj: Record<string, string>, language: string) => {
-  if (!obj)
-    return ''
-  if (obj?.[language])
-    return obj[language]
-  if (obj?.en_US)
-    return obj.en_US
+  if (!obj) return ''
+  if (obj?.[language]) return obj[language]
+  if (obj?.en_US) return obj.en_US
   return Object.values(obj)[0]!
 }

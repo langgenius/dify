@@ -1,14 +1,9 @@
 import type { ViewHistoryProps } from './view-history'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiPlayLargeLine,
-} from '@remixicon/react'
+import { RiPlayLargeLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useNodesReadOnly,
-  useWorkflowStartRun,
-} from '../hooks'
+import { useNodesReadOnly, useWorkflowStartRun } from '../hooks'
 import Checklist from './checklist'
 import RunMode from './run-mode'
 import ViewHistory from './view-history'
@@ -38,11 +33,9 @@ export type RunAndHistoryProps = {
   showPreviewButton?: boolean
   viewHistoryProps?: ViewHistoryProps
   components?: {
-    RunMode?: React.ComponentType<
-      {
-        text?: string
-      }
-    >
+    RunMode?: React.ComponentType<{
+      text?: string
+    }>
   }
 }
 const RunAndHistory = ({
@@ -57,14 +50,9 @@ const RunAndHistory = ({
 
   return (
     <div className="flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
-      {
-        showRunButton && (
-          CustomRunMode ? <CustomRunMode text={runButtonText} /> : <RunMode text={runButtonText} />
-        )
-      }
-      {
-        showPreviewButton && <PreviewMode />
-      }
+      {showRunButton &&
+        (CustomRunMode ? <CustomRunMode text={runButtonText} /> : <RunMode text={runButtonText} />)}
+      {showPreviewButton && <PreviewMode />}
       <div className="mx-0.5 h-3.5 w-px bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />
       <Checklist disabled={nodesReadOnly} />

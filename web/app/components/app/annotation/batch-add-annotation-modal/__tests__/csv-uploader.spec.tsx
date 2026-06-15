@@ -12,10 +12,14 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
+    success: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.notify({ type: 'info', message, ...options }),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -28,8 +32,7 @@ describe('CSVUploader', () => {
   const getDropElements = () => {
     const title = screen.getByText('appAnnotation.batchModal.csvUploadTitle')
     const dropZone = title.parentElement?.parentElement as HTMLDivElement | null
-    if (!dropZone || !dropZone.parentElement)
-      throw new Error('Drop zone not found')
+    if (!dropZone || !dropZone.parentElement) throw new Error('Drop zone not found')
     const dropContainer = dropZone.parentElement as HTMLDivElement
     return { dropZone, dropContainer }
   }
@@ -40,10 +43,7 @@ describe('CSVUploader', () => {
       updateFile,
       ...props,
     }
-    return render(
-      <CSVUploader {...mergedProps} />,
-
-    )
+    return render(<CSVUploader {...mergedProps} />)
   }
 
   beforeEach(() => {
@@ -106,10 +106,12 @@ describe('CSVUploader', () => {
 
     fireEvent.drop(dropContainer, { dataTransfer: { files: [fileA, fileB] } })
 
-    await waitFor(() => expect(toastMocks.notify).toHaveBeenCalledWith({
-      type: 'error',
-      message: 'datasetCreation.stepOne.uploader.validation.count',
-    }))
+    await waitFor(() =>
+      expect(toastMocks.notify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'datasetCreation.stepOne.uploader.validation.count',
+      }),
+    )
     expect(updateFile).not.toHaveBeenCalled()
   })
 

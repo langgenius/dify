@@ -17,8 +17,7 @@ vi.mock('../api-key-modal', () => ({
     onUpdate?: () => void
   }) => {
     _mockModalOpen = open
-    if (!open)
-      return null
+    if (!open) return null
 
     const handleClose = () => {
       onOpenChange?.(false)
@@ -27,8 +26,12 @@ vi.mock('../api-key-modal', () => ({
 
     return (
       <div data-testid="api-key-modal">
-        <button data-testid="modal-close" onClick={handleClose}>Close</button>
-        <button data-testid="modal-update" onClick={onUpdate}>Update</button>
+        <button data-testid="modal-close" onClick={handleClose}>
+          Close
+        </button>
+        <button data-testid="modal-update" onClick={onUpdate}>
+          Update
+        </button>
       </div>
     )
   },

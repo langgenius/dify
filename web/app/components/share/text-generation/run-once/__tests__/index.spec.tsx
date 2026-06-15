@@ -22,13 +22,21 @@ vi.mock('@/hooks/use-breakpoints', () => {
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
-    <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
+  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
+    <textarea
+      data-testid="code-editor-mock"
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
   ),
 }))
 
 vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
-  function TextGenerationImageUploaderMock({ onFilesChange }: { onFilesChange: (files: VisionFile[]) => void }) {
+  function TextGenerationImageUploaderMock({
+    onFilesChange,
+  }: {
+    onFilesChange: (files: VisionFile[]) => void
+  }) {
     useEffect(() => {
       onFilesChange([])
     }, [onFilesChange])
@@ -40,14 +48,16 @@ vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', (
 })
 
 vi.mock('@/app/components/base/file-uploader', () => ({
-  FileUploaderInAttachmentWrapper: ({ value, onChange }: { value: object[], onChange: (files: object[]) => void }) => (
+  FileUploaderInAttachmentWrapper: ({
+    value,
+    onChange,
+  }: {
+    value: object[]
+    onChange: (files: object[]) => void
+  }) => (
     <div data-testid="file-uploader-mock">
       <button onClick={() => onChange([{ id: 'test-file' }])}>Upload</button>
-      <span>
-        {value?.length || 0}
-        {' '}
-        files
-      </span>
+      <span>{value?.length || 0} files</span>
     </div>
   ),
 }))
@@ -101,11 +111,13 @@ const siteInfo: SiteInfo = {
   title: 'Share',
 }
 
-const setup = (overrides: {
-  promptConfig?: PromptConfig
-  visionConfig?: VisionSettings
-  runControl?: React.ComponentProps<typeof RunOnce>['runControl']
-} = {}) => {
+const setup = (
+  overrides: {
+    promptConfig?: PromptConfig
+    visionConfig?: VisionSettings
+    runControl?: React.ComponentProps<typeof RunOnce>['runControl']
+  } = {},
+) => {
   const onInputsChange = vi.fn()
   const onSend = vi.fn()
   const onVisionFilesChange = vi.fn()
@@ -233,7 +245,9 @@ describe('RunOnce', () => {
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    const stopButton = screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' })
+    const stopButton = screen.getByRole('button', {
+      name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
+    })
     fireEvent.click(stopButton)
     expect(onStop).toHaveBeenCalledTimes(1)
   })
@@ -247,7 +261,9 @@ describe('RunOnce', () => {
     await waitFor(() => {
       expect(onInputsChange).toHaveBeenCalled()
     })
-    const stopButton = screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' })
+    const stopButton = screen.getByRole('button', {
+      name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
+    })
     expect(stopButton)!.toBeDisabled()
   })
 
@@ -265,7 +281,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           selectInput: 'Option A',
@@ -287,7 +306,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           fileInput: undefined,
@@ -307,7 +329,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           fileListInput: [],
@@ -330,7 +355,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalledWith({
           jsonInput: undefined,
@@ -351,7 +379,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -386,7 +417,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -406,7 +440,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -438,7 +475,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -464,7 +504,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })
@@ -484,7 +527,10 @@ describe('RunOnce', () => {
           }),
         ],
       }
-      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+      const { onInputsChange } = setup({
+        promptConfig,
+        visionConfig: { ...baseVisionConfig, enabled: false },
+      })
       await waitFor(() => {
         expect(onInputsChange).toHaveBeenCalled()
       })

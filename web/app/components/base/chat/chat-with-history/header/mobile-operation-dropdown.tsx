@@ -27,12 +27,9 @@ const MobileOperationDropdown = ({
   }, [])
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <ActionButton
             aria-label={t('operation.more', { ns: 'common' })}
             size="l"
@@ -40,13 +37,9 @@ const MobileOperationDropdown = ({
           >
             <div className="i-ri-more-fill h-[18px] w-[18px]" aria-hidden="true" />
           </ActionButton>
-        )}
+        }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[160px]"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
         <DropdownMenuItem
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}
@@ -63,7 +56,6 @@ const MobileOperationDropdown = ({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-
   )
 }
 

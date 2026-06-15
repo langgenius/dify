@@ -13,12 +13,8 @@ const VariableLabelInEditor = ({
   errorMsg,
   ...rest
 }: VariableLabelInEditorProps) => {
-  const {
-    hoverBorderColor,
-    hoverBgColor,
-    selectedBorderColor,
-    selectedBgColor,
-  } = useVarBgColorInEditor(variables, !!errorMsg)
+  const { hoverBorderColor, hoverBgColor, selectedBorderColor, selectedBgColor } =
+    useVarBgColorInEditor(variables, !!errorMsg)
 
   return (
     <VariableLabel

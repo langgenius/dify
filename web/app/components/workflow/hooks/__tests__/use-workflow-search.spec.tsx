@@ -20,11 +20,13 @@ vi.mock('../use-nodes-interactions', () => ({
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({
-    data: [{
-      id: 'provider-1',
-      icon: 'tool-icon',
-      tools: [],
-    }] satisfies Partial<ToolWithProvider>[],
+    data: [
+      {
+        id: 'provider-1',
+        icon: 'tool-icon',
+        tools: [],
+      },
+    ] satisfies Partial<ToolWithProvider>[],
   }),
   useAllCustomTools: () => ({ data: [] }),
   useAllWorkflowTools: () => ({ data: [] }),
@@ -88,11 +90,11 @@ describe('useWorkflowSearch', () => {
     const { unmount } = renderHook(() => useWorkflowSearch())
 
     const llmResults = await workflowNodesAction.search('', 'gpt')
-    expect(llmResults.map(item => item.id)).toEqual(['llm-1'])
+    expect(llmResults.map((item) => item.id)).toEqual(['llm-1'])
     expect(llmResults[0]?.title).toBe('Writer')
 
     const toolResults = await workflowNodesAction.search('', 'search')
-    expect(toolResults.map(item => item.id)).toEqual(['tool-1'])
+    expect(toolResults.map((item) => item.id)).toEqual(['tool-1'])
     expect(toolResults[0]?.description).toBe('Search the web')
 
     unmount()
@@ -104,12 +106,14 @@ describe('useWorkflowSearch', () => {
     const { unmount } = renderHook(() => useWorkflowSearch())
 
     act(() => {
-      document.dispatchEvent(new CustomEvent('workflow:select-node', {
-        detail: {
-          nodeId: 'node-42',
-          focus: false,
-        },
-      }))
+      document.dispatchEvent(
+        new CustomEvent('workflow:select-node', {
+          detail: {
+            nodeId: 'node-42',
+            focus: false,
+          },
+        }),
+      )
     })
 
     expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-42')

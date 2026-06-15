@@ -1,15 +1,14 @@
 import type { KnowledgeBaseNodeType } from '../types'
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  Model,
+  ModelItem,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-  RetrievalSearchMethodEnum,
-} from '../types'
+import { ChunkStructureEnum, IndexMethodEnum, RetrievalSearchMethodEnum } from '../types'
 import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
@@ -24,30 +23,34 @@ const makeEmbeddingModelList = (status: ModelStatusEnum): Model[] => {
       provider: 'openai',
       icon_small: { en_US: '', zh_Hans: '' },
       label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-      models: [{
-        model: 'gpt-4o',
-        label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
-        model_type: ModelTypeEnum.textEmbedding,
-        fetch_from: ConfigurationMethodEnum.predefinedModel,
-        status,
-        model_properties: {},
-        load_balancing_enabled: false,
-      }],
+      models: [
+        {
+          model: 'gpt-4o',
+          label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
+          model_type: ModelTypeEnum.textEmbedding,
+          fetch_from: ConfigurationMethodEnum.predefinedModel,
+          status,
+          model_properties: {},
+          load_balancing_enabled: false,
+        },
+      ],
       status,
     },
   ]
 }
 
 const makeEmbeddingProviderModelList = (status: ModelStatusEnum): ModelItem[] => {
-  return [{
-    model: 'gpt-4o',
-    label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
-    model_type: ModelTypeEnum.textEmbedding,
-    fetch_from: ConfigurationMethodEnum.predefinedModel,
-    status,
-    model_properties: {},
-    load_balancing_enabled: false,
-  }]
+  return [
+    {
+      model: 'gpt-4o',
+      label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' },
+      model_type: ModelTypeEnum.textEmbedding,
+      fetch_from: ConfigurationMethodEnum.predefinedModel,
+      status,
+      model_properties: {},
+      load_balancing_enabled: false,
+    },
+  ]
 }
 
 const makePayload = (overrides: Partial<KnowledgeBaseNodeType> = {}): KnowledgeBaseNodeType => {
@@ -85,34 +88,46 @@ describe('knowledge-base validation issue', () => {
   })
 
   it('returns chunks variable issue when chunks selector is empty', () => {
-    const issue = getKnowledgeBaseValidationIssue(makePayload({ index_chunk_variable_selector: [] }))
+    const issue = getKnowledgeBaseValidationIssue(
+      makePayload({ index_chunk_variable_selector: [] }),
+    )
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.chunksVariableRequired)
   })
 
   it('maps no-configure to configure required', () => {
     const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.noConfigure) }),
+      makePayload({
+        _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.noConfigure),
+      }),
     )
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired)
   })
 
   it('maps credential-removed to API key unavailable', () => {
     const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.credentialRemoved) }),
+      makePayload({
+        _embeddingProviderModelList: makeEmbeddingProviderModelList(
+          ModelStatusEnum.credentialRemoved,
+        ),
+      }),
     )
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable)
   })
 
   it('maps quota-exceeded to credits exhausted', () => {
     const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.quotaExceeded) }),
+      makePayload({
+        _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.quotaExceeded),
+      }),
     )
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted)
   })
 
   it('maps disabled to disabled', () => {
     const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.disabled) }),
+      makePayload({
+        _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.disabled),
+      }),
     )
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelDisabled)
   })
@@ -128,23 +143,21 @@ describe('knowledge-base validation issue', () => {
   })
 
   it('falls back to provider model list when provider scoped model list is empty', () => {
-    const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ _embeddingProviderModelList: [] }),
-    )
+    const issue = getKnowledgeBaseValidationIssue(makePayload({ _embeddingProviderModelList: [] }))
     expect(issue).toBeNull()
   })
 
   it('returns embedding-model-not-configured when the qualified index is missing provider details', () => {
-    const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ embedding_model: undefined }),
-    )
+    const issue = getKnowledgeBaseValidationIssue(makePayload({ embedding_model: undefined }))
 
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
   })
 
   it('maps no-permission embedding models to incompatible', () => {
     const issue = getKnowledgeBaseValidationIssue(
-      makePayload({ _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.noPermission) }),
+      makePayload({
+        _embeddingProviderModelList: makeEmbeddingProviderModelList(ModelStatusEnum.noPermission),
+      }),
     )
 
     expect(issue?.code).toBe(KnowledgeBaseValidationIssueCode.embeddingModelIncompatible)
@@ -193,18 +206,51 @@ describe('knowledge-base validation messaging', () => {
   const t = (key: string) => key
 
   it.each([
-    [KnowledgeBaseValidationIssueCode.chunkStructureRequired, 'nodes.knowledgeBase.chunkIsRequired'],
-    [KnowledgeBaseValidationIssueCode.chunksVariableRequired, 'nodes.knowledgeBase.chunksVariableIsRequired'],
-    [KnowledgeBaseValidationIssueCode.indexMethodRequired, 'nodes.knowledgeBase.indexMethodIsRequired'],
-    [KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured, 'nodes.knowledgeBase.embeddingModelNotConfigured'],
-    [KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired, 'modelProvider.selector.configureRequired'],
-    [KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable, 'modelProvider.selector.apiKeyUnavailable'],
-    [KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted, 'modelProvider.selector.creditsExhausted'],
+    [
+      KnowledgeBaseValidationIssueCode.chunkStructureRequired,
+      'nodes.knowledgeBase.chunkIsRequired',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.chunksVariableRequired,
+      'nodes.knowledgeBase.chunksVariableIsRequired',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.indexMethodRequired,
+      'nodes.knowledgeBase.indexMethodIsRequired',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured,
+      'nodes.knowledgeBase.embeddingModelNotConfigured',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired,
+      'modelProvider.selector.configureRequired',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable,
+      'modelProvider.selector.apiKeyUnavailable',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted,
+      'modelProvider.selector.creditsExhausted',
+    ],
     [KnowledgeBaseValidationIssueCode.embeddingModelDisabled, 'modelProvider.selector.disabled'],
-    [KnowledgeBaseValidationIssueCode.embeddingModelIncompatible, 'modelProvider.selector.incompatible'],
-    [KnowledgeBaseValidationIssueCode.retrievalSettingRequired, 'nodes.knowledgeBase.retrievalSettingIsRequired'],
-    [KnowledgeBaseValidationIssueCode.rerankingModelRequired, 'nodes.knowledgeBase.rerankingModelIsRequired'],
-    [KnowledgeBaseValidationIssueCode.rerankingModelInvalid, 'nodes.knowledgeBase.rerankingModelIsInvalid'],
+    [
+      KnowledgeBaseValidationIssueCode.embeddingModelIncompatible,
+      'modelProvider.selector.incompatible',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.retrievalSettingRequired,
+      'nodes.knowledgeBase.retrievalSettingIsRequired',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.rerankingModelRequired,
+      'nodes.knowledgeBase.rerankingModelIsRequired',
+    ],
+    [
+      KnowledgeBaseValidationIssueCode.rerankingModelInvalid,
+      'nodes.knowledgeBase.rerankingModelIsInvalid',
+    ],
   ] as const)('maps %s to the expected translation key', (code, expectedKey) => {
     expect(getKnowledgeBaseValidationMessage({ code }, t as never)).toBe(expectedKey)
   })
@@ -216,11 +262,19 @@ describe('knowledge-base validation messaging', () => {
 
 describe('isKnowledgeBaseEmbeddingIssue', () => {
   it('returns true for embedding-related issues', () => {
-    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.embeddingModelDisabled })).toBe(true)
+    expect(
+      isKnowledgeBaseEmbeddingIssue({
+        code: KnowledgeBaseValidationIssueCode.embeddingModelDisabled,
+      }),
+    ).toBe(true)
   })
 
   it('returns false for non-embedding issues and missing values', () => {
-    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.rerankingModelInvalid })).toBe(false)
+    expect(
+      isKnowledgeBaseEmbeddingIssue({
+        code: KnowledgeBaseValidationIssueCode.rerankingModelInvalid,
+      }),
+    ).toBe(false)
     expect(isKnowledgeBaseEmbeddingIssue(undefined)).toBe(false)
   })
 })

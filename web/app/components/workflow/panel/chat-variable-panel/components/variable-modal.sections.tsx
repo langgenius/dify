@@ -18,7 +18,9 @@ type SectionTitleProps = {
 }
 
 const SectionTitle = ({ children }: SectionTitleProps) => (
-  <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{children}</div>
+  <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+    {children}
+  </div>
 )
 
 type NameSectionProps = {
@@ -29,13 +31,7 @@ type NameSectionProps = {
   title: string
 }
 
-export const NameSection = ({
-  name,
-  onBlur,
-  onChange,
-  placeholder,
-  title,
-}: NameSectionProps) => (
+export const NameSection = ({ name, onBlur, onChange, placeholder, title }: NameSectionProps) => (
   <div className="mb-4">
     <SectionTitle>{title}</SectionTitle>
     <div className="flex">
@@ -43,7 +39,7 @@ export const NameSection = ({
         placeholder={placeholder}
         value={name}
         onChange={onChange}
-        onBlur={e => onBlur(e.target.value)}
+        onBlur={(e) => onBlur(e.target.value)}
         type="text"
       />
     </div>
@@ -57,12 +53,7 @@ type TypeSectionProps = {
   type: ChatVarType
 }
 
-export const TypeSection = ({
-  list,
-  onSelect,
-  title,
-  type,
-}: TypeSectionProps) => (
+export const TypeSection = ({ list, onSelect, title, type }: TypeSectionProps) => (
   <div className="mb-4">
     <SectionTitle>{title}</SectionTitle>
     <div className="flex">
@@ -121,7 +112,11 @@ export const ValueSection = ({
           className="text-text-tertiary"
           onClick={() => onEditorChange(!editInJSON)}
         >
-          {editInJSON ? <RiInputField className="mr-1 size-3.5" /> : <RiDraftLine className="mr-1 size-3.5" />}
+          {editInJSON ? (
+            <RiInputField className="mr-1 size-3.5" />
+          ) : (
+            <RiDraftLine className="mr-1 size-3.5" />
+          )}
           {t(toggleLabelKey, { ns: 'workflow' })}
         </Button>
       )}
@@ -132,7 +127,7 @@ export const ValueSection = ({
           className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           value={(value as string) || ''}
           placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
-          onChange={e => onArrayChange([e.target.value])}
+          onChange={(e) => onArrayChange([e.target.value])}
         />
       )}
       {type === ChatVarType.Number && (
@@ -147,16 +142,10 @@ export const ValueSection = ({
         />
       )}
       {type === ChatVarType.Boolean && (
-        <BoolValue
-          value={value as boolean}
-          onChange={onValueChange}
-        />
+        <BoolValue value={value as boolean} onChange={onValueChange} />
       )}
       {type === ChatVarType.Object && !editInJSON && (
-        <ObjectValueList
-          list={objectValue}
-          onChange={onObjectChange}
-        />
+        <ObjectValueList list={objectValue} onChange={onObjectChange} />
       )}
       {type === ChatVarType.ArrayString && !editInJSON && (
         <ArrayValueList
@@ -173,13 +162,13 @@ export const ValueSection = ({
         />
       )}
       {type === ChatVarType.ArrayBoolean && !editInJSON && (
-        <ArrayBoolList
-          list={(value as boolean[]) || [true]}
-          onChange={onArrayBoolChange}
-        />
+        <ArrayBoolList list={(value as boolean[]) || [true]} onChange={onArrayBoolChange} />
       )}
       {editInJSON && (
-        <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3" style={{ height: editorMinHeight }}>
+        <div
+          className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pr-1 pl-3"
+          style={{ height: editorMinHeight }}
+        >
           <CodeEditor
             isExpand
             noWrapper
@@ -216,13 +205,16 @@ export const DescriptionSection = ({
         className="block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:system-sm-regular placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
         value={description}
         placeholder={placeholder}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
       />
     </div>
-    <div className={cn('mt-1 text-right system-xs-regular', description.length > maxLength ? 'text-text-destructive' : 'text-text-quaternary')}>
-      {description.length}
-      /
-      {maxLength}
+    <div
+      className={cn(
+        'mt-1 text-right system-xs-regular',
+        description.length > maxLength ? 'text-text-destructive' : 'text-text-quaternary',
+      )}
+    >
+      {description.length}/{maxLength}
     </div>
   </div>
 )

@@ -71,13 +71,15 @@ describe('notLoggedInError', () => {
     expect(notLoggedInError().toString()).toMatch(/auth login/)
   })
   it('accepts a custom hint', () => {
-    expect(notLoggedInError('run \'difyctl use host\'').toString()).toMatch(/use host/)
+    expect(notLoggedInError("run 'difyctl use host'").toString()).toMatch(/use host/)
   })
 })
 
 describe('Registry (pure)', () => {
   const baseReg = (): Registry => Registry.empty('file')
-  const ctx = (email: string): AccountContext => ({ account: { id: `id-${email}`, email, name: email } })
+  const ctx = (email: string): AccountContext => ({
+    account: { id: `id-${email}`, email, name: email },
+  })
 
   it('upsert creates host + account; remove drops them', () => {
     const reg = baseReg()

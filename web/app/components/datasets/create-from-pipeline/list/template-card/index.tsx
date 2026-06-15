@@ -36,21 +36,20 @@ type TemplateCardProps = {
   type: 'customized' | 'built-in'
 }
 
-const TemplateCard = ({
-  pipeline,
-  showMoreOperations = true,
-  type,
-}: TemplateCardProps) => {
+const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById({
-    template_id: pipeline.id,
-    type,
-  }, false)
+  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(
+    {
+      template_id: pipeline.id,
+      type,
+    },
+    false,
+  )
   const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const invalidDatasetList = useInvalidDatasetList()
@@ -81,7 +80,17 @@ const TemplateCard = ({
         toast.error(t('creation.errorTip', { ns: 'datasetPipeline' }))
       },
     })
-  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
+  }, [
+    getPipelineTemplateInfo,
+    createDataset,
+    t,
+    handleCheckPluginDependencies,
+    push,
+    invalidDatasetList,
+    pipeline.name,
+    pipeline.id,
+    type,
+  ])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)
@@ -102,8 +111,7 @@ const TemplateCard = ({
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
-    if (isExporting)
-      return
+    if (isExporting) return
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
@@ -156,20 +164,15 @@ const TemplateCard = ({
         <Dialog
           open={showEditModal}
           onOpenChange={(open) => {
-            if (!open)
-              closeEditModal()
+            if (!open) closeEditModal()
           }}
         >
           <DialogContent className="w-[calc(100vw-2rem)] max-w-[520px]! overflow-hidden! border-none p-0 text-left align-middle">
-
-            <EditPipelineInfo
-              pipeline={pipeline}
-              onClose={closeEditModal}
-            />
+            <EditPipelineInfo pipeline={pipeline} onClose={closeEditModal} />
           </DialogContent>
         </Dialog>
       )}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={open => !open && onCancelDelete()}>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => !open && onCancelDelete()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -180,7 +183,9 @@ const TemplateCard = ({
             </AlertDialogDescription>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
@@ -191,12 +196,10 @@ const TemplateCard = ({
         <Dialog
           open={showDetailModal}
           onOpenChange={(open) => {
-            if (!open)
-              closeDetailsModal()
+            if (!open) closeDetailsModal()
           }}
         >
           <DialogContent className="h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] w-[calc(100vw-2rem)] max-w-[1680px]! overflow-hidden! rounded-3xl border-none p-0 text-left align-middle">
-
             <Details
               id={pipeline.id}
               type={type}

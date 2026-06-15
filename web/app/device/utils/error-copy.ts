@@ -25,15 +25,15 @@ const APPROVE_COPY: Record<string, string> = {
 const DEFAULT_MESSAGE = 'Could not complete the request. Please try again.'
 
 export function approveErrorCopy(err: unknown): string {
-  if (err instanceof DeviceFlowError)
-    return APPROVE_COPY[err.code] ?? DEFAULT_MESSAGE
+  if (err instanceof DeviceFlowError) return APPROVE_COPY[err.code] ?? DEFAULT_MESSAGE
   return DEFAULT_MESSAGE
 }
 
 // SSO-branch failures arrive as a `sso_error` query param set by the backend
 // (oauth_device_sso sso-complete) when it redirects back to /device.
 const SSO_ERROR_COPY: Record<string, string> = {
-  email_belongs_to_dify_account: 'This identity is linked to a Dify account. Use “Sign in with Dify account” instead.',
+  email_belongs_to_dify_account:
+    'This identity is linked to a Dify account. Use “Sign in with Dify account” instead.',
 }
 
 const DEFAULT_SSO_ERROR_MESSAGE = 'Single sign-on could not be completed. Try again.'
@@ -46,10 +46,8 @@ export type LookupOutcome = 'expired' | 'rate_limited' | 'failed'
 
 export function classifyLookupError(err: unknown): LookupOutcome {
   if (err instanceof DeviceFlowError) {
-    if (err.code === 'rate_limited' || err.status === 429)
-      return 'rate_limited'
-    if (err.code === 'server_error' || err.status >= 500)
-      return 'failed'
+    if (err.code === 'rate_limited' || err.status === 429) return 'rate_limited'
+    if (err.code === 'server_error' || err.status >= 500) return 'failed'
   }
   return 'expired'
 }

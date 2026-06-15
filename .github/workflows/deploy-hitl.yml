@@ -2,9 +2,9 @@ name: Deploy HITL
 
 on:
   workflow_run:
-    workflows: ["Build and Push API & Web"]
+    workflows: ['Build and Push API & Web']
     branches:
-      - "build/feat/hitl"
+      - 'build/feat/hitl'
     types:
       - completed
 

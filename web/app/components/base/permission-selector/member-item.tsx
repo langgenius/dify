@@ -41,7 +41,9 @@ const MemberItem = ({
         </div>
         <div className="truncate system-xs-regular text-text-tertiary">{email}</div>
       </div>
-      {isSelected && <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />}
+      {isSelected && (
+        <RiCheckLine className={cn('size-4 shrink-0 text-text-accent', isMe && 'opacity-30')} />
+      )}
     </div>
   )
 }

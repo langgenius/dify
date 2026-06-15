@@ -85,7 +85,6 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
 ## Prerequisites
 
 1. **Dependencies are automatically installed** when running setup:
-
    - Locust (load testing framework)
    - sseclient-py (SSE client library)
 
@@ -116,7 +115,6 @@ The stress test tests a single endpoint with comprehensive SSE metrics tracking:
    ```
 
    **Configuration options explained**:
-
    - `--workers 4`: Number of worker processes (adjust based on CPU cores)
    - `--worker-class gevent`: Async worker for handling concurrent connections
    - `--timeout 120`: Worker timeout for long-running requests
@@ -422,7 +420,6 @@ docker compose -f docker/docker-compose.middleware.yaml up -d db
    ```
 
 1. **High error rate**:
-
    - Reduce concurrency level
    - Check system resources (CPU, memory)
    - Review API server logs for errors

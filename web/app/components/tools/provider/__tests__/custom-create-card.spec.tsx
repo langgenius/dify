@@ -17,7 +17,8 @@ vi.mock('@/context/app-context', () => ({
 // Mock useLocale and useDocLink
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
-  useDocLink: () => (path: string) => `https://docs.dify.ai/en/${path?.startsWith('/') ? path.slice(1) : path}`,
+  useDocLink: () => (path: string) =>
+    `https://docs.dify.ai/en/${path?.startsWith('/') ? path.slice(1) : path}`,
 }))
 
 // Mock getLanguage
@@ -36,7 +37,11 @@ let mockModalVisible = false
 
 // Mock EditCustomToolModal - complex component
 vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
-  default: ({ payload, onHide, onAdd }: {
+  default: ({
+    payload,
+    onHide,
+    onAdd,
+  }: {
     payload: null
     onHide: () => void
     onAdd: (data: CustomCollectionBackend) => void
@@ -46,7 +51,9 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
     return (
       <div data-testid="edit-custom-collection-modal">
         <span data-testid="modal-payload">{payload === null ? 'null' : 'not-null'}</span>
-        <button data-testid="close-modal" onClick={onHide}>Close</button>
+        <button data-testid="close-modal" onClick={onHide}>
+          Close
+        </button>
         <button
           data-testid="submit-modal"
           onClick={() => {

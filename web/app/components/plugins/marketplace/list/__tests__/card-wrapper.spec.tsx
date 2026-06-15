@@ -8,7 +8,7 @@ import CardWrapper from '../card-wrapper'
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
   useLocale: () => 'en-US',
 }))
@@ -20,7 +20,7 @@ vi.mock('@/app/components/plugins/hooks', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, footer }: { payload: Plugin, footer?: React.ReactNode }) => (
+  default: ({ payload, footer }: { payload: Plugin; footer?: React.ReactNode }) => (
     <div data-testid="card">
       <span>{payload.name}</span>
       {footer}
@@ -29,11 +29,9 @@ vi.mock('@/app/components/plugins/card', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number, tags: string[] }) => (
+  default: ({ downloadCount, tags }: { downloadCount: number; tags: string[] }) => (
     <div data-testid="card-more-info">
-      {downloadCount}
-      :
-      {tags.join('|')}
+      {downloadCount}:{tags.join('|')}
     </div>
   ),
 }))
@@ -41,14 +39,17 @@ vi.mock('@/app/components/plugins/card/card-more-info', () => ({
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="install-modal">
-      <button data-testid="close-install-modal" onClick={onClose}>close</button>
+      <button data-testid="close-install-modal" onClick={onClose}>
+        close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../utils', () => ({
   getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/detail/${plugin.org}/${plugin.name}`,
-  getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) => `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
+  getPluginLinkInMarketplace: (plugin: Plugin, params: Record<string, string>) =>
+    `/marketplace/${plugin.org}/${plugin.name}?language=${params.language}&theme=${params.theme}`,
 }))
 
 const plugin = {
@@ -80,11 +81,12 @@ describe('CardWrapper', () => {
     vi.clearAllMocks()
   })
 
-  const renderCardWrapper = (props: Partial<ComponentProps<typeof CardWrapper>> = {}) => render(
-    <ThemeProvider forcedTheme="dark">
-      <CardWrapper plugin={plugin} {...props} />
-    </ThemeProvider>,
-  )
+  const renderCardWrapper = (props: Partial<ComponentProps<typeof CardWrapper>> = {}) =>
+    render(
+      <ThemeProvider forcedTheme="dark">
+        <CardWrapper plugin={plugin} {...props} />
+      </ThemeProvider>,
+    )
 
   it('renders plugin detail link when install button is hidden', () => {
     renderCardWrapper()
@@ -96,11 +98,12 @@ describe('CardWrapper', () => {
   it('renders install and marketplace detail actions when install button is shown', () => {
     renderCardWrapper({ showInstallButton: true })
 
-    expect(screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' })).toHaveAttribute(
-      'href',
-      '/marketplace/dify/plugin-a?language=en-US&theme=system',
-    )
+    expect(
+      screen.getByRole('button', { name: 'plugin.detailPanel.operation.install' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'plugin.detailPanel.operation.detail' }),
+    ).toHaveAttribute('href', '/marketplace/dify/plugin-a?language=en-US&theme=system')
   })
 
   it('opens and closes install modal from install action', () => {

@@ -3,13 +3,12 @@ import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { isEqual } from 'es-toolkit/predicate'
 import { useState } from 'react'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
 import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-} from '@/app/components/workflow/hooks'
+  useCurrentProviderAndModel,
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDatasetsDetailStore } from '@/app/components/workflow/datasets-detail-store/store'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
@@ -17,7 +16,12 @@ import { DATASET_DEFAULT } from '@/config'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { ComparisonOperator, LogicalOperator, MetadataFilteringModeEnum, MetadataFilteringVariableType } from '../types'
+import {
+  ComparisonOperator,
+  LogicalOperator,
+  MetadataFilteringModeEnum,
+  MetadataFilteringVariableType,
+} from '../types'
 import useConfig from '../use-config'
 
 let uuidCounter = 0
@@ -61,7 +65,9 @@ vi.mock('@/service/datasets', () => ({
 const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseIsChatMode = vi.mocked(useIsChatMode)
 const mockUseWorkflow = vi.mocked(useWorkflow)
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(useModelListAndDefaultModelAndCurrentProviderAndModel)
+const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+)
 const mockUseCurrentProviderAndModel = vi.mocked(useCurrentProviderAndModel)
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
@@ -143,7 +149,9 @@ const createMetadata = (overrides: Partial<MetadataInDoc> = {}): MetadataInDoc =
   ...overrides,
 })
 
-const createData = (overrides: Partial<KnowledgeRetrievalNodeType> = {}): KnowledgeRetrievalNodeType => ({
+const createData = (
+  overrides: Partial<KnowledgeRetrievalNodeType> = {},
+): KnowledgeRetrievalNodeType => ({
   title: 'Knowledge Retrieval',
   desc: '',
   type: BlockEnum.KnowledgeRetrieval,
@@ -177,22 +185,28 @@ describe('knowledge-retrieval/use-config', () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: false, getNodesReadOnly: () => false })
     mockUseIsChatMode.mockReturnValue(true)
     mockUseWorkflow.mockReturnValue({
-      getBeforeNodesInSameBranch: () => [{
-        id: 'start-node',
-        data: {
-          type: BlockEnum.Start,
+      getBeforeNodesInSameBranch: () => [
+        {
+          id: 'start-node',
+          data: {
+            type: BlockEnum.Start,
+          },
         },
-      }],
+      ],
     } as unknown as ReturnType<typeof useWorkflow>)
     mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockImplementation((type) => {
       if (type === 'rerank') {
         return {
-          modelList: [{
-            provider: 'rerank-provider',
-            models: [{
-              model: 'rerank-model',
-            }],
-          }],
+          modelList: [
+            {
+              provider: 'rerank-provider',
+              models: [
+                {
+                  model: 'rerank-model',
+                },
+              ],
+            },
+          ],
           defaultModel: {
             provider: {
               provider: 'rerank-provider',
@@ -232,28 +246,36 @@ describe('knowledge-retrieval/use-config', () => {
         inputs,
         setInputs: (nextInputs) => {
           nodeCrudSetInputs(nextInputs as KnowledgeRetrievalNodeType)
-          setInputs(prev => isEqual(prev, nextInputs) ? prev : nextInputs)
+          setInputs((prev) => (isEqual(prev, nextInputs) ? prev : nextInputs))
         },
       }
     })
     mockUseAvailableVarList.mockImplementation((_id, config) => {
       const activeConfig = config!
-      const stringVars = [{
-        nodeId: 'string-node',
-        title: 'String Node',
-        vars: [{
-          variable: 'topic',
-          type: VarType.string,
-        }],
-      }]
-      const numberVars = [{
-        nodeId: 'number-node',
-        title: 'Number Node',
-        vars: [{
-          variable: 'score',
-          type: VarType.number,
-        }],
-      }]
+      const stringVars = [
+        {
+          nodeId: 'string-node',
+          title: 'String Node',
+          vars: [
+            {
+              variable: 'topic',
+              type: VarType.string,
+            },
+          ],
+        },
+      ]
+      const numberVars = [
+        {
+          nodeId: 'number-node',
+          title: 'Number Node',
+          vars: [
+            {
+              variable: 'score',
+              type: VarType.number,
+            },
+          ],
+        },
+      ]
 
       if (activeConfig.filterVar({ type: VarType.string } as never, ['string-node', 'topic'])) {
         return {
@@ -297,27 +319,37 @@ describe('knowledge-retrieval/use-config', () => {
       },
     })
     expect(result.current.inputs.query_variable_selector).toEqual(['start-node', 'sys.query'])
-    expect(result.current.inputs.multiple_retrieval_config).toEqual(expect.objectContaining({
-      top_k: DATASET_DEFAULT.top_k,
-      reranking_enable: true,
-    }))
+    expect(result.current.inputs.multiple_retrieval_config).toEqual(
+      expect.objectContaining({
+        top_k: DATASET_DEFAULT.top_k,
+        reranking_enable: true,
+      }),
+    )
     expect(result.current.showImageQueryVarSelector).toBe(true)
-    expect(result.current.availableStringVars).toEqual([{
-      nodeId: 'string-node',
-      title: 'String Node',
-      vars: [{
-        variable: 'topic',
-        type: VarType.string,
-      }],
-    }])
-    expect(result.current.availableNumberVars).toEqual([{
-      nodeId: 'number-node',
-      title: 'Number Node',
-      vars: [{
-        variable: 'score',
-        type: VarType.number,
-      }],
-    }])
+    expect(result.current.availableStringVars).toEqual([
+      {
+        nodeId: 'string-node',
+        title: 'String Node',
+        vars: [
+          {
+            variable: 'topic',
+            type: VarType.string,
+          },
+        ],
+      },
+    ])
+    expect(result.current.availableNumberVars).toEqual([
+      {
+        nodeId: 'number-node',
+        title: 'Number Node',
+        vars: [
+          {
+            variable: 'score',
+            type: VarType.number,
+          },
+        ],
+      },
+    ])
   })
 
   it('updates query and single retrieval model state through the real hook', async () => {
@@ -331,27 +363,37 @@ describe('knowledge-retrieval/use-config', () => {
       result.current.handleQueryVarChange(['start-node', 'question'])
       result.current.handleQueryAttachmentChange(['start-node', 'files'])
       result.current.handleRetrievalModeChange(RETRIEVE_TYPE.oneWay)
-      result.current.handleModelChanged({ provider: 'anthropic', modelId: 'claude-sonnet', mode: AppModeEnum.CHAT })
+      result.current.handleModelChanged({
+        provider: 'anthropic',
+        modelId: 'claude-sonnet',
+        mode: AppModeEnum.CHAT,
+      })
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
       result.current.handleCompletionParamsChange({ temperature: 0.2 })
     })
 
-    expect(nodeCrudSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      query_variable_selector: ['start-node', 'question'],
-    }))
-    expect(nodeCrudSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      query_attachment_selector: ['start-node', 'files'],
-    }))
+    expect(nodeCrudSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query_variable_selector: ['start-node', 'question'],
+      }),
+    )
+    expect(nodeCrudSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query_attachment_selector: ['start-node', 'files'],
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.inputs.retrieval_mode).toBe(RETRIEVE_TYPE.oneWay)
-      expect(result.current.inputs.single_retrieval_config).toEqual(expect.objectContaining({
-        model: expect.objectContaining({
-          provider: 'anthropic',
-          name: 'claude-sonnet',
-          completion_params: { temperature: 0.2 },
+      expect(result.current.inputs.single_retrieval_config).toEqual(
+        expect.objectContaining({
+          model: expect.objectContaining({
+            provider: 'anthropic',
+            name: 'claude-sonnet',
+            completion_params: { temperature: 0.2 },
+          }),
         }),
-      }))
+      )
     })
   })
 
@@ -367,29 +409,43 @@ describe('knowledge-retrieval/use-config', () => {
       result.current.handleRetrievalModeChange(RETRIEVE_TYPE.multiWay)
       result.current.handleMultipleRetrievalConfigChange({ top_k: 8, score_threshold: 0.4 })
       result.current.handleOnDatasetsChange([
-        createDataset({ id: 'dataset-2', name: 'Economic', indexing_technique: 'economy' as DataSet['indexing_technique'], is_multimodal: false }),
-        createDataset({ id: 'dataset-3', name: 'High Quality', indexing_technique: 'high_quality' as DataSet['indexing_technique'], is_multimodal: false }),
+        createDataset({
+          id: 'dataset-2',
+          name: 'Economic',
+          indexing_technique: 'economy' as DataSet['indexing_technique'],
+          is_multimodal: false,
+        }),
+        createDataset({
+          id: 'dataset-3',
+          name: 'High Quality',
+          indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+          is_multimodal: false,
+        }),
       ])
     })
 
-    expect(nodeCrudSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      multiple_retrieval_config: expect.objectContaining({
-        top_k: 8,
-        score_threshold: 0.4,
+    expect(nodeCrudSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        multiple_retrieval_config: expect.objectContaining({
+          top_k: 8,
+          score_threshold: 0.4,
+        }),
       }),
-    }))
+    )
 
     await waitFor(() => {
       expect(result.current.inputs.retrieval_mode).toBe(RETRIEVE_TYPE.multiWay)
       expect(result.current.inputs.query_attachment_selector).toEqual([])
       expect(result.current.inputs.dataset_ids).toEqual(['dataset-2', 'dataset-3'])
-      expect(result.current.inputs.multiple_retrieval_config).toEqual(expect.objectContaining({
-        reranking_enable: true,
-        reranking_model: {
-          provider: 'rerank-provider',
-          model: 'rerank-model',
-        },
-      }))
+      expect(result.current.inputs.multiple_retrieval_config).toEqual(
+        expect.objectContaining({
+          reranking_enable: true,
+          reranking_model: {
+            provider: 'rerank-provider',
+            model: 'rerank-model',
+          },
+        }),
+      )
       expect(result.current.rerankModelOpen).toBe(true)
     })
 
@@ -400,9 +456,14 @@ describe('knowledge-retrieval/use-config', () => {
   })
 
   it('manages metadata conditions, metadata model config, and variable filters', async () => {
-    const { result } = renderHook(() => useConfig('knowledge-node', createData({
-      dataset_ids: [],
-    })))
+    const { result } = renderHook(() =>
+      useConfig(
+        'knowledge-node',
+        createData({
+          dataset_ids: [],
+        }),
+      ),
+    )
 
     await waitFor(() => {
       expect(result.current.selectedDatasetsLoaded).toBe(true)
@@ -411,11 +472,13 @@ describe('knowledge-retrieval/use-config', () => {
     act(() => {
       result.current.handleMetadataFilterModeChange(MetadataFilteringModeEnum.manual)
       result.current.handleAddCondition(createMetadata())
-      result.current.handleAddCondition(createMetadata({
-        id: 'meta-2',
-        name: 'score',
-        type: MetadataFilteringVariableType.number,
-      }))
+      result.current.handleAddCondition(
+        createMetadata({
+          id: 'meta-2',
+          name: 'score',
+          type: MetadataFilteringVariableType.number,
+        }),
+      )
     })
 
     await waitFor(() => {
@@ -433,12 +496,18 @@ describe('knowledge-retrieval/use-config', () => {
       })
       result.current.handleToggleConditionLogicalOperator()
       result.current.handleRemoveCondition(firstCondition!.id)
-      result.current.handleMetadataModelChange({ provider: 'openai', modelId: 'gpt-4.1-mini', mode: AppModeEnum.CHAT })
+      result.current.handleMetadataModelChange({
+        provider: 'openai',
+        modelId: 'gpt-4.1-mini',
+        mode: AppModeEnum.CHAT,
+      })
       result.current.handleMetadataCompletionParamsChange({ top_p: 0.3 })
     })
 
     await waitFor(() => {
-      expect(result.current.inputs.metadata_filtering_conditions?.logical_operator).toBe(LogicalOperator.or)
+      expect(result.current.inputs.metadata_filtering_conditions?.logical_operator).toBe(
+        LogicalOperator.or,
+      )
       expect(result.current.inputs.metadata_filtering_conditions?.conditions).toHaveLength(1)
       expect(result.current.inputs.metadata_model_config).toEqual({
         provider: 'openai',

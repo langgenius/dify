@@ -12,8 +12,12 @@ describe('layout index', () => {
     it('should render Box and Group with optional border styles', () => {
       render(
         <div>
-          <Box withBorderBottom className="box-test">Box content</Box>
-          <Group withBorderBottom className="group-test">Group content</Group>
+          <Box withBorderBottom className="box-test">
+            Box content
+          </Box>
+          <Group withBorderBottom className="group-test">
+            Group content
+          </Group>
         </div>,
       )
 
@@ -62,10 +66,7 @@ describe('layout index', () => {
     it('should collapse and expand Field children when supportCollapse is enabled', async () => {
       const user = userEvent.setup()
       render(
-        <Field
-          supportCollapse
-          fieldTitleProps={{ title: 'Advanced' }}
-        >
+        <Field supportCollapse fieldTitleProps={{ title: 'Advanced' }}>
           <div>Extra details</div>
         </Field>,
       )

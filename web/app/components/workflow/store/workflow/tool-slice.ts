@@ -12,11 +12,12 @@ export type ToolSliceShape = {
   mcpTools?: ToolWithProvider[]
 }
 
-export const createToolSlice: StateCreator<ToolSliceShape> = set => ({
+export const createToolSlice: StateCreator<ToolSliceShape> = (set) => ({
   toolPublished: false,
-  setToolPublished: toolPublished => set(() => ({ toolPublished })),
+  setToolPublished: (toolPublished) => set(() => ({ toolPublished })),
   lastPublishedHasUserInput: false,
-  setLastPublishedHasUserInput: hasUserInput => set(() => ({ lastPublishedHasUserInput: hasUserInput })),
+  setLastPublishedHasUserInput: (hasUserInput) =>
+    set(() => ({ lastPublishedHasUserInput: hasUserInput })),
   buildInTools: undefined,
   customTools: undefined,
   workflowTools: undefined,

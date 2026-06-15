@@ -1,11 +1,13 @@
 # Rule Catalog — Architecture
 
 ## Scope
+
 - Covers: controller/service/core-domain/libs/model layering, dependency direction, responsibility placement, observability-friendly flow.
 
 ## Rules
 
 ### Keep business logic out of controllers
+
 - Category: maintainability
 - Severity: critical
 - Description: Controllers should parse input, call services, and return serialized responses. Business decisions inside controllers make behavior hard to reuse and test.
@@ -33,12 +35,14 @@
     ```
 
 ### Preserve layer dependency direction
+
 - Category: best practices
 - Severity: critical
 - Description: Controllers may depend on services, and services may depend on core/domain abstractions. Reversing this direction (for example, core importing controller/web modules) creates cycles and leaks transport concerns into domain code.
 - Suggested fix: Extract shared contracts into core/domain or service-level modules and make upper layers depend on lower, not the reverse.
 - Example:
   - Bad:
+
     ```python
     # core/policy/publish_policy.py
     from controllers.console.app import request_context
@@ -46,7 +50,9 @@
     def can_publish() -> bool:
         return request_context.current_user.is_admin
     ```
+
   - Good:
+
     ```python
     # core/policy/publish_policy.py
     def can_publish(role: str) -> bool:
@@ -57,6 +63,7 @@
     ```
 
 ### Keep libs business-agnostic
+
 - Category: maintainability
 - Severity: critical
 - Description: Modules under `api/libs/` should remain reusable, business-agnostic building blocks. They must not encode product/domain-specific rules, workflow orchestration, or business decisions.
@@ -65,6 +72,7 @@
   - Keep `libs` dependencies clean: avoid importing service/controller/domain-specific modules into `api/libs/`.
 - Example:
   - Bad:
+
     ```python
     # api/libs/conversation_filter.py
     from services.conversation_service import ConversationService
@@ -76,7 +84,9 @@
             return conversation.idle_days > 90
         return conversation.idle_days > 30
     ```
+
   - Good:
+
     ```python
     # api/libs/datetime_utils.py (business-agnostic helper)
     def older_than_days(idle_days: int, threshold_days: int) -> bool:

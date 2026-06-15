@@ -26,7 +26,9 @@ describe('AppsInfo', () => {
     expect(screen.getByText('billing.usagePage.buildApps')).toBeInTheDocument()
     expect(screen.getByText('7')).toBeInTheDocument()
     expect(screen.getByText('15')).toBeInTheDocument()
-    expect(screen.getByText('billing.usagePage.buildApps').closest('.apps-info-class')).toBeInTheDocument()
+    expect(
+      screen.getByText('billing.usagePage.buildApps').closest('.apps-info-class'),
+    ).toBeInTheDocument()
   })
 
   it('renders without className', () => {

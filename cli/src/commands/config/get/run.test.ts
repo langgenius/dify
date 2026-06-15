@@ -26,11 +26,11 @@ describe('runConfigGet', () => {
     let caught: unknown
     try {
       await runConfigGet({ store: getConfigurationStore(), key: 'bogus.key' })
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught)).toBe(true)
-    if (isBaseError(caught))
-      expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
+    if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
   })
 
   it('returns numeric limit as string', async () => {

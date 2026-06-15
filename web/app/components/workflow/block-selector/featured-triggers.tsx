@@ -4,12 +4,21 @@ import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import {
+  createPreviewCardHandle,
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import { RiMoreLine } from '@remixicon/react'
 import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
+import {
+  ArrowDownDoubleLine,
+  ArrowDownRoundFill,
+  ArrowUpDoubleLine,
+} from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
@@ -50,8 +59,14 @@ const FeaturedTriggers = ({
 }: FeaturedTriggersProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const previewCardHandle = useMemo(() => createPreviewCardHandle<FeaturedTriggerPreviewPayload>(), [])
-  const triggerActionPreviewCardHandle = useMemo(() => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(), [])
+  const previewCardHandle = useMemo(
+    () => createPreviewCardHandle<FeaturedTriggerPreviewPayload>(),
+    [],
+  )
+  const triggerActionPreviewCardHandle = useMemo(
+    () => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(),
+    [],
+  )
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
   const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
@@ -61,28 +76,22 @@ const FeaturedTriggers = ({
     setVisibleCount(INITIAL_VISIBLE_COUNT)
   }
 
-  const limitedPlugins = useMemo(
-    () => plugins.slice(0, MAX_RECOMMENDED_COUNT),
-    [plugins],
-  )
+  const limitedPlugins = useMemo(() => plugins.slice(0, MAX_RECOMMENDED_COUNT), [plugins])
 
-  const {
-    installedProviders,
-    uninstalledPlugins,
-  } = useMemo(() => {
+  const { installedProviders, uninstalledPlugins } = useMemo(() => {
     const installed: TriggerWithProvider[] = []
     const uninstalled: Plugin[] = []
     const visitedProviderIds = new Set<string>()
 
     limitedPlugins.forEach((plugin) => {
-      const provider = providerMap.get(plugin.plugin_id) || providerMap.get(plugin.latest_package_identifier)
+      const provider =
+        providerMap.get(plugin.plugin_id) || providerMap.get(plugin.latest_package_identifier)
       if (provider) {
         if (!visitedProviderIds.has(provider.id)) {
           installed.push(provider)
           visitedProviderIds.add(provider.id)
         }
-      }
-      else {
+      } else {
         uninstalled.push(plugin)
       }
     })
@@ -108,7 +117,10 @@ const FeaturedTriggers = ({
   )
 
   const totalVisible = visibleInstalledProviders.length + visibleUninstalledPlugins.length
-  const maxAvailable = Math.min(MAX_RECOMMENDED_COUNT, installedProviders.length + uninstalledPlugins.length)
+  const maxAvailable = Math.min(
+    MAX_RECOMMENDED_COUNT,
+    installedProviders.length + uninstalledPlugins.length,
+  )
   const hasMoreToShow = totalVisible < maxAvailable
   const canToggleVisibility = maxAvailable > INITIAL_VISIBLE_COUNT
   const isExpanded = canToggleVisibility && !hasMoreToShow
@@ -119,10 +131,14 @@ const FeaturedTriggers = ({
       <button
         type="button"
         className="flex w-full items-center rounded-md px-4 py-1 text-left text-text-primary"
-        onClick={() => setIsCollapsed(prev => !prev)}
+        onClick={() => setIsCollapsed((prev) => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
-        <ArrowDownRoundFill className={`ml-0.5 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <span className="system-xs-medium text-text-primary">
+          {t('tabs.featuredTools', { ns: 'workflow' })}
+        </span>
+        <ArrowDownRoundFill
+          className={`ml-0.5 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+        />
       </button>
 
       {!isCollapsed && (
@@ -135,7 +151,12 @@ const FeaturedTriggers = ({
 
           {showEmptyState && (
             <p className="px-4 py-2 system-xs-regular text-text-tertiary">
-              <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'trigger' })} target="_blank" rel="noopener noreferrer">
+              <Link
+                className="text-text-accent"
+                href={getMarketplaceUrl('', { category: 'trigger' })}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
               </Link>
             </p>
@@ -143,7 +164,7 @@ const FeaturedTriggers = ({
 
           {!showEmptyState && !isLoading && (
             <div className="mt-1 p-1">
-              {visibleInstalledProviders.map(provider => (
+              {visibleInstalledProviders.map((provider) => (
                 <TriggerPluginItem
                   key={provider.id}
                   payload={provider}
@@ -153,7 +174,7 @@ const FeaturedTriggers = ({
                 />
               ))}
 
-              {visibleUninstalledPlugins.map(plugin => (
+              {visibleUninstalledPlugins.map((plugin) => (
                 <div key={plugin.plugin_id} className="mb-1 last-of-type:mb-0">
                   <FeaturedTriggerUninstalledItem
                     plugin={plugin}
@@ -174,8 +195,7 @@ const FeaturedTriggers = ({
               className="group mt-1 flex cursor-pointer items-center gap-x-2 rounded-lg py-1 pr-2 pl-3 text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
               onClick={() => {
                 setVisibleCount((count) => {
-                  if (count >= maxAvailable)
-                    return INITIAL_VISIBLE_COUNT
+                  if (count >= maxAvailable) return INITIAL_VISIBLE_COUNT
 
                   return Math.min(count + INITIAL_VISIBLE_COUNT, maxAvailable)
                 })
@@ -183,16 +203,16 @@ const FeaturedTriggers = ({
             >
               <div className="flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary">
                 <RiMoreLine className="size-4 group-hover:hidden" />
-                {isExpanded
-                  ? (
-                      <ArrowUpDoubleLine className="hidden size-4 group-hover:block" />
-                    )
-                  : (
-                      <ArrowDownDoubleLine className="hidden size-4 group-hover:block" />
-                    )}
+                {isExpanded ? (
+                  <ArrowUpDoubleLine className="hidden size-4 group-hover:block" />
+                ) : (
+                  <ArrowDownDoubleLine className="hidden size-4 group-hover:block" />
+                )}
               </div>
               <div className="system-xs-regular">
-                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', { ns: 'workflow' })}
+                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', {
+                  ns: 'workflow',
+                })}
               </div>
             </div>
           )}
@@ -200,12 +220,16 @@ const FeaturedTriggers = ({
       )}
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
-          <FeaturedTriggerPreviewCard payload={payload as FeaturedTriggerPreviewPayload | undefined} />
+          <FeaturedTriggerPreviewCard
+            payload={payload as FeaturedTriggerPreviewPayload | undefined}
+          />
         )}
       </PreviewCard>
       <PreviewCard handle={triggerActionPreviewCardHandle}>
         {({ payload }) => (
-          <TriggerPluginActionPreviewCard payload={payload as TriggerPluginActionPreviewPayload | undefined} />
+          <TriggerPluginActionPreviewCard
+            payload={payload as TriggerPluginActionPreviewPayload | undefined}
+          />
         )}
       </PreviewCard>
     </div>
@@ -229,13 +253,15 @@ function FeaturedTriggerUninstalledItem({
 }: FeaturedTriggerUninstalledItemProps) {
   const label = plugin.label?.[language] || plugin.name
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
-  const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
+  const installCountLabel = t('install', {
+    ns: 'plugin',
+    num: formatNumber(plugin.install_count || 0),
+  })
   const [actionOpen, setActionOpen] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
 
   useEffect(() => {
-    if (!actionOpen)
-      return
+    if (!actionOpen) return
 
     const handleScroll = () => {
       setActionOpen(false)
@@ -251,13 +277,22 @@ function FeaturedTriggerUninstalledItem({
   const row = (
     <BlockSelectorRow as="div" className="group select-none">
       <div className="flex min-w-0 items-center">
-        <BlockIcon className="mr-2 shrink-0" type={BlockEnum.TriggerPlugin} size="sm" toolIcon={plugin.icon} />
+        <BlockIcon
+          className="mr-2 shrink-0"
+          type={BlockEnum.TriggerPlugin}
+          size="sm"
+          toolIcon={plugin.icon}
+        />
         <div className="min-w-0">
           <div className="truncate system-sm-medium text-text-secondary">{label}</div>
         </div>
       </div>
       <div className="ml-auto flex h-6 items-center gap-1 pl-1">
-        <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
+        <span
+          className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}
+        >
+          {installCountLabel}
+        </span>
         <div
           className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
         >
@@ -285,20 +320,20 @@ function FeaturedTriggerUninstalledItem({
 
   return (
     <>
-      {description
-        ? (
-            // Preview is supplementary: icon / label / brief are all reachable from
-            // the InstallFromMarketplace modal that opens on click, so hover/focus-only
-            // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-            <PreviewCardTrigger
-              delay={150}
-              closeDelay={150}
-              handle={previewCardHandle}
-              payload={{ plugin, label, description }}
-              render={row}
-            />
-          )
-        : row}
+      {description ? (
+        // Preview is supplementary: icon / label / brief are all reachable from
+        // the InstallFromMarketplace modal that opens on click, so hover/focus-only
+        // activation is a11y-safe. See packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
+        <PreviewCardTrigger
+          delay={150}
+          closeDelay={150}
+          handle={previewCardHandle}
+          payload={{ plugin, label, description }}
+          render={row}
+        />
+      ) : (
+        row
+      )}
       {isInstallModalOpen && (
         <InstallFromMarketplace
           uniqueIdentifier={plugin.latest_package_identifier}
@@ -320,18 +355,22 @@ type FeaturedTriggerPreviewCardProps = {
   payload?: FeaturedTriggerPreviewPayload
 }
 
-function FeaturedTriggerPreviewCard({
-  payload,
-}: FeaturedTriggerPreviewCardProps) {
-  if (!payload)
-    return null
+function FeaturedTriggerPreviewCard({ payload }: FeaturedTriggerPreviewCardProps) {
+  if (!payload) return null
 
   return (
     <PreviewCardContent placement="right" popupClassName="w-[224px] px-3 py-2.5">
       <div>
-        <BlockIcon size="md" className="mb-2" type={BlockEnum.TriggerPlugin} toolIcon={payload.plugin.icon} />
+        <BlockIcon
+          size="md"
+          className="mb-2"
+          type={BlockEnum.TriggerPlugin}
+          toolIcon={payload.plugin.icon}
+        />
         <div className="mb-1 text-sm/5 text-text-primary">{payload.label}</div>
-        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.description}</div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">
+          {payload.description}
+        </div>
       </div>
     </PreviewCardContent>
   )

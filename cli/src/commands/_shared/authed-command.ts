@@ -41,13 +41,11 @@ export async function buildAuthedContext(
   const io = realStreams(opts.format ?? '')
   const reg = await Registry.load()
   const active = reg.resolveActive()
-  if (active === undefined)
-    fail(cmd, opts, io)
+  if (active === undefined) fail(cmd, opts, io)
 
   const store = getTokenStore(reg.token_storage)
   const bearer = await store.read(active.host, active.email)
-  if (bearer === '')
-    fail(cmd, opts, io)
+  if (bearer === '') fail(cmd, opts, io)
 
   const host = hostWithScheme(active.host, active.scheme)
   const retryAttempts = resolveRetryAttempts({ flag: opts.retryFlag, env: getEnv })
@@ -62,7 +60,9 @@ export async function buildAuthedContext(
 
 function fail(cmd: Pick<Command, 'error'>, opts: AuthedContextOptions, io: IOStreams): never {
   const err = notLoggedInError()
-  cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: io.isErrTTY }), { exit: err.exit() })
+  cmd.error(formatErrorForCli(err, { format: opts.format, isErrTTY: io.isErrTTY }), {
+    exit: err.exit(),
+  })
 }
 
 // Best-effort nudge: never throws, never blocks. Lives here so every authed
@@ -76,17 +76,20 @@ async function runCompatNudge(opts: {
     await maybeNudgeCompat(opts.host, {
       store,
       probe: async (host) => {
-        const http = createHttpClient({ baseURL: openAPIBase(host), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+        const http = createHttpClient({
+          baseURL: openAPIBase(host),
+          timeoutMs: META_PROBE_TIMEOUT_MS,
+          retryAttempts: 0,
+        })
         return new MetaClient(http).serverVersion()
       },
-      emit: line => opts.io.err.write(line),
+      emit: (line) => opts.io.err.write(line),
       isTty: opts.io.isOutTTY,
       format: opts.io.outputFormat,
       clientVersion: versionInfo.version,
       color: opts.io.isErrTTY,
     })
-  }
-  catch {
+  } catch {
     // already swallowed inside maybeNudgeCompat; this is belt-and-braces
   }
 }

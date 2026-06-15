@@ -64,20 +64,25 @@ describe('E2E / difyctl auth devices', () => {
     // Spec: devices list supports JSON output
     const result = await r(['auth', 'devices', 'list', '--json'])
     assertExitCode(result, 0)
-    const parsed = assertJson<{ data: unknown[], total: number }>(result)
+    const parsed = assertJson<{ data: unknown[]; total: number }>(result)
     expect(parsed).toHaveProperty('data')
     expect(Array.isArray(parsed.data)).toBe(true)
   })
 
-  itSessions('[P1] devices list JSON schema is stable (contains data and total fields)', async () => {
-    // Spec: devices list JSON schema is stable
-    const result = await r(['auth', 'devices', 'list', '--json'])
-    assertExitCode(result, 0)
-    const parsed = assertJson<{ data: unknown[], total: number, page: number, limit: number }>(result)
-    expect(parsed).toHaveProperty('total')
-    expect(parsed).toHaveProperty('page')
-    expect(parsed).toHaveProperty('limit')
-  })
+  itSessions(
+    '[P1] devices list JSON schema is stable (contains data and total fields)',
+    async () => {
+      // Spec: devices list JSON schema is stable
+      const result = await r(['auth', 'devices', 'list', '--json'])
+      assertExitCode(result, 0)
+      const parsed = assertJson<{ data: unknown[]; total: number; page: number; limit: number }>(
+        result,
+      )
+      expect(parsed).toHaveProperty('total')
+      expect(parsed).toHaveProperty('page')
+      expect(parsed).toHaveProperty('limit')
+    },
+  )
 
   it('[P0] unauthenticated devices list returns auth error (exit code 4)', async () => {
     // Spec: unauthenticated devices list returns auth error + exit code 4
@@ -86,8 +91,7 @@ describe('E2E / difyctl auth devices', () => {
       const result = await run(['auth', 'devices', 'list'], { configDir: unauthTmp.configDir })
       assertExitCode(result, 4)
       expect(result.stderr).toMatch(/not.?logged.?in|auth.?login/i)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -119,10 +123,10 @@ describe('E2E / difyctl auth devices', () => {
       // List sessions authenticated as the fresh token
       const listResult = await revokeR(['auth', 'devices', 'list', '--json'])
       assertExitCode(listResult, 0)
-      const { data } = assertJson<{ data: Array<{ id: string, prefix: string }> }>(listResult)
+      const { data } = assertJson<{ data: Array<{ id: string; prefix: string }> }>(listResult)
 
       // Find the entry whose prefix matches the fresh token
-      const entry = data.find(d => d.prefix && freshToken.startsWith(d.prefix))
+      const entry = data.find((d) => d.prefix && freshToken.startsWith(d.prefix))
       if (!entry) {
         // Fresh session not found — may have been filtered; skip gracefully.
         return
@@ -130,8 +134,7 @@ describe('E2E / difyctl auth devices', () => {
 
       const revokeResult = await revokeR(['auth', 'devices', 'revoke', entry.id, '--yes'])
       assertExitCode(revokeResult, 0)
-    }
-    finally {
+    } finally {
       await revokeTmp.cleanup()
     }
   })
@@ -163,7 +166,7 @@ describe('E2E / difyctl auth devices', () => {
     assertExitCode(result, 0)
     const parsed = assertJson<{ data: Array<{ last_used_at: string | null }> }>(result)
     expect(parsed.data.length).toBeGreaterThan(0)
-    const hasNullLastUsed = parsed.data.some(d => d.last_used_at === null)
+    const hasNullLastUsed = parsed.data.some((d) => d.last_used_at === null)
     expect(hasNullLastUsed).toBe(true)
   })
 
@@ -172,8 +175,7 @@ describe('E2E / difyctl auth devices', () => {
   itSessions('[P0] revoked device no longer appears in devices list', async () => {
     // Spec 1.99: a revoked device no longer appears in devices list
     const freshToken = await mintFreshToken(E.host, E.email, E.password)
-    if (!freshToken)
-      return
+    if (!freshToken) return
 
     const revokeTmp = await withTempConfig()
     try {
@@ -188,10 +190,11 @@ describe('E2E / difyctl auth devices', () => {
 
       const listBefore = await revokeR(['auth', 'devices', 'list', '--json'])
       assertExitCode(listBefore, 0)
-      const { data: before } = assertJson<{ data: Array<{ id: string, prefix: string }> }>(listBefore)
-      const entry = before.find(d => d.prefix && freshToken.startsWith(d.prefix))
-      if (!entry)
-        return
+      const { data: before } = assertJson<{ data: Array<{ id: string; prefix: string }> }>(
+        listBefore,
+      )
+      const entry = before.find((d) => d.prefix && freshToken.startsWith(d.prefix))
+      if (!entry) return
 
       const revokeResult = await revokeR(['auth', 'devices', 'revoke', entry.id, '--yes'])
       assertExitCode(revokeResult, 0)
@@ -200,57 +203,62 @@ describe('E2E / difyctl auth devices', () => {
       const listAfter = await r(['auth', 'devices', 'list', '--json'])
       assertExitCode(listAfter, 0)
       const { data: after } = assertJson<{ data: Array<{ id: string }> }>(listAfter)
-      const stillExists = after.some(d => d.id === entry.id)
+      const stillExists = after.some((d) => d.id === entry.id)
       expect(stillExists).toBe(false)
-    }
-    finally {
+    } finally {
       await revokeTmp.cleanup()
     }
   })
 
   // ── Revoke current device → session invalidated ──────────────────────────────
 
-  itSessions('[P0] revoking the current device invalidates the session (auth status returns exit 4)', async () => {
-    // Spec 1.100: revoking the current device invalidates the session
-    // Uses caps.devicesToken (disposable, pre-minted for this suite).
-    const selfToken = caps.devicesToken
-    if (!selfToken)
-      return
+  itSessions(
+    '[P0] revoking the current device invalidates the session (auth status returns exit 4)',
+    async () => {
+      // Spec 1.100: revoking the current device invalidates the session
+      // Uses caps.devicesToken (disposable, pre-minted for this suite).
+      const selfToken = caps.devicesToken
+      if (!selfToken) return
 
-    const selfTmp = await withTempConfig()
-    try {
-      await injectAuth(selfTmp.configDir, {
-        host: E.host,
-        bearer: selfToken,
-        email: E.email,
-        workspaceId: E.workspaceId,
-        workspaceName: E.workspaceName,
-      })
-      const selfR = (argv: string[]) => run(argv, { configDir: selfTmp.configDir })
+      const selfTmp = await withTempConfig()
+      try {
+        await injectAuth(selfTmp.configDir, {
+          host: E.host,
+          bearer: selfToken,
+          email: E.email,
+          workspaceId: E.workspaceId,
+          workspaceName: E.workspaceName,
+        })
+        const selfR = (argv: string[]) => run(argv, { configDir: selfTmp.configDir })
 
-      const listResult = await selfR(['auth', 'devices', 'list', '--json'])
-      assertExitCode(listResult, 0)
-      const { data } = assertJson<{ data: Array<{ id: string, prefix: string }> }>(listResult)
-      const entry = data.find(d => d.prefix && selfToken.startsWith(d.prefix))
-      if (!entry)
-        return
+        const listResult = await selfR(['auth', 'devices', 'list', '--json'])
+        assertExitCode(listResult, 0)
+        const { data } = assertJson<{ data: Array<{ id: string; prefix: string }> }>(listResult)
+        const entry = data.find((d) => d.prefix && selfToken.startsWith(d.prefix))
+        if (!entry) return
 
-      const revokeResult = await selfR(['auth', 'devices', 'revoke', entry.id, '--yes'])
-      assertExitCode(revokeResult, 0)
-      // Revoke succeeded — the session is invalidated on the server.
-      // Note: the server may cache the token briefly, so immediate API calls
-      // with the revoked token may still succeed; we verify only that revoke exits 0.
-    }
-    finally {
-      await selfTmp.cleanup()
-    }
-  })
+        const revokeResult = await selfR(['auth', 'devices', 'revoke', entry.id, '--yes'])
+        assertExitCode(revokeResult, 0)
+        // Revoke succeeded — the session is invalidated on the server.
+        // Note: the server may cache the token briefly, so immediate API calls
+        // with the revoked token may still succeed; we verify only that revoke exits 0.
+      } finally {
+        await selfTmp.cleanup()
+      }
+    },
+  )
 
   // ── Revoke invalid device id ──────────────────────────────────────────────────
 
   itSessions('[P1] revoking a non-existent device id returns an error', async () => {
     // Spec 1.101: revoking a non-existent device id returns an error
-    const result = await r(['auth', 'devices', 'revoke', 'invalid-device-id-does-not-exist', '--yes'])
+    const result = await r([
+      'auth',
+      'devices',
+      'revoke',
+      'invalid-device-id-does-not-exist',
+      '--yes',
+    ])
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toMatch(/not.?found|invalid|device|error/i)
   })
@@ -260,8 +268,7 @@ describe('E2E / difyctl auth devices', () => {
   it('[P0] revoke --all exits 0 and revokes all sessions except the current one', async () => {
     // Spec 1.102: revoke --all exits 0 and revokes all sessions except the current one
     const freshToken = await mintFreshToken(E.host, E.email, E.password)
-    if (!freshToken)
-      return
+    if (!freshToken) return
 
     const freshTmp = await withTempConfig()
     try {
@@ -275,11 +282,9 @@ describe('E2E / difyctl auth devices', () => {
       const freshR = (argv: string[]) => run(argv, { configDir: freshTmp.configDir })
       const result = await freshR(['auth', 'devices', 'revoke', '--all', '--yes'])
       // Server may return 500 if other sessions are already revoked; skip gracefully.
-      if (result.exitCode !== 0)
-        return
+      if (result.exitCode !== 0) return
       assertExitCode(result, 0)
-    }
-    finally {
+    } finally {
       await freshTmp.cleanup()
     }
   })
@@ -287,8 +292,7 @@ describe('E2E / difyctl auth devices', () => {
   it('[P0] after revoke --all only the current device remains in the list', async () => {
     // Spec 1.103: after revoke --all only the current device remains
     const freshToken = await mintFreshToken(E.host, E.email, E.password)
-    if (!freshToken)
-      return
+    if (!freshToken) return
 
     const freshTmp = await withTempConfig()
     try {
@@ -303,16 +307,14 @@ describe('E2E / difyctl auth devices', () => {
 
       const revokeAllResult = await freshR(['auth', 'devices', 'revoke', '--all', '--yes'])
       // Server may return 500 if other sessions are already revoked; skip gracefully.
-      if (revokeAllResult.exitCode !== 0)
-        return
+      if (revokeAllResult.exitCode !== 0) return
 
       const listResult = await freshR(['auth', 'devices', 'list', '--json'])
       assertExitCode(listResult, 0)
-      const parsed = assertJson<{ data: unknown[], total: number }>(listResult)
+      const parsed = assertJson<{ data: unknown[]; total: number }>(listResult)
       expect(parsed.total).toBe(1)
       expect(parsed.data).toHaveLength(1)
-    }
-    finally {
+    } finally {
       await freshTmp.cleanup()
     }
   })
@@ -330,14 +332,13 @@ describe('E2E / difyctl auth devices', () => {
         workspaceId: 'ws-1',
         workspaceName: 'Test',
       })
-      const result = await run(
-        ['auth', 'devices', 'revoke', 'any-device-id', '--yes'],
-        { configDir: netTmp.configDir, timeout: 10_000 },
-      )
+      const result = await run(['auth', 'devices', 'revoke', 'any-device-id', '--yes'], {
+        configDir: netTmp.configDir,
+        timeout: 10_000,
+      })
       expect(result.exitCode).not.toBe(0)
       expect(result.stderr).toMatch(/network|unreachable|connect|server|error/i)
-    }
-    finally {
+    } finally {
       await netTmp.cleanup()
     }
   })
@@ -359,12 +360,10 @@ describe('E2E / difyctl auth devices', () => {
       })
       const result = await run(['auth', 'devices', 'list'], { configDir: ssoTmp.configDir })
       // ssoToken may be expired (server 500); skip gracefully rather than fail.
-      if (result.exitCode !== 0)
-        return
+      if (result.exitCode !== 0) return
       assertExitCode(result, 0)
       expect(result.stdout.length).toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await ssoTmp.cleanup()
     }
   })
@@ -374,8 +373,7 @@ describe('E2E / difyctl auth devices', () => {
   itSessions('[P1] revoking an already-revoked device returns a stable result', async () => {
     // Spec 1.107: revoking an already-revoked device returns a stable result
     const freshToken = await mintFreshToken(E.host, E.email, E.password)
-    if (!freshToken)
-      return
+    if (!freshToken) return
 
     const revokeTmp = await withTempConfig()
     try {
@@ -390,10 +388,9 @@ describe('E2E / difyctl auth devices', () => {
 
       const listResult = await revokeR(['auth', 'devices', 'list', '--json'])
       assertExitCode(listResult, 0)
-      const { data } = assertJson<{ data: Array<{ id: string, prefix: string }> }>(listResult)
-      const entry = data.find(d => d.prefix && freshToken.startsWith(d.prefix))
-      if (!entry)
-        return
+      const { data } = assertJson<{ data: Array<{ id: string; prefix: string }> }>(listResult)
+      const entry = data.find((d) => d.prefix && freshToken.startsWith(d.prefix))
+      if (!entry) return
 
       // First revoke
       const r1 = await revokeR(['auth', 'devices', 'revoke', entry.id, '--yes'])
@@ -402,8 +399,7 @@ describe('E2E / difyctl auth devices', () => {
       // Second revoke of the same id — must not crash
       const r2 = await r(['auth', 'devices', 'revoke', entry.id, '--yes'])
       expect(r2.exitCode).toBeLessThanOrEqual(4)
-    }
-    finally {
+    } finally {
       await revokeTmp.cleanup()
     }
   })

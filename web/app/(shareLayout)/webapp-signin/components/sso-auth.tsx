@@ -7,27 +7,27 @@ import { useTranslation } from 'react-i18next'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
-import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
+import {
+  fetchMembersOAuth2SSOUrl,
+  fetchMembersOIDCSSOUrl,
+  fetchMembersSAMLSSOUrl,
+} from '@/service/share'
 
 type SSOAuthProps = {
   protocol: string
 }
 
-const SSOAuth: FC<SSOAuthProps> = ({
-  protocol,
-}) => {
+const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
 
   const redirectUrl = searchParams.get('redirect_url')
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    if (!redirectUrl)
-      return null
+    if (!redirectUrl) return null
     const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
     const appCode = url.pathname.split('/').pop()
-    if (!appCode)
-      return null
+    if (!appCode) return null
 
     return appCode
   }, [redirectUrl])
@@ -42,27 +42,30 @@ const SSOAuth: FC<SSOAuthProps> = ({
     }
     setIsLoading(true)
     if (protocol === SSOProtocol.SAML) {
-      fetchMembersSAMLSSOUrl(appCode, redirectUrl).then((res) => {
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
-      })
-    }
-    else if (protocol === SSOProtocol.OIDC) {
-      fetchMembersOIDCSSOUrl(appCode, redirectUrl).then((res) => {
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
-      })
-    }
-    else if (protocol === SSOProtocol.OAuth2) {
-      fetchMembersOAuth2SSOUrl(appCode, redirectUrl).then((res) => {
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
-      })
-    }
-    else {
+      fetchMembersSAMLSSOUrl(appCode, redirectUrl)
+        .then((res) => {
+          router.push(res.url)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    } else if (protocol === SSOProtocol.OIDC) {
+      fetchMembersOIDCSSOUrl(appCode, redirectUrl)
+        .then((res) => {
+          router.push(res.url)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    } else if (protocol === SSOProtocol.OAuth2) {
+      fetchMembersOAuth2SSOUrl(appCode, redirectUrl)
+        .then((res) => {
+          router.push(res.url)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    } else {
       toast.error(t('error.invalidSSOProtocol', { ns: 'login' }))
       setIsLoading(false)
     }
@@ -71,7 +74,9 @@ const SSOAuth: FC<SSOAuthProps> = ({
   return (
     <Button
       tabIndex={0}
-      onClick={() => { handleSSOLogin() }}
+      onClick={() => {
+        handleSSOLogin()
+      }}
       disabled={isLoading}
       className="w-full"
     >

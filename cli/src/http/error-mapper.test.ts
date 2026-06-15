@@ -41,7 +41,7 @@ describe('classifyResponse — canonical ErrorBody', () => {
     })
 
     expect(err.code).toBe(ErrorCode.AuthExpired)
-    expect(err.hint).toBe('run \'difyctl auth login\' to sign in again')
+    expect(err.hint).toBe("run 'difyctl auth login' to sign in again")
   })
 
   it('unknown future server code is data, not behavior — status bucket decides', async () => {
@@ -56,7 +56,11 @@ describe('classifyResponse — canonical ErrorBody', () => {
   })
 
   it('429 classifies as RateLimited (dedicated exit code) and keeps the server code', async () => {
-    const err = await classified(429, { code: 'too_many_requests', message: 'slow down', status: 429 })
+    const err = await classified(429, {
+      code: 'too_many_requests',
+      message: 'slow down',
+      status: 429,
+    })
 
     expect(err.code).toBe(ErrorCode.RateLimited)
     expect(err.exit()).toBe(7)

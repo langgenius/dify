@@ -52,10 +52,10 @@
                   "type": "string",
                   "description": "file related id"
                 }
-            },
-            "description": "List of files"
+              },
+              "description": "List of files"
+            }
           }
-        }
         },
         "required": ["content"]
       },

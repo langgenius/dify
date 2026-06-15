@@ -12,11 +12,12 @@ import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import AppSelector from '../index'
 
-type DeepPartial<T> = T extends Array<infer U>
-  ? Array<U>
-  : T extends object
-    ? { [K in keyof T]?: DeepPartial<T[K]> }
-    : T
+type DeepPartial<T> =
+  T extends Array<infer U>
+    ? Array<U>
+    : T extends object
+      ? { [K in keyof T]?: DeepPartial<T[K]> }
+      : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -36,7 +37,11 @@ vi.mock('@/app/components/header/github-star', () => ({
 }))
 
 vi.mock('@/app/components/base/theme-switcher', () => ({
-  default: () => <button type="button" data-testid="theme-switcher-button">Theme switcher</button>,
+  default: () => (
+    <button type="button" data-testid="theme-switcher-button">
+      Theme switcher
+    </button>
+  ),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -85,11 +90,21 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() { return mockConfig.IS_CLOUD_EDITION },
-    get AMPLITUDE_API_KEY() { return mockConfig.AMPLITUDE_API_KEY },
-    get isAmplitudeEnabled() { return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY },
-    get ZENDESK_WIDGET_KEY() { return mockConfig.ZENDESK_WIDGET_KEY },
-    get SUPPORT_EMAIL_ADDRESS() { return mockConfig.SUPPORT_EMAIL_ADDRESS },
+    get IS_CLOUD_EDITION() {
+      return mockConfig.IS_CLOUD_EDITION
+    },
+    get AMPLITUDE_API_KEY() {
+      return mockConfig.AMPLITUDE_API_KEY
+    },
+    get isAmplitudeEnabled() {
+      return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
+    },
+    get ZENDESK_WIDGET_KEY() {
+      return mockConfig.ZENDESK_WIDGET_KEY
+    },
+    get SUPPORT_EMAIL_ADDRESS() {
+      return mockConfig.SUPPORT_EMAIL_ADDRESS
+    },
     IS_DEV: false,
     IS_CE_EDITION: false,
   }
@@ -235,7 +250,11 @@ describe('AccountDropdown', () => {
         ...baseAppContextValue,
         userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
         isCurrentWorkspaceOwner: true,
-        langGeniusVersionInfo: { ...baseAppContextValue.langGeniusVersionInfo, current_version: '0.6.0', latest_version: '0.6.0' },
+        langGeniusVersionInfo: {
+          ...baseAppContextValue.langGeniusVersionInfo,
+          current_version: '0.6.0',
+          latest_version: '0.6.0',
+        },
       })
 
       // Act
@@ -352,7 +371,9 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      expect(document.querySelector('.bg-components-badge-status-light-warning-bg')).toBeInTheDocument()
+      expect(
+        document.querySelector('.bg-components-badge-status-light-warning-bg'),
+      ).toBeInTheDocument()
     })
 
     it('should show green indicator when version is latest', () => {
@@ -372,7 +393,9 @@ describe('AccountDropdown', () => {
       fireEvent.click(screen.getByRole('button'))
 
       // Assert
-      expect(document.querySelector('.bg-components-badge-status-light-success-bg')).toBeInTheDocument()
+      expect(
+        document.querySelector('.bg-components-badge-status-light-success-bg'),
+      ).toBeInTheDocument()
     })
   })
 })

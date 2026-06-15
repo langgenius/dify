@@ -40,18 +40,38 @@ vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
     return <div>{children}</div>
   },
   AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
-  AlertDialogConfirmButton: ({ children, onClick }: { children: ReactNode, onClick?: () => void }) => <button type="button" onClick={onClick}>{children}</button>,
+  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  AlertDialogConfirmButton: ({
+    children,
+    onClick,
+  }: {
+    children: ReactNode
+    onClick?: () => void
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
   AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogDescription: () => <div />,
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
 vi.mock('../api-key-section', () => ({
-  default: ({ credentials, onDelete }: { credentials: unknown[], onDelete: (credential?: unknown) => void }) => (
+  default: ({
+    credentials,
+    onDelete,
+  }: {
+    credentials: unknown[]
+    onDelete: (credential?: unknown) => void
+  }) => (
     <div>
       <span>{`credentials:${credentials.length}`}</span>
-      <button type="button" onClick={() => onDelete(undefined)}>delete-undefined</button>
+      <button type="button" onClick={() => onDelete(undefined)}>
+        delete-undefined
+      </button>
     </div>
   ),
 }))
@@ -68,20 +88,21 @@ vi.mock('../usage-priority-section', () => ({
   default: () => <div>priority section</div>,
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test',
-  custom_configuration: {
-    available_credentials: undefined,
-  },
-  system_configuration: {
-    enabled: true,
-    quota_configurations: [],
-    current_quota_type: 'trial',
-  },
-  configurate_methods: [],
-  supported_model_types: [],
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'test',
+    custom_configuration: {
+      available_credentials: undefined,
+    },
+    system_configuration: {
+      enabled: true,
+      quota_configurations: [],
+      current_quota_type: 'trial',
+    },
+    configurate_methods: [],
+    supported_model_types: [],
+    ...overrides,
+  }) as unknown as ModelProvider
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'api-active',

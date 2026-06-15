@@ -8,25 +8,13 @@ describe('Input', () => {
 
   // Rendering basics
   it('should render with the provided placeholder and value', () => {
-    render(
-      <Input
-        value="hello"
-        placeholder="API Key"
-        onChange={vi.fn()}
-      />,
-    )
+    render(<Input value="hello" placeholder="API Key" onChange={vi.fn()} />)
 
     expect(screen.getByPlaceholderText('API Key')).toHaveValue('hello')
   })
 
   it('should render password inputs without autocomplete attributes', () => {
-    render(
-      <Input
-        type="password"
-        placeholder="Secret"
-        onChange={vi.fn()}
-      />,
-    )
+    render(<Input type="password" placeholder="Secret" onChange={vi.fn()} />)
 
     const input = screen.getByPlaceholderText('Secret')
 
@@ -38,12 +26,7 @@ describe('Input', () => {
   it('should call onChange when the user types', () => {
     const onChange = vi.fn()
 
-    render(
-      <Input
-        placeholder="API Key"
-        onChange={onChange}
-      />,
-    )
+    render(<Input placeholder="API Key" onChange={onChange} />)
 
     fireEvent.change(screen.getByPlaceholderText('API Key'), { target: { value: 'next' } })
 
@@ -54,14 +37,7 @@ describe('Input', () => {
   it('should clamp to the min value when the input is below min on blur-sm', () => {
     const onChange = vi.fn()
 
-    render(
-      <Input
-        placeholder="Limit"
-        onChange={onChange}
-        min={2}
-        max={6}
-      />,
-    )
+    render(<Input placeholder="Limit" onChange={onChange} min={2} max={6} />)
 
     const input = screen.getByPlaceholderText('Limit')
     fireEvent.change(input, { target: { value: '1' } })
@@ -73,14 +49,7 @@ describe('Input', () => {
   it('should clamp to the max value when the input is above max on blur-sm', () => {
     const onChange = vi.fn()
 
-    render(
-      <Input
-        placeholder="Limit"
-        onChange={onChange}
-        min={2}
-        max={6}
-      />,
-    )
+    render(<Input placeholder="Limit" onChange={onChange} min={2} max={6} />)
 
     const input = screen.getByPlaceholderText('Limit')
     fireEvent.change(input, { target: { value: '8' } })
@@ -92,14 +61,7 @@ describe('Input', () => {
   it('should keep the value when it is within the min/max range on blur-sm', () => {
     const onChange = vi.fn()
 
-    render(
-      <Input
-        placeholder="Limit"
-        onChange={onChange}
-        min={2}
-        max={6}
-      />,
-    )
+    render(<Input placeholder="Limit" onChange={onChange} min={2} max={6} />)
 
     const input = screen.getByPlaceholderText('Limit')
     fireEvent.change(input, { target: { value: '4' } })
@@ -112,12 +74,7 @@ describe('Input', () => {
   it('should not clamp when min and max are not provided', () => {
     const onChange = vi.fn()
 
-    render(
-      <Input
-        placeholder="Free"
-        onChange={onChange}
-      />,
-    )
+    render(<Input placeholder="Free" onChange={onChange} />)
 
     const input = screen.getByPlaceholderText('Free')
     fireEvent.change(input, { target: { value: '999' } })
@@ -129,39 +86,21 @@ describe('Input', () => {
   })
 
   it('should show check circle icon when validated is true', () => {
-    const { container } = render(
-      <Input
-        placeholder="Key"
-        onChange={vi.fn()}
-        validated
-      />,
-    )
+    const { container } = render(<Input placeholder="Key" onChange={vi.fn()} validated />)
 
     expect(screen.getByPlaceholderText('Key')).toBeInTheDocument()
     expect(container.querySelector('.absolute.right-2\\.5.top-2\\.5')).toBeInTheDocument()
   })
 
   it('should not show check circle icon when validated is false', () => {
-    const { container } = render(
-      <Input
-        placeholder="Key"
-        onChange={vi.fn()}
-        validated={false}
-      />,
-    )
+    const { container } = render(<Input placeholder="Key" onChange={vi.fn()} validated={false} />)
 
     expect(screen.getByPlaceholderText('Key')).toBeInTheDocument()
     expect(container.querySelector('.absolute.right-2\\.5.top-2\\.5')).not.toBeInTheDocument()
   })
 
   it('should apply disabled attribute when disabled prop is true', () => {
-    render(
-      <Input
-        placeholder="Disabled"
-        onChange={vi.fn()}
-        disabled
-      />,
-    )
+    render(<Input placeholder="Disabled" onChange={vi.fn()} disabled />)
 
     expect(screen.getByPlaceholderText('Disabled')).toBeDisabled()
   })
@@ -169,26 +108,14 @@ describe('Input', () => {
   it('should call onFocus when input receives focus', () => {
     const onFocus = vi.fn()
 
-    render(
-      <Input
-        placeholder="Focus"
-        onChange={vi.fn()}
-        onFocus={onFocus}
-      />,
-    )
+    render(<Input placeholder="Focus" onChange={vi.fn()} onFocus={onFocus} />)
 
     fireEvent.focus(screen.getByPlaceholderText('Focus'))
     expect(onFocus).toHaveBeenCalledTimes(1)
   })
 
   it('should render with custom className', () => {
-    render(
-      <Input
-        placeholder="Styled"
-        onChange={vi.fn()}
-        className="custom-class"
-      />,
-    )
+    render(<Input placeholder="Styled" onChange={vi.fn()} className="custom-class" />)
 
     expect(screen.getByPlaceholderText('Styled')).toHaveClass('custom-class')
   })

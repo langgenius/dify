@@ -50,8 +50,6 @@ describe('Chooser', () => {
     })
     render(<Chooser userCode="ABCD-3456" ssoAvailable={true} />)
     fireEvent.click(screen.getByRole('button', { name: /Sign in with SSO/i }))
-    expect(window.location.href).toBe(
-      '/openapi/v1/oauth/device/sso-initiate?user_code=ABCD-3456',
-    )
+    expect(window.location.href).toBe('/openapi/v1/oauth/device/sso-initiate?user_code=ABCD-3456')
   })
 })

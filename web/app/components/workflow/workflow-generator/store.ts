@@ -30,28 +30,25 @@ type WorkflowGeneratorStore = {
  * the versions they were comparing.
  */
 const resetNewAppHistory = (mode: WorkflowGeneratorMode) => {
-  if (typeof window === 'undefined')
-    return
+  if (typeof window === 'undefined') return
   const storageKey = `${mode}-new`
   try {
     sessionStorage.removeItem(`workflow-gen-${storageKey}-versions`)
     sessionStorage.removeItem(`workflow-gen-${storageKey}-version-index`)
-  }
-  catch {
+  } catch {
     // sessionStorage can throw in privacy-restricted contexts; the stale
     // state will still flush on tab close, so swallowing here is fine.
   }
 }
 
-export const useWorkflowGeneratorStore = create<WorkflowGeneratorStore>(set => ({
+export const useWorkflowGeneratorStore = create<WorkflowGeneratorStore>((set) => ({
   isOpen: false,
   mode: 'workflow',
   intent: 'create',
   currentAppId: null,
   currentAppMode: null,
   openGenerator: ({ mode, intent = 'create', currentAppId = null, currentAppMode = null }) => {
-    if (!currentAppId)
-      resetNewAppHistory(mode)
+    if (!currentAppId) resetNewAppHistory(mode)
     set({ isOpen: true, mode, intent, currentAppId, currentAppMode })
   },
   closeGenerator: () => set({ isOpen: false }),

@@ -71,25 +71,22 @@ const EditIconWrapperVariants = cva(
     },
   },
 )
-const EditIconVariants = cva(
-  'text-text-primary-on-surface',
-  {
-    variants: {
-      size: {
-        xs: 'size-3',
-        tiny: 'size-3.5',
-        small: 'size-5',
-        medium: 'size-[22px]',
-        large: 'size-6',
-        xl: 'size-7',
-        xxl: 'size-8',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
+const EditIconVariants = cva('text-text-primary-on-surface', {
+  variants: {
+    size: {
+      xs: 'size-3',
+      tiny: 'size-3.5',
+      small: 'size-5',
+      medium: 'size-[22px]',
+      large: 'size-6',
+      xl: 'size-7',
+      xxl: 'size-8',
     },
   },
-)
+  defaultVariants: {
+    size: 'medium',
+  },
+})
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,
@@ -104,7 +101,7 @@ const AppIcon: FC<AppIconProps> = ({
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-  const emojiIcon = (icon && icon !== '') ? icon : '🤖'
+  const emojiIcon = icon && icon !== '' ? icon : '🤖'
   const Icon = <em-emoji key={emojiIcon} id={emojiIcon} />
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
@@ -113,21 +110,19 @@ const AppIcon: FC<AppIconProps> = ({
     <span
       ref={wrapperRef}
       className={cn(appIconVariants({ size, rounded }), className)}
-      style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
+      style={{ background: isValidImageIcon ? undefined : background || '#FFEAD5' }}
       onClick={onClick}
     >
-      {
-        isValidImageIcon
-          ? <img src={imageUrl} className="size-full" alt="app icon" />
-          : (innerIcon || Icon)
-      }
-      {
-        showEditIcon && isHovering && (
-          <div className={EditIconWrapperVariants({ size, rounded })}>
-            <RiEditLine className={EditIconVariants({ size })} />
-          </div>
-        )
-      }
+      {isValidImageIcon ? (
+        <img src={imageUrl} className="size-full" alt="app icon" />
+      ) : (
+        innerIcon || Icon
+      )}
+      {showEditIcon && isHovering && (
+        <div className={EditIconWrapperVariants({ size, rounded })}>
+          <RiEditLine className={EditIconVariants({ size })} />
+        </div>
+      )}
       {coverElement}
     </span>
   )

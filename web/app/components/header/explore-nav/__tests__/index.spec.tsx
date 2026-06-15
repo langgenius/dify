@@ -13,7 +13,7 @@ describe('ExploreNav', () => {
   })
 
   it('should render correctly when not active', () => {
-    (useSelectedLayoutSegment as Mock).mockReturnValue('other')
+    ;(useSelectedLayoutSegment as Mock).mockReturnValue('other')
     render(<ExploreNav />)
 
     const link = screen.getByRole('link')
@@ -25,7 +25,7 @@ describe('ExploreNav', () => {
   })
 
   it('should render correctly when active', () => {
-    (useSelectedLayoutSegment as Mock).mockReturnValue('explore')
+    ;(useSelectedLayoutSegment as Mock).mockReturnValue('explore')
     render(<ExploreNav />)
 
     const link = screen.getByRole('link')
@@ -36,7 +36,7 @@ describe('ExploreNav', () => {
   })
 
   it('should apply custom className', () => {
-    (useSelectedLayoutSegment as Mock).mockReturnValue('other')
+    ;(useSelectedLayoutSegment as Mock).mockReturnValue('other')
     render(<ExploreNav className="custom-test-class" />)
 
     const link = screen.getByRole('link')

@@ -10,9 +10,7 @@ export type IInstalledAppProps = {
 // Using Next.js page convention for async server components
 async function InstalledApp({ params }: IInstalledAppProps) {
   const { appId } = await (params ?? Promise.reject(new Error('Missing params')))
-  return (
-    <Main id={appId} />
-  )
+  return <Main id={appId} />
 }
 
 export default InstalledApp

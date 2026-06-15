@@ -20,18 +20,20 @@ export const useDraggableUploader = <T extends HTMLElement>(setImageFn: (file: F
     setIsDragActive(false)
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent<T>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragActive(false)
+  const handleDrop = useCallback(
+    (e: React.DragEvent<T>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragActive(false)
 
-    const file = e.dataTransfer.files[0]
+      const file = e.dataTransfer.files[0]
 
-    if (!file)
-      return
+      if (!file) return
 
-    setImageFn(file)
-  }, [setImageFn])
+      setImageFn(file)
+    },
+    [setImageFn],
+  )
 
   return {
     handleDragEnter,

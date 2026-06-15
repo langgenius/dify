@@ -19,19 +19,20 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      name: 'Demo App',
-      mode: 'chat',
-      icon: '🤖',
-      icon_type: 'emoji',
-      icon_background: '#FFEAD5',
-      icon_url: null,
-    },
-    appSidebarExpand: mockAppSidebarExpand,
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        name: 'Demo App',
+        mode: 'chat',
+        icon: '🤖',
+        icon_type: 'emoji',
+        icon_background: '#FFEAD5',
+        icon_url: null,
+      },
+      appSidebarExpand: mockAppSidebarExpand,
+      setAppSidebarExpand: mockSetAppSidebarExpand,
+    }),
 }))
 
 vi.mock('zustand/react/shallow', () => ({

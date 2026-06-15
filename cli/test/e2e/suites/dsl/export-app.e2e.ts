@@ -11,9 +11,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
-import {
-  assertExitCode,
-} from '../../helpers/assert.js'
+import { assertExitCode } from '../../helpers/assert.js'
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { resolveEnv } from '../../setup/env.js'
 
@@ -81,8 +79,7 @@ describe('E2E / difyctl export app', () => {
       const content = await readFile(outPath, 'utf8')
       expect(content).toMatch(/^kind:\s*app/m)
       expect(content).toMatch(/^version:/m)
-    }
-    finally {
+    } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
@@ -101,8 +98,7 @@ describe('E2E / difyctl export app', () => {
       assertExitCode(stdoutResult, 0)
       expect(fileResult.exitCode).toBe(0)
       expect(fileResult.content.trim()).toBe(stdoutResult.stdout.trim())
-    }
-    finally {
+    } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
@@ -128,8 +124,7 @@ describe('E2E / difyctl export app', () => {
 
       const match = importResult.stderr.match(/app ([0-9a-f-]{36})/)
       expect(match?.[1], 'import stderr must contain the new app UUID').toBeTruthy()
-    }
-    finally {
+    } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })
@@ -149,8 +144,7 @@ describe('E2E / difyctl export app', () => {
         configDir: unauthTmp.configDir,
       })
       assertExitCode(result, 4)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -184,12 +178,19 @@ describe('E2E / difyctl export app', () => {
     const dir = await mkdtemp(join(tmpdir(), 'difyctl-e2e-export-nofile-'))
     const outPath = join(dir, 'should-not-exist.yaml')
     try {
-      const result = await fx.r(['export', 'app', 'nonexistent-app-id-nofile-e2e', '--output', outPath])
+      const result = await fx.r([
+        'export',
+        'app',
+        'nonexistent-app-id-nofile-e2e',
+        '--output',
+        outPath,
+      ])
       expect(result.exitCode).not.toBe(0)
-      const exists = await readFile(outPath, 'utf8').then(() => true).catch(() => false)
+      const exists = await readFile(outPath, 'utf8')
+        .then(() => true)
+        .catch(() => false)
       expect(exists, 'output file must not be created on export failure').toBe(false)
-    }
-    finally {
+    } finally {
       await rm(dir, { recursive: true, force: true })
     }
   })

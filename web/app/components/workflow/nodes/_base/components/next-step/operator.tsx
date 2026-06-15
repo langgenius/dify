@@ -1,7 +1,4 @@
-import type {
-  CommonNodeType,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
+import type { CommonNodeType, OnSelectBlock } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -9,37 +6,31 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { intersection } from 'es-toolkit/array'
-import {
-  useCallback,
-} from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import {
-  useAvailableBlocks,
-  useNodesInteractions,
-} from '@/app/components/workflow/hooks'
+import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
 
 type ChangeItemProps = {
   data: CommonNodeType
   nodeId: string
   sourceHandle: string
 }
-const ChangeItem = ({
-  data,
-  nodeId,
-  sourceHandle,
-}: ChangeItemProps) => {
+const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
   const { t } = useTranslation()
 
   const { handleNodeChange } = useNodesInteractions()
-  const {
-    availablePrevBlocks,
-    availableNextBlocks,
-  } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availablePrevBlocks, availableNextBlocks } = useAvailableBlocks(
+    data.type,
+    data.isInIteration || data.isInLoop,
+  )
 
-  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
-    handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
-  }, [nodeId, sourceHandle, handleNodeChange])
+  const handleSelect = useCallback<OnSelectBlock>(
+    (type, pluginDefaultValue) => {
+      handleNodeChange(nodeId, type, sourceHandle, pluginDefaultValue)
+    },
+    [nodeId, sourceHandle, handleNodeChange],
+  )
 
   const renderTrigger = useCallback(() => {
     return (
@@ -59,7 +50,9 @@ const ChangeItem = ({
       }}
       trigger={renderTrigger}
       popupClassName="w-[328px]!"
-      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
+      availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(
+        (item) => item !== data.type,
+      )}
     />
   )
 }
@@ -71,30 +64,18 @@ type OperatorProps = {
   nodeId: string
   sourceHandle: string
 }
-const Operator = ({
-  open,
-  onOpenChange,
-  data,
-  nodeId,
-  sourceHandle,
-}: OperatorProps) => {
+const Operator = ({ open, onOpenChange, data, nodeId, sourceHandle }: OperatorProps) => {
   const { t } = useTranslation()
-  const {
-    handleNodeDelete,
-    handleNodeDisconnect,
-  } = useNodesInteractions()
+  const { handleNodeDelete, handleNodeDisconnect } = useNodesInteractions()
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={onOpenChange}
-    >
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <Button className="size-6 p-0" aria-label={t('common.moreActions', { ns: 'workflow' })}>
             <span aria-hidden className="i-ri-more-fill size-4" />
           </Button>
-        )}
+        }
       />
       <DropdownMenuContent
         placement="bottom-end"
@@ -104,11 +85,7 @@ const Operator = ({
       >
         <div className="min-w-[120px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur system-md-regular text-text-secondary shadow-lg">
           <div className="p-1">
-            <ChangeItem
-              data={data}
-              nodeId={nodeId}
-              sourceHandle={sourceHandle}
-            />
+            <ChangeItem data={data} nodeId={nodeId} sourceHandle={sourceHandle} />
             <div
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
               onClick={() => {

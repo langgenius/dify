@@ -10,16 +10,9 @@ const config: KnipConfig = {
     'tsslint.config.ts',
     'dev-proxy.config.ts',
   ],
-  ignore: [
-    'public/**',
-  ],
-  ignoreBinaries: [
-    'only-allow',
-  ],
-  ignoreDependencies: [
-    '@iconify-json/*',
-    '@storybook/addon-onboarding',
-  ],
+  ignore: ['public/**'],
+  ignoreBinaries: ['only-allow'],
+  ignoreDependencies: ['@iconify-json/*', '@storybook/addon-onboarding'],
   /// keep-sorted
   rules: {
     // TODO: fix these warnings

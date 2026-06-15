@@ -233,19 +233,19 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
+export type FormInputConfig =
   | ({
-    type: 'select'
-  } & SelectInputConfig)
+      type: 'paragraph'
+    } & ParagraphInputConfig)
   | ({
-    type: 'file'
-  } & FileInputConfig)
+      type: 'select'
+    } & SelectInputConfig)
   | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type GeneratedAppResponse = JsonValue
 
@@ -320,16 +320,16 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
+export type JsonValue =
+  | string
+  | number
+  | number
+  | boolean
+  | {
       [key: string]: unknown
     }
-    | Array<unknown>
-    | null
+  | Array<unknown>
+  | null
 
 export type JsonValueType = unknown
 
@@ -421,11 +421,11 @@ export type PluginInstallationPermissionModel = {
   restrict_to_marketplace_only: boolean
 }
 
-export type PluginInstallationScope
-  = | 'all'
-    | 'none'
-    | 'official_and_specific_partners'
-    | 'official_only'
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
 
 export type PluginManagerModel = {
   enabled: boolean
@@ -701,8 +701,8 @@ export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostChatMessagesByTaskIdStopResponse
-  = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
+export type PostChatMessagesByTaskIdStopResponse =
+  PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
 
 export type PostCompletionMessagesData = {
   body: CompletionMessagePayload
@@ -723,8 +723,8 @@ export type PostCompletionMessagesResponses = {
   200: GeneratedAppResponse
 }
 
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
+export type PostCompletionMessagesResponse =
+  PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -747,8 +747,8 @@ export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostCompletionMessagesByTaskIdStopResponse
-  = PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
+export type PostCompletionMessagesByTaskIdStopResponse =
+  PostCompletionMessagesByTaskIdStopResponses[keyof PostCompletionMessagesByTaskIdStopResponses]
 
 export type GetConversationsData = {
   body?: never
@@ -797,8 +797,8 @@ export type DeleteConversationsByCIdResponses = {
   204: void
 }
 
-export type DeleteConversationsByCIdResponse
-  = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
+export type DeleteConversationsByCIdResponse =
+  DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
 
 export type PostConversationsByCIdNameData = {
   body: ConversationRenamePayload
@@ -824,8 +824,8 @@ export type PostConversationsByCIdNameResponses = {
   200: SimpleConversation
 }
 
-export type PostConversationsByCIdNameResponse
-  = PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
+export type PostConversationsByCIdNameResponse =
+  PostConversationsByCIdNameResponses[keyof PostConversationsByCIdNameResponses]
 
 export type PatchConversationsByCIdPinData = {
   body?: never
@@ -848,8 +848,8 @@ export type PatchConversationsByCIdPinResponses = {
   200: ResultResponse
 }
 
-export type PatchConversationsByCIdPinResponse
-  = PatchConversationsByCIdPinResponses[keyof PatchConversationsByCIdPinResponses]
+export type PatchConversationsByCIdPinResponse =
+  PatchConversationsByCIdPinResponses[keyof PatchConversationsByCIdPinResponses]
 
 export type PatchConversationsByCIdUnpinData = {
   body?: never
@@ -872,8 +872,8 @@ export type PatchConversationsByCIdUnpinResponses = {
   200: ResultResponse
 }
 
-export type PatchConversationsByCIdUnpinResponse
-  = PatchConversationsByCIdUnpinResponses[keyof PatchConversationsByCIdUnpinResponses]
+export type PatchConversationsByCIdUnpinResponse =
+  PatchConversationsByCIdUnpinResponses[keyof PatchConversationsByCIdUnpinResponses]
 
 export type PostEmailCodeLoginData = {
   body: EmailCodeLoginSendPayload
@@ -891,8 +891,8 @@ export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostEmailCodeLoginResponse
-  = PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
+export type PostEmailCodeLoginResponse =
+  PostEmailCodeLoginResponses[keyof PostEmailCodeLoginResponses]
 
 export type PostEmailCodeLoginValidityData = {
   body: EmailCodeLoginVerifyPayload
@@ -911,8 +911,8 @@ export type PostEmailCodeLoginValidityResponses = {
   200: AccessTokenResultResponse
 }
 
-export type PostEmailCodeLoginValidityResponse
-  = PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
+export type PostEmailCodeLoginValidityResponse =
+  PostEmailCodeLoginValidityResponses[keyof PostEmailCodeLoginValidityResponses]
 
 export type PostFilesUploadData = {
   body?: never
@@ -950,8 +950,8 @@ export type PostForgotPasswordResponses = {
   200: SimpleResultDataResponse
 }
 
-export type PostForgotPasswordResponse
-  = PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
+export type PostForgotPasswordResponse =
+  PostForgotPasswordResponses[keyof PostForgotPasswordResponses]
 
 export type PostForgotPasswordResetsData = {
   body: ForgotPasswordResetPayload
@@ -970,8 +970,8 @@ export type PostForgotPasswordResetsResponses = {
   200: SimpleResultResponse
 }
 
-export type PostForgotPasswordResetsResponse
-  = PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
+export type PostForgotPasswordResetsResponse =
+  PostForgotPasswordResetsResponses[keyof PostForgotPasswordResetsResponses]
 
 export type PostForgotPasswordValidityData = {
   body: ForgotPasswordCheckPayload
@@ -989,8 +989,8 @@ export type PostForgotPasswordValidityResponses = {
   200: VerificationTokenResponse
 }
 
-export type PostForgotPasswordValidityResponse
-  = PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
+export type PostForgotPasswordValidityResponse =
+  PostForgotPasswordValidityResponses[keyof PostForgotPasswordValidityResponses]
 
 export type GetFormHumanInputByFormTokenData = {
   body?: never
@@ -1005,8 +1005,8 @@ export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
 }
 
-export type GetFormHumanInputByFormTokenResponse
-  = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
+export type GetFormHumanInputByFormTokenResponse =
+  GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
   body: HumanInputFormSubmitPayload
@@ -1021,8 +1021,8 @@ export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
 }
 
-export type PostFormHumanInputByFormTokenResponse
-  = PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
+export type PostFormHumanInputByFormTokenResponse =
+  PostFormHumanInputByFormTokenResponses[keyof PostFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenUploadTokenData = {
   body?: never
@@ -1037,8 +1037,8 @@ export type PostFormHumanInputByFormTokenUploadTokenResponses = {
   200: HumanInputUploadTokenResponse
 }
 
-export type PostFormHumanInputByFormTokenUploadTokenResponse
-  = PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
+export type PostFormHumanInputByFormTokenUploadTokenResponse =
+  PostFormHumanInputByFormTokenUploadTokenResponses[keyof PostFormHumanInputByFormTokenUploadTokenResponses]
 
 export type PostHumanInputFormsFilesData = {
   body?: never
@@ -1051,8 +1051,8 @@ export type PostHumanInputFormsFilesResponses = {
   201: FileResponse
 }
 
-export type PostHumanInputFormsFilesResponse
-  = PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
+export type PostHumanInputFormsFilesResponse =
+  PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
 
 export type PostLoginData = {
   body: LoginPayload
@@ -1156,8 +1156,8 @@ export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
 }
 
-export type PostMessagesByMessageIdFeedbacksResponse
-  = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
+export type PostMessagesByMessageIdFeedbacksResponse =
+  PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
 export type GetMessagesByMessageIdMoreLikeThisData = {
   body?: never
@@ -1182,8 +1182,8 @@ export type GetMessagesByMessageIdMoreLikeThisResponses = {
   200: GeneratedAppResponse
 }
 
-export type GetMessagesByMessageIdMoreLikeThisResponse
-  = GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
+export type GetMessagesByMessageIdMoreLikeThisResponse =
+  GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
 
 export type GetMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -1206,8 +1206,8 @@ export type GetMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
 
-export type GetMessagesByMessageIdSuggestedQuestionsResponse
-  = GetMessagesByMessageIdSuggestedQuestionsResponses[keyof GetMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetMessagesByMessageIdSuggestedQuestionsResponse =
+  GetMessagesByMessageIdSuggestedQuestionsResponses[keyof GetMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetMetaData = {
   body?: never
@@ -1289,8 +1289,8 @@ export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
 
-export type PostRemoteFilesUploadResponse
-  = PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
+export type PostRemoteFilesUploadResponse =
+  PostRemoteFilesUploadResponses[keyof PostRemoteFilesUploadResponses]
 
 export type GetRemoteFilesByUrlData = {
   body?: never
@@ -1311,8 +1311,8 @@ export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo
 }
 
-export type GetRemoteFilesByUrlResponse
-  = GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
+export type GetRemoteFilesByUrlResponse =
+  GetRemoteFilesByUrlResponses[keyof GetRemoteFilesByUrlResponses]
 
 export type GetSavedMessagesData = {
   body?: never
@@ -1382,8 +1382,8 @@ export type DeleteSavedMessagesByMessageIdResponses = {
   204: void
 }
 
-export type DeleteSavedMessagesByMessageIdResponse
-  = DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
+export type DeleteSavedMessagesByMessageIdResponse =
+  DeleteSavedMessagesByMessageIdResponses[keyof DeleteSavedMessagesByMessageIdResponses]
 
 export type GetSiteData = {
   body?: never
@@ -1462,8 +1462,8 @@ export type GetWebappAccessModeResponses = {
   200: AccessModeResponse
 }
 
-export type GetWebappAccessModeResponse
-  = GetWebappAccessModeResponses[keyof GetWebappAccessModeResponses]
+export type GetWebappAccessModeResponse =
+  GetWebappAccessModeResponses[keyof GetWebappAccessModeResponses]
 
 export type GetWebappPermissionData = {
   body?: never
@@ -1484,8 +1484,8 @@ export type GetWebappPermissionResponses = {
   200: BooleanResultResponse
 }
 
-export type GetWebappPermissionResponse
-  = GetWebappPermissionResponses[keyof GetWebappPermissionResponses]
+export type GetWebappPermissionResponse =
+  GetWebappPermissionResponses[keyof GetWebappPermissionResponses]
 
 export type GetWorkflowByTaskIdEventsData = {
   body?: never
@@ -1500,8 +1500,8 @@ export type GetWorkflowByTaskIdEventsResponses = {
   200: EventStreamResponse
 }
 
-export type GetWorkflowByTaskIdEventsResponse
-  = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
+export type GetWorkflowByTaskIdEventsResponse =
+  GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
 
 export type PostWorkflowsRunData = {
   body: WorkflowRunPayload
@@ -1545,5 +1545,5 @@ export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostWorkflowsTasksByTaskIdStopResponse
-  = PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
+export type PostWorkflowsTasksByTaskIdStopResponse =
+  PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]

@@ -18,10 +18,7 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: {
-    checked: boolean
-    onCheckedChange: (value: boolean) => void
-  }) => (
+  Switch: (props: { checked: boolean; onCheckedChange: (value: boolean) => void }) => (
     <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
       toggle-workspace
     </button>
@@ -42,7 +39,7 @@ vi.mock('../email-input', () => ({
   default: (props: {
     onAdd: (email: string) => void
     onSelect: (id: string) => void
-    onDelete: (recipient: { type: 'member' | 'external', user_id?: string, email?: string }) => void
+    onDelete: (recipient: { type: 'member' | 'external'; user_id?: string; email?: string }) => void
   }) => (
     <div>
       <button type="button" onClick={() => props.onAdd('new@example.com')}>
@@ -54,7 +51,10 @@ vi.mock('../email-input', () => ({
       <button type="button" onClick={() => props.onDelete({ type: 'member', user_id: 'member-1' })}>
         delete-member
       </button>
-      <button type="button" onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}>
+      <button
+        type="button"
+        onClick={() => props.onDelete({ type: 'external', email: 'external@example.com' })}
+      >
         delete-external
       </button>
     </div>
@@ -71,7 +71,7 @@ describe('Recipient', () => {
     })
     mockUseAppContext.mockReturnValue({
       userProfile: { email: 'owner@example.com' },
-      currentWorkspace: { name: 'Dify\'s Lab' },
+      currentWorkspace: { name: "Dify's Lab" },
     })
     mockUseMembers.mockReturnValue({
       data: {
@@ -134,15 +134,11 @@ describe('Recipient', () => {
     })
     expect(onChange).toHaveBeenNthCalledWith(4, {
       whole_workspace: false,
-      items: [
-        { type: 'external', email: 'external@example.com' },
-      ],
+      items: [{ type: 'external', email: 'external@example.com' }],
     })
     expect(onChange).toHaveBeenNthCalledWith(5, {
       whole_workspace: false,
-      items: [
-        { type: 'member', user_id: 'member-1' },
-      ],
+      items: [{ type: 'member', user_id: 'member-1' }],
     })
     expect(onChange).toHaveBeenNthCalledWith(6, {
       whole_workspace: true,

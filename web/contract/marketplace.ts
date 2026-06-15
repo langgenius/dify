@@ -1,4 +1,8 @@
-import type { CollectionsAndPluginsSearchParams, MarketplaceCollection, PluginsSearchParams } from '@/app/components/plugins/marketplace/types'
+import type {
+  CollectionsAndPluginsSearchParams,
+  MarketplaceCollection,
+  PluginsSearchParams,
+} from '@/app/components/plugins/marketplace/types'
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import type { MarketplaceTemplate } from '@/types/marketplace-template'
 import { type } from '@orpc/contract'
@@ -11,7 +15,7 @@ export const collectionsContract = base
   })
   .input(
     type<{
-      query?: CollectionsAndPluginsSearchParams & { page?: number, page_size?: number }
+      query?: CollectionsAndPluginsSearchParams & { page?: number; page_size?: number }
     }>(),
   )
   .output(
@@ -48,12 +52,14 @@ export const searchAdvancedContract = base
     path: '/{kind}/search/advanced',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      kind: 'plugins' | 'bundles'
-    }
-    body: Omit<PluginsSearchParams, 'type'>
-  }>())
+  .input(
+    type<{
+      params: {
+        kind: 'plugins' | 'bundles'
+      }
+      body: Omit<PluginsSearchParams, 'type'>
+    }>(),
+  )
   .output(type<{ data: PluginsFromMarketplaceResponse }>())
 
 export const templateDetailContract = base
@@ -61,11 +67,13 @@ export const templateDetailContract = base
     path: '/templates/{templateId}',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      templateId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        templateId: string
+      }
+    }>(),
+  )
   .output(type<{ data: MarketplaceTemplate }>())
 
 export const downloadPluginContract = base
@@ -73,11 +81,13 @@ export const downloadPluginContract = base
     path: '/plugins/{organization}/{pluginName}/{version}/download',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      organization: string
-      pluginName: string
-      version: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        organization: string
+        pluginName: string
+        version: string
+      }
+    }>(),
+  )
   .output(type<Blob>())

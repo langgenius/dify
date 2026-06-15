@@ -23,10 +23,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.parameterExtractor'
 const i18nCommonPrefix = 'common'
 
-const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
   const {
@@ -59,10 +56,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4">
-        <Field
-          title={t(`${i18nCommonPrefix}.model`, { ns: 'workflow' })}
-          required
-        >
+        <Field title={t(`${i18nCommonPrefix}.model`, { ns: 'workflow' })} required>
           <ModelParameterModal
             popupClassName="w-[387px]!"
             isInWorkflow
@@ -79,10 +73,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             availableNodes={availableNodesWithParent}
           />
         </Field>
-        <Field
-          title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}
-          required
-        >
+        <Field title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })} required>
           <>
             <VarReferencePicker
               readonly={readOnly}
@@ -108,17 +99,13 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           title={t(`${i18nPrefix}.extractParameters`, { ns: 'workflow' })}
           required
           operations={
-            !readOnly
-              ? (
-                  <div className="flex items-center space-x-1">
-                    {!readOnly && (
-                      <ImportFromTool onImport={handleImportFromTool} />
-                    )}
-                    {!readOnly && (<div className="h-3 w-px bg-divider-regular"></div>)}
-                    <AddExtractParameter type="add" onSave={addExtractParameter} />
-                  </div>
-                )
-              : undefined
+            !readOnly ? (
+              <div className="flex items-center space-x-1">
+                {!readOnly && <ImportFromTool onImport={handleImportFromTool} />}
+                {!readOnly && <div className="h-3 w-px bg-divider-regular"></div>}
+                <AddExtractParameter type="add" onSave={addExtractParameter} />
+              </div>
+            ) : undefined
           }
         >
           <ExtractParameter
@@ -128,9 +115,11 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           />
         </Field>
         <Editor
-          title={(
+          title={
             <div className="flex items-center space-x-1">
-              <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
+              <span className="uppercase">
+                {t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}
+              </span>
               <Infotip
                 aria-label={t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
                 className="ml-0.5 size-3.5"
@@ -140,7 +129,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
               </Infotip>
             </div>
-          )}
+          }
           value={inputs.instruction}
           onChange={handleInstructionChange}
           readOnly={readOnly}

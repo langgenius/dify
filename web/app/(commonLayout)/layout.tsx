@@ -34,9 +34,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                 <HeaderWrapper>
                   <Header />
                 </HeaderWrapper>
-                <RoleRouteGuard>
-                  {children}
-                </RoleRouteGuard>
+                <RoleRouteGuard>{children}</RoleRouteGuard>
                 <InSiteMessageNotification />
                 <PartnerStack />
                 <ReadmePanel />

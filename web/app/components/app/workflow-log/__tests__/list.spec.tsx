@@ -48,7 +48,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 // Mock the Run component
 vi.mock('@/app/components/workflow/run', () => ({
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -135,7 +135,9 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
   ...overrides,
 })
 
-const createMockWorkflowLog = (overrides: Partial<WorkflowAppLogDetail> = {}): WorkflowAppLogDetail => ({
+const createMockWorkflowLog = (
+  overrides: Partial<WorkflowAppLogDetail> = {},
+): WorkflowAppLogDetail => ({
   id: 'log-1',
   workflow_run: createMockWorkflowRun(),
   created_from: 'web-app',
@@ -178,7 +180,11 @@ describe('WorkflowAppLogList', () => {
   describe('Rendering', () => {
     it('should render loading state when logs are undefined', () => {
       const { container } = render(
-        <WorkflowAppLogList logs={undefined} appDetail={createMockApp()} onRefresh={defaultOnRefresh} />,
+        <WorkflowAppLogList
+          logs={undefined}
+          appDetail={createMockApp()}
+          onRefresh={defaultOnRefresh}
+        />,
       )
 
       expect(container.querySelector('.spin-animation'))!.toBeInTheDocument()
@@ -233,9 +239,7 @@ describe('WorkflowAppLogList', () => {
       const logs = createMockLogsResponse([createMockWorkflowLog()])
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
       expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
@@ -304,7 +308,9 @@ describe('WorkflowAppLogList', () => {
     it('should render partial-succeeded status correctly', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          workflow_run: createMockWorkflowRun({ status: 'partial-succeeded' as WorkflowRunDetail['status'] }),
+          workflow_run: createMockWorkflowRun({
+            status: 'partial-succeeded' as WorkflowRunDetail['status'],
+          }),
         }),
       ])
 
@@ -338,7 +344,12 @@ describe('WorkflowAppLogList', () => {
     it('should display end user session id when created by end user', () => {
       const logs = createMockLogsResponse([
         createMockWorkflowLog({
-          created_by_end_user: { id: 'user-1', type: 'browser', is_anonymous: false, session_id: 'session-abc-123' },
+          created_by_end_user: {
+            id: 'user-1',
+            type: 'browser',
+            is_anonymous: false,
+            session_id: 'session-abc-123',
+          },
           created_by_account: undefined,
         }),
       ])
@@ -453,9 +464,7 @@ describe('WorkflowAppLogList', () => {
       useAppStore.setState({ appDetail: createMockApp() })
       const logs = createMockLogsResponse([createMockWorkflowLog()])
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={createMockApp()} onRefresh={onRefresh} />)
 
       // Open drawer
       const dataRows = screen.getAllByRole('row')
@@ -555,7 +564,9 @@ describe('WorkflowAppLogList', () => {
       const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
       await user.click(replayButton)
 
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-replay/workflow?replayRunId=run-to-replay')
+      expect(mockRouterPush).toHaveBeenCalledWith(
+        '/app/app-replay/workflow?replayRunId=run-to-replay',
+      )
     })
 
     it('should allow replay when triggered from debugging', async () => {
@@ -637,7 +648,9 @@ describe('WorkflowAppLogList', () => {
       // Replay button should not be present for webhook triggers
       // Replay button should not be present for webhook triggers
       // Replay button should not be present for webhook triggers
-      expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -799,9 +812,7 @@ describe('WorkflowAppLogList', () => {
       ])
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
-      render(
-        <WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />,
-      )
+      render(<WorkflowAppLogList logs={logs} appDetail={chatApp} onRefresh={defaultOnRefresh} />)
 
       // Should render without trigger column
       // Should render without trigger column

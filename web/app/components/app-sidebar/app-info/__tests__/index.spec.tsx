@@ -15,27 +15,39 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('../app-info-trigger', () => ({
-  default: React.memo(({ appDetail, expand, onClick }: {
-    appDetail: App & Partial<AppSSO>
-    expand: boolean
-    onClick: () => void
-  }) => (
-    <button type="button" data-testid="trigger" data-expand={expand} onClick={onClick}>
-      {appDetail.name}
-    </button>
-  )),
+  default: React.memo(
+    ({
+      appDetail,
+      expand,
+      onClick,
+    }: {
+      appDetail: App & Partial<AppSSO>
+      expand: boolean
+      onClick: () => void
+    }) => (
+      <button type="button" data-testid="trigger" data-expand={expand} onClick={onClick}>
+        {appDetail.name}
+      </button>
+    ),
+  ),
 }))
 
 vi.mock('../app-info-detail-panel', () => ({
-  default: React.memo(({ show, onClose }: { show: boolean, onClose: () => void }) => (
-    show ? <div data-testid="detail-panel"><button type="button" onClick={onClose}>Close Panel</button></div> : null
-  )),
+  default: React.memo(({ show, onClose }: { show: boolean; onClose: () => void }) =>
+    show ? (
+      <div data-testid="detail-panel">
+        <button type="button" onClick={onClose}>
+          Close Panel
+        </button>
+      </div>
+    ) : null,
+  ),
 }))
 
 vi.mock('../app-info-modals', () => ({
-  default: React.memo(({ activeModal }: { activeModal: string | null }) => (
-    activeModal ? <div data-testid="modals" data-modal={activeModal} /> : null
-  )),
+  default: React.memo(({ activeModal }: { activeModal: string | null }) =>
+    activeModal ? <div data-testid="modals" data-modal={activeModal} /> : null,
+  ),
 }))
 
 const mockAppDetail: App & Partial<AppSSO> = {

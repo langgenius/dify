@@ -1,5 +1,11 @@
 /* eslint-disable ts/no-explicit-any */
-import { buildChartOptions, getChartValueField, getDefaultChartData, getSummaryValue, getTokenSummary } from '../app-chart-utils'
+import {
+  buildChartOptions,
+  getChartValueField,
+  getDefaultChartData,
+  getSummaryValue,
+  getTokenSummary,
+} from '../app-chart-utils'
 
 describe('app-chart-utils', () => {
   describe('getDefaultChartData', () => {
@@ -90,7 +96,10 @@ describe('app-chart-utils', () => {
         yMax: 100,
       })
 
-      const dataset = options.dataset as { dimensions: string[], source: Array<Record<string, unknown>> }
+      const dataset = options.dataset as {
+        dimensions: string[]
+        source: Array<Record<string, unknown>>
+      }
       const yAxis = options.yAxis as { max: number }
       const series = options.series as Array<{ lineStyle: { color: string } }>
 
@@ -114,19 +123,27 @@ describe('app-chart-utils', () => {
       const xAxis = options.xAxis as Array<Record<string, any>>
       const formatter = xAxis[0]!.axisLabel.formatter as (value: string) => string
       const outerInterval = xAxis[0]!.splitLine.interval as (index: number) => boolean
-      const innerInterval = xAxis[1]!.splitLine.interval as (_index: number, value: string) => boolean
+      const innerInterval = xAxis[1]!.splitLine.interval as (
+        _index: number,
+        value: string,
+      ) => boolean
       const series = options.series as Array<Record<string, any>>
-      const tooltipFormatter = series[0]!.tooltip.formatter as (params: { name: string, data: { total_cost: number, total_price: string } }) => string
+      const tooltipFormatter = series[0]!.tooltip.formatter as (params: {
+        name: string
+        data: { total_cost: number; total_price: string }
+      }) => string
 
       expect(formatter('Jan 2, 2024')).toBe('Jan 2, 2024')
       expect(outerInterval(0)).toBe(true)
       expect(outerInterval(1)).toBe(false)
       expect(innerInterval(0, '')).toBe(false)
       expect(innerInterval(1, '1')).toBe(true)
-      expect(tooltipFormatter({
-        name: 'Jan 2, 2024',
-        data: { total_cost: 10, total_price: '2.50' },
-      })).toContain('~$2.50')
+      expect(
+        tooltipFormatter({
+          name: 'Jan 2, 2024',
+          data: { total_cost: 10, total_price: '2.50' },
+        }),
+      ).toContain('~$2.50')
     })
   })
 })

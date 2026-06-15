@@ -47,7 +47,10 @@ const DatasetCardModals = ({
           onSuccess={onSuccess}
         />
       )}
-      <AlertDialog open={modalState.showConfirmDelete} onOpenChange={open => !open && onCloseConfirm()}>
+      <AlertDialog
+        open={modalState.showConfirmDelete}
+        onOpenChange={(open) => !open && onCloseConfirm()}
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

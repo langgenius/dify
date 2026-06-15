@@ -2,11 +2,7 @@
 import type { FC } from 'react'
 import type { IInputTypeIconProps } from './input-type-icon'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiDeleteBinLine,
-  RiDraggable,
-  RiEditLine,
-} from '@remixicon/react'
+import { RiDeleteBinLine, RiDraggable, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,8 +37,17 @@ const VarItem: FC<ItemProps> = ({
   const [isDeleting, setIsDeleting] = useState(false)
 
   return (
-    <div className={cn('group relative mb-1 flex h-[34px] w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm', isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover', readonly && 'cursor-not-allowed', className)}>
-      <VarIcon className={cn('mr-1 size-4 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')} />
+    <div
+      className={cn(
+        'group relative mb-1 flex h-[34px] w-full items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-3 pl-2.5 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+        isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
+        readonly && 'cursor-not-allowed',
+        className,
+      )}
+    >
+      <VarIcon
+        className={cn('mr-1 size-4 shrink-0 text-text-accent', canDrag && 'group-hover:opacity-0')}
+      />
       {canDrag && (
         <RiDraggable className="absolute top-3 left-3 hidden size-3 cursor-pointer text-text-tertiary group-hover:block" />
       )}
@@ -59,7 +64,12 @@ const VarItem: FC<ItemProps> = ({
           <span className="pr-1 pl-2 system-xs-regular text-text-tertiary">{type}</span>
           <IconTypeIcon type={type as IInputTypeIconProps['type']} className="text-text-tertiary" />
         </div>
-        <div className={cn('hidden items-center justify-end rounded-lg', !readonly && 'group-hover:flex')}>
+        <div
+          className={cn(
+            'hidden items-center justify-end rounded-lg',
+            !readonly && 'group-hover:flex',
+          )}
+        >
           <button
             type="button"
             aria-label={t('operation.edit', { ns: 'common' })}

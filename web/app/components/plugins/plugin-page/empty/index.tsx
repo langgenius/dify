@@ -30,13 +30,13 @@ const Empty = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const { data: plugin_installation_permission } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.plugin_installation_permission,
+    select: (s) => s.plugin_installation_permission,
   })
-  const setActiveTab = usePluginPageContext(v => v.setActiveTab)
+  const setActiveTab = usePluginPageContext((v) => v.setActiveTab)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -45,26 +45,34 @@ const Empty = () => {
       setSelectedAction('local')
     }
   }
-  const filters = usePluginPageContext(v => v.filters)
+  const filters = usePluginPageContext((v) => v.filters)
   const { data: pluginList } = useInstalledPluginList()
 
   const text = useMemo(() => {
-    if (pluginList?.plugins.length === 0)
-      return t('list.noInstalled', { ns: 'plugin' })
+    if (pluginList?.plugins.length === 0) return t('list.noInstalled', { ns: 'plugin' })
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
       return t('list.notFound', { ns: 'plugin' })
-  }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
+  }, [
+    pluginList?.plugins.length,
+    t,
+    filters.categories.length,
+    filters.tags.length,
+    filters.searchQuery,
+  ])
 
   const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
   useEffect(() => {
     const methods = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({
+        icon: MagicBox,
+        text: t('source.marketplace', { ns: 'plugin' }),
+        action: 'marketplace',
+      })
 
     if (plugin_installation_permission.restrict_to_marketplace_only) {
       setInstallMethods(methods)
-    }
-    else {
+    } else {
       methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
       methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
       setInstallMethods(methods)
@@ -75,26 +83,24 @@ const Empty = () => {
     <div className="relative z-0 w-full grow">
       {/* skeleton */}
       <div className="absolute top-0 z-10 grid size-full grid-cols-2 gap-2 overflow-hidden px-12">
-        {Array.from({ length: 20 }).fill(0).map((_, i) => (
-          <div key={i} className="h-24 rounded-xl bg-components-card-bg" />
-        ))}
+        {Array.from({ length: 20 })
+          .fill(0)
+          .map((_, i) => (
+            <div key={i} className="h-24 rounded-xl bg-components-card-bg" />
+          ))}
       </div>
       {/* mask */}
       <div className="absolute z-20 size-full bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
       <div className="relative z-30 flex h-full items-center justify-center">
         <div className="flex flex-col items-center gap-y-3">
-          <div className="relative -z-10 flex size-14 items-center justify-center rounded-xl
-          border border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5"
-          >
+          <div className="relative -z-10 flex size-14 items-center justify-center rounded-xl border border-dashed border-divider-deep bg-components-card-bg shadow-xl shadow-shadow-shadow-5">
             <Group className="size-5 text-text-tertiary" />
             <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
             <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
             <Line className="absolute top-0 left-1/2 -translate-1/2 rotate-90" />
             <Line className="absolute top-full left-1/2 -translate-1/2 rotate-90" />
           </div>
-          <div className="system-md-regular text-text-tertiary">
-            {text}
-          </div>
+          <div className="system-md-regular text-text-tertiary">{text}</div>
           <div className="flex w-[236px] flex-col">
             <input
               type="file"
@@ -109,12 +115,9 @@ const Empty = () => {
                   key={action}
                   className="justify-start gap-x-0.5 px-3"
                   onClick={() => {
-                    if (action === 'local')
-                      fileInputRef.current?.click()
-                    else if (action === 'marketplace')
-                      setActiveTab('discover')
-                    else
-                      setSelectedAction(action)
+                    if (action === 'local') fileInputRef.current?.click()
+                    else if (action === 'marketplace') setActiveTab('discover')
+                    else setSelectedAction(action)
                   }}
                 >
                   <Icon className="size-4" />
@@ -125,19 +128,15 @@ const Empty = () => {
           </div>
         </div>
         {selectedAction === 'github' && (
-          <InstallFromGitHub
-            onSuccess={noop}
+          <InstallFromGitHub onSuccess={noop} onClose={() => setSelectedAction(null)} />
+        )}
+        {selectedAction === 'local' && selectedFile && (
+          <InstallFromLocalPackage
+            file={selectedFile}
             onClose={() => setSelectedAction(null)}
+            onSuccess={noop}
           />
         )}
-        {selectedAction === 'local' && selectedFile
-          && (
-            <InstallFromLocalPackage
-              file={selectedFile}
-              onClose={() => setSelectedAction(null)}
-              onSuccess={noop}
-            />
-          )}
       </div>
     </div>
   )

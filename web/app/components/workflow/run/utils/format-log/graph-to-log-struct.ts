@@ -1,7 +1,17 @@
-type IterationInfo = { iterationId: string, iterationIndex: number }
-type LoopInfo = { loopId: string, loopIndex: number }
-type NodePlain = { nodeType: 'plain', nodeId: string } & (Partial<IterationInfo> & Partial<LoopInfo>)
-type NodeComplex = { nodeType: string, nodeId: string, params: (NodePlain | (NodeComplex & (Partial<IterationInfo> & Partial<LoopInfo>)) | Node[] | number)[] } & (Partial<IterationInfo> & Partial<LoopInfo>)
+type IterationInfo = { iterationId: string; iterationIndex: number }
+type LoopInfo = { loopId: string; loopIndex: number }
+type NodePlain = { nodeType: 'plain'; nodeId: string } & (Partial<IterationInfo> &
+  Partial<LoopInfo>)
+type NodeComplex = {
+  nodeType: string
+  nodeId: string
+  params: (
+    | NodePlain
+    | (NodeComplex & (Partial<IterationInfo> & Partial<LoopInfo>))
+    | Node[]
+    | number
+  )[]
+} & (Partial<IterationInfo> & Partial<LoopInfo>)
 type Node = NodePlain | NodeComplex
 
 /**
@@ -10,7 +20,7 @@ type Node = NodePlain | NodeComplex
  * @returns An array of parsed nodes.
  */
 function parseDSL(dsl: string): NodeData[] {
-  return convertToNodeData(parseTopLevelFlow(dsl).map(nodeStr => parseNode(nodeStr)))
+  return convertToNodeData(parseTopLevelFlow(dsl).map((nodeStr) => parseNode(nodeStr)))
 }
 
 /**
@@ -25,21 +35,17 @@ function parseTopLevelFlow(dsl: string): string[] {
 
   for (let i = 0; i < dsl.length; i++) {
     const char = dsl[i]
-    if (char === '(')
-      nested++
-    if (char === ')')
-      nested--
+    if (char === '(') nested++
+    if (char === ')') nested--
     if (char === '-' && dsl[i + 1] === '>' && nested === 0) {
       segments.push(buffer.trim())
       buffer = ''
       i++ // Skip the ">" character
-    }
-    else {
+    } else {
       buffer += char
     }
   }
-  if (buffer.trim())
-    segments.push(buffer.trim())
+  if (buffer.trim()) segments.push(buffer.trim())
 
   return segments
 }
@@ -63,16 +69,13 @@ function parseNode(nodeStr: string, parentIterationId?: string, parentLoopId?: s
     // Split the inner content by commas, respecting nested parentheses
     for (let i = 0; i < innerContent.length; i++) {
       const char = innerContent[i]
-      if (char === '(')
-        nested++
-      if (char === ')')
-        nested--
+      if (char === '(') nested++
+      if (char === ')') nested--
 
       if (char === ',' && nested === 0) {
         parts.push(buffer.trim())
         buffer = ''
-      }
-      else {
+      } else {
         buffer += char
       }
     }
@@ -80,19 +83,23 @@ function parseNode(nodeStr: string, parentIterationId?: string, parentLoopId?: s
 
     // Extract nodeType, nodeId, and params
     const [nodeType, nodeId, ...paramsRaw] = parts
-    const params = parseParams(paramsRaw, nodeType === 'iteration' ? nodeId!.trim() : parentIterationId, nodeType === 'loop' ? nodeId!.trim() : parentLoopId)
+    const params = parseParams(
+      paramsRaw,
+      nodeType === 'iteration' ? nodeId!.trim() : parentIterationId,
+      nodeType === 'loop' ? nodeId!.trim() : parentLoopId,
+    )
     const complexNode = {
       nodeType: nodeType!.trim(),
       nodeId: nodeId!.trim(),
       params,
     }
     if (parentIterationId) {
-      (complexNode as any).iterationId = parentIterationId;
-      (complexNode as any).iterationIndex = 0 // Fixed as 0
+      ;(complexNode as any).iterationId = parentIterationId
+      ;(complexNode as any).iterationIndex = 0 // Fixed as 0
     }
     if (parentLoopId) {
-      (complexNode as any).loopId = parentLoopId;
-      (complexNode as any).loopIndex = 0 // Fixed as 0
+      ;(complexNode as any).loopId = parentLoopId
+      ;(complexNode as any).loopIndex = 0 // Fixed as 0
     }
     return complexNode
   }
@@ -119,21 +126,24 @@ function parseNode(nodeStr: string, parentIterationId?: string, parentLoopId?: s
  * @param parentLoopId - The ID of the parent loop node (if applicable).
  * @returns An array of parsed parameters (plain nodes, nested nodes, or flows).
  */
-function parseParams(paramParts: string[], parentIteration?: string, parentLoopId?: string): (Node | Node[] | number)[] {
+function parseParams(
+  paramParts: string[],
+  parentIteration?: string,
+  parentLoopId?: string,
+): (Node | Node[] | number)[] {
   return paramParts.map((part) => {
     if (part.includes('->')) {
       // Parse as a flow and return an array of nodes
-      return parseTopLevelFlow(part).map(node => parseNode(node, parentIteration || undefined, parentLoopId || undefined))
-    }
-    else if (part.startsWith('(')) {
+      return parseTopLevelFlow(part).map((node) =>
+        parseNode(node, parentIteration || undefined, parentLoopId || undefined),
+      )
+    } else if (part.startsWith('(')) {
       // Parse as a nested complex node
       return parseNode(part, parentIteration || undefined, parentLoopId || undefined)
-    }
-    else if (!Number.isNaN(Number(part.trim()))) {
+    } else if (!Number.isNaN(Number(part.trim()))) {
       // Parse as a numeric parameter
       return Number(part.trim())
-    }
-    else {
+    } else {
       // Parse as a plain node
       return parseNode(part, parentIteration || undefined, parentLoopId || undefined)
     }
@@ -276,7 +286,11 @@ function convertLoopNode(node: Node): NodeData[] {
 /**
  * Converts a parallel node to node data.
  */
-function convertParallelNode(node: Node, parentParallelId?: string, parentStartNodeId?: string): NodeData[] {
+function convertParallelNode(
+  node: Node,
+  parentParallelId?: string,
+  parentStartNodeId?: string,
+): NodeData[] {
   const { nodeId, params } = node as NodeComplex
   const result: NodeData[] = [
     {
@@ -308,8 +322,7 @@ function convertParallelNode(node: Node, parentParallelId?: string, parentStartN
         })
         result.push(...childData)
       })
-    }
-    else if (param && typeof param === 'object') {
+    } else if (param && typeof param === 'object') {
       const startNodeId = param.nodeId
       const childData = convertToNodeData([param])
       childData.forEach((data) => {
@@ -333,7 +346,11 @@ function convertParallelNode(node: Node, parentParallelId?: string, parentStartN
 /**
  * Main function to convert nodes to node data.
  */
-function convertToNodeData(nodes: Node[], parentParallelId?: string, parentStartNodeId?: string): NodeData[] {
+function convertToNodeData(
+  nodes: Node[],
+  parentParallelId?: string,
+  parentStartNodeId?: string,
+): NodeData[] {
   const result: NodeData[] = []
 
   nodes.forEach((node) => {

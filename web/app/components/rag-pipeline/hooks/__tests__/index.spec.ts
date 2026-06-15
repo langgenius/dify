@@ -93,10 +93,18 @@ vi.mock('@/app/components/workflow/nodes/knowledge-base/default', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
-    generateNewNode: ({ id, data, position }: { id: string, data: object, position: { x: number, y: number } }) => ({
+    generateNewNode: ({
+      id,
+      data,
+      position,
+    }: {
+      id: string
+      data: object
+      position: { x: number; y: number }
+    }) => ({
       newNode: { id, data, position, type: 'custom' },
     }),
   }

@@ -12,11 +12,7 @@ type MenuItemContentProps = {
   trailing?: ReactNode
 }
 
-export function MenuItemContent({
-  iconClassName,
-  label,
-  trailing,
-}: MenuItemContentProps) {
+export function MenuItemContent({ iconClassName, label, trailing }: MenuItemContentProps) {
   return (
     <>
       <span aria-hidden className={cn(menuLeadingIconClassName, iconClassName)} />

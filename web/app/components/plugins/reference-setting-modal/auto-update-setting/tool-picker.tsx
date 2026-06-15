@@ -2,11 +2,7 @@
 import type { FC } from 'react'
 import type { ActivePluginType } from '../../marketplace/constants'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,13 +22,7 @@ type Props = Readonly<{
   onShowChange: (isShow: boolean) => void
 }>
 
-const ToolPicker: FC<Props> = ({
-  trigger,
-  value,
-  onChange,
-  isShow,
-  onShowChange,
-}) => {
+const ToolPicker: FC<Props> = ({ trigger, value, onChange, isShow, onShowChange }) => {
   const { t } = useTranslation()
 
   const tabs = [
@@ -55,23 +45,24 @@ const ToolPicker: FC<Props> = ({
     return list.filter((plugin) => {
       const isFromMarketPlace = plugin.source === PluginSource.marketplace
       return (
-        isFromMarketPlace && (pluginType === PLUGIN_TYPE_SEARCH_MAP.all || plugin.declaration.category === pluginType)
-        && (tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
-        && (query === '' || plugin.plugin_id.toLowerCase().includes(query.toLowerCase()))
+        isFromMarketPlace &&
+        (pluginType === PLUGIN_TYPE_SEARCH_MAP.all || plugin.declaration.category === pluginType) &&
+        (tags.length === 0 || tags.some((tag) => plugin.declaration.tags.includes(tag))) &&
+        (query === '' || plugin.plugin_id.toLowerCase().includes(query.toLowerCase()))
       )
     })
   }, [data, pluginType, query, tags])
 
   const handleCheckChange = (pluginId: string) => {
     const newValue = value.includes(pluginId)
-      ? value.filter(id => id !== pluginId)
+      ? value.filter((id) => id !== pluginId)
       : [...value, pluginId]
     onChange(newValue)
   }
 
   const listContent = (
     <div className="max-h-[396px] overflow-y-auto">
-      {filteredList.map(item => (
+      {filteredList.map((item) => (
         <ToolItem
           key={item.plugin_id}
           payload={item}
@@ -88,9 +79,7 @@ const ToolPicker: FC<Props> = ({
     </div>
   )
 
-  const noData = (
-    <NoDataPlaceholder className="h-[396px]" noPlugins={!query} />
-  )
+  const noData = <NoDataPlaceholder className="h-[396px]" noPlugins={!query} />
 
   const resolvedTrigger = React.isValidElement(trigger) ? trigger : <div>{trigger}</div>
 
@@ -115,7 +104,7 @@ const ToolPicker: FC<Props> = ({
           </div>
           <div className="flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs">
             <div className="flex h-8 items-center space-x-1">
-              {tabs.map(tab => (
+              {tabs.map((tab) => (
                 <div
                   className={cn(
                     'flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover',

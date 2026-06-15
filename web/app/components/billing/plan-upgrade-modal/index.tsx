@@ -32,27 +32,21 @@ export function PlanUpgradeModal({
 
   const handleUpgrade = useCallback(() => {
     onClose()
-    if (onUpgrade)
-      onUpgrade()
-    else
-      setShowPricingModal()
+    if (onUpgrade) onUpgrade()
+    else setShowPricingModal()
   }, [onClose, onUpgrade, setShowPricingModal])
 
   return (
     <UpgradeModal
       open={show}
-      onOpenChange={open => !open && onClose()}
+      onOpenChange={(open) => !open && onClose()}
       Icon={Icon}
       title={title}
       description={description}
       extraInfo={extraInfo}
-      footer={(
+      footer={
         <>
-          <Button
-            onClick={onClose}
-          >
-            {t('triggerLimitModal.dismiss', { ns: 'billing' })}
-          </Button>
+          <Button onClick={onClose}>{t('triggerLimitModal.dismiss', { ns: 'billing' })}</Button>
           <UpgradeBtn
             size="custom"
             isShort
@@ -62,7 +56,7 @@ export function PlanUpgradeModal({
             loc="trigger-events-limit-modal"
           />
         </>
-      )}
+      }
     />
   )
 }

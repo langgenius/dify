@@ -13,22 +13,14 @@ const Description = () => {
         {t('marketplace.empower')}
       </h1>
       <h2 className="flex shrink-0 items-center justify-center text-center body-md-regular text-text-tertiary">
-        {
-          isZhHans && (
-            <>
-              <span className="mr-1">{tCommon('operation.in')}</span>
-              {t('marketplace.difyMarketplace')}
-              {t('marketplace.discover')}
-            </>
-          )
-        }
-        {
-          !isZhHans && (
-            <>
-              {t('marketplace.discover')}
-            </>
-          )
-        }
+        {isZhHans && (
+          <>
+            <span className="mr-1">{tCommon('operation.in')}</span>
+            {t('marketplace.difyMarketplace')}
+            {t('marketplace.discover')}
+          </>
+        )}
+        {!isZhHans && <>{t('marketplace.discover')}</>}
         <span className="relative z-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
           {t('category.models')}
         </span>
@@ -56,14 +48,12 @@ const Description = () => {
         <span className="relative z-1 mr-1 ml-1 body-md-medium text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
           {t('category.bundles')}
         </span>
-        {
-          !isZhHans && (
-            <>
-              <span className="mr-1">{tCommon('operation.in')}</span>
-              {t('marketplace.difyMarketplace')}
-            </>
-          )
-        }
+        {!isZhHans && (
+          <>
+            <span className="mr-1">{tCommon('operation.in')}</span>
+            {t('marketplace.difyMarketplace')}
+          </>
+        )}
       </h2>
     </>
   )

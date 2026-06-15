@@ -1,18 +1,9 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type {
-  ChatConfig,
-  ChatItem,
-  Feedback,
-} from '../types'
+import type { ChatConfig, ChatItem, Feedback } from '../types'
 import type { ThemeBuilder } from './theme/theme-context'
-import type {
-  AppConversationData,
-  AppData,
-  AppMeta,
-  ConversationItem,
-} from '@/models/share'
+import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 import { AppSourceType } from '@/service/share'

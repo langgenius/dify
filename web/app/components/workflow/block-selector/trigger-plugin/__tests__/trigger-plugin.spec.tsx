@@ -40,22 +40,26 @@ const createEvent = (name: string, label: string): Event => ({
     en_US: `${label} description`,
     zh_Hans: `${label} description`,
   },
-  parameters: [{
-    name: 'token',
-    label: { en_US: 'Token', zh_Hans: 'Token' },
-    human_description: { en_US: 'Token', zh_Hans: 'Token' },
-    type: 'string',
-    form: 'form',
-    llm_description: 'Token',
-    required: true,
-    multiple: false,
-    default: '',
-  }],
+  parameters: [
+    {
+      name: 'token',
+      label: { en_US: 'Token', zh_Hans: 'Token' },
+      human_description: { en_US: 'Token', zh_Hans: 'Token' },
+      type: 'string',
+      form: 'form',
+      llm_description: 'Token',
+      required: true,
+      multiple: false,
+      default: '',
+    },
+  ],
   labels: [],
   output_schema: { type: 'object' },
 })
 
-const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): TriggerWithProvider => ({
+const createTriggerProvider = (
+  overrides: Partial<TriggerWithProvider> = {},
+): TriggerWithProvider => ({
   id: 'trigger-provider-1',
   name: 'trigger-provider',
   author: 'Trigger Author',
@@ -87,7 +91,9 @@ describe('trigger plugin selector components', () => {
     vi.clearAllMocks()
     mockUseGetLanguage.mockReturnValue('en_US')
     mockUseTheme.mockReturnValue({ theme: Theme.light } as ReturnType<typeof useTheme>)
-    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<typeof useAllTriggerPlugins>)
+    mockUseAllTriggerPlugins.mockReturnValue({ data: [] } as unknown as ReturnType<
+      typeof useAllTriggerPlugins
+    >)
   })
 
   it('should select trigger plugin action items with default params and preview details', async () => {
@@ -107,13 +113,16 @@ describe('trigger plugin selector components', () => {
 
     await user.click(screen.getByText('On Created'))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      plugin_id: 'trigger-plugin-1',
-      provider_id: 'trigger-provider',
-      event_name: 'on_created',
-      event_label: 'On Created',
-      params: { token: '' },
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        plugin_id: 'trigger-plugin-1',
+        provider_id: 'trigger-provider',
+        event_name: 'on_created',
+        event_label: 'On Created',
+        params: { token: '' },
+      }),
+    )
   })
 
   it('should select trigger plugin action items from the keyboard', async () => {
@@ -137,10 +146,13 @@ describe('trigger plugin selector components', () => {
 
     await user.keyboard('{Enter}')
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      event_name: 'on_created',
-      event_label: 'On Created',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        event_name: 'on_created',
+        event_label: 'On Created',
+      }),
+    )
   })
 
   it('should expand providers and select workflow trigger providers directly', async () => {
@@ -150,10 +162,7 @@ describe('trigger plugin selector components', () => {
     const { rerender } = render(
       <TriggerPluginItem
         payload={createTriggerProvider({
-          events: [
-            createEvent('first', 'First Event'),
-            createEvent('second', 'Second Event'),
-          ],
+          events: [createEvent('first', 'First Event'), createEvent('second', 'Second Event')],
         })}
         hasSearchText={false}
         previewCardHandle={createPreviewCardHandle()}
@@ -163,14 +172,20 @@ describe('trigger plugin selector components', () => {
 
     await user.click(screen.getByText('Trigger Provider'))
 
-    expect(screen.getByLabelText('workflow.tabs.allTriggers')).toHaveClass('max-h-[240px]', 'overscroll-contain')
+    expect(screen.getByLabelText('workflow.tabs.allTriggers')).toHaveClass(
+      'max-h-[240px]',
+      'overscroll-contain',
+    )
 
     await user.click(screen.getByText('Second Event'))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      event_name: 'second',
-      title: 'Second Event',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        event_name: 'second',
+        title: 'Second Event',
+      }),
+    )
 
     onSelect.mockClear()
     rerender(
@@ -187,10 +202,13 @@ describe('trigger plugin selector components', () => {
 
     await user.click(screen.getByText('Workflow Event'))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.TriggerPlugin, expect.objectContaining({
-      provider_type: CollectionType.workflow,
-      event_name: 'workflow_event',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.TriggerPlugin,
+      expect.objectContaining({
+        provider_type: CollectionType.workflow,
+        event_name: 'workflow_event',
+      }),
+    )
   })
 
   it('should expand trigger providers from the keyboard', async () => {
@@ -200,10 +218,7 @@ describe('trigger plugin selector components', () => {
     render(
       <TriggerPluginItem
         payload={createTriggerProvider({
-          events: [
-            createEvent('first', 'First Event'),
-            createEvent('second', 'Second Event'),
-          ],
+          events: [createEvent('first', 'First Event'), createEvent('second', 'Second Event')],
         })}
         hasSearchText={false}
         previewCardHandle={createPreviewCardHandle()}

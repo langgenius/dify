@@ -72,21 +72,18 @@ const renderNoteNode = (dataOverrides: Partial<NoteNodeType> = {}) => {
     }),
   ]
 
-  return renderWorkflowFlowComponent(
-    <div />,
-    {
-      nodes,
-      edges: [],
-      reactFlowProps: {
-        nodeTypes: {
-          [CUSTOM_NOTE_NODE]: NoteNode,
-        },
-      },
-      initialStoreState: {
-        controlPromptEditorRerenderKey: 0,
+  return renderWorkflowFlowComponent(<div />, {
+    nodes,
+    edges: [],
+    reactFlowProps: {
+      nodeTypes: {
+        [CUSTOM_NOTE_NODE]: NoteNode,
       },
     },
-  )
+    initialStoreState: {
+      controlPromptEditorRerenderKey: 0,
+    },
+  })
 }
 
 describe('NoteNode', () => {
@@ -103,7 +100,9 @@ describe('NoteNode', () => {
       expect(screen.getByText('workflow.nodes.note.editor.small')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.note.editor.small').closest('.nodrag.nopan.nowheel'),
+    ).toBeInTheDocument()
   })
 
   it('should hide the toolbar for temporary notes', () => {

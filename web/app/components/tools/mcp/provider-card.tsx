@@ -29,13 +29,7 @@ type Props = Readonly<{
   onDeleted: () => void
 }>
 
-const MCPCard = ({
-  currentProvider,
-  data,
-  onUpdate,
-  handleSelect,
-  onDeleted,
-}: Props) => {
+const MCPCard = ({ currentProvider, data, onUpdate, handleSelect, onDeleted }: Props) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { isCurrentWorkspaceManager } = useAppContext()
@@ -45,31 +39,27 @@ const MCPCard = ({
 
   const [isOperationShow, setIsOperationShow] = useState(false)
 
-  const [isShowUpdateModal, {
-    setTrue: showUpdateModal,
-    setFalse: hideUpdateModal,
-  }] = useBoolean(false)
+  const [isShowUpdateModal, { setTrue: showUpdateModal, setFalse: hideUpdateModal }] =
+    useBoolean(false)
 
-  const [isShowDeleteConfirm, {
-    setTrue: showDeleteConfirm,
-    setFalse: hideDeleteConfirm,
-  }] = useBoolean(false)
+  const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
+    useBoolean(false)
 
-  const [deleting, {
-    setTrue: showDeleting,
-    setFalse: hideDeleting,
-  }] = useBoolean(false)
+  const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
 
-  const handleUpdate = useCallback(async (form: any) => {
-    const res = await updateMCP({
-      ...form,
-      provider_id: data.id,
-    })
-    if ((res as any)?.result === 'success') {
-      hideUpdateModal()
-      onUpdate(data.id)
-    }
-  }, [data, updateMCP, hideUpdateModal, onUpdate])
+  const handleUpdate = useCallback(
+    async (form: any) => {
+      const res = await updateMCP({
+        ...form,
+        provider_id: data.id,
+      })
+      if ((res as any)?.result === 'success') {
+        hideUpdateModal()
+        onUpdate(data.id)
+      }
+    },
+    [data, updateMCP, hideUpdateModal, onUpdate],
+  )
 
   const handleDelete = useCallback(async () => {
     showDeleting()
@@ -86,7 +76,8 @@ const MCPCard = ({
       onClick={() => handleSelect(data.id)}
       className={cn(
         'group relative flex cursor-pointer flex-col rounded-xl border-[1.5px] border-transparent bg-components-card-bg shadow-xs hover:bg-components-card-bg-alt hover:shadow-md',
-        currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-card-bg-alt',
+        currentProvider?.id === data.id &&
+          'border-components-option-card-option-selected-border bg-components-card-bg-alt',
       )}
     >
       <div className="flex grow items-center gap-3 rounded-t-xl p-4">
@@ -94,7 +85,9 @@ const MCPCard = ({
           <Icon src={data.icon} />
         </div>
         <div className="grow">
-          <div className="mb-1 truncate system-md-semibold text-text-secondary" title={data.name}>{data.name}</div>
+          <div className="mb-1 truncate system-md-semibold text-text-secondary" title={data.name}>
+            {data.name}
+          </div>
           <div className="system-xs-regular text-text-tertiary">{data.server_identifier}</div>
         </div>
       </div>
@@ -103,16 +96,35 @@ const MCPCard = ({
           <div className="flex items-center gap-1">
             <RiHammerFill className="size-3 shrink-0 text-text-quaternary" />
             {data.tools.length > 0 && (
-              <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">
+                {t('mcp.toolsCount', { ns: 'tools', count: data.tools.length })}
+              </div>
             )}
             {!data.tools.length && (
-              <div className="shrink-0 system-xs-regular text-text-tertiary">{t('mcp.noTools', { ns: 'tools' })}</div>
+              <div className="shrink-0 system-xs-regular text-text-tertiary">
+                {t('mcp.noTools', { ns: 'tools' })}
+              </div>
             )}
           </div>
-          <div className={cn('system-xs-regular text-divider-deep', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')}>/</div>
-          <div className={cn('truncate system-xs-regular text-text-tertiary', (!data.is_team_authorization || !data.tools.length) && 'sm:hidden')} title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}>{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
+          <div
+            className={cn(
+              'system-xs-regular text-divider-deep',
+              (!data.is_team_authorization || !data.tools.length) && 'sm:hidden',
+            )}
+          >
+            /
+          </div>
+          <div
+            className={cn(
+              'truncate system-xs-regular text-text-tertiary',
+              (!data.is_team_authorization || !data.tools.length) && 'sm:hidden',
+            )}
+            title={`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}
+          >{`${t('mcp.updateTime', { ns: 'tools' })} ${formatTimeFromNow(data.updated_at! * 1000)}`}</div>
         </div>
-        {data.is_team_authorization && data.tools.length > 0 && <StatusDot status="success" className="shrink-0" />}
+        {data.is_team_authorization && data.tools.length > 0 && (
+          <StatusDot status="success" className="shrink-0" />
+        )}
         {(!data.is_team_authorization || !data.tools.length) && (
           <div className="flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 system-xs-medium text-util-colors-red-red-500">
             {t('mcp.noConfigured', { ns: 'tools' })}
@@ -121,7 +133,13 @@ const MCPCard = ({
         )}
       </div>
       {isCurrentWorkspaceManager && (
-        <div className={cn('absolute top-2.5 right-2.5 hidden group-hover:block', isOperationShow && 'block')} onClick={e => e.stopPropagation()}>
+        <div
+          className={cn(
+            'absolute top-2.5 right-2.5 hidden group-hover:block',
+            isOperationShow && 'block',
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
           <OperationDropdown
             inCard
             onOpenChange={setIsOperationShow}
@@ -138,7 +156,7 @@ const MCPCard = ({
           onHide={hideUpdateModal}
         />
       )}
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+      <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -149,7 +167,9 @@ const MCPCard = ({
             </div>
           </div>
           <AlertDialogActions>
-            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogCancelButton>
+              {t('operation.cancel', { ns: 'common' })}
+            </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={handleDelete}>
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>

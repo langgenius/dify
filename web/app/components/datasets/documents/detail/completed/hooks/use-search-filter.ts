@@ -37,20 +37,29 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
     { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
   ])
 
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchValue(inputValue)
-    onPageChange(1)
-  }, { wait: 500 })
+  const { run: handleSearch } = useDebounceFn(
+    () => {
+      setSearchValue(inputValue)
+      onPageChange(1)
+    },
+    { wait: 500 },
+  )
 
-  const handleInputChange = useCallback((value: string) => {
-    setInputValue(value)
-    handleSearch()
-  }, [handleSearch])
+  const handleInputChange = useCallback(
+    (value: string) => {
+      setInputValue(value)
+      handleSearch()
+    },
+    [handleSearch],
+  )
 
-  const onChangeStatus = useCallback(({ value }: SelectOption) => {
-    setSelectedStatus(value === 'all' ? 'all' : !!value)
-    onPageChange(1)
-  }, [onPageChange])
+  const onChangeStatus = useCallback(
+    ({ value }: SelectOption) => {
+      setSelectedStatus(value === 'all' ? 'all' : !!value)
+      onPageChange(1)
+    },
+    [onPageChange],
+  )
 
   const onClearFilter = useCallback(() => {
     setInputValue('')
@@ -64,8 +73,7 @@ export const useSearchFilter = (options: UseSearchFilterOptions): UseSearchFilte
   }, [onPageChange])
 
   const selectDefaultValue = useMemo(() => {
-    if (selectedStatus === 'all')
-      return 'all'
+    if (selectedStatus === 'all') return 'all'
     return selectedStatus ? 1 : 0
   }, [selectedStatus])
 

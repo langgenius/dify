@@ -4,10 +4,7 @@ import type { PanelProps } from '@/types/workflow'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ErrorHandleMode, ValueType } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-  VarType,
-} from '../../../types'
+import { BlockEnum, VarType } from '../../../types'
 import { VarType as NumberVarType } from '../../tool/types'
 import AddBlock from '../add-block'
 import ConditionAdd from '../components/condition-add'
@@ -24,10 +21,7 @@ import VariableTypeSelect from '../components/loop-variables/variable-type-selec
 import InsertBlock from '../insert-block'
 import Node from '../node'
 import Panel from '../panel'
-import {
-  ComparisonOperator,
-  LogicalOperator,
-} from '../types'
+import { ComparisonOperator, LogicalOperator } from '../types'
 import useConfig from '../use-config'
 
 const mockHandleNodeAdd = vi.fn()
@@ -41,10 +35,11 @@ vi.mock('reactflow', async () => {
     Background: ({ id }: { id: string }) => <div data-testid={id} />,
     useViewport: () => ({ zoom: 1 }),
     useNodesInitialized: () => true,
-    useStore: (selector: (state: { d3Selection: null, d3Zoom: null }) => unknown) => selector({
-      d3Selection: null,
-      d3Zoom: null,
-    }),
+    useStore: (selector: (state: { d3Selection: null; d3Zoom: null }) => unknown) =>
+      selector({
+        d3Selection: null,
+        d3Zoom: null,
+      }),
   }
 })
 
@@ -106,11 +101,12 @@ vi.mock('../../../hooks', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-vars', () => ({
   __esModule: true,
-  default: ({ onChange }: { onChange: (valueSelector: string[], varItem: { type: VarType }) => void }) => (
-    <button
-      type="button"
-      onClick={() => onChange(['node-1', 'score'], { type: VarType.number })}
-    >
+  default: ({
+    onChange,
+  }: {
+    onChange: (valueSelector: string[], varItem: { type: VarType }) => void
+  }) => (
+    <button type="button" onClick={() => onChange(['node-1', 'score'], { type: VarType.number })}>
       pick-var
     </button>
   ),
@@ -119,10 +115,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: string) => void }) => (
-    <button
-      type="button"
-      onClick={() => onChange('{{#node-1.score#}}')}
-    >
+    <button type="button" onClick={() => onChange('{{#node-1.score#}}')}>
       pick-reference
     </button>
   ),
@@ -144,7 +137,8 @@ const mockWorkflowStoreState = {
 }
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: typeof mockWorkflowStoreState) => unknown) => selector(mockWorkflowStoreState),
+  useStore: (selector: (state: typeof mockWorkflowStoreState) => unknown) =>
+    selector(mockWorkflowStoreState),
   useWorkflowStore: () => ({
     getState: () => ({
       ...mockWorkflowStoreState,
@@ -172,12 +166,8 @@ vi.mock('../../variable-assigner/hooks', () => ({
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
-  default: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
-    <textarea
-      aria-label="code-editor"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-    />
+  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+    <textarea aria-label="code-editor" value={value} onChange={(e) => onChange(e.target.value)} />
   ),
 }))
 
@@ -192,19 +182,21 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('../../_base/components/input-number-with-slider', () => ({
   __esModule: true,
-  default: ({ value, onChange }: { value: number, onChange: (value: number) => void }) => (
+  default: ({ value, onChange }: { value: number; onChange: (value: number) => void }) => (
     <input
       aria-label="loop-count"
       type="number"
       value={value}
-      onChange={e => onChange(Number(e.target.value))}
+      onChange={(e) => onChange(Number(e.target.value))}
     />
   ),
 }))
 
 vi.mock('../../_base/components/split', () => ({
   __esModule: true,
-  default: ({ className }: { className?: string }) => <div data-testid="split" className={className} />,
+  default: ({ className }: { className?: string }) => (
+    <div data-testid="split" className={className} />
+  ),
 }))
 
 vi.mock('../use-config', () => ({
@@ -255,7 +247,9 @@ const createData = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => ({
   ...overrides,
 })
 
-const createConfigResult = (overrides: Partial<ReturnType<typeof useConfig>> = {}): ReturnType<typeof useConfig> => ({
+const createConfigResult = (
+  overrides: Partial<ReturnType<typeof useConfig>> = {},
+): ReturnType<typeof useConfig> => ({
   readOnly: false,
   inputs: createData(),
   filterInputVar: vi.fn(() => true),
@@ -487,10 +481,12 @@ describe('loop path', () => {
 
       rerender(
         <LoopVariables
-          variables={[createLoopVariable({
-            value_type: ValueType.variable,
-            value: '',
-          })]}
+          variables={[
+            createLoopVariable({
+              value_type: ValueType.variable,
+              value: '',
+            }),
+          ]}
           nodeId="loop-node"
           handleRemoveLoopVariable={handleRemoveLoopVariable}
           handleUpdateLoopVariable={handleUpdateLoopVariable}
@@ -502,7 +498,9 @@ describe('loop path', () => {
       await user.click(screen.getAllByRole('button').at(-1)!)
 
       expect(handleUpdateLoopVariable).toHaveBeenCalledWith('loop-var-1', { label: 'loop_item' })
-      expect(handleUpdateLoopVariable).toHaveBeenCalledWith('loop-var-1', { value: '{{#node-1.score#}}' })
+      expect(handleUpdateLoopVariable).toHaveBeenCalledWith('loop-var-1', {
+        value: '{{#node-1.score#}}',
+      })
       expect(handleRemoveLoopVariable).toHaveBeenCalledWith('loop-var-1')
     })
 
@@ -512,14 +510,8 @@ describe('loop path', () => {
 
       render(
         <div>
-          <InputModeSelect
-            value={ValueType.constant}
-            onChange={vi.fn()}
-          />
-          <VariableTypeSelect
-            value={VarType.string}
-            onChange={vi.fn()}
-          />
+          <InputModeSelect value={ValueType.constant} onChange={vi.fn()} />
+          <VariableTypeSelect value={VarType.string} onChange={vi.fn()} />
           <FormItem
             nodeId="loop-node"
             item={createLoopVariable({
@@ -535,7 +527,9 @@ describe('loop path', () => {
       expect(screen.getByText('Constant')).toBeInTheDocument()
       expect(screen.getByText('String')).toBeInTheDocument()
       await user.click(screen.getByText('True'))
-      await user.click(screen.getByRole('button', { name: /workflow.chatVariable.modal.addArrayValue/i }))
+      await user.click(
+        screen.getByRole('button', { name: /workflow.chatVariable.modal.addArrayValue/i }),
+      )
 
       expect(onChange).toHaveBeenCalledWith([true])
       expect(onChange).toHaveBeenCalledWith([false, false])
@@ -588,10 +582,7 @@ describe('loop path', () => {
             loopNodeId="loop-node"
             loopNodeData={createData({ start_node_id: 'start-node' })}
           />
-          <InsertBlock
-            startNodeId="start-node"
-            availableBlocksTypes={[BlockEnum.Code]}
-          />
+          <InsertBlock startNodeId="start-node" availableBlocksTypes={[BlockEnum.Code]} />
         </div>,
       )
 
@@ -599,18 +590,24 @@ describe('loop path', () => {
       await user.click(screen.getAllByText('select-block')[1]!)
 
       expect(mockHandleNodeAdd).toHaveBeenCalledTimes(2)
-      expect(mockHandleNodeAdd).toHaveBeenCalledWith(expect.objectContaining({
-        nodeType: expect.any(String),
-      }), expect.objectContaining({
-        prevNodeId: 'start-node',
-        prevNodeSourceHandle: 'source',
-      }))
-      expect(mockHandleNodeAdd).toHaveBeenCalledWith(expect.objectContaining({
-        nodeType: expect.any(String),
-      }), expect.objectContaining({
-        nextNodeId: 'start-node',
-        nextNodeTargetHandle: 'target',
-      }))
+      expect(mockHandleNodeAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nodeType: expect.any(String),
+        }),
+        expect.objectContaining({
+          prevNodeId: 'start-node',
+          prevNodeSourceHandle: 'source',
+        }),
+      )
+      expect(mockHandleNodeAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nodeType: expect.any(String),
+        }),
+        expect.objectContaining({
+          nextNodeId: 'start-node',
+          nextNodeTargetHandle: 'target',
+        }),
+      )
     })
 
     it('should render loop node candidate state and rerender children', () => {
@@ -636,14 +633,16 @@ describe('loop path', () => {
       const handleAddLoopVariable = vi.fn()
       const handleUpdateLoopCount = vi.fn()
 
-      mockUseConfig.mockReturnValueOnce(createConfigResult({
-        inputs: createData({
-          break_conditions: [],
-          loop_variables: [],
+      mockUseConfig.mockReturnValueOnce(
+        createConfigResult({
+          inputs: createData({
+            break_conditions: [],
+            loop_variables: [],
+          }),
+          handleAddLoopVariable,
+          handleUpdateLoopCount,
         }),
-        handleAddLoopVariable,
-        handleUpdateLoopCount,
-      }))
+      )
 
       const { container } = render(
         <Panel
@@ -656,7 +655,11 @@ describe('loop path', () => {
         />,
       )
 
-      fireEvent.click(container.querySelector('.mr-4.flex.size-5.cursor-pointer.items-center.justify-center') as HTMLElement)
+      fireEvent.click(
+        container.querySelector(
+          '.mr-4.flex.size-5.cursor-pointer.items-center.justify-center',
+        ) as HTMLElement,
+      )
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '8' } })
 
       expect(handleAddLoopVariable).toHaveBeenCalled()

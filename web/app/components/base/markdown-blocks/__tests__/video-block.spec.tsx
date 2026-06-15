@@ -21,10 +21,7 @@ type BlockNode = {
 describe('VideoBlock', () => {
   it('renders multiple video sources from node.children', () => {
     const node: BlockNode = {
-      children: [
-        { properties: { src: 'a.mp4' } },
-        { properties: { src: 'b.mp4' } },
-      ],
+      children: [{ properties: { src: 'a.mp4' } }, { properties: { src: 'b.mp4' } }],
     }
 
     render(<VideoBlock node={node} />)

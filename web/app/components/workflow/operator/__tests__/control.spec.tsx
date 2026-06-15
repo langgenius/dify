@@ -61,13 +61,9 @@ vi.mock('../more-actions', () => ({
 }))
 
 vi.mock('../tip-popup', () => ({
-  default: ({
-    children,
-    title,
-  }: {
-    children?: ReactNode
-    title?: string
-  }) => <div data-testid={title}>{children}</div>,
+  default: ({ children, title }: { children?: ReactNode; title?: string }) => (
+    <div data-testid={title}>{children}</div>
+  ),
 }))
 
 describe('Control', () => {
@@ -87,8 +83,12 @@ describe('Control', () => {
 
       expect(screen.getByTestId('add-block')).toBeInTheDocument()
       expect(screen.getByTestId('more-actions')).toBeInTheDocument()
-      expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass('bg-state-accent-active')
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass('bg-state-accent-active')
+      expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass(
+        'bg-state-accent-active',
+      )
+      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass(
+        'bg-state-accent-active',
+      )
       expect(screen.getByTestId('workflow.panel.maximize')).toBeInTheDocument()
     })
 
@@ -100,8 +100,12 @@ describe('Control', () => {
 
       render(<Control />)
 
-      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass('bg-state-accent-active')
-      expect(screen.getByTestId('workflow.panel.minimize').firstElementChild).toHaveClass('bg-state-accent-active')
+      expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass(
+        'bg-state-accent-active',
+      )
+      expect(screen.getByTestId('workflow.panel.minimize').firstElementChild).toHaveClass(
+        'bg-state-accent-active',
+      )
     })
   })
 
@@ -110,11 +114,21 @@ describe('Control', () => {
     it('should trigger the note, mode, organize, and maximize handlers', () => {
       render(<Control />)
 
-      fireEvent.click(screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement)
-      fireEvent.click(screen.getByTestId('workflow.common.pointerMode').firstElementChild as HTMLElement)
-      fireEvent.click(screen.getByTestId('workflow.common.handMode').firstElementChild as HTMLElement)
-      fireEvent.click(screen.getByTestId('workflow.panel.organizeBlocks').firstElementChild as HTMLElement)
-      fireEvent.click(screen.getByTestId('workflow.panel.maximize').firstElementChild as HTMLElement)
+      fireEvent.click(
+        screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement,
+      )
+      fireEvent.click(
+        screen.getByTestId('workflow.common.pointerMode').firstElementChild as HTMLElement,
+      )
+      fireEvent.click(
+        screen.getByTestId('workflow.common.handMode').firstElementChild as HTMLElement,
+      )
+      fireEvent.click(
+        screen.getByTestId('workflow.panel.organizeBlocks').firstElementChild as HTMLElement,
+      )
+      fireEvent.click(
+        screen.getByTestId('workflow.panel.maximize').firstElementChild as HTMLElement,
+      )
 
       expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
       expect(mockHandleModePointer).toHaveBeenCalledTimes(1)
@@ -128,7 +142,9 @@ describe('Control', () => {
 
       render(<Control />)
 
-      fireEvent.click(screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement)
+      fireEvent.click(
+        screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement,
+      )
 
       expect(mockHandleAddNote).not.toHaveBeenCalled()
     })

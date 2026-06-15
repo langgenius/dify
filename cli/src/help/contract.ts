@@ -51,8 +51,14 @@ export const CONTRACT: Contract = {
 // Single source for the top-level GLOBAL FLAGS section: flags that work across
 // commands. `-o` is parsed globally (see sniffOutputFormat); its accepted values
 // come straight from CONTRACT.outputFormats so the two can never drift.
-export const GLOBAL_FLAG_HELP: ReadonlyArray<{ label: string, description: string }> = [
-  { label: '-o, --output <format>', description: `Output format: ${CONTRACT.outputFormats.join('|')}` },
+export const GLOBAL_FLAG_HELP: ReadonlyArray<{ label: string; description: string }> = [
+  {
+    label: '-o, --output <format>',
+    description: `Output format: ${CONTRACT.outputFormats.join('|')}`,
+  },
   { label: '-v, --verbose', description: 'Enable verbose logging' },
-  { label: '--http-retry <n>', description: 'Retry idempotent GET/PUT/DELETE on transient errors (0 disables)' },
+  {
+    label: '--http-retry <n>',
+    description: 'Retry idempotent GET/PUT/DELETE on transient errors (0 disables)',
+  },
 ]

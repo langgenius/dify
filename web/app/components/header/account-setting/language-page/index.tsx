@@ -1,6 +1,13 @@
 'use client'
 import type { Locale } from '@/i18n-config'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,9 +38,11 @@ export default function LanguagePage() {
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
-  const languageOptions: SelectOption[] = languages.filter(item => item.supported)
-  const selectedLanguage = languageOptions.find(item => item.value === (locale || userProfile.interface_language))
-  const selectedTimezone = timezones.find(item => item.value === userProfile.timezone)
+  const languageOptions: SelectOption[] = languages.filter((item) => item.supported)
+  const selectedLanguage = languageOptions.find(
+    (item) => item.value === (locale || userProfile.interface_language),
+  )
+  const selectedTimezone = timezones.find((item) => item.value === userProfile.timezone)
   const handleSelectLanguage = async (item: SelectOption) => {
     const url = '/account/interface-language'
     const bodyKey = 'interface_language'
@@ -43,11 +52,9 @@ export default function LanguagePage() {
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       setLocaleOnClient(item.value.toString() as Locale, false)
       router.refresh()
-    }
-    catch (e) {
+    } catch (e) {
       toast.error((e as Error).message)
-    }
-    finally {
+    } finally {
       setEditing(false)
     }
   }
@@ -59,11 +66,9 @@ export default function LanguagePage() {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
       mutateUserProfile()
-    }
-    catch (e) {
+    } catch (e) {
       toast.error((e as Error).message)
-    }
-    finally {
+    } finally {
       setEditing(false)
     }
   }
@@ -75,18 +80,16 @@ export default function LanguagePage() {
           value={selectedLanguage?.value ?? null}
           disabled={editing}
           onValueChange={(nextValue) => {
-            if (!nextValue)
-              return
-            const nextItem = languageOptions.find(item => item.value === nextValue)
-            if (nextItem)
-              handleSelectLanguage(nextItem)
+            if (!nextValue) return
+            const nextItem = languageOptions.find((item) => item.value === nextValue)
+            if (nextItem) handleSelectLanguage(nextItem)
           }}
         >
           <SelectTrigger size="large">
             {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>
-            {languageOptions.map(item => (
+            {languageOptions.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
@@ -101,18 +104,16 @@ export default function LanguagePage() {
           value={selectedTimezone ? String(selectedTimezone.value) : null}
           disabled={editing}
           onValueChange={(nextValue) => {
-            if (!nextValue)
-              return
-            const nextItem = timezones.find(item => String(item.value) === nextValue)
-            if (nextItem)
-              handleSelectTimezone(nextItem)
+            if (!nextValue) return
+            const nextItem = timezones.find((item) => String(item.value) === nextValue)
+            if (nextItem) handleSelectTimezone(nextItem)
           }}
         >
           <SelectTrigger size="large">
             {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>
-            {timezones.map(item => (
+            {timezones.map((item) => (
               <SelectItem key={item.value} value={String(item.value)}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />

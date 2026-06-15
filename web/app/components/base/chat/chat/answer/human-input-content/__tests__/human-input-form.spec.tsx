@@ -9,66 +9,88 @@ import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 
 vi.mock('../content-item', () => ({
-  default: ({ content, onInputChange }: { content: string, onInputChange: (name: string, value: unknown) => void }) => (
+  default: ({
+    content,
+    onInputChange,
+  }: {
+    content: string
+    onInputChange: (name: string, value: unknown) => void
+  }) => (
     <div data-testid="mock-content-item">
       {content}
-      <button data-testid="update-input" onClick={() => onInputChange('field1', 'new value')}>Update</button>
-      <button data-testid="update-select" onClick={() => onInputChange('field2', 'approved')}>Update Select</button>
+      <button data-testid="update-input" onClick={() => onInputChange('field1', 'new value')}>
+        Update
+      </button>
+      <button data-testid="update-select" onClick={() => onInputChange('field2', 'approved')}>
+        Update Select
+      </button>
       <button
         data-testid="update-single-file"
-        onClick={() => onInputChange('field4', {
-          id: 'file-2',
-          name: 'main.png',
-          size: 256,
-          type: 'image/png',
-          progress: 100,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'image',
-          uploadedId: 'upload-file-2',
-        })}
+        onClick={() =>
+          onInputChange('field4', {
+            id: 'file-2',
+            name: 'main.png',
+            size: 256,
+            type: 'image/png',
+            progress: 100,
+            transferMethod: TransferMethod.local_file,
+            supportFileType: 'image',
+            uploadedId: 'upload-file-2',
+          })
+        }
       >
         Update Single File
       </button>
       <button
         data-testid="update-pending-single-file"
-        onClick={() => onInputChange('field4', {
-          id: 'file-2',
-          name: 'main.png',
-          size: 256,
-          type: 'image/png',
-          progress: 50,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'image',
-        })}
+        onClick={() =>
+          onInputChange('field4', {
+            id: 'file-2',
+            name: 'main.png',
+            size: 256,
+            type: 'image/png',
+            progress: 50,
+            transferMethod: TransferMethod.local_file,
+            supportFileType: 'image',
+          })
+        }
       >
         Update Pending Single File
       </button>
       <button
         data-testid="update-input-file"
-        onClick={() => onInputChange('field3', [{
-          id: 'file-1',
-          name: 'avatar.png',
-          size: 128,
-          type: 'image/png',
-          progress: 100,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'image',
-          uploadedId: 'upload-file-1',
-        }])}
+        onClick={() =>
+          onInputChange('field3', [
+            {
+              id: 'file-1',
+              name: 'avatar.png',
+              size: 128,
+              type: 'image/png',
+              progress: 100,
+              transferMethod: TransferMethod.local_file,
+              supportFileType: 'image',
+              uploadedId: 'upload-file-1',
+            },
+          ])
+        }
       >
         Update File
       </button>
       <button
         data-testid="update-pending-input-file"
-        onClick={() => onInputChange('field3', [{
-          id: 'file-1',
-          name: 'avatar.png',
-          size: 128,
-          type: 'image/png',
-          progress: 50,
-          transferMethod: TransferMethod.local_file,
-          supportFileType: 'image',
-        }])}
+        onClick={() =>
+          onInputChange('field3', [
+            {
+              id: 'file-1',
+              name: 'avatar.png',
+              size: 128,
+              type: 'image/png',
+              progress: 50,
+              transferMethod: TransferMethod.local_file,
+              supportFileType: 'image',
+            },
+          ])
+        }
       >
         Update Pending File
       </button>
@@ -168,12 +190,14 @@ describe('HumanInputForm', () => {
       action: 'action_1',
       inputs: {
         field1: 'new value',
-        field3: [{
-          type: 'image',
-          transfer_method: TransferMethod.local_file,
-          url: '',
-          upload_file_id: 'upload-file-1',
-        }],
+        field3: [
+          {
+            type: 'image',
+            transfer_method: TransferMethod.local_file,
+            url: '',
+            upload_file_id: 'upload-file-1',
+          },
+        ],
       },
     })
   })
@@ -212,7 +236,9 @@ describe('HumanInputForm', () => {
       ] as FormInputItem[],
     }
 
-    render(<HumanInputForm formData={formDataWithRequiredInteractiveFields} onSubmit={mockOnSubmit} />)
+    render(
+      <HumanInputForm formData={formDataWithRequiredInteractiveFields} onSubmit={mockOnSubmit} />,
+    )
 
     const submitButton = screen.getByRole('button', { name: 'Submit' })
     expect(submitButton).toBeDisabled()
@@ -235,12 +261,14 @@ describe('HumanInputForm', () => {
       action: 'action_1',
       inputs: {
         field2: 'approved',
-        field3: [{
-          type: 'image',
-          transfer_method: TransferMethod.local_file,
-          url: '',
-          upload_file_id: 'upload-file-1',
-        }],
+        field3: [
+          {
+            type: 'image',
+            transfer_method: TransferMethod.local_file,
+            url: '',
+            upload_file_id: 'upload-file-1',
+          },
+        ],
         field4: {
           type: 'image',
           transfer_method: TransferMethod.local_file,

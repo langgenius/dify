@@ -9,13 +9,12 @@ type Props = Readonly<{
   payload: GlobalVariable
 }>
 
-const Item = ({
-  payload,
-}: Props) => {
+const Item = ({ payload }: Props) => {
   return (
-    <div className={cn(
-      'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
-    )}
+    <div
+      className={cn(
+        'mb-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      )}
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">
@@ -24,10 +23,14 @@ const Item = ({
             <span className="text-text-tertiary">sys.</span>
             {payload.name}
           </div>
-          <div className="system-xs-medium text-text-tertiary">{capitalize(payload.value_type)}</div>
+          <div className="system-xs-medium text-text-tertiary">
+            {capitalize(payload.value_type)}
+          </div>
         </div>
       </div>
-      <div className="mt-1.5 truncate system-xs-regular text-text-tertiary">{payload.description}</div>
+      <div className="mt-1.5 truncate system-xs-regular text-text-tertiary">
+        {payload.description}
+      </div>
     </div>
   )
 }

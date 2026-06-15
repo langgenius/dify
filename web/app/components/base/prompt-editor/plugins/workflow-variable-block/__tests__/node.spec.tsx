@@ -57,11 +57,13 @@ describe('WorkflowVariableBlockNode', () => {
   it('should decorate with component props from node state', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.number)
-      const availableVariables: NodeOutPutVar[] = [{
-        nodeId: 'node-1',
-        title: 'Node A',
-        vars: [{ variable: 'answer', type: VarType.string }],
-      }]
+      const availableVariables: NodeOutPutVar[] = [
+        {
+          nodeId: 'node-1',
+          title: 'Node A',
+          vars: [{ variable: 'answer', type: VarType.string }],
+        },
+      ]
 
       const node = new WorkflowVariableBlockNode(
         ['node-1', 'answer'],
@@ -74,7 +76,9 @@ describe('WorkflowVariableBlockNode', () => {
       const decorated = node.decorate()
       expect(decorated.props.nodeKey).toBe('decorator-key')
       expect(decorated.props.variables).toEqual(['node-1', 'answer'])
-      expect(decorated.props.workflowNodesMap).toEqual({ 'node-1': { title: 'A', type: BlockEnum.LLM } })
+      expect(decorated.props.workflowNodesMap).toEqual({
+        'node-1': { title: 'A', type: BlockEnum.LLM },
+      })
       expect(decorated.props.availableVariables).toEqual(availableVariables)
     })
   })
@@ -82,11 +86,13 @@ describe('WorkflowVariableBlockNode', () => {
   it('should export and import json with available variables payload', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.string)
-      const availableVariables: NodeOutPutVar[] = [{
-        nodeId: 'node-1',
-        title: 'Node A',
-        vars: [{ variable: 'answer', type: VarType.string }],
-      }]
+      const availableVariables: NodeOutPutVar[] = [
+        {
+          nodeId: 'node-1',
+          title: 'Node A',
+          vars: [{ variable: 'answer', type: VarType.string }],
+        },
+      ]
 
       const node = new WorkflowVariableBlockNode(
         ['node-1', 'answer'],
@@ -116,7 +122,9 @@ describe('WorkflowVariableBlockNode', () => {
 
       expect(imported).toBeInstanceOf(WorkflowVariableBlockNode)
       expect(imported.getVariables()).toEqual(['node-2', 'result'])
-      expect(imported.getWorkflowNodesMap()).toEqual({ 'node-2': { title: 'B', type: BlockEnum.Tool } })
+      expect(imported.getWorkflowNodesMap()).toEqual({
+        'node-2': { title: 'B', type: BlockEnum.Tool },
+      })
       expect(imported.getAvailableVariables()).toEqual(availableVariables)
     })
   })
@@ -124,11 +132,13 @@ describe('WorkflowVariableBlockNode', () => {
   it('should return getters and text content in expected format', () => {
     runInEditor(() => {
       const getVarType = vi.fn(() => Type.string)
-      const availableVariables: NodeOutPutVar[] = [{
-        nodeId: 'node-1',
-        title: 'Node A',
-        vars: [{ variable: 'answer', type: VarType.string }],
-      }]
+      const availableVariables: NodeOutPutVar[] = [
+        {
+          nodeId: 'node-1',
+          title: 'Node A',
+          vars: [{ variable: 'answer', type: VarType.string }],
+        },
+      ]
       const node = new WorkflowVariableBlockNode(
         ['node-1', 'answer'],
         { 'node-1': { title: 'A', type: BlockEnum.LLM } },
@@ -147,12 +157,19 @@ describe('WorkflowVariableBlockNode', () => {
 
   it('should create node helper and type guard checks', () => {
     runInEditor(() => {
-      const availableVariables: NodeOutPutVar[] = [{
-        nodeId: 'node-1',
-        title: 'Node A',
-        vars: [{ variable: 'answer', type: VarType.string }],
-      }]
-      const node = $createWorkflowVariableBlockNode(['node-1', 'answer'], {}, undefined, availableVariables)
+      const availableVariables: NodeOutPutVar[] = [
+        {
+          nodeId: 'node-1',
+          title: 'Node A',
+          vars: [{ variable: 'answer', type: VarType.string }],
+        },
+      ]
+      const node = $createWorkflowVariableBlockNode(
+        ['node-1', 'answer'],
+        {},
+        undefined,
+        availableVariables,
+      )
 
       expect(node).toBeInstanceOf(WorkflowVariableBlockNode)
       expect(node.getAvailableVariables()).toEqual(availableVariables)

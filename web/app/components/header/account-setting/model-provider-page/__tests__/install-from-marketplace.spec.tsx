@@ -8,7 +8,9 @@ import InstallFromMarketplace from '../install-from-marketplace'
 
 // Mock dependencies
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href}>{children}</a>
+  ),
 }))
 
 vi.mock('next-themes', () => ({
@@ -24,9 +26,15 @@ vi.mock('@/app/components/base/loading', () => ({
 }))
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  default: ({ plugins, cardRender }: { plugins: { plugin_id: string, name: string, type?: string }[], cardRender: (plugin: { plugin_id: string, name: string, type?: string }) => React.ReactNode }) => (
+  default: ({
+    plugins,
+    cardRender,
+  }: {
+    plugins: { plugin_id: string; name: string; type?: string }[]
+    cardRender: (plugin: { plugin_id: string; name: string; type?: string }) => React.ReactNode
+  }) => (
     <div data-testid="plugin-list">
-      {plugins.map(p => (
+      {plugins.map((p) => (
         <div key={p.plugin_id} data-testid="plugin-item">
           {cardRender(p)}
         </div>
@@ -73,7 +81,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should show loading state', () => {
-    (useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
       plugins: [],
       isLoading: true,
     })
@@ -84,7 +92,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should list plugins', () => {
-    (useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
       plugins: [{ plugin_id: '1', name: 'Plugin 1' }],
       isLoading: false,
     })
@@ -95,7 +103,7 @@ describe('InstallFromMarketplace', () => {
   })
 
   it('should hide bundle plugins from the list', () => {
-    (useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
+    ;(useMarketplaceAllPlugins as unknown as Mock).mockReturnValue({
       plugins: [
         { plugin_id: '1', name: 'Plugin 1', type: 'plugin' },
         { plugin_id: '2', name: 'Bundle 1', type: 'bundle' },

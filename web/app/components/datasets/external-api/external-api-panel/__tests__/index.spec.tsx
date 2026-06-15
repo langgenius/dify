@@ -63,7 +63,10 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel {...defaultProps} />)
       const docLink = screen.getByText('dataset.externalAPIPanelDocumentation')
       expect(docLink)!.toBeInTheDocument()
-      expect(docLink.closest('a'))!.toHaveAttribute('href', 'https://docs.example.com/use-dify/knowledge/external-knowledge-api')
+      expect(docLink.closest('a'))!.toHaveAttribute(
+        'href',
+        'https://docs.example.com/use-dify/knowledge/external-knowledge-api',
+      )
     })
 
     it('should render create button', () => {
@@ -73,7 +76,8 @@ describe('ExternalAPIPanel', () => {
 
     it('should render close button', () => {
       const { container } = render(<ExternalAPIPanel {...defaultProps} />)
-      const closeButton = container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
+      const closeButton =
+        container.querySelector('[class*="action-button"]') || screen.getAllByRole('button')[0]
       expect(closeButton)!.toBeInTheDocument()
     })
   })
@@ -83,9 +87,10 @@ describe('ExternalAPIPanel', () => {
       mockIsLoading = true
       const { container } = render(<ExternalAPIPanel {...defaultProps} />)
       // Loading component should be rendered
-      const loadingElement = container.querySelector('[class*="loading"]')
-        || container.querySelector('.animate-spin')
-        || screen.queryByRole('status')
+      const loadingElement =
+        container.querySelector('[class*="loading"]') ||
+        container.querySelector('.animate-spin') ||
+        screen.queryByRole('status')
       expect(loadingElement || container.textContent).toBeTruthy()
     })
   })
@@ -134,8 +139,8 @@ describe('ExternalAPIPanel', () => {
       render(<ExternalAPIPanel onClose={onClose} />)
       // Find the close button (ActionButton with close icon)
       const buttons = screen.getAllByRole('button')
-      const closeButton = buttons.find(btn => btn.querySelector('svg[class*="ri-close"]'))
-        || buttons[0]
+      const closeButton =
+        buttons.find((btn) => btn.querySelector('svg[class*="ri-close"]')) || buttons[0]
       fireEvent.click(closeButton!)
       expect(onClose).toHaveBeenCalledTimes(1)
     })

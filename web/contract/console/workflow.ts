@@ -27,11 +27,13 @@ export const workflowDraftEnvironmentVariablesContract = base
     path: '/apps/{appId}/workflows/draft/environment-variables',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<{ items: EnvironmentVariable[] }>())
 
 export const workflowDraftUpdateEnvironmentVariablesContract = base
@@ -39,14 +41,16 @@ export const workflowDraftUpdateEnvironmentVariablesContract = base
     path: '/apps/{appId}/workflows/draft/environment-variables',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-    body: {
-      environment_variables: EnvironmentVariable[]
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+      body: {
+        environment_variables: EnvironmentVariable[]
+      }
+    }>(),
+  )
   .output(type<CommonResponse>())
 
 export const workflowDraftUpdateConversationVariablesContract = base
@@ -54,14 +58,16 @@ export const workflowDraftUpdateConversationVariablesContract = base
     path: '/apps/{appId}/workflows/draft/conversation-variables',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-    body: {
-      conversation_variables: ConversationVariable[]
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+      body: {
+        conversation_variables: ConversationVariable[]
+      }
+    }>(),
+  )
   .output(type<CommonResponse>())
 
 export const workflowDraftUpdateFeaturesContract = base
@@ -69,12 +75,14 @@ export const workflowDraftUpdateFeaturesContract = base
     path: '/apps/{appId}/workflows/draft/features',
     method: 'POST',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-    body: {
-      features: WorkflowDraftFeaturesPayload
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+      body: {
+        features: WorkflowDraftFeaturesPayload
+      }
+    }>(),
+  )
   .output(type<CommonResponse>())

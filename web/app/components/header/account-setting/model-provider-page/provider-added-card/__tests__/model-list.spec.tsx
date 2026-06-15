@@ -13,12 +13,21 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (state: { setShowModelLoadBalancingModal: typeof mockSetShowModelLoadBalancingModal }) => unknown) =>
-    selector({ setShowModelLoadBalancingModal: mockSetShowModelLoadBalancingModal }),
+  useModalContextSelector: (
+    selector: (state: {
+      setShowModelLoadBalancingModal: typeof mockSetShowModelLoadBalancingModal
+    }) => unknown,
+  ) => selector({ setShowModelLoadBalancingModal: mockSetShowModelLoadBalancingModal }),
 }))
 
 vi.mock('../model-list-item', () => ({
-  default: ({ model, onModifyLoadBalancing }: { model: ModelItem, onModifyLoadBalancing: (model: ModelItem) => void }) => (
+  default: ({
+    model,
+    onModifyLoadBalancing,
+  }: {
+    model: ModelItem
+    onModifyLoadBalancing: (model: ModelItem) => void
+  }) => (
     <button type="button" onClick={() => onModifyLoadBalancing(model)}>
       {model.model}
     </button>

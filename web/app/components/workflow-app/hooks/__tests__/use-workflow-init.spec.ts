@@ -30,8 +30,9 @@ let workflowConfigState: {
 }
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T>(selector: (state: { setSyncWorkflowDraftHash: ReturnType<typeof vi.fn> }) => T): T =>
-    selector({ setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash }),
+  useStore: <T>(
+    selector: (state: { setSyncWorkflowDraftHash: ReturnType<typeof vi.fn> }) => T,
+  ): T => selector({ setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash }),
   useWorkflowStore: () => ({
     setState: mockWorkflowStoreSetState,
     getState: mockWorkflowStoreGetState,
@@ -39,23 +40,22 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T): T =>
-    selector(appStoreState),
+  useStore: <T>(selector: (state: typeof appStoreState) => T): T => selector(appStoreState),
 }))
 
 vi.mock('../use-workflow-template', () => ({
   useWorkflowTemplate: () => ({
-    nodes: appStoreState.appDetail.mode === 'workflow'
-      ? [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }]
-      : [{ id: 'start', data: { type: BlockEnum.Start } }],
+    nodes:
+      appStoreState.appDetail.mode === 'workflow'
+        ? [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }]
+        : [{ id: 'start', data: { type: BlockEnum.Start } }],
     edges: [],
   }),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
   useWorkflowConfig: (_url: string, onSuccess: (config: Record<string, unknown>) => void) => {
-    if (workflowConfigState.data)
-      onSuccess(workflowConfigState.data)
+    if (workflowConfigState.data) onSuccess(workflowConfigState.data)
     return workflowConfigState
   },
 }))
@@ -110,8 +110,7 @@ describe('useWorkflowInit', () => {
     })
     mockFetchNodesDefaultConfigs.mockResolvedValue([])
     mockFetchPublishedWorkflow.mockResolvedValue({ created_at: 0, graph: { nodes: [], edges: [] } })
-    mockFetchWorkflowDraft
-      .mockRejectedValueOnce(notExistError())
+    mockFetchWorkflowDraft.mockRejectedValueOnce(notExistError())
     mockSyncWorkflowDraft.mockReset()
   })
 
@@ -134,20 +133,24 @@ describe('useWorkflowInit', () => {
       ])
     })
 
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
-      showOnboarding: false,
-      shouldAutoOpenStartNodeSelector: false,
-      hasSelectedStartNode: false,
-      hasShownOnboarding: true,
-    }))
-    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-      params: expect.objectContaining({
-        graph: {
-          nodes: [],
-          edges: [],
-        },
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showOnboarding: false,
+        shouldAutoOpenStartNodeSelector: false,
+        hasSelectedStartNode: false,
+        hasShownOnboarding: true,
       }),
-    }))
+    )
+    expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          graph: {
+            nodes: [],
+            edges: [],
+          },
+        }),
+      }),
+    )
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-workflow-hash')
   })
@@ -164,19 +167,25 @@ describe('useWorkflowInit', () => {
 
     renderHook(() => useWorkflowInit())
 
-    await waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(expect.objectContaining({
-      params: expect.objectContaining({
-        graph: {
-          nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
-          edges: [],
-        },
+    await waitFor(() =>
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: {
+              nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
+              edges: [],
+            },
+          }),
+        }),
+      ),
+    )
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showOnboarding: false,
+        shouldAutoOpenStartNodeSelector: false,
+        hasShownOnboarding: false,
       }),
-    })))
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
-      showOnboarding: false,
-      shouldAutoOpenStartNodeSelector: false,
-      hasShownOnboarding: false,
-    }))
+    )
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
   })
 
@@ -257,15 +266,17 @@ describe('useWorkflowInit', () => {
     })
 
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ appId: 'app-1', appName: 'Test' })
-    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
-      envSecrets: { 'env-secret': 'top-secret' },
-      environmentVariables: [
-        { id: 'env-secret', value_type: 'secret', value: '[__HIDDEN__]', name: 'SECRET' },
-        { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
-      ],
-      conversationVariables: [{ id: 'conversation-1' }],
-      isWorkflowDataLoaded: true,
-    }))
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envSecrets: { 'env-secret': 'top-secret' },
+        environmentVariables: [
+          { id: 'env-secret', value_type: 'secret', value: '[__HIDDEN__]', name: 'SECRET' },
+          { id: 'env-plain', value_type: 'text', value: 'visible', name: 'PLAIN' },
+        ],
+        conversationVariables: [{ id: 'conversation-1' }],
+        isWorkflowDataLoaded: true,
+      }),
+    )
     expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
       nodesDefaultConfigs: {
         start: { title: 'Start Config' },

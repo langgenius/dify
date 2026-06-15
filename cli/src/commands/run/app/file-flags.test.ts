@@ -28,11 +28,15 @@ describe('parseFileFlag', () => {
   })
 
   it('throws on missing = separator', () => {
-    expect(() => parseFileFlag('noequalssign')).toThrow('--file must be key=@path or key=https://url')
+    expect(() => parseFileFlag('noequalssign')).toThrow(
+      '--file must be key=@path or key=https://url',
+    )
   })
 
   it('throws on value that is neither @ nor URL', () => {
-    expect(() => parseFileFlag('doc=justaplainstring')).toThrow('--file value must start with @ (local file) or http(s):// (remote URL)')
+    expect(() => parseFileFlag('doc=justaplainstring')).toThrow(
+      '--file value must start with @ (local file) or http(s):// (remote URL)',
+    )
   })
 
   it('throws on empty varname', () => {
@@ -77,13 +81,21 @@ describe('resolveFileInputs', () => {
     const result = await resolveFileInputs('app-1', ['doc=https://example.com/report.pdf'], upload)
     expect(upload).not.toHaveBeenCalled()
     expect(result).toEqual({
-      doc: { type: 'document', transfer_method: 'remote_url', url: 'https://example.com/report.pdf' },
+      doc: {
+        type: 'document',
+        transfer_method: 'remote_url',
+        url: 'https://example.com/report.pdf',
+      },
     })
   })
 
   it('remote URL with query string: extracts correct extension', async () => {
     const upload = vi.fn()
-    const result = await resolveFileInputs('app-1', ['img=https://cdn.example.com/photo.jpg?token=abc'], upload)
+    const result = await resolveFileInputs(
+      'app-1',
+      ['img=https://cdn.example.com/photo.jpg?token=abc'],
+      upload,
+    )
     expect(result.img).toMatchObject({ type: 'image', transfer_method: 'remote_url' })
   })
 
@@ -98,16 +110,23 @@ describe('resolveFileInputs', () => {
 
   it('multiple flags: produces multiple entries keyed by varname', async () => {
     const upload = vi.fn().mockResolvedValue({ id: 'file-uuid-2' })
-    const result = await resolveFileInputs('app-1', ['img=https://x.com/logo.png', 'doc=@/tmp/file.pdf'], upload)
+    const result = await resolveFileInputs(
+      'app-1',
+      ['img=https://x.com/logo.png', 'doc=@/tmp/file.pdf'],
+      upload,
+    )
     expect(Object.keys(result)).toHaveLength(2)
     expect(result.img).toMatchObject({ transfer_method: 'remote_url' })
-    expect(result.doc).toMatchObject({ transfer_method: 'local_file', upload_file_id: 'file-uuid-2' })
+    expect(result.doc).toMatchObject({
+      transfer_method: 'local_file',
+      upload_file_id: 'file-uuid-2',
+    })
   })
 
   it('upload failure: throws with context including varname and path', async () => {
     const upload = vi.fn().mockRejectedValue(new Error('413 File too large'))
-    await expect(resolveFileInputs('app-1', ['doc=@/tmp/big.pdf'], upload))
-      .rejects
-      .toThrow('--file doc: upload of /tmp/big.pdf failed')
+    await expect(resolveFileInputs('app-1', ['doc=@/tmp/big.pdf'], upload)).rejects.toThrow(
+      '--file doc: upload of /tmp/big.pdf failed',
+    )
   })
 })

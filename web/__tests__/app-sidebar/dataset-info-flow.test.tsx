@@ -17,7 +17,7 @@ let mockDataset: DataSet
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
 }))
 
@@ -28,9 +28,10 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({
-    dataset: mockDataset,
-  }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
+    selector({
+      dataset: mockDataset,
+    }),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -77,14 +78,17 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
     show: boolean
     onClose: () => void
     onSuccess: () => void
-  }) => show
-    ? (
-        <div data-testid="rename-dataset-modal">
-          <button type="button" onClick={onSuccess}>rename-success</button>
-          <button type="button" onClick={onClose}>rename-close</button>
-        </div>
-      )
-    : null,
+  }) =>
+    show ? (
+      <div data-testid="rename-dataset-modal">
+        <button type="button" onClick={onSuccess}>
+          rename-success
+        </button>
+        <button type="button" onClick={onClose}>
+          rename-close
+        </button>
+      </div>
+    ) : null,
 }))
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
@@ -182,9 +186,11 @@ describe('App Sidebar Dataset Info Flow', () => {
         pipelineId: 'pipeline-1',
         include: false,
       })
-      expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
-        fileName: 'Dataset Name.pipeline',
-      }))
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileName: 'Dataset Name.pipeline',
+        }),
+      )
     })
   })
 

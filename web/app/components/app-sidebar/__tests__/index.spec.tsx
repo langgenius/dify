@@ -8,11 +8,19 @@ const mockSetAppSidebarExpand = vi.fn()
 let mockPathname = '/app/123/overview'
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: { id: 'app-1', name: 'Test', mode: 'chat', icon: '🤖', icon_type: 'emoji', icon_background: '#fff' },
-    appSidebarExpand: mockAppSidebarExpand,
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        name: 'Test',
+        mode: 'chat',
+        icon: '🤖',
+        icon_type: 'emoji',
+        icon_background: '#fff',
+      },
+      appSidebarExpand: mockAppSidebarExpand,
+      setAppSidebarExpand: mockSetAppSidebarExpand,
+    }),
 }))
 
 vi.mock('zustand/react/shallow', () => ({
@@ -46,19 +54,21 @@ let mockSubscriptionCallback: ((v: unknown) => void) | null = null
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: {
-      useSubscription: (cb: (v: unknown) => void) => { mockSubscriptionCallback = cb },
+      useSubscription: (cb: (v: unknown) => void) => {
+        mockSubscriptionCallback = cb
+      },
     },
   }),
 }))
 
 vi.mock('../../base/divider', () => ({
-  default: ({ className }: { className?: string }) => <hr data-testid="divider" className={className} />,
+  default: ({ className }: { className?: string }) => (
+    <hr data-testid="divider" className={className} />
+  ),
 }))
 
 vi.mock('../app-info', () => ({
-  default: ({ expand }: { expand: boolean }) => (
-    <div data-testid="app-info" data-expand={expand} />
-  ),
+  default: ({ expand }: { expand: boolean }) => <div data-testid="app-info" data-expand={expand} />,
   AppInfoView: ({ expand }: { expand: boolean }) => (
     <div data-testid="app-info" data-expand={expand} />
   ),
@@ -83,14 +93,30 @@ vi.mock('../dataset-sidebar-dropdown', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href, mode }: { name: string, href: string, mode?: string }) => (
-    <a data-testid={`nav-link-${name}`} href={href} data-mode={mode}>{name}</a>
+  default: ({ name, href, mode }: { name: string; href: string; mode?: string }) => (
+    <a data-testid={`nav-link-${name}`} href={href} data-mode={mode}>
+      {name}
+    </a>
   ),
 }))
 
 vi.mock('../toggle-button', () => ({
-  default: ({ expand, handleToggle, className }: { expand: boolean, handleToggle: () => void, className?: string }) => (
-    <button type="button" data-testid="toggle-button" data-expand={expand} onClick={handleToggle} className={className}>
+  default: ({
+    expand,
+    handleToggle,
+    className,
+  }: {
+    expand: boolean
+    handleToggle: () => void
+    className?: string
+  }) => (
+    <button
+      type="button"
+      data-testid="toggle-button"
+      data-expand={expand}
+      onClick={handleToggle}
+      className={className}
+    >
       Toggle
     </button>
   ),
@@ -153,7 +179,7 @@ describe('AppDetailNav', () => {
         <AppDetailNav
           navigation={navigation}
           iconType="dataset"
-          extraInfo={mode => <div data-testid="extra-info" data-mode={mode} />}
+          extraInfo={(mode) => <div data-testid="extra-info" data-mode={mode} />}
         />,
       )
       expect(screen.getByTestId('extra-info')).toBeInTheDocument()
@@ -163,7 +189,7 @@ describe('AppDetailNav', () => {
       render(
         <AppDetailNav
           navigation={navigation}
-          extraInfo={mode => <div data-testid="extra-info" data-mode={mode} />}
+          extraInfo={(mode) => <div data-testid="extra-info" data-mode={mode} />}
         />,
       )
       expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
@@ -173,8 +199,8 @@ describe('AppDetailNav', () => {
       render(
         <AppDetailNav
           navigation={navigation}
-          renderHeader={mode => <div data-testid="custom-header" data-mode={mode} />}
-          renderNavigation={mode => <div data-testid="custom-navigation" data-mode={mode} />}
+          renderHeader={(mode) => <div data-testid="custom-header" data-mode={mode} />}
+          renderNavigation={(mode) => <div data-testid="custom-navigation" data-mode={mode} />}
         />,
       )
 
@@ -264,7 +290,13 @@ describe('AppDetailNav', () => {
     it('should render disabled navigation items', () => {
       const navWithDisabled = [
         ...navigation,
-        { name: 'Disabled', href: '/disabled', icon: MockIcon, selectedIcon: MockIcon, disabled: true },
+        {
+          name: 'Disabled',
+          href: '/disabled',
+          icon: MockIcon,
+          selectedIcon: MockIcon,
+          disabled: true,
+        },
       ]
       render(<AppDetailNav navigation={navWithDisabled} />)
       expect(screen.getByTestId('nav-link-Disabled')).toBeInTheDocument()

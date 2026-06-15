@@ -10,23 +10,29 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
-import { getButtonStyle, getRenderedFormInputs, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import {
+  getButtonStyle,
+  getRenderedFormInputs,
+  hasInvalidSelectOrFileInput,
+  initializeInputs,
+  splitByOutputVar,
+} from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 
 type Props = Readonly<{
   nodeName: string
   data: HumanInputFormData
   showBackButton?: boolean
   handleBack?: () => void
-  onSubmit?: ({ inputs, action }: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
+  onSubmit?: ({
+    inputs,
+    action,
+  }: {
+    inputs: Record<string, HumanInputFieldValue>
+    action: string
+  }) => Promise<void>
 }>
 
-const FormContent = ({
-  nodeName,
-  data,
-  showBackButton,
-  handleBack,
-  onSubmit,
-}: Props) => {
+const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: Props) => {
   const { t } = useTranslation()
   const contentList = splitByOutputVar(data.form_content)
   const renderedFormInputs = getRenderedFormInputs(data.inputs, data.form_content)
@@ -35,7 +41,7 @@ const FormContent = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
-    setInputs(prev => ({
+    setInputs((prev) => ({
       ...prev,
       [name]: value,
     }))

@@ -2,10 +2,7 @@ import type { NodeProps } from 'reactflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-} from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { useReplaceDataSourceNode } from './hooks'
@@ -16,10 +13,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
 
   const renderTrigger = useCallback(() => {
     return (
-      <Button
-        variant="primary"
-        className="w-full"
-      >
+      <Button variant="primary" className="w-full">
         <RiAddLine className="mr-1 size-4" />
         {t('nodes.dataSource.add', { ns: 'workflow' })}
       </Button>
@@ -28,10 +22,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
 
   return (
     <div
-      className={cn(
-        'relative flex rounded-2xl border',
-        'border-transparent',
-      )}
+      className={cn('relative flex rounded-2xl border', 'border-transparent')}
       style={{
         width: data.width,
         height: data.height,
@@ -49,10 +40,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
           'w-[240px] bg-workflow-block-bg',
         )}
       >
-        <div className={cn(
-          'flex items-center rounded-t-2xl p-3',
-        )}
-        >
+        <div className={cn('flex items-center rounded-t-2xl p-3')}>
           <BlockSelector
             onSelect={handleReplaceNode}
             trigger={renderTrigger}

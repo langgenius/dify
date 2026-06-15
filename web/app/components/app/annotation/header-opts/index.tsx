@@ -14,9 +14,7 @@ import {
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  jsonToCSV,
-} from 'react-papaparse'
+import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '@/context/i18n'
 
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -44,11 +42,10 @@ type OperationsMenuProps = {
   onExportJsonl: () => void
 }
 
-const buildAnnotationJsonlRecords = (list: AnnotationItemBasic[]) => list.map(
-  (item: AnnotationItemBasic) => {
+const buildAnnotationJsonlRecords = (list: AnnotationItemBasic[]) =>
+  list.map((item: AnnotationItemBasic) => {
     return `{"messages": [{"role": "system", "content": ""}, {"role": "user", "content": ${JSON.stringify(item.question)}}, {"role": "assistant", "content": ${JSON.stringify(item.answer)}}]}`
-  },
-)
+  })
 
 const downloadAnnotationJsonl = (list: AnnotationItemBasic[], locale: string) => {
   const content = buildAnnotationJsonlRecords(list).join('\n')
@@ -59,7 +56,7 @@ const downloadAnnotationJsonl = (list: AnnotationItemBasic[], locale: string) =>
 const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
   const content = jsonToCSV([
     locale !== LanguagesSupported[1] ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
-    ...list.map(item => [item.question, item.answer]),
+    ...list.map((item) => [item.question, item.answer]),
   ])
   const file = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' })
   downloadBlob({ data: file, fileName: `annotations-${locale}.csv` })
@@ -85,12 +82,18 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           onBulkImport()
         }}
       >
-        <span aria-hidden className="i-custom-vender-line-files-file-plus-02 size-4 shrink-0 text-text-tertiary" />
+        <span
+          aria-hidden
+          className="i-custom-vender-line-files-file-plus-02 size-4 shrink-0 text-text-tertiary"
+        />
         {t('table.header.bulkImport', { ns: 'appAnnotation' })}
       </DropdownMenuItem>
       <DropdownMenuSub>
         <DropdownMenuSubTrigger className="gap-2">
-          <span aria-hidden className="i-custom-vender-line-files-file-download-02 size-4 shrink-0 text-text-tertiary" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-files-file-download-02 size-4 shrink-0 text-text-tertiary"
+          />
           {t('table.header.bulkExport', { ns: 'appAnnotation' })}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent
@@ -133,12 +136,7 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
   )
 }
 
-const HeaderOptions: FC<Props> = ({
-  appId,
-  onAdd,
-  onAdded,
-  controlUpdateList,
-}) => {
+const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
@@ -152,8 +150,7 @@ const HeaderOptions: FC<Props> = ({
     fetchList()
   }, [fetchList])
   useEffect(() => {
-    if (controlUpdateList)
-      fetchList()
+    if (controlUpdateList) fetchList()
   }, [controlUpdateList, fetchList])
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
@@ -172,11 +169,9 @@ const HeaderOptions: FC<Props> = ({
     try {
       await clearAllAnnotations(appId)
       onAdded()
-    }
-    catch (e) {
+    } catch (e) {
       console.error(`failed to clear all annotations, ${e}`)
-    }
-    finally {
+    } finally {
       setShowClearConfirm(false)
     }
   }
@@ -189,18 +184,18 @@ const HeaderOptions: FC<Props> = ({
         <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
         <div>{t('table.header.addAnnotation', { ns: 'appAnnotation' })}</div>
       </Button>
-      <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+      <DropdownMenu
+        modal={false}
+        open={isOperationsMenuOpen}
+        onOpenChange={setIsOperationsMenuOpen}
+      >
         <DropdownMenuTrigger
           aria-label={t('operation.more', { ns: 'common' })}
           className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={4}
-          popupClassName="w-[155px]"
-        >
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[155px]">
           <OperationsMenu
             list={list}
             onClose={() => setIsOperationsMenuOpen(false)}
@@ -218,25 +213,21 @@ const HeaderOptions: FC<Props> = ({
         />
       )}
 
-      {
-        showBulkImportModal && (
-          <BatchAddModal
-            appId={appId}
-            isShow={showBulkImportModal}
-            onCancel={() => setShowBulkImportModal(false)}
-            onAdded={onAdded}
-          />
-        )
-      }
-      {
-        showClearConfirm && (
-          <ClearAllAnnotationsConfirmModal
-            isShow={showClearConfirm}
-            onHide={() => setShowClearConfirm(false)}
-            onConfirm={handleConfirmed}
-          />
-        )
-      }
+      {showBulkImportModal && (
+        <BatchAddModal
+          appId={appId}
+          isShow={showBulkImportModal}
+          onCancel={() => setShowBulkImportModal(false)}
+          onAdded={onAdded}
+        />
+      )}
+      {showClearConfirm && (
+        <ClearAllAnnotationsConfirmModal
+          isShow={showClearConfirm}
+          onHide={() => setShowClearConfirm(false)}
+          onConfirm={handleConfirmed}
+        />
+      )}
     </div>
   )
 }

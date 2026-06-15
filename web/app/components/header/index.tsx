@@ -38,28 +38,29 @@ const Header = () => {
   const isFreePlan = plan.type === Plan.sandbox
   const isBrandingEnabled = systemFeatures.branding.enabled
   const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+    if (isFreePlan) setShowPricingModal()
+    else setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
-  const logoLabel = isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
+  const logoLabel =
+    isBrandingEnabled && systemFeatures.branding.application_title
+      ? systemFeatures.branding.application_title
+      : 'Dify'
   const renderLogo = () => (
     <Link
       href="/apps"
       className="flex h-8 shrink-0 items-center justify-center overflow-hidden rounded-sm px-0.5 hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
       aria-label={logoLabel}
     >
-      {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-        ? (
-            <img
-              src={systemFeatures.branding.workspace_logo}
-              className="block h-[22px] w-auto object-contain"
-              alt=""
-            />
-          )
-        : <DifyLogo alt="" />}
+      {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
+        <img
+          src={systemFeatures.branding.workspace_logo}
+          className="block h-[22px] w-auto object-contain"
+          alt=""
+        />
+      ) : (
+        <DifyLogo alt="" />
+      )}
     </Link>
   )
 
@@ -73,7 +74,11 @@ const Header = () => {
             <WorkspaceProvider>
               <WorkplaceSelector />
             </WorkspaceProvider>
-            {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
+            {enableBilling ? (
+              <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} />
+            ) : (
+              <LicenseNav />
+            )}
           </div>
           <div className="flex items-center">
             <div className="mr-2">
@@ -100,7 +105,11 @@ const Header = () => {
         <WorkspaceProvider>
           <WorkplaceSelector />
         </WorkspaceProvider>
-        {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
+        {enableBilling ? (
+          <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} />
+        ) : (
+          <LicenseNav />
+        )}
       </div>
       <div className="flex items-center space-x-2">
         {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}

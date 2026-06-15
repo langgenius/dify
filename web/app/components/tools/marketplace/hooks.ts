@@ -1,9 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
 import {
   useMarketplaceCollectionsAndPlugins,
@@ -17,7 +12,9 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
   const { data: toolProvidersData, isSuccess } = useAllToolProviders()
   const exclude = useMemo(() => {
     if (isSuccess)
-      return toolProvidersData?.filter(toolProvider => !!toolProvider.plugin_id).map(toolProvider => toolProvider.plugin_id!)
+      return toolProvidersData
+        ?.filter((toolProvider) => !!toolProvider.plugin_id)
+        .map((toolProvider) => toolProvider.plugin_id!)
   }, [isSuccess, toolProvidersData])
   const {
     isLoading,
@@ -61,8 +58,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
         exclude,
         type: 'plugin',
       })
-    }
-    else {
+    } else {
       if (isSuccess) {
         queryMarketplaceCollectionsAndPlugins({
           category: PluginCategoryEnum.tool,
@@ -73,22 +69,29 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
         resetPlugins()
       }
     }
-  }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins, exclude, isSuccess])
+  }, [
+    searchPluginText,
+    filterPluginTags,
+    queryPlugins,
+    queryMarketplaceCollectionsAndPlugins,
+    queryPluginsWithDebounced,
+    resetPlugins,
+    exclude,
+    isSuccess,
+  ])
 
-  const handleScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLDivElement
-    const {
-      scrollTop,
-      scrollHeight,
-      clientHeight,
-    } = target
-    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0) {
-      const searchPluginText = searchPluginTextRef.current
-      const filterPluginTags = filterPluginTagsRef.current
-      if (hasNextPage && (!!searchPluginText || !!filterPluginTags.length))
-        fetchNextPage()
-    }
-  }, [exclude, fetchNextPage, hasNextPage, plugins, queryPlugins])
+  const handleScroll = useCallback(
+    (e: Event) => {
+      const target = e.target as HTMLDivElement
+      const { scrollTop, scrollHeight, clientHeight } = target
+      if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0) {
+        const searchPluginText = searchPluginTextRef.current
+        const filterPluginTags = filterPluginTagsRef.current
+        if (hasNextPage && (!!searchPluginText || !!filterPluginTags.length)) fetchNextPage()
+      }
+    },
+    [exclude, fetchNextPage, hasNextPage, plugins, queryPlugins],
+  )
 
   return {
     isLoading: isLoading || isPluginsLoading,

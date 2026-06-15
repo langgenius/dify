@@ -5,15 +5,12 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useModalContext } from '@/context/modal-context'
 import { ApiBasedExtensionSelector } from '../selector'
 
-const {
-  mockApiBasedExtensionsQuery,
-  mockCreateApiBasedExtension,
-  mockUpdateApiBasedExtension,
-} = vi.hoisted(() => ({
-  mockApiBasedExtensionsQuery: vi.fn(),
-  mockCreateApiBasedExtension: vi.fn(),
-  mockUpdateApiBasedExtension: vi.fn(),
-}))
+const { mockApiBasedExtensionsQuery, mockCreateApiBasedExtension, mockUpdateApiBasedExtension } =
+  vi.hoisted(() => ({
+    mockApiBasedExtensionsQuery: vi.fn(),
+    mockCreateApiBasedExtension: vi.fn(),
+    mockUpdateApiBasedExtension: vi.fn(),
+  }))
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
@@ -42,7 +39,7 @@ vi.mock('@tanstack/react-query', () => ({
   useMutation: vi.fn((options: { mutationFn: (variables: unknown) => Promise<unknown> }) => ({
     isPending: false,
     mutate: (variables: unknown, mutationOptions?: { onSuccess?: (data: unknown) => void }) => {
-      options.mutationFn(variables).then(data => mutationOptions?.onSuccess?.(data))
+      options.mutationFn(variables).then((data) => mutationOptions?.onSuccess?.(data))
     },
   })),
 }))
@@ -99,7 +96,9 @@ describe('ApiBasedExtensionSelector', () => {
 
       // Assert
       // Assert
-      expect(await screen.findByText('common.apiBasedExtension.selector.title'))!.toBeInTheDocument()
+      expect(
+        await screen.findByText('common.apiBasedExtension.selector.title'),
+      )!.toBeInTheDocument()
     })
 
     it('should call onChange and closes dropdown when an extension is selected', async () => {
@@ -145,9 +144,18 @@ describe('ApiBasedExtensionSelector', () => {
 
       const addButton = await screen.findByText('common.operation.add')
       fireEvent.click(addButton)
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'), { target: { value: 'New Ext' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'), { target: { value: 'https://api.test' } })
-      fireEvent.change(screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'), { target: { value: 'secret-key' } })
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.name.placeholder'),
+        { target: { value: 'New Ext' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiEndpoint.placeholder'),
+        { target: { value: 'https://api.test' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('common.apiBasedExtension.modal.apiKey.placeholder'),
+        { target: { value: 'secret-key' } },
+      )
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
@@ -159,7 +167,9 @@ describe('ApiBasedExtensionSelector', () => {
             api_key: 'secret-key',
           },
         })
-        expect(screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'common.apiBasedExtension.modal.title' }),
+        ).not.toBeInTheDocument()
       })
     })
   })

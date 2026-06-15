@@ -19,68 +19,62 @@ type Props = Readonly<{
   onChange?: OnFeaturesChange
 }>
 
-const FollowUp = ({
-  disabled,
-  onChange,
-}: Props) => {
+const FollowUp = ({ disabled, onChange }: Props) => {
   const { t } = useTranslation()
-  const suggested = useFeatures(s => s.features.suggested)
+  const suggested = useFeatures((s) => s.features.suggested)
   const featuresStore = useFeaturesStore()
   const [isHovering, setIsHovering] = useState(false)
   const [isShowSettingModal, setIsShowSettingModal] = useState(false)
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange(newFeatures)
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange(newFeatures)
+    },
+    [featuresStore, onChange],
+  )
 
-  const handleSave = useCallback((newSuggested: SuggestedQuestionsAfterAnswer) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleSave = useCallback(
+    (newSuggested: SuggestedQuestionsAfterAnswer) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft.suggested = {
-        ...newSuggested,
-        enabled: true,
-      }
-    })
-    setFeatures(newFeatures)
-    setIsShowSettingModal(false)
-    if (onChange)
-      onChange(newFeatures)
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft.suggested = {
+          ...newSuggested,
+          enabled: true,
+        }
+      })
+      setFeatures(newFeatures)
+      setIsShowSettingModal(false)
+      if (onChange) onChange(newFeatures)
+    },
+    [featuresStore, onChange],
+  )
 
   const handleOpenSettingModal = useCallback(() => {
-    if (disabled)
-      return
+    if (disabled) return
     setIsShowSettingModal(true)
   }, [disabled])
 
   return (
     <>
       <FeatureCard
-        icon={(
+        icon={
           <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
             <VirtualAssistant className="size-4 text-text-primary-on-surface" />
           </div>
-        )}
+        }
         title={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
         value={!!suggested?.enabled}
-        onChange={state => handleChange(FeatureEnum.suggested, state)}
+        onChange={(state) => handleChange(FeatureEnum.suggested, state)}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         disabled={disabled}
@@ -95,7 +89,10 @@ const FollowUp = ({
             <>
               {!isHovering && (
                 <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
-                  {suggested.model?.name || t('feature.suggestedQuestionsAfterAnswer.modal.defaultModel', { ns: 'appDebug' })}
+                  {suggested.model?.name ||
+                    t('feature.suggestedQuestionsAfterAnswer.modal.defaultModel', {
+                      ns: 'appDebug',
+                    })}
                 </div>
               )}
               {isHovering && (

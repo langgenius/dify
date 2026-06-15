@@ -24,13 +24,7 @@ type Props = Readonly<{
 
 const maxIterationsMin = 1
 
-const AgentSetting: FC<Props> = ({
-  isChatModel,
-  payload,
-  isFunctionCall,
-  onCancel,
-  onSave,
-}) => {
+const AgentSetting: FC<Props> = ({ isChatModel, payload, isFunctionCall, onCancel, onSave }) => {
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState(payload)
   const ref = useRef(null)
@@ -38,8 +32,7 @@ const AgentSetting: FC<Props> = ({
   const maximumIterationsLabel = t('agent.setting.maximumIterations.name', { ns: 'appDebug' })
 
   useClickAway(() => {
-    if (mounted)
-      onCancel()
+    if (mounted) onCancel()
   }, ref)
 
   useEffect(() => {
@@ -84,20 +77,20 @@ const AgentSetting: FC<Props> = ({
           {/* Agent Mode */}
           <ItemPanel
             className="mb-4"
-            icon={
-              <CuteRobot className="size-4 text-indigo-600" />
-            }
+            icon={<CuteRobot className="size-4 text-indigo-600" />}
             name={t('agent.agentMode', { ns: 'appDebug' })}
             description={t('agent.agentModeDes', { ns: 'appDebug' })}
           >
-            <div className="text-[13px] leading-[18px] font-medium text-text-primary">{isFunctionCall ? t('agent.agentModeType.functionCall', { ns: 'appDebug' }) : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}</div>
+            <div className="text-[13px] leading-[18px] font-medium text-text-primary">
+              {isFunctionCall
+                ? t('agent.agentModeType.functionCall', { ns: 'appDebug' })
+                : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}
+            </div>
           </ItemPanel>
 
           <ItemPanel
             className="mb-4"
-            icon={
-              <Unblur className="h-4 w-4 text-[#FB6514]" />
-            }
+            icon={<Unblur className="h-4 w-4 text-[#FB6514]" />}
             name={maximumIterationsLabel}
             description={t('agent.setting.maximumIterations.description', { ns: 'appDebug' })}
           >
@@ -127,11 +120,9 @@ const AgentSetting: FC<Props> = ({
                 value={tempPayload.max_iteration}
                 onChange={(e) => {
                   let value = Number.parseInt(e.target.value, 10)
-                  if (value < maxIterationsMin)
-                    value = maxIterationsMin
+                  if (value < maxIterationsMin) value = maxIterationsMin
 
-                  if (value > MAX_ITERATIONS_NUM)
-                    value = MAX_ITERATIONS_NUM
+                  if (value > MAX_ITERATIONS_NUM) value = MAX_ITERATIONS_NUM
                   setTempPayload({
                     ...tempPayload,
                     max_iteration: value,
@@ -143,30 +134,28 @@ const AgentSetting: FC<Props> = ({
 
           {!isFunctionCall && (
             <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
-              <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
+              <div className="flex h-8 items-center px-4 text-sm/6 font-semibold text-text-secondary">
+                {t('builtInPromptTitle', { ns: 'tools' })}
+              </div>
               <div className="h-[396px] overflow-y-auto px-4 text-sm leading-5 font-normal whitespace-pre-line text-text-secondary">
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
               <div className="px-4">
-                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs leading-[18px] font-medium text-text-tertiary">{(isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion).length}</div>
+                <div className="inline-flex h-5 items-center rounded-md bg-components-input-bg-normal px-1 text-xs leading-[18px] font-medium text-text-tertiary">
+                  {
+                    (isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion)
+                      .length
+                  }
+                </div>
               </div>
             </div>
           )}
-
         </div>
-        <div
-          className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4"
-        >
-          <Button
-            onClick={onCancel}
-            className="mr-2"
-          >
+        <div className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section-burn px-6 py-4">
+          <Button onClick={onCancel} className="mr-2">
             {t('operation.cancel', { ns: 'common' })}
           </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-          >
+          <Button variant="primary" onClick={handleSave}>
             {t('operation.save', { ns: 'common' })}
           </Button>
         </div>

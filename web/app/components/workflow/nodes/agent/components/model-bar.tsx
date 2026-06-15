@@ -7,13 +7,15 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 
-type ModelBarProps = {
-  provider: string
-  model: string
-} | {
-  provider?: never
-  model?: never
-}
+type ModelBarProps =
+  | {
+      provider: string
+      model: string
+    }
+  | {
+      provider?: never
+      model?: never
+    }
 
 const useAllModel = () => {
   const { data: textGeneration } = useModelList(ModelTypeEnum.textGeneration)
@@ -44,7 +46,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
     return (
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <div className="relative" aria-label={tooltip}>
               <ModelSelector
                 modelList={[]}
@@ -56,18 +58,19 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
               />
               <StatusDot status="error" className="absolute -top-0.5 -right-0.5" />
             </div>
-          )}
+          }
         />
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     )
   }
   const modelInstalled = modelList?.some(
-    provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model),
+    (provider) =>
+      provider.provider === props.provider &&
+      provider.models.some((model) => model.model === props.model),
   )
   const showWarn = modelList && !modelInstalled
-  if (!modelList)
-    return null
+  if (!modelList) return null
 
   const modelNotInstalledTooltip = t('nodes.agent.modelNotInstallTooltip', { ns: 'workflow' })
   const modelSelector = (
@@ -87,8 +90,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
     </div>
   )
 
-  if (modelInstalled)
-    return modelSelector
+  if (modelInstalled) return modelSelector
 
   return (
     <Tooltip>

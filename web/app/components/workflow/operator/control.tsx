@@ -8,9 +8,7 @@ import {
   RiHand,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
-import {
-  memo,
-} from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Comment } from '@/app/components/base/icons/src/public/other'
 import Divider from '../../base/divider'
@@ -21,9 +19,7 @@ import {
   useWorkflowOrganize,
 } from '../hooks'
 import { useStore } from '../store'
-import {
-  ControlMode,
-} from '../types'
+import { ControlMode } from '../types'
 import AddBlock from './add-block'
 import { useOperator } from './hooks'
 import MoreActions from './more-actions'
@@ -31,25 +27,17 @@ import TipPopup from './tip-popup'
 
 const Control = () => {
   const { t } = useTranslation()
-  const controlMode = useStore(s => s.controlMode)
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const {
-    handleModePointer,
-    handleModeHand,
-    handleModeComment,
-    isCommentModeAvailable,
-  } = useWorkflowMoveMode()
+  const controlMode = useStore((s) => s.controlMode)
+  const maximizeCanvas = useStore((s) => s.maximizeCanvas)
+  const { handleModePointer, handleModeHand, handleModeComment, isCommentModeAvailable } =
+    useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
-  const {
-    nodesReadOnly,
-    getNodesReadOnly,
-  } = useNodesReadOnly()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const addNote = (e: MouseEvent<HTMLButtonElement>) => {
-    if (getNodesReadOnly())
-      return
+    if (getNodesReadOnly()) return
 
     e.stopPropagation()
     handleAddNote()
@@ -73,14 +61,19 @@ const Control = () => {
         </button>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('common.pointerMode', { ns: 'workflow' })} shortcut="workflow.pointer-mode">
+      <TipPopup
+        title={t('common.pointerMode', { ns: 'workflow' })}
+        shortcut="workflow.pointer-mode"
+      >
         <button
           type="button"
           aria-label={t('common.pointerMode', { ns: 'workflow' })}
           disabled={nodesReadOnly}
           className={cn(
             'mr-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
-            controlMode === ControlMode.Pointer ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+            controlMode === ControlMode.Pointer
+              ? 'bg-state-accent-active text-text-accent'
+              : 'hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={handleModePointer}
@@ -95,7 +88,9 @@ const Control = () => {
           disabled={nodesReadOnly}
           className={cn(
             'flex size-8 cursor-pointer items-center justify-center rounded-lg',
-            controlMode === ControlMode.Hand ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+            controlMode === ControlMode.Hand
+              ? 'bg-state-accent-active text-text-accent'
+              : 'hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={handleModeHand}
@@ -104,14 +99,19 @@ const Control = () => {
         </button>
       </TipPopup>
       {isCommentModeAvailable && (
-        <TipPopup title={t('common.commentMode', { ns: 'workflow' })} shortcut="workflow.comment-mode">
+        <TipPopup
+          title={t('common.commentMode', { ns: 'workflow' })}
+          shortcut="workflow.comment-mode"
+        >
           <button
             type="button"
             aria-label={t('common.commentMode', { ns: 'workflow' })}
             disabled={nodesReadOnly}
             className={cn(
               'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
-              controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+              controlMode === ControlMode.Comment
+                ? 'bg-state-accent-active text-text-accent'
+                : 'hover:bg-state-base-hover hover:text-text-secondary',
               `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
             )}
             onClick={handleModeComment}
@@ -135,14 +135,27 @@ const Control = () => {
           <RiFunctionAddLine aria-hidden className="size-4" />
         </button>
       </TipPopup>
-      <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcut="workflow.toggle-maximize">
+      <TipPopup
+        title={
+          maximizeCanvas
+            ? t('panel.minimize', { ns: 'workflow' })
+            : t('panel.maximize', { ns: 'workflow' })
+        }
+        shortcut="workflow.toggle-maximize"
+      >
         <button
           type="button"
-          aria-label={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })}
+          aria-label={
+            maximizeCanvas
+              ? t('panel.minimize', { ns: 'workflow' })
+              : t('panel.maximize', { ns: 'workflow' })
+          }
           disabled={nodesReadOnly}
           className={cn(
             'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            maximizeCanvas ? 'bg-state-accent-active text-text-accent hover:text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+            maximizeCanvas
+              ? 'bg-state-accent-active text-text-accent hover:text-text-accent'
+              : 'hover:bg-state-base-hover hover:text-text-secondary',
             `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
           )}
           onClick={handleToggleMaximizeCanvas}

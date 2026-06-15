@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react'
 import { createNode } from '../../__tests__/fixtures'
-import { baseRunningData, renderWorkflowFlowHook, renderWorkflowHook } from '../../__tests__/workflow-test-env'
+import {
+  baseRunningData,
+  renderWorkflowFlowHook,
+  renderWorkflowHook,
+} from '../../__tests__/workflow-test-env'
 import { WorkflowRunningStatus } from '../../types'
 import {
   useIsChatMode,
@@ -12,7 +16,8 @@ import {
 
 let mockAppMode = 'workflow'
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) => selector({ appDetail: { mode: mockAppMode } }),
+  useStore: (selector: (state: { appDetail: { mode: string } }) => unknown) =>
+    selector({ appDetail: { mode: mockAppMode } }),
 }))
 
 beforeEach(() => {
@@ -67,7 +72,9 @@ describe('useWorkflowReadOnly', () => {
   it('should return workflowReadOnly false when status is Succeeded', () => {
     const { result } = renderWorkflowHook(() => useWorkflowReadOnly(), {
       initialStoreState: {
-        workflowRunningData: baseRunningData({ result: { status: WorkflowRunningStatus.Succeeded } }),
+        workflowRunningData: baseRunningData({
+          result: { status: WorkflowRunningStatus.Succeeded },
+        }),
       },
     })
     expect(result.current.workflowReadOnly).toBe(false)

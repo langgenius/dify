@@ -35,18 +35,18 @@ const FormContent = () => {
   const { isSubmitting, submit, success } = useFormSubmit(token)
 
   const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
-  const replaceWebappLogo = typeof formData?.site?.custom_config?.replace_webapp_logo === 'string'
-    ? formData.site.custom_config.replace_webapp_logo
-    : null
+  const replaceWebappLogo =
+    typeof formData?.site?.custom_config?.replace_webapp_logo === 'string'
+      ? formData.site.custom_config.replace_webapp_logo
+      : null
 
   const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
-  const rateLimitExceeded = (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
+  const rateLimitExceeded =
+    (error as HumanInputFormError | null)?.code === 'web_form_rate_limit_exceeded'
 
   if (isLoading) {
-    return (
-      <Loading type="app" />
-    )
+    return <Loading type="app" />
   }
 
   if (success) {

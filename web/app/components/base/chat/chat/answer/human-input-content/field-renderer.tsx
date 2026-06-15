@@ -26,25 +26,21 @@ type Props = Readonly<{
   onChange: (value: HumanInputFieldValue) => void
 }>
 
-const HumanInputFieldRenderer = ({
-  field,
-  value,
-  onChange,
-}: Props) => {
+const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
   if (isParagraphFormInput(field)) {
     return (
       <Textarea
         aria-label={field.output_variable_name}
         className="h-[104px] sm:text-xs"
         value={typeof value === 'string' ? value : ''}
-        onValueChange={nextValue => onChange(nextValue)}
+        onValueChange={(nextValue) => onChange(nextValue)}
         data-testid="content-item-textarea"
       />
     )
   }
 
   if (isSelectFormInput(field)) {
-    const options = field.option_source.value.map(option => ({
+    const options = field.option_source.value.map((option) => ({
       name: option,
       value: option,
     }))
@@ -53,8 +49,7 @@ const HumanInputFieldRenderer = ({
       <Select
         value={typeof value === 'string' ? value : ''}
         onValueChange={(nextValue) => {
-          if (nextValue == null)
-            return
+          if (nextValue == null) return
           onChange(nextValue)
         }}
       >
@@ -62,7 +57,7 @@ const HumanInputFieldRenderer = ({
           {typeof value === 'string' ? value : ''}
         </SelectTrigger>
         <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-          {options.map(option => (
+          {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <SelectItemText>{option.name}</SelectItemText>
               <SelectItemIndicator />
@@ -74,14 +69,13 @@ const HumanInputFieldRenderer = ({
   }
 
   if (isFileFormInput(field)) {
-    const singleFileValue = value && !Array.isArray(value) && typeof value !== 'string'
-      ? [value]
-      : []
+    const singleFileValue =
+      value && !Array.isArray(value) && typeof value !== 'string' ? [value] : []
 
     return (
       <FileUploaderInAttachmentWrapper
         value={singleFileValue}
-        onChange={files => onChange(files[0] || null)}
+        onChange={(files) => onChange(files[0] || null)}
         fileConfig={{
           allowed_file_types: field.allowed_file_types,
           allowed_file_extensions: field.allowed_file_extensions,
@@ -96,7 +90,7 @@ const HumanInputFieldRenderer = ({
     return (
       <FileUploaderInAttachmentWrapper
         value={Array.isArray(value) ? value : []}
-        onChange={files => onChange(files)}
+        onChange={(files) => onChange(files)}
         fileConfig={{
           allowed_file_types: field.allowed_file_types,
           allowed_file_extensions: field.allowed_file_extensions,

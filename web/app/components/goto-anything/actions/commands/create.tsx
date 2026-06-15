@@ -66,9 +66,9 @@ export const createCommand: SlashCommandHandler = {
       i18n.t(key, { ns: 'app', lng: locale })
     const query = args.trim().toLowerCase()
     const filtered = OPTIONS.filter(
-      opt => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query),
+      (opt) => !query || opt.id.includes(query) || tr(opt.titleKey).toLowerCase().includes(query),
     )
-    return filtered.map(opt => ({
+    return filtered.map((opt) => ({
       id: `create-${opt.id}`,
       title: tr(opt.titleKey),
       description: tr(opt.descKey),
@@ -92,8 +92,8 @@ export const createCommand: SlashCommandHandler = {
         // draft". A mode mismatch (or no app open) falls back to new-app only,
         // mirroring the precondition the modal uses for canApplyToCurrent.
         const appDetail = useAppStore.getState().appDetail
-        const currentAppMode: WorkflowGeneratorMode | null
-          = appDetail?.mode === AppModeEnum.WORKFLOW
+        const currentAppMode: WorkflowGeneratorMode | null =
+          appDetail?.mode === AppModeEnum.WORKFLOW
             ? 'workflow'
             : appDetail?.mode === AppModeEnum.ADVANCED_CHAT
               ? 'advanced-chat'

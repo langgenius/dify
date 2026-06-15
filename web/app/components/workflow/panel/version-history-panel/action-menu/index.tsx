@@ -22,19 +22,20 @@ export type ActionMenuProps = {
 
 const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
   const { isShowDelete, handleClickActionMenuItem, open, setOpen } = props
-  const {
-    deleteOperation,
-    options,
-  } = useActionMenu(props)
+  const { deleteOperation, options } = useActionMenu(props)
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         nativeButton={false}
-        render={<Button nativeButton={false} size="small" className="px-1" onClick={e => e.stopPropagation()} />}
+        render={
+          <Button
+            nativeButton={false}
+            size="small"
+            className="px-1"
+            onClick={(e) => e.stopPropagation()}
+          />
+        }
       >
         <RiMoreFill className="size-4" />
       </DropdownMenuTrigger>
@@ -43,27 +44,26 @@ const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
         sideOffset={4}
         popupClassName="w-[184px] shadow-shadow-shadow-5"
       >
-        {
-          options.map(option => (
+        {options.map((option) => (
+          <ActionMenuItem
+            key={option.key}
+            item={option}
+            onClick={handleClickActionMenuItem.bind(null, option.key)}
+          />
+        ))}
+        {isShowDelete && (
+          <>
+            <DropdownMenuSeparator className="my-0" />
             <ActionMenuItem
-              key={option.key}
-              item={option}
-              onClick={handleClickActionMenuItem.bind(null, option.key)}
+              item={deleteOperation}
+              isDestructive
+              onClick={handleClickActionMenuItem.bind(
+                null,
+                VersionHistoryContextMenuOptions.delete,
+              )}
             />
-          ))
-        }
-        {
-          isShowDelete && (
-            <>
-              <DropdownMenuSeparator className="my-0" />
-              <ActionMenuItem
-                item={deleteOperation}
-                isDestructive
-                onClick={handleClickActionMenuItem.bind(null, VersionHistoryContextMenuOptions.delete)}
-              />
-            </>
-          )
-        }
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

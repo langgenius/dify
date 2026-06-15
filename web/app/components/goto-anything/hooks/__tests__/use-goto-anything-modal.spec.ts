@@ -11,7 +11,7 @@ type KeyPressEvent = {
 
 type HotkeyRegistration = {
   handler: (event: KeyPressEvent) => void
-  options?: { enabled?: boolean, ignoreInputs?: boolean }
+  options?: { enabled?: boolean; ignoreInputs?: boolean }
 }
 
 const hotkeyHandlers: Record<string, HotkeyRegistration> = {}
@@ -28,8 +28,7 @@ vi.mock('@tanstack/react-hotkeys', () => ({
 
 const triggerHotkey = (hotkey: string, event: KeyPressEvent) => {
   const registration = hotkeyHandlers[hotkey]
-  if (registration?.options?.enabled === false)
-    return
+  if (registration?.options?.enabled === false) return
 
   registration?.handler(event)
 }
@@ -44,7 +43,7 @@ const renderGotoAnythingModalHook = () => {
 
 describe('useGotoAnythingModal', () => {
   beforeEach(() => {
-    Object.keys(hotkeyHandlers).forEach(key => delete hotkeyHandlers[key])
+    Object.keys(hotkeyHandlers).forEach((key) => delete hotkeyHandlers[key])
     vi.useFakeTimers()
   })
 

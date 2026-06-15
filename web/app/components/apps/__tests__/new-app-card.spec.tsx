@@ -23,24 +23,84 @@ vi.mock('@/next/dynamic', () => ({
     const fnString = importFn.toString()
 
     if (fnString.includes('create-app-modal') && !fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: Record<string, unknown>) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate as () => void, 'data-testid': 'to-template-modal' }, 'To Template'))
+      return function MockCreateAppModal({
+        show,
+        onClose,
+        onSuccess,
+        onCreateFromTemplate,
+      }: Record<string, unknown>) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-app-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose as () => void, 'data-testid': 'close-create-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess as () => void, 'data-testid': 'success-create-modal' },
+            'Success',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onCreateFromTemplate as () => void, 'data-testid': 'to-template-modal' },
+            'To Template',
+          ),
+        )
       }
     }
     if (fnString.includes('create-app-dialog')) {
-      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: Record<string, unknown>) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-template-dialog' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank as () => void, 'data-testid': 'to-blank-modal' }, 'To Blank'))
+      return function MockCreateAppTemplateDialog({
+        show,
+        onClose,
+        onSuccess,
+        onCreateFromBlank,
+      }: Record<string, unknown>) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-template-dialog' },
+          React.createElement(
+            'button',
+            { onClick: onClose as () => void, 'data-testid': 'close-template-dialog' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess as () => void, 'data-testid': 'success-template-dialog' },
+            'Success',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onCreateFromBlank as () => void, 'data-testid': 'to-blank-modal' },
+            'To Blank',
+          ),
+        )
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: Record<string, unknown>) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose as () => void, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess as () => void, 'data-testid': 'success-dsl-modal' }, 'Success'))
+      return function MockCreateFromDSLModal({
+        show,
+        onClose,
+        onSuccess,
+      }: Record<string, unknown>) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-dsl-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose as () => void, 'data-testid': 'close-dsl-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess as () => void, 'data-testid': 'success-dsl-modal' },
+            'Success',
+          ),
+        )
       }
     }
     return () => null
@@ -87,9 +147,7 @@ describe('CreateAppCard', () => {
 
   describe('Props', () => {
     it('should apply custom className', () => {
-      const { container } = render(
-        <CreateAppCard ref={defaultRef} className="custom-class" />,
-      )
+      const { container } = render(<CreateAppCard ref={defaultRef} className="custom-class" />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('custom-class')
     })

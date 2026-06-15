@@ -1,6 +1,4 @@
-import {
-  RiErrorWarningFill,
-} from '@remixicon/react'
+import { RiErrorWarningFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 

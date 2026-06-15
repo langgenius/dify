@@ -8,7 +8,7 @@ import { useWorkflowHistoryStore } from '@/app/components/workflow/workflow-hist
 import Divider from '../../base/divider'
 import TipPopup from '../operator/tip-popup'
 
-type UndoRedoProps = { handleUndo: () => void, handleRedo: () => void }
+type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   const { t } = useTranslation()
   const { store } = useWorkflowHistoryStore()
@@ -34,10 +34,11 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           aria-label={t('common.undo', { ns: 'workflow' })!}
           data-tooltip-id="workflow.undo"
           disabled={nodesReadOnly || buttonsDisabled.undo}
-          className={
-            cn('flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.undo)
-            && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
-          }
+          className={cn(
+            'flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary',
+            (nodesReadOnly || buttonsDisabled.undo) &&
+              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+          )}
           onClick={handleUndo}
         >
           <span className="i-ri-arrow-go-back-line size-4" />
@@ -49,10 +50,11 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           aria-label={t('common.redo', { ns: 'workflow' })!}
           data-tooltip-id="workflow.redo"
           disabled={nodesReadOnly || buttonsDisabled.redo}
-          className={
-            cn('flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary', (nodesReadOnly || buttonsDisabled.redo)
-            && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
-          }
+          className={cn(
+            'flex size-8 cursor-pointer items-center rounded-md px-1.5 system-sm-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-secondary',
+            (nodesReadOnly || buttonsDisabled.redo) &&
+              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+          )}
           onClick={handleRedo}
         >
           <span className="i-ri-arrow-go-forward-fill size-4" />

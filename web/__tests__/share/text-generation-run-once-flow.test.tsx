@@ -20,8 +20,12 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
-    <textarea data-testid="code-editor" value={value ?? ''} onChange={e => onChange?.(e.target.value)} />
+  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
+    <textarea
+      data-testid="code-editor"
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
   ),
 }))
 
@@ -105,9 +109,7 @@ describe('RunOnce – integration flow', () => {
     }
 
     // Phase 1 – render, wait for initialisation
-    const { rerender } = render(
-      <Harness promptConfig={config} onSendSpy={onSend} />,
-    )
+    const { rerender } = render(<Harness promptConfig={config} onSendSpy={onSend} />)
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('Name')).toBeInTheDocument()
@@ -132,7 +134,9 @@ describe('RunOnce – integration flow', () => {
       />,
     )
 
-    const stopBtn = screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' })
+    const stopBtn = screen.getByRole('button', {
+      name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}',
+    })
     expect(stopBtn).toBeInTheDocument()
     fireEvent.click(stopBtn)
     expect(onStop).toHaveBeenCalledTimes(1)
@@ -145,7 +149,9 @@ describe('RunOnce – integration flow', () => {
         runControl={{ onStop, isStopping: true }}
       />,
     )
-    expect(screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'share.generation.stopRun:{"defaultValue":"Stop Run"}' }),
+    ).toBeDisabled()
   })
 
   it('clear resets all field types and allows re-submit', async () => {

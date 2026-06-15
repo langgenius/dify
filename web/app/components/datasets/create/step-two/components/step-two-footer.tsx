@@ -29,12 +29,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
           <RiArrowLeftLine className="mr-1 size-4" />
           {t('stepTwo.previousStep', { ns: 'datasetCreation' })}
         </Button>
-        <Button
-          className="ml-auto"
-          loading={isCreating}
-          variant="primary"
-          onClick={onCreate}
-        >
+        <Button className="ml-auto" loading={isCreating} variant="primary" onClick={onCreate}>
           {t('stepTwo.nextStep', { ns: 'datasetCreation' })}
         </Button>
       </div>
@@ -43,11 +38,7 @@ export const StepTwoFooter: FC<StepTwoFooterProps> = ({
 
   return (
     <div className="mt-8 flex items-center py-2">
-      <Button
-        loading={isCreating}
-        variant="primary"
-        onClick={onCreate}
-      >
+      <Button loading={isCreating} variant="primary" onClick={onCreate}>
         {t('stepTwo.save', { ns: 'datasetCreation' })}
       </Button>
       <Button className="ml-2" onClick={onCancel}>

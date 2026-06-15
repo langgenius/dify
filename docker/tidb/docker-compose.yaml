@@ -31,7 +31,7 @@ services:
       - --pd=pd0:2379
       - --log-file=/logs/tikv.log
     depends_on:
-      - "pd0"
+      - 'pd0'
     restart: on-failure
   tidb:
     image: pingcap/tidb:v8.5.1
@@ -45,7 +45,7 @@ services:
       - --path=pd0:2379
       - --log-file=/logs/tidb.log
     depends_on:
-      - "tikv"
+      - 'tikv'
     restart: on-failure
   tiflash:
     image: pingcap/tiflash:v8.5.1
@@ -58,6 +58,6 @@ services:
       - server
       - --config-file=/tiflash.toml
     depends_on:
-      - "tikv"
-      - "tidb"
+      - 'tikv'
+      - 'tidb'
     restart: on-failure

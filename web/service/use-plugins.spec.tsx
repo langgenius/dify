@@ -50,13 +50,14 @@ const createResponse = (endpointsActive: number): InstalledPluginListWithTotalRe
   total: 1,
 })
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
@@ -73,9 +74,7 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     const wrapper = createWrapper(queryClient)
 
-    mockGet
-      .mockResolvedValueOnce(createResponse(0))
-      .mockResolvedValueOnce(createResponse(1))
+    mockGet.mockResolvedValueOnce(createResponse(0)).mockResolvedValueOnce(createResponse(1))
 
     const { result, unmount } = renderHook(() => useInstalledPluginList(), { wrapper })
 
@@ -87,7 +86,9 @@ describe('useInstalledPluginList', () => {
     unmount()
 
     await waitFor(() => {
-      expect(queryClient.getQueryCache().find({ queryKey: ['plugins', 'installedPluginList'] })).toBeUndefined()
+      expect(
+        queryClient.getQueryCache().find({ queryKey: ['plugins', 'installedPluginList'] }),
+      ).toBeUndefined()
     })
 
     const { result: remountedResult } = renderHook(() => useInstalledPluginList(), { wrapper })

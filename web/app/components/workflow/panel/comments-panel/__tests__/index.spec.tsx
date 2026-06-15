@@ -54,7 +54,7 @@ const storeState = {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
 }))
 
@@ -75,13 +75,14 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) => selector({
-    activeCommentId: storeState.activeCommentId,
-    setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
-    setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
-    showResolvedComments: storeState.showResolvedComments,
-    setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
-  }),
+  useStore: (selector: (state: WorkflowStoreSelectionState) => unknown) =>
+    selector({
+      activeCommentId: storeState.activeCommentId,
+      setActiveCommentId: (...args: unknown[]) => mockSetActiveCommentId(...args),
+      setControlMode: (...args: unknown[]) => mockSetControlMode(...args),
+      showResolvedComments: storeState.showResolvedComments,
+      setShowResolvedComments: (...args: unknown[]) => mockSetShowResolvedComments(...args),
+    }),
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow-comment', () => ({
@@ -98,8 +99,18 @@ vi.mock('@/app/components/base/user-avatar-list', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" data-testid="show-resolved-switch" onClick={() => onCheckedChange(!checked)}>
+  Switch: ({
+    checked,
+    onCheckedChange,
+  }: {
+    checked: boolean
+    onCheckedChange: (value: boolean) => void
+  }) => (
+    <button
+      type="button"
+      data-testid="show-resolved-switch"
+      onClick={() => onCheckedChange(!checked)}
+    >
       toggle
     </button>
   ),

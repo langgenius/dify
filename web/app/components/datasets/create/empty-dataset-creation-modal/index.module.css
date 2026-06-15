@@ -1,7 +1,7 @@
 @reference "../../../../styles/globals.css";
 
 .modalHeader {
-  @apply flex items-center place-content-between h-8;
+  @apply flex h-8 place-content-between items-center;
 }
 .modalHeader .title {
   @apply grow text-text-primary;
@@ -10,7 +10,7 @@
   line-height: 32px;
 }
 .modalHeader .close {
-  @apply shrink-0 h-4 w-4 bg-center bg-no-repeat cursor-pointer;
+  @apply h-4 w-4 shrink-0 cursor-pointer bg-center bg-no-repeat;
   background-image: url(../assets/close.svg);
   background-size: 16px;
 }

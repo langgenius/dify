@@ -7,24 +7,25 @@ describe('Kbd', () => {
     const key = screen.getByText('⌘').element()
 
     expect(key.tagName).toBe('KBD')
-    await expect.element(screen.getByText('⌘')).toHaveClass(
-      'h-4',
-      'min-w-4',
-      'px-px',
-      'rounded-sm',
-      'bg-components-kbd-bg-gray',
-      'text-text-tertiary',
-      'system-kbd',
-    )
+    await expect
+      .element(screen.getByText('⌘'))
+      .toHaveClass(
+        'h-4',
+        'min-w-4',
+        'px-px',
+        'rounded-sm',
+        'bg-components-kbd-bg-gray',
+        'text-text-tertiary',
+        'system-kbd',
+      )
   })
 
   it('applies the white variant for elevated or inverse surfaces', async () => {
     const screen = await render(<Kbd color="white">↵</Kbd>)
 
-    await expect.element(screen.getByText('↵')).toHaveClass(
-      'bg-components-kbd-bg-white',
-      'text-text-primary-on-surface',
-    )
+    await expect
+      .element(screen.getByText('↵'))
+      .toHaveClass('bg-components-kbd-bg-white', 'text-text-primary-on-surface')
   })
 
   it('marks disabled keycaps visually without adding widget semantics', async () => {

@@ -46,34 +46,35 @@ const baseProps = {
   onSelect: vi.fn(),
 }
 
-const makeDataset = (overrides: Partial<DataSet>): DataSet => ({
-  id: 'dataset-id',
-  name: 'Dataset Name',
-  provider: 'internal',
-  icon_info: {
-    icon_type: 'emoji',
-    icon: '💾',
-    icon_background: '#fff',
-    icon_url: '',
-  },
-  embedding_available: true,
-  is_multimodal: false,
-  description: '',
-  permission: DatasetPermission.allTeamMembers,
-  indexing_technique: IndexingType.ECONOMICAL,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.fullText,
-    top_k: 5,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_model_name: '',
-      reranking_provider_name: '',
+const makeDataset = (overrides: Partial<DataSet>): DataSet =>
+  ({
+    id: 'dataset-id',
+    name: 'Dataset Name',
+    provider: 'internal',
+    icon_info: {
+      icon_type: 'emoji',
+      icon: '💾',
+      icon_background: '#fff',
+      icon_url: '',
     },
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  ...overrides,
-} as DataSet)
+    embedding_available: true,
+    is_multimodal: false,
+    description: '',
+    permission: DatasetPermission.allTeamMembers,
+    indexing_technique: IndexingType.ECONOMICAL,
+    retrieval_model_dict: {
+      search_method: RETRIEVE_METHOD.fullText,
+      top_k: 5,
+      reranking_enable: false,
+      reranking_model: {
+        reranking_model_name: '',
+        reranking_provider_name: '',
+      },
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    },
+    ...overrides,
+  }) as DataSet
 
 describe('SelectDataSet', () => {
   beforeEach(() => {
@@ -135,7 +136,10 @@ describe('SelectDataSet', () => {
     })
 
     expect(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute('href', '/datasets/create')
+    expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute(
+      'href',
+      '/datasets/create',
+    )
     expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeDisabled()
   })
 
@@ -198,7 +202,9 @@ describe('SelectDataSet', () => {
     })
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Unavailable Dataset').parentElement?.parentElement as HTMLElement)
+      fireEvent.click(
+        screen.getByText('Unavailable Dataset').parentElement?.parentElement as HTMLElement,
+      )
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
     })
 
@@ -219,7 +225,9 @@ describe('SelectDataSet', () => {
       render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
     })
 
-    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as (() => Promise<{ list: never[] }>)
+    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as () => Promise<{
+      list: never[]
+    }>
     await act(async () => {
       await loadMore()
     })
@@ -241,7 +249,9 @@ describe('SelectDataSet', () => {
       render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
     })
 
-    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as (() => Promise<{ list: never[] }>)
+    const loadMore = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as () => Promise<{
+      list: never[]
+    }>
     await act(async () => {
       await loadMore()
     })

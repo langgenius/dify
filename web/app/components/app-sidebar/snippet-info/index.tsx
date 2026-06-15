@@ -10,14 +10,10 @@ type SnippetInfoProps = {
   snippet: SnippetDetail
 }
 
-const SnippetInfo = ({
-  expand,
-  snippet,
-}: SnippetInfoProps) => {
+const SnippetInfo = ({ expand, snippet }: SnippetInfoProps) => {
   const { t } = useTranslation('snippet')
 
-  if (!expand)
-    return null
+  if (!expand) return null
 
   return (
     <div className="flex flex-col px-2 pt-2 pb-1">
@@ -26,9 +22,7 @@ const SnippetInfo = ({
           <SnippetInfoDropdown snippet={snippet} />
         </div>
         <div className="min-w-0">
-          <div className="truncate system-md-semibold text-text-secondary">
-            {snippet.name}
-          </div>
+          <div className="truncate system-md-semibold text-text-secondary">{snippet.name}</div>
           <div className="pt-1 system-2xs-medium-uppercase text-text-tertiary">
             {t('typeLabel')}
           </div>

@@ -93,10 +93,10 @@ describe('ComponentName', () => {
     it('should render without crashing', () => {
       // Arrange
       const props = { title: 'Test' }
-      
+
       // Act
       render(<Component {...props} />)
-      
+
       // Assert
       expect(screen.getByText('Test')).toBeInTheDocument()
     })
@@ -115,9 +115,9 @@ describe('ComponentName', () => {
     it('should handle click events', () => {
       const handleClick = vi.fn()
       render(<Component onClick={handleClick} />)
-      
+
       fireEvent.click(screen.getByRole('button'))
-      
+
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
@@ -278,16 +278,16 @@ it('should disable input when isReadOnly is true')
 
 ### Conditional (When Present)
 
-| Feature | Test Focus |
-|---------|-----------|
-| `useState` | Initial state, transitions, cleanup |
-| `useEffect` | Execution, dependencies, cleanup |
-| Event handlers | All onClick, onChange, onSubmit, keyboard |
-| API calls | Loading, success, error states |
-| Routing | Navigation, params, query strings |
-| `useCallback`/`useMemo` | Referential equality |
-| Context | Provider values, consumer behavior |
-| Forms | Validation, submission, error display |
+| Feature                 | Test Focus                                |
+| ----------------------- | ----------------------------------------- |
+| `useState`              | Initial state, transitions, cleanup       |
+| `useEffect`             | Execution, dependencies, cleanup          |
+| Event handlers          | All onClick, onChange, onSubmit, keyboard |
+| API calls               | Loading, success, error states            |
+| Routing                 | Navigation, params, query strings         |
+| `useCallback`/`useMemo` | Referential equality                      |
+| Context                 | Provider values, consumer behavior        |
+| Forms                   | Validation, submission, error display     |
 
 ## Coverage Goals (Per File)
 

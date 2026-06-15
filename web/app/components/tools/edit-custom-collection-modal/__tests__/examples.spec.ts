@@ -3,11 +3,7 @@ import examples from '../examples'
 
 describe('edit-custom-collection examples', () => {
   it('provides json, yaml, and blank templates in fixed order', () => {
-    expect(examples.map(example => example.key)).toEqual([
-      'json',
-      'yaml',
-      'blankTemplate',
-    ])
+    expect(examples.map((example) => example.key)).toEqual(['json', 'yaml', 'blankTemplate'])
   })
 
   it('contains representative OpenAPI content for each template', () => {

@@ -12,20 +12,17 @@ type Props = Readonly<{
   onChange: (dataSets: DataSet[]) => void
 }>
 
-const AddDataset: FC<Props> = ({
-  selectedIds,
-  onChange,
-}) => {
+const AddDataset: FC<Props> = ({ selectedIds, onChange }) => {
   const { t } = useTranslation()
-  const [isShowModal, {
-    setTrue: showModal,
-    setFalse: hideModal,
-  }] = useBoolean(false)
+  const [isShowModal, { setTrue: showModal, setFalse: hideModal }] = useBoolean(false)
 
-  const handleSelect = useCallback((datasets: DataSet[]) => {
-    onChange(datasets)
-    hideModal()
-  }, [onChange, hideModal])
+  const handleSelect = useCallback(
+    (datasets: DataSet[]) => {
+      onChange(datasets)
+      hideModal()
+    },
+    [onChange, hideModal],
+  )
   return (
     <div>
       <button

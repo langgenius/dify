@@ -9,11 +9,7 @@ describe('SelectTypeItem', () => {
     it('should render ok', () => {
       // Arrange
       const { container } = render(
-        <SelectTypeItem
-          type={InputVarType.textInput}
-          selected={false}
-          onClick={vi.fn()}
-        />,
+        <SelectTypeItem type={InputVarType.textInput} selected={false} onClick={vi.fn()} />,
       )
 
       // Assert
@@ -28,11 +24,7 @@ describe('SelectTypeItem', () => {
       const handleClick = vi.fn()
       // Arrange
       render(
-        <SelectTypeItem
-          type={InputVarType.paragraph}
-          selected={false}
-          onClick={handleClick}
-        />,
+        <SelectTypeItem type={InputVarType.paragraph} selected={false} onClick={handleClick} />,
       )
 
       // Act

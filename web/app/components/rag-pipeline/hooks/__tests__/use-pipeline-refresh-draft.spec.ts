@@ -92,7 +92,9 @@ describe('usePipelineRefreshDraft', () => {
         result.current.handleRefreshWorkflowDraft()
       })
 
-      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/rag/pipelines/test-pipeline-id/workflows/draft')
+      expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+        '/rag/pipelines/test-pipeline-id/workflows/draft',
+      )
     })
 
     it('should update workflow canvas with response data', async () => {
@@ -138,7 +140,9 @@ describe('usePipelineRefreshDraft', () => {
       })
 
       await waitFor(() => {
-        expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ variable: 'query', type: 'text-input' }])
+        expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
+          { variable: 'query', type: 'text-input' },
+        ])
       })
     })
 

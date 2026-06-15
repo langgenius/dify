@@ -22,22 +22,40 @@ vi.mock('@/hooks/use-knowledge', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
-  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    isOpen: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: React.ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+        <div data-testid="dropdown-menu" data-open={open}>
+          {children}
+        </div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, onClick }: { children: React.ReactNode, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => {
+    DropdownMenuTrigger: ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode
+      onClick?: React.MouseEventHandler<HTMLButtonElement>
+    }) => {
       const { isOpen, setOpen } = useDropdownMenuContext()
       return (
         <button
@@ -52,12 +70,14 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
         </button>
       )
     },
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div data-testid="dropdown-content">{children}</div>,
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="dropdown-content">{children}</div>
+    ),
   }
 })
 
 vi.mock('../../base/app-icon', () => ({
-  default: ({ size, icon }: { size: string, icon: string }) => (
+  default: ({ size, icon }: { size: string; icon: string }) => (
     <div data-testid="app-icon" data-size={size} data-icon={icon} />
   ),
 }))
@@ -67,17 +87,20 @@ vi.mock('../../base/divider', () => ({
 }))
 
 vi.mock('../../base/effect', () => ({
-  default: ({ className }: { className?: string }) => <div data-testid="effect" className={className} />,
+  default: ({ className }: { className?: string }) => (
+    <div data-testid="effect" className={className} />
+  ),
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
-  default: ({ expand, documentCount }: {
+  default: ({
+    expand,
+    documentCount,
+  }: {
     relatedApps?: unknown[]
     expand: boolean
     documentCount: number
-  }) => (
-    <div data-testid="extra-info" data-expand={expand} data-doc-count={documentCount} />
-  ),
+  }) => <div data-testid="extra-info" data-expand={expand} data-doc-count={documentCount} />,
 }))
 
 vi.mock('../dataset-info/dropdown', () => ({
@@ -87,38 +110,51 @@ vi.mock('../dataset-info/dropdown', () => ({
 }))
 
 vi.mock('../nav-link', () => ({
-  default: ({ name, href, mode, disabled }: { name: string, href: string, mode?: string, disabled?: boolean }) => (
-    <a data-testid={`nav-link-${name}`} href={href} data-mode={mode} data-disabled={disabled}>{name}</a>
+  default: ({
+    name,
+    href,
+    mode,
+    disabled,
+  }: {
+    name: string
+    href: string
+    mode?: string
+    disabled?: boolean
+  }) => (
+    <a data-testid={`nav-link-${name}`} href={href} data-mode={mode} data-disabled={disabled}>
+      {name}
+    </a>
   ),
 }))
 
 const MockIcon = (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  description: 'A test dataset',
-  provider: 'internal',
-  icon_info: {
-    icon: '📙',
-    icon_type: 'emoji',
-    icon_background: '#FFF4ED',
-    icon_url: '',
-  },
-  doc_form: 'text_model' as DataSet['doc_form'],
-  indexing_technique: 'high_quality' as DataSet['indexing_technique'],
-  document_count: 10,
-  runtime_mode: 'general',
-  retrieval_model_dict: {
-    search_method: 'semantic_search' as DataSet['retrieval_model_dict']['search_method'],
-    reranking_enable: false,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    top_k: 5,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  ...overrides,
-} as DataSet)
+const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+  ({
+    id: 'dataset-1',
+    name: 'Test Dataset',
+    description: 'A test dataset',
+    provider: 'internal',
+    icon_info: {
+      icon: '📙',
+      icon_type: 'emoji',
+      icon_background: '#FFF4ED',
+      icon_url: '',
+    },
+    doc_form: 'text_model' as DataSet['doc_form'],
+    indexing_technique: 'high_quality' as DataSet['indexing_technique'],
+    document_count: 10,
+    runtime_mode: 'general',
+    retrieval_model_dict: {
+      search_method: 'semantic_search' as DataSet['retrieval_model_dict']['search_method'],
+      reranking_enable: false,
+      reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
+      top_k: 5,
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    },
+    ...overrides,
+  }) as DataSet
 
 const navigation = [
   { name: 'Documents', href: '/documents', icon: MockIcon, selectedIcon: MockIcon },
@@ -134,7 +170,7 @@ describe('DatasetSidebarDropdown', () => {
   it('should render trigger with dataset icon', () => {
     render(<DatasetSidebarDropdown navigation={navigation} />)
     const icons = screen.getAllByTestId('app-icon')
-    const smallIcon = icons.find(i => i.getAttribute('data-size') === 'small')
+    const smallIcon = icons.find((i) => i.getAttribute('data-size') === 'small')
     expect(smallIcon).toBeInTheDocument()
     expect(smallIcon).toHaveAttribute('data-icon', '📙')
   })
@@ -188,7 +224,7 @@ describe('DatasetSidebarDropdown', () => {
     mockDataset = createDataset({ icon_info: undefined as unknown as DataSet['icon_info'] })
     render(<DatasetSidebarDropdown navigation={navigation} />)
     const icons = screen.getAllByTestId('app-icon')
-    const fallbackIcon = icons.find(i => i.getAttribute('data-icon') === '📙')
+    const fallbackIcon = icons.find((i) => i.getAttribute('data-icon') === '📙')
     expect(fallbackIcon).toBeInTheDocument()
   })
 
@@ -210,7 +246,7 @@ describe('DatasetSidebarDropdown', () => {
   it('should render medium app icon in content area', () => {
     render(<DatasetSidebarDropdown navigation={navigation} />)
     const icons = screen.getAllByTestId('app-icon')
-    const mediumIcon = icons.find(i => i.getAttribute('data-size') === 'medium')
+    const mediumIcon = icons.find((i) => i.getAttribute('data-size') === 'medium')
     expect(mediumIcon).toBeInTheDocument()
   })
 })

@@ -7,11 +7,7 @@ type OperationItemProps = {
   handleClick?: () => void
 }
 
-const OperationItem = ({
-  iconClassName,
-  name,
-  handleClick,
-}: OperationItemProps) => {
+const OperationItem = ({ iconClassName, name, handleClick }: OperationItemProps) => {
   return (
     <div
       className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
@@ -22,9 +18,7 @@ const OperationItem = ({
       }}
     >
       <span aria-hidden className={cn(iconClassName, 'size-4 text-text-tertiary')} />
-      <span className="px-1 system-md-regular text-text-secondary">
-        {name}
-      </span>
+      <span className="px-1 system-md-regular text-text-secondary">{name}</span>
     </div>
   )
 }

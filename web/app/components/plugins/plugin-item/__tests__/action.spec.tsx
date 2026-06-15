@@ -29,7 +29,8 @@ const {
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
-    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
     {
       success: (message: string) => mockToastNotify({ type: 'success', message }),
       error: (message: string) => mockToastNotify({ type: 'error', message }),
@@ -71,14 +72,26 @@ vi.mock('@/service/use-plugins', () => ({
 
 // Mock PluginInfo component - has complex dependencies (Modal, KeyValueItem)
 vi.mock('../../plugin-page/plugin-info', () => ({
-  default: ({ repository, release, packageName, onHide }: {
+  default: ({
+    repository,
+    release,
+    packageName,
+    onHide,
+  }: {
     repository: string
     release: string
     packageName: string
     onHide: () => void
   }) => (
-    <div data-testid="plugin-info-modal" data-repo={repository} data-release={release} data-package={packageName}>
-      <button data-testid="close-plugin-info" onClick={onHide}>Close</button>
+    <div
+      data-testid="plugin-info-modal"
+      data-repo={repository}
+      data-release={release}
+      data-package={packageName}
+    >
+      <button data-testid="close-plugin-info" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -120,7 +133,8 @@ const createActionProps = (overrides: Partial<ActionProps> = {}): ActionProps =>
   ...overrides,
 })
 
-const getDeleteConfirmButton = () => screen.getByRole('button', { name: /common\.operation\.confirm/ })
+const getDeleteConfirmButton = () =>
+  screen.getByRole('button', { name: /common\.operation\.confirm/ })
 const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
 
 // ==================== Tests ====================
@@ -442,9 +456,15 @@ describe('Action Component', () => {
       // Assert
       // Assert
       expect(screen.getByTestId('plugin-info-modal'))!.toBeInTheDocument()
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-repo', 'owner/repo-name')
+      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute(
+        'data-repo',
+        'owner/repo-name',
+      )
       expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-release', '2.0.0')
-      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute('data-package', 'my-package.difypkg')
+      expect(screen.getByTestId('plugin-info-modal'))!.toHaveAttribute(
+        'data-package',
+        'my-package.difypkg',
+      )
     })
 
     it('should hide plugin info modal when close is clicked', () => {
@@ -589,7 +609,10 @@ describe('Action Component', () => {
 
       // Assert - toast is called with the translated payload
       await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({ type: 'success', message: 'Already up to date' })
+        expect(mockToastNotify).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'Already up to date',
+        })
       })
     })
 
@@ -908,7 +931,13 @@ describe('Action Component', () => {
   describe('Prop Variations', () => {
     it('should handle all category types', () => {
       // Arrange
-      const categories = ['tool', 'model', 'extension', 'agent-strategy', 'datasource'] as PluginCategoryEnum[]
+      const categories = [
+        'tool',
+        'model',
+        'extension',
+        'agent-strategy',
+        'datasource',
+      ] as PluginCategoryEnum[]
 
       categories.forEach((category) => {
         const props = createActionProps({
@@ -950,7 +979,11 @@ describe('Action Component', () => {
 
       combinations.forEach((flags) => {
         const props = createActionProps(flags)
-        const expectedCount = [flags.isShowFetchNewVersion, flags.isShowInfo, flags.isShowDelete].filter(Boolean).length
+        const expectedCount = [
+          flags.isShowFetchNewVersion,
+          flags.isShowInfo,
+          flags.isShowDelete,
+        ].filter(Boolean).length
 
         const { unmount } = render(<Action {...props} />)
         const buttons = queryActionButtons()

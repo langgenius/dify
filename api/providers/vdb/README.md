@@ -3,18 +3,19 @@
 This directory contains all VDB providers.
 
 ## Architecture
+
 1. **Core** (`api/core/rag/datasource/vdb/`) defines the contracts and loads plugins.
 2. **Each provider** (`api/providers/vdb/<backend>/`) implements those contracts and registers an entry point.
 3. At runtime, **`importlib.metadata.entry_points`** resolves the backend name (e.g. `pgvector`) to a factory class. The registry caches loaded classes (see `vector_backend_registry.py`).
 
 ### Interfaces
 
-| Piece | Role |
-|--------|----------|
-| `AbstractVectorFactory`  | You subclass this. Implement `init_vector(dataset, attributes, embeddings) -> BaseVector`. Optionally use `gen_index_struct_dict()` for new datasets. |
-| `BaseVector` | Your store class subclasses this: `create`, `add_texts`, `search_by_vector`, `delete`, etc. |
-| `VectorType` | `StrEnum` of supported backend **string ids**. Add a member when you introduce a new backend that should be selectable like existing ones. |
-| Discovery | Loads `dify.vector_backends` entry points and caches `get_vector_factory_class(vector_type)`. |
+| Piece                   | Role                                                                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AbstractVectorFactory` | You subclass this. Implement `init_vector(dataset, attributes, embeddings) -> BaseVector`. Optionally use `gen_index_struct_dict()` for new datasets. |
+| `BaseVector`            | Your store class subclasses this: `create`, `add_texts`, `search_by_vector`, `delete`, etc.                                                           |
+| `VectorType`            | `StrEnum` of supported backend **string ids**. Add a member when you introduce a new backend that should be selectable like existing ones.            |
+| Discovery               | Loads `dify.vector_backends` entry points and caches `get_vector_factory_class(vector_type)`.                                                         |
 
 The high-level caller is `Vector` in `vector_factory.py`: it reads the configured or dataset-specific vector type, calls `get_vector_factory_class`, instantiates the factory, and uses the returned `BaseVector` implementation.
 

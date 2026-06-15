@@ -8,12 +8,22 @@ describe('useGetApi', () => {
   describe('tool category', () => {
     it('returns correct API paths for tool category', () => {
       const api = useGetApi({ category: AuthCategory.tool, provider })
-      expect(api.getCredentialInfo).toBe(`/workspaces/current/tool-provider/builtin/${provider}/credential/info`)
-      expect(api.setDefaultCredential).toBe(`/workspaces/current/tool-provider/builtin/${provider}/default-credential`)
-      expect(api.getCredentials).toBe(`/workspaces/current/tool-provider/builtin/${provider}/credentials`)
+      expect(api.getCredentialInfo).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/info`,
+      )
+      expect(api.setDefaultCredential).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/default-credential`,
+      )
+      expect(api.getCredentials).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credentials`,
+      )
       expect(api.addCredential).toBe(`/workspaces/current/tool-provider/builtin/${provider}/add`)
-      expect(api.updateCredential).toBe(`/workspaces/current/tool-provider/builtin/${provider}/update`)
-      expect(api.deleteCredential).toBe(`/workspaces/current/tool-provider/builtin/${provider}/delete`)
+      expect(api.updateCredential).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/update`,
+      )
+      expect(api.deleteCredential).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/delete`,
+      )
       expect(api.getOauthUrl).toBe(`/oauth/plugin/${provider}/tool/authorization-url`)
     })
 
@@ -21,13 +31,19 @@ describe('useGetApi', () => {
       const api = useGetApi({ category: AuthCategory.tool, provider })
       expect(typeof api.getCredentialSchema).toBe('function')
       const schemaUrl = api.getCredentialSchema('api-key' as never)
-      expect(schemaUrl).toBe(`/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`)
+      expect(schemaUrl).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/credential/schema/api-key`,
+      )
     })
 
     it('includes OAuth client endpoints', () => {
       const api = useGetApi({ category: AuthCategory.tool, provider })
-      expect(api.getOauthClientSchema).toBe(`/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`)
-      expect(api.setCustomOauthClient).toBe(`/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`)
+      expect(api.getOauthClientSchema).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/oauth/client-schema`,
+      )
+      expect(api.setCustomOauthClient).toBe(
+        `/workspaces/current/tool-provider/builtin/${provider}/oauth/custom-client`,
+      )
     })
   })
 
@@ -73,7 +89,7 @@ describe('useGetApi', () => {
 
   describe('default category', () => {
     it('defaults to tool category when category is not specified', () => {
-      const api = useGetApi({ provider } as { category: AuthCategory, provider: string })
+      const api = useGetApi({ provider } as { category: AuthCategory; provider: string })
       expect(api.getCredentialInfo).toContain('tool-provider')
     })
   })

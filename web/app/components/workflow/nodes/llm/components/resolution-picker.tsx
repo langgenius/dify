@@ -13,20 +13,22 @@ type Props = Readonly<{
   onChange: (value: Resolution) => void
 }>
 
-const ResolutionPicker: FC<Props> = ({
-  value,
-  onChange,
-}) => {
+const ResolutionPicker: FC<Props> = ({ value, onChange }) => {
   const { t } = useTranslation()
 
-  const handleOnChange = useCallback((value: Resolution) => {
-    return () => {
-      onChange(value)
-    }
-  }, [onChange])
+  const handleOnChange = useCallback(
+    (value: Resolution) => {
+      return () => {
+        onChange(value)
+      }
+    },
+    [onChange],
+  )
   return (
     <div className="flex items-center justify-between">
-      <div className="mr-2 text-xs font-medium text-text-secondary uppercase">{t(`${i18nPrefix}.resolution.name`, { ns: 'workflow' })}</div>
+      <div className="mr-2 text-xs font-medium text-text-secondary uppercase">
+        {t(`${i18nPrefix}.resolution.name`, { ns: 'workflow' })}
+      </div>
       <div className="flex items-center space-x-1">
         <OptionCard
           title={t(`${i18nPrefix}.resolution.high`, { ns: 'workflow' })}

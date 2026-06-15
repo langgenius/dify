@@ -129,7 +129,10 @@ describe('pluginInstallLimit', () => {
 describe('usePluginInstallLimit', () => {
   it('should return canInstall from pluginInstallLimit using global store', async () => {
     const { default: usePluginInstallLimit } = await import('../use-install-plugin-limit')
-    const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
+    const plugin = {
+      from: 'marketplace' as const,
+      verification: { authorized_category: 'langgenius' },
+    }
 
     const { result } = renderHook(() => usePluginInstallLimit(plugin as never))
 

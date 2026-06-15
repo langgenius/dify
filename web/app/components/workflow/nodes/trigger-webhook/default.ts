@@ -36,10 +36,7 @@ const nodeDefault: NodeDefault<WebhookTriggerNodeType> = {
     }
 
     // Validate parameter types for params and body
-    const parametersWithTypes = [
-      ...(payload.params || []),
-      ...(payload.body || []),
-    ]
+    const parametersWithTypes = [...(payload.params || []), ...(payload.body || [])]
 
     for (const param of parametersWithTypes) {
       // Validate parameter type is valid

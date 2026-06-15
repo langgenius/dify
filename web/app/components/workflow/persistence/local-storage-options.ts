@@ -12,7 +12,9 @@ export const numberStorageOptions = {
 } as const
 
 export const isControlMode = (value: string | null): value is ControlMode => {
-  return value === ControlMode.Pointer || value === ControlMode.Hand || value === ControlMode.Comment
+  return (
+    value === ControlMode.Pointer || value === ControlMode.Hand || value === ControlMode.Comment
+  )
 }
 
 export const isFiniteNumber = (value: number | null): value is number => {

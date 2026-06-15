@@ -5,8 +5,10 @@
   height: 48px;
   background: rgba(255, 255, 255, 0.9) center no-repeat url(../assets/annotation-info.svg);
   background-size: 24px;
-  border: 0.5px solid #F2F4F7;
-  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08), 0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  border: 0.5px solid #f2f4f7;
+  box-shadow:
+    0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
   border-radius: 12px;
 }
 .close {

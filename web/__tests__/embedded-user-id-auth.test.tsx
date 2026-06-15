@@ -27,7 +27,8 @@ const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => a
 })
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector?: (state: typeof mockStoreState) => any) => useWebAppStoreMock(selector),
+  useWebAppStore: (selector?: (state: typeof mockStoreState) => any) =>
+    useWebAppStoreMock(selector),
 }))
 
 const webAppLoginMock = vi.fn()
@@ -55,7 +56,9 @@ vi.mock('@/service/webapp-auth', () => ({
   webAppLogout: vi.fn(),
 }))
 
-vi.mock('@/app/components/signin/countdown', () => ({ default: () => <div data-testid="countdown" /> }))
+vi.mock('@/app/components/signin/countdown', () => ({
+  default: () => <div data-testid="countdown" />,
+}))
 
 vi.mock('@remixicon/react', () => ({
   RiMailSendFill: () => <div data-testid="mail-icon" />,
@@ -77,8 +80,12 @@ describe('embedded user id propagation in authentication flows', () => {
 
     render(<MailAndPasswordAuth isEmailSetup />)
 
-    fireEvent.change(screen.getByLabelText('login.email'), { target: { value: 'user@example.com' } })
-    fireEvent.change(screen.getByLabelText(/login\.password/), { target: { value: 'strong-password' } })
+    fireEvent.change(screen.getByLabelText('login.email'), {
+      target: { value: 'user@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText(/login\.password/), {
+      target: { value: 'strong-password' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'login.signBtn' }))
 
     await waitFor(() => {
@@ -99,15 +106,17 @@ describe('embedded user id propagation in authentication flows', () => {
     params.set('token', encodeURIComponent('token-abc'))
     useSearchParamsMock.mockReturnValue(params)
 
-    webAppEmailLoginWithCodeMock.mockResolvedValue({ result: 'success', data: { access_token: 'code-token' } })
+    webAppEmailLoginWithCodeMock.mockResolvedValue({
+      result: 'success',
+      data: { access_token: 'code-token' },
+    })
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })
 
     render(<CheckCode />)
 
-    fireEvent.change(
-      screen.getByPlaceholderText('login.checkCode.verificationCodePlaceholder'),
-      { target: { value: '123456' } },
-    )
+    fireEvent.change(screen.getByPlaceholderText('login.checkCode.verificationCodePlaceholder'), {
+      target: { value: '123456' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
 
     await waitFor(() => {

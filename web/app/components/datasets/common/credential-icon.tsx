@@ -24,7 +24,10 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
 }) => {
   const [showAvatar, setShowAvatar] = useState(!!avatarUrl && avatarUrl !== 'default')
   const firstLetter = useMemo(() => name.charAt(0).toUpperCase(), [name])
-  const bgColor = useMemo(() => ICON_BG_COLORS[firstLetter.charCodeAt(0) % ICON_BG_COLORS.length], [firstLetter])
+  const bgColor = useMemo(
+    () => ICON_BG_COLORS[firstLetter.charCodeAt(0) % ICON_BG_COLORS.length],
+    [firstLetter],
+  )
 
   const onImgLoadError = useCallback(() => {
     setShowAvatar(false)

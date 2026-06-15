@@ -23,12 +23,13 @@ vi.mock('@/service/use-share', () => ({
 const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
 
 vi.mock('@/app/components/base/chat/utils', () => ({
-  getProcessedSystemVariablesFromUrlParams: (...args: any[]) => mockGetProcessedSystemVariablesFromUrlParams(...args),
+  getProcessedSystemVariablesFromUrlParams: (...args: any[]) =>
+    mockGetProcessedSystemVariablesFromUrlParams(...args),
 }))
 
 const TestConsumer = () => {
-  const embeddedUserId = useWebAppStore(state => state.embeddedUserId)
-  const embeddedConversationId = useWebAppStore(state => state.embeddedConversationId)
+  const embeddedUserId = useWebAppStore((state) => state.embeddedUserId)
+  const embeddedConversationId = useWebAppStore((state) => state.embeddedConversationId)
   return (
     <>
       <div data-testid="embedded-user-id">{embeddedUserId ?? 'null'}</div>
@@ -86,7 +87,7 @@ describe('WebAppStoreProvider embedded user id handling', () => {
   })
 
   it('clears embedded user id when system variable is absent', async () => {
-    useWebAppStore.setState(state => ({
+    useWebAppStore.setState((state) => ({
       ...state,
       embeddedUserId: 'previous-user',
       embeddedConversationId: 'existing-conversation',

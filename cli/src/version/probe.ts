@@ -52,7 +52,11 @@ const defaultLoadActive = async (): Promise<ActiveContext | undefined> => {
 }
 
 const defaultProbe: MetaProbe = async (endpoint) => {
-  const http = createHttpClient({ baseURL: openAPIBase(endpoint), timeoutMs: META_PROBE_TIMEOUT_MS, retryAttempts: 0 })
+  const http = createHttpClient({
+    baseURL: openAPIBase(endpoint),
+    timeoutMs: META_PROBE_TIMEOUT_MS,
+    retryAttempts: 0,
+  })
   return new MetaClient(http).serverVersion()
 }
 
@@ -98,8 +102,7 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
   let loadFailed = false
   try {
     active = await loadActive()
-  }
-  catch {
+  } catch {
     loadFailed = true
   }
 
@@ -117,13 +120,16 @@ export async function runVersionProbe(opts: RunVersionProbeOptions): Promise<Ver
   let serverInfo: ServerVersionResponse | undefined
   try {
     serverInfo = await probe(endpoint)
-  }
-  catch {
+  } catch {
     serverInfo = undefined
   }
 
   if (serverInfo === undefined)
-    return { client, server: unreachableServer(endpoint), compat: compatBlock({ status: 'unknown', detail: 'server unreachable' }) }
+    return {
+      client,
+      server: unreachableServer(endpoint),
+      compat: compatBlock({ status: 'unknown', detail: 'server unreachable' }),
+    }
 
   return {
     client,

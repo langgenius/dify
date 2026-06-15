@@ -4,12 +4,7 @@ import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
@@ -26,23 +21,17 @@ import GlobalInputs from './label-right-content/global-inputs'
 const InputFieldPanel = () => {
   const { t } = useTranslation()
   const nodes = useNodes<DataSourceNodeType>()
-  const {
-    closeAllInputFieldPanels,
-    toggleInputFieldPreviewPanel,
-    isPreviewing,
-    isEditing,
-  } = useInputFieldPanel()
-  const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
-  const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
+  const { closeAllInputFieldPanels, toggleInputFieldPreviewPanel, isPreviewing, isEditing } =
+    useInputFieldPanel()
+  const ragPipelineVariables = useStore((state) => state.ragPipelineVariables)
+  const setRagPipelineVariables = useStore((state) => state.setRagPipelineVariables)
 
   const getInputFieldsMap = () => {
     const inputFieldsMap: Record<string, InputVar[]> = {}
     ragPipelineVariables?.forEach((variable) => {
       const { belong_to_node_id: nodeId, ...varConfig } = variable
-      if (inputFieldsMap[nodeId])
-        inputFieldsMap[nodeId].push(varConfig)
-      else
-        inputFieldsMap[nodeId] = [varConfig]
+      if (inputFieldsMap[nodeId]) inputFieldsMap[nodeId].push(varConfig)
+      else inputFieldsMap[nodeId] = [varConfig]
     })
     return inputFieldsMap
   }
@@ -52,7 +41,9 @@ const InputFieldPanel = () => {
 
   const datasourceNodeDataMap = useMemo(() => {
     const datasourceNodeDataMap: Record<string, DataSourceNodeType> = {}
-    const datasourceNodes: Node<DataSourceNodeType>[] = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+    const datasourceNodes: Node<DataSourceNodeType>[] = nodes.filter(
+      (node) => node.data.type === BlockEnum.DataSource,
+    )
     datasourceNodes.forEach((node) => {
       const { id, data } = node
       datasourceNodeDataMap[id] = data
@@ -60,32 +51,34 @@ const InputFieldPanel = () => {
     return datasourceNodeDataMap
   }, [nodes])
 
-  const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
-    inputFieldsMap.current[key] = value
-    const datasourceNodeInputFields: RAGPipelineVariables = []
-    const globalInputFields: RAGPipelineVariables = []
-    Object.keys(inputFieldsMap.current).forEach((key) => {
-      const inputFields = inputFieldsMap.current[key]
-      inputFields!.forEach((inputField) => {
-        if (key === 'shared') {
-          globalInputFields.push({
-            ...inputField,
-            belong_to_node_id: key,
-          })
-        }
-        else {
-          datasourceNodeInputFields.push({
-            ...inputField,
-            belong_to_node_id: key,
-          })
-        }
+  const updateInputFields = useCallback(
+    async (key: string, value: InputVar[]) => {
+      inputFieldsMap.current[key] = value
+      const datasourceNodeInputFields: RAGPipelineVariables = []
+      const globalInputFields: RAGPipelineVariables = []
+      Object.keys(inputFieldsMap.current).forEach((key) => {
+        const inputFields = inputFieldsMap.current[key]
+        inputFields!.forEach((inputField) => {
+          if (key === 'shared') {
+            globalInputFields.push({
+              ...inputField,
+              belong_to_node_id: key,
+            })
+          } else {
+            datasourceNodeInputFields.push({
+              ...inputField,
+              belong_to_node_id: key,
+            })
+          }
+        })
       })
-    })
-    // Datasource node input fields come first, then global input fields
-    const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
-    setRagPipelineVariables?.(newRagPipelineVariables)
-    handleSyncWorkflowDraft()
-  }, [setRagPipelineVariables, handleSyncWorkflowDraft])
+      // Datasource node input fields come first, then global input fields
+      const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
+      setRagPipelineVariables?.(newRagPipelineVariables)
+      handleSyncWorkflowDraft()
+    },
+    [setRagPipelineVariables, handleSyncWorkflowDraft],
+  )
 
   const closePanel = useCallback(() => {
     closeAllInputFieldPanels()
@@ -96,7 +89,7 @@ const InputFieldPanel = () => {
   }, [toggleInputFieldPreviewPanel])
 
   const allVariableNames = useMemo(() => {
-    return ragPipelineVariables?.map(variable => variable.variable) || []
+    return ragPipelineVariables?.map((variable) => variable.variable) || []
   }, [ragPipelineVariables])
 
   return (
@@ -145,23 +138,21 @@ const InputFieldPanel = () => {
           </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">
-          {
-            Object.keys(datasourceNodeDataMap).map((key) => {
-              const inputFields = inputFieldsMap.current[key] || []
-              return (
-                <FieldList
-                  key={key}
-                  nodeId={key}
-                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
-                  inputFields={inputFields}
-                  readonly={isPreviewing || isEditing}
-                  labelClassName="pt-1 pb-1"
-                  handleInputFieldsChange={updateInputFields}
-                  allVariableNames={allVariableNames}
-                />
-              )
-            })
-          }
+          {Object.keys(datasourceNodeDataMap).map((key) => {
+            const inputFields = inputFieldsMap.current[key] || []
+            return (
+              <FieldList
+                key={key}
+                nodeId={key}
+                LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
+                inputFields={inputFields}
+                readonly={isPreviewing || isEditing}
+                labelClassName="pt-1 pb-1"
+                handleInputFieldsChange={updateInputFields}
+                allVariableNames={allVariableNames}
+              />
+            )
+          })}
         </div>
         {/* Global Inputs */}
         <FieldList

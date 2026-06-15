@@ -9,12 +9,7 @@ type OperationsProps = {
   onClose?: () => void
 }
 
-const Operations = ({
-  openEditModal,
-  onDelete,
-  onExport,
-  onClose,
-}: OperationsProps) => {
+const Operations = ({ openEditModal, onDelete, onExport, onClose }: OperationsProps) => {
   const { t } = useTranslation()
 
   const onClickEdit = (e: React.MouseEvent<HTMLDivElement>) => {

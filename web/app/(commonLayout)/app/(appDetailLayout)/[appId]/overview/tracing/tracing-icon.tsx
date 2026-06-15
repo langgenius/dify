@@ -14,10 +14,7 @@ const sizeClassMap = {
   md: 'w-6 h-6 p-1 rounded-lg',
 }
 
-const TracingIcon: FC<Props> = ({
-  className,
-  size,
-}) => {
+const TracingIcon: FC<Props> = ({ className, size }) => {
   const sizeClass = sizeClassMap[size]
   return (
     <div className={cn(className, sizeClass, 'bg-primary-500 shadow-md')}>

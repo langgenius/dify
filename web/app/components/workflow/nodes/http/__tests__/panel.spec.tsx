@@ -24,8 +24,8 @@ type ApiInputProps = {
 
 type KeyValueProps = {
   nodeId: string
-  list: Array<{ key: string, value: string }>
-  onChange: (value: Array<{ key: string, value: string }>) => void
+  list: Array<{ key: string; value: string }>
+  onChange: (value: Array<{ key: string; value: string }>) => void
   onAdd: () => void
 }
 
@@ -46,7 +46,12 @@ vi.mock('../use-config', () => ({
 
 vi.mock('../components/authorization', () => ({
   __esModule: true,
-  default: (props: { nodeId: string, payload: HttpNodeType['authorization'], onChange: (value: HttpNodeType['authorization']) => void, onHide: () => void }) => {
+  default: (props: {
+    nodeId: string
+    payload: HttpNodeType['authorization']
+    onChange: (value: HttpNodeType['authorization']) => void
+    onHide: () => void
+  }) => {
     mockAuthorizationModal(props)
     return <div data-testid="authorization-modal">{props.nodeId}</div>
   },
@@ -54,7 +59,11 @@ vi.mock('../components/authorization', () => ({
 
 vi.mock('../components/curl-panel', () => ({
   __esModule: true,
-  default: (props: { nodeId: string, onHide: () => void, handleCurlImport: (node: HttpNodeType) => void }) => {
+  default: (props: {
+    nodeId: string
+    onHide: () => void
+    handleCurlImport: (node: HttpNodeType) => void
+  }) => {
     mockCurlPanel(props)
     return <div data-testid="curl-panel">{props.nodeId}</div>
   },
@@ -67,8 +76,12 @@ vi.mock('../components/api-input', () => ({
     return (
       <div>
         <div>{`${props.method}:${props.url}`}</div>
-        <button type="button" onClick={() => props.onMethodChange(Method.post)}>emit-method-change</button>
-        <button type="button" onClick={() => props.onUrlChange('https://changed.example.com')}>emit-url-change</button>
+        <button type="button" onClick={() => props.onMethodChange(Method.post)}>
+          emit-method-change
+        </button>
+        <button type="button" onClick={() => props.onUrlChange('https://changed.example.com')}>
+          emit-url-change
+        </button>
       </div>
     )
   },
@@ -80,11 +93,13 @@ vi.mock('../components/key-value', () => ({
     mockKeyValue(props)
     return (
       <div>
-        <div>{props.list.map(item => `${item.key}:${item.value}`).join(',')}</div>
+        <div>{props.list.map((item) => `${item.key}:${item.value}`).join(',')}</div>
         <button type="button" onClick={() => props.onChange([{ key: 'x-token', value: '123' }])}>
           emit-key-value-change
         </button>
-        <button type="button" onClick={props.onAdd}>emit-key-value-add</button>
+        <button type="button" onClick={props.onAdd}>
+          emit-key-value-add
+        </button>
       </div>
     )
   },
@@ -97,10 +112,12 @@ vi.mock('../components/edit-body', () => ({
     return (
       <button
         type="button"
-        onClick={() => props.onChange({
-          type: BodyType.json,
-          data: [{ type: BodyPayloadValueType.text, value: '{"hello":"world"}' }],
-        })}
+        onClick={() =>
+          props.onChange({
+            type: BodyType.json,
+            data: [{ type: BodyPayloadValueType.text, value: '{"hello":"world"}' }],
+          })
+        }
       >
         emit-body-change
       </button>
@@ -123,7 +140,7 @@ vi.mock('../components/timeout', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 const createData = (overrides: Partial<HttpNodeType> = {}): HttpNodeType => ({
@@ -197,13 +214,7 @@ describe('http/panel', () => {
   it('renders request fields, forwards child changes, and wires header operations', async () => {
     const user = userEvent.setup()
 
-    render(
-      <Panel
-        id="http-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<Panel id="http-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.getByText('get:https://api.example.com')).toBeInTheDocument()
     expect(screen.getByText('body:string')).toBeInTheDocument()
@@ -237,56 +248,48 @@ describe('http/panel', () => {
     expect(showAuthorization).toHaveBeenCalledTimes(1)
     expect(showCurlPanel).toHaveBeenCalledTimes(1)
     expect(handleSSLVerifyChange).toHaveBeenCalledWith(false)
-    expect(mockApiInput).toHaveBeenCalledWith(expect.objectContaining({
-      method: Method.get,
-      url: 'https://api.example.com',
-    }))
+    expect(mockApiInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: Method.get,
+        url: 'https://api.example.com',
+      }),
+    )
   })
 
   it('returns null before the config data is ready', () => {
     mockUseConfig.mockReturnValueOnce(createConfigResult({ isDataReady: false }))
 
     const { container } = render(
-      <Panel
-        id="http-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+      <Panel id="http-node" data={createData()} panelProps={panelProps} />,
     )
 
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders auth and curl panels only when writable and toggled on', () => {
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      isShowAuthorization: true,
-      isShowCurlPanel: true,
-    }))
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        isShowAuthorization: true,
+        isShowCurlPanel: true,
+      }),
+    )
 
     const { rerender } = render(
-      <Panel
-        id="http-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+      <Panel id="http-node" data={createData()} panelProps={panelProps} />,
     )
 
     expect(screen.getByTestId('authorization-modal')).toHaveTextContent('http-node')
     expect(screen.getByTestId('curl-panel')).toHaveTextContent('http-node')
 
-    mockUseConfig.mockReturnValueOnce(createConfigResult({
-      readOnly: true,
-      isShowAuthorization: true,
-      isShowCurlPanel: true,
-    }))
-
-    rerender(
-      <Panel
-        id="http-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
+    mockUseConfig.mockReturnValueOnce(
+      createConfigResult({
+        readOnly: true,
+        isShowAuthorization: true,
+        isShowCurlPanel: true,
+      }),
     )
+
+    rerender(<Panel id="http-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.queryByTestId('authorization-modal')).not.toBeInTheDocument()
     expect(screen.queryByTestId('curl-panel')).not.toBeInTheDocument()

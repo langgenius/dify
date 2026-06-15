@@ -27,12 +27,8 @@ export function useNodeActionsMenuModel({
   showHelpLink = true,
 }: UseNodeActionsMenuModelParams) {
   const edges = useEdges()
-  const {
-    handleNodeDelete,
-    handleNodesDuplicate,
-    handleNodeSelect,
-    handleNodesCopy,
-  } = useNodesInteractions()
+  const { handleNodeDelete, handleNodesDuplicate, handleNodeSelect, handleNodesCopy } =
+    useNodesInteractions()
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
@@ -43,17 +39,16 @@ export function useNodeActionsMenuModel({
   const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {
-    return edges.find(edge => edge.target === id)?.sourceHandle || 'source'
+    return edges.find((edge) => edge.target === id)?.sourceHandle || 'source'
   }, [edges, id])
 
   const workflowAppHref = useMemo(() => {
-    const isWorkflowTool = data.type === BlockEnum.Tool && data.provider_type === CollectionType.workflow
-    if (!isWorkflowTool || !workflowTools || !data.provider_id)
-      return undefined
+    const isWorkflowTool =
+      data.type === BlockEnum.Tool && data.provider_type === CollectionType.workflow
+    if (!isWorkflowTool || !workflowTools || !data.provider_id) return undefined
 
-    const workflowTool = workflowTools.find(item => canFindTool(item.id, data.provider_id))
-    if (!workflowTool?.workflow_app_id)
-      return undefined
+    const workflowTool = workflowTools.find((item) => canFindTool(item.id, data.provider_id))
+    if (!workflowTool?.workflow_app_id) return undefined
 
     return `/app/${workflowTool.workflow_app_id}/workflow`
   }, [data.provider_id, data.provider_type, data.type, workflowTools])

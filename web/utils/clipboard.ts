@@ -14,22 +14,18 @@ async function fallbackCopyTextToClipboard(text: string): Promise<void> {
   textArea.select()
   try {
     const successful = document.execCommand('copy')
-    if (successful)
-      return Promise.resolve()
+    if (successful) return Promise.resolve()
 
     return Promise.reject(new Error('document.execCommand failed'))
-  }
-  catch (err) {
+  } catch (err) {
     return Promise.reject(convertAnyToError(err))
-  }
-  finally {
+  } finally {
     document.body.removeChild(textArea)
   }
 }
 
 function convertAnyToError(err: any): Error {
-  if (err instanceof Error)
-    return err
+  if (err instanceof Error) return err
 
   return new Error(`Caught: ${String(err)}`)
 }

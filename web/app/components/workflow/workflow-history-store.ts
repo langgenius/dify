@@ -1,7 +1,5 @@
 import type { TemporalState } from 'zundo'
-import type {
-  WorkflowHistoryState,
-} from './store/workflow/history-slice'
+import type { WorkflowHistoryState } from './store/workflow/history-slice'
 import type { Edge, Node } from './types'
 import { use, useMemo } from 'react'
 import { WorkflowContext } from './context'
@@ -32,10 +30,13 @@ const sanitizeWorkflowHistory = (state: WorkflowHistoryState): WorkflowHistorySt
       selected: false,
     },
   })),
-  edges: state.edges.map((edge: Edge) => ({
-    ...edge,
-    selected: false,
-  }) as Edge),
+  edges: state.edges.map(
+    (edge: Edge) =>
+      ({
+        ...edge,
+        selected: false,
+      }) as Edge,
+  ),
 })
 
 const toHistoryState = (
@@ -55,44 +56,46 @@ const toTemporalState = (
   isTracking: temporalState.isTracking,
   pause: temporalState.pause,
   resume: temporalState.resume,
-  setOnSave: onSave => temporalState.setOnSave(
-    onSave
-      ? (pastState, currentState) => {
-          onSave(
-            toHistoryState(pastState) as WorkflowHistoryState,
-            toHistoryState(currentState) as WorkflowHistoryState,
-          )
-        }
-      : undefined,
-  ),
+  setOnSave: (onSave) =>
+    temporalState.setOnSave(
+      onSave
+        ? (pastState, currentState) => {
+            onSave(
+              toHistoryState(pastState) as WorkflowHistoryState,
+              toHistoryState(currentState) as WorkflowHistoryState,
+            )
+          }
+        : undefined,
+    ),
 })
 
 export function useWorkflowHistoryStore() {
   const workflowStore = use(WorkflowContext)
 
-  if (!workflowStore)
-    throw new Error('Missing WorkflowContext.Provider in the tree')
+  if (!workflowStore) throw new Error('Missing WorkflowContext.Provider in the tree')
 
   return {
     store: useMemo(
-      () => ({
-        getState: () => workflowStore.getState().workflowHistory,
-        setState: (state: WorkflowHistoryState) => {
-          workflowStore.getState().setWorkflowHistory(sanitizeWorkflowHistory(state))
-        },
-        subscribe: (listener: (state: WorkflowHistoryState) => void) => {
-          return workflowStore.subscribe((state, previousState) => {
-            if (state.workflowHistory !== previousState.workflowHistory)
-              listener(state.workflowHistory)
-          })
-        },
-        temporal: {
-          getState: () => toTemporalState(workflowStore.temporal.getState()),
-          subscribe: listener => workflowStore.temporal.subscribe((state) => {
-            listener(toTemporalState(state))
-          }),
-        },
-      }) satisfies WorkflowHistoryStore,
+      () =>
+        ({
+          getState: () => workflowStore.getState().workflowHistory,
+          setState: (state: WorkflowHistoryState) => {
+            workflowStore.getState().setWorkflowHistory(sanitizeWorkflowHistory(state))
+          },
+          subscribe: (listener: (state: WorkflowHistoryState) => void) => {
+            return workflowStore.subscribe((state, previousState) => {
+              if (state.workflowHistory !== previousState.workflowHistory)
+                listener(state.workflowHistory)
+            })
+          },
+          temporal: {
+            getState: () => toTemporalState(workflowStore.temporal.getState()),
+            subscribe: (listener) =>
+              workflowStore.temporal.subscribe((state) => {
+                listener(toTemporalState(state))
+              }),
+          },
+        }) satisfies WorkflowHistoryStore,
       [workflowStore],
     ),
   }

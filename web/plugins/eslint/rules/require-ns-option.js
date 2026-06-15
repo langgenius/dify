@@ -8,34 +8,28 @@ export default {
     schema: [],
     messages: {
       missingNsOption:
-        'Translation call is missing { ns: \'xxx\' } option. Add a second argument with ns property.',
+        "Translation call is missing { ns: 'xxx' } option. Add a second argument with ns property.",
     },
   },
   create(context) {
     function hasNsOption(node) {
-      if (node.arguments.length < 2)
-        return false
+      if (node.arguments.length < 2) return false
       const secondArg = node.arguments[1]
-      if (secondArg.type !== 'ObjectExpression')
-        return false
+      if (secondArg.type !== 'ObjectExpression') return false
       return secondArg.properties.some(
-        prop => prop.type === 'Property'
-          && prop.key.type === 'Identifier'
-          && prop.key.name === 'ns',
+        (prop) =>
+          prop.type === 'Property' && prop.key.type === 'Identifier' && prop.key.name === 'ns',
       )
     }
 
     return {
       CallExpression(node) {
         // Check for t() calls - both direct t() and i18n.t()
-        const isTCall = (
-          node.callee.type === 'Identifier'
-          && node.callee.name === 't'
-        ) || (
-          node.callee.type === 'MemberExpression'
-          && node.callee.property.type === 'Identifier'
-          && node.callee.property.name === 't'
-        )
+        const isTCall =
+          (node.callee.type === 'Identifier' && node.callee.name === 't') ||
+          (node.callee.type === 'MemberExpression' &&
+            node.callee.property.type === 'Identifier' &&
+            node.callee.property.name === 't')
 
         if (isTCall && node.arguments.length > 0) {
           if (!hasNsOption(node)) {

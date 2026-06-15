@@ -12,32 +12,33 @@ import { useModalState } from '@/app/components/datasets/documents/detail/comple
 import { useSearchFilter } from '@/app/components/datasets/documents/detail/completed/hooks/use-search-filter'
 import { useSegmentSelection } from '@/app/components/datasets/documents/detail/completed/hooks/use-segment-selection'
 
-const createSegment = (id: string, content = 'Test segment content'): SegmentDetailModel => ({
-  id,
-  position: 1,
-  document_id: 'doc-1',
-  content,
-  sign_content: content,
-  answer: '',
-  word_count: 50,
-  tokens: 25,
-  keywords: ['test'],
-  index_node_id: 'idx-1',
-  index_node_hash: 'hash-1',
-  hit_count: 0,
-  enabled: true,
-  disabled_at: 0,
-  disabled_by: '',
-  status: 'completed',
-  created_by: 'user-1',
-  created_at: Date.now(),
-  indexing_at: Date.now(),
-  completed_at: Date.now(),
-  error: null,
-  stopped_at: 0,
-  updated_at: Date.now(),
-  attachments: [],
-} as SegmentDetailModel)
+const createSegment = (id: string, content = 'Test segment content'): SegmentDetailModel =>
+  ({
+    id,
+    position: 1,
+    document_id: 'doc-1',
+    content,
+    sign_content: content,
+    answer: '',
+    word_count: 50,
+    tokens: 25,
+    keywords: ['test'],
+    index_node_id: 'idx-1',
+    index_node_hash: 'hash-1',
+    hit_count: 0,
+    enabled: true,
+    disabled_at: 0,
+    disabled_by: '',
+    status: 'completed',
+    created_by: 'user-1',
+    created_at: Date.now(),
+    indexing_at: Date.now(),
+    completed_at: Date.now(),
+    error: null,
+    stopped_at: 0,
+    updated_at: Date.now(),
+    attachments: [],
+  }) as SegmentDetailModel
 
 describe('Segment CRUD Flow', () => {
   beforeEach(() => {
@@ -217,12 +218,8 @@ describe('Segment CRUD Flow', () => {
     it('should maintain independent state across all three hooks', () => {
       const segments = [createSegment('seg-1'), createSegment('seg-2')]
 
-      const { result: filterResult } = renderHook(() =>
-        useSearchFilter({ onPageChange: vi.fn() }),
-      )
-      const { result: selectionResult } = renderHook(() =>
-        useSegmentSelection(),
-      )
+      const { result: filterResult } = renderHook(() => useSearchFilter({ onPageChange: vi.fn() }))
+      const { result: selectionResult } = renderHook(() => useSegmentSelection())
       const { result: modalResult } = renderHook(() =>
         useModalState({ onNewSegmentModalChange: vi.fn() }),
       )

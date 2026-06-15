@@ -10,11 +10,7 @@ import type {
   WorkflowDailyConversationsResponse,
 } from '@/models/app'
 import type { App } from '@/types/app'
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { get, post } from './base'
 
@@ -30,11 +26,12 @@ const useAppFullListKey = [NAME_SPACE, 'full-list']
 export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'generate-rule-template', type],
-    queryFn: () => post<{ data: string }>('instruction-generate/template', {
-      body: {
-        type,
-      },
-    }),
+    queryFn: () =>
+      post<{ data: string }>('instruction-generate/template', {
+        body: {
+          type,
+        },
+      }),
     enabled: !disabled,
     retry: 0,
   })
@@ -129,7 +126,11 @@ export const useAppTokenCosts = (appId: string, params?: DateRangeParams) => {
 }
 
 export const useWorkflowDailyConversations = (appId: string, params?: DateRangeParams) => {
-  return useWorkflowStatisticsQuery<WorkflowDailyConversationsResponse>('daily-conversations', appId, params)
+  return useWorkflowStatisticsQuery<WorkflowDailyConversationsResponse>(
+    'daily-conversations',
+    appId,
+    params,
+  )
 }
 
 export const useWorkflowDailyTerminals = (appId: string, params?: DateRangeParams) => {
@@ -141,13 +142,20 @@ export const useWorkflowTokenCosts = (appId: string, params?: DateRangeParams) =
 }
 
 export const useWorkflowAverageInteractions = (appId: string, params?: DateRangeParams) => {
-  return useWorkflowStatisticsQuery<AppStatisticsResponse>('average-app-interactions', appId, params)
+  return useWorkflowStatisticsQuery<AppStatisticsResponse>(
+    'average-app-interactions',
+    appId,
+    params,
+  )
 }
 
 export const useAppVoices = (appId?: string, language?: string) => {
   return useQuery<AppVoicesListResponse>({
     queryKey: [NAME_SPACE, 'voices', appId, language || 'en-US'],
-    queryFn: () => get<AppVoicesListResponse>(`/apps/${appId}/text-to-audio/voices`, { params: { language: language || 'en-US' } }),
+    queryFn: () =>
+      get<AppVoicesListResponse>(`/apps/${appId}/text-to-audio/voices`, {
+        params: { language: language || 'en-US' },
+      }),
     enabled: !!appId,
   })
 }
@@ -163,8 +171,7 @@ export const useAppApiKeys = (appId?: string, options?: { enabled?: boolean }) =
 export const useInvalidateAppApiKeys = () => {
   const queryClient = useQueryClient()
   return (appId?: string) => {
-    if (!appId)
-      return
+    if (!appId) return
     queryClient.invalidateQueries({
       queryKey: [NAME_SPACE, 'api-keys', appId],
     })

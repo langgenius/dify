@@ -1,37 +1,31 @@
 import type { PromptVariable } from '@/models/debug'
 import type { UserInputFormItem } from '@/types/app'
 
-export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] | null, dataset_query_variable?: string) => {
-  if (!useInputs)
-    return []
+export const userInputsFormToPromptVariables = (
+  useInputs: UserInputFormItem[] | null,
+  dataset_query_variable?: string,
+) => {
+  if (!useInputs) return []
   const promptVariables: PromptVariable[] = []
   useInputs.forEach((item: any) => {
     const isParagraph = !!item.paragraph
 
     const [type, content] = (() => {
-      if (isParagraph)
-        return ['paragraph', item.paragraph]
+      if (isParagraph) return ['paragraph', item.paragraph]
 
-      if (item['text-input'])
-        return ['string', item['text-input']]
+      if (item['text-input']) return ['string', item['text-input']]
 
-      if (item.number)
-        return ['number', item.number]
+      if (item.number) return ['number', item.number]
 
-      if (item.checkbox)
-        return ['boolean', item.checkbox]
+      if (item.checkbox) return ['boolean', item.checkbox]
 
-      if (item.file)
-        return ['file', item.file]
+      if (item.file) return ['file', item.file]
 
-      if (item['file-list'])
-        return ['file-list', item['file-list']]
+      if (item['file-list']) return ['file-list', item['file-list']]
 
-      if (item.external_data_tool)
-        return [item.external_data_tool.type, item.external_data_tool]
+      if (item.external_data_tool) return [item.external_data_tool.type, item.external_data_tool]
 
-      if (item.json_object)
-        return ['json_object', item.json_object]
+      if (item.json_object) return ['json_object', item.json_object]
 
       return ['select', item.select || {}]
     })()
@@ -49,8 +43,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         hide: content.hide,
         default: content.default,
       })
-    }
-    else if (type === 'number') {
+    } else if (type === 'number') {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -60,8 +53,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         hide: content.hide,
         default: content.default,
       })
-    }
-    else if (type === 'boolean') {
+    } else if (type === 'boolean') {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -71,8 +63,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         hide: content.hide,
         default: content.default,
       })
-    }
-    else if (type === 'select') {
+    } else if (type === 'select') {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -83,8 +74,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         hide: content.hide,
         default: content.default,
       })
-    }
-    else if (type === 'file') {
+    } else if (type === 'file') {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -99,8 +89,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         hide: content.hide,
         default: content.default,
       })
-    }
-    else if (type === 'file-list') {
+    } else if (type === 'file-list') {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -115,8 +104,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         hide: content.hide,
         default: content.default,
       })
-    }
-    else {
+    } else {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -136,68 +124,70 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
 
 export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[]) => {
   const userInputs: UserInputFormItem[] = []
-  promptVariables.filter(({ key, name }) => {
-    return key && key.trim() && name && name.trim()
-  }).forEach((item: any) => {
-    if (item.type === 'string' || item.type === 'paragraph') {
-      userInputs.push({
-        [item.type === 'string' ? 'text-input' : 'paragraph']: {
-          label: item.name,
-          variable: item.key,
-          required: item.required !== false, // default true
-          max_length: item.max_length,
-          default: '',
-          hide: item.hide,
-        },
-      } as any)
-      return
-    }
-    if (item.type === 'number' || item.type === 'checkbox') {
-      userInputs.push({
-        [item.type]: {
-          label: item.name,
-          variable: item.key,
-          required: item.required !== false, // default true
-          default: '',
-          hide: item.hide,
-        },
-      } as any)
-    }
-    else if (item.type === 'select') {
-      userInputs.push({
-        select: {
-          label: item.name,
-          variable: item.key,
-          required: item.required !== false, // default true
-          options: item.options,
-          default: item.default ?? '',
-          hide: item.hide,
-        },
-      } as any)
-    }
-    else {
-      userInputs.push({
-        external_data_tool: {
-          label: item.name,
-          variable: item.key,
-          enabled: item.enabled,
-          type: item.type,
-          config: item.config,
-          required: item.required,
-          icon: item.icon,
-          icon_background: item.icon_background,
-          hide: item.hide,
-        },
-      } as any)
-    }
-  })
+  promptVariables
+    .filter(({ key, name }) => {
+      return key && key.trim() && name && name.trim()
+    })
+    .forEach((item: any) => {
+      if (item.type === 'string' || item.type === 'paragraph') {
+        userInputs.push({
+          [item.type === 'string' ? 'text-input' : 'paragraph']: {
+            label: item.name,
+            variable: item.key,
+            required: item.required !== false, // default true
+            max_length: item.max_length,
+            default: '',
+            hide: item.hide,
+          },
+        } as any)
+        return
+      }
+      if (item.type === 'number' || item.type === 'checkbox') {
+        userInputs.push({
+          [item.type]: {
+            label: item.name,
+            variable: item.key,
+            required: item.required !== false, // default true
+            default: '',
+            hide: item.hide,
+          },
+        } as any)
+      } else if (item.type === 'select') {
+        userInputs.push({
+          select: {
+            label: item.name,
+            variable: item.key,
+            required: item.required !== false, // default true
+            options: item.options,
+            default: item.default ?? '',
+            hide: item.hide,
+          },
+        } as any)
+      } else {
+        userInputs.push({
+          external_data_tool: {
+            label: item.name,
+            variable: item.key,
+            enabled: item.enabled,
+            type: item.type,
+            config: item.config,
+            required: item.required,
+            icon: item.icon,
+            icon_background: item.icon_background,
+            hide: item.hide,
+          },
+        } as any)
+      }
+    })
 
   return userInputs
 }
 
-export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean> | null) => {
-  if (!useInputs)
-    return inputs
+export const formatBooleanInputs = (
+  useInputs?: PromptVariable[] | null,
+  inputs?: Record<string, string | number | object | boolean> | null,
+) => {
+  if (!useInputs) return inputs
   const res = { ...inputs }
   useInputs.forEach((item) => {
     const isBooleanInput = item.type === 'checkbox'

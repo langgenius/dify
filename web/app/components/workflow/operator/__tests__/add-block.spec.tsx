@@ -32,7 +32,7 @@ const {
 } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
-  mockGenerateNewNode: vi.fn(({ type, data }: { type: string, data: Record<string, unknown> }) => ({
+  mockGenerateNewNode: vi.fn(({ type, data }: { type: string; data: Record<string, unknown> }) => ({
     newNode: {
       id: 'generated-node',
       type,
@@ -61,11 +61,7 @@ const mockNodesMetaDataMap = {
 vi.mock('@/app/components/workflow/block-selector', () => ({
   default: (props: BlockSelectorMockProps) => {
     latestBlockSelectorProps = props
-    return (
-      <div data-testid="block-selector">
-        {props.trigger(props.open)}
-      </div>
-    )
+    return <div data-testid="block-selector">{props.trigger(props.open)}</div>
   },
 }))
 
@@ -155,19 +151,19 @@ describe('AddBlock', () => {
       expect(latestBlockSelectorProps?.showStartTab).toBe(false)
     })
 
-    it.each([
-      BlockEnum.Start,
-      BlockEnum.TriggerWebhook,
-    ])('should keep the normal default tab when a %s node already exists', async (type) => {
-      renderWithReactFlow([
-        createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
-      ])
+    it.each([BlockEnum.Start, BlockEnum.TriggerWebhook])(
+      'should keep the normal default tab when a %s node already exists',
+      async (type) => {
+        renderWithReactFlow([
+          createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
+        ])
 
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+        await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
 
-      expect(latestBlockSelectorProps?.showStartTab).toBe(true)
-      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
-    })
+        expect(latestBlockSelectorProps?.showStartTab).toBe(true)
+        expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
+      },
+    )
   })
 
   // User interactions that bridge selector state and workflow state.

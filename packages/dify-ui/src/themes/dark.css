@@ -1,5 +1,5 @@
 /* Attention: Generate by code. Don't update by hand!!! */
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   --color-components-input-bg-normal: rgb(255 255 255 / 0.08);
   --color-components-input-text-placeholder: rgb(200 206 218 / 0.3);
   --color-components-input-bg-hover: rgb(255 255 255 / 0.03);
@@ -761,5 +761,4 @@ html[data-theme="dark"] {
 
   --color-dify-logo-blue: #e8e8e8;
   --color-dify-logo-black: #e8e8e8;
-
 }

@@ -1,14 +1,7 @@
 import { act } from '@testing-library/react'
-import {
-  createLexicalTestEditor,
-  expectInlineWrapperDom,
-} from '../../test-helpers'
+import { createLexicalTestEditor, expectInlineWrapperDom } from '../../test-helpers'
 import LastRunBlockComponent from '../component'
-import {
-  $createLastRunBlockNode,
-  $isLastRunBlockNode,
-  LastRunBlockNode,
-} from '../node'
+import { $createLastRunBlockNode, $isLastRunBlockNode, LastRunBlockNode } from '../node'
 
 const createTestEditor = () => {
   return createLexicalTestEditor('last-run-block-node-test', [LastRunBlockNode])

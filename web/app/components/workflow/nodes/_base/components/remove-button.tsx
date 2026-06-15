@@ -9,11 +9,13 @@ type Props = Readonly<{
   onClick: (e: React.MouseEvent) => void
 }>
 
-const Remove: FC<Props> = ({
-  onClick,
-}) => {
+const Remove: FC<Props> = ({ onClick }) => {
   return (
-    <ActionButton size="l" className="group shrink-0 hover:bg-state-destructive-hover!" onClick={onClick}>
+    <ActionButton
+      size="l"
+      className="group shrink-0 hover:bg-state-destructive-hover!"
+      onClick={onClick}
+    >
       <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
     </ActionButton>
   )

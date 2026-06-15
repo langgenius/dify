@@ -18,16 +18,12 @@ type Props = Readonly<{
   onConfirm: () => void
 }>
 
-const ClearAllAnnotationsConfirmModal: FC<Props> = ({
-  isShow,
-  onHide,
-  onConfirm,
-}) => {
+const ClearAllAnnotationsConfirmModal: FC<Props> = ({ isShow, onHide, onConfirm }) => {
   const { t } = useTranslation()
   const title = t('table.header.clearAllConfirm', { ns: 'appAnnotation' })
 
   return (
-    <AlertDialog open={isShow} onOpenChange={open => !open && onHide()}>
+    <AlertDialog open={isShow} onOpenChange={(open) => !open && onHide()}>
       <AlertDialogContent>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

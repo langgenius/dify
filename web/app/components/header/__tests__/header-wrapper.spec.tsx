@@ -13,11 +13,13 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 describe('HeaderWrapper', () => {
-  type CanvasEvent = { type: string, payload: boolean }
+  type CanvasEvent = { type: string; payload: boolean }
   let subscriptionCallback: ((event: CanvasEvent) => void) | null = null
-  const mockUseSubscription = vi.fn<(callback: (event: CanvasEvent) => void) => void>((callback) => {
-    subscriptionCallback = callback
-  })
+  const mockUseSubscription = vi.fn<(callback: (event: CanvasEvent) => void) => void>(
+    (callback) => {
+      subscriptionCallback = callback
+    },
+  )
 
   beforeEach(() => {
     vi.clearAllMocks()

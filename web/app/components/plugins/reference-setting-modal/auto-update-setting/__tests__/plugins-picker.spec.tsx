@@ -6,19 +6,19 @@ import { AUTO_UPDATE_MODE } from '../types'
 const mockToolPicker = vi.fn()
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => <button>{children}</button>,
+  Button: ({ children }: { children: React.ReactNode }) => <button>{children}</button>,
 }))
 
 vi.mock('../no-plugin-selected', () => ({
-  default: ({ updateMode }: { updateMode: AUTO_UPDATE_MODE }) => <div data-testid="no-plugin-selected">{updateMode}</div>,
+  default: ({ updateMode }: { updateMode: AUTO_UPDATE_MODE }) => (
+    <div data-testid="no-plugin-selected">{updateMode}</div>
+  ),
 }))
 
 vi.mock('../plugins-selected', () => ({
-  default: ({ plugins }: { plugins: string[] }) => <div data-testid="plugins-selected">{plugins.join(',')}</div>,
+  default: ({ plugins }: { plugins: string[] }) => (
+    <div data-testid="plugins-selected">{plugins.join(',')}</div>
+  ),
 }))
 
 vi.mock('../tool-picker', () => ({
@@ -30,21 +30,17 @@ vi.mock('../tool-picker', () => ({
 
 describe('PluginsPicker', () => {
   it('renders the empty state when no plugins are selected', () => {
-    render(
-      <PluginsPicker
-        updateMode={AUTO_UPDATE_MODE.partial}
-        value={[]}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<PluginsPicker updateMode={AUTO_UPDATE_MODE.partial} value={[]} onChange={vi.fn()} />)
 
     expect(screen.getByTestId('no-plugin-selected')).toHaveTextContent(AUTO_UPDATE_MODE.partial)
     expect(screen.queryByTestId('plugins-selected')).not.toBeInTheDocument()
-    expect(mockToolPicker).toHaveBeenCalledWith(expect.objectContaining({
-      value: [],
-      isShow: false,
-      onShowChange: expect.any(Function),
-    }))
+    expect(mockToolPicker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: [],
+        isShow: false,
+        onShowChange: expect.any(Function),
+      }),
+    )
   })
 
   it('renders selected plugins summary and clears them', () => {
@@ -66,17 +62,13 @@ describe('PluginsPicker', () => {
   })
 
   it('passes the select button trigger into ToolPicker', () => {
-    render(
-      <PluginsPicker
-        updateMode={AUTO_UPDATE_MODE.partial}
-        value={[]}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<PluginsPicker updateMode={AUTO_UPDATE_MODE.partial} value={[]} onChange={vi.fn()} />)
 
     expect(screen.getByTestId('tool-picker')).toBeInTheDocument()
-    expect(mockToolPicker).toHaveBeenCalledWith(expect.objectContaining({
-      trigger: expect.anything(),
-    }))
+    expect(mockToolPicker).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger: expect.anything(),
+      }),
+    )
   })
 })

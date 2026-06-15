@@ -10,9 +10,7 @@ type LeftHeaderProps = {
   title: string
 }
 
-const LeftHeader = ({
-  title,
-}: LeftHeaderProps) => {
+const LeftHeader = ({ title }: LeftHeaderProps) => {
   const { t } = useTranslation()
   const { back } = useRouter()
 

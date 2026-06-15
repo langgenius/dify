@@ -8,9 +8,7 @@ import { PluginImg } from '../plugin-img'
 
 vi.mock('@/app/components/base/image-gallery', () => ({
   __esModule: true,
-  default: ({ srcs }: { srcs: string[] }) => (
-    <div data-testid="image-gallery">{srcs[0]}</div>
-  ),
+  default: ({ srcs }: { srcs: string[] }) => <div data-testid="image-gallery">{srcs[0]}</div>,
 }))
 
 const mockUsePluginReadmeAsset = vi.fn()
@@ -20,8 +18,7 @@ vi.mock('@/service/use-plugins', () => ({
 
 const mockGetMarkdownImageURL = vi.fn()
 vi.mock('../utils', () => ({
-  getMarkdownImageURL: (src: string, pluginId?: string) =>
-    mockGetMarkdownImageURL(src, pluginId),
+  getMarkdownImageURL: (src: string, pluginId?: string) => mockGetMarkdownImageURL(src, pluginId),
 }))
 
 /* -------------------- Tests -------------------- */
@@ -42,17 +39,12 @@ describe('PluginImg', () => {
     mockUsePluginReadmeAsset.mockReturnValue({ data: fakeBlob })
     mockGetMarkdownImageURL.mockReturnValue('fallback-url')
 
-    const createSpy = vi
-      .spyOn(URL, 'createObjectURL')
-      .mockReturnValue(fakeObjectUrl)
+    const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(fakeObjectUrl)
 
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL')
 
     const { unmount } = render(
-      <PluginImg
-        src="file.png"
-        pluginInfo={{ pluginUniqueIdentifier: 'abc', pluginId: '123' }}
-      />,
+      <PluginImg src="file.png" pluginInfo={{ pluginUniqueIdentifier: 'abc', pluginId: '123' }} />,
     )
 
     const gallery = screen.getByTestId('image-gallery')
@@ -70,10 +62,7 @@ describe('PluginImg', () => {
     mockGetMarkdownImageURL.mockReturnValue('computed-url')
 
     render(
-      <PluginImg
-        src="file.png"
-        pluginInfo={{ pluginUniqueIdentifier: 'abc', pluginId: '123' }}
-      />,
+      <PluginImg src="file.png" pluginInfo={{ pluginUniqueIdentifier: 'abc', pluginId: '123' }} />,
     )
 
     const gallery = screen.getByTestId('image-gallery')

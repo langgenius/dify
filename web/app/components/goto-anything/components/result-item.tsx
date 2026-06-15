@@ -19,18 +19,12 @@ const ResultItem: FC<ResultItemProps> = ({ result, onSelect }) => {
     >
       {result.icon}
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-text-secondary">
-          {result.title}
-        </div>
+        <div className="truncate font-medium text-text-secondary">{result.title}</div>
         {result.description && (
-          <div className="mt-0.5 truncate text-xs text-text-quaternary">
-            {result.description}
-          </div>
+          <div className="mt-0.5 truncate text-xs text-text-quaternary">{result.description}</div>
         )}
       </div>
-      <div className="text-xs text-text-quaternary capitalize">
-        {result.type}
-      </div>
+      <div className="text-xs text-text-quaternary capitalize">{result.type}</div>
     </Command.Item>
   )
 }

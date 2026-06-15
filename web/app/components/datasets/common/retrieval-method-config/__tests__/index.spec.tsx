@@ -1,11 +1,7 @@
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import {
-  DEFAULT_WEIGHTED_SCORE,
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
+import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from '../index'
 
@@ -23,7 +19,7 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 // Mock model hooks with controllable return values
-let mockRerankDefaultModel: { provider: { provider: string }, model: string } | undefined = {
+let mockRerankDefaultModel: { provider: { provider: string }; model: string } | undefined = {
   provider: { provider: 'test-provider' },
   model: 'test-rerank-model',
 }
@@ -38,7 +34,12 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Mock child component RetrievalParamConfig to simplify testing
 vi.mock('../../retrieval-param-config', () => ({
-  default: ({ type, value, onChange, showMultiModalTip }: {
+  default: ({
+    type,
+    value,
+    onChange,
+    showMultiModalTip,
+  }: {
     type: RETRIEVE_METHOD
     value: RetrievalConfig
     onChange: (v: RetrievalConfig) => void
@@ -72,7 +73,9 @@ const createMockRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Re
 })
 
 // Helper to render component with default props
-const renderComponent = (props: Partial<React.ComponentProps<typeof RetrievalMethodConfig>> = {}) => {
+const renderComponent = (
+  props: Partial<React.ComponentProps<typeof RetrievalMethodConfig>> = {},
+) => {
   const defaultProps = {
     value: createMockRetrievalConfig(),
     onChange: vi.fn(),
@@ -161,7 +164,9 @@ describe('RetrievalMethodConfig', () => {
       })
 
       expect(screen.getByTestId('retrieval-param-config-semantic_search')).toBeInTheDocument()
-      expect(screen.queryByTestId('retrieval-param-config-full_text_search')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId('retrieval-param-config-full_text_search'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByTestId('retrieval-param-config-hybrid_search')).not.toBeInTheDocument()
     })
 
@@ -181,7 +186,9 @@ describe('RetrievalMethodConfig', () => {
       })
 
       expect(screen.queryByTestId('retrieval-param-config-semantic_search')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('retrieval-param-config-full_text_search')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId('retrieval-param-config-full_text_search'),
+      ).not.toBeInTheDocument()
       expect(screen.getByTestId('retrieval-param-config-hybrid_search')).toBeInTheDocument()
     })
   })
@@ -209,14 +216,18 @@ describe('RetrievalMethodConfig', () => {
       renderComponent({ disabled: true })
 
       // When disabled, clicking should not trigger onChange
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor"]')
       expect(semanticOption).toHaveClass('cursor-not-allowed')
     })
 
     it('should default disabled to false', () => {
       renderComponent()
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor"]')
       expect(semanticOption).not.toHaveClass('cursor-not-allowed')
     })
   })
@@ -230,7 +241,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -249,7 +262,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const fullTextOption = screen.getByText('dataset.retrieval.full_text_search.title').closest('div[class*="cursor-pointer"]')
+      const fullTextOption = screen
+        .getByText('dataset.retrieval.full_text_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(fullTextOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -268,7 +283,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -287,7 +304,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).not.toHaveBeenCalled()
@@ -301,7 +320,9 @@ describe('RetrievalMethodConfig', () => {
         disabled: true,
       })
 
-      const fullTextOption = screen.getByText('dataset.retrieval.full_text_search.title').closest('div[class*="cursor"]')
+      const fullTextOption = screen
+        .getByText('dataset.retrieval.full_text_search.title')
+        .closest('div[class*="cursor"]')
       fireEvent.click(fullTextOption!)
 
       expect(onChange).not.toHaveBeenCalled()
@@ -340,7 +361,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -368,7 +391,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -393,7 +418,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -416,7 +443,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -441,7 +470,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -461,7 +492,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -502,7 +535,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -525,7 +560,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -542,14 +579,20 @@ describe('RetrievalMethodConfig', () => {
   describe('Callback Stability', () => {
     it('should maintain stable onSwitch callback when value changes', () => {
       const onChange = vi.fn()
-      const value1 = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText, top_k: 4 })
-      const value2 = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText, top_k: 8 })
+      const value1 = createMockRetrievalConfig({
+        search_method: RETRIEVE_METHOD.fullText,
+        top_k: 4,
+      })
+      const value2 = createMockRetrievalConfig({
+        search_method: RETRIEVE_METHOD.fullText,
+        top_k: 8,
+      })
 
-      const { rerender } = render(
-        <RetrievalMethodConfig value={value1} onChange={onChange} />,
-      )
+      const { rerender } = render(<RetrievalMethodConfig value={value1} onChange={onChange} />)
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledTimes(1)
@@ -565,13 +608,13 @@ describe('RetrievalMethodConfig', () => {
       const onChange2 = vi.fn()
       const value = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText })
 
-      const { rerender } = render(
-        <RetrievalMethodConfig value={value} onChange={onChange1} />,
-      )
+      const { rerender } = render(<RetrievalMethodConfig value={value} onChange={onChange1} />)
 
       rerender(<RetrievalMethodConfig value={value} onChange={onChange2} />)
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange1).not.toHaveBeenCalled()
@@ -592,9 +635,7 @@ describe('RetrievalMethodConfig', () => {
       const onChange = vi.fn()
       const value = createMockRetrievalConfig()
 
-      const { rerender } = render(
-        <RetrievalMethodConfig value={value} onChange={onChange} />,
-      )
+      const { rerender } = render(<RetrievalMethodConfig value={value} onChange={onChange} />)
 
       // Rerender with same props reference
       rerender(<RetrievalMethodConfig value={value} onChange={onChange} />)
@@ -637,7 +678,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const semanticOption = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor-pointer"]')
+      const semanticOption = screen
+        .getByText('dataset.retrieval.semantic_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(semanticOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -666,7 +709,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -695,7 +740,9 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(hybridOption!)
 
       expect(onChange).toHaveBeenCalledWith(
@@ -715,8 +762,12 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      const fullTextOption = screen.getByText('dataset.retrieval.full_text_search.title').closest('div[class*="cursor-pointer"]')
-      const hybridOption = screen.getByText('dataset.retrieval.hybrid_search.title').closest('div[class*="cursor-pointer"]')
+      const fullTextOption = screen
+        .getByText('dataset.retrieval.full_text_search.title')
+        .closest('div[class*="cursor-pointer"]')
+      const hybridOption = screen
+        .getByText('dataset.retrieval.hybrid_search.title')
+        .closest('div[class*="cursor-pointer"]')
 
       // Rapid clicks
       fireEvent.click(fullTextOption!)
@@ -777,10 +828,7 @@ describe('RetrievalMethodConfig', () => {
   describe('Prop Variations', () => {
     it('should render with minimum required props', () => {
       const { container } = render(
-        <RetrievalMethodConfig
-          value={createMockRetrievalConfig()}
-          onChange={vi.fn()}
-        />,
+        <RetrievalMethodConfig value={createMockRetrievalConfig()} onChange={vi.fn()} />,
       )
 
       expect(container.firstChild).toBeInTheDocument()
@@ -800,23 +848,23 @@ describe('RetrievalMethodConfig', () => {
     describe('disabled prop variations', () => {
       it('should handle disabled=true', () => {
         renderComponent({ disabled: true })
-        const option = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor"]')
+        const option = screen
+          .getByText('dataset.retrieval.semantic_search.title')
+          .closest('div[class*="cursor"]')
         expect(option).toHaveClass('cursor-not-allowed')
       })
 
       it('should handle disabled=false', () => {
         renderComponent({ disabled: false })
-        const option = screen.getByText('dataset.retrieval.semantic_search.title').closest('div[class*="cursor"]')
+        const option = screen
+          .getByText('dataset.retrieval.semantic_search.title')
+          .closest('div[class*="cursor"]')
         expect(option).toHaveClass('cursor-pointer')
       })
     })
 
     describe('search_method variations', () => {
-      const methods = [
-        RETRIEVE_METHOD.semantic,
-        RETRIEVE_METHOD.fullText,
-        RETRIEVE_METHOD.hybrid,
-      ]
+      const methods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText, RETRIEVE_METHOD.hybrid]
 
       it.each(methods)('should correctly highlight %s when active', (method) => {
         renderComponent({
@@ -858,7 +906,10 @@ describe('RetrievalMethodConfig', () => {
       const hybridCard = hybridTitle.closest('div[class*="cursor"]')
 
       // Should contain recommended badge from OptionCard
-      expect(hybridCard?.querySelector('[class*="badge"]') || screen.queryByText('datasetCreation.stepTwo.recommend')).toBeTruthy()
+      expect(
+        hybridCard?.querySelector('[class*="badge"]') ||
+          screen.queryByText('datasetCreation.stepTwo.recommend'),
+      ).toBeTruthy()
     })
   })
 

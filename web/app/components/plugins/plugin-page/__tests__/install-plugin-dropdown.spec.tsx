@@ -4,9 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import InstallPluginDropdown from '../install-plugin-dropdown'
 
-const {
-  mockSystemFeatures,
-} = vi.hoisted(() => ({
+const { mockSystemFeatures } = vi.hoisted(() => ({
   mockSystemFeatures: {
     enable_marketplace: true,
     plugin_installation_permission: {
@@ -39,19 +37,34 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" data-testid="button-content" className={className} onClick={onClick} {...props}>{children}</button>
+  Button: ({
+    children,
+    onClick,
+    className,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button
+      type="button"
+      data-testid="button-content"
+      className={className}
+      onClick={onClick}
+      {...props}
+    >
+      {children}
+    </button>
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ isOpen: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    isOpen: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
@@ -70,14 +83,15 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       const [internalOpen, setInternalOpen] = React.useState(open ?? false)
       const isOpen = open ?? internalOpen
       const setOpen = (nextOpen: boolean) => {
-        if (open === undefined)
-          setInternalOpen(nextOpen)
+        if (open === undefined) setInternalOpen(nextOpen)
         onOpenChange?.(nextOpen)
       }
 
       return (
         <DropdownMenuContext value={{ isOpen, setOpen }}>
-          <div data-testid="dropdown-menu" data-open={isOpen} data-modal={modal}>{children}</div>
+          <div data-testid="dropdown-menu" data-open={isOpen} data-modal={modal}>
+            {children}
+          </div>
         </DropdownMenuContext>
       )
     },
@@ -97,15 +111,19 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
       }
 
       if (render)
-        return React.cloneElement(render, { 'data-testid': 'dropdown-trigger', 'onClick': handleClick } as Record<string, unknown>, children)
+        return React.cloneElement(
+          render,
+          { 'data-testid': 'dropdown-trigger', onClick: handleClick } as Record<string, unknown>,
+          children,
+        )
 
-      return <button data-testid="dropdown-trigger" onClick={handleClick}>{children}</button>
+      return (
+        <button data-testid="dropdown-trigger" onClick={handleClick}>
+          {children}
+        </button>
+      )
     },
-    DropdownMenuContent: ({
-      children,
-    }: {
-      children: React.ReactNode
-    }) => {
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => {
       const { isOpen } = useDropdownMenuContext()
       return isOpen ? <div data-testid="dropdown-content">{children}</div> : null
     },
@@ -136,22 +154,20 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
 vi.mock('@/app/components/plugins/install-plugin/install-from-github', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="github-modal">
-      <button data-testid="close-github-modal" onClick={onClose}>close</button>
+      <button data-testid="close-github-modal" onClick={onClose}>
+        close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', () => ({
-  default: ({
-    file,
-    onClose,
-  }: {
-    file: File
-    onClose: () => void
-  }) => (
+  default: ({ file, onClose }: { file: File; onClose: () => void }) => (
     <div data-testid="local-modal">
       <span>{file.name}</span>
-      <button data-testid="close-local-modal" onClick={onClose}>close</button>
+      <button data-testid="close-local-modal" onClick={onClose}>
+        close
+      </button>
     </div>
   ),
 }))

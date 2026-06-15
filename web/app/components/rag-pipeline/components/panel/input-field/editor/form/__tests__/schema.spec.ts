@@ -200,7 +200,9 @@ describe('createInputFieldSchema', () => {
 
   describe('multiFiles type', () => {
     it('should validate maxLength against maxFileUploadLimit', () => {
-      const schema = createInputFieldSchema(PipelineInputVarType.multiFiles, t, { maxFileUploadLimit: 5 })
+      const schema = createInputFieldSchema(PipelineInputVarType.multiFiles, t, {
+        maxFileUploadLimit: 5,
+      })
 
       const valid = schema.safeParse({
         type: 'file-list',

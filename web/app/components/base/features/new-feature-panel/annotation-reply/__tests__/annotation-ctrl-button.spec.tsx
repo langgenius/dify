@@ -12,7 +12,11 @@ let mockAnnotatedResponseUsage = 5
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: {
-      usage: { get annotatedResponse() { return mockAnnotatedResponseUsage } },
+      usage: {
+        get annotatedResponse() {
+          return mockAnnotatedResponseUsage
+        },
+      },
       total: { annotatedResponse: 100 },
     },
     enableBilling: true,

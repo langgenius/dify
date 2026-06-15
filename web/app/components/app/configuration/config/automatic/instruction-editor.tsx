@@ -19,10 +19,7 @@ type Props = Readonly<{
   generatorType: GeneratorType
   availableVars: NodeOutPutVar[]
   availableNodes: Node[]
-  getVarType?: (params: {
-    nodeId: string
-    valueSelector: ValueSelector
-  }) => Type
+  getVarType?: (params: { nodeId: string; valueSelector: ValueSelector }) => Type
   isShowCurrentBlock: boolean
   isShowLastRunBlock: boolean
 }>
@@ -44,22 +41,22 @@ const InstructionEditor: FC<Props> = ({
   const { eventEmitter } = useEventEmitterContextContext()
 
   const isCode = generatorType === 'code'
-  const placeholder = isCode
-    ? (
-        <div className="system-sm-regular leading-6! whitespace-break-spaces text-text-placeholder">
-          {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`, { ns: 'appDebug' })}
-        </div>
-      )
-    : (
-        <div className="system-sm-regular text-text-placeholder">
-          <div className="leading-6">{t(`${i18nPrefix}.instructionPlaceHolderTitle`, { ns: 'appDebug' })}</div>
-          <div className="mt-2">
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine1`, { ns: 'appDebug' })}</div>
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine2`, { ns: 'appDebug' })}</div>
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine3`, { ns: 'appDebug' })}</div>
-          </div>
-        </div>
-      )
+  const placeholder = isCode ? (
+    <div className="system-sm-regular leading-6! whitespace-break-spaces text-text-placeholder">
+      {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`, { ns: 'appDebug' })}
+    </div>
+  ) : (
+    <div className="system-sm-regular text-text-placeholder">
+      <div className="leading-6">
+        {t(`${i18nPrefix}.instructionPlaceHolderTitle`, { ns: 'appDebug' })}
+      </div>
+      <div className="mt-2">
+        <div>{t(`${i18nPrefix}.instructionPlaceHolderLine1`, { ns: 'appDebug' })}</div>
+        <div>{t(`${i18nPrefix}.instructionPlaceHolderLine2`, { ns: 'appDebug' })}</div>
+        <div>{t(`${i18nPrefix}.instructionPlaceHolderLine3`, { ns: 'appDebug' })}</div>
+      </div>
+    </div>
+  )
 
   const handleInsertVariable = () => {
     eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId: editorKey } as any)

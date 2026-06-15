@@ -3,16 +3,13 @@ import type { SseEvent } from './sse'
 const dec = new TextDecoder()
 
 export function eventNameFromDifyData(data: Uint8Array): string {
-  if (data.byteLength === 0)
-    return ''
+  if (data.byteLength === 0) return ''
   try {
     const obj = JSON.parse(dec.decode(data)) as unknown
-    if (obj === null || typeof obj !== 'object')
-      return ''
+    if (obj === null || typeof obj !== 'object') return ''
     const evt = (obj as { event?: unknown }).event
     return typeof evt === 'string' ? evt : ''
-  }
-  catch {
+  } catch {
     return ''
   }
 }

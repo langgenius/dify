@@ -1,19 +1,15 @@
 import type { TFunction } from 'i18next'
 import type { KnowledgeBaseNodeType } from './types'
-import {
-  IndexingType,
-} from '@/app/components/datasets/create/step-two'
-import {
-  ModelStatusEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  RetrievalSearchMethodEnum,
-} from './types'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RetrievalSearchMethodEnum } from './types'
 
 export const isHighQualitySearchMethod = (searchMethod: RetrievalSearchMethodEnum) => {
-  return searchMethod === RetrievalSearchMethodEnum.semantic
-    || searchMethod === RetrievalSearchMethodEnum.hybrid
-    || searchMethod === RetrievalSearchMethodEnum.fullText
+  return (
+    searchMethod === RetrievalSearchMethodEnum.semantic ||
+    searchMethod === RetrievalSearchMethodEnum.hybrid ||
+    searchMethod === RetrievalSearchMethodEnum.fullText
+  )
 }
 
 export enum KnowledgeBaseValidationIssueCode {
@@ -35,8 +31,21 @@ type KnowledgeBaseValidationIssue = {
   code: KnowledgeBaseValidationIssueCode
 }
 
-type KnowledgeBaseValidationPayload = Pick<KnowledgeBaseNodeType, 'chunk_structure' | 'index_chunk_variable_selector' | 'indexing_technique' | 'embedding_model' | 'embedding_model_provider' | '_embeddingModelList' | '_embeddingProviderModelList' | '_rerankModelList'> & {
-  retrieval_model?: Pick<KnowledgeBaseNodeType['retrieval_model'], 'search_method' | 'reranking_enable' | 'reranking_model'>
+type KnowledgeBaseValidationPayload = Pick<
+  KnowledgeBaseNodeType,
+  | 'chunk_structure'
+  | 'index_chunk_variable_selector'
+  | 'indexing_technique'
+  | 'embedding_model'
+  | 'embedding_model_provider'
+  | '_embeddingModelList'
+  | '_embeddingProviderModelList'
+  | '_rerankModelList'
+> & {
+  retrieval_model?: Pick<
+    KnowledgeBaseNodeType['retrieval_model'],
+    'search_method' | 'reranking_enable' | 'reranking_model'
+  >
 }
 
 const EMBEDDING_ISSUE_CODES = new Set<KnowledgeBaseValidationIssueCode>([
@@ -52,7 +61,9 @@ const resolveIssue = (code: KnowledgeBaseValidationIssueCode): KnowledgeBaseVali
   code,
 })
 
-const resolveEmbeddingIssue = (payload: KnowledgeBaseValidationPayload): KnowledgeBaseValidationIssue | null => {
+const resolveEmbeddingIssue = (
+  payload: KnowledgeBaseValidationPayload,
+): KnowledgeBaseValidationIssue | null => {
   const {
     embedding_model,
     embedding_model_provider,
@@ -63,21 +74,28 @@ const resolveEmbeddingIssue = (payload: KnowledgeBaseValidationPayload): Knowled
   if (!embedding_model || !embedding_model_provider)
     return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
 
-  const currentEmbeddingModelProvider = _embeddingModelList?.find(provider => provider.provider === embedding_model_provider)
-  const hasProviderScopedModelList = !!_embeddingProviderModelList && _embeddingProviderModelList.length > 0
+  const currentEmbeddingModelProvider = _embeddingModelList?.find(
+    (provider) => provider.provider === embedding_model_provider,
+  )
+  const hasProviderScopedModelList =
+    !!_embeddingProviderModelList && _embeddingProviderModelList.length > 0
   const embeddingModelCandidates = hasProviderScopedModelList
     ? _embeddingProviderModelList
     : currentEmbeddingModelProvider?.models
-  const currentEmbeddingModel = embeddingModelCandidates?.find(model => model.model === embedding_model)
+  const currentEmbeddingModel = embeddingModelCandidates?.find(
+    (model) => model.model === embedding_model,
+  )
 
   if (!currentEmbeddingModel) {
     if (!currentEmbeddingModelProvider)
       return resolveIssue(KnowledgeBaseValidationIssueCode.embeddingModelIncompatible)
 
     const providerExists = hasProviderScopedModelList || currentEmbeddingModelProvider
-    return resolveIssue(providerExists
-      ? KnowledgeBaseValidationIssueCode.embeddingModelIncompatible
-      : KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured)
+    return resolveIssue(
+      providerExists
+        ? KnowledgeBaseValidationIssueCode.embeddingModelIncompatible
+        : KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured,
+    )
   }
 
   switch (currentEmbeddingModel.status) {
@@ -97,7 +115,9 @@ const resolveEmbeddingIssue = (payload: KnowledgeBaseValidationPayload): Knowled
   }
 }
 
-export const getKnowledgeBaseValidationIssue = (payload: KnowledgeBaseValidationPayload): KnowledgeBaseValidationIssue | null => {
+export const getKnowledgeBaseValidationIssue = (
+  payload: KnowledgeBaseValidationPayload,
+): KnowledgeBaseValidationIssue | null => {
   const {
     chunk_structure,
     indexing_technique,
@@ -106,36 +126,37 @@ export const getKnowledgeBaseValidationIssue = (payload: KnowledgeBaseValidation
     _rerankModelList,
   } = payload
 
-  const {
-    search_method,
-    reranking_enable,
-    reranking_model,
-  } = retrieval_model || {}
+  const { search_method, reranking_enable, reranking_model } = retrieval_model || {}
 
-  if (!chunk_structure)
-    return resolveIssue(KnowledgeBaseValidationIssueCode.chunkStructureRequired)
+  if (!chunk_structure) return resolveIssue(KnowledgeBaseValidationIssueCode.chunkStructureRequired)
 
   if (index_chunk_variable_selector.length === 0)
     return resolveIssue(KnowledgeBaseValidationIssueCode.chunksVariableRequired)
 
-  if (!indexing_technique)
-    return resolveIssue(KnowledgeBaseValidationIssueCode.indexMethodRequired)
+  if (!indexing_technique) return resolveIssue(KnowledgeBaseValidationIssueCode.indexMethodRequired)
 
   if (indexing_technique === IndexingType.QUALIFIED) {
     const embeddingIssue = resolveEmbeddingIssue(payload)
-    if (embeddingIssue)
-      return embeddingIssue
+    if (embeddingIssue) return embeddingIssue
   }
 
   if (!retrieval_model || !search_method)
     return resolveIssue(KnowledgeBaseValidationIssueCode.retrievalSettingRequired)
 
   if (reranking_enable) {
-    if (!reranking_model || !reranking_model.reranking_provider_name || !reranking_model.reranking_model_name)
+    if (
+      !reranking_model ||
+      !reranking_model.reranking_provider_name ||
+      !reranking_model.reranking_model_name
+    )
       return resolveIssue(KnowledgeBaseValidationIssueCode.rerankingModelRequired)
 
-    const currentRerankingModelProvider = _rerankModelList?.find(provider => provider.provider === reranking_model.reranking_provider_name)
-    const currentRerankingModel = currentRerankingModelProvider?.models.find(model => model.model === reranking_model.reranking_model_name)
+    const currentRerankingModelProvider = _rerankModelList?.find(
+      (provider) => provider.provider === reranking_model.reranking_provider_name,
+    )
+    const currentRerankingModel = currentRerankingModelProvider?.models.find(
+      (model) => model.model === reranking_model.reranking_model_name,
+    )
     if (!currentRerankingModel)
       return resolveIssue(KnowledgeBaseValidationIssueCode.rerankingModelInvalid)
   }
@@ -147,8 +168,7 @@ export const getKnowledgeBaseValidationMessage = (
   issue: KnowledgeBaseValidationIssue | null | undefined,
   t: TFunction,
 ) => {
-  if (!issue)
-    return ''
+  if (!issue) return ''
 
   switch (issue.code) {
     case KnowledgeBaseValidationIssueCode.chunkStructureRequired:
@@ -180,9 +200,10 @@ export const getKnowledgeBaseValidationMessage = (
   }
 }
 
-export const isKnowledgeBaseEmbeddingIssue = (issue: KnowledgeBaseValidationIssue | null | undefined) => {
-  if (!issue)
-    return false
+export const isKnowledgeBaseEmbeddingIssue = (
+  issue: KnowledgeBaseValidationIssue | null | undefined,
+) => {
+  if (!issue) return false
 
   return EMBEDDING_ISSUE_CODES.has(issue.code)
 }

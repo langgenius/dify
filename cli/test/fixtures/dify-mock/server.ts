@@ -32,8 +32,8 @@ function unauthorized() {
   )
 }
 
-function sseChunks(events: { event: string, data: Record<string, unknown> }[]): string {
-  return events.map(e => `data: ${JSON.stringify({ ...e.data, event: e.event })}\n\n`).join('')
+function sseChunks(events: { event: string; data: Record<string, unknown> }[]): string {
+  return events.map((e) => `data: ${JSON.stringify({ ...e.data, event: e.event })}\n\n`).join('')
 }
 
 function streamingRunResponse(mode: string, query: string, isAgent: boolean): string {
@@ -42,7 +42,14 @@ function streamingRunResponse(mode: string, query: string, isAgent: boolean): st
       { event: 'workflow_started', data: { id: 'wf-run-1', workflow_id: 'wf-1' } },
       { event: 'node_started', data: { id: 'n1', title: 'first' } },
       { event: 'node_finished', data: { id: 'n1', status: 'succeeded' } },
-      { event: 'workflow_finished', data: { id: 'wf-run-1', workflow_id: 'wf-1', data: { id: 'wf-run-1', status: 'succeeded', outputs: { result: `echo: ${query}` } } } },
+      {
+        event: 'workflow_finished',
+        data: {
+          id: 'wf-run-1',
+          workflow_id: 'wf-1',
+          data: { id: 'wf-run-1', status: 'succeeded', outputs: { result: `echo: ${query}` } },
+        },
+      },
     ])
   }
   if (mode === 'completion') {
@@ -53,13 +60,18 @@ function streamingRunResponse(mode: string, query: string, isAgent: boolean): st
     ])
   }
   const evt = isAgent ? 'agent_message' : 'message'
-  const events: { event: string, data: Record<string, unknown> }[] = [
-    { event: evt, data: { message_id: 'msg-1', conversation_id: 'conv-1', mode, answer: 'echo: ' } },
+  const events: { event: string; data: Record<string, unknown> }[] = [
+    {
+      event: evt,
+      data: { message_id: 'msg-1', conversation_id: 'conv-1', mode, answer: 'echo: ' },
+    },
     { event: evt, data: { answer: query } },
   ]
-  if (isAgent)
-    events.push({ event: 'agent_thought', data: { thought: 'thinking…' } })
-  events.push({ event: 'message_end', data: { message_id: 'msg-1', conversation_id: 'conv-1', metadata: {} } })
+  if (isAgent) events.push({ event: 'agent_thought', data: { thought: 'thinking…' } })
+  events.push({
+    event: 'message_end',
+    data: { message_id: 'msg-1', conversation_id: 'conv-1', metadata: {} },
+  })
   return sseChunks(events)
 }
 
@@ -114,7 +126,7 @@ export type MockState = {
 export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   const app = new Hono()
 
-  app.get('/healthz', c => c.json({ ok: true }))
+  app.get('/healthz', (c) => c.json({ ok: true }))
 
   app.use('*', async (c, next) => {
     if (c.req.path === '/healthz') {
@@ -130,18 +142,15 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       return
     }
     const auth = c.req.header('Authorization') ?? ''
-    if (!TOKEN_RE.test(auth))
-      return unauthorized()
+    if (!TOKEN_RE.test(auth)) return unauthorized()
     const scenario = getScenario()
-    if (scenario === 'auth-expired')
-      return unauthorized()
+    if (scenario === 'auth-expired') return unauthorized()
     await next()
   })
 
   app.get('/openapi/v1/_version', (c) => {
     const scenario = getScenario()
-    if (scenario === 'server-version-empty')
-      return c.json({ version: '', edition: 'SELF_HOSTED' })
+    if (scenario === 'server-version-empty') return c.json({ version: '', edition: 'SELF_HOSTED' })
     if (scenario === 'server-version-unsupported')
       return c.json({ version: '99.0.0', edition: 'SELF_HOSTED' })
     return c.json({ version: '1.6.4', edition: 'CLOUD' })
@@ -152,15 +161,16 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     if (scenario === 'rate-limited') {
       // Unified ErrorBody — per-token throttle (retryable); Retry-After advises the wait.
       return c.json(
-        { code: 'too_many_requests', message: 'Too many requests for this API token.', status: 429 },
+        {
+          code: 'too_many_requests',
+          message: 'Too many requests for this API token.',
+          status: 429,
+        },
         { status: 429, headers: { 'retry-after': '1' } },
       )
     }
     if (scenario === 'server-5xx') {
-      return c.json(
-        { error: { code: 'server_5xx', message: 'upstream broken' } },
-        { status: 503 },
-      )
+      return c.json({ error: { code: 'server_5xx', message: 'upstream broken' } }, { status: 503 })
     }
     await next()
   })
@@ -181,7 +191,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       subject_type: 'account',
       subject_email: ACCOUNT.email,
       account: { id: ACCOUNT.id, email: ACCOUNT.email, name: ACCOUNT.name },
-      workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
+      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
       default_workspace_id: ACCOUNT.current_workspace_id,
     })
   })
@@ -202,20 +212,20 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   })
 
   app.delete('/openapi/v1/account/sessions/self', () =>
-    Response.json({ status: 'revoked' }, { status: 200 }))
+    Response.json({ status: 'revoked' }, { status: 200 }),
+  )
 
   app.delete('/openapi/v1/account/sessions/:id', (c) => {
     const id = c.req.param('id')
-    if (!SESSIONS.some(s => s.id === id))
+    if (!SESSIONS.some((s) => s.id === id))
       return c.json({ error: { code: 'not_found', message: 'session not found' } }, { status: 404 })
     return Response.json({ status: 'revoked' }, { status: 200 })
   })
 
   app.get('/openapi/v1/workspaces', (c) => {
-    if (getScenario() === 'sso')
-      return c.json({ workspaces: [] })
+    if (getScenario() === 'sso') return c.json({ workspaces: [] })
     return c.json({
-      workspaces: WORKSPACES.map(w => ({
+      workspaces: WORKSPACES.map((w) => ({
         id: w.id,
         name: w.name,
         role: w.role,
@@ -232,13 +242,11 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const tag = c.req.query('tag')
     const name = c.req.query('name')
     const workspaceId = c.req.query('workspace_id') ?? ACCOUNT.current_workspace_id
-    let filtered = APPS.filter(a => a.workspace_id === workspaceId)
-    if (mode !== undefined && mode !== '')
-      filtered = filtered.filter(a => a.mode === mode)
+    let filtered = APPS.filter((a) => a.workspace_id === workspaceId)
+    if (mode !== undefined && mode !== '') filtered = filtered.filter((a) => a.mode === mode)
     if (tag !== undefined && tag !== '')
-      filtered = filtered.filter(a => a.tags.some(t => t.name === tag))
-    if (name !== undefined && name !== '')
-      filtered = filtered.filter(a => a.name.includes(name))
+      filtered = filtered.filter((a) => a.tags.some((t) => t.name === tag))
+    if (name !== undefined && name !== '') filtered = filtered.filter((a) => a.name.includes(name))
     const total = filtered.length
     const start = (page - 1) * limit
     const slice = filtered.slice(start, start + limit)
@@ -255,8 +263,16 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const id = c.req.param('id')
     const wsId = c.req.query('workspace_id')
     const fieldsRaw = c.req.query('fields') ?? ''
-    const fields = fieldsRaw === '' ? [] : fieldsRaw.split(',').map(s => s.trim()).filter(s => s !== '')
-    const app = APPS.find(a => a.id === id && (wsId === undefined || wsId === '' || a.workspace_id === wsId))
+    const fields =
+      fieldsRaw === ''
+        ? []
+        : fieldsRaw
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '')
+    const app = APPS.find(
+      (a) => a.id === id && (wsId === undefined || wsId === '' || a.workspace_id === wsId),
+    )
     if (app === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
     const wantInfo = fields.length === 0 || fields.includes('info')
@@ -283,7 +299,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
   app.get('/openapi/v1/apps/:id/export', (c) => {
     const id = c.req.param('id')
-    const found = APPS.find(a => a.id === id)
+    const found = APPS.find((a) => a.id === id)
     if (found === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
     return c.json({ data: DSL_YAML })
@@ -291,34 +307,49 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
 
   app.get('/openapi/v1/apps/:id/check-dependencies', (c) => {
     const id = c.req.param('id')
-    const found = APPS.find(a => a.id === id)
+    const found = APPS.find((a) => a.id === id)
     if (found === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
     return c.json({ leaked_dependencies: [] })
   })
 
   app.post('/openapi/v1/workspaces/:wsId/apps/imports', async (c) => {
-    const body = await c.req.json() as Record<string, unknown>
-    if (state !== undefined)
-      state.lastImportBody = body
+    const body = (await c.req.json()) as Record<string, unknown>
+    if (state !== undefined) state.lastImportBody = body
     const scenario = getScenario()
     if (scenario === 'import-failed')
-      return c.json({ id: 'imp-1', status: 'failed', error: 'unsupported DSL version' }, { status: 200 })
+      return c.json(
+        { id: 'imp-1', status: 'failed', error: 'unsupported DSL version' },
+        { status: 200 },
+      )
     if (scenario === 'import-pending')
-      return c.json({ id: 'imp-1', status: 'pending', current_dsl_version: '0.1.4', imported_dsl_version: '0.0.9' }, { status: 202 })
-    return c.json({ id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }, { status: 200 })
+      return c.json(
+        {
+          id: 'imp-1',
+          status: 'pending',
+          current_dsl_version: '0.1.4',
+          imported_dsl_version: '0.0.9',
+        },
+        { status: 202 },
+      )
+    return c.json(
+      { id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' },
+      { status: 200 },
+    )
   })
 
   app.post('/openapi/v1/workspaces/:wsId/apps/imports/:importId/confirm', (c) => {
-    return c.json({ id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }, { status: 200 })
+    return c.json(
+      { id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' },
+      { status: 200 },
+    )
   })
 
   app.post('/openapi/v1/apps/:id/run', async (c) => {
     const id = c.req.param('id')
-    const body = await c.req.json() as { query?: string, inputs?: unknown }
-    if (state !== undefined)
-      state.lastRunBody = body as Record<string, unknown>
-    const app = APPS.find(a => a.id === id)
+    const body = (await c.req.json()) as { query?: string; inputs?: unknown }
+    if (state !== undefined) state.lastRunBody = body as Record<string, unknown>
+    const app = APPS.find((a) => a.id === id)
     if (app === undefined)
       return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
     const isAgent = app.is_agent === true || app.mode === 'agent-chat'
@@ -326,7 +357,12 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     const scenario = getScenario()
     if (scenario === 'run-422-stale') {
       return c.json(
-        { error: { code: 'query_not_supported_for_workflow', message: 'query not supported for workflow mode' } },
+        {
+          error: {
+            code: 'query_not_supported_for_workflow',
+            message: 'query not supported for workflow mode',
+          },
+        },
         { status: 422 },
       )
     }
@@ -335,15 +371,17 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       return new Response(errSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
     }
     if (scenario === 'hitl-pause') {
-      return new Response(hitlPauseResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
+      return new Response(hitlPauseResponse(), {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      })
     }
     const sse = streamingRunResponse(app.mode, query, isAgent)
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
   })
 
   app.post('/openapi/v1/apps/:id/files/upload', async (c) => {
-    if (state !== undefined)
-      state.uploadCallCount++
+    if (state !== undefined) state.uploadCallCount++
     const form = await c.req.formData()
     const file = form.get('file')
     if (!(file instanceof File))
@@ -371,10 +409,13 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
   })
 
   app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => {
-    return new Response(hitlResumedResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    return new Response(hitlResumedResponse(), {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+    })
   })
 
-  app.post('/openapi/v1/oauth/device/code', c =>
+  app.post('/openapi/v1/oauth/device/code', (c) =>
     c.json({
       device_code: 'devcode-1',
       user_code: 'ABCD-1234',
@@ -382,14 +423,18 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       verification_uri_complete: `${new URL(c.req.url).origin}/device?user_code=ABCD-1234`,
       expires_in: 600,
       interval: 1,
-    }))
+    }),
+  )
 
   app.post('/openapi/v1/oauth/device/token', async (c) => {
     const scenario = getScenario()
     if (scenario === 'denied')
       return c.json({ error: 'access_denied', error_description: 'user rejected' }, { status: 400 })
     if (scenario === 'expired')
-      return c.json({ error: 'expired_token', error_description: 'device_code expired' }, { status: 400 })
+      return c.json(
+        { error: 'expired_token', error_description: 'device_code expired' },
+        { status: 400 },
+      )
     if (scenario === 'slow-down')
       return c.json({ error: 'slow_down', error_description: 'increase interval' }, { status: 400 })
     if (scenario === 'sso') {
@@ -409,7 +454,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         token: 'dfoa_test',
         subject_type: 'account',
         account: { id: ACCOUNT.id, email: '', name: '' },
-        workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
+        workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
         default_workspace_id: ACCOUNT.current_workspace_id,
         token_id: 'tok-1',
       })
@@ -418,7 +463,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       token: 'dfoa_test',
       subject_type: 'account',
       account: ACCOUNT,
-      workspaces: WORKSPACES.map(w => ({ id: w.id, name: w.name, role: w.role })),
+      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
       default_workspace_id: ACCOUNT.current_workspace_id,
       token_id: 'tok-1',
     })
@@ -444,15 +489,23 @@ export function startMock(opts: DifyMockOptions = {}): Promise<DifyMock> {
         url: `http://127.0.0.1:${addr.port}`,
         port: addr.port,
         scenario,
-        setScenario(s) { scenario = s },
+        setScenario(s) {
+          scenario = s
+        },
         stop() {
           return new Promise<void>((res, rej) => {
-            server.close(err => err ? rej(err) : res())
+            server.close((err) => (err ? rej(err) : res()))
           })
         },
-        get lastRunBody() { return state.lastRunBody },
-        get uploadCallCount() { return state.uploadCallCount },
-        get lastImportBody() { return state.lastImportBody },
+        get lastRunBody() {
+          return state.lastRunBody
+        },
+        get uploadCallCount() {
+          return state.uploadCallCount
+        },
+        get lastImportBody() {
+          return state.lastImportBody
+        },
       })
     })
     server.on('error', reject)

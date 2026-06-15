@@ -38,8 +38,12 @@ describe('Input', () => {
       </React.Fragment>,
     )
 
-    await expect.element(screen.getByRole('textbox', { name: 'Small input' })).toHaveClass('rounded-md', 'py-[3px]', 'system-xs-regular')
-    await expect.element(screen.getByRole('textbox', { name: 'Large field' })).toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Small input' }))
+      .toHaveClass('rounded-md', 'py-[3px]', 'system-xs-regular')
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Large field' }))
+      .toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')
   })
 
   it('should use FieldRoot invalid state', async () => {
@@ -54,7 +58,9 @@ describe('Input', () => {
 
     await expect.element(input).toHaveAttribute('aria-invalid', 'true')
     await expect.element(input).toHaveAttribute('data-invalid')
-    await expect.element(input).toHaveClass('data-invalid:border-components-input-border-destructive')
+    await expect
+      .element(input)
+      .toHaveClass('data-invalid:border-components-input-border-destructive')
   })
 
   it('should integrate with FieldRoot and Base UI Form validation', async () => {

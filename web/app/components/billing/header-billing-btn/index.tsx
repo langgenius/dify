@@ -11,18 +11,12 @@ type Props = Readonly<{
   isDisplayOnly?: boolean
 }>
 
-const HeaderBillingBtn: FC<Props> = ({
-  onClick,
-  isDisplayOnly = false,
-}) => {
+const HeaderBillingBtn: FC<Props> = ({ onClick, isDisplayOnly = false }) => {
   const { plan, enableBilling, isFetchedPlan } = useProviderContext()
-  const {
-    type,
-  } = plan
+  const { type } = plan
 
   const name = (() => {
-    if (type === Plan.professional)
-      return 'pro'
+    if (type === Plan.professional) return 'pro'
     return type
   })()
   const classNames = (() => {
@@ -33,15 +27,13 @@ const HeaderBillingBtn: FC<Props> = ({
     return ''
   })()
 
-  if (!enableBilling || !isFetchedPlan)
-    return null
+  if (!enableBilling || !isFetchedPlan) return null
 
   if (type === Plan.sandbox)
     return <UpgradeBtn onClick={isDisplayOnly ? undefined : onClick} isShort />
 
   const handleClick = () => {
-    if (!isDisplayOnly && onClick)
-      onClick()
+    if (!isDisplayOnly && onClick) onClick()
   }
 
   return (

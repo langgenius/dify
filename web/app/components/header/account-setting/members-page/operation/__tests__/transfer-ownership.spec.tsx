@@ -25,10 +25,7 @@ describe('TransferOwnership', () => {
     } as unknown as ReturnType<typeof useWorkspacePermissions>)
   }
 
-  const renderTransferOwnership = (
-    brandingEnabled: boolean,
-    onOperate: () => void = vi.fn(),
-  ) =>
+  const renderTransferOwnership = (brandingEnabled: boolean, onOperate: () => void = vi.fn()) =>
     renderWithSystemFeatures(<TransferOwnership onOperate={onOperate} />, {
       systemFeatures: { branding: { enabled: brandingEnabled } },
     })
@@ -68,8 +65,7 @@ describe('TransferOwnership', () => {
     await user.click(screen.getByRole('button', { name: /members\.owner/i }))
     const transferOptionText = await screen.findByText(/members\.transferOwnership/i)
     const transferOption = transferOptionText.closest('div.cursor-pointer')
-    if (!transferOption)
-      throw new Error('Transfer option container not found')
+    if (!transferOption) throw new Error('Transfer option container not found')
     fireEvent.click(transferOption)
 
     await waitFor(() => {

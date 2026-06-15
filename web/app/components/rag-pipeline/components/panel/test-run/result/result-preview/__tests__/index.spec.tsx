@@ -1,4 +1,9 @@
-import type { ChunkInfo, GeneralChunks, ParentChildChunks, QAChunks } from '../../../../../chunk-card-list/types'
+import type {
+  ChunkInfo,
+  GeneralChunks,
+  ParentChildChunks,
+  QAChunks,
+} from '../../../../../chunk-card-list/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
@@ -10,8 +15,12 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('../../../../../chunk-card-list', () => ({
-  ChunkCardList: ({ chunkType, chunkInfo }: { chunkType: string, chunkInfo: ChunkInfo }) => (
-    <div data-testid="chunk-card-list" data-chunk-type={chunkType} data-chunk-info={JSON.stringify(chunkInfo)}>
+  ChunkCardList: ({ chunkType, chunkInfo }: { chunkType: string; chunkInfo: ChunkInfo }) => (
+    <div
+      data-testid="chunk-card-list"
+      data-chunk-type={chunkType}
+      data-chunk-info={JSON.stringify(chunkInfo)}
+    >
       ChunkCardList
     </div>
   ),
@@ -29,7 +38,7 @@ const createGeneralChunkOutputs = (chunks: Array<{ content: string }>) => ({
  * Factory for creating parent-child chunk preview outputs
  */
 const createParentChildChunkOutputs = (
-  chunks: Array<{ content: string, child_chunks: string[] }>,
+  chunks: Array<{ content: string; child_chunks: string[] }>,
   parentMode: 'paragraph' | 'full-doc' = 'paragraph',
 ) => ({
   chunk_structure: ChunkingMode.parentChild,
@@ -40,7 +49,7 @@ const createParentChildChunkOutputs = (
 /**
  * Factory for creating QA chunk preview outputs
  */
-const createQAChunkOutputs = (chunks: Array<{ question: string, answer: string }>) => ({
+const createQAChunkOutputs = (chunks: Array<{ question: string; answer: string }>) => ({
   chunk_structure: ChunkingMode.qa,
   qa_preview: chunks,
 })
@@ -60,7 +69,7 @@ const createMockGeneralChunks = (count: number): Array<{ content: string }> => {
 const createMockParentChildChunks = (
   count: number,
   childCount: number = 3,
-): Array<{ content: string, child_chunks: string[] }> => {
+): Array<{ content: string; child_chunks: string[] }> => {
   return Array.from({ length: count }, (_, i) => ({
     content: `Parent content ${i + 1}`,
     child_chunks: Array.from({ length: childCount }, (_, j) => `Child ${i + 1}-${j + 1}`),
@@ -70,7 +79,7 @@ const createMockParentChildChunks = (
 /**
  * Factory for creating mock QA chunks
  */
-const createMockQAChunks = (count: number): Array<{ question: string, answer: string }> => {
+const createMockQAChunks = (count: number): Array<{ question: string; answer: string }> => {
   return Array.from({ length: count }, (_, i) => ({
     question: `Question ${i + 1}?`,
     answer: `Answer ${i + 1}`,
@@ -132,10 +141,7 @@ describe('formatPreviewChunks', () => {
     })
 
     it('should handle general chunks with empty content', () => {
-      const outputs = createGeneralChunkOutputs([
-        { content: '' },
-        { content: 'Valid content' },
-      ])
+      const outputs = createGeneralChunkOutputs([{ content: '' }, { content: 'Valid content' }])
 
       const result = formatPreviewChunks(outputs) as GeneralChunks
 
@@ -174,10 +180,13 @@ describe('formatPreviewChunks', () => {
   describe('Parent-Child Chunks (hierarchical_model)', () => {
     describe('Paragraph Mode', () => {
       it('should format parent-child chunks in paragraph mode correctly', () => {
-        const outputs = createParentChildChunkOutputs([
-          { content: 'Parent 1', child_chunks: ['Child 1-1', 'Child 1-2'] },
-          { content: 'Parent 2', child_chunks: ['Child 2-1'] },
-        ], 'paragraph')
+        const outputs = createParentChildChunkOutputs(
+          [
+            { content: 'Parent 1', child_chunks: ['Child 1-1', 'Child 1-2'] },
+            { content: 'Parent 2', child_chunks: ['Child 2-1'] },
+          ],
+          'paragraph',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -196,7 +205,10 @@ describe('formatPreviewChunks', () => {
       })
 
       it('should limit parent chunks to RAG_PIPELINE_PREVIEW_CHUNK_NUM (20) in paragraph mode', () => {
-        const outputs = createParentChildChunkOutputs(createMockParentChildChunks(30, 2), 'paragraph')
+        const outputs = createParentChildChunkOutputs(
+          createMockParentChildChunks(30, 2),
+          'paragraph',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -204,9 +216,15 @@ describe('formatPreviewChunks', () => {
       })
 
       it('should NOT limit child chunks in paragraph mode', () => {
-        const outputs = createParentChildChunkOutputs([
-          { content: 'Parent 1', child_chunks: Array.from({ length: 50 }, (_, i) => `Child ${i + 1}`) },
-        ], 'paragraph')
+        const outputs = createParentChildChunkOutputs(
+          [
+            {
+              content: 'Parent 1',
+              child_chunks: Array.from({ length: 50 }, (_, i) => `Child ${i + 1}`),
+            },
+          ],
+          'paragraph',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -214,9 +232,10 @@ describe('formatPreviewChunks', () => {
       })
 
       it('should handle empty child_chunks in paragraph mode', () => {
-        const outputs = createParentChildChunkOutputs([
-          { content: 'Parent with no children', child_chunks: [] },
-        ], 'paragraph')
+        const outputs = createParentChildChunkOutputs(
+          [{ content: 'Parent with no children', child_chunks: [] }],
+          'paragraph',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -226,20 +245,28 @@ describe('formatPreviewChunks', () => {
 
     describe('Full-Doc Mode', () => {
       it('should format parent-child chunks in full-doc mode correctly', () => {
-        const outputs = createParentChildChunkOutputs([
-          { content: 'Full Doc Parent', child_chunks: ['Child 1', 'Child 2', 'Child 3'] },
-        ], 'full-doc')
+        const outputs = createParentChildChunkOutputs(
+          [{ content: 'Full Doc Parent', child_chunks: ['Child 1', 'Child 2', 'Child 3'] }],
+          'full-doc',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
         expect(result.parent_mode).toBe('full-doc')
         expect(result.parent_child_chunks).toHaveLength(1)
         expect(result.parent_child_chunks[0]!.parent_content).toBe('Full Doc Parent')
-        expect(result.parent_child_chunks[0]!.child_contents).toEqual(['Child 1', 'Child 2', 'Child 3'])
+        expect(result.parent_child_chunks[0]!.child_contents).toEqual([
+          'Child 1',
+          'Child 2',
+          'Child 3',
+        ])
       })
 
       it('should NOT limit parent chunks in full-doc mode', () => {
-        const outputs = createParentChildChunkOutputs(createMockParentChildChunks(30, 2), 'full-doc')
+        const outputs = createParentChildChunkOutputs(
+          createMockParentChildChunks(30, 2),
+          'full-doc',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -247,9 +274,15 @@ describe('formatPreviewChunks', () => {
       })
 
       it('should limit child chunks to RAG_PIPELINE_PREVIEW_CHUNK_NUM (20) in full-doc mode', () => {
-        const outputs = createParentChildChunkOutputs([
-          { content: 'Parent', child_chunks: Array.from({ length: 50 }, (_, i) => `Child ${i + 1}`) },
-        ], 'full-doc')
+        const outputs = createParentChildChunkOutputs(
+          [
+            {
+              content: 'Parent',
+              child_chunks: Array.from({ length: 50 }, (_, i) => `Child ${i + 1}`),
+            },
+          ],
+          'full-doc',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -259,10 +292,19 @@ describe('formatPreviewChunks', () => {
       })
 
       it('should handle multiple parents with many children in full-doc mode', () => {
-        const outputs = createParentChildChunkOutputs([
-          { content: 'Parent 1', child_chunks: Array.from({ length: 25 }, (_, i) => `P1-Child ${i + 1}`) },
-          { content: 'Parent 2', child_chunks: Array.from({ length: 30 }, (_, i) => `P2-Child ${i + 1}`) },
-        ], 'full-doc')
+        const outputs = createParentChildChunkOutputs(
+          [
+            {
+              content: 'Parent 1',
+              child_chunks: Array.from({ length: 25 }, (_, i) => `P1-Child ${i + 1}`),
+            },
+            {
+              content: 'Parent 2',
+              child_chunks: Array.from({ length: 30 }, (_, i) => `P2-Child ${i + 1}`),
+            },
+          ],
+          'full-doc',
+        )
 
         const result = formatPreviewChunks(outputs) as ParentChildChunks
 
@@ -335,12 +377,16 @@ describe('formatPreviewChunks', () => {
         chunk_structure: ChunkingMode.qa,
         qa_preview: [
           { question: 'Q1', answer: 'A1', extra: 'should be preserved' },
-        ] as unknown as Array<{ question: string, answer: string }>,
+        ] as unknown as Array<{ question: string; answer: string }>,
       }
 
       const result = formatPreviewChunks(outputs) as QAChunks
 
-      expect(result.qa_chunks[0]).toEqual({ question: 'Q1', answer: 'A1', extra: 'should be preserved' })
+      expect(result.qa_chunks[0]).toEqual({
+        question: 'Q1',
+        answer: 'A1',
+        extra: 'should be preserved',
+      })
     })
   })
 
@@ -416,7 +462,9 @@ describe('ResultPreview', () => {
     })
 
     it('should render loading spinner icon when loading', () => {
-      const { container } = render(<ResultPreview {...defaultProps} isRunning={true} outputs={undefined} />)
+      const { container } = render(
+        <ResultPreview {...defaultProps} isRunning={true} outputs={undefined} />,
+      )
 
       const spinner = container.querySelector('.animate-spin')
       expect(spinner)!.toBeInTheDocument()
@@ -426,7 +474,9 @@ describe('ResultPreview', () => {
       render(<ResultPreview {...defaultProps} isRunning={false} error="Something went wrong" />)
 
       expect(screen.getByText('pipeline.result.resultPreview.error'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /pipeline\.result\.resultPreview\.viewDetails/i }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /pipeline\.result\.resultPreview\.viewDetails/i }),
+      )!.toBeInTheDocument()
     })
 
     it('should render outputs when available', () => {
@@ -455,7 +505,14 @@ describe('ResultPreview', () => {
     })
 
     it('should not render error when isRunning is true', () => {
-      render(<ResultPreview {...defaultProps} isRunning={true} error="Error message" outputs={undefined} />)
+      render(
+        <ResultPreview
+          {...defaultProps}
+          isRunning={true}
+          error="Error message"
+          outputs={undefined}
+        />,
+      )
 
       expect(screen.getByText('pipeline.result.resultPreview.loading'))!.toBeInTheDocument()
       expect(screen.queryByText('pipeline.result.resultPreview.error')).not.toBeInTheDocument()
@@ -497,19 +554,13 @@ describe('ResultPreview', () => {
       })
 
       it('should format and pass previewChunks to ChunkCardList', () => {
-        const outputs = createGeneralChunkOutputs([
-          { content: 'Chunk 1' },
-          { content: 'Chunk 2' },
-        ])
+        const outputs = createGeneralChunkOutputs([{ content: 'Chunk 1' }, { content: 'Chunk 2' }])
 
         render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
         const chunkList = screen.getByTestId('chunk-card-list')
         const chunkInfo = JSON.parse(chunkList.getAttribute('data-chunk-info') || '[]')
-        expect(chunkInfo).toEqual([
-          { content: 'Chunk 1' },
-          { content: 'Chunk 2' },
-        ])
+        expect(chunkInfo).toEqual([{ content: 'Chunk 1' }, { content: 'Chunk 2' }])
       })
 
       it('should handle parent-child outputs', () => {
@@ -524,9 +575,7 @@ describe('ResultPreview', () => {
       })
 
       it('should handle QA outputs', () => {
-        const outputs = createQAChunkOutputs([
-          { question: 'Q1', answer: 'A1' },
-        ])
+        const outputs = createQAChunkOutputs([{ question: 'Q1', answer: 'A1' }])
 
         render(<ResultPreview {...defaultProps} outputs={outputs} />)
 
@@ -561,7 +610,9 @@ describe('ResultPreview', () => {
     describe('onSwitchToDetail prop', () => {
       it('should be called when view details button is clicked', () => {
         const onSwitchToDetail = vi.fn()
-        render(<ResultPreview {...defaultProps} error="Error" onSwitchToDetail={onSwitchToDetail} />)
+        render(
+          <ResultPreview {...defaultProps} error="Error" onSwitchToDetail={onSwitchToDetail} />,
+        )
 
         fireEvent.click(screen.getByRole('button', { name: /viewDetails/i }))
 
@@ -571,7 +622,9 @@ describe('ResultPreview', () => {
       it('should not be called automatically on render', () => {
         const onSwitchToDetail = vi.fn()
 
-        render(<ResultPreview {...defaultProps} error="Error" onSwitchToDetail={onSwitchToDetail} />)
+        render(
+          <ResultPreview {...defaultProps} error="Error" onSwitchToDetail={onSwitchToDetail} />,
+        )
 
         expect(onSwitchToDetail).not.toHaveBeenCalled()
       })
@@ -649,7 +702,9 @@ describe('ResultPreview', () => {
   describe('Event Handlers', () => {
     it('should call onSwitchToDetail when view details button is clicked', () => {
       const onSwitchToDetail = vi.fn()
-      render(<ResultPreview {...defaultProps} error="Test error" onSwitchToDetail={onSwitchToDetail} />)
+      render(
+        <ResultPreview {...defaultProps} error="Test error" onSwitchToDetail={onSwitchToDetail} />,
+      )
 
       fireEvent.click(screen.getByRole('button', { name: /viewDetails/i }))
 
@@ -658,7 +713,9 @@ describe('ResultPreview', () => {
 
     it('should handle multiple clicks on view details button', () => {
       const onSwitchToDetail = vi.fn()
-      render(<ResultPreview {...defaultProps} error="Test error" onSwitchToDetail={onSwitchToDetail} />)
+      render(
+        <ResultPreview {...defaultProps} error="Test error" onSwitchToDetail={onSwitchToDetail} />,
+      )
       const button = screen.getByRole('button', { name: /viewDetails/i })
 
       fireEvent.click(button)
@@ -715,7 +772,12 @@ describe('ResultPreview', () => {
 
       rerender(<ResultPreview {...defaultProps} isRunning={true} />)
       rerender(<ResultPreview {...defaultProps} isRunning={false} error="Error" />)
-      rerender(<ResultPreview {...defaultProps} outputs={createGeneralChunkOutputs([{ content: 'Test' }])} />)
+      rerender(
+        <ResultPreview
+          {...defaultProps}
+          outputs={createGeneralChunkOutputs([{ content: 'Test' }])}
+        />,
+      )
       rerender(<ResultPreview {...defaultProps} />)
 
       expect(screen.queryByTestId('chunk-card-list')).not.toBeInTheDocument()
@@ -803,14 +865,18 @@ describe('ResultPreview', () => {
     it('should have correct container classes for loading state', () => {
       const { container } = render(<ResultPreview {...defaultProps} isRunning={true} />)
 
-      const loadingContainer = container.querySelector('.flex.grow.flex-col.items-center.justify-center')
+      const loadingContainer = container.querySelector(
+        '.flex.grow.flex-col.items-center.justify-center',
+      )
       expect(loadingContainer)!.toBeInTheDocument()
     })
 
     it('should have correct container classes for error state', () => {
       const { container } = render(<ResultPreview {...defaultProps} error="Error" />)
 
-      const errorContainer = container.querySelector('.flex.grow.flex-col.items-center.justify-center')
+      const errorContainer = container.querySelector(
+        '.flex.grow.flex-col.items-center.justify-center',
+      )
       expect(errorContainer)!.toBeInTheDocument()
     })
 
@@ -861,9 +927,24 @@ describe('State Transition Matrix', () => {
     { isRunning: false, outputs: undefined, error: undefined, expected: 'empty' },
     { isRunning: true, outputs: undefined, error: undefined, expected: 'loading' },
     { isRunning: false, outputs: undefined, error: 'Error', expected: 'error' },
-    { isRunning: false, outputs: createGeneralChunkOutputs([{ content: 'Test' }]), error: undefined, expected: 'outputs' },
-    { isRunning: true, outputs: createGeneralChunkOutputs([{ content: 'Test' }]), error: undefined, expected: 'outputs' },
-    { isRunning: false, outputs: createGeneralChunkOutputs([{ content: 'Test' }]), error: 'Error', expected: 'both' },
+    {
+      isRunning: false,
+      outputs: createGeneralChunkOutputs([{ content: 'Test' }]),
+      error: undefined,
+      expected: 'outputs',
+    },
+    {
+      isRunning: true,
+      outputs: createGeneralChunkOutputs([{ content: 'Test' }]),
+      error: undefined,
+      expected: 'outputs',
+    },
+    {
+      isRunning: false,
+      outputs: createGeneralChunkOutputs([{ content: 'Test' }]),
+      error: 'Error',
+      expected: 'both',
+    },
     { isRunning: true, outputs: undefined, error: 'Error', expected: 'loading' },
   ]
 

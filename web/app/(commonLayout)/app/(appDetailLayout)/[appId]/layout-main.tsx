@@ -48,57 +48,67 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const isMobile = media === MediaType.mobile
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
   const appInfoActions = useAppInfoActions({ resetKey: appId })
-  const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
-    appDetail: state.appDetail,
-    setAppDetail: state.setAppDetail,
-    setAppSidebarExpand: state.setAppSidebarExpand,
-  })))
+  const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(
+    useShallow((state) => ({
+      appDetail: state.appDetail,
+      setAppDetail: state.setAppDetail,
+      setAppSidebarExpand: state.setAppSidebarExpand,
+    })),
+  )
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
+  const [navigation, setNavigation] = useState<
+    Array<{
+      name: string
+      href: string
+      icon: NavIcon
+      selectedIcon: NavIcon
+    }>
+  >([])
 
-  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
-    const navConfig = [
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: t('appMenus.promptEng', { ns: 'common' }),
-            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-            icon: RiTerminalWindowLine,
-            selectedIcon: RiTerminalWindowFill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
-        href: `/app/${appId}/develop`,
-        icon: RiTerminalBoxLine,
-        selectedIcon: RiTerminalBoxFill,
-      },
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
-            href: `/app/${appId}/logs`,
-            icon: RiFileList3Line,
-            selectedIcon: RiFileList3Fill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
-    ]
-    return navConfig
-  }, [t])
+  const getNavigationConfig = useCallback(
+    (appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
+      const navConfig = [
+        ...(isCurrentWorkspaceEditor
+          ? [
+              {
+                name: t('appMenus.promptEng', { ns: 'common' }),
+                href: `/app/${appId}/${mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT ? 'workflow' : 'configuration'}`,
+                icon: RiTerminalWindowLine,
+                selectedIcon: RiTerminalWindowFill,
+              },
+            ]
+          : []),
+        {
+          name: t('appMenus.apiAccess', { ns: 'common' }),
+          href: `/app/${appId}/develop`,
+          icon: RiTerminalBoxLine,
+          selectedIcon: RiTerminalBoxFill,
+        },
+        ...(isCurrentWorkspaceEditor
+          ? [
+              {
+                name:
+                  mode !== AppModeEnum.WORKFLOW
+                    ? t('appMenus.logAndAnn', { ns: 'common' })
+                    : t('appMenus.logs', { ns: 'common' }),
+                href: `/app/${appId}/logs`,
+                icon: RiFileList3Line,
+                selectedIcon: RiFileList3Fill,
+              },
+            ]
+          : []),
+        {
+          name: t('appMenus.overview', { ns: 'common' }),
+          href: `/app/${appId}/overview`,
+          icon: RiDashboard2Line,
+          selectedIcon: RiDashboard2Fill,
+        },
+      ]
+      return navConfig
+    },
+    [t],
+  )
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
@@ -116,14 +126,16 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     setAppDetail()
     setIsLoadingAppDetail(true)
-    fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
-      setAppDetailRes(res)
-    }).catch((e: any) => {
-      if (e.status === 404)
-        router.replace('/apps')
-    }).finally(() => {
-      setIsLoadingAppDetail(false)
-    })
+    fetchAppDetailDirect({ url: '/apps', id: appId })
+      .then((res: App) => {
+        setAppDetailRes(res)
+      })
+      .catch((e: any) => {
+        if (e.status === 404) router.replace('/apps')
+      })
+      .finally(() => {
+        setIsLoadingAppDetail(false)
+      })
   }, [appId, pathname])
 
   useEffect(() => {
@@ -132,17 +144,27 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const res = appDetailRes
     // redirection
     const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+    if (
+      !canIEditApp &&
+      (pathname.endsWith('configuration') ||
+        pathname.endsWith('workflow') ||
+        pathname.endsWith('logs'))
+    ) {
       router.replace(`/app/${appId}/overview`)
       return
     }
-    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
+    if (
+      (res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) &&
+      pathname.endsWith('configuration')
+    ) {
       router.replace(`/app/${appId}/workflow`)
-    }
-    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
+    } else if (
+      res.mode !== AppModeEnum.WORKFLOW &&
+      res.mode !== AppModeEnum.ADVANCED_CHAT &&
+      pathname.endsWith('workflow')
+    ) {
       router.replace(`/app/${appId}/configuration`)
-    }
-    else {
+    } else {
       setAppDetail({ ...res, enable_sso: false })
       setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
     }
@@ -162,15 +184,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
-      {appDetail && (
-        <AppSideBar
-          navigation={navigation}
-          appInfoActions={appInfoActions}
-        />
-      )}
-      <div className="grow overflow-hidden bg-components-panel-bg">
-        {children}
-      </div>
+      {appDetail && <AppSideBar navigation={navigation} appInfoActions={appInfoActions} />}
+      <div className="grow overflow-hidden bg-components-panel-bg">{children}</div>
       <AppInfoDetailLayer actions={appInfoActions} />
     </div>
   )

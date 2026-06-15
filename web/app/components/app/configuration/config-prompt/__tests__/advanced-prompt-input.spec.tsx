@@ -39,9 +39,7 @@ vi.mock('@remixicon/react', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/base/icons/src/vender/line/files', () => ({
-  Copy: ({ onClick }: { onClick: () => void }) => (
-    <button onClick={onClick}>copy-prompt</button>
-  ),
+  Copy: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>copy-prompt</button>,
   CopyCheck: () => <span>copy-checked</span>,
 }))
 
@@ -66,7 +64,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('../message-type-selector', () => ({
-  default: ({ onChange, value }: { onChange: (value: PromptRole) => void, value: PromptRole }) => (
+  default: ({ onChange, value }: { onChange: (value: PromptRole) => void; value: PromptRole }) => (
     <button onClick={() => onChange('assistant' as PromptRole)}>{`selector:${value}`}</button>
   ),
 }))
@@ -86,7 +84,7 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
 }))
 
 vi.mock('../prompt-editor-height-resize-wrap', () => ({
-  default: ({ children, footer }: { children: ReactNode, footer: ReactNode }) => (
+  default: ({ children, footer }: { children: ReactNode; footer: ReactNode }) => (
     <div>
       {children}
       {footer}
@@ -94,30 +92,31 @@ vi.mock('../prompt-editor-height-resize-wrap', () => ({
   ),
 }))
 
-const createContextValue = () => ({
-  mode: AppModeEnum.CHAT,
-  hasSetBlockStatus: {
-    context: false,
-    history: false,
-    query: false,
-  },
-  modelConfig: {
-    configs: {
-      prompt_variables: [
-        { key: 'existing_var', name: 'Existing', type: 'string', required: true },
-      ],
+const createContextValue = () =>
+  ({
+    mode: AppModeEnum.CHAT,
+    hasSetBlockStatus: {
+      context: false,
+      history: false,
+      query: false,
     },
-  },
-  setModelConfig: mockSetModelConfig,
-  conversationHistoriesRole: {
-    user_prefix: 'user',
-    assistant_prefix: 'assistant',
-  },
-  showHistoryModal: vi.fn(),
-  dataSets: [],
-  showSelectDataSet: vi.fn(),
-  externalDataToolsConfig: [],
-}) as any
+    modelConfig: {
+      configs: {
+        prompt_variables: [
+          { key: 'existing_var', name: 'Existing', type: 'string', required: true },
+        ],
+      },
+    },
+    setModelConfig: mockSetModelConfig,
+    conversationHistoriesRole: {
+      user_prefix: 'user',
+      assistant_prefix: 'assistant',
+    },
+    showHistoryModal: vi.fn(),
+    dataSets: [],
+    showSelectDataSet: vi.fn(),
+    externalDataToolsConfig: [],
+  }) as any
 
 describe('AdvancedPromptInput', () => {
   beforeEach(() => {
@@ -174,16 +173,18 @@ describe('AdvancedPromptInput', () => {
     fireEvent.click(screen.getByText('blur-advanced'))
     fireEvent.click(screen.getByText('operation.add'))
 
-    expect(mockSetModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      configs: expect.objectContaining({
-        prompt_variables: expect.arrayContaining([
-          expect.objectContaining({
-            key: 'new_var',
-            name: 'new_var',
-          }),
-        ]),
+    expect(mockSetModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configs: expect.objectContaining({
+          prompt_variables: expect.arrayContaining([
+            expect.objectContaining({
+              key: 'new_var',
+              name: 'new_var',
+            }),
+          ]),
+        }),
       }),
-    }))
+    )
   })
 
   it('should open the external data tool modal and validate duplicates', () => {
@@ -217,12 +218,16 @@ describe('AdvancedPromptInput', () => {
       variable: 'search_api',
     })
 
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'ADD_EXTERNAL_DATA_TOOL',
-    }))
-    expect(mockEmit).toHaveBeenCalledWith(expect.objectContaining({
-      payload: 'search_api',
-      type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-    }))
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'ADD_EXTERNAL_DATA_TOOL',
+      }),
+    )
+    expect(mockEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: 'search_api',
+        type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+      }),
+    )
   })
 })

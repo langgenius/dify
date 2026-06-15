@@ -27,7 +27,7 @@ const CopyIcon = ({ content }: Props) => {
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <button
             type="button"
             aria-label={safeTooltipText}
@@ -35,15 +35,15 @@ const CopyIcon = ({ content }: Props) => {
             onClick={handleCopy}
             onMouseLeave={reset}
           >
-            {!copied
-              ? (<span aria-hidden className="i-custom-vender-line-files-copy size-3.5" />)
-              : (<span aria-hidden className="i-custom-vender-line-files-copy-check size-3.5" />)}
+            {!copied ? (
+              <span aria-hidden className="i-custom-vender-line-files-copy size-3.5" />
+            ) : (
+              <span aria-hidden className="i-custom-vender-line-files-copy-check size-3.5" />
+            )}
           </button>
-        )}
+        }
       />
-      <TooltipContent>
-        {safeTooltipText}
-      </TooltipContent>
+      <TooltipContent>{safeTooltipText}</TooltipContent>
     </Tooltip>
   )
 }

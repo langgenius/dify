@@ -6,11 +6,7 @@ import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
@@ -69,8 +65,10 @@ const ToolSelector: FC<Props> = ({
   nodeId = '',
 }) => {
   const { t } = useTranslation()
-  const sideOffset = typeof offset === 'number' ? offset : (typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0))
-  const alignOffset = typeof offset === 'number' ? 0 : (typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0))
+  const sideOffset =
+    typeof offset === 'number' ? offset : typeof offset === 'function' ? 0 : (offset?.mainAxis ?? 0)
+  const alignOffset =
+    typeof offset === 'number' ? 0 : typeof offset === 'function' ? 0 : (offset?.crossAxis ?? 0)
 
   // Use custom hook for state management
   const state = useToolSelectorState({ value, onSelect, onSelectMultiple })
@@ -106,8 +104,7 @@ const ToolSelector: FC<Props> = ({
   const portalOpen = trigger ? controlledState : isShow
   const onPortalOpenChange = trigger ? onControlledStateChange : setIsShow
   const handlePortalOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && (disabled || !currentProvider || !currentTool))
-      return
+    if (nextOpen && (disabled || !currentProvider || !currentTool)) return
     onPortalOpenChange?.(nextOpen)
   }
 
@@ -133,24 +130,13 @@ const ToolSelector: FC<Props> = ({
   )
 
   return (
-    <Popover
-      open={portalOpen}
-      onOpenChange={handlePortalOpenChange}
-    >
-      <PopoverTrigger
-        nativeButton={false}
-        render={<div className="w-full" />}
-      >
+    <Popover open={portalOpen} onOpenChange={handlePortalOpenChange}>
+      <PopoverTrigger nativeButton={false} render={<div className="w-full" />}>
         {trigger}
 
         {/* Default trigger - no value */}
         {!trigger && !value?.provider_name && (
-          <ToolTrigger
-            isConfigure
-            open={isShow}
-            value={value}
-            provider={currentProvider}
-          />
+          <ToolTrigger isConfigure open={isShow} value={value} provider={currentProvider} />
         )}
 
         {/* Default trigger - with value */}
@@ -183,11 +169,12 @@ const ToolSelector: FC<Props> = ({
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
       >
-        <div className={cn(
-          'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
-          'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
-          'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-xs',
-        )}
+        <div
+          className={cn(
+            'relative max-h-[642px] min-h-20 w-[361px] rounded-xl',
+            'border-[0.5px] border-components-panel-border bg-components-panel-bg-blur',
+            'overflow-y-auto pb-2 pb-4 shadow-lg backdrop-blur-xs',
+          )}
         >
           {/* Header */}
           <div className="px-4 pt-3.5 pb-1 system-xl-semibold text-text-primary">

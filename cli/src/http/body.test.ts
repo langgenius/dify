@@ -34,8 +34,14 @@ describe('isJSONSerializable', () => {
 
 describe('buildBody', () => {
   it('returns no body for GET regardless of json/body input', () => {
-    expect(buildBody({ method: 'GET', json: { a: 1 } })).toEqual({ body: undefined, contentType: undefined })
-    expect(buildBody({ method: 'GET', body: 'x' })).toEqual({ body: undefined, contentType: undefined })
+    expect(buildBody({ method: 'GET', json: { a: 1 } })).toEqual({
+      body: undefined,
+      contentType: undefined,
+    })
+    expect(buildBody({ method: 'GET', body: 'x' })).toEqual({
+      body: undefined,
+      contentType: undefined,
+    })
   })
 
   it('serializes json and sets Content-Type on payload methods', () => {

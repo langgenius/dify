@@ -7,7 +7,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Initials or image-based avatar built on Base UI. Falls back to the first letter when the image fails to load.',
+        component:
+          'Initials or image-based avatar built on Base UI. Falls back to the first letter when the image fails to load.',
       },
       source: {
         language: 'tsx',
@@ -48,9 +49,9 @@ export const WithFallback: Story = {
 }
 
 export const AllSizes: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-end gap-4">
-      {(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map(size => (
+      {(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map((size) => (
         <div key={size} className="flex flex-col items-center gap-2">
           <Avatar {...args} size={size} avatar="https://i.pravatar.cc/96?u=size-test" />
           <span className="text-xs text-text-tertiary">{size}</span>
@@ -73,9 +74,9 @@ export const AllSizes: Story = {
 }
 
 export const AllFallbackSizes: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-end gap-4">
-      {(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map(size => (
+      {(['xxs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl'] as const).map((size) => (
         <div key={size} className="flex flex-col items-center gap-2">
           <Avatar {...args} size={size} avatar={null} name="Alex" />
           <span className="text-xs text-text-tertiary">{size}</span>

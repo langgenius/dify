@@ -49,7 +49,7 @@ const ExamplePrompts: React.FC<Props> = ({ mode, onSelect }) => {
         {t('workflowGenerator.examples.label')}
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {prompts.map(prompt => (
+        {prompts.map((prompt) => (
           <button
             key={prompt}
             type="button"

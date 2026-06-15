@@ -13,27 +13,26 @@ type UploadMethodFieldProps = {
   className?: string
 }
 
-const UploadMethodField = ({
-  label,
-  labelOptions,
-  className,
-}: UploadMethodFieldProps) => {
+const UploadMethodField = ({ label, labelOptions, className }: UploadMethodFieldProps) => {
   const { t } = useTranslation()
   const field = useFieldContext<TransferMethod[]>()
 
   const { value } = field.state
 
-  const handleUploadMethodChange = useCallback((method: TransferMethod) => {
-    field.handleChange(method === TransferMethod.all ? [TransferMethod.local_file, TransferMethod.remote_url] : [method])
-  }, [field])
+  const handleUploadMethodChange = useCallback(
+    (method: TransferMethod) => {
+      field.handleChange(
+        method === TransferMethod.all
+          ? [TransferMethod.local_file, TransferMethod.remote_url]
+          : [method],
+      )
+    },
+    [field],
+  )
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        {...(labelOptions ?? {})}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
       <div className="grid grid-cols-3 gap-2">
         <OptionCard
           title={t('variableConfig.localUpload', { ns: 'appDebug' })}
@@ -47,7 +46,9 @@ const UploadMethodField = ({
         />
         <OptionCard
           title={t('variableConfig.both', { ns: 'appDebug' })}
-          selected={value.includes(TransferMethod.local_file) && value.includes(TransferMethod.remote_url)}
+          selected={
+            value.includes(TransferMethod.local_file) && value.includes(TransferMethod.remote_url)
+          }
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.all)}
         />
       </div>

@@ -4,19 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       cli_ref:
-        description: "Git ref (default: current branch)"
+        description: 'Git ref (default: current branch)'
         type: string
         required: false
 
       edition:
-        description: "Dify edition"
+        description: 'Dify edition'
         type: choice
         required: false
         default: ee
         options: [ee, ce]
 
       test_scope:
-        description: "smoke = [P0] only  /  full = all cases"
+        description: 'smoke = [P0] only  /  full = all cases'
         type: choice
         required: false
         default: full
@@ -24,23 +24,23 @@ on:
 
       # ── Suite on/off ────────────────────────────────────────────────────────
       suite_framework_output_error:
-        description: "framework + output + error-handling suites"
+        description: 'framework + output + error-handling suites'
         type: boolean
         default: true
       suite_discovery:
-        description: "discovery suite (get app / describe app)"
+        description: 'discovery suite (get app / describe app)'
         type: boolean
         default: true
       suite_run:
-        description: "run suite (basic / streaming / conversation / file / hitl)"
+        description: 'run suite (basic / streaming / conversation / file / hitl)'
         type: boolean
         default: true
       suite_auth:
-        description: "auth suite (login / status / whoami / use / devices / logout)"
+        description: 'auth suite (login / status / whoami / use / devices / logout)'
         type: boolean
         default: true
       suite_agent:
-        description: "agent suite"
+        description: 'agent suite'
         type: boolean
         default: true
 
@@ -51,32 +51,31 @@ permissions:
 # Each job reads DIFY_E2E_TOKEN + app IDs from the provision job outputs,
 # so global-setup skips minting and finds existing apps in < 10 s.
 env:
-  DIFY_E2E_NO_KEYRING: "1"   # Linux CI has no keychain; skip probe
-  VITEST_RETRY:        "2"    # Retry flaky staging responses
+  DIFY_E2E_NO_KEYRING: '1' # Linux CI has no keychain; skip probe
+  VITEST_RETRY: '2' # Retry flaky staging responses
 
 jobs:
-
-# ════════════════════════════════════════════════════════════════════════════
-# 0. PROVISION — mint token + import DSL fixtures (runs once, outputs IDs)
-# ════════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # 0. PROVISION — mint token + import DSL fixtures (runs once, outputs IDs)
+  # ════════════════════════════════════════════════════════════════════════════
   provision:
-    name: "Provision: mint token + DSL apps"
+    name: 'Provision: mint token + DSL apps'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      token:                      ${{ steps.out.outputs.DIFY_E2E_TOKEN }}
-      workspace_id:               ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_ID }}
-      workspace_name:             ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_NAME }}
-      ws2_id:                     ${{ steps.out.outputs.DIFY_E2E_WS2_ID }}
-      chat_app_id:                ${{ steps.out.outputs.DIFY_E2E_CHAT_APP_ID }}
-      workflow_app_id:            ${{ steps.out.outputs.DIFY_E2E_WORKFLOW_APP_ID }}
-      file_app_id:                ${{ steps.out.outputs.DIFY_E2E_FILE_APP_ID }}
-      file_chat_app_id:           ${{ steps.out.outputs.DIFY_E2E_FILE_CHAT_APP_ID }}
-      hitl_app_id:                ${{ steps.out.outputs.DIFY_E2E_HITL_APP_ID }}
-      hitl_external_app_id:       ${{ steps.out.outputs.DIFY_E2E_HITL_EXTERNAL_APP_ID }}
-      hitl_single_action_app_id:  ${{ steps.out.outputs.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID }}
-      hitl_multi_node_app_id:     ${{ steps.out.outputs.DIFY_E2E_HITL_MULTI_NODE_APP_ID }}
-      ws2_app_id:                 ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
+      token: ${{ steps.out.outputs.DIFY_E2E_TOKEN }}
+      workspace_id: ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_ID }}
+      workspace_name: ${{ steps.out.outputs.DIFY_E2E_WORKSPACE_NAME }}
+      ws2_id: ${{ steps.out.outputs.DIFY_E2E_WS2_ID }}
+      chat_app_id: ${{ steps.out.outputs.DIFY_E2E_CHAT_APP_ID }}
+      workflow_app_id: ${{ steps.out.outputs.DIFY_E2E_WORKFLOW_APP_ID }}
+      file_app_id: ${{ steps.out.outputs.DIFY_E2E_FILE_APP_ID }}
+      file_chat_app_id: ${{ steps.out.outputs.DIFY_E2E_FILE_CHAT_APP_ID }}
+      hitl_app_id: ${{ steps.out.outputs.DIFY_E2E_HITL_APP_ID }}
+      hitl_external_app_id: ${{ steps.out.outputs.DIFY_E2E_HITL_EXTERNAL_APP_ID }}
+      hitl_single_action_app_id: ${{ steps.out.outputs.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID }}
+      hitl_multi_node_app_id: ${{ steps.out.outputs.DIFY_E2E_HITL_MULTI_NODE_APP_ID }}
+      ws2_app_id: ${{ steps.out.outputs.DIFY_E2E_WS2_APP_ID }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
@@ -101,18 +100,18 @@ jobs:
         id: out
         working-directory: cli
         env:
-          DIFY_E2E_HOST:     ${{ secrets.DIFY_E2E_HOST }}
-          DIFY_E2E_EMAIL:    ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_HOST: ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL: ${{ secrets.DIFY_E2E_EMAIL }}
           DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
-          DIFY_E2E_TOKEN:    ${{ secrets.DIFY_E2E_TOKEN }}
-          DIFY_E2E_EDITION:  ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN: ${{ secrets.DIFY_E2E_TOKEN }}
+          DIFY_E2E_EDITION: ${{ inputs.edition || 'ee' }}
         run: bun scripts/e2e-provision.ts
 
-# ════════════════════════════════════════════════════════════════════════════
-# 1-B. framework + output + error-handling (parallel with run/discovery)
-# ════════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # 1-B. framework + output + error-handling (parallel with run/discovery)
+  # ════════════════════════════════════════════════════════════════════════════
   suite-framework-output-error:
-    name: "Suite: framework + output + error-handling"
+    name: 'Suite: framework + output + error-handling'
     if: ${{ inputs.suite_framework_output_error != 'false' }}
     needs: provision
     runs-on: ubuntu-latest
@@ -138,16 +137,16 @@ jobs:
 
       - name: Run framework + output + error-handling
         env:
-          DIFY_E2E_HOST:           ${{ secrets.DIFY_E2E_HOST }}
-          DIFY_E2E_EMAIL:          ${{ secrets.DIFY_E2E_EMAIL }}
-          DIFY_E2E_PASSWORD:       ${{ secrets.DIFY_E2E_PASSWORD }}
-          DIFY_E2E_EDITION:        ${{ inputs.edition || 'ee' }}
-          DIFY_E2E_TOKEN:          ${{ needs.provision.outputs.token }}
-          DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_HOST: ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL: ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION: ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN: ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID: ${{ needs.provision.outputs.workspace_id }}
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
-          DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_CHAT_APP_ID: ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
-          DIFY_E2E_INCLUDE: "test/e2e/suites/framework/**/*.e2e.ts,test/e2e/suites/output/**/*.e2e.ts,test/e2e/suites/error-handling/**/*.e2e.ts"
+          DIFY_E2E_INCLUDE: 'test/e2e/suites/framework/**/*.e2e.ts,test/e2e/suites/output/**/*.e2e.ts,test/e2e/suites/error-handling/**/*.e2e.ts'
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
             pnpm test:e2e -- -t "\[P0\]"
@@ -155,11 +154,11 @@ jobs:
             pnpm test:e2e
           fi
 
-# ════════════════════════════════════════════════════════════════════════════
-# 1-C. Discovery (parallel)
-# ════════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # 1-C. Discovery (parallel)
+  # ════════════════════════════════════════════════════════════════════════════
   suite-discovery:
-    name: "Suite: discovery"
+    name: 'Suite: discovery'
     if: ${{ inputs.suite_discovery != 'false' }}
     needs: provision
     runs-on: ubuntu-latest
@@ -185,17 +184,17 @@ jobs:
 
       - name: Run discovery suite
         env:
-          DIFY_E2E_HOST:           ${{ secrets.DIFY_E2E_HOST }}
-          DIFY_E2E_EMAIL:          ${{ secrets.DIFY_E2E_EMAIL }}
-          DIFY_E2E_PASSWORD:       ${{ secrets.DIFY_E2E_PASSWORD }}
-          DIFY_E2E_EDITION:        ${{ inputs.edition || 'ee' }}
-          DIFY_E2E_TOKEN:          ${{ needs.provision.outputs.token }}
-          DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_HOST: ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL: ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION: ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN: ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID: ${{ needs.provision.outputs.workspace_id }}
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
-          DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
-          DIFY_E2E_CHAT_APP_ID:    ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WS2_ID: ${{ needs.provision.outputs.ws2_id }}
+          DIFY_E2E_CHAT_APP_ID: ${{ needs.provision.outputs.chat_app_id }}
           DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
-          DIFY_E2E_INCLUDE: "test/e2e/suites/discovery/**/*.e2e.ts"
+          DIFY_E2E_INCLUDE: 'test/e2e/suites/discovery/**/*.e2e.ts'
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
             pnpm test:e2e -- -t "\[P0\]"
@@ -203,11 +202,11 @@ jobs:
             pnpm test:e2e
           fi
 
-# ════════════════════════════════════════════════════════════════════════════
-# 1-D. Run suite — 5 files in matrix (parallel)
-# ════════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # 1-D. Run suite — 5 files in matrix (parallel)
+  # ════════════════════════════════════════════════════════════════════════════
   suite-run:
-    name: "Suite: run / ${{ matrix.name }}"
+    name: 'Suite: run / ${{ matrix.name }}'
     if: ${{ inputs.suite_run != 'false' }}
     needs: provision
     runs-on: ubuntu-latest
@@ -246,25 +245,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm tree:gen
 
-      - name: "Run run/${{ matrix.name }}"
+      - name: 'Run run/${{ matrix.name }}'
         env:
-          DIFY_E2E_HOST:                      ${{ secrets.DIFY_E2E_HOST }}
-          DIFY_E2E_EMAIL:                     ${{ secrets.DIFY_E2E_EMAIL }}
-          DIFY_E2E_PASSWORD:                  ${{ secrets.DIFY_E2E_PASSWORD }}
-          DIFY_E2E_EDITION:                   ${{ inputs.edition || 'ee' }}
-          DIFY_E2E_SSO_TOKEN:                 ${{ secrets.DIFY_E2E_SSO_TOKEN }}
-          DIFY_E2E_TOKEN:                     ${{ needs.provision.outputs.token }}
-          DIFY_E2E_WORKSPACE_ID:              ${{ needs.provision.outputs.workspace_id }}
-          DIFY_E2E_WORKSPACE_NAME:            ${{ needs.provision.outputs.workspace_name }}
-          DIFY_E2E_CHAT_APP_ID:               ${{ needs.provision.outputs.chat_app_id }}
-          DIFY_E2E_WORKFLOW_APP_ID:           ${{ needs.provision.outputs.workflow_app_id }}
-          DIFY_E2E_FILE_APP_ID:               ${{ needs.provision.outputs.file_app_id }}
-          DIFY_E2E_FILE_CHAT_APP_ID:          ${{ needs.provision.outputs.file_chat_app_id }}
-          DIFY_E2E_HITL_APP_ID:               ${{ needs.provision.outputs.hitl_app_id }}
-          DIFY_E2E_HITL_EXTERNAL_APP_ID:      ${{ needs.provision.outputs.hitl_external_app_id }}
+          DIFY_E2E_HOST: ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL: ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION: ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_SSO_TOKEN: ${{ secrets.DIFY_E2E_SSO_TOKEN }}
+          DIFY_E2E_TOKEN: ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID: ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_CHAT_APP_ID: ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
+          DIFY_E2E_FILE_APP_ID: ${{ needs.provision.outputs.file_app_id }}
+          DIFY_E2E_FILE_CHAT_APP_ID: ${{ needs.provision.outputs.file_chat_app_id }}
+          DIFY_E2E_HITL_APP_ID: ${{ needs.provision.outputs.hitl_app_id }}
+          DIFY_E2E_HITL_EXTERNAL_APP_ID: ${{ needs.provision.outputs.hitl_external_app_id }}
           DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
-          DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
-          DIFY_E2E_INCLUDE: "test/e2e/suites/run/${{ matrix.file }}"
+          DIFY_E2E_HITL_MULTI_NODE_APP_ID: ${{ needs.provision.outputs.hitl_multi_node_app_id }}
+          DIFY_E2E_INCLUDE: 'test/e2e/suites/run/${{ matrix.file }}'
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
             pnpm test:e2e -- -t "\[P0\]"
@@ -280,11 +279,11 @@ jobs:
           path: cli/test-results/
           retention-days: 3
 
-# ════════════════════════════════════════════════════════════════════════════
-# 1-E. auth/login + status + whoami (parallel, read-only, safe)
-# ════════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # 1-E. auth/login + status + whoami (parallel, read-only, safe)
+  # ════════════════════════════════════════════════════════════════════════════
   suite-auth-safe:
-    name: "Suite: auth (login / status / whoami)"
+    name: 'Suite: auth (login / status / whoami)'
     if: ${{ inputs.suite_auth != 'false' }}
     needs: provision
     runs-on: ubuntu-latest
@@ -310,15 +309,15 @@ jobs:
 
       - name: Run auth/login + status + whoami
         env:
-          DIFY_E2E_HOST:           ${{ secrets.DIFY_E2E_HOST }}
-          DIFY_E2E_EMAIL:          ${{ secrets.DIFY_E2E_EMAIL }}
-          DIFY_E2E_PASSWORD:       ${{ secrets.DIFY_E2E_PASSWORD }}
-          DIFY_E2E_EDITION:        ${{ inputs.edition || 'ee' }}
-          DIFY_E2E_TOKEN:          ${{ needs.provision.outputs.token }}
-          DIFY_E2E_WORKSPACE_ID:   ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_HOST: ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL: ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION: ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN: ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID: ${{ needs.provision.outputs.workspace_id }}
           DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
-          DIFY_E2E_WS2_ID:         ${{ needs.provision.outputs.ws2_id }}
-          DIFY_E2E_INCLUDE: "test/e2e/suites/auth/login.e2e.ts,test/e2e/suites/auth/status.e2e.ts,test/e2e/suites/auth/whoami.e2e.ts"
+          DIFY_E2E_WS2_ID: ${{ needs.provision.outputs.ws2_id }}
+          DIFY_E2E_INCLUDE: 'test/e2e/suites/auth/login.e2e.ts,test/e2e/suites/auth/status.e2e.ts,test/e2e/suites/auth/whoami.e2e.ts'
         run: |
           if [ "${{ inputs.test_scope }}" = "smoke" ]; then
             pnpm test:e2e -- -t "\[P0\]"
@@ -326,13 +325,13 @@ jobs:
             pnpm test:e2e
           fi
 
-# ════════════════════════════════════════════════════════════════════════════
-# 2. DESTRUCTIVE — auth/use + devices + logout + agent (serial, runs LAST)
-#    Must wait for ALL parallel suites to finish to avoid token revocation
-#    invalidating other in-flight requests.
-# ════════════════════════════════════════════════════════════════════════════
+  # ════════════════════════════════════════════════════════════════════════════
+  # 2. DESTRUCTIVE — auth/use + devices + logout + agent (serial, runs LAST)
+  #    Must wait for ALL parallel suites to finish to avoid token revocation
+  #    invalidating other in-flight requests.
+  # ════════════════════════════════════════════════════════════════════════════
   suite-last:
-    name: "Suite: auth-use + devices + logout + agent (last, serial)"
+    name: 'Suite: auth-use + devices + logout + agent (last, serial)'
     # Runs when auth is selected; also runs after all parallel jobs finish
     if: ${{ inputs.suite_auth != 'false' || inputs.suite_agent != 'false' }}
     needs:
@@ -366,20 +365,20 @@ jobs:
 
       - name: Run use / devices / logout / agent (serial)
         env:
-          DIFY_E2E_HOST:                      ${{ secrets.DIFY_E2E_HOST }}
-          DIFY_E2E_EMAIL:                     ${{ secrets.DIFY_E2E_EMAIL }}
-          DIFY_E2E_PASSWORD:                  ${{ secrets.DIFY_E2E_PASSWORD }}
-          DIFY_E2E_EDITION:                   ${{ inputs.edition || 'ee' }}
-          DIFY_E2E_TOKEN:                     ${{ needs.provision.outputs.token }}
-          DIFY_E2E_WORKSPACE_ID:              ${{ needs.provision.outputs.workspace_id }}
-          DIFY_E2E_WORKSPACE_NAME:            ${{ needs.provision.outputs.workspace_name }}
-          DIFY_E2E_WS2_ID:                    ${{ needs.provision.outputs.ws2_id }}
-          DIFY_E2E_CHAT_APP_ID:               ${{ needs.provision.outputs.chat_app_id }}
-          DIFY_E2E_WORKFLOW_APP_ID:           ${{ needs.provision.outputs.workflow_app_id }}
-          DIFY_E2E_HITL_APP_ID:               ${{ needs.provision.outputs.hitl_app_id }}
-          DIFY_E2E_HITL_EXTERNAL_APP_ID:      ${{ needs.provision.outputs.hitl_external_app_id }}
+          DIFY_E2E_HOST: ${{ secrets.DIFY_E2E_HOST }}
+          DIFY_E2E_EMAIL: ${{ secrets.DIFY_E2E_EMAIL }}
+          DIFY_E2E_PASSWORD: ${{ secrets.DIFY_E2E_PASSWORD }}
+          DIFY_E2E_EDITION: ${{ inputs.edition || 'ee' }}
+          DIFY_E2E_TOKEN: ${{ needs.provision.outputs.token }}
+          DIFY_E2E_WORKSPACE_ID: ${{ needs.provision.outputs.workspace_id }}
+          DIFY_E2E_WORKSPACE_NAME: ${{ needs.provision.outputs.workspace_name }}
+          DIFY_E2E_WS2_ID: ${{ needs.provision.outputs.ws2_id }}
+          DIFY_E2E_CHAT_APP_ID: ${{ needs.provision.outputs.chat_app_id }}
+          DIFY_E2E_WORKFLOW_APP_ID: ${{ needs.provision.outputs.workflow_app_id }}
+          DIFY_E2E_HITL_APP_ID: ${{ needs.provision.outputs.hitl_app_id }}
+          DIFY_E2E_HITL_EXTERNAL_APP_ID: ${{ needs.provision.outputs.hitl_external_app_id }}
           DIFY_E2E_HITL_SINGLE_ACTION_APP_ID: ${{ needs.provision.outputs.hitl_single_action_app_id }}
-          DIFY_E2E_HITL_MULTI_NODE_APP_ID:    ${{ needs.provision.outputs.hitl_multi_node_app_id }}
+          DIFY_E2E_HITL_MULTI_NODE_APP_ID: ${{ needs.provision.outputs.hitl_multi_node_app_id }}
         run: |
           # Collect files in safe order: use → devices → logout (revokes last) → agent
           FILES=()

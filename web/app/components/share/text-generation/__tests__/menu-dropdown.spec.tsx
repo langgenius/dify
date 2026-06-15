@@ -13,12 +13,13 @@ vi.mock('../info-modal', () => ({
     onClose: () => void
     data?: SiteInfo
   }) => {
-    if (!isShow)
-      return null
+    if (!isShow) return null
     return (
       <div data-testid="info-modal">
         <span>{data?.title}</span>
-        <button type="button" onClick={onClose}>Close Info</button>
+        <button type="button" onClick={onClose}>
+          Close Info
+        </button>
       </div>
     )
   },
@@ -262,7 +263,9 @@ describe('MenuDropdown', () => {
 
   describe('memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((MenuDropdown as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 })

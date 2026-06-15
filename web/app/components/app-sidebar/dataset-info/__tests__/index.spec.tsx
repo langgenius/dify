@@ -2,11 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import {
-  ChunkingMode,
-  DatasetPermission,
-  DataSourceType,
-} from '@/models/datasets'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetInfo from '..'
 import Dropdown from '../dropdown'
@@ -97,7 +93,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) =>
+    selector({ dataset: mockDataset }),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -141,12 +138,15 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
     onClose: () => void
     onSuccess?: () => void
   }) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="rename-modal">
-        <button type="button" onClick={onSuccess}>Success</button>
-        <button type="button" onClick={onClose}>Close</button>
+        <button type="button" onClick={onSuccess}>
+          Success
+        </button>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
       </div>
     )
   },
@@ -286,7 +286,9 @@ describe('Menu', () => {
 
       // Assert
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.queryByText('datasetPipeline.operations.exportPipeline')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetPipeline.operations.exportPipeline'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
   })

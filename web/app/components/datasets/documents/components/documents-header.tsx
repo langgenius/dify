@@ -1,6 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
+import type {
+  BuiltInMetadataItem,
+  MetadataItemWithValueLength,
+} from '@/app/components/datasets/metadata/types'
 import type { SortType } from '@/service/datasets'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { Button } from '@langgenius/dify-ui/button'
@@ -86,29 +89,36 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
   const isDataSourceNotion = dataSourceType === DataSourceType.NOTION
   const isDataSourceWeb = dataSourceType === DataSourceType.WEB
 
-  const statusFilterItems: SelectOption[] = useMemo(() => [
-    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
-    { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
-    { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
-    { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
-    { value: 'error', name: DOC_INDEX_STATUS_MAP.error.text },
-    { value: 'available', name: DOC_INDEX_STATUS_MAP.available.text },
-    { value: 'enabled', name: DOC_INDEX_STATUS_MAP.enabled.text },
-    { value: 'disabled', name: DOC_INDEX_STATUS_MAP.disabled.text },
-    { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
-  ], [DOC_INDEX_STATUS_MAP, t])
+  const statusFilterItems: SelectOption[] = useMemo(
+    () => [
+      { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
+      { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
+      { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
+      { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
+      { value: 'error', name: DOC_INDEX_STATUS_MAP.error.text },
+      { value: 'available', name: DOC_INDEX_STATUS_MAP.available.text },
+      { value: 'enabled', name: DOC_INDEX_STATUS_MAP.enabled.text },
+      { value: 'disabled', name: DOC_INDEX_STATUS_MAP.disabled.text },
+      { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
+    ],
+    [DOC_INDEX_STATUS_MAP, t],
+  )
 
-  const sortItems: SelectOption[] = useMemo(() => [
-    { value: 'created_at', name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string },
-    { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
-  ], [t])
+  const sortItems: SelectOption[] = useMemo(
+    () => [
+      {
+        value: 'created_at',
+        name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string,
+      },
+      { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
+    ],
+    [t],
+  )
 
   // Determine add button text based on data source type
   const addButtonText = useMemo(() => {
-    if (isDataSourceNotion)
-      return t('list.addPages', { ns: 'datasetDocuments' })
-    if (isDataSourceWeb)
-      return t('list.addUrl', { ns: 'datasetDocuments' })
+    if (isDataSourceNotion) return t('list.addPages', { ns: 'datasetDocuments' })
+    if (isDataSourceWeb) return t('list.addUrl', { ns: 'datasetDocuments' })
     return t('list.addFile', { ns: 'datasetDocuments' })
   }, [isDataSourceNotion, isDataSourceWeb, t])
 
@@ -142,7 +152,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             showLeftIcon={false}
             value={statusFilterValue}
             items={statusFilterItems}
-            onSelect={item => onStatusFilterChange(item?.value ? String(item.value) : '')}
+            onSelect={(item) => onStatusFilterChange(item?.value ? String(item.value) : '')}
             onClear={onStatusFilterClear}
           />
           <Input
@@ -150,7 +160,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             showClearIcon
             wrapperClassName="w-[200px]!"
             value={inputValue}
-            onChange={e => onInputChange(e.target.value)}
+            onChange={(e) => onInputChange(e.target.value)}
             onClear={() => onInputChange('')}
           />
           <div className="h-3.5 w-px bg-divider-regular"></div>
@@ -158,7 +168,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             order={sortValue.startsWith('-') ? '-' : ''}
             value={sortValue.replace('-', '')}
             items={sortItems}
-            onSelect={value => onSortChange(String(value))}
+            onSelect={(value) => onSortChange(String(value))}
           />
         </div>
 

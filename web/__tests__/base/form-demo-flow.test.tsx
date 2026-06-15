@@ -36,15 +36,18 @@ describe('Base Form Demo Flow', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(consoleLogSpy).toHaveBeenCalledWith('Form submitted:', expect.objectContaining({
-        name: 'Alice',
-        surname: 'Smith',
-        isAcceptingTerms: true,
-        contact: expect.objectContaining({
-          email: 'alice@example.com',
-          preferredContactMethod: 'whatsapp',
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Form submitted:',
+        expect.objectContaining({
+          name: 'Alice',
+          surname: 'Smith',
+          isAcceptingTerms: true,
+          contact: expect.objectContaining({
+            email: 'alice@example.com',
+            preferredContactMethod: 'whatsapp',
+          }),
         }),
-      }))
+      )
     })
   })
 

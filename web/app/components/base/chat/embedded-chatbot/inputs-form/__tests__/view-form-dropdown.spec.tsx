@@ -47,7 +47,9 @@ describe('ViewFormDropdown', () => {
     render(<ViewFormDropdown iconColor="text-red-500" />)
     await user.click(screen.getByTestId('view-form-dropdown-trigger'))
 
-    const icon = screen.getByTestId('view-form-dropdown-trigger').querySelector('.i-ri-chat-settings-line')
+    const icon = screen
+      .getByTestId('view-form-dropdown-trigger')
+      .querySelector('.i-ri-chat-settings-line')
     expect(icon).toHaveClass('text-red-500')
   })
 })

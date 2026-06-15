@@ -5,7 +5,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  RerankingModeEnum,
+} from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from '../retrieval-section'
 
@@ -43,7 +48,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
     <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
     </div>
@@ -71,7 +76,10 @@ const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Retrie
   ...overrides,
 })
 
-const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Partial<RetrievalConfig> = {}): DataSet => {
+const createDataset = (
+  overrides: Partial<DataSet> = {},
+  retrievalOverrides: Partial<RetrievalConfig> = {},
+): DataSet => {
   const retrievalConfig = createRetrievalConfig(retrievalOverrides)
   return {
     id: 'dataset-id',
@@ -213,7 +221,10 @@ describe('RetrievalSection', () => {
       return { data: [] }
     })
     mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
-    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({ defaultModel: null, currentModel: null })
+    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
+      defaultModel: null,
+      currentModel: null,
+    })
     mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
   })
 
@@ -278,9 +289,16 @@ describe('RetrievalSection', () => {
     // Assert
     // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title'))!.toBeInTheDocument()
-    const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
-    expect(learnMoreLink)!.toHaveAttribute('href', 'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods')
-    expect(docLink).toHaveBeenCalledWith('/use-dify/knowledge/create-knowledge/setting-indexing-methods')
+    const learnMoreLink = screen.getByRole('link', {
+      name: 'datasetSettings.form.retrievalSetting.learnMore',
+    })
+    expect(learnMoreLink)!.toHaveAttribute(
+      'href',
+      'https://docs.example/use-dify/knowledge/create-knowledge/setting-indexing-methods',
+    )
+    expect(docLink).toHaveBeenCalledWith(
+      '/use-dify/knowledge/create-knowledge/setting-indexing-methods',
+    )
   })
 
   it('propagates retrieval config changes for economical indexing', async () => {
@@ -298,7 +316,7 @@ describe('RetrievalSection', () => {
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
         onRetrievalConfigChange={handleRetrievalChange}
-        docLink={path => path || ''}
+        docLink={(path) => path || ''}
       />,
     )
     const [topKIncrement] = screen.getAllByRole('button', { name: /increment/i })
@@ -307,8 +325,10 @@ describe('RetrievalSection', () => {
     // Assert
     // Assert
     expect(screen.getByText('dataset.retrieval.keyword_search.title'))!.toBeInTheDocument()
-    expect(handleRetrievalChange).toHaveBeenCalledWith(expect.objectContaining({
-      top_k: 3,
-    }))
+    expect(handleRetrievalChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        top_k: 3,
+      }),
+    )
   })
 })

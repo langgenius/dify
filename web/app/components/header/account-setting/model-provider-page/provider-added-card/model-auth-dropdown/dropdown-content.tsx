@@ -50,15 +50,20 @@ function DropdownContent({
 
   const { selectedCredentialId, isActivating, activate } = useActivateCredential(provider)
 
-  const handleEdit = useCallback((credential?: Credential) => {
-    handleOpenModal(credential)
-    onClose()
-  }, [handleOpenModal, onClose])
+  const handleEdit = useCallback(
+    (credential?: Credential) => {
+      handleOpenModal(credential)
+      onClose()
+    },
+    [handleOpenModal, onClose],
+  )
 
-  const handleDelete = useCallback((credential?: Credential) => {
-    if (credential)
-      openConfirmDelete(credential)
-  }, [openConfirmDelete])
+  const handleDelete = useCallback(
+    (credential?: Credential) => {
+      if (credential) openConfirmDelete(credential)
+    },
+    [openConfirmDelete],
+  )
 
   const handleAdd = useCallback(() => {
     handleOpenModal()
@@ -66,12 +71,14 @@ function DropdownContent({
   }, [handleOpenModal, onClose])
 
   const showCreditsExhaustedAlert = state.isCreditsExhausted && state.supportsCredits
-  const hasApiKeyFallback = state.variant === 'api-fallback'
-    || (state.variant === 'api-active' && state.priority === 'apiKey')
-  const showCreditsFallbackAlert = state.priority === 'apiKey'
-    && state.supportsCredits
-    && !state.isCreditsExhausted
-    && state.variant !== 'api-active'
+  const hasApiKeyFallback =
+    state.variant === 'api-fallback' ||
+    (state.variant === 'api-active' && state.priority === 'apiKey')
+  const showCreditsFallbackAlert =
+    state.priority === 'apiKey' &&
+    state.supportsCredits &&
+    !state.isCreditsExhausted &&
+    state.variant !== 'api-active'
 
   return (
     <>
@@ -83,9 +90,7 @@ function DropdownContent({
             onSelect={onChangePriority}
           />
         )}
-        {showCreditsFallbackAlert && (
-          <CreditsFallbackAlert hasCredentials={state.hasCredentials} />
-        )}
+        {showCreditsFallbackAlert && <CreditsFallbackAlert hasCredentials={state.hasCredentials} />}
         {showCreditsExhaustedAlert && (
           <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
         )}
@@ -103,8 +108,7 @@ function DropdownContent({
       <AlertDialog
         open={!!deleteCredentialId}
         onOpenChange={(open) => {
-          if (!open)
-            closeConfirmDelete()
+          if (!open) closeConfirmDelete()
         }}
       >
         <AlertDialogContent>

@@ -8,7 +8,7 @@ import { useVisualEditorStore } from './store'
 
 const AddField = () => {
   const { t } = useTranslation()
-  const setIsAddingNewField = useVisualEditorStore(state => state.setIsAddingNewField)
+  const setIsAddingNewField = useVisualEditorStore((state) => state.setIsAddingNewField)
   const { emit } = useMittContext()
 
   const handleAddField = useCallback(() => {

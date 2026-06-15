@@ -3,15 +3,16 @@ import { fireEvent, render } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ImageItem from '../image-item'
 
-const createMockFile = (overrides: Partial<FileEntity> = {}): FileEntity => ({
-  id: 'test-id',
-  name: 'test.png',
-  progress: 100,
-  base64Url: 'data:image/png;base64,test',
-  sourceUrl: 'https://example.com/test.png',
-  size: 1024,
-  ...overrides,
-} as FileEntity)
+const createMockFile = (overrides: Partial<FileEntity> = {}): FileEntity =>
+  ({
+    id: 'test-id',
+    name: 'test.png',
+    progress: 100,
+    base64Url: 'data:image/png;base64,test',
+    sourceUrl: 'https://example.com/test.png',
+    size: 1024,
+    ...overrides,
+  }) as FileEntity
 
 describe('ImageItem (image-uploader-in-chunk)', () => {
   describe('Rendering', () => {
@@ -32,9 +33,7 @@ describe('ImageItem (image-uploader-in-chunk)', () => {
   describe('Props', () => {
     it('should show delete button when showDeleteAction is true', () => {
       const file = createMockFile()
-      const { container } = render(
-        <ImageItem file={file} showDeleteAction onRemove={() => {}} />,
-      )
+      const { container } = render(<ImageItem file={file} showDeleteAction onRemove={() => {}} />)
       // Delete button has RiCloseLine icon
       const deleteButton = container.querySelector('button')
       expect(deleteButton).toBeInTheDocument()
@@ -98,9 +97,7 @@ describe('ImageItem (image-uploader-in-chunk)', () => {
     it('should call onRemove when delete button is clicked', () => {
       const onRemove = vi.fn()
       const file = createMockFile()
-      const { container } = render(
-        <ImageItem file={file} showDeleteAction onRemove={onRemove} />,
-      )
+      const { container } = render(<ImageItem file={file} showDeleteAction onRemove={onRemove} />)
 
       const deleteButton = container.querySelector('button')
       if (deleteButton) {
@@ -161,8 +158,7 @@ describe('ImageItem (image-uploader-in-chunk)', () => {
 
       const imageContainer = container.querySelector('.group\\/file-image')
       expect(() => {
-        if (imageContainer)
-          fireEvent.click(imageContainer)
+        if (imageContainer) fireEvent.click(imageContainer)
       }).not.toThrow()
     })
 
@@ -172,8 +168,7 @@ describe('ImageItem (image-uploader-in-chunk)', () => {
 
       const deleteButton = container.querySelector('button')
       expect(() => {
-        if (deleteButton)
-          fireEvent.click(deleteButton)
+        if (deleteButton) fireEvent.click(deleteButton)
       }).not.toThrow()
     })
 
@@ -183,8 +178,7 @@ describe('ImageItem (image-uploader-in-chunk)', () => {
 
       const errorOverlay = container.querySelector('.bg-background-overlay-destructive')
       expect(() => {
-        if (errorOverlay)
-          fireEvent.click(errorOverlay)
+        if (errorOverlay) fireEvent.click(errorOverlay)
       }).not.toThrow()
     })
 

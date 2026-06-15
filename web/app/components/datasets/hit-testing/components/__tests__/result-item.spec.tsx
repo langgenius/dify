@@ -12,7 +12,9 @@ vi.mock('../../../common/image-list', () => ({
 }))
 
 vi.mock('../child-chunks-item', () => ({
-  default: ({ payload }: { payload: { id: string } }) => <div data-testid="child-chunk">{payload.id}</div>,
+  default: ({ payload }: { payload: { id: string } }) => (
+    <div data-testid="child-chunk">{payload.id}</div>
+  ),
 }))
 
 vi.mock('../chunk-detail-modal', () => ({
@@ -20,11 +22,15 @@ vi.mock('../chunk-detail-modal', () => ({
 }))
 
 vi.mock('../result-item-footer', () => ({
-  default: ({ docTitle }: { docTitle: string }) => <div data-testid="result-item-footer">{docTitle}</div>,
+  default: ({ docTitle }: { docTitle: string }) => (
+    <div data-testid="result-item-footer">{docTitle}</div>
+  ),
 }))
 
 vi.mock('../result-item-meta', () => ({
-  default: ({ positionId }: { positionId: number }) => <div data-testid="result-item-meta">{positionId}</div>,
+  default: ({ positionId }: { positionId: number }) => (
+    <div data-testid="result-item-meta">{positionId}</div>
+  ),
 }))
 
 vi.mock('@/app/components/datasets/documents/detail/completed/common/summary-label', () => ({
@@ -104,7 +110,9 @@ describe('ResultItem', () => {
 
   it('should render images when files exist', () => {
     const payload = makePayload({
-      files: [{ name: 'img.png', mime_type: 'image/png', source_url: 'url', size: 100, extension: 'png' }],
+      files: [
+        { name: 'img.png', mime_type: 'image/png', source_url: 'url', size: 100, extension: 'png' },
+      ],
     })
     render(<ResultItem payload={payload} />)
     expect(screen.getByTestId('image-list')).toBeInTheDocument()

@@ -24,7 +24,7 @@ type InspectVarsActions = {
 export type InspectVarsSliceShape = InspectVarsState & InspectVarsActions
 
 export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set) => {
-  return ({
+  return {
     currentFocusNodeId: null,
     nodesWithInspectVars: [],
     conversationVars: [],
@@ -47,7 +47,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
       set((state) => {
         const prevNodes = state.nodesWithInspectVars
         const nodes = produce(prevNodes, (draft) => {
-          const index = prevNodes.findIndex(node => node.nodeId === nodeId)
+          const index = prevNodes.findIndex((node) => node.nodeId === nodeId)
           if (index !== -1) {
             draft[index]!.vars = payload
             draft[index]!.isValueFetched = true
@@ -61,22 +61,19 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
     },
     deleteNodeInspectVars: (nodeId) => {
       set((state: InspectVarsSliceShape) => {
-        const nodes = state.nodesWithInspectVars.filter(node => node.nodeId !== nodeId)
+        const nodes = state.nodesWithInspectVars.filter((node) => node.nodeId !== nodeId)
         return {
           nodesWithInspectVars: nodes,
         }
-      },
-      )
+      })
     },
     setInspectVarValue: (nodeId, varId, value) => {
       set((state: InspectVarsSliceShape) => {
         const nodes = produce(state.nodesWithInspectVars, (draft) => {
-          const targetNode = draft.find(node => node.nodeId === nodeId)
-          if (!targetNode)
-            return
-          const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
-          if (!targetVar)
-            return
+          const targetNode = draft.find((node) => node.nodeId === nodeId)
+          if (!targetNode) return
+          const targetVar = targetNode.vars.find((varItem) => varItem.id === varId)
+          if (!targetVar) return
           targetVar.value = value
           targetVar.edited = true
         })
@@ -88,12 +85,10 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
     resetToLastRunVar: (nodeId, varId, value) => {
       set((state: InspectVarsSliceShape) => {
         const nodes = produce(state.nodesWithInspectVars, (draft) => {
-          const targetNode = draft.find(node => node.nodeId === nodeId)
-          if (!targetNode)
-            return
-          const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
-          if (!targetVar)
-            return
+          const targetNode = draft.find((node) => node.nodeId === nodeId)
+          if (!targetNode) return
+          const targetVar = targetNode.vars.find((varItem) => varItem.id === varId)
+          if (!targetVar) return
           targetVar.value = value
           targetVar.edited = false
         })
@@ -105,12 +100,10 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
     renameInspectVarName: (nodeId, varId, selector) => {
       set((state: InspectVarsSliceShape) => {
         const nodes = produce(state.nodesWithInspectVars, (draft) => {
-          const targetNode = draft.find(node => node.nodeId === nodeId)
-          if (!targetNode)
-            return
-          const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
-          if (!targetVar)
-            return
+          const targetNode = draft.find((node) => node.nodeId === nodeId)
+          if (!targetNode) return
+          const targetVar = targetNode.vars.find((varItem) => varItem.id === varId)
+          if (!targetVar) return
           targetVar.name = selector[1]!
           targetVar.selector = selector
         })
@@ -122,17 +115,15 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set)
     deleteInspectVar: (nodeId, varId) => {
       set((state: InspectVarsSliceShape) => {
         const nodes = produce(state.nodesWithInspectVars, (draft) => {
-          const targetNode = draft.find(node => node.nodeId === nodeId)
-          if (!targetNode)
-            return
-          const needChangeVarIndex = targetNode.vars.findIndex(varItem => varItem.id === varId)
-          if (needChangeVarIndex !== -1)
-            targetNode.vars.splice(needChangeVarIndex, 1)
+          const targetNode = draft.find((node) => node.nodeId === nodeId)
+          if (!targetNode) return
+          const needChangeVarIndex = targetNode.vars.findIndex((varItem) => varItem.id === varId)
+          if (needChangeVarIndex !== -1) targetNode.vars.splice(needChangeVarIndex, 1)
         })
         return {
           nodesWithInspectVars: nodes,
         }
       })
     },
-  })
+  }
 }

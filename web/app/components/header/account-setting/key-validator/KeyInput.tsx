@@ -35,15 +35,16 @@ const KeyInput = ({
   }
 
   const getValidatedIcon = () => {
-    if (validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed)
+    if (
+      validatedStatusState.status === ValidatedStatus.Error ||
+      validatedStatusState.status === ValidatedStatus.Exceed
+    )
       return <ValidatedErrorIcon />
 
-    if (validatedStatusState.status === ValidatedStatus.Success)
-      return <ValidatedSuccessIcon />
+    if (validatedStatusState.status === ValidatedStatus.Success) return <ValidatedSuccessIcon />
   }
   const getValidatedTip = () => {
-    if (validating)
-      return <ValidatingTip />
+    if (validating) return <ValidatingTip />
 
     if (validatedStatusState.status === ValidatedStatus.Error)
       return <ValidatedErrorMessage errorMessage={validatedStatusState.message ?? ''} />
@@ -52,17 +53,9 @@ const KeyInput = ({
   return (
     <div className={className}>
       <div className="mb-2 text-[13px] font-medium text-gray-800">{name}</div>
-      <div className="
-        flex items-center rounded-lg bg-white px-3
-        shadow-xs
-      "
-      >
+      <div className="flex items-center rounded-lg bg-white px-3 shadow-xs">
         <input
-          className="
-            mr-2 w-full appearance-none
-            bg-transparent py-[9px] text-xs leading-[18px]
-            font-medium text-gray-700 outline-hidden
-          "
+          className="mr-2 w-full appearance-none bg-transparent py-[9px] text-xs leading-[18px] font-medium text-gray-700 outline-hidden"
           value={value}
           placeholder={placeholder}
           onChange={handleChange}

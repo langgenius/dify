@@ -8,11 +8,7 @@ describe('Collapse', () => {
     { key: '2', name: 'Item 2' },
   ]
 
-  const mockRenderItem = (item: IItem) => (
-    <div data-testid={`item-${item.key}`}>
-      {item.name}
-    </div>
-  )
+  const mockRenderItem = (item: IItem) => <div data-testid={`item-${item.key}`}>{item.name}</div>
 
   const mockOnSelect = vi.fn()
 
@@ -24,11 +20,7 @@ describe('Collapse', () => {
     it('should render title and initially closed state', () => {
       // Act
       const { container } = render(
-        <Collapse
-          title="Test Title"
-          items={mockItems}
-          renderItem={mockRenderItem}
-        />,
+        <Collapse title="Test Title" items={mockItems} renderItem={mockRenderItem} />,
       )
 
       // Assert
@@ -56,13 +48,7 @@ describe('Collapse', () => {
   describe('Interactions', () => {
     it('should toggle content open and closed', () => {
       // Act & Assert
-      render(
-        <Collapse
-          title="Test Title"
-          items={mockItems}
-          renderItem={mockRenderItem}
-        />,
-      )
+      render(<Collapse title="Test Title" items={mockItems} renderItem={mockRenderItem} />)
 
       // Initially closed
       expect(screen.queryByTestId('item-1')).not.toBeInTheDocument()
@@ -100,13 +86,7 @@ describe('Collapse', () => {
 
     it('should not crash when onSelect is undefined and item is clicked', () => {
       // Arrange
-      render(
-        <Collapse
-          title="Test Title"
-          items={mockItems}
-          renderItem={mockRenderItem}
-        />,
-      )
+      render(<Collapse title="Test Title" items={mockItems} renderItem={mockRenderItem} />)
 
       // Act
       fireEvent.click(screen.getByRole('button', { name: 'Test Title' }))

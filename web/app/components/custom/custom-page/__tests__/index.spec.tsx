@@ -17,14 +17,15 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomPage from '../index'
 
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    branding: {
-      enabled: true,
-      workspace_logo: 'https://example.com/workspace-logo.png',
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      branding: {
+        enabled: true,
+        workspace_logo: 'https://example.com/workspace-logo.png',
+      },
     },
-  },
-})
+  })
 
 const { mockToast } = vi.hoisted(() => {
   const mockToast = Object.assign(vi.fn(), {
@@ -123,10 +124,12 @@ describe('CustomPage', () => {
 
     it('should show the upgrade banner and open pricing modal for sandbox billing', async () => {
       const user = userEvent.setup()
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.sandbox,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -139,10 +142,12 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for professional workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.professional,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.professional,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -154,10 +159,12 @@ describe('CustomPage', () => {
     })
 
     it('should show the contact link for team workspaces', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.team,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.team,
+        }),
+      )
 
       render(<CustomPage />)
 
@@ -166,10 +173,12 @@ describe('CustomPage', () => {
     })
 
     it('should hide both billing sections when billing is disabled', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: false,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: false,
+          planType: Plan.sandbox,
+        }),
+      )
 
       render(<CustomPage />)
 

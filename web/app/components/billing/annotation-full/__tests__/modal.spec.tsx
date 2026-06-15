@@ -31,12 +31,20 @@ type ModalSnapshot = {
 let mockModalProps: ModalSnapshot | null = null
 let mockOnOpenChange: ((open: boolean) => void) | undefined
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ open, onOpenChange, children }: { open?: boolean, onOpenChange?: (open: boolean) => void, children: React.ReactNode }) => {
+  Dialog: ({
+    open,
+    onOpenChange,
+    children,
+  }: {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    children: React.ReactNode
+  }) => {
     mockOnOpenChange = onOpenChange
     mockModalProps = { isShow: open !== false }
     return open === false ? null : <>{children}</>
   },
-  DialogContent: ({ children, className }: { children: React.ReactNode, className?: string }) => {
+  DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => {
     mockModalProps = {
       isShow: true,
       closable: true,
@@ -48,7 +56,11 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
       </div>
     )
   },
-  DialogCloseButton: () => <button type="button" data-testid="mock-modal-close" onClick={() => mockOnOpenChange?.(false)}>close</button>,
+  DialogCloseButton: () => (
+    <button type="button" data-testid="mock-modal-close" onClick={() => mockOnOpenChange?.(false)}>
+      close
+    </button>
+  ),
 }))
 
 describe('AnnotationFullModal', () => {
@@ -69,11 +81,13 @@ describe('AnnotationFullModal', () => {
       expect(screen.getByTestId('usage-component')).toHaveAttribute('data-classname', 'mt-4')
       expect(screen.getByTestId('upgrade-btn')).toHaveTextContent('annotation-create')
       expect(mockUpgradeBtnProps?.loc).toBe('annotation-create')
-      expect(mockModalProps).toEqual(expect.objectContaining({
-        isShow: true,
-        closable: true,
-        className: expect.stringContaining('p-0!'),
-      }))
+      expect(mockModalProps).toEqual(
+        expect.objectContaining({
+          isShow: true,
+          closable: true,
+          className: expect.stringContaining('p-0!'),
+        }),
+      )
       expect(mockModalProps?.className).toContain('w-full')
     })
   })

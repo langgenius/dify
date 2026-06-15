@@ -11,31 +11,25 @@ type Props = Readonly<{
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
 }>
-const AssignedVarReferencePopup: FC<Props> = ({
-  vars,
-  onChange,
-  itemWidth,
-}) => {
+const AssignedVarReferencePopup: FC<Props> = ({ vars, onChange, itemWidth }) => {
   const { t } = useTranslation()
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <div className="bg-components-panel-bg-bur w-[352px] rounded-lg border-[0.5px] border-components-panel-border p-1 shadow-lg">
-      {(!vars || vars.length === 0)
-        ? (
-            <ListEmpty
-              title={t('nodes.assigner.noAssignedVars', { ns: 'workflow' }) || ''}
-              description={t('nodes.assigner.assignedVarsDescription', { ns: 'workflow' })}
-            />
-          )
-        : (
-            <VarReferenceVars
-              searchBoxClassName="mt-1"
-              vars={vars}
-              onChange={onChange}
-              itemWidth={itemWidth}
-              isSupportFileVar
-            />
-          )}
+      {!vars || vars.length === 0 ? (
+        <ListEmpty
+          title={t('nodes.assigner.noAssignedVars', { ns: 'workflow' }) || ''}
+          description={t('nodes.assigner.assignedVarsDescription', { ns: 'workflow' })}
+        />
+      ) : (
+        <VarReferenceVars
+          searchBoxClassName="mt-1"
+          vars={vars}
+          onChange={onChange}
+          itemWidth={itemWidth}
+          isSupportFileVar
+        />
+      )}
     </div>
   )
 }

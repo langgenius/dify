@@ -33,7 +33,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
@@ -49,7 +49,8 @@ vi.mock('@/service/client', () => ({
       },
       create: {
         mutationOptions: () => ({
-          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+          mutationFn: ({ body }: { body: { name: string; type: 'app' | 'knowledge' } }) =>
+            createTag(body.name, body.type),
         }),
       },
     },
@@ -59,16 +60,27 @@ vi.mock('@/service/client', () => ({
 vi.mock('../hooks/use-tag-mutations', () => ({
   useApplyTagBindingsMutation: () => ({
     mutate: (
-      { currentTagIds, nextTagIds, targetId, type }: { currentTagIds: string[], nextTagIds: string[], targetId: string, type: 'app' | 'knowledge' },
-      options?: { onSuccess?: () => void, onError?: () => void, onSettled?: () => void },
+      {
+        currentTagIds,
+        nextTagIds,
+        targetId,
+        type,
+      }: {
+        currentTagIds: string[]
+        nextTagIds: string[]
+        targetId: string
+        type: 'app' | 'knowledge'
+      },
+      options?: { onSuccess?: () => void; onError?: () => void; onSettled?: () => void },
     ) => {
-      const addTagIds = nextTagIds.filter(tagId => !currentTagIds.includes(tagId))
-      const removeTagIds = currentTagIds.filter(tagId => !nextTagIds.includes(tagId))
+      const addTagIds = nextTagIds.filter((tagId) => !currentTagIds.includes(tagId))
+      const removeTagIds = currentTagIds.filter((tagId) => !nextTagIds.includes(tagId))
       const operations: Promise<unknown>[] = []
 
-      if (addTagIds.length)
-        operations.push(Promise.resolve(bindTag(addTagIds, targetId, type)))
-      operations.push(...removeTagIds.map(tagId => Promise.resolve(unBindTag(tagId, targetId, type))))
+      if (addTagIds.length) operations.push(Promise.resolve(bindTag(addTagIds, targetId, type)))
+      operations.push(
+        ...removeTagIds.map((tagId) => Promise.resolve(unBindTag(tagId, targetId, type))),
+      )
 
       Promise.all(operations)
         .then(() => options?.onSuccess?.())
@@ -101,7 +113,12 @@ describe('TagSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = appTags
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
+    vi.mocked(createTag).mockResolvedValue({
+      id: 'new-tag',
+      name: 'NewTag',
+      type: 'app',
+      binding_count: 0,
+    })
     vi.mocked(bindTag).mockResolvedValue(undefined)
     vi.mocked(unBindTag).mockResolvedValue(undefined)
   })
@@ -112,7 +129,12 @@ describe('TagSelector', () => {
   })
 
   it('renders the add tag trigger when no current tag is visible in the workspace tag list', () => {
-    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]} />)
+    render(
+      <TagSelector
+        {...defaultProps}
+        value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]}
+      />,
+    )
     expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
   })
@@ -123,7 +145,9 @@ describe('TagSelector', () => {
 
     await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
 
-    expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+    ).toBeInTheDocument()
     expect(screen.getByText(i18n.manageTags)).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
   })
@@ -232,7 +256,10 @@ describe('TagSelector', () => {
     render(<TagSelector {...defaultProps} type="knowledge" value={[]} />)
 
     await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
-    await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'NewKnowledgeTag')
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'NewKnowledgeTag',
+    )
     await user.click(await screen.findByRole('option', { name: /NewKnowledgeTag/i }))
 
     await waitFor(() => {

@@ -5,14 +5,17 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import Citation from '../index'
 
 vi.mock('../popup', () => ({
-  default: ({ data, showHitInfo }: { data: { documentName: string }, showHitInfo?: boolean }) => (
+  default: ({ data, showHitInfo }: { data: { documentName: string }; showHitInfo?: boolean }) => (
     <div data-testid="popup" data-show-hit-info={String(!!showHitInfo)}>
       {data.documentName}
     </div>
   ),
 }))
 
-const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')
+const originalClientWidthDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  'clientWidth',
+)
 
 type ClientWidthConfig = {
   container: number
@@ -23,10 +26,12 @@ const mockClientWidths = ({ container, item }: ClientWidthConfig) => {
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
     get() {
       const el = this as HTMLElement
-      if (el.className?.includes?.('chat-answer-container') || el.className?.includes?.('my-custom-container'))
+      if (
+        el.className?.includes?.('chat-answer-container') ||
+        el.className?.includes?.('my-custom-container')
+      )
         return container
-      if (el.dataset?.testid === 'citation-measurement-item')
-        return item
+      if (el.dataset?.testid === 'citation-measurement-item') return item
       return 0
     },
     configurable: true,
@@ -84,10 +89,11 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Alpha' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Beta' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Alpha' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Beta' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(2)
@@ -104,10 +110,11 @@ describe('Citation', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1' }),
-          makeCitationItem({ document_id: 'doc-2' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1' }),
+            makeCitationItem({ document_id: 'doc-2' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('popup')).toHaveLength(2)
@@ -148,18 +155,18 @@ describe('Citation', () => {
           showHitInfo={true}
         />,
       )
-      screen.getAllByTestId('popup').forEach(p =>
-        expect(p).toHaveAttribute('data-show-hit-info', 'true'),
-      )
+      screen
+        .getAllByTestId('popup')
+        .forEach((p) => expect(p).toHaveAttribute('data-show-hit-info', 'true'))
     })
 
     it('should forward showHitInfo=false when prop is omitted', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
       render(<Citation data={[makeCitationItem({ document_id: 'doc-1' })]} />)
-      screen.getAllByTestId('popup').forEach(p =>
-        expect(p).toHaveAttribute('data-show-hit-info', 'false'),
-      )
+      screen
+        .getAllByTestId('popup')
+        .forEach((p) => expect(p).toHaveAttribute('data-show-hit-info', 'false'))
     })
   })
 
@@ -168,10 +175,11 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'shared', segment_id: 'seg-1' }),
-          makeCitationItem({ document_id: 'shared', segment_id: 'seg-2' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'shared', segment_id: 'seg-1' }),
+            makeCitationItem({ document_id: 'shared', segment_id: 'seg-2' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(1)
@@ -181,11 +189,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-a' }),
-          makeCitationItem({ document_id: 'doc-b' }),
-          makeCitationItem({ document_id: 'doc-c' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-a' }),
+            makeCitationItem({ document_id: 'doc-b' }),
+            makeCitationItem({ document_id: 'doc-c' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(3)
@@ -195,11 +204,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-1' }),
-          makeCitationItem({ document_id: 'doc-y', segment_id: 'seg-2' }),
-          makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-3' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-1' }),
+            makeCitationItem({ document_id: 'doc-y', segment_id: 'seg-2' }),
+            makeCitationItem({ document_id: 'doc-x', segment_id: 'seg-3' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(2)
@@ -212,11 +222,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 840, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1' }),
-          makeCitationItem({ document_id: 'doc-2' }),
-          makeCitationItem({ document_id: 'doc-3' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1' }),
+            makeCitationItem({ document_id: 'doc-2' }),
+            makeCitationItem({ document_id: 'doc-3' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('popup')).toHaveLength(3)
@@ -233,10 +244,11 @@ describe('Citation', () => {
       mockClientWidths({ container: 140, item: 80 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
+          ]}
         />,
       )
       expect(screen.getByTestId('citation-more-toggle')).toBeInTheDocument()
@@ -253,11 +265,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 240, item: 80 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
-          makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
+            makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
+          ]}
         />,
       )
       expect(screen.getByTestId('citation-more-toggle')).toBeInTheDocument()
@@ -274,11 +287,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 140, item: 80 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
-          makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
-          makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'doc-1', document_name: 'Doc A' }),
+            makeCitationItem({ document_id: 'doc-2', document_name: 'Doc B' }),
+            makeCitationItem({ document_id: 'doc-3', document_name: 'Doc C' }),
+          ]}
         />,
       )
       return screen.getByTestId('citation-more-toggle')
@@ -342,11 +356,12 @@ describe('Citation', () => {
       mockClientWidths({ container: 500, item: 50 })
       setupContainer()
       render(
-        <Citation data={[
-          makeCitationItem({ document_id: 'only', segment_id: 's1' }),
-          makeCitationItem({ document_id: 'only', segment_id: 's2' }),
-          makeCitationItem({ document_id: 'only', segment_id: 's3' }),
-        ]}
+        <Citation
+          data={[
+            makeCitationItem({ document_id: 'only', segment_id: 's1' }),
+            makeCitationItem({ document_id: 'only', segment_id: 's2' }),
+            makeCitationItem({ document_id: 'only', segment_id: 's3' }),
+          ]}
         />,
       )
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(1)
@@ -356,7 +371,8 @@ describe('Citation', () => {
       mockClientWidths({ container: 5000, item: 50 })
       setupContainer()
       const data = Array.from({ length: 20 }, (_, i) =>
-        makeCitationItem({ document_id: `doc-${i}`, document_name: `Document ${i}` }))
+        makeCitationItem({ document_id: `doc-${i}`, document_name: `Document ${i}` }),
+      )
       expect(() => render(<Citation data={data} />)).not.toThrow()
       expect(screen.getAllByTestId('citation-measurement-item')).toHaveLength(20)
     })

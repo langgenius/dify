@@ -7,8 +7,7 @@ export const providerSupportsCredits = (
   provider: CreditAwareProvider | undefined,
   trialModels: readonly string[] | undefined,
 ): boolean => {
-  if (!IS_CLOUD_EDITION || !provider?.system_configuration.enabled)
-    return false
+  if (!IS_CLOUD_EDITION || !provider?.system_configuration.enabled) return false
 
   return !!provider.provider && !!trialModels?.includes(provider.provider)
 }

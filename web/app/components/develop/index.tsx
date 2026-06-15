@@ -9,7 +9,7 @@ type IDevelopMainProps = {
 }
 
 const DevelopMain = ({ appId }: IDevelopMainProps) => {
-  const appDetail = useAppStore(state => state.appDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
 
   if (!appDetail) {
     return (

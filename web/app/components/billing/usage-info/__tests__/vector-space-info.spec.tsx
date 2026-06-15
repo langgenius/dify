@@ -10,7 +10,7 @@ const queryPlaceholder = () =>
 let mockPlanType = Plan.sandbox
 let mockVectorSpaceUsage = 30
 let mockVectorSpaceTotal = 5120
-let mockVectorSpaceApiData: { size: number, limit: number } | undefined
+let mockVectorSpaceApiData: { size: number; limit: number } | undefined
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({

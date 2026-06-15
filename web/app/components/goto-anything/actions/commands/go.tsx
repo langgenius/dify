@@ -31,9 +31,9 @@ export const goCommand: SlashCommandHandler = {
   async search(args: string, _locale: string = 'en') {
     const query = args.trim().toLowerCase()
     const items = NAV_ITEMS.filter(
-      item => !query || item.id.includes(query) || item.label.toLowerCase().includes(query),
+      (item) => !query || item.id.includes(query) || item.label.toLowerCase().includes(query),
     )
-    return items.map(item => ({
+    return items.map((item) => ({
       id: `go-${item.id}`,
       title: item.label,
       description: item.path,
@@ -50,8 +50,7 @@ export const goCommand: SlashCommandHandler = {
   register() {
     registerCommands({
       'navigation.go': async (args) => {
-        if (args?.path)
-          window.location.href = args.path
+        if (args?.path) window.location.href = args.path
       },
     })
   },

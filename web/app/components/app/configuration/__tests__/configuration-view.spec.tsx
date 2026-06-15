@@ -23,9 +23,12 @@ vi.mock('@/app/components/app/configuration/config/agent-setting-button', () => 
   default: () => <div data-testid="agent-setting-button" />,
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  default: () => <div data-testid="model-parameter-modal" />,
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: () => <div data-testid="model-parameter-modal" />,
+  }),
+)
 
 vi.mock('@/app/components/app/configuration/dataset-config/select-dataset', () => ({
   default: () => <div data-testid="select-dataset" />,
@@ -193,7 +196,9 @@ const createContextValue = (): ComponentProps<typeof ConfigContext.Provider>['va
   setRerankSettingModalOpen: vi.fn(),
 })
 
-const createViewModel = (overrides: Partial<ConfigurationViewModel> = {}): ConfigurationViewModel => ({
+const createViewModel = (
+  overrides: Partial<ConfigurationViewModel> = {},
+): ConfigurationViewModel => ({
   appPublisherProps: {
     publishDisabled: false,
     publishedAt: 0,
@@ -213,7 +218,10 @@ const createViewModel = (overrides: Partial<ConfigurationViewModel> = {}): Confi
     moderation: { enabled: false },
     speech2text: { enabled: false },
     text2speech: { enabled: false, voice: '', language: '' },
-    file: { enabled: false, image: { enabled: false, detail: 'high', number_limits: 3, transfer_methods: ['local_file'] } } as never,
+    file: {
+      enabled: false,
+      image: { enabled: false, detail: 'high', number_limits: 3, transfer_methods: ['local_file'] },
+    } as never,
     suggested: { enabled: false },
     citation: { enabled: false },
     annotationReply: { enabled: false },
@@ -274,7 +282,11 @@ describe('ConfigurationView', () => {
 
   it('should close the GPT-4 confirmation dialog when cancel is clicked', () => {
     const setShowUseGPT4Confirm = vi.fn()
-    render(<ConfigurationView {...createViewModel({ showUseGPT4Confirm: true, setShowUseGPT4Confirm })} />)
+    render(
+      <ConfigurationView
+        {...createViewModel({ showUseGPT4Confirm: true, setShowUseGPT4Confirm })}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /operation.cancel/i }))
 

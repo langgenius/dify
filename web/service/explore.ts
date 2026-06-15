@@ -4,8 +4,7 @@ import type { AppMeta } from '@/models/share'
 import { consoleClient } from './client'
 
 export const fetchAppList = (language?: string) => {
-  if (!language)
-    return consoleClient.explore.apps({})
+  if (!language) return consoleClient.explore.apps({})
 
   return consoleClient.explore.apps({
     query: { language },
@@ -16,14 +15,12 @@ export const fetchAppDetail = async (id: string): Promise<ExploreAppDetailRespon
   const response = await consoleClient.explore.appDetail({
     params: { id },
   })
-  if (!response)
-    throw new Error('Recommended app not found')
+  if (!response) throw new Error('Recommended app not found')
   return response
 }
 
 export const fetchInstalledAppList = (appId?: string | null) => {
-  if (!appId)
-    return consoleClient.explore.installedApps({})
+  if (!appId) return consoleClient.explore.installedApps({})
 
   return consoleClient.explore.installedApps({
     query: { app_id: appId },
@@ -64,8 +61,7 @@ export const fetchInstalledAppMeta = (appId: string) => {
 }
 
 export const fetchBanners = (language?: string) => {
-  if (!language)
-    return consoleClient.explore.banners({})
+  if (!language) return consoleClient.explore.banners({})
 
   return consoleClient.explore.banners({
     query: { language },

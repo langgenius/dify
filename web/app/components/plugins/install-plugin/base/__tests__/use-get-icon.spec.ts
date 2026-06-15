@@ -7,8 +7,9 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { currentWorkspace: { id: string } }) => string | { id: string }) =>
-    selector({ currentWorkspace: { id: 'workspace-123' } }),
+  useSelector: (
+    selector: (state: { currentWorkspace: { id: string } }) => string | { id: string },
+  ) => selector({ currentWorkspace: { id: 'workspace-123' } }),
 }))
 
 describe('useGetIcon', () => {

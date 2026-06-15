@@ -8,9 +8,7 @@ type EmptyProps = {
   onResetFilter: () => void
 }
 
-const Empty: FC<EmptyProps> = ({
-  onResetFilter,
-}) => {
+const Empty: FC<EmptyProps> = ({ onResetFilter }) => {
   const { t } = useTranslation()
 
   return (

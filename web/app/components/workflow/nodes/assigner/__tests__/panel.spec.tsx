@@ -17,7 +17,9 @@ const mockUseConfig = vi.hoisted(() => vi.fn())
 const mockUseHandleAddOperationItem = vi.hoisted(() => vi.fn())
 const mockVarListRender = vi.hoisted(() => vi.fn())
 
-const createOperation = (overrides: Partial<AssignerNodeOperation> = {}): AssignerNodeOperation => ({
+const createOperation = (
+  overrides: Partial<AssignerNodeOperation> = {},
+): AssignerNodeOperation => ({
   variable_selector: ['node-1', 'count'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,
@@ -40,8 +42,13 @@ vi.mock('../components/var-list', () => ({
     mockVarListRender(props)
     return (
       <div>
-        <div>{props.list.map(item => item.variable_selector.join('.')).join(',')}</div>
-        <button type="button" onClick={() => props.onChange([createOperation({ variable_selector: ['node-1', 'updated'] })])}>
+        <div>{props.list.map((item) => item.variable_selector.join('.')).join(',')}</div>
+        <button
+          type="button"
+          onClick={() =>
+            props.onChange([createOperation({ variable_selector: ['node-1', 'updated'] })])
+          }
+        >
           emit-list-change
         </button>
       </div>
@@ -86,21 +93,17 @@ describe('assigner/panel', () => {
   it('passes the resolved config to the variable list and appends operations through the add button', async () => {
     const user = userEvent.setup()
 
-    render(
-      <Panel
-        id="assigner-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<Panel id="assigner-node" data={createData()} panelProps={panelProps} />)
 
     expect(screen.getByText('workflow.nodes.assigner.variables')).toBeInTheDocument()
     expect(screen.getByText('node-1.count')).toBeInTheDocument()
-    expect(mockVarListRender).toHaveBeenCalledWith(expect.objectContaining({
-      readonly: false,
-      nodeId: 'assigner-node',
-      list: createData().items,
-    }))
+    expect(mockVarListRender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        readonly: false,
+        nodeId: 'assigner-node',
+        list: createData().items,
+      }),
+    )
 
     await user.click(screen.getAllByRole('button')[0]!)
 

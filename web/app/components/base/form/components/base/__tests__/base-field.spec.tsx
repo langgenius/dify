@@ -9,7 +9,8 @@ import BaseField from '../base-field'
 const mockDynamicOptions = vi.fn()
 
 vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (content: Record<string, string>) => content.en_US ?? Object.values(content)[0] ?? '',
+  useRenderI18nObject: () => (content: Record<string, string>) =>
+    content.en_US ?? Object.values(content)[0] ?? '',
 }))
 
 vi.mock('@/service/use-triggers', () => ({
@@ -36,13 +37,13 @@ const renderBaseField = ({
   const TestComponent = () => {
     const form = useForm({
       defaultValues: defaultValues ?? { [formSchema.name]: '' },
-      onSubmit: async () => { },
+      onSubmit: async () => {},
     })
 
     return (
       <>
         <form.Field name={formSchema.name}>
-          {field => (
+          {(field) => (
             <BaseField
               field={field as unknown as AnyFieldApi}
               formSchema={formSchema}
@@ -52,8 +53,8 @@ const renderBaseField = ({
           )}
         </form.Field>
         {showCurrentValue && (
-          <form.Subscribe selector={state => state.values[formSchema.name]}>
-            {value => <div data-testid="field-value">{String(value)}</div>}
+          <form.Subscribe selector={(state) => state.values[formSchema.name]}>
+            {(value) => <div data-testid="field-value">{String(value)}</div>}
           </form.Subscribe>
         )}
       </>
@@ -134,7 +135,9 @@ describe('BaseField', () => {
     })
 
     expect(screen.getByRole('combobox', { name: 'Mode' })).not.toHaveTextContent('beta')
-    expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveTextContent('common.placeholder.input')
+    expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveTextContent(
+      'common.placeholder.input',
+    )
   })
 
   it('should render dynamic select loading state', () => {
@@ -217,7 +220,10 @@ describe('BaseField', () => {
     })
 
     expect(screen.getByText('Read the description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open help docs' })).toHaveAttribute('href', 'https://example.com/help')
+    expect(screen.getByRole('link', { name: 'Open help docs' })).toHaveAttribute(
+      'href',
+      'https://example.com/help',
+    )
   })
 
   it('should render secret input with password type', () => {
@@ -266,9 +272,7 @@ describe('BaseField', () => {
     const user = userEvent.setup()
     mockDynamicOptions.mockReturnValue({
       data: {
-        options: [
-          { label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' },
-        ],
+        options: [{ label: { en_US: 'Option A', zh_Hans: '选项A' }, value: 'a' }],
       },
       isLoading: false,
       error: null,
@@ -314,7 +318,9 @@ describe('BaseField', () => {
       showCurrentValue: true,
     })
 
-    expect(screen.getByRole('combobox', { name: 'Plugin options' })).toHaveTextContent('common.dynamicSelect.selected')
+    expect(screen.getByRole('combobox', { name: 'Plugin options' })).toHaveTextContent(
+      'common.dynamicSelect.selected',
+    )
 
     await user.click(screen.getByRole('combobox', { name: 'Plugin options' }))
     await user.click(screen.getByRole('option', { name: 'Option B' }))

@@ -6,26 +6,55 @@ import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import { useGetDataSourceOAuthUrl, useInvalidDataSourceAuth, useInvalidDataSourceListAuth, useInvalidDefaultDataSourceListAuth } from '@/service/use-datasource'
+import {
+  useGetDataSourceOAuthUrl,
+  useInvalidDataSourceAuth,
+  useInvalidDataSourceListAuth,
+  useInvalidDefaultDataSourceListAuth,
+} from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
 
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  ApiKeyModal: vi.fn(({ onClose, onUpdate, onRemove, disabled, editValues }: { onClose: () => void, onUpdate: () => void, onRemove: () => void, disabled: boolean, editValues: Record<string, unknown> }) => (
-    <div data-testid="mock-api-key-modal" data-disabled={disabled}>
-      <button data-testid="modal-close" onClick={onClose}>Close</button>
-      <button data-testid="modal-update" onClick={onUpdate}>Update</button>
-      <button data-testid="modal-remove" onClick={onRemove}>Remove</button>
-      <div data-testid="edit-values">{JSON.stringify(editValues)}</div>
-    </div>
-  )),
+  ApiKeyModal: vi.fn(
+    ({
+      onClose,
+      onUpdate,
+      onRemove,
+      disabled,
+      editValues,
+    }: {
+      onClose: () => void
+      onUpdate: () => void
+      onRemove: () => void
+      disabled: boolean
+      editValues: Record<string, unknown>
+    }) => (
+      <div data-testid="mock-api-key-modal" data-disabled={disabled}>
+        <button data-testid="modal-close" onClick={onClose}>
+          Close
+        </button>
+        <button data-testid="modal-update" onClick={onUpdate}>
+          Update
+        </button>
+        <button data-testid="modal-remove" onClick={onRemove}>
+          Remove
+        </button>
+        <div data-testid="edit-values">{JSON.stringify(editValues)}</div>
+      </div>
+    ),
+  ),
   usePluginAuthAction: vi.fn(),
   AuthCategory: {
     datasource: 'datasource',
   },
-  AddApiKeyButton: ({ onUpdate }: { onUpdate: () => void }) => <button onClick={onUpdate}>Add API Key</button>,
-  AddOAuthButton: ({ onUpdate }: { onUpdate: () => void }) => <button onClick={onUpdate}>Add OAuth</button>,
+  AddApiKeyButton: ({ onUpdate }: { onUpdate: () => void }) => (
+    <button onClick={onUpdate}>Add API Key</button>
+  ),
+  AddOAuthButton: ({ onUpdate }: { onUpdate: () => void }) => (
+    <button onClick={onUpdate}>Add OAuth</button>
+  ),
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -69,7 +98,9 @@ describe('Card Component', () => {
     mockInvalidateDataSourceAuth()
   })
 
-  const createMockPluginAuthActionReturn = (overrides: Partial<UsePluginAuthActionReturn> = {}): UsePluginAuthActionReturn => ({
+  const createMockPluginAuthActionReturn = (
+    overrides: Partial<UsePluginAuthActionReturn> = {},
+  ): UsePluginAuthActionReturn => ({
     deleteCredentialId: null,
     doingAction: false,
     handleConfirm: vi.fn(),
@@ -122,13 +153,19 @@ describe('Card Component', () => {
 
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: mockHandleAuthUpdate })
     vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(mockInvalidateDataSourceListAuth)
-    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(mockInvalidDefaultDataSourceListAuth)
+    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
+      mockInvalidDefaultDataSourceListAuth,
+    )
     vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
     vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
 
     vi.mocked(usePluginAuthAction).mockReturnValue(mockPluginAuthActionReturn)
-    vi.mocked(useRenderI18nObject).mockReturnValue(mockRenderI18nObjectResult as unknown as UseRenderI18nObjectReturn)
-    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: mockGetPluginOAuthUrl } as unknown as UseGetDataSourceOAuthUrlReturn)
+    vi.mocked(useRenderI18nObject).mockReturnValue(
+      mockRenderI18nObjectResult as unknown as UseRenderI18nObjectReturn,
+    )
+    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
+      mutateAsync: mockGetPluginOAuthUrl,
+    } as unknown as UseGetDataSourceOAuthUrlReturn)
   })
 
   const expectAuthUpdated = () => {
@@ -225,10 +262,12 @@ describe('Card Component', () => {
       // Arrange
       const oAuthItem = {
         ...mockItem,
-        credentials_list: [{
-          ...mockItem.credentials_list[0]!,
-          type: CredentialTypeEnum.OAUTH2,
-        }],
+        credentials_list: [
+          {
+            ...mockItem.credentials_list[0]!,
+            type: CredentialTypeEnum.OAUTH2,
+          },
+        ],
       }
       render(<Card item={oAuthItem} />)
 
@@ -254,10 +293,12 @@ describe('Card Component', () => {
       // Arrange
       const oAuthItem = {
         ...mockItem,
-        credentials_list: [{
-          ...mockItem.credentials_list[0]!,
-          type: CredentialTypeEnum.OAUTH2,
-        }],
+        credentials_list: [
+          {
+            ...mockItem.credentials_list[0]!,
+            type: CredentialTypeEnum.OAUTH2,
+          },
+        ],
       }
       mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: 'https://oauth.url' })
       render(<Card item={oAuthItem} />)
@@ -277,10 +318,12 @@ describe('Card Component', () => {
       // Arrange
       const oAuthItem = {
         ...mockItem,
-        credentials_list: [{
-          ...mockItem.credentials_list[0]!,
-          type: CredentialTypeEnum.OAUTH2,
-        }],
+        credentials_list: [
+          {
+            ...mockItem.credentials_list[0]!,
+            type: CredentialTypeEnum.OAUTH2,
+          },
+        ],
       }
       mockGetPluginOAuthUrl.mockResolvedValue({ authorization_url: '' })
       render(<Card item={oAuthItem} />)
@@ -300,7 +343,10 @@ describe('Card Component', () => {
   describe('Modals', () => {
     it('should show Confirm dialog when deleteCredentialId is set and handle its actions', () => {
       // Arrange
-      const mockReturn = createMockPluginAuthActionReturn({ deleteCredentialId: 'c1', doingAction: false })
+      const mockReturn = createMockPluginAuthActionReturn({
+        deleteCredentialId: 'c1',
+        doingAction: false,
+      })
       vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
 
       // Act
@@ -323,7 +369,10 @@ describe('Card Component', () => {
 
     it('should show ApiKeyModal when editValues is set and handle its actions', () => {
       // Arrange
-      const mockReturn = createMockPluginAuthActionReturn({ editValues: { some: 'value' }, doingAction: false })
+      const mockReturn = createMockPluginAuthActionReturn({
+        editValues: { some: 'value' },
+        doingAction: false,
+      })
       vi.mocked(usePluginAuthAction).mockReturnValue(mockReturn)
       render(<Card item={mockItem} disabled={false} />)
 
@@ -342,7 +391,10 @@ describe('Card Component', () => {
 
     it('should disable ApiKeyModal when doingAction is true', () => {
       // Arrange
-      const mockReturnDoing = createMockPluginAuthActionReturn({ editValues: { some: 'value' }, doingAction: true })
+      const mockReturnDoing = createMockPluginAuthActionReturn({
+        editValues: { some: 'value' },
+        doingAction: true,
+      })
       vi.mocked(usePluginAuthAction).mockReturnValue(mockReturnDoing)
 
       // Act
@@ -359,7 +411,9 @@ describe('Card Component', () => {
       // Arrange
       const configurableItem: DataSourceAuth = {
         ...mockItem,
-        credential_schema: [{ name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true }],
+        credential_schema: [
+          { name: 'api_key', type: FormTypeEnum.textInput, label: 'API Key', required: true },
+        ],
       }
 
       // Act

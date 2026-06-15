@@ -37,10 +37,14 @@ describe('Field primitives', () => {
     await expect.element(input).toHaveAccessibleDescription('Used for account notifications.')
     expect(label.tagName).toBe('LABEL')
     expect(label).toHaveAttribute('for', asHTMLElement(input.element()).id)
-    expect(asHTMLElement(input.element()).getAttribute('aria-describedby')?.split(' ')).toContain(description.id)
+    expect(asHTMLElement(input.element()).getAttribute('aria-describedby')?.split(' ')).toContain(
+      description.id,
+    )
     await expect.element(input).toHaveClass('rounded-lg', 'system-sm-regular')
     await expect.element(screen.getByText('Email')).toHaveClass('py-1', 'system-sm-medium')
-    await expect.element(screen.getByText('Used for account notifications.')).toHaveClass('py-0.5', 'body-xs-regular')
+    await expect
+      .element(screen.getByText('Used for account notifications.'))
+      .toHaveClass('py-0.5', 'body-xs-regular')
 
     asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
 
@@ -48,7 +52,9 @@ describe('Field primitives', () => {
       const error = asHTMLElement(screen.getByText('Email is required.').element())
       await expect.element(screen.getByText('Email is required.')).toBeInTheDocument()
       await expect.element(input).toHaveAttribute('aria-invalid', 'true')
-      await expect.element(input).toHaveClass('data-invalid:border-components-input-border-destructive')
+      await expect
+        .element(input)
+        .toHaveClass('data-invalid:border-components-input-border-destructive')
       expect(asHTMLElement(input.element()).getAttribute('aria-describedby')?.split(' ')).toEqual(
         expect.arrayContaining([description.id, error.id]),
       )
@@ -91,8 +97,12 @@ describe('Field primitives', () => {
     )
 
     await expect.element(screen.getByRole('group', { name: 'Features' })).toBeInTheDocument()
-    await expect.element(screen.getByRole('checkbox', { name: 'Search' })).toHaveAttribute('aria-checked', 'true')
-    await expect.element(screen.getByText('Choose at least one feature.')).toHaveClass('text-text-destructive', 'body-xs-regular')
+    await expect
+      .element(screen.getByRole('checkbox', { name: 'Search' }))
+      .toHaveAttribute('aria-checked', 'true')
+    await expect
+      .element(screen.getByText('Choose at least one feature.'))
+      .toHaveClass('text-text-destructive', 'body-xs-regular')
   })
 
   it('should apply design-system control sizes when requested', async () => {
@@ -109,8 +119,12 @@ describe('Field primitives', () => {
       </React.Fragment>,
     )
 
-    await expect.element(screen.getByRole('textbox', { name: 'Name' })).toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')
-    await expect.element(screen.getByRole('textbox', { name: 'Alias' })).toHaveClass('rounded-md', 'py-[3px]', 'system-xs-regular')
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Name' }))
+      .toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Alias' }))
+      .toHaveClass('rounded-md', 'py-[3px]', 'system-xs-regular')
   })
 
   it('should expose the design-system read-only state', async () => {
@@ -122,6 +136,8 @@ describe('Field primitives', () => {
     )
 
     await expect.element(screen.getByRole('textbox', { name: 'Token' })).toHaveAttribute('readonly')
-    await expect.element(screen.getByRole('textbox', { name: 'Token' })).toHaveClass('read-only:cursor-default', 'read-only:focus:border-transparent')
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Token' }))
+      .toHaveClass('read-only:cursor-default', 'read-only:focus:border-transparent')
   })
 })

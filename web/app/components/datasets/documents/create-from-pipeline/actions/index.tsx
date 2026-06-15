@@ -30,18 +30,14 @@ const Actions = ({
   const { datasetId } = useParams()
 
   const indeterminate = useMemo(() => {
-    if (!showSelect)
-      return false
-    if (selectedOptions === undefined || totalOptions === undefined)
-      return false
+    if (!showSelect) return false
+    if (selectedOptions === undefined || totalOptions === undefined) return false
     return selectedOptions > 0 && selectedOptions < totalOptions
   }, [showSelect, selectedOptions, totalOptions])
 
   const checked = useMemo(() => {
-    if (!showSelect)
-      return false
-    if (selectedOptions === undefined || totalOptions === undefined)
-      return false
+    if (!showSelect) return false
+    if (selectedOptions === undefined || totalOptions === undefined) return false
     return selectedOptions > 0 && selectedOptions === totalOptions
   }, [showSelect, selectedOptions, totalOptions])
 
@@ -51,7 +47,7 @@ const Actions = ({
         <>
           <label className="flex shrink-0 cursor-pointer items-center gap-x-2 py-[3px] pr-2 pl-4">
             <Checkbox
-              onCheckedChange={checked => onSelectAll?.(checked)}
+              onCheckedChange={(checked) => onSelectAll?.(checked)}
               indeterminate={indeterminate}
               checked={checked}
             />
@@ -67,14 +63,8 @@ const Actions = ({
         </>
       )}
       <div className="flex grow items-center justify-end gap-x-2">
-        <Link
-          href={`/datasets/${datasetId}/documents`}
-          replace
-        >
-          <Button
-            variant="ghost"
-            className="px-3 py-2"
-          >
+        <Link href={`/datasets/${datasetId}/documents`} replace>
+          <Button variant="ghost" className="px-3 py-2">
             {t('operation.cancel', { ns: 'common' })}
           </Button>
         </Link>

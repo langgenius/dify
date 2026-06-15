@@ -16,15 +16,17 @@ export type OnlineDocumentSliceShape = {
 }
 
 export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> = (set, get) => {
-  return ({
+  return {
     documentsData: [],
-    setDocumentsData: (documentsData: DataSourceNotionWorkspace[]) => set(() => ({
-      documentsData,
-    })),
+    setDocumentsData: (documentsData: DataSourceNotionWorkspace[]) =>
+      set(() => ({
+        documentsData,
+      })),
     searchValue: '',
-    setSearchValue: (searchValue: string) => set(() => ({
-      searchValue,
-    })),
+    setSearchValue: (searchValue: string) =>
+      set(() => ({
+        searchValue,
+      })),
     onlineDocuments: [],
     setOnlineDocuments: (documents: NotionPage[]) => {
       set(() => ({
@@ -34,13 +36,15 @@ export const createOnlineDocumentSlice: StateCreator<OnlineDocumentSliceShape> =
       previewOnlineDocumentRef.current = documents[0]
     },
     currentDocument: undefined,
-    setCurrentDocument: (document: NotionPage | undefined) => set(() => ({
-      currentDocument: document,
-    })),
+    setCurrentDocument: (document: NotionPage | undefined) =>
+      set(() => ({
+        currentDocument: document,
+      })),
     selectedPagesId: new Set(),
-    setSelectedPagesId: (selectedPagesId: Set<string>) => set(() => ({
-      selectedPagesId,
-    })),
+    setSelectedPagesId: (selectedPagesId: Set<string>) =>
+      set(() => ({
+        selectedPagesId,
+      })),
     previewOnlineDocumentRef: { current: undefined },
-  })
+  }
 }

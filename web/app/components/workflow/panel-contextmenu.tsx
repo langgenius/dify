@@ -5,9 +5,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@langgenius/dify-ui/context-menu'
-import {
-  useCallback,
-} from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TEST_RUN_MENU_HOTKEY } from './header/shortcuts'
 import {
@@ -22,23 +20,16 @@ import { useOperator } from './operator/hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
-export function PanelContextmenu({
-  onClose,
-}: {
-  onClose: () => void
-}) {
+export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
-  const isPanelContextMenu = useStore(s => s.contextMenuTarget?.type === 'panel')
-  const clipboardElements = useStore(s => s.clipboardElements)
-  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
-  const pendingComment = useStore(s => s.pendingComment)
-  const setCommentPlacing = useStore(s => s.setCommentPlacing)
-  const setCommentQuickAdd = useStore(s => s.setCommentQuickAdd)
+  const isPanelContextMenu = useStore((s) => s.contextMenuTarget?.type === 'panel')
+  const clipboardElements = useStore((s) => s.clipboardElements)
+  const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
+  const pendingComment = useStore((s) => s.pendingComment)
+  const setCommentPlacing = useStore((s) => s.setCommentPlacing)
+  const setCommentQuickAdd = useStore((s) => s.setCommentQuickAdd)
   const { handleNodesPaste } = useNodesInteractions()
-  const {
-    handleStartWorkflowRun,
-    handleWorkflowStartRunInChatflow,
-  } = useWorkflowStartRun()
+  const { handleStartWorkflowRun, handleWorkflowStartRunInChatflow } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
@@ -61,22 +52,16 @@ export function PanelContextmenu({
   }, [t])
 
   const handleRunAction = useCallback(() => {
-    if (isChatMode)
-      handleWorkflowStartRunInChatflow()
-    else
-      handleStartWorkflowRun()
+    if (isChatMode) handleWorkflowStartRunInChatflow()
+    else handleStartWorkflowRun()
 
     onClose()
   }, [isChatMode, handleWorkflowStartRunInChatflow, handleStartWorkflowRun, onClose])
 
-  if (!isPanelContextMenu)
-    return null
+  if (!isPanelContextMenu) return null
 
   return (
-    <ContextMenuContent
-      popupClassName="w-[200px] rounded-lg"
-      sideOffset={4}
-    >
+    <ContextMenuContent popupClassName="w-[200px] rounded-lg" sideOffset={4}>
       <ContextMenuGroup>
         <AddBlock
           renderTrigger={renderAddBlockTrigger}
@@ -106,8 +91,7 @@ export function PanelContextmenu({
             )}
             onClick={(e) => {
               e.stopPropagation()
-              if (pendingComment)
-                return
+              if (pendingComment) return
               setCommentQuickAdd(true)
               setCommentPlacing(true)
               onClose()
@@ -120,7 +104,9 @@ export function PanelContextmenu({
           className="justify-between gap-4 px-3 text-text-secondary"
           onClick={handleRunAction}
         >
-          {isChatMode ? t('common.debugAndPreview', { ns: 'workflow' }) : t('common.run', { ns: 'workflow' })}
+          {isChatMode
+            ? t('common.debugAndPreview', { ns: 'workflow' })
+            : t('common.run', { ns: 'workflow' })}
           {!isChatMode && <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} />}
         </ContextMenuItem>
       </ContextMenuGroup>

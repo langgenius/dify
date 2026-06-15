@@ -98,7 +98,7 @@ describe('variable-in-markdown', () => {
               value: '',
             },
           }}
-          nodeName={nodeId => nodeId === 'node-1' ? 'Start Node' : nodeId}
+          nodeName={(nodeId) => (nodeId === 'node-1' ? 'Start Node' : nodeId)}
         />,
       )
 
@@ -115,7 +115,7 @@ describe('variable-in-markdown', () => {
               selector: [],
             },
           }}
-          nodeName={nodeId => nodeId}
+          nodeName={(nodeId) => nodeId}
         />,
       )
 
@@ -134,7 +134,7 @@ describe('variable-in-markdown', () => {
               value: ['Approved', 'Rejected'],
             },
           }}
-          nodeName={nodeId => nodeId}
+          nodeName={(nodeId) => nodeId}
         />,
       )
 
@@ -154,12 +154,14 @@ describe('variable-in-markdown', () => {
               value: [],
             },
           }}
-          nodeName={nodeId => nodeId === 'node-1' ? 'Start Node' : nodeId}
+          nodeName={(nodeId) => (nodeId === 'node-1' ? 'Start Node' : nodeId)}
         />,
       )
 
       expect(screen.queryByTestId('human-input-note-select-preview')).not.toBeInTheDocument()
-      expect(screen.queryByRole('combobox', { name: 'human-input-note-select' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('combobox', { name: 'human-input-note-select' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByText('{{Start Node/options}}')).toBeInTheDocument()
     })
 
@@ -177,7 +179,7 @@ describe('variable-in-markdown', () => {
               value: ['Approved', 'Rejected'],
             },
           }}
-          nodeName={nodeId => nodeId}
+          nodeName={(nodeId) => nodeId}
         />,
       )
 
@@ -196,7 +198,7 @@ describe('variable-in-markdown', () => {
             allowed_file_types: [],
             allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
           }}
-          nodeName={nodeId => nodeId}
+          nodeName={(nodeId) => nodeId}
         />,
       )
 

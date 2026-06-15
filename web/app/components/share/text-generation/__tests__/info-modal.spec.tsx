@@ -37,37 +37,19 @@ describe('InfoModal', () => {
 
   describe('rendering', () => {
     it('should not render when isShow is false', async () => {
-      await renderModal(
-        <InfoModal
-          isShow={false}
-          onClose={mockOnClose}
-          data={baseSiteInfo}
-        />,
-      )
+      await renderModal(<InfoModal isShow={false} onClose={mockOnClose} data={baseSiteInfo} />)
 
       expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     })
 
     it('should render when isShow is true', async () => {
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={baseSiteInfo}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={baseSiteInfo} />)
 
       expect(screen.getByText('Test App')).toBeInTheDocument()
     })
 
     it('should render app title', async () => {
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={baseSiteInfo}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={baseSiteInfo} />)
 
       expect(screen.getByText('Test App')).toBeInTheDocument()
     })
@@ -79,15 +61,13 @@ describe('InfoModal', () => {
       }
 
       await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={siteInfoWithCopyright}
-        />,
+        <InfoModal isShow={true} onClose={mockOnClose} data={siteInfoWithCopyright} />,
       )
 
       const currentYear = new Date().getFullYear().toString()
-      expect(screen.getByText(`Copyright © ${currentYear} Dify AI. All Rights Reserved.`)).toBeInTheDocument()
+      expect(
+        screen.getByText(`Copyright © ${currentYear} Dify AI. All Rights Reserved.`),
+      ).toBeInTheDocument()
     })
 
     it('should render current year in copyright', async () => {
@@ -97,11 +77,7 @@ describe('InfoModal', () => {
       }
 
       await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={siteInfoWithCopyright}
-        />,
+        <InfoModal isShow={true} onClose={mockOnClose} data={siteInfoWithCopyright} />,
       )
 
       const currentYear = new Date().getFullYear().toString()
@@ -115,37 +91,21 @@ describe('InfoModal', () => {
       }
 
       await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={siteInfoWithDisclaimer}
-        />,
+        <InfoModal isShow={true} onClose={mockOnClose} data={siteInfoWithDisclaimer} />,
       )
 
       expect(screen.getByText('This is a custom disclaimer')).toBeInTheDocument()
     })
 
     it('should not render copyright section when not provided', async () => {
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={baseSiteInfo}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={baseSiteInfo} />)
 
       const year = new Date().getFullYear().toString()
       expect(screen.queryByText(new RegExp(`©.*${year}`))).not.toBeInTheDocument()
     })
 
     it('should render with undefined data', async () => {
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={undefined}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={undefined} />)
 
       expect(screen.queryByText('Test App')).not.toBeInTheDocument()
     })
@@ -157,13 +117,7 @@ describe('InfoModal', () => {
         icon_url: 'https://example.com/icon.png',
       }
 
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={siteInfoWithImage}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={siteInfoWithImage} />)
 
       expect(screen.getByText(siteInfoWithImage.title!)).toBeInTheDocument()
     })
@@ -171,13 +125,7 @@ describe('InfoModal', () => {
 
   describe('close functionality', () => {
     it('should call onClose when close button is clicked', async () => {
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={baseSiteInfo}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={baseSiteInfo} />)
 
       const closeIcon = document.querySelector('[class*="text-text-tertiary"]')
       expect(closeIcon).toBeInTheDocument()
@@ -196,13 +144,7 @@ describe('InfoModal', () => {
         custom_disclaimer: 'Disclaimer text here',
       }
 
-      await renderModal(
-        <InfoModal
-          isShow={true}
-          onClose={mockOnClose}
-          data={siteInfoWithBoth}
-        />,
-      )
+      await renderModal(<InfoModal isShow={true} onClose={mockOnClose} data={siteInfoWithBoth} />)
 
       expect(screen.getByText(/My Company/)).toBeInTheDocument()
       expect(screen.getByText('Disclaimer text here')).toBeInTheDocument()

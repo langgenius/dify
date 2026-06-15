@@ -45,8 +45,6 @@ describe('EnvNav', () => {
     } as unknown as AppContextValue)
 
     render(<EnvNav />)
-    expect(
-      screen.getByText('common.environment.development'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('common.environment.development')).toBeInTheDocument()
   })
 })

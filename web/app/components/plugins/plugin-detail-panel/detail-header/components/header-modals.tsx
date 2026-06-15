@@ -70,8 +70,7 @@ const HeaderModals: FC<HeaderModalsProps> = ({
       <AlertDialog
         open={isShowDeleteConfirm}
         onOpenChange={(open) => {
-          if (!open)
-            hideDeleteConfirm()
+          if (!open) hideDeleteConfirm()
         }}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>

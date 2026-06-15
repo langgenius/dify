@@ -9,20 +9,18 @@ type TipsProps = {
   showDebugModeTip: boolean
 }
 
-const Tips = ({
-  showEmailTip,
-  isEmailDebugMode,
-  showDebugModeTip,
-}: TipsProps) => {
+const Tips = ({ showEmailTip, isEmailDebugMode, showDebugModeTip }: TipsProps) => {
   const { t } = useTranslation()
-  const email = useAppSelector(s => s.userProfile.email)
+  const email = useAppSelector((s) => s.userProfile.email)
 
   return (
     <>
       <Divider className="my-2! w-[30px]" />
       <div className="space-y-1 pt-1" data-testid="tips">
         {showEmailTip && !isEmailDebugMode && (
-          <div className="system-xs-regular text-text-secondary">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>
+          <div className="system-xs-regular text-text-secondary">
+            {t('common.humanInputEmailTip', { ns: 'workflow' })}
+          </div>
         )}
         {showEmailTip && isEmailDebugMode && (
           <div className="system-xs-regular text-text-secondary">
@@ -34,7 +32,11 @@ const Tips = ({
             />
           </div>
         )}
-        {showDebugModeTip && <div className="system-xs-medium text-text-warning">{t('common.humanInputWebappTip', { ns: 'workflow' })}</div>}
+        {showDebugModeTip && (
+          <div className="system-xs-medium text-text-warning">
+            {t('common.humanInputWebappTip', { ns: 'workflow' })}
+          </div>
+        )}
       </div>
     </>
   )

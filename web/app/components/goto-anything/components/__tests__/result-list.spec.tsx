@@ -25,9 +25,7 @@ describe('ResultList', () => {
       plugin: [createResult({ id: 'p1', title: 'Plugin One', type: 'plugin' })],
     }
 
-    renderInCommandRoot(
-      <ResultList groupedResults={grouped} onSelect={vi.fn()} />,
-    )
+    renderInCommandRoot(<ResultList groupedResults={grouped} onSelect={vi.fn()} />)
 
     expect(screen.getByText('App One')).toBeInTheDocument()
     expect(screen.getByText('Plugin One')).toBeInTheDocument()
@@ -41,9 +39,7 @@ describe('ResultList', () => {
       ],
     }
 
-    renderInCommandRoot(
-      <ResultList groupedResults={grouped} onSelect={vi.fn()} />,
-    )
+    renderInCommandRoot(<ResultList groupedResults={grouped} onSelect={vi.fn()} />)
 
     expect(screen.getByText('App One')).toBeInTheDocument()
     expect(screen.getByText('App Two')).toBeInTheDocument()
@@ -54,9 +50,7 @@ describe('ResultList', () => {
     const onSelect = vi.fn()
     const result = createResult({ id: 'a1', title: 'Click Me', type: 'app' })
 
-    renderInCommandRoot(
-      <ResultList groupedResults={{ app: [result] }} onSelect={onSelect} />,
-    )
+    renderInCommandRoot(<ResultList groupedResults={{ app: [result] }} onSelect={onSelect} />)
 
     await user.click(screen.getByText('Click Me'))
 
@@ -64,9 +58,7 @@ describe('ResultList', () => {
   })
 
   it('renders empty when no grouped results provided', () => {
-    const { container } = renderInCommandRoot(
-      <ResultList groupedResults={{}} onSelect={vi.fn()} />,
-    )
+    const { container } = renderInCommandRoot(<ResultList groupedResults={{}} onSelect={vi.fn()} />)
 
     const groups = container.querySelectorAll('[cmdk-group]')
     expect(groups).toHaveLength(0)
@@ -77,9 +69,7 @@ describe('ResultList', () => {
       command: [createResult({ id: 'c1', title: 'Cmd', type: 'command' })],
     }
 
-    renderInCommandRoot(
-      <ResultList groupedResults={grouped} onSelect={vi.fn()} />,
-    )
+    renderInCommandRoot(<ResultList groupedResults={grouped} onSelect={vi.fn()} />)
 
     expect(screen.getByText('app.gotoAnything.groups.commands')).toBeInTheDocument()
   })

@@ -10,11 +10,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   optimizeDeps: {
-    include: [
-      '@base-ui/react/form',
-      '@base-ui/react/merge-props',
-      '@base-ui/react/use-render',
-    ],
+    include: ['@base-ui/react/form', '@base-ui/react/merge-props', '@base-ui/react/use-render'],
   },
   test: {
     globals: true,

@@ -4,16 +4,20 @@ import { toast, ToastHost } from '../index'
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
-  element.dispatchEvent(new MouseEvent('mouseover', {
-    bubbles: true,
-  }))
+  element.dispatchEvent(
+    new MouseEvent('mouseover', {
+      bubbles: true,
+    }),
+  )
 }
 
 const dispatchToastMouseOut = (element: HTMLElement | SVGElement) => {
-  element.dispatchEvent(new MouseEvent('mouseout', {
-    bubbles: true,
-    relatedTarget: document.body,
-  }))
+  element.dispatchEvent(
+    new MouseEvent('mouseout', {
+      bubbles: true,
+      relatedTarget: document.body,
+    }),
+  )
 }
 
 describe('@langgenius/dify-ui/toast', () => {
@@ -38,13 +42,23 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Saved')).toBeInTheDocument()
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
+    await expect
+      .element(screen.getByRole('region', { name: 'Notifications' }))
+      .toHaveAttribute('aria-live', 'polite')
     await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-60')
-    expect(screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild).toHaveClass('top-4')
-    expect(screen.getByText('Saved').element().closest('[class*="transition-opacity"]')).toHaveClass('motion-reduce:transition-none')
+    expect(
+      screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild,
+    ).toHaveClass('top-4')
+    expect(
+      screen.getByText('Saved').element().closest('[class*="transition-opacity"]'),
+    ).toHaveClass('motion-reduce:transition-none')
     expect(screen.getByRole('dialog').element()).not.toHaveClass('outline-hidden')
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
-    expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).toBeInTheDocument()
+    expect(
+      document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill'),
+    ).toBeInTheDocument()
+    expect(
+      document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]'),
+    ).toBeInTheDocument()
   })
 
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
@@ -58,13 +72,17 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Third toast')).toBeInTheDocument()
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
-    expect(document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]')).toHaveLength(3)
+    expect(
+      document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]'),
+    ).toHaveLength(3)
 
     const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
     dispatchToastMouseOver(viewport)
 
     await vi.waitFor(() => {
-      expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
+      expect(
+        document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]'),
+      ).not.toBeInTheDocument()
     })
     dispatchToastMouseOut(viewport)
   })
@@ -73,7 +91,8 @@ describe('@langgenius/dify-ui/toast', () => {
     const screen = await render(<ToastHost />)
 
     toast.info('Long background toast', {
-      description: 'This longer toast intentionally spans multiple lines so it would overflow the collapsed stack without matching the frontmost toast height.',
+      description:
+        'This longer toast intentionally spans multiple lines so it would overflow the collapsed stack without matching the frontmost toast height.',
     })
     toast.success('Short front toast', {
       description: 'Short message.',
@@ -81,11 +100,20 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Short front toast')).toBeInTheDocument()
     await expect.element(screen.getByText('Long background toast')).toBeInTheDocument()
-    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
-    await expect.element(screen.getByRole('dialog', { name: 'Short front toast' })).toBeInTheDocument()
-    await expect.element(screen.getByRole('dialog', { name: 'Long background toast' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('region', { name: 'Notifications' }))
+      .toHaveAttribute('aria-live', 'polite')
+    await expect
+      .element(screen.getByRole('dialog', { name: 'Short front toast' }))
+      .toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('dialog', { name: 'Long background toast' }))
+      .toBeInTheDocument()
 
-    const longToastContent = screen.getByText('Long background toast').element().closest('[class*="transition-opacity"]')
+    const longToastContent = screen
+      .getByText('Long background toast')
+      .element()
+      .closest('[class*="transition-opacity"]')
     expect(longToastContent).toHaveAttribute('data-behind')
     expect(longToastContent).toHaveClass('h-full')
     expect(longToastContent?.parentElement).toHaveClass('h-full')
@@ -97,7 +125,9 @@ describe('@langgenius/dify-ui/toast', () => {
     toast('Neutral toast')
 
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
+    expect(
+      document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill'),
+    ).not.toBeInTheDocument()
   })
 
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
@@ -138,7 +168,9 @@ describe('@langgenius/dify-ui/toast', () => {
     const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
     dispatchToastMouseOver(viewport)
 
-    await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('button', { name: 'Close notification' }))
+      .toBeInTheDocument()
     dispatchToastMouseOut(viewport)
     asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
 
@@ -228,7 +260,7 @@ describe('@langgenius/dify-ui/toast', () => {
 
     void toast.promise(promise, {
       loading: 'Saving…',
-      success: result => ({
+      success: (result) => ({
         title: 'Saved',
         description: result,
         type: 'success',

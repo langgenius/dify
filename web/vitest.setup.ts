@@ -8,7 +8,7 @@ if (typeof expect.extend === 'function') {
   expect.extend(jestDomMatchers)
 }
 
-(
+;(
   globalThis as typeof globalThis & {
     BASE_UI_ANIMATIONS_DISABLED: boolean
   }
@@ -19,8 +19,7 @@ if (typeof window !== 'undefined') {
   if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
     Element.prototype.getAnimations = () => []
 
-  if (!document.getAnimations)
-    document.getAnimations = () => []
+  if (!document.getAnimations) document.getAnimations = () => []
 }
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
@@ -46,11 +45,21 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
     readonly rootMargin: string = ''
     readonly scrollMargin: string = ''
     readonly thresholds: ReadonlyArray<number> = []
-    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
-    observe(_target: Element) { /* noop */ }
-    unobserve(_target: Element) { /* noop */ }
-    disconnect() { /* noop */ }
-    takeRecords(): IntersectionObserverEntry[] { return [] }
+    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {
+      /* noop */
+    }
+    observe(_target: Element) {
+      /* noop */
+    }
+    unobserve(_target: Element) {
+      /* noop */
+    }
+    disconnect() {
+      /* noop */
+    }
+    takeRecords(): IntersectionObserverEntry[] {
+      return []
+    }
   }
 }
 
@@ -103,7 +112,8 @@ vi.mock('@floating-ui/react', async () => {
   const actual = await vi.importActual('@floating-ui/react')
   return {
     ...actual,
-    FloatingPortal: ({ children }: { children: React.ReactNode }) => React.createElement('div', { 'data-floating-ui-portal': true }, children),
+    FloatingPortal: ({ children }: { children: React.ReactNode }) =>
+      React.createElement('div', { 'data-floating-ui-portal': true }, children),
   }
 })
 
@@ -130,13 +140,13 @@ vi.mock('@monaco-editor/react', () => {
       getPosition: vi.fn(() => ({ lineNumber: 1, column: 1 })),
       deltaDecorations: vi.fn(() => []),
       focus: vi.fn(() => {
-        focusListeners.forEach(listener => listener())
+        focusListeners.forEach((listener) => listener())
       }),
       setPosition: vi.fn(),
       revealLine: vi.fn(),
       trigger: vi.fn(),
       __blur: () => {
-        blurListeners.forEach(listener => listener())
+        blurListeners.forEach((listener) => listener())
       },
     }
   }
@@ -151,7 +161,12 @@ vi.mock('@monaco-editor/react', () => {
       startColumn: number
       endLineNumber: number
       endColumn: number
-      constructor(startLineNumber: number, startColumn: number, endLineNumber: number, endColumn: number) {
+      constructor(
+        startLineNumber: number,
+        startColumn: number,
+        endLineNumber: number,
+        endColumn: number,
+      ) {
         this.startLineNumber = startLineNumber
         this.startColumn = startColumn
         this.endLineNumber = endLineNumber
@@ -172,8 +187,7 @@ vi.mock('@monaco-editor/react', () => {
     options?: { readOnly?: boolean }
   }) => {
     const editorRef = React.useRef<ReturnType<typeof createEditorMock> | null>(null)
-    if (!editorRef.current)
-      editorRef.current = createEditorMock()
+    if (!editorRef.current) editorRef.current = createEditorMock()
 
     React.useEffect(() => {
       onMount?.(editorRef.current!, monacoMock)
@@ -181,11 +195,11 @@ vi.mock('@monaco-editor/react', () => {
 
     return React.createElement('textarea', {
       'data-testid': 'monaco-editor',
-      'readOnly': options?.readOnly,
+      readOnly: options?.readOnly,
       value,
-      'onChange': (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value),
-      'onFocus': () => editorRef.current?.focus(),
-      'onBlur': () => editorRef.current?.__blur(),
+      onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value),
+      onFocus: () => editorRef.current?.focus(),
+      onBlur: () => editorRef.current?.__blur(),
     })
   }
 
@@ -212,9 +226,11 @@ const createMockLocalStorage = () => {
       delete storage[key]
     }),
     clear: vi.fn(() => {
-      Object.keys(storage).forEach(key => delete storage[key])
+      Object.keys(storage).forEach((key) => delete storage[key])
     }),
-    get storage() { return { ...storage } },
+    get storage() {
+      return { ...storage }
+    },
   }
 }
 

@@ -49,7 +49,9 @@ describe('Operations', () => {
     it('should call onExport when export is clicked', () => {
       render(<Operations {...defaultProps} />)
 
-      const exportButton = screen.getByText(/exportPipeline/i).closest('div[class*="cursor-pointer"]')
+      const exportButton = screen
+        .getByText(/exportPipeline/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(exportButton!)
 
       expect(defaultProps.onExport).toHaveBeenCalledTimes(1)
@@ -82,7 +84,9 @@ describe('Operations', () => {
     it('should stop propagation on export click', () => {
       render(<Operations {...defaultProps} />)
 
-      const exportButton = screen.getByText(/exportPipeline/i).closest('div[class*="cursor-pointer"]')
+      const exportButton = screen
+        .getByText(/exportPipeline/i)
+        .closest('div[class*="cursor-pointer"]')
       fireEvent.click(exportButton!)
 
       expect(defaultProps.onExport).toHaveBeenCalled()

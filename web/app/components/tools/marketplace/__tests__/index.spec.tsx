@@ -26,7 +26,8 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
 const mockUseMarketplacePlugins = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) => mockUseMarketplaceCollectionsAndPlugins(...args),
+  useMarketplaceCollectionsAndPlugins: (...args: unknown[]) =>
+    mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
@@ -135,9 +136,11 @@ describe('Marketplace', () => {
 
       // Assert
       expect(screen.getByTestId('marketplace-list')).toBeInTheDocument()
-      expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
-        showInstallButton: true,
-      }))
+      expect(listRenderSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showInstallButton: true,
+        }),
+      )
     })
   })
 
@@ -171,7 +174,9 @@ describe('Marketplace', () => {
         tags: 'tag-a,tag-b',
         theme: undefined,
       })
-      const marketplaceLink = screen.getByRole('link', { name: /plugin.marketplace.difyMarketplace/i })
+      const marketplaceLink = screen.getByRole('link', {
+        name: /plugin.marketplace.difyMarketplace/i,
+      })
       expect(marketplaceLink).toHaveAttribute('href', 'https://marketplace.test/market')
     })
   })

@@ -1,41 +1,19 @@
 {
   "name": "@langgenius/difyctl",
-  "type": "module",
   "version": "0.1.0-rc.1",
   "description": "Dify command-line interface",
-  "difyctl": {
-    "channel": "rc",
-    "compat": {
-      "minDify": "1.14.0",
-      "maxDify": "1.15.0"
-    },
-    "release": {
-      "tagPrefix": "difyctl-v",
-      "binName": "difyctl",
-      "checksumsSuffix": "-checksums.txt",
-      "targets": [
-        { "id": "linux-x64", "bunTarget": "bun-linux-x64", "exe": false },
-        { "id": "linux-arm64", "bunTarget": "bun-linux-arm64", "exe": false },
-        { "id": "darwin-x64", "bunTarget": "bun-darwin-x64", "exe": false },
-        { "id": "darwin-arm64", "bunTarget": "bun-darwin-arm64", "exe": false },
-        { "id": "windows-x64", "bunTarget": "bun-windows-x64", "exe": true }
-      ]
-    }
-  },
   "license": "Apache-2.0",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
   "files": [
     "README.md",
     "bin",
     "dist"
   ],
-  "engines": {
-    "node": "^22.22.1"
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "scripts": {
     "build": "vp pack",
@@ -89,5 +67,47 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "engines": {
+    "node": "^22.22.1"
+  },
+  "difyctl": {
+    "channel": "rc",
+    "compat": {
+      "minDify": "1.14.0",
+      "maxDify": "1.15.0"
+    },
+    "release": {
+      "tagPrefix": "difyctl-v",
+      "binName": "difyctl",
+      "checksumsSuffix": "-checksums.txt",
+      "targets": [
+        {
+          "id": "linux-x64",
+          "bunTarget": "bun-linux-x64",
+          "exe": false
+        },
+        {
+          "id": "linux-arm64",
+          "bunTarget": "bun-linux-arm64",
+          "exe": false
+        },
+        {
+          "id": "darwin-x64",
+          "bunTarget": "bun-darwin-x64",
+          "exe": false
+        },
+        {
+          "id": "darwin-arm64",
+          "bunTarget": "bun-darwin-arm64",
+          "exe": false
+        },
+        {
+          "id": "windows-x64",
+          "bunTarget": "bun-windows-x64",
+          "exe": true
+        }
+      ]
+    }
   }
 }

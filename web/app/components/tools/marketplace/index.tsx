@@ -1,8 +1,5 @@
 import type { useMarketplace } from './hooks'
-import {
-  RiArrowRightUpLine,
-  RiArrowUpDoubleLine,
-} from '@remixicon/react'
+import { RiArrowRightUpLine, RiArrowUpDoubleLine } from '@remixicon/react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
@@ -27,13 +24,8 @@ const Marketplace = ({
   const locale = useLocale()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const {
-    isLoading,
-    marketplaceCollections,
-    marketplaceCollectionPluginsMap,
-    plugins,
-    page,
-  } = marketplaceContext
+  const { isLoading, marketplaceCollections, marketplaceCollectionPluginsMap, plugins, page } =
+    marketplaceContext
 
   return (
     <>
@@ -79,7 +71,12 @@ const Marketplace = ({
             </span>
             {t('operation.in', { ns: 'common' })}
             <a
-              href={getMarketplaceUrl('', { language: locale, q: searchPluginText, tags: filterPluginTags.join(','), theme })}
+              href={getMarketplaceUrl('', {
+                language: locale,
+                q: searchPluginText,
+                tags: filterPluginTags.join(','),
+                theme,
+              })}
               className="ml-1 flex items-center system-sm-medium text-text-accent"
               target="_blank"
             >
@@ -90,23 +87,19 @@ const Marketplace = ({
         </div>
       </div>
       <div className="mt-[-14px] shrink-0 grow bg-background-default-subtle px-12 pb-2">
-        {
-          isLoading && page === 1 && (
-            <div className="absolute top-1/2 left-1/2 -translate-1/2">
-              <Loading />
-            </div>
-          )
-        }
-        {
-          (!isLoading || page > 1) && (
-            <List
-              marketplaceCollections={marketplaceCollections || []}
-              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
-              plugins={plugins}
-              showInstallButton
-            />
-          )
-        }
+        {isLoading && page === 1 && (
+          <div className="absolute top-1/2 left-1/2 -translate-1/2">
+            <Loading />
+          </div>
+        )}
+        {(!isLoading || page > 1) && (
+          <List
+            marketplaceCollections={marketplaceCollections || []}
+            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+            plugins={plugins}
+            showInstallButton
+          />
+        )}
       </div>
     </>
   )

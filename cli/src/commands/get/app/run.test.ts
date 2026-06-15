@@ -34,10 +34,12 @@ describe('runGetApp', () => {
 
   async function render(opts: Parameters<typeof runGetApp>[0] = {}): Promise<string> {
     const result = await runGetApp(opts, { active: baseActive, http: http() })
-    return stringifyOutput(table({
-      format: opts.format ?? '',
-      data: result.data,
-    }))
+    return stringifyOutput(
+      table({
+        format: opts.format ?? '',
+        data: result.data,
+      }),
+    )
   }
 
   it('list (no id, default format) renders table with NAME ID MODE TAGS UPDATED', async () => {
@@ -52,7 +54,7 @@ describe('runGetApp', () => {
   })
 
   it('defines table headers on the output class', () => {
-    expect(AppListOutput.tableColumns().map(column => column.name)).toEqual([
+    expect(AppListOutput.tableColumns().map((column) => column.name)).toEqual([
       'NAME',
       'ID',
       'MODE',
@@ -94,9 +96,9 @@ describe('runGetApp', () => {
 
   it('-o json emits parseable JSON envelope', async () => {
     const out = await render({ format: 'json' })
-    const parsed = JSON.parse(out) as { data: Array<{ id: string }>, total: number }
+    const parsed = JSON.parse(out) as { data: Array<{ id: string }>; total: number }
     expect(parsed.data).toHaveLength(2)
-    expect(parsed.data.map(r => r.id).sort()).toEqual(['app-1', 'app-2'])
+    expect(parsed.data.map((r) => r.id).sort()).toEqual(['app-1', 'app-2'])
   })
 
   it('-o yaml emits YAML envelope', async () => {
@@ -118,9 +120,7 @@ describe('runGetApp', () => {
   })
 
   it('rejects unknown format', async () => {
-    await expect(render({ format: 'bogus' }))
-      .rejects
-      .toThrow(/not supported/)
+    await expect(render({ format: 'bogus' })).rejects.toThrow(/not supported/)
   })
 
   it('--workspace flag overrides bundle default', async () => {

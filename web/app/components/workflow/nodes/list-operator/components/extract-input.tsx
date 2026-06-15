@@ -16,12 +16,7 @@ type Props = Readonly<{
   onChange: (value: string) => void
 }>
 
-const ExtractInput: FC<Props> = ({
-  nodeId,
-  readOnly,
-  value,
-  onChange,
-}) => {
+const ExtractInput: FC<Props> = ({ nodeId, readOnly, value, onChange }) => {
   const { t } = useTranslation()
 
   const [isFocus, setIsFocus] = useState(false)
@@ -36,7 +31,12 @@ const ExtractInput: FC<Props> = ({
     <div className="flex items-start space-x-1">
       <Input
         instanceId="http-extract-number"
-        className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+        className={cn(
+          isFocus
+            ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+            : 'border-components-input-border-hover bg-components-input-bg-normal',
+          'w-0 grow rounded-lg border px-3 py-[6px]',
+        )}
         value={value}
         onChange={onChange}
         readOnly={readOnly}

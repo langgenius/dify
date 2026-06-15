@@ -4,11 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import Operations from '../operations'
 
 function renderInMenu(ui: React.ReactElement) {
-  return render(
-    <DropdownMenu open>
-      {ui}
-    </DropdownMenu>,
-  )
+  return render(<DropdownMenu open>{ui}</DropdownMenu>)
 }
 
 describe('Operations', () => {

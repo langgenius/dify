@@ -35,7 +35,9 @@ const createTag = (overrides: Partial<Tag> = {}): Tag => ({
   ...overrides,
 })
 
-const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> = {}): ApiBasedExtensionResponse => ({
+const createApiBasedExtension = (
+  overrides: Partial<ApiBasedExtensionResponse> = {},
+): ApiBasedExtensionResponse => ({
   id: 'extension-1',
   name: 'Weather',
   api_endpoint: 'https://api.example.com/weather',
@@ -78,7 +80,9 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('http://localhost/api')
     expect(warnSpy).toHaveBeenCalledTimes(1)
-    expect(warnSpy).toHaveBeenCalledWith('Using localhost as base URL in server environment, please configure accordingly.')
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Using localhost as base URL in server environment, please configure accordingly.',
+    )
   })
 
   // Scenario: non-http protocols surface warnings.
@@ -215,10 +219,7 @@ describe('consoleQuery tag mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(queryClient.getQueryData(appListKey)).toEqual([
-      updatedTag,
-      otherTag,
-    ])
+    expect(queryClient.getQueryData(appListKey)).toEqual([updatedTag, otherTag])
     expect(queryClient.getQueryData(knowledgeListKey)).toEqual([knowledgeTag])
   })
 

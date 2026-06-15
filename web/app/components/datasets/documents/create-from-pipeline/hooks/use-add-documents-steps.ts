@@ -10,11 +10,11 @@ export const useAddDocumentsSteps = () => {
   const [currentStep, setCurrentStep] = useState(1)
 
   const handleNextStep = useCallback(() => {
-    setCurrentStep(preStep => preStep + 1)
+    setCurrentStep((preStep) => preStep + 1)
   }, [])
 
   const handleBackStep = useCallback(() => {
-    setCurrentStep(preStep => preStep - 1)
+    setCurrentStep((preStep) => preStep - 1)
   }, [])
 
   const steps = [

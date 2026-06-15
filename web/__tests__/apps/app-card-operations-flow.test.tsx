@@ -34,10 +34,14 @@ const mockRouterPush = vi.fn()
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.mockNotify({ type: 'info', message, ...options }),
+    success: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.mockNotify({ type: 'success', message, ...options }),
+    error: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.mockNotify({ type: 'error', message, ...options }),
+    warning: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.mockNotify({ type: 'warning', message, ...options }),
+    info: (message: string, options?: Record<string, unknown>) =>
+      toastMocks.mockNotify({ type: 'info', message, ...options }),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -66,12 +70,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/next/dynamic', () => ({
   default: (loader: () => Promise<{ default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
-    loader().then((mod) => {
-      Component = mod.default as React.ComponentType<Record<string, unknown>>
-    }).catch(() => {})
+    loader()
+      .then((mod) => {
+        Component = mod.default as React.ComponentType<Record<string, unknown>>
+      })
+      .catch(() => {})
     const Wrapper = (props: Record<string, unknown>) => {
-      if (Component)
-        return <Component {...props} />
+      if (Component) return <Component {...props} />
       return null
     }
     Wrapper.displayName = 'DynamicWrapper'
@@ -128,24 +133,27 @@ vi.mock('@/hooks/use-async-window-open', () => ({
 // Mock modals loaded via next/dynamic
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: ({ show, onConfirm, onHide, appName }: Record<string, unknown>) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="edit-app-modal">
         <span data-testid="modal-app-name">{appName as string}</span>
         <button
           data-testid="confirm-edit"
-          onClick={() => (onConfirm as (data: Record<string, unknown>) => void)({
-            name: 'Updated App Name',
-            icon_type: 'emoji',
-            icon: '🔥',
-            icon_background: '#fff',
-            description: 'Updated description',
-          })}
+          onClick={() =>
+            (onConfirm as (data: Record<string, unknown>) => void)({
+              name: 'Updated App Name',
+              icon_type: 'emoji',
+              icon: '🔥',
+              icon_background: '#fff',
+              description: 'Updated description',
+            })
+          }
         >
           Confirm
         </button>
-        <button data-testid="cancel-edit" onClick={onHide as () => void}>Cancel</button>
+        <button data-testid="cancel-edit" onClick={onHide as () => void}>
+          Cancel
+        </button>
       </div>
     )
   },
@@ -153,22 +161,25 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
 
 vi.mock('@/app/components/app/duplicate-modal', () => ({
   default: ({ show, onConfirm, onHide }: Record<string, unknown>) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="duplicate-app-modal">
         <button
           data-testid="confirm-duplicate"
-          onClick={() => (onConfirm as (data: Record<string, unknown>) => void)({
-            name: 'Copied App',
-            icon_type: 'emoji',
-            icon: '📋',
-            icon_background: '#fff',
-          })}
+          onClick={() =>
+            (onConfirm as (data: Record<string, unknown>) => void)({
+              name: 'Copied App',
+              icon_type: 'emoji',
+              icon: '📋',
+              icon_background: '#fff',
+            })
+          }
         >
           Confirm Duplicate
         </button>
-        <button data-testid="cancel-duplicate" onClick={onHide as () => void}>Cancel</button>
+        <button data-testid="cancel-duplicate" onClick={onHide as () => void}>
+          Cancel
+        </button>
       </div>
     )
   },
@@ -176,12 +187,15 @@ vi.mock('@/app/components/app/duplicate-modal', () => ({
 
 vi.mock('@/app/components/app/switch-app-modal', () => ({
   default: ({ show, onClose, onSuccess }: Record<string, unknown>) => {
-    if (!show)
-      return null
+    if (!show) return null
     return (
       <div data-testid="switch-app-modal">
-        <button data-testid="confirm-switch" onClick={onSuccess as () => void}>Confirm Switch</button>
-        <button data-testid="cancel-switch" onClick={onClose as () => void}>Cancel</button>
+        <button data-testid="confirm-switch" onClick={onSuccess as () => void}>
+          Confirm Switch
+        </button>
+        <button data-testid="cancel-switch" onClick={onClose as () => void}>
+          Cancel
+        </button>
       </div>
     )
   },
@@ -190,8 +204,15 @@ vi.mock('@/app/components/app/switch-app-modal', () => ({
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   default: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="dsl-export-confirm-modal">
-      <button data-testid="export-include" onClick={() => (onConfirm as (include: boolean) => void)(true)}>Include</button>
-      <button data-testid="export-close" onClick={onClose as () => void}>Close</button>
+      <button
+        data-testid="export-include"
+        onClick={() => (onConfirm as (include: boolean) => void)(true)}
+      >
+        Include
+      </button>
+      <button data-testid="export-close" onClick={onClose as () => void}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -199,8 +220,12 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
 vi.mock('@/app/components/app/app-access-control', () => ({
   default: ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
-      <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
-      <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>
+      <button data-testid="confirm-access" onClick={onConfirm as () => void}>
+        Confirm
+      </button>
+      <button data-testid="cancel-access" onClick={onClose as () => void}>
+        Cancel
+      </button>
     </div>
   ),
 }))
@@ -221,11 +246,11 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   api_rpm: overrides.api_rpm ?? 60,
   api_rph: overrides.api_rph ?? 3600,
   is_demo: overrides.is_demo ?? false,
-  model_config: overrides.model_config ?? {} as App['model_config'],
-  app_model_config: overrides.app_model_config ?? {} as App['app_model_config'],
+  model_config: overrides.model_config ?? ({} as App['model_config']),
+  app_model_config: overrides.app_model_config ?? ({} as App['app_model_config']),
   created_at: overrides.created_at ?? 1700000000,
   updated_at: overrides.updated_at ?? 1700001000,
-  site: overrides.site ?? {} as App['site'],
+  site: overrides.site ?? ({} as App['site']),
   api_base_url: overrides.api_base_url ?? 'https://api.example.com',
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode ?? AccessMode.PUBLIC,
@@ -235,10 +260,9 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
 const mockOnRefresh = vi.fn()
 
 const renderAppCard = (app?: Partial<App>) => {
-  return renderWithSystemFeatures(
-    <AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />,
-    { systemFeatures: mockSystemFeatures },
-  )
+  return renderWithSystemFeatures(<AppCard app={createMockApp(app)} onRefresh={mockOnRefresh} />, {
+    systemFeatures: mockSystemFeatures,
+  })
 }
 
 const openOperationsMenu = () => {
@@ -278,8 +302,7 @@ describe('App Card Operations Flow', () => {
       renderAppCard({ id: 'app-123', mode: AppModeEnum.CHAT })
 
       const card = screen.getByText('Test Chat App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
+      if (card) fireEvent.click(card)
 
       expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/configuration')
     })
@@ -288,8 +311,7 @@ describe('App Card Operations Flow', () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
       const card = screen.getByText('WF App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
+      if (card) fireEvent.click(card)
 
       expect(mockRouterPush).toHaveBeenCalledWith('/app/app-wf/workflow')
     })

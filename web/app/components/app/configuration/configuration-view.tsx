@@ -94,7 +94,9 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               <div className="bg-default-subtle absolute top-0 left-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center">
-                    <div className="system-xl-semibold text-text-primary">{t('orchestrate', { ns: 'appDebug' })}</div>
+                    <div className="system-xl-semibold text-text-primary">
+                      {t('orchestrate', { ns: 'appDebug' })}
+                    </div>
                     <div className="flex h-[14px] items-center space-x-1 text-xs">
                       {isAdvancedMode && (
                         <div className="ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 system-xs-medium-uppercase text-text-tertiary uppercase">
@@ -128,8 +130,13 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                       </>
                     )}
                     {isMobile && (
-                      <Button className="mr-2 h-8! text-[13px]! font-medium" onClick={onOpenDebugPanel}>
-                        <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
+                      <Button
+                        className="mr-2 h-8! text-[13px]! font-medium"
+                        onClick={onOpenDebugPanel}
+                      >
+                        <span className="mr-1">
+                          {t('operation.debugConfig', { ns: 'appDebug' })}
+                        </span>
                         <CodeBracketIcon className="size-4 text-text-tertiary" />
                       </Button>
                     )}
@@ -137,11 +144,16 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                   </div>
                 </div>
               </div>
-              <div className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
+              <div
+                className={`flex size-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}
+              >
                 <Config />
               </div>
               {!isMobile && (
-                <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                <div
+                  className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
+                  style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
+                >
                   <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
                       isAPIKeySet={contextValue.isAPIKeySet}
@@ -161,7 +173,10 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
             </div>
           </div>
 
-          <AlertDialog open={showUseGPT4Confirm} onOpenChange={open => !open && setShowUseGPT4Confirm(false)}>
+          <AlertDialog
+            open={showUseGPT4Confirm}
+            onOpenChange={(open) => !open && setShowUseGPT4Confirm(false)}
+          >
             <AlertDialogContent>
               <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
@@ -175,7 +190,11 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 <AlertDialogCancelButton tone="default">
                   {t('operation.cancel', { ns: 'common' })}
                 </AlertDialogCancelButton>
-                <AlertDialogConfirmButton variant="primary" tone="default" onClick={onConfirmUseGPT4}>
+                <AlertDialogConfirmButton
+                  variant="primary"
+                  tone="default"
+                  onClick={onConfirmUseGPT4}
+                >
                   {t('operation.confirm', { ns: 'common' })}
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
@@ -205,8 +224,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
               modal
               swipeDirection="right"
               onOpenChange={(open) => {
-                if (!open)
-                  onHideDebugPanel()
+                if (!open) onHideDebugPanel()
               }}
             >
               <DrawerPortal>

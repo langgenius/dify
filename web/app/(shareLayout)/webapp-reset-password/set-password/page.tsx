@@ -57,8 +57,7 @@ const ChangePasswordForm = () => {
   }, [password, confirmPassword, showErrorMessage, t])
 
   const handleChangePassword = useCallback(async () => {
-    if (!valid())
-      return
+    if (!valid()) return
     try {
       await changeWebAppPasswordWithToken({
         url: '/forgot-password/resets',
@@ -70,20 +69,18 @@ const ChangePasswordForm = () => {
       })
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
     }
   }, [password, token, valid, confirmPassword])
 
   return (
-    <div className={
-      cn(
+    <div
+      className={cn(
         'flex w-full grow flex-col items-center justify-center',
         'px-6',
         'md:px-[108px]',
-      )
-    }
+      )}
     >
       {!showSuccess && (
         <div className="flex flex-col md:w-[400px]">
@@ -108,7 +105,7 @@ const ChangePasswordForm = () => {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    onChange={e => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
                   />
 
@@ -122,11 +119,16 @@ const ChangePasswordForm = () => {
                     </Button>
                   </div>
                 </div>
-                <div className="mt-1 body-xs-regular text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
+                <div className="mt-1 body-xs-regular text-text-secondary">
+                  {t('error.passwordInvalid', { ns: 'login' })}
+                </div>
               </div>
               {/* Confirm Password */}
               <div className="mb-5">
-                <label htmlFor="confirmPassword" className="my-2 system-md-semibold text-text-secondary">
+                <label
+                  htmlFor="confirmPassword"
+                  className="my-2 system-md-semibold text-text-secondary"
+                >
                   {t('account.confirmPassword', { ns: 'common' })}
                 </label>
                 <div className="relative mt-1">
@@ -134,7 +136,7 @@ const ChangePasswordForm = () => {
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center">
@@ -149,11 +151,7 @@ const ChangePasswordForm = () => {
                 </div>
               </div>
               <div>
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={handleChangePassword}
-                >
+                <Button variant="primary" className="w-full" onClick={handleChangePassword}>
                   {t('changePasswordBtn', { ns: 'login' })}
                 </Button>
               </div>
@@ -180,12 +178,7 @@ const ChangePasswordForm = () => {
                 router.replace(getSignInUrl())
               }}
             >
-              {t('passwordChanged', { ns: 'login' })}
-              {' '}
-              (
-              {Math.round(countdown / 1000)}
-              )
-              {' '}
+              {t('passwordChanged', { ns: 'login' })} ({Math.round(countdown / 1000)}){' '}
             </Button>
           </div>
         </div>

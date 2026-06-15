@@ -21,10 +21,7 @@ const ChunkStructure = ({
   readonly = false,
 }: ChunkStructureProps) => {
   const { t } = useTranslation()
-  const {
-    options,
-    optionMap,
-  } = useChunkStructure()
+  const { options, optionMap } = useChunkStructure()
 
   return (
     <Field
@@ -42,37 +39,30 @@ const ChunkStructure = ({
         ),
       }}
     >
-      {
-        !!chunkStructure && (
-          <OptionCard
-            {...optionMap[chunkStructure]}
-            selectedId={chunkStructure}
-            enableSelect={false}
-            enableHighlightBorder={false}
+      {!!chunkStructure && (
+        <OptionCard
+          {...optionMap[chunkStructure]}
+          selectedId={chunkStructure}
+          enableSelect={false}
+          enableHighlightBorder={false}
+        />
+      )}
+      {!chunkStructure && (
+        <>
+          <Selector
+            options={options}
+            onChange={onChunkStructureChange}
+            readonly={readonly}
+            trigger={
+              <Button className="w-full" variant="secondary-accent">
+                <span className="mr-1 i-ri-add-line size-4" />
+                {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
+              </Button>
+            }
           />
-        )
-      }
-      {
-        !chunkStructure && (
-          <>
-            <Selector
-              options={options}
-              onChange={onChunkStructureChange}
-              readonly={readonly}
-              trigger={(
-                <Button
-                  className="w-full"
-                  variant="secondary-accent"
-                >
-                  <span className="mr-1 i-ri-add-line size-4" />
-                  {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
-                </Button>
-              )}
-            />
-            <Instruction className="mt-2" />
-          </>
-        )
-      }
+          <Instruction className="mt-2" />
+        </>
+      )}
     </Field>
   )
 }

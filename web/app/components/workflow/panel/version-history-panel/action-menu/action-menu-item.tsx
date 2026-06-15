@@ -13,11 +13,7 @@ type ActionMenuItemProps = {
   isDestructive?: boolean
 }
 
-const ActionMenuItem: FC<ActionMenuItemProps> = ({
-  item,
-  onClick,
-  isDestructive = false,
-}) => {
+const ActionMenuItem: FC<ActionMenuItemProps> = ({ item, onClick, isDestructive = false }) => {
   return (
     <DropdownMenuItem
       variant={isDestructive ? 'destructive' : 'default'}
@@ -30,10 +26,11 @@ const ActionMenuItem: FC<ActionMenuItemProps> = ({
         onClick(item.key)
       }}
     >
-      <div className={cn(
-        'flex-1 system-md-regular text-text-primary',
-        isDestructive && 'text-inherit',
-      )}
+      <div
+        className={cn(
+          'flex-1 system-md-regular text-text-primary',
+          isDestructive && 'text-inherit',
+        )}
       >
         {item.name}
       </div>

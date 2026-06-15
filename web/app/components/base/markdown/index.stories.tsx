@@ -38,20 +38,15 @@ const reply = await client.chat({
 \`\`\`
 `
 
-const MarkdownDemo = ({
-  compact = false,
-}: {
-  compact?: boolean
-}) => {
+const MarkdownDemo = ({ compact = false }: { compact?: boolean }) => {
   const [content] = useState(SAMPLE_MD.trim())
 
   return (
     <div className="flex w-full max-w-3xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
-      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Markdown renderer</div>
-      <Markdown
-        content={content}
-        className={compact ? 'text-sm! leading-relaxed' : ''}
-      />
+      <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
+        Markdown renderer
+      </div>
+      <Markdown content={content} className={compact ? 'text-sm! leading-relaxed' : ''} />
     </div>
   )
 }
@@ -63,7 +58,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Markdown wrapper with GitHub-flavored markdown, Mermaid diagrams, math, and custom blocks (details, audio, etc.).',
+        component:
+          'Markdown wrapper with GitHub-flavored markdown, Mermaid diagrams, math, and custom blocks (details, audio, etc.).',
       },
     },
   },

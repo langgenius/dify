@@ -21,7 +21,11 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ModelTypeEnum: { textGeneration: 'text-generation', textEmbedding: 'text-embedding', rerank: 'rerank' },
+  ModelTypeEnum: {
+    textGeneration: 'text-generation',
+    textEmbedding: 'text-embedding',
+    rerank: 'rerank',
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -29,7 +33,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     const map: Record<string, { mutate: ReturnType<typeof vi.fn> }> = {
       'text-generation': { mutate: mockRefetchLLMModelList },
       'text-embedding': { mutate: mockRefetchEmbeddingModelList },
-      'rerank': { mutate: mockRefetchRerankModelList },
+      rerank: { mutate: mockRefetchRerankModelList },
     }
     return map[type] ?? { mutate: vi.fn() }
   },

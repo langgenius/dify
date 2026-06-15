@@ -5,7 +5,7 @@ import CustomizedList from '../customized-list'
 
 // Mock TemplateCard
 vi.mock('../template-card', () => ({
-  default: ({ type, pipeline }: { type: string, pipeline: { name: string } }) => (
+  default: ({ type, pipeline }: { type: string; pipeline: { name: string } }) => (
     <div data-testid="template-card" data-type={type}>
       {pipeline.name}
     </div>
@@ -66,9 +66,7 @@ describe('CustomizedList', () => {
     it('should render title when list has items', () => {
       mockUsePipelineTemplateList.mockReturnValue({
         data: {
-          pipeline_templates: [
-            { name: 'Pipeline 1' },
-          ],
+          pipeline_templates: [{ name: 'Pipeline 1' }],
         },
         isLoading: false,
       })
@@ -78,11 +76,7 @@ describe('CustomizedList', () => {
     })
 
     it('should render TemplateCard for each pipeline', () => {
-      const mockPipelines = [
-        { name: 'Pipeline 1' },
-        { name: 'Pipeline 2' },
-        { name: 'Pipeline 3' },
-      ]
+      const mockPipelines = [{ name: 'Pipeline 1' }, { name: 'Pipeline 2' }, { name: 'Pipeline 3' }]
       mockUsePipelineTemplateList.mockReturnValue({
         data: { pipeline_templates: mockPipelines },
         isLoading: false,

@@ -5,7 +5,7 @@ import MarketplaceTrigger from '../marketplace'
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
 }))
 

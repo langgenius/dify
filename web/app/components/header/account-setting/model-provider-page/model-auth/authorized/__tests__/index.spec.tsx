@@ -25,7 +25,13 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../authorized-item', () => ({
-  default: ({ credentials, model, onEdit, onDelete, onItemClick }: {
+  default: ({
+    credentials,
+    model,
+    onEdit,
+    onDelete,
+    onItemClick,
+  }: {
     credentials: Credential[]
     model?: CustomModel
     onEdit?: (credential: Credential, model?: CustomModel) => void
@@ -233,6 +239,8 @@ describe('Authorized', () => {
     )
 
     const dialog = screen.getByRole('alertdialog')
-    expect(within(dialog).getByRole('button', { name: /common.operation.confirm/i }))!.toBeDisabled()
+    expect(
+      within(dialog).getByRole('button', { name: /common.operation.confirm/i }),
+    )!.toBeDisabled()
   })
 })

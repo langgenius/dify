@@ -132,17 +132,12 @@ describe('status-filter', () => {
 
     // Non-aliased known values should pass through
     describe('non-aliased known values', () => {
-      it.each([
-        'queuing',
-        'indexing',
-        'paused',
-        'error',
-        'available',
-        'disabled',
-        'archived',
-      ])('should return %s as-is when not aliased', (status) => {
-        expect(normalizeStatusForQuery(status)).toBe(status)
-      })
+      it.each(['queuing', 'indexing', 'paused', 'error', 'available', 'disabled', 'archived'])(
+        'should return %s as-is when not aliased',
+        (status) => {
+          expect(normalizeStatusForQuery(status)).toBe(status)
+        },
+      )
     })
 
     // URL alias flows through sanitize first, then query alias

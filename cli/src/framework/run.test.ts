@@ -81,8 +81,7 @@ async function captureRun(tree: CommandTree, argv: string[]): Promise<Captured> 
 
   try {
     await run(tree, argv)
-  }
-  finally {
+  } finally {
     process.stdout.write = origStdout
     process.stderr.write = origStderr
     process.exit = origExit
@@ -172,7 +171,9 @@ describe('run() catch routing', () => {
   it('routes Server5xx error with http_status line and generic exit', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom')).withHttpStatus(502)
+        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom')).withHttpStatus(
+          502,
+        )
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
@@ -255,10 +256,10 @@ describe('run() catch routing', () => {
 
       async run(_argv: string[]) {}
     }
-    const result = await captureRun(
-      { cmd: { command: CtorBang, subcommands: {} } },
-      ['cmd', '--output=json'],
-    )
+    const result = await captureRun({ cmd: { command: CtorBang, subcommands: {} } }, [
+      'cmd',
+      '--output=json',
+    ])
     expect(result.stderr).toContain('"code":"unknown"')
     expect(result.stderr).toContain('"message":"ctor-bang"')
     expect(result.exit).toBe(ExitCode.Generic)
@@ -277,7 +278,7 @@ describe('hidden commands', () => {
       async run() {}
     }
     const tree: CommandTree = {
-      'visible': { command: Visible, subcommands: {} },
+      visible: { command: Visible, subcommands: {} },
       'secret-debug': { command: Hidden, subcommands: {} },
     }
     const result = await captureRun(tree, [])
@@ -298,7 +299,7 @@ describe('hidden commands', () => {
     const tree: CommandTree = {
       topic: {
         subcommands: {
-          'public': { command: Public, subcommands: {} },
+          public: { command: Public, subcommands: {} },
           'debug-only': { command: HiddenSub, subcommands: {} },
         },
       },
@@ -312,7 +313,9 @@ describe('hidden commands', () => {
     let ran = false
     class Hidden extends Command {
       static hidden = true
-      async run() { ran = true }
+      async run() {
+        ran = true
+      }
     }
     const tree: CommandTree = {
       'secret-debug': { command: Hidden, subcommands: {} },
@@ -334,9 +337,7 @@ describe('deprecated commands', () => {
       old: { command: Old, subcommands: {} },
     }
     const result = await captureRun(tree, ['old'])
-    expect(result.stderr).toBe(
-      'deprecated: use `difyctl run app` instead; removal in 2.0\n',
-    )
+    expect(result.stderr).toBe('deprecated: use `difyctl run app` instead; removal in 2.0\n')
     expect(result.stdout).toBe('old-ran\n')
     expect(result.exit).toBeUndefined()
   })
@@ -411,7 +412,9 @@ describe('run() help routing', () => {
 
   it('does not print trailing whitespace on group rows', async () => {
     const groupTree: CommandTree = {
-      auth: { subcommands: { devices: { subcommands: { list: { command: GetApp, subcommands: {} } } } } },
+      auth: {
+        subcommands: { devices: { subcommands: { list: { command: GetApp, subcommands: {} } } } },
+      },
     }
     const result = await captureRun(groupTree, ['help'])
     expect(result.stdout).not.toMatch(/ \n/)
@@ -492,7 +495,7 @@ describe('run() help routing', () => {
     expect(result.exit).toBeUndefined()
     expect(result.stdout).not.toContain('COMMANDS')
     const parsed = JSON.parse(result.stdout) as { commands: Array<{ command: string }> }
-    expect(parsed.commands.map(c => c.command)).toEqual([
+    expect(parsed.commands.map((c) => c.command)).toEqual([
       'auth login',
       'auth devices list',
       'auth devices revoke',

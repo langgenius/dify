@@ -1,7 +1,16 @@
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CommonNodeType, Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
+import type {
+  CommonNodeType,
+  Node,
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { createLoopNode, createNode, createStartNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createLoopNode,
+  createNode,
+  createStartNode,
+} from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import {
   getDynamicSelectSchema,
@@ -34,74 +43,93 @@ describe('var-reference-picker.helpers', () => {
 
   it('should resolve output variable nodes for normal, system, iteration, and loop variables', () => {
     const startNode = createStartNode({ id: 'inset-s-1', data: { title: 'Start Node' } })
-    const normalNode = createNode({ id: 'node-a', data: { type: BlockEnum.Code, title: 'Answer Node' } })
-    const iterationNode = createNode({ id: 'iter-parent', data: { type: BlockEnum.Iteration, title: 'Iteration Parent' } }) as Node<CommonNodeType>
-    const loopNode = createLoopNode({ id: 'loop-parent', data: { title: 'Loop Parent' } }) as Node<CommonNodeType>
+    const normalNode = createNode({
+      id: 'node-a',
+      data: { type: BlockEnum.Code, title: 'Answer Node' },
+    })
+    const iterationNode = createNode({
+      id: 'iter-parent',
+      data: { type: BlockEnum.Iteration, title: 'Iteration Parent' },
+    }) as Node<CommonNodeType>
+    const loopNode = createLoopNode({
+      id: 'loop-parent',
+      data: { title: 'Loop Parent' },
+    }) as Node<CommonNodeType>
 
-    expect(getOutputVarNode({
-      availableNodes: [normalNode],
-      hasValue: true,
-      isConstant: false,
-      isIterationVar: false,
-      isLoopVar: false,
-      iterationNode: null,
-      loopNode: null,
-      outputVarNodeId: 'node-a',
-      startNode,
-      value: ['node-a', 'answer'],
-    })).toMatchObject({ id: 'node-a', title: 'Answer Node' })
+    expect(
+      getOutputVarNode({
+        availableNodes: [normalNode],
+        hasValue: true,
+        isConstant: false,
+        isIterationVar: false,
+        isLoopVar: false,
+        iterationNode: null,
+        loopNode: null,
+        outputVarNodeId: 'node-a',
+        startNode,
+        value: ['node-a', 'answer'],
+      }),
+    ).toMatchObject({ id: 'node-a', title: 'Answer Node' })
 
-    expect(getOutputVarNode({
-      availableNodes: [normalNode],
-      hasValue: true,
-      isConstant: false,
-      isIterationVar: false,
-      isLoopVar: false,
-      iterationNode: null,
-      loopNode: null,
-      outputVarNodeId: 'sys',
-      startNode,
-      value: ['sys', 'files'],
-    })).toEqual(startNode.data)
+    expect(
+      getOutputVarNode({
+        availableNodes: [normalNode],
+        hasValue: true,
+        isConstant: false,
+        isIterationVar: false,
+        isLoopVar: false,
+        iterationNode: null,
+        loopNode: null,
+        outputVarNodeId: 'sys',
+        startNode,
+        value: ['sys', 'files'],
+      }),
+    ).toEqual(startNode.data)
 
-    expect(getOutputVarNode({
-      availableNodes: [normalNode],
-      hasValue: true,
-      isConstant: false,
-      isIterationVar: true,
-      isLoopVar: false,
-      iterationNode,
-      loopNode: null,
-      outputVarNodeId: 'iter-parent',
-      startNode,
-      value: ['iter-parent', 'item'],
-    })).toEqual(iterationNode.data)
+    expect(
+      getOutputVarNode({
+        availableNodes: [normalNode],
+        hasValue: true,
+        isConstant: false,
+        isIterationVar: true,
+        isLoopVar: false,
+        iterationNode,
+        loopNode: null,
+        outputVarNodeId: 'iter-parent',
+        startNode,
+        value: ['iter-parent', 'item'],
+      }),
+    ).toEqual(iterationNode.data)
 
-    expect(getOutputVarNode({
-      availableNodes: [normalNode],
-      hasValue: true,
-      isConstant: false,
-      isIterationVar: false,
-      isLoopVar: true,
-      iterationNode: null,
-      loopNode,
-      outputVarNodeId: 'loop-parent',
-      startNode,
-      value: ['loop-parent', 'item'],
-    })).toEqual(loopNode.data)
+    expect(
+      getOutputVarNode({
+        availableNodes: [normalNode],
+        hasValue: true,
+        isConstant: false,
+        isIterationVar: false,
+        isLoopVar: true,
+        iterationNode: null,
+        loopNode,
+        outputVarNodeId: 'loop-parent',
+        startNode,
+        value: ['loop-parent', 'item'],
+      }),
+    ).toEqual(loopNode.data)
 
-    expect(getOutputVarNode({
-      availableNodes: [normalNode],
-      hasValue: true,
-      isConstant: false,
-      isIterationVar: false,
-      isLoopVar: false,
-      iterationNode: null,
-      loopNode: null,
-      outputVarNodeId: 'missing-node',
-      startNode,
-      value: ['missing-node', 'answer'],
-    })).toBeNull()
+    expect(
+      getOutputVarNode({
+        availableNodes: [normalNode],
+        hasValue: true,
+        isConstant: false,
+        isIterationVar: false,
+        isLoopVar: false,
+        iterationNode: null,
+        loopNode: null,
+        outputVarNodeId: 'missing-node',
+        startNode,
+        value: ['missing-node', 'answer'],
+      }),
+    ).toBeNull()
   })
 
   it('should format display names and output node ids correctly', () => {
@@ -114,18 +142,22 @@ describe('var-reference-picker.helpers', () => {
   })
 
   it('should derive variable meta and category from selectors', () => {
-    const envVars: NodeOutPutVar[] = [{
-      nodeId: 'env',
-      title: 'ENVIRONMENT',
-      vars: [{ variable: 'env.API_KEY', type: VarType.string }],
-    }]
+    const envVars: NodeOutPutVar[] = [
+      {
+        nodeId: 'env',
+        title: 'ENVIRONMENT',
+        vars: [{ variable: 'env.API_KEY', type: VarType.string }],
+      },
+    ]
     const meta = getVariableMeta(null, ['env', 'API_KEY'], 'API_KEY', envVars, true)
     expect(meta).toMatchObject({
       isEnv: true,
       isValidVar: true,
       isException: false,
     })
-    expect(getVariableMeta(null, ['env', 'MISSING_KEY'], 'MISSING_KEY', envVars, true)).toMatchObject({
+    expect(
+      getVariableMeta(null, ['env', 'MISSING_KEY'], 'MISSING_KEY', envVars, true),
+    ).toMatchObject({
       isEnv: true,
       isValidVar: false,
     })
@@ -134,45 +166,55 @@ describe('var-reference-picker.helpers', () => {
       isValidVar: true,
     })
 
-    expect(getVariableCategory({
-      isChatVar: true,
-      isEnv: false,
-      isGlobal: false,
-      isLoopVar: false,
-      isRagVar: false,
-    })).toBe('conversation')
+    expect(
+      getVariableCategory({
+        isChatVar: true,
+        isEnv: false,
+        isGlobal: false,
+        isLoopVar: false,
+        isRagVar: false,
+      }),
+    ).toBe('conversation')
 
-    expect(getVariableCategory({
-      isChatVar: false,
-      isEnv: false,
-      isGlobal: true,
-      isLoopVar: false,
-      isRagVar: false,
-    })).toBe('global')
+    expect(
+      getVariableCategory({
+        isChatVar: false,
+        isEnv: false,
+        isGlobal: true,
+        isLoopVar: false,
+        isRagVar: false,
+      }),
+    ).toBe('global')
 
-    expect(getVariableCategory({
-      isChatVar: false,
-      isEnv: false,
-      isGlobal: false,
-      isLoopVar: true,
-      isRagVar: false,
-    })).toBe('loop')
+    expect(
+      getVariableCategory({
+        isChatVar: false,
+        isEnv: false,
+        isGlobal: false,
+        isLoopVar: true,
+        isRagVar: false,
+      }),
+    ).toBe('loop')
 
-    expect(getVariableCategory({
-      isChatVar: false,
-      isEnv: true,
-      isGlobal: false,
-      isLoopVar: false,
-      isRagVar: false,
-    })).toBe('environment')
+    expect(
+      getVariableCategory({
+        isChatVar: false,
+        isEnv: true,
+        isGlobal: false,
+        isLoopVar: false,
+        isRagVar: false,
+      }),
+    ).toBe('environment')
 
-    expect(getVariableCategory({
-      isChatVar: false,
-      isEnv: false,
-      isGlobal: false,
-      isLoopVar: false,
-      isRagVar: true,
-    })).toBe('rag')
+    expect(
+      getVariableCategory({
+        isChatVar: false,
+        isEnv: false,
+        isGlobal: false,
+        isLoopVar: false,
+        isRagVar: true,
+      }),
+    ).toBe('rag')
   })
 
   it('should calculate width allocations and tooltip behavior', () => {
@@ -203,34 +245,42 @@ describe('var-reference-picker.helpers', () => {
       type: 'dynamic-select',
     } as Partial<CredentialFormSchema>
 
-    expect(getDynamicSelectSchema({
-      dynamicOptions: [{
-        value: 'a',
-        label: { en_US: 'A', zh_Hans: 'A' },
-        show_on: [],
-      }],
-      isLoading: false,
-      schema,
-      value,
-    })).toMatchObject({
+    expect(
+      getDynamicSelectSchema({
+        dynamicOptions: [
+          {
+            value: 'a',
+            label: { en_US: 'A', zh_Hans: 'A' },
+            show_on: [],
+          },
+        ],
+        isLoading: false,
+        schema,
+        value,
+      }),
+    ).toMatchObject({
       options: [{ value: 'a' }],
     })
 
-    expect(getDynamicSelectSchema({
-      dynamicOptions: null,
-      isLoading: true,
-      schema,
-      value,
-    })).toMatchObject({
+    expect(
+      getDynamicSelectSchema({
+        dynamicOptions: null,
+        isLoading: true,
+        schema,
+        value,
+      }),
+    ).toMatchObject({
       options: [{ value: 'selected' }],
     })
 
-    expect(getDynamicSelectSchema({
-      dynamicOptions: null,
-      isLoading: false,
-      schema,
-      value,
-    })).toMatchObject({ options: [] })
+    expect(
+      getDynamicSelectSchema({
+        dynamicOptions: null,
+        isLoading: false,
+        schema,
+        value,
+      }),
+    ).toMatchObject({ options: [] })
 
     expect(isShowAPartSelector(['node-a', 'payload', 'child'] as ValueSelector)).toBe(true)
     expect(isShowAPartSelector(['rag', 'node-a', 'payload'] as ValueSelector)).toBe(false)
@@ -238,7 +288,9 @@ describe('var-reference-picker.helpers', () => {
 
   it('should keep mapped variable names for known workflow aliases', () => {
     expect(getVarDisplayName(true, ['sys', 'files'])).toBe('files')
-    expect(getVariableMeta({ type: VarType.string }, ['conversation', 'name'], 'name')).toMatchObject({
+    expect(
+      getVariableMeta({ type: VarType.string }, ['conversation', 'name'], 'name'),
+    ).toMatchObject({
       isChatVar: true,
       isValidVar: true,
     })
@@ -249,11 +301,13 @@ describe('var-reference-picker.helpers', () => {
       type: FormTypeEnum.textInput,
     }
 
-    expect(getDynamicSelectSchema({
-      dynamicOptions: null,
-      isLoading: false,
-      schema,
-      value: '',
-    })).toEqual(schema)
+    expect(
+      getDynamicSelectSchema({
+        dynamicOptions: null,
+        isLoading: false,
+        schema,
+        value: '',
+      }),
+    ).toEqual(schema)
   })
 })

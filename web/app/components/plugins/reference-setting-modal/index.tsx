@@ -22,27 +22,28 @@ type Props = Readonly<{
   onSave: (payload: ReferenceSetting) => void
 }>
 
-const PluginSettingModal: FC<Props> = ({
-  payload,
-  onHide,
-  onSave,
-}) => {
+const PluginSettingModal: FC<Props> = ({ payload, onHide, onSave }) => {
   const { t } = useTranslation()
   const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
-  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
+  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(
+    autoUpdateConfig || autoUpdateDefaultValue,
+  )
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
-  const handlePrivilegeChange = useCallback((key: string) => {
-    return (value: PermissionType) => {
-      setTempPrivilege({
-        ...tempPrivilege,
-        [key]: value,
-      })
-    }
-  }, [tempPrivilege])
+  const handlePrivilegeChange = useCallback(
+    (key: string) => {
+      return (value: PermissionType) => {
+        setTempPrivilege({
+          ...tempPrivilege,
+          [key]: value,
+        })
+      }
+    },
+    [tempPrivilege],
+  )
 
   const handleSave = useCallback(async () => {
     await onSave({
@@ -56,8 +57,7 @@ const PluginSettingModal: FC<Props> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DialogContent className="w-[620px] max-w-[620px] overflow-hidden! border-none p-0! text-left align-middle">
@@ -65,46 +65,49 @@ const PluginSettingModal: FC<Props> = ({
 
         <div className="shadows-shadow-xl flex w-full flex-col items-start rounded-2xl border border-components-panel-border bg-components-panel-bg">
           <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-            <span className="self-stretch title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</span>
+            <span className="self-stretch title-2xl-semi-bold text-text-primary">
+              {t(`${i18nPrefix}.title`, { ns: 'plugin' })}
+            </span>
           </div>
           <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
             {[
-              { title: t(`${i18nPrefix}.whoCanInstall`, { ns: 'plugin' }), key: 'install_permission', value: tempPrivilege?.install_permission || PermissionType.noOne },
-              { title: t(`${i18nPrefix}.whoCanDebug`, { ns: 'plugin' }), key: 'debug_permission', value: tempPrivilege?.debug_permission || PermissionType.noOne },
+              {
+                title: t(`${i18nPrefix}.whoCanInstall`, { ns: 'plugin' }),
+                key: 'install_permission',
+                value: tempPrivilege?.install_permission || PermissionType.noOne,
+              },
+              {
+                title: t(`${i18nPrefix}.whoCanDebug`, { ns: 'plugin' }),
+                key: 'debug_permission',
+                value: tempPrivilege?.debug_permission || PermissionType.noOne,
+              },
             ].map(({ title, key, value }) => (
               <div key={key} className="flex flex-col items-start gap-1 self-stretch">
                 <Label label={title} />
                 <div className="flex w-full items-start justify-between gap-2">
-                  {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(option => (
-                    <OptionCard
-                      key={option}
-                      title={t(`${i18nPrefix}.${option}`, { ns: 'plugin' })}
-                      onSelect={() => handlePrivilegeChange(key)(option)}
-                      selected={value === option}
-                      className="flex-1"
-                    />
-                  ))}
+                  {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(
+                    (option) => (
+                      <OptionCard
+                        key={option}
+                        title={t(`${i18nPrefix}.${option}`, { ns: 'plugin' })}
+                        onSelect={() => handlePrivilegeChange(key)(option)}
+                        selected={value === option}
+                        className="flex-1"
+                      />
+                    ),
+                  )}
                 </div>
               </div>
             ))}
           </div>
-          {
-            enable_marketplace && (
-              <AutoUpdateSetting payload={tempAutoUpdateConfig} onChange={setTempAutoUpdateConfig} />
-            )
-          }
+          {enable_marketplace && (
+            <AutoUpdateSetting payload={tempAutoUpdateConfig} onChange={setTempAutoUpdateConfig} />
+          )}
           <div className="flex h-[76px] items-center justify-end gap-2 self-stretch p-6 pt-5">
-            <Button
-              className="min-w-[72px]"
-              onClick={onHide}
-            >
+            <Button className="min-w-[72px]" onClick={onHide}>
               {t('operation.cancel', { ns: 'common' })}
             </Button>
-            <Button
-              className="min-w-[72px]"
-              variant="primary"
-              onClick={handleSave}
-            >
+            <Button className="min-w-[72px]" variant="primary" onClick={handleSave}>
               {t('operation.save', { ns: 'common' })}
             </Button>
           </div>

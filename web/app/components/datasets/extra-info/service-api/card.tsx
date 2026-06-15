@@ -14,10 +14,7 @@ type CardProps = {
   onOpenSecretKeyModal: () => void
 }
 
-const Card = ({
-  apiBaseUrl,
-  onOpenSecretKeyModal,
-}: CardProps) => {
+const Card = ({ apiBaseUrl, onOpenSecretKeyModal }: CardProps) => {
   const { t } = useTranslation()
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
@@ -35,15 +32,8 @@ const Card = ({
             </div>
           </div>
           <div className="flex items-center gap-x-1">
-            <StatusDot
-              className="shrink-0"
-              status={
-                apiBaseUrl ? 'success' : 'warning'
-              }
-            />
-            <div
-              className="system-xs-semibold-uppercase text-text-success"
-            >
+            <StatusDot className="shrink-0" status={apiBaseUrl ? 'success' : 'warning'} />
+            <div className="system-xs-semibold-uppercase text-text-success">
               {t('serviceApi.enabled', { ns: 'dataset' })}
             </div>
           </div>
@@ -54,20 +44,16 @@ const Card = ({
           </div>
           <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
             <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-              <div className="truncate system-xs-medium text-text-secondary">
-                {apiBaseUrl}
-              </div>
+              <div className="truncate system-xs-medium text-text-secondary">{apiBaseUrl}</div>
             </div>
-            <CopyFeedback
-              content={apiBaseUrl}
-            />
+            <CopyFeedback content={apiBaseUrl} />
           </div>
         </div>
       </div>
       {/* Actions */}
       <div className="flex gap-x-1 border-t-[0.5px] border-divider-subtle p-4">
         <PopoverClose
-          render={(
+          render={
             <Button
               variant="ghost"
               size="small"
@@ -79,18 +65,10 @@ const Card = ({
                 {t('serviceApi.card.apiKey', { ns: 'dataset' })}
               </span>
             </Button>
-          )}
+          }
         />
-        <Link
-          href={apiReferenceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Button
-            variant="ghost"
-            size="small"
-            className="gap-x-px text-text-tertiary"
-          >
+        <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
+          <Button variant="ghost" size="small" className="gap-x-px text-text-tertiary">
             <RiBookOpenLine className="size-3.5 shrink-0" />
             <span className="px-[3px] system-xs-medium">
               {t('serviceApi.card.apiReference', { ns: 'dataset' })}

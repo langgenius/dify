@@ -27,6 +27,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 3. **Running the Services**:
    - Execute `docker compose up -d` from the `docker` directory to start the services.
    - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`. See `envs/vectorstores/` for the full list of supported options.
+
    ```bash
    cp .env.example .env
    docker compose up -d
@@ -82,52 +83,42 @@ Docker Compose reads `envs/*.env` files when present, then reads `.env` last so 
 The root `.env.example` file contains the essential startup settings. Optional and provider-specific settings are grouped in `envs/*.env.example` files. Here are some of the key sections and variables:
 
 1. **Common Variables**:
-
    - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: public URLs for the API and frontend services.
    - `SERVER_CONSOLE_API_URL`: internal URL used by the web service for server-side console API requests. Keep the default `http://api:5001` for standard Docker Compose deployments, and only change it when your web service must reach the API through a different internal address.
    - `FILES_URL`, `INTERNAL_FILES_URL`: Public and internal base URLs for file downloads and previews.
-   - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs. 
-   
+   - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs.
+
    See `.env.example` for the full list.
 
 2. **Server Configuration**:
-
    - `LOG_LEVEL`, `DEBUG`, `FLASK_DEBUG`: Logging and debug settings.
    - `SECRET_KEY`: A key for signing sessions, JWTs, and file URLs. Leave it empty to let Dify generate a persistent key in the storage directory, or set a unique value yourself.
 
 3. **Database Configuration**:
-
    - `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`: PostgreSQL database credentials and connection details.
 
 4. **Redis Configuration**:
-
    - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis server connection settings.
    - `REDIS_KEY_PREFIX`: Optional global namespace prefix for Redis keys, topics, streams, and Celery Redis transport artifacts.
 
 5. **Celery Configuration**:
-
    - `CELERY_BROKER_URL`: Configuration for Celery message broker.
 
 6. **Storage Configuration**:
-
    - `STORAGE_TYPE`, `OPENDAL_SCHEME`, `OPENDAL_FS_ROOT`: Default local file storage settings. Optional storage backends are configured from the files under `envs/`.
 
 7. **Vector Database Configuration**:
-
    - `VECTOR_STORE`: Type of vector database (e.g., `weaviate`, `milvus`). See `envs/vectorstores/` for the full list of supported options.
    - Specific settings for each vector store like `WEAVIATE_ENDPOINT`, `MILVUS_URI`.
 
 8. **CORS Configuration**:
-
    - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
 
 9. **OpenTelemetry Configuration**:
-
    - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
    - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
 
 10. **Other Service-Specific Environment Variables**:
-
     - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
 
 ### Environment Variables Synchronization

@@ -36,14 +36,14 @@ const pricingScrollAreaClassNames = {
   corner: 'bg-saas-background',
 } as const
 
-const Pricing: FC<PricingProps> = ({
-  onCancel,
-}) => {
+const Pricing: FC<PricingProps> = ({ onCancel }) => {
   const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const shouldDefaultToYearly = isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
+  const shouldDefaultToYearly =
+    isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
   const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
-  const planRange = selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
+  const planRange =
+    selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
   const canPay = isCurrentWorkspaceManager
 
@@ -56,13 +56,10 @@ const Pricing: FC<PricingProps> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
-      <DialogContent
-        className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none"
-      >
+      <DialogContent className="inset-0 size-full max-h-none max-w-none translate-0 overflow-hidden rounded-none border-none bg-saas-background p-0 shadow-none">
         <ScrollAreaRoot className={pricingScrollAreaClassNames.root}>
           <ScrollAreaViewport className={pricingScrollAreaClassNames.viewport}>
             <ScrollAreaContent className={pricingScrollAreaClassNames.content}>

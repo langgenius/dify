@@ -16,21 +16,20 @@ type Props = Readonly<{
   onChange: (payload: CrawlOptions) => void
 }>
 
-const Options: FC<Props> = ({
-  className = '',
-  payload,
-  onChange,
-}) => {
+const Options: FC<Props> = ({ className = '', payload, onChange }) => {
   const { t } = useTranslation()
 
-  const handleChange = useCallback((key: keyof CrawlOptions) => {
-    return (value: any) => {
-      onChange({
-        ...payload,
-        [key]: value,
-      })
-    }
-  }, [payload, onChange])
+  const handleChange = useCallback(
+    (key: keyof CrawlOptions) => {
+      return (value: any) => {
+        onChange({
+          ...payload,
+          [key]: value,
+        })
+      }
+    },
+    [payload, onChange],
+  )
   return (
     <div className={cn(className, 'space-y-2')}>
       <CheckboxWithLabel

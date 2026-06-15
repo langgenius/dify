@@ -14,8 +14,7 @@ export function hexToRGBA(hex: string, opacity: number): string {
  * this method transforms the string into an object representation of the styles.
  */
 export function CssTransform(cssString: string): object {
-  if (cssString.length === 0)
-    return {}
+  if (cssString.length === 0) return {}
 
   const style: object = {}
   const propertyValuePairs = cssString.split(';')

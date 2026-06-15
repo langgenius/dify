@@ -28,9 +28,7 @@ vi.mock('@/context/modal-context', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    modelProviders: [
-      { provider: 'model-collection-id', name: 'TestModel' },
-    ],
+    modelProviders: [{ provider: 'model-collection-id', name: 'TestModel' }],
   }),
 }))
 
@@ -104,35 +102,79 @@ vi.mock('@/app/components/plugins/card/base/title', () => ({
 }))
 
 vi.mock('../tool-item', () => ({
-  default: ({ tool }: { tool: { name: string } }) => <div data-testid={`tool-${tool.name}`}>{tool.name}</div>,
+  default: ({ tool }: { tool: { name: string } }) => (
+    <div data-testid={`tool-${tool.name}`}>{tool.name}</div>
+  ),
 }))
 
 vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
-  default: ({ onHide, onEdit, onRemove }: { onHide: () => void, onEdit: (data: unknown) => void, onRemove: () => void }) => (
+  default: ({
+    onHide,
+    onEdit,
+    onRemove,
+  }: {
+    onHide: () => void
+    onEdit: (data: unknown) => void
+    onRemove: () => void
+  }) => (
     <div data-testid="edit-custom-modal">
-      <button data-testid="edit-save" onClick={() => onEdit({ labels: ['test'] })}>Save</button>
-      <button data-testid="edit-remove" onClick={onRemove}>Remove</button>
-      <button data-testid="edit-close" onClick={onHide}>Close</button>
+      <button data-testid="edit-save" onClick={() => onEdit({ labels: ['test'] })}>
+        Save
+      </button>
+      <button data-testid="edit-remove" onClick={onRemove}>
+        Remove
+      </button>
+      <button data-testid="edit-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/tools/setting/build-in/config-credentials', () => ({
-  default: ({ onCancel, onSaved, onRemove }: { onCancel: () => void, onSaved: (val: Record<string, string>) => Promise<void>, onRemove: () => Promise<void> }) => (
+  default: ({
+    onCancel,
+    onSaved,
+    onRemove,
+  }: {
+    onCancel: () => void
+    onSaved: (val: Record<string, string>) => Promise<void>
+    onRemove: () => Promise<void>
+  }) => (
     <div data-testid="config-credential">
-      <button data-testid="credential-save" onClick={() => onSaved({ key: 'val' })}>Save</button>
-      <button data-testid="credential-remove" onClick={onRemove}>Remove</button>
-      <button data-testid="credential-cancel" onClick={onCancel}>Cancel</button>
+      <button data-testid="credential-save" onClick={() => onSaved({ key: 'val' })}>
+        Save
+      </button>
+      <button data-testid="credential-remove" onClick={onRemove}>
+        Remove
+      </button>
+      <button data-testid="credential-cancel" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   ),
 }))
 
 vi.mock('@/app/components/tools/workflow-tool', () => ({
-  WorkflowToolDrawer: ({ onHide, onSave, onRemove }: { onHide: () => void, onSave: (data: unknown) => void, onRemove: () => void }) => (
+  WorkflowToolDrawer: ({
+    onHide,
+    onSave,
+    onRemove,
+  }: {
+    onHide: () => void
+    onSave: (data: unknown) => void
+    onRemove: () => void
+  }) => (
     <div data-testid="workflow-tool-drawer">
-      <button data-testid="wf-save" onClick={() => onSave({ name: 'test' })}>Save</button>
-      <button data-testid="wf-remove" onClick={onRemove}>Remove</button>
-      <button data-testid="wf-close" onClick={onHide}>Close</button>
+      <button data-testid="wf-save" onClick={() => onSave({ name: 'test' })}>
+        Save
+      </button>
+      <button data-testid="wf-remove" onClick={onRemove}>
+        Remove
+      </button>
+      <button data-testid="wf-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -152,7 +194,8 @@ const createMockCollection = (overrides?: Partial<Collection>): Collection => ({
   ...overrides,
 })
 
-const getDeleteConfirmButton = () => screen.getByRole('button', { name: 'common.operation.confirm' })
+const getDeleteConfirmButton = () =>
+  screen.getByRole('button', { name: 'common.operation.confirm' })
 const getDeleteCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
 
 describe('ProviderDetail', () => {
@@ -162,8 +205,24 @@ describe('ProviderDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFetchBuiltInToolList.mockResolvedValue([
-      { name: 'tool-1', label: { en_US: 'Tool 1' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
-      { name: 'tool-2', label: { en_US: 'Tool 2' }, description: { en_US: 'desc' }, parameters: [], labels: [], author: '', output_schema: {} },
+      {
+        name: 'tool-1',
+        label: { en_US: 'Tool 1' },
+        description: { en_US: 'desc' },
+        parameters: [],
+        labels: [],
+        author: '',
+        output_schema: {},
+      },
+      {
+        name: 'tool-2',
+        label: { en_US: 'Tool 2' },
+        description: { en_US: 'desc' },
+        parameters: [],
+        labels: [],
+        author: '',
+        output_schema: {},
+      },
     ])
     mockFetchCustomToolList.mockResolvedValue([])
     mockFetchModelToolList.mockResolvedValue([])
@@ -295,7 +354,15 @@ describe('ProviderDetail', () => {
   describe('Model Collection', () => {
     it('opens model modal when clicking auth button for model type', async () => {
       mockFetchModelToolList.mockResolvedValue([
-        { name: 'model-tool-1', label: { en_US: 'MT1' }, description: { en_US: '' }, parameters: [], labels: [], author: '', output_schema: {} },
+        {
+          name: 'model-tool-1',
+          label: { en_US: 'MT1' },
+          description: { en_US: '' },
+          parameters: [],
+          labels: [],
+          author: '',
+          output_schema: {},
+        },
       ])
       render(
         <ProviderDetail
@@ -405,7 +472,9 @@ describe('ProviderDetail', () => {
         fireEvent.click(screen.getByTestId('credential-save'))
       })
       await waitFor(() => {
-        expect(mockUpdateBuiltInToolCredential).toHaveBeenCalledWith('test-collection', { key: 'val' })
+        expect(mockUpdateBuiltInToolCredential).toHaveBeenCalledWith('test-collection', {
+          key: 'val',
+        })
         expect(mockOnRefreshData).toHaveBeenCalled()
       })
     })
@@ -555,8 +624,20 @@ describe('ProviderDetail', () => {
         workflow_tool_id: 'wt-456',
         tool: {
           parameters: [
-            { name: 'query', type: 'string', llm_description: 'Search query', form: 'llm', required: true },
-            { name: 'limit', type: 'number', llm_description: 'Max results', form: 'form', required: false },
+            {
+              name: 'query',
+              type: 'string',
+              llm_description: 'Search query',
+              form: 'llm',
+              required: true,
+            },
+            {
+              name: 'limit',
+              type: 'number',
+              llm_description: 'Max results',
+              form: 'form',
+              required: false,
+            },
           ],
           labels: ['search'],
         },

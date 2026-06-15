@@ -6,7 +6,14 @@ import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -59,7 +66,7 @@ type SelectOption = {
   name: string
 }
 
-const LANGUAGE_OPTIONS: SelectOption[] = languages.filter(item => item.supported)
+const LANGUAGE_OPTIONS: SelectOption[] = languages.filter((item) => item.supported)
 
 const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
   const {
@@ -97,24 +104,25 @@ const createAppIcon = (appInfo: ISettingsModalProps['appInfo']): AppIconSelectio
     : { type: 'emoji', icon, background: icon_background! }
 }
 
-const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) => JSON.stringify([
-  appInfo.id,
-  appInfo.enable_sso,
-  appInfo.site.title,
-  appInfo.site.description,
-  appInfo.site.chat_color_theme,
-  appInfo.site.chat_color_theme_inverted,
-  appInfo.site.copyright,
-  appInfo.site.privacy_policy,
-  appInfo.site.custom_disclaimer,
-  appInfo.site.default_language,
-  appInfo.site.icon_type,
-  appInfo.site.icon,
-  appInfo.site.icon_background,
-  appInfo.site.icon_url,
-  appInfo.site.show_workflow_steps,
-  appInfo.site.use_icon_as_answer_icon,
-])
+const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) =>
+  JSON.stringify([
+    appInfo.id,
+    appInfo.enable_sso,
+    appInfo.site.title,
+    appInfo.site.description,
+    appInfo.site.chat_color_theme,
+    appInfo.site.chat_color_theme_inverted,
+    appInfo.site.copyright,
+    appInfo.site.privacy_policy,
+    appInfo.site.custom_disclaimer,
+    appInfo.site.default_language,
+    appInfo.site.icon_type,
+    appInfo.site.icon,
+    appInfo.site.icon_background,
+    appInfo.site.icon_url,
+    appInfo.site.show_workflow_steps,
+    appInfo.site.use_icon_as_answer_icon,
+  ])
 
 const SettingsModal: FC<ISettingsModalProps> = ({
   isChat,
@@ -141,21 +149,19 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const isFreePlan = plan.type === 'sandbox'
-  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+  const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
 
   const handleLanguageChange = (nextValue: string | null) => {
-    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
-    if (nextLanguage)
-      setLanguage(nextLanguage.value)
+    const nextLanguage = LANGUAGE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextLanguage) setLanguage(nextLanguage.value)
   }
   const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+    if (isFreePlan) setShowPricingModal()
+    else setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
-  const shouldResetForm = isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)
+  const shouldResetForm =
+    isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)
   if (isShow !== previousIsShow || shouldResetForm) {
     setPreviousIsShow(isShow)
     if (shouldResetForm) {
@@ -179,8 +185,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     }
 
     const validateColorHex = (hex: string | null) => {
-      if (hex === null || hex?.length === 0)
-        return true
+      if (hex === null || hex?.length === 0) return true
 
       const regex = /#[A-F0-9]{6}/i
       const check = regex.test(hex)
@@ -188,8 +193,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     }
 
     const validatePrivacyPolicy = (privacyPolicy: string | null) => {
-      if (privacyPolicy === null || privacyPolicy?.length === 0)
-        return true
+      if (privacyPolicy === null || privacyPolicy?.length === 0) return true
 
       return privacyPolicy.startsWith('http://') || privacyPolicy.startsWith('https://')
     }
@@ -235,27 +239,27 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const onChange = (field: string) => {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       let value: string | boolean
-      if (e.target.type === 'checkbox')
-        value = (e.target as HTMLInputElement).checked
-      else
-        value = e.target.value
+      if (e.target.type === 'checkbox') value = (e.target as HTMLInputElement).checked
+      else value = e.target.value
 
-      setInputInfo(item => ({ ...item, [field]: value }))
+      setInputInfo((item) => ({ ...item, [field]: value }))
     }
   }
 
   const onDesChange = (value: string) => {
-    setInputInfo(item => ({ ...item, desc: value }))
+    setInputInfo((item) => ({ ...item, desc: value }))
   }
 
   return (
     <>
-      <Dialog open={isShow} onOpenChange={open => !open && onHide()}>
+      <Dialog open={isShow} onOpenChange={(open) => !open && onHide()}>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
           {/* header */}
           <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
             <div className="flex items-center gap-1">
-              <DialogTitle className="grow title-2xl-semi-bold text-text-primary">{t(`${prefixSettings}.title`, { ns: 'appOverview' })}</DialogTitle>
+              <DialogTitle className="grow title-2xl-semi-bold text-text-primary">
+                {t(`${prefixSettings}.title`, { ns: 'appOverview' })}
+              </DialogTitle>
               <DialogCloseButton className="relative top-auto right-auto shrink-0" />
             </div>
             <div className="mt-0.5 system-xs-regular text-text-tertiary">
@@ -267,7 +271,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             {/* name & icon */}
             <div className="flex gap-4">
               <div className="grow">
-                <div className={cn('mb-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.webName`, { ns: 'appOverview' })}</div>
+                <div className={cn('mb-1 py-1 system-sm-semibold text-text-secondary')}>
+                  {t(`${prefixSettings}.webName`, { ns: 'appOverview' })}
+                </div>
                 <Input
                   className="w-full"
                   value={inputInfo.title}
@@ -277,7 +283,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               </div>
               <AppIcon
                 size="xxl"
-                onClick={() => { setShowAppIconPicker(true) }}
+                onClick={() => {
+                  setShowAppIconPicker(true)
+                }}
                 className="mt-2 cursor-pointer"
                 iconType={appIcon.type}
                 icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
@@ -287,37 +295,48 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </div>
             {/* description */}
             <div className="relative">
-              <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}</div>
+              <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                {t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}
+              </div>
               <Textarea
                 aria-label={t(`${prefixSettings}.webDesc`, { ns: 'appOverview' })}
                 className="mt-1"
                 value={inputInfo.desc}
                 onValueChange={onDesChange}
-                placeholder={t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string}
+                placeholder={
+                  t(`${prefixSettings}.webDescPlaceholder`, { ns: 'appOverview' }) as string
+                }
               />
-              <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}</p>
+              <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                {t(`${prefixSettings}.webDescTip`, { ns: 'appOverview' })}
+              </p>
             </div>
             <Divider className="my-0 h-px" />
             {/* answer icon */}
             {isChat && (
               <div className="w-full">
                 <div className="flex items-center justify-between">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t('answerIcon.title', { ns: 'app' })}</div>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    {t('answerIcon.title', { ns: 'app' })}
+                  </div>
                   <Switch
                     checked={inputInfo.use_icon_as_answer_icon}
-                    onCheckedChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
+                    onCheckedChange={(v) =>
+                      setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })
+                    }
                   />
                 </div>
-                <p className="pb-0.5 body-xs-regular text-text-tertiary">{t('answerIcon.description', { ns: 'app' })}</p>
+                <p className="pb-0.5 body-xs-regular text-text-tertiary">
+                  {t('answerIcon.description', { ns: 'app' })}
+                </p>
               </div>
             )}
             {/* language */}
             <div className="flex items-center">
-              <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.language`, { ns: 'appOverview' })}</div>
-              <Select
-                value={selectedLanguage?.value ?? null}
-                onValueChange={handleLanguageChange}
-              >
+              <div className={cn('grow py-1 system-sm-semibold text-text-secondary')}>
+                {t(`${prefixSettings}.language`, { ns: 'appOverview' })}
+              </div>
+              <Select value={selectedLanguage?.value ?? null} onValueChange={handleLanguageChange}>
                 <SelectTrigger
                   aria-label={t(`${prefixSettings}.language`, { ns: 'appOverview' })}
                   size="large"
@@ -326,7 +345,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {LANGUAGE_OPTIONS.map(item => (
+                  {LANGUAGE_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
@@ -339,8 +358,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             {isChat && (
               <div className="flex items-center">
                 <div className="grow">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}</div>
-                  <div className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}</div>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    {t(`${prefixSettings}.chatColorTheme`, { ns: 'appOverview' })}
+                  </div>
+                  <div className="pb-0.5 body-xs-regular text-text-tertiary">
+                    {t(`${prefixSettings}.chatColorThemeDesc`, { ns: 'appOverview' })}
+                  </div>
                 </div>
                 <div className="shrink-0">
                   <Input
@@ -350,8 +373,15 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     placeholder="E.g #A020F0"
                   />
                   <div className="flex items-center justify-between">
-                    <p className={cn('body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}</p>
-                    <Switch checked={inputInfo.chatColorThemeInverted} onCheckedChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+                    <p className={cn('body-xs-regular text-text-tertiary')}>
+                      {t(`${prefixSettings}.chatColorThemeInverted`, { ns: 'appOverview' })}
+                    </p>
+                    <Switch
+                      checked={inputInfo.chatColorThemeInverted}
+                      onCheckedChange={(v) =>
+                        setInputInfo({ ...inputInfo, chatColorThemeInverted: v })
+                      }
+                    ></Switch>
                   </div>
                 </div>
               </div>
@@ -359,30 +389,41 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             {/* workflow detail */}
             <div className="w-full">
               <div className="flex items-center justify-between">
-                <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}</div>
+                <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                  {t(`${prefixSettings}.workflow.subTitle`, { ns: 'appOverview' })}
+                </div>
                 <Switch
-                  disabled={!(appInfo.mode === AppModeEnum.WORKFLOW || appInfo.mode === AppModeEnum.ADVANCED_CHAT)}
+                  disabled={
+                    !(
+                      appInfo.mode === AppModeEnum.WORKFLOW ||
+                      appInfo.mode === AppModeEnum.ADVANCED_CHAT
+                    )
+                  }
                   checked={inputInfo.show_workflow_steps}
-                  onCheckedChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
+                  onCheckedChange={(v) => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
                 />
               </div>
-              <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</p>
+              <p className="pb-0.5 body-xs-regular text-text-tertiary">
+                {t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}
+              </p>
             </div>
             {/* more settings switch */}
             <Divider className="my-0 h-px" />
             {!isShowMore && (
               <div className="flex cursor-pointer items-center" onClick={() => setIsShowMore(true)}>
                 <div className="grow">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    {t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}
+                  </div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
-                    {t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' })}
-                    {' '}
-                    &
-                    {' '}
+                    {t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' })} &{' '}
                     {t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' })}
                   </p>
                 </div>
-                <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary" />
+                <span
+                  aria-hidden="true"
+                  className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary"
+                />
               </div>
             )}
             {/* more settings */}
@@ -392,12 +433,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 <div className="w-full">
                   <div className="flex items-center">
                     <div className="flex grow items-center">
-                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
+                      <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>
+                        {t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}
+                      </div>
                       {/* upgrade button */}
                       {enableBilling && isFreePlan && (
                         <div className="h-[18px] select-none">
                           <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
-                            <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                            <span
+                              aria-hidden="true"
+                              className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+                            />
                             <div className="system-xs-medium">
                               <span className="p-1">
                                 {t('upgradeBtn.encourageShort', { ns: 'billing' })}
@@ -407,69 +453,102 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         </div>
                       )}
                     </div>
-                    {webappCopyrightEnabled
-                      ? (
-                          <Switch
-                            checked={inputInfo.copyrightSwitchValue}
-                            onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
-                          />
-                        )
-                      : (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={(
-                                <div>
-                                  <Switch
-                                    disabled
-                                    checked={inputInfo.copyrightSwitchValue}
-                                    onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
-                                  />
-                                </div>
-                              )}
-                            />
-                            <TooltipContent className="w-[180px]">
-                              {t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                    {webappCopyrightEnabled ? (
+                      <Switch
+                        checked={inputInfo.copyrightSwitchValue}
+                        onCheckedChange={(v) =>
+                          setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
+                        }
+                      />
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <div>
+                              <Switch
+                                disabled
+                                checked={inputInfo.copyrightSwitchValue}
+                                onCheckedChange={(v) =>
+                                  setInputInfo({ ...inputInfo, copyrightSwitchValue: v })
+                                }
+                              />
+                            </div>
+                          }
+                        />
+                        <TooltipContent className="w-[180px]">
+                          {t(`${prefixSettings}.more.copyrightTooltip`, { ns: 'appOverview' })}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
-                  <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
+                  <p className="pb-0.5 body-xs-regular text-text-tertiary">
+                    {t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}
+                  </p>
                   {inputInfo.copyrightSwitchValue && (
                     <Input
                       className="mt-2 h-10"
                       value={inputInfo.copyright}
                       onChange={onChange('copyright')}
-                      placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`, { ns: 'appOverview' }) as string}
+                      placeholder={
+                        t(`${prefixSettings}.more.copyRightPlaceholder`, {
+                          ns: 'appOverview',
+                        }) as string
+                      }
                     />
                   )}
                 </div>
                 {/* privacy policy */}
                 <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}</div>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    {t(`${prefixSettings}.more.privacyPolicy`, { ns: 'appOverview' })}
+                  </div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
                     <Trans
                       i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
                       ns="appOverview"
-                      components={{ privacyPolicyLink: <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer" className="text-text-accent" /> }}
+                      components={{
+                        privacyPolicyLink: (
+                          <Link
+                            href="https://dify.ai/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-text-accent"
+                          />
+                        ),
+                      }}
                     />
                   </p>
                   <Input
                     className="mt-1"
                     value={inputInfo.privacyPolicy}
                     onChange={onChange('privacyPolicy')}
-                    placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`, { ns: 'appOverview' }) as string}
+                    placeholder={
+                      t(`${prefixSettings}.more.privacyPolicyPlaceholder`, {
+                        ns: 'appOverview',
+                      }) as string
+                    }
                   />
                 </div>
                 {/* custom disclaimer */}
                 <div className="w-full">
-                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}</div>
-                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>{t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}</p>
+                  <div className={cn('py-1 system-sm-semibold text-text-secondary')}>
+                    {t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
+                  </div>
+                  <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
+                    {t(`${prefixSettings}.more.customDisclaimerTip`, { ns: 'appOverview' })}
+                  </p>
                   <Textarea
                     aria-label={t(`${prefixSettings}.more.customDisclaimer`, { ns: 'appOverview' })}
                     className="mt-1"
                     value={inputInfo.customDisclaimer}
-                    onValueChange={value => setInputInfo(item => ({ ...item, customDisclaimer: value }))}
-                    placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`, { ns: 'appOverview' }) as string}
+                    onValueChange={(value) =>
+                      setInputInfo((item) => ({ ...item, customDisclaimer: value }))
+                    }
+                    placeholder={
+                      t(`${prefixSettings}.more.customDisclaimerPlaceholder`, {
+                        ns: 'appOverview',
+                      }) as string
+                    }
                   />
                 </div>
               </>
@@ -477,16 +556,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           {/* footer */}
           <div className="flex shrink-0 justify-end p-6 pt-5">
-            <Button className="mr-2" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-            <Button variant="primary" onClick={onClickSave} loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
+            <Button className="mr-2" onClick={onHide}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button variant="primary" onClick={onClickSave} loading={saveLoading}>
+              {t('operation.save', { ns: 'common' })}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
       <AppIconPicker
         open={showAppIconPicker}
-        initialEmoji={appIcon.type === 'emoji'
-          ? { icon: appIcon.icon, background: appIcon.background }
-          : undefined}
+        initialEmoji={
+          appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined
+        }
         onOpenChange={setShowAppIconPicker}
         onSelect={setAppIcon}
       />

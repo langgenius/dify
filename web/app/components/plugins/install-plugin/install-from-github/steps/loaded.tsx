@@ -59,13 +59,11 @@ const Loaded: React.FC<LoadedProps> = ({
   const { check } = checkTaskStatus()
 
   useEffect(() => {
-    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
-      onInstalled()
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier) onInstalled()
   }, [hasInstalled])
 
   const handleInstall = async () => {
-    if (isInstalling)
-      return
+    if (isInstalling) return
     setIsInstalling(true)
     onStartToInstall?.()
 
@@ -84,13 +82,9 @@ const Loaded: React.FC<LoadedProps> = ({
 
         taskId = task_id
         isInstalled = all_installed
-      }
-      else {
+      } else {
         if (hasInstalled) {
-          const {
-            all_installed,
-            task_id,
-          } = await updateFromGitHub(
+          const { all_installed, task_id } = await updateFromGitHub(
             `${owner}/${repo}`,
             selectedVersion,
             selectedPackage,
@@ -99,8 +93,7 @@ const Loaded: React.FC<LoadedProps> = ({
           )
           taskId = task_id
           isInstalled = all_installed
-        }
-        else {
+        } else {
           const { all_installed, task_id } = await installPackageFromGitHub({
             repoUrl: `${owner}/${repo}`,
             selectedVersion,
@@ -128,15 +121,13 @@ const Loaded: React.FC<LoadedProps> = ({
         return
       }
       onInstalled(true)
-    }
-    catch (e) {
+    } catch (e) {
       if (typeof e === 'string') {
         onFailed(e)
         return
       }
       onFailed()
-    }
-    finally {
+    } finally {
       setIsInstalling(false)
     }
   }
@@ -150,13 +141,15 @@ const Loaded: React.FC<LoadedProps> = ({
         <Card
           className="w-full"
           payload={pluginManifestToCardPluginProps(payload as PluginDeclaration)}
-          titleLeft={!isLoading && (
-            <Version
-              hasInstalled={hasInstalled}
-              installedVersion={installedVersion}
-              toInstallVersion={toInstallVersion}
-            />
-          )}
+          titleLeft={
+            !isLoading && (
+              <Version
+                hasInstalled={hasInstalled}
+                installedVersion={installedVersion}
+                toInstallVersion={toInstallVersion}
+              />
+            )
+          }
         />
       </div>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
@@ -172,7 +165,9 @@ const Loaded: React.FC<LoadedProps> = ({
           disabled={isInstalling || isLoading}
         >
           {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
+          <span>
+            {t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}
+          </span>
         </Button>
       </div>
     </>

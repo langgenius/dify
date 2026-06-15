@@ -56,8 +56,10 @@ export const getFirstFieldName = (
   return Object.keys(values)[0] || fallbackSchema[0]?.name || ''
 }
 
-export const toSchemaWithTooltip = <T extends { help?: unknown, name: string }>(schemas: T[] = []) => {
-  return schemas.map(schema => ({
+export const toSchemaWithTooltip = <T extends { help?: unknown; name: string }>(
+  schemas: T[] = [],
+) => {
+  return schemas.map((schema) => ({
     ...schema,
     tooltip: schema.help,
   }))
@@ -73,8 +75,7 @@ export const buildSubscriptionPayload = ({
   manualPropertiesSchemaLength,
   manualPropertiesFormValues,
 }: BuildPayloadParams): BuildTriggerSubscriptionPayload | null => {
-  if (!subscriptionFormValues?.isCheckValidated)
-    return null
+  if (!subscriptionFormValues?.isCheckValidated) return null
 
   const subscriptionNameValue = subscriptionFormValues.values.subscription_name as string
 
@@ -85,18 +86,15 @@ export const buildSubscriptionPayload = ({
   }
 
   if (createType !== SupportedCreationMethods.MANUAL) {
-    if (!autoCommonParametersSchemaLength)
-      return params
+    if (!autoCommonParametersSchemaLength) return params
 
-    if (!autoCommonParametersFormValues?.isCheckValidated)
-      return null
+    if (!autoCommonParametersFormValues?.isCheckValidated) return null
 
     params.parameters = autoCommonParametersFormValues.values
     return params
   }
 
-  if (manualPropertiesSchemaLength && !manualPropertiesFormValues?.isCheckValidated)
-    return null
+  if (manualPropertiesSchemaLength && !manualPropertiesFormValues?.isCheckValidated) return null
 
   return params
 }
@@ -142,15 +140,13 @@ export const useInitializeSubscriptionBuilder = ({
           credential_type: credentialType,
         })
         setSubscriptionBuilder(response.subscription_builder)
-      }
-      catch (error) {
+      } catch (error) {
         console.error('createBuilder error:', error)
         toast.error(t('modal.errors.createFailed', { ns: 'pluginTrigger' }))
       }
     }
 
-    if (!isInitializedRef.current && !subscriptionBuilder && provider)
-      initializeBuilder()
+    if (!isInitializedRef.current && !subscriptionBuilder && provider) initializeBuilder()
   }, [subscriptionBuilder, provider, credentialType, createBuilder, setSubscriptionBuilder, t])
 }
 
@@ -161,20 +157,20 @@ export const useSyncSubscriptionEndpoint = ({
   t,
 }: SyncEndpointParams) => {
   useEffect(() => {
-    if (!endpoint || !subscriptionFormRef.current || !isConfigurationStep)
-      return
+    if (!endpoint || !subscriptionFormRef.current || !isConfigurationStep) return
 
     const form = subscriptionFormRef.current.getForm()
-    if (form)
-      form.setFieldValue('callback_url', endpoint)
+    if (form) form.setFieldValue('callback_url', endpoint)
 
     const warnings = isPrivateOrLocalAddress(endpoint)
       ? [t('modal.form.callbackUrl.privateAddressWarning', { ns: 'pluginTrigger' })]
       : []
 
-    subscriptionFormRef.current.setFields([{
-      name: 'callback_url',
-      warnings,
-    }])
+    subscriptionFormRef.current.setFields([
+      {
+        name: 'callback_url',
+        warnings,
+      },
+    ])
   }, [endpoint, isConfigurationStep, subscriptionFormRef, t])
 }

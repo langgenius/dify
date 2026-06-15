@@ -210,13 +210,14 @@ describe('systemFeaturesQueryOptions', () => {
 
 describe('serverSystemFeaturesQueryOptions', () => {
   it('should prefetch Cloud defaults without calling server system-features when Cloud edition is enabled', async () => {
-    const { getServerConsoleClientContext, module, systemFeatures } = await loadServerSystemFeaturesModule({
-      isCloudEdition: true,
-      cloudEnv: {
-        NEXT_PUBLIC_ENABLE_MARKETPLACE: false,
-        NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: true,
-      },
-    })
+    const { getServerConsoleClientContext, module, systemFeatures } =
+      await loadServerSystemFeaturesModule({
+        isCloudEdition: true,
+        cloudEnv: {
+          NEXT_PUBLIC_ENABLE_MARKETPLACE: false,
+          NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: true,
+        },
+      })
 
     const options = module.serverSystemFeaturesQueryOptions()
     const data = await options.queryFn?.(queryContext)
@@ -235,10 +236,11 @@ describe('serverSystemFeaturesQueryOptions', () => {
       ...defaultSystemFeatures,
       enable_marketplace: true,
     }
-    const { getServerConsoleClientContext, module, systemFeatures } = await loadServerSystemFeaturesModule({
-      isCloudEdition: false,
-      systemFeaturesResult,
-    })
+    const { getServerConsoleClientContext, module, systemFeatures } =
+      await loadServerSystemFeaturesModule({
+        isCloudEdition: false,
+        systemFeaturesResult,
+      })
 
     const options = module.serverSystemFeaturesQueryOptions()
     const data = await options.queryFn?.(queryContext)

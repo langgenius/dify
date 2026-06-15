@@ -42,11 +42,10 @@ const DatasetNav = () => {
     initialPage: 1,
     limit: 30,
   })
-  const datasetItems = flatten(datasetList?.pages.map(datasetData => datasetData.data))
+  const datasetItems = flatten(datasetList?.pages.map((datasetData) => datasetData.data))
 
   const curNav = useMemo(() => {
-    if (!currentDataset)
-      return
+    if (!currentDataset) return
     const iconInfo = normalizeDatasetIconInfo(currentDataset.icon_info)
     return {
       id: currentDataset.id,
@@ -63,9 +62,7 @@ const DatasetNav = () => {
     const link = isPipelineUnpublished
       ? `/datasets/${dataset.id}/pipeline`
       : `/datasets/${dataset.id}/documents`
-    return dataset.provider === 'external'
-      ? `/datasets/${dataset.id}/hitTesting`
-      : link
+    return dataset.provider === 'external' ? `/datasets/${dataset.id}/hitTesting` : link
   }, [])
 
   const navigationItems = useMemo(() => {
@@ -86,15 +83,12 @@ const DatasetNav = () => {
 
   const createRoute = useMemo(() => {
     const runtimeMode = currentDataset?.runtime_mode
-    if (runtimeMode === 'rag_pipeline')
-      return `${basePath}/datasets/create-from-pipeline`
-    else
-      return `${basePath}/datasets/create`
+    if (runtimeMode === 'rag_pipeline') return `${basePath}/datasets/create-from-pipeline`
+    else return `${basePath}/datasets/create`
   }, [currentDataset?.runtime_mode])
 
   const handleLoadMore = useCallback(() => {
-    if (hasNextPage)
-      fetchNextPage()
+    if (hasNextPage) fetchNextPage()
   }, [hasNextPage, fetchNextPage])
 
   return (

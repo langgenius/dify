@@ -45,7 +45,7 @@ vi.mock('@/app/components/header/tools-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/plan-badge', () => ({
-  PlanBadge: ({ onClick, plan }: { onClick?: () => void, plan?: string }) => (
+  PlanBadge: ({ onClick, plan }: { onClick?: () => void; plan?: string }) => (
     <button data-testid="plan-badge" onClick={onClick} data-plan={plan} />
   ),
 }))
@@ -55,7 +55,15 @@ vi.mock('@/context/workspace-context-provider', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }) => <a href={href} {...props}>{children}</a>,
+  default: ({
+    children,
+    href,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }))
 
 let mockIsWorkspaceEditor = false

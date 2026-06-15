@@ -17,11 +17,25 @@ export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
 
   switch (credentialType) {
     case TriggerCredentialTypeEnum.Unauthorized:
-      return <ManualEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      return (
+        <ManualEditModal
+          onClose={onClose}
+          subscription={subscription}
+          pluginDetail={pluginDetail}
+        />
+      )
     case TriggerCredentialTypeEnum.Oauth2:
-      return <OAuthEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      return (
+        <OAuthEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      )
     case TriggerCredentialTypeEnum.ApiKey:
-      return <ApiKeyEditModal onClose={onClose} subscription={subscription} pluginDetail={pluginDetail} />
+      return (
+        <ApiKeyEditModal
+          onClose={onClose}
+          subscription={subscription}
+          pluginDetail={pluginDetail}
+        />
+      )
     default:
       return null
   }

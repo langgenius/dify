@@ -18,12 +18,10 @@ type Props = Readonly<{
   pageType: PageType
 }>
 
-const LogAnnotation: FC<Props> = ({
-  pageType,
-}) => {
+const LogAnnotation: FC<Props> = ({ pageType }) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const appDetail = useAppStore(state => state.appDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
 
   const options = useMemo(() => {
     if (appDetail?.mode === AppModeEnum.COMPLETION)
@@ -55,9 +53,13 @@ const LogAnnotation: FC<Props> = ({
         />
       )}
       <div className={cn('h-0 grow', appDetail.mode !== AppModeEnum.WORKFLOW && 'mt-3')}>
-        {pageType === PageType.log && appDetail.mode !== AppModeEnum.WORKFLOW && (<Log appDetail={appDetail} />)}
-        {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
-        {pageType === PageType.log && appDetail.mode === AppModeEnum.WORKFLOW && (<WorkflowLog appDetail={appDetail} />)}
+        {pageType === PageType.log && appDetail.mode !== AppModeEnum.WORKFLOW && (
+          <Log appDetail={appDetail} />
+        )}
+        {pageType === PageType.annotation && <Annotation appDetail={appDetail} />}
+        {pageType === PageType.log && appDetail.mode === AppModeEnum.WORKFLOW && (
+          <WorkflowLog appDetail={appDetail} />
+        )}
       </div>
     </div>
   )

@@ -1,10 +1,7 @@
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -12,7 +9,12 @@ import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  isConversationVar,
+  isENV,
+  isRagVariableVar,
+  isSystemVar,
+} from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 type NodeVariableItemProps = {
   node: Node
@@ -40,38 +42,27 @@ const NodeVariableItem = ({
   const isChatVar = isConversationVar(variable)
   const isRagVar = isRagVariableVar(variable)
   const varName = useMemo(() => {
-    if (isSystem)
-      return `sys.${variable[variable.length - 1]}`
-    if (isRagVar)
-      return variable[variable.length - 1]
+    if (isSystem) return `sys.${variable[variable.length - 1]}`
+    if (isRagVar) return variable[variable.length - 1]
     return variable.slice(1).join('.')
   }, [isRagVar, isSystem, variable])
 
   const VariableIcon = useMemo(() => {
     if (isEnv) {
-      return (
-        <Env className="size-3.5 shrink-0 text-util-colors-violet-violet-600" />
-      )
+      return <Env className="size-3.5 shrink-0 text-util-colors-violet-violet-600" />
     }
 
     if (isChatVar) {
-      return (
-        <BubbleX className="size-3.5 shrink-0 text-util-colors-teal-teal-700" />
-      )
+      return <BubbleX className="size-3.5 shrink-0 text-util-colors-teal-teal-700" />
     }
 
     if (isRagVar) {
-      return (
-        <InputField className="size-3.5 shrink-0 text-text-accent" />
-      )
+      return <InputField className="size-3.5 shrink-0 text-text-accent" />
     }
 
     return (
       <Variable02
-        className={cn(
-          'size-3.5 shrink-0 text-text-accent',
-          isException && 'text-text-warning',
-        )}
+        className={cn('size-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')}
       />
     )
   }, [isEnv, isChatVar, isRagVar, isException])
@@ -92,36 +83,37 @@ const NodeVariableItem = ({
     )
   }, [isEnv, isChatVar, varName, isException])
   return (
-    <div className={cn(
-      'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
-      showBorder && 'bg-state-base-hover!',
-      className,
-    )}
+    <div
+      className={cn(
+        'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
+        showBorder && 'bg-state-base-hover!',
+        className,
+      )}
     >
       <div className="flex w-0 grow items-center">
-        {
-          node && (
-            <>
-              <div className="shrink-0 p-px">
-                <VarBlockIcon
-                  className="text-text-primary!"
-                  type={node.data.type}
-                />
-              </div>
-              <div
-                className="mx-0.5 shrink-1000 truncate text-xs font-medium text-text-secondary"
-                title={node?.data.title}
-              >
-                {node?.data.title}
-              </div>
-              <Line3 className="mr-0.5 shrink-0"></Line3>
-            </>
-          )
-        }
+        {node && (
+          <>
+            <div className="shrink-0 p-px">
+              <VarBlockIcon className="text-text-primary!" type={node.data.type} />
+            </div>
+            <div
+              className="mx-0.5 shrink-1000 truncate text-xs font-medium text-text-secondary"
+              title={node?.data.title}
+            >
+              {node?.data.title}
+            </div>
+            <Line3 className="mr-0.5 shrink-0"></Line3>
+          </>
+        )}
         {VariableIcon}
         {VariableName}
       </div>
-      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}`, { ns: 'workflow' }) as string} />}
+      {writeMode && (
+        <Badge
+          className="shrink-0"
+          text={t(`${i18nPrefix}.operations.${writeMode}`, { ns: 'workflow' }) as string}
+        />
+      )}
     </div>
   )
 }

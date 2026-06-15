@@ -18,7 +18,8 @@ vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
 }))
 
 vi.mock('../../../store', () => ({
-  useSnippetDetailStore: (selector: (state: typeof snippetDetailStoreState) => unknown) => selector(snippetDetailStoreState),
+  useSnippetDetailStore: (selector: (state: typeof snippetDetailStoreState) => unknown) =>
+    selector(snippetDetailStoreState),
 }))
 
 const createField = (overrides: Partial<SnippetInputField> = {}): SnippetInputField => ({
@@ -45,9 +46,11 @@ describe('useSnippetInputFieldActions', () => {
   describe('Field sync', () => {
     it('should update fields and sync the draft', () => {
       snippetDetailStoreState.fields = [createField()]
-      const { result } = renderHook(() => useSnippetInputFieldActions({
-        snippetId: 'snippet-1',
-      }))
+      const { result } = renderHook(() =>
+        useSnippetInputFieldActions({
+          snippetId: 'snippet-1',
+        }),
+      )
       const nextFields = [
         createField(),
         createField({

@@ -4,9 +4,11 @@ import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-n
 import { BlockEnum } from '@/app/components/workflow/types'
 import Node from '../node'
 
-const mockInstallPluginButton = vi.hoisted(() => vi.fn(({ uniqueIdentifier }: { uniqueIdentifier: string }) => (
-  <button type="button">{uniqueIdentifier}</button>
-)))
+const mockInstallPluginButton = vi.hoisted(() =>
+  vi.fn(({ uniqueIdentifier }: { uniqueIdentifier: string }) => (
+    <button type="button">{uniqueIdentifier}</button>
+  )),
+)
 
 vi.mock('@/app/components/workflow/hooks/use-node-plugin-installation', () => ({
   useNodePluginInstallation: vi.fn(),
@@ -61,10 +63,13 @@ describe('DataSourceNode', () => {
       render(<Node id="data-source-node" data={createNodeData()} />)
 
       expect(screen.getByRole('button', { name: 'plugin-id@1.0.0' })).toBeInTheDocument()
-      expect(mockInstallPluginButton).toHaveBeenCalledWith(expect.objectContaining({
-        uniqueIdentifier: 'plugin-id@1.0.0',
-        extraIdentifiers: ['plugin-id', 'file'],
-      }), undefined)
+      expect(mockInstallPluginButton).toHaveBeenCalledWith(
+        expect.objectContaining({
+          uniqueIdentifier: 'plugin-id@1.0.0',
+          extraIdentifiers: ['plugin-id', 'file'],
+        }),
+        undefined,
+      )
     })
 
     it('should render nothing when installation is unavailable', () => {

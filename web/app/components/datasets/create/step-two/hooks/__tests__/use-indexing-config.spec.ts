@@ -4,11 +4,11 @@ import { RETRIEVE_METHOD } from '@/types/app'
 
 // Hoisted mock state
 const mocks = vi.hoisted(() => ({
-  rerankModelList: [] as Array<{ provider: { provider: string }, model: string }>,
-  rerankDefaultModel: null as { provider: { provider: string }, model: string } | null,
-  isRerankDefaultModelValid: null as { provider: { provider: string }, model: string } | null,
-  embeddingModelList: [] as Array<{ provider: { provider: string }, model: string }>,
-  defaultEmbeddingModel: null as { provider: { provider: string }, model: string } | null,
+  rerankModelList: [] as Array<{ provider: { provider: string }; model: string }>,
+  rerankDefaultModel: null as { provider: { provider: string }; model: string } | null,
+  isRerankDefaultModelValid: null as { provider: { provider: string }; model: string } | null,
+  embeddingModelList: [] as Array<{ provider: { provider: string }; model: string }>,
+  defaultEmbeddingModel: null as { provider: { provider: string }; model: string } | null,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({

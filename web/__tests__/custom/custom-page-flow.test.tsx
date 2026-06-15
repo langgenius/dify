@@ -10,7 +10,7 @@ const mockSetShowPricingModal = vi.fn()
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
 }))
 
@@ -34,7 +34,9 @@ const { useProviderContext } = await import('@/context/provider-context')
 const mockUseProviderContext = vi.mocked(useProviderContext)
 const mockUseWebAppBrand = vi.mocked(useWebAppBrand)
 
-const createBrandState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> = {}): ReturnType<typeof useWebAppBrand> => ({
+const createBrandState = (
+  overrides: Partial<ReturnType<typeof useWebAppBrand>> = {},
+): ReturnType<typeof useWebAppBrand> => ({
   fileId: '',
   imgKey: 1,
   uploadProgress: 0,
@@ -54,13 +56,15 @@ const createBrandState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> 
 })
 
 const setProviderPlan = (planType: Plan, enableBilling = true) => {
-  mockUseProviderContext.mockReturnValue(createMockProviderContextValue({
-    enableBilling,
-    plan: {
-      ...defaultPlan,
-      type: planType,
-    },
-  }))
+  mockUseProviderContext.mockReturnValue(
+    createMockProviderContextValue({
+      enableBilling,
+      plan: {
+        ...defaultPlan,
+        type: planType,
+      },
+    }),
+  )
 }
 
 describe('Custom Page Flow', () => {

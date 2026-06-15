@@ -4,10 +4,7 @@ import { produce } from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import { VarType } from '../../types'
 import { LogicalOperator } from './types'
-import {
-  branchNameCorrect,
-  getOperators,
-} from './utils'
+import { branchNameCorrect, getOperators } from './utils'
 
 export const filterAllVars = () => true
 
@@ -28,12 +25,10 @@ export const getVarsIsVarFileAttribute = (
 }
 
 const getTargetBranchesWithNewCase = (targetBranches: Branch[] | undefined, caseId: string) => {
-  if (!targetBranches)
-    return targetBranches
+  if (!targetBranches) return targetBranches
 
-  const elseCaseIndex = targetBranches.findIndex(branch => branch.id === 'false')
-  if (elseCaseIndex < 0)
-    return targetBranches
+  const elseCaseIndex = targetBranches.findIndex((branch) => branch.id === 'false')
+  if (elseCaseIndex < 0) return targetBranches
 
   return branchNameCorrect([
     ...targetBranches.slice(0, elseCaseIndex),
@@ -45,45 +40,43 @@ const getTargetBranchesWithNewCase = (targetBranches: Branch[] | undefined, case
   ])
 }
 
-export const addCase = (inputs: IfElseNodeType) => produce(inputs, (draft) => {
-  if (!draft.cases)
-    return
+export const addCase = (inputs: IfElseNodeType) =>
+  produce(inputs, (draft) => {
+    if (!draft.cases) return
 
-  const caseId = uuid4()
-  draft.cases.push({
-    case_id: caseId,
-    logical_operator: LogicalOperator.and,
-    conditions: [],
+    const caseId = uuid4()
+    draft.cases.push({
+      case_id: caseId,
+      logical_operator: LogicalOperator.and,
+      conditions: [],
+    })
+    draft._targetBranches = getTargetBranchesWithNewCase(draft._targetBranches, caseId)
   })
-  draft._targetBranches = getTargetBranchesWithNewCase(draft._targetBranches, caseId)
-})
 
-export const removeCase = (
-  inputs: IfElseNodeType,
-  caseId: string,
-) => produce(inputs, (draft) => {
-  draft.cases = draft.cases?.filter(item => item.case_id !== caseId)
+export const removeCase = (inputs: IfElseNodeType, caseId: string) =>
+  produce(inputs, (draft) => {
+    draft.cases = draft.cases?.filter((item) => item.case_id !== caseId)
 
-  if (draft._targetBranches)
-    draft._targetBranches = branchNameCorrect(draft._targetBranches.filter(branch => branch.id !== caseId))
-})
+    if (draft._targetBranches)
+      draft._targetBranches = branchNameCorrect(
+        draft._targetBranches.filter((branch) => branch.id !== caseId),
+      )
+  })
 
-export const sortCases = (
-  inputs: IfElseNodeType,
-  newCases: (CaseItem & { id: string })[],
-) => produce(inputs, (draft) => {
-  draft.cases = newCases.filter(Boolean).map(item => ({
-    id: item.id,
-    case_id: item.case_id,
-    logical_operator: item.logical_operator,
-    conditions: item.conditions,
-  }))
+export const sortCases = (inputs: IfElseNodeType, newCases: (CaseItem & { id: string })[]) =>
+  produce(inputs, (draft) => {
+    draft.cases = newCases.filter(Boolean).map((item) => ({
+      id: item.id,
+      case_id: item.case_id,
+      logical_operator: item.logical_operator,
+      conditions: item.conditions,
+    }))
 
-  draft._targetBranches = branchNameCorrect([
-    ...newCases.filter(Boolean).map(item => ({ id: item.case_id, name: '' })),
-    { id: 'false', name: '' },
-  ])
-})
+    draft._targetBranches = branchNameCorrect([
+      ...newCases.filter(Boolean).map((item) => ({ id: item.case_id, name: '' })),
+      { id: 'false', name: '' },
+    ])
+  })
 
 export const addCondition = ({
   inputs,
@@ -97,106 +90,101 @@ export const addCondition = ({
   valueSelector: string[]
   variable: Var
   isVarFileAttribute: boolean
-}) => produce(inputs, (draft) => {
-  const targetCase = draft.cases?.find(item => item.case_id === caseId)
-  if (!targetCase)
-    return
+}) =>
+  produce(inputs, (draft) => {
+    const targetCase = draft.cases?.find((item) => item.case_id === caseId)
+    if (!targetCase) return
 
-  targetCase.conditions.push({
-    id: uuid4(),
-    varType: variable.type,
-    variable_selector: valueSelector,
-    comparison_operator: getOperators(variable.type, isVarFileAttribute ? { key: valueSelector.slice(-1)[0]! } : undefined)[0],
-    value: (variable.type === VarType.boolean || variable.type === VarType.arrayBoolean) ? false : '',
+    targetCase.conditions.push({
+      id: uuid4(),
+      varType: variable.type,
+      variable_selector: valueSelector,
+      comparison_operator: getOperators(
+        variable.type,
+        isVarFileAttribute ? { key: valueSelector.slice(-1)[0]! } : undefined,
+      )[0],
+      value:
+        variable.type === VarType.boolean || variable.type === VarType.arrayBoolean ? false : '',
+    })
   })
-})
 
-export const removeCondition = (
-  inputs: IfElseNodeType,
-  caseId: string,
-  conditionId: string,
-) => produce(inputs, (draft) => {
-  const targetCase = draft.cases?.find(item => item.case_id === caseId)
-  if (targetCase)
-    targetCase.conditions = targetCase.conditions.filter(item => item.id !== conditionId)
-})
+export const removeCondition = (inputs: IfElseNodeType, caseId: string, conditionId: string) =>
+  produce(inputs, (draft) => {
+    const targetCase = draft.cases?.find((item) => item.case_id === caseId)
+    if (targetCase)
+      targetCase.conditions = targetCase.conditions.filter((item) => item.id !== conditionId)
+  })
 
 export const updateCondition = (
   inputs: IfElseNodeType,
   caseId: string,
   conditionId: string,
   nextCondition: Condition,
-) => produce(inputs, (draft) => {
-  const targetCondition = draft.cases
-    ?.find(item => item.case_id === caseId)
-    ?.conditions
-    .find(item => item.id === conditionId)
+) =>
+  produce(inputs, (draft) => {
+    const targetCondition = draft.cases
+      ?.find((item) => item.case_id === caseId)
+      ?.conditions.find((item) => item.id === conditionId)
 
-  if (targetCondition)
-    Object.assign(targetCondition, nextCondition)
-})
+    if (targetCondition) Object.assign(targetCondition, nextCondition)
+  })
 
-export const toggleConditionLogicalOperator = (
-  inputs: IfElseNodeType,
-  caseId: string,
-) => produce(inputs, (draft) => {
-  const targetCase = draft.cases?.find(item => item.case_id === caseId)
-  if (!targetCase)
-    return
+export const toggleConditionLogicalOperator = (inputs: IfElseNodeType, caseId: string) =>
+  produce(inputs, (draft) => {
+    const targetCase = draft.cases?.find((item) => item.case_id === caseId)
+    if (!targetCase) return
 
-  targetCase.logical_operator = targetCase.logical_operator === LogicalOperator.and
-    ? LogicalOperator.or
-    : LogicalOperator.and
-})
+    targetCase.logical_operator =
+      targetCase.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
+  })
 
 export const addSubVariableCondition = (
   inputs: IfElseNodeType,
   caseId: string,
   conditionId: string,
   key?: string,
-) => produce(inputs, (draft) => {
-  const condition = draft.cases
-    ?.find(item => item.case_id === caseId)
-    ?.conditions
-    .find(item => item.id === conditionId)
+) =>
+  produce(inputs, (draft) => {
+    const condition = draft.cases
+      ?.find((item) => item.case_id === caseId)
+      ?.conditions.find((item) => item.id === conditionId)
 
-  if (!condition)
-    return
+    if (!condition) return
 
-  if (!condition.sub_variable_condition) {
-    condition.sub_variable_condition = {
-      case_id: uuid4(),
-      logical_operator: LogicalOperator.and,
-      conditions: [],
+    if (!condition.sub_variable_condition) {
+      condition.sub_variable_condition = {
+        case_id: uuid4(),
+        logical_operator: LogicalOperator.and,
+        conditions: [],
+      }
     }
-  }
 
-  condition.sub_variable_condition.conditions.push({
-    id: uuid4(),
-    key: key || '',
-    varType: VarType.string,
-    comparison_operator: undefined,
-    value: '',
+    condition.sub_variable_condition.conditions.push({
+      id: uuid4(),
+      key: key || '',
+      varType: VarType.string,
+      comparison_operator: undefined,
+      value: '',
+    })
   })
-})
 
 export const removeSubVariableCondition = (
   inputs: IfElseNodeType,
   caseId: string,
   conditionId: string,
   subConditionId: string,
-) => produce(inputs, (draft) => {
-  const subVariableCondition = draft.cases
-    ?.find(item => item.case_id === caseId)
-    ?.conditions
-    .find(item => item.id === conditionId)
-    ?.sub_variable_condition
+) =>
+  produce(inputs, (draft) => {
+    const subVariableCondition = draft.cases
+      ?.find((item) => item.case_id === caseId)
+      ?.conditions.find((item) => item.id === conditionId)?.sub_variable_condition
 
-  if (!subVariableCondition)
-    return
+    if (!subVariableCondition) return
 
-  subVariableCondition.conditions = subVariableCondition.conditions.filter(item => item.id !== subConditionId)
-})
+    subVariableCondition.conditions = subVariableCondition.conditions.filter(
+      (item) => item.id !== subConditionId,
+    )
+  })
 
 export const updateSubVariableCondition = (
   inputs: IfElseNodeType,
@@ -204,34 +192,30 @@ export const updateSubVariableCondition = (
   conditionId: string,
   subConditionId: string,
   nextCondition: Condition,
-) => produce(inputs, (draft) => {
-  const targetSubCondition = draft.cases
-    ?.find(item => item.case_id === caseId)
-    ?.conditions
-    .find(item => item.id === conditionId)
-    ?.sub_variable_condition
-    ?.conditions
-    .find(item => item.id === subConditionId)
+) =>
+  produce(inputs, (draft) => {
+    const targetSubCondition = draft.cases
+      ?.find((item) => item.case_id === caseId)
+      ?.conditions.find((item) => item.id === conditionId)
+      ?.sub_variable_condition?.conditions.find((item) => item.id === subConditionId)
 
-  if (targetSubCondition)
-    Object.assign(targetSubCondition, nextCondition)
-})
+    if (targetSubCondition) Object.assign(targetSubCondition, nextCondition)
+  })
 
 export const toggleSubVariableConditionLogicalOperator = (
   inputs: IfElseNodeType,
   caseId: string,
   conditionId: string,
-) => produce(inputs, (draft) => {
-  const targetSubVariableCondition = draft.cases
-    ?.find(item => item.case_id === caseId)
-    ?.conditions
-    .find(item => item.id === conditionId)
-    ?.sub_variable_condition
+) =>
+  produce(inputs, (draft) => {
+    const targetSubVariableCondition = draft.cases
+      ?.find((item) => item.case_id === caseId)
+      ?.conditions.find((item) => item.id === conditionId)?.sub_variable_condition
 
-  if (!targetSubVariableCondition)
-    return
+    if (!targetSubVariableCondition) return
 
-  targetSubVariableCondition.logical_operator = targetSubVariableCondition.logical_operator === LogicalOperator.and
-    ? LogicalOperator.or
-    : LogicalOperator.and
-})
+    targetSubVariableCondition.logical_operator =
+      targetSubVariableCondition.logical_operator === LogicalOperator.and
+        ? LogicalOperator.or
+        : LogicalOperator.and
+  })

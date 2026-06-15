@@ -13,7 +13,7 @@ import ListWrapper from '../list-wrapper'
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, num?: number }) => {
+    t: (key: string, options?: { ns?: string; num?: number }) => {
       // Build full key with namespace prefix if provided
       const fullKey = options?.ns ? `${options.ns}.${key}` : key
       const translations: Record<string, string> = {
@@ -63,12 +63,15 @@ const mockTags = [
 vi.mock('@/app/components/plugins/hooks', () => ({
   useTags: () => ({
     tags: mockTags,
-    tagsMap: mockTags.reduce((acc, tag) => {
-      acc[tag.name] = tag
-      return acc
-    }, {} as Record<string, { name: string, label: string }>),
+    tagsMap: mockTags.reduce(
+      (acc, tag) => {
+        acc[tag.name] = tag
+        return acc
+      },
+      {} as Record<string, { name: string; label: string }>,
+    ),
     getTagLabel: (name: string) => {
-      const tag = mockTags.find(t => t.name === name)
+      const tag = mockTags.find((t) => t.name === name)
       return tag?.label || name
     },
   }),
@@ -102,12 +105,11 @@ vi.mock('@/i18n-config/language', () => ({
 vi.mock('../../utils', () => ({
   getPluginLinkInMarketplace: (plugin: Plugin, _params?: Record<string, string | undefined>) =>
     `/plugins/${plugin.org}/${plugin.name}`,
-  getPluginDetailLinkInMarketplace: (plugin: Plugin) =>
-    `/plugins/${plugin.org}/${plugin.name}`,
+  getPluginDetailLinkInMarketplace: (plugin: Plugin) => `/plugins/${plugin.org}/${plugin.name}`,
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, footer }: { payload: Plugin, footer?: React.ReactNode }) => (
+  default: ({ payload, footer }: { payload: Plugin; footer?: React.ReactNode }) => (
     <div data-testid={`card-${payload.name}`}>
       <div data-testid="card-name">{payload.name}</div>
       <div data-testid="card-label">{payload.label?.['en-US'] || payload.name}</div>
@@ -117,7 +119,7 @@ vi.mock('@/app/components/plugins/card', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ downloadCount, tags }: { downloadCount: number, tags: string[] }) => (
+  default: ({ downloadCount, tags }: { downloadCount: number; tags: string[] }) => (
     <div data-testid="card-more-info">
       <span data-testid="download-count">{downloadCount}</span>
       <span data-testid="tags">{tags.join(',')}</span>
@@ -128,15 +130,15 @@ vi.mock('@/app/components/plugins/card/card-more-info', () => ({
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="install-from-marketplace">
-      <button onClick={onClose} data-testid="close-install-modal">Close</button>
+      <button onClick={onClose} data-testid="close-install-modal">
+        Close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../sort-dropdown', () => ({
-  default: () => (
-    <div data-testid="sort-dropdown">Sort</div>
-  ),
+  default: () => <div data-testid="sort-dropdown">Sort</div>,
 }))
 
 vi.mock('../../empty', () => ({
@@ -186,9 +188,12 @@ const createMockPluginList = (count: number): Plugin[] =>
       name: `plugin-${i}`,
       plugin_id: `plugin-id-${i}`,
       label: { 'en-US': `Plugin ${i}` },
-    }))
+    }),
+  )
 
-const createMockCollection = (overrides?: Partial<MarketplaceCollection>): MarketplaceCollection => ({
+const createMockCollection = (
+  overrides?: Partial<MarketplaceCollection>,
+): MarketplaceCollection => ({
   name: `collection-${Math.random().toString(36).substring(7)}`,
   label: { 'en-US': 'Test Collection' },
   description: { 'en-US': 'Test collection description' },
@@ -206,7 +211,8 @@ const createMockCollectionList = (count: number): MarketplaceCollection[] =>
       name: `collection-${i}`,
       label: { 'en-US': `Collection ${i}` },
       description: { 'en-US': `Description for collection ${i}` },
-    }))
+    }),
+  )
 
 // ================================
 // List Component Tests
@@ -261,12 +267,7 @@ describe('List', () => {
     it('should render plugin cards when plugins array is provided', () => {
       const plugins = createMockPluginList(3)
 
-      render(
-        <List
-          {...defaultProps}
-          plugins={plugins}
-        />,
-      )
+      render(<List {...defaultProps} plugins={plugins} />)
 
       // Should render plugin cards
       expect(screen.getByTestId('card-plugin-0')).toBeInTheDocument()
@@ -275,12 +276,7 @@ describe('List', () => {
     })
 
     it('should render Empty component when plugins array is empty', () => {
-      render(
-        <List
-          {...defaultProps}
-          plugins={[]}
-        />,
-      )
+      render(<List {...defaultProps} plugins={[]} />)
 
       expect(screen.getByTestId('empty-component')).toBeInTheDocument()
     })
@@ -312,24 +308,14 @@ describe('List', () => {
     it('should apply cardContainerClassName to grid container', () => {
       const plugins = createMockPluginList(2)
       const { container } = render(
-        <List
-          {...defaultProps}
-          plugins={plugins}
-          cardContainerClassName="custom-grid-class"
-        />,
+        <List {...defaultProps} plugins={plugins} cardContainerClassName="custom-grid-class" />,
       )
 
       expect(container.querySelector('.custom-grid-class')).toBeInTheDocument()
     })
 
     it('should apply emptyClassName to Empty component', () => {
-      render(
-        <List
-          {...defaultProps}
-          plugins={[]}
-          emptyClassName="custom-empty-class"
-        />,
-      )
+      render(<List {...defaultProps} plugins={[]} emptyClassName="custom-empty-class" />)
 
       expect(screen.getByTestId('empty-component')).toHaveClass('custom-empty-class')
     })
@@ -338,11 +324,7 @@ describe('List', () => {
       const plugins = createMockPluginList(1)
 
       const { container } = render(
-        <List
-          {...defaultProps}
-          plugins={plugins}
-          showInstallButton={true}
-        />,
+        <List {...defaultProps} plugins={plugins} showInstallButton={true} />,
       )
 
       // CardWrapper should be rendered (via Card mock)
@@ -358,19 +340,11 @@ describe('List', () => {
       const plugins = createMockPluginList(2)
       const customCardRender = (plugin: Plugin) => (
         <div key={plugin.name} data-testid={`custom-card-${plugin.name}`}>
-          Custom:
-          {' '}
-          {plugin.name}
+          Custom: {plugin.name}
         </div>
       )
 
-      render(
-        <List
-          {...defaultProps}
-          plugins={plugins}
-          cardRender={customCardRender}
-        />,
-      )
+      render(<List {...defaultProps} plugins={plugins} cardRender={customCardRender} />)
 
       expect(screen.getByTestId('custom-card-plugin-0')).toBeInTheDocument()
       expect(screen.getByTestId('custom-card-plugin-1')).toBeInTheDocument()
@@ -380,8 +354,7 @@ describe('List', () => {
     it('should handle cardRender returning null', () => {
       const plugins = createMockPluginList(2)
       const customCardRender = (plugin: Plugin) => {
-        if (plugin.name === 'plugin-0')
-          return null
+        if (plugin.name === 'plugin-0') return null
         return (
           <div key={plugin.name} data-testid={`custom-card-${plugin.name}`}>
             {plugin.name}
@@ -389,13 +362,7 @@ describe('List', () => {
         )
       }
 
-      render(
-        <List
-          {...defaultProps}
-          plugins={plugins}
-          cardRender={customCardRender}
-        />,
-      )
+      render(<List {...defaultProps} plugins={plugins} cardRender={customCardRender} />)
 
       expect(screen.queryByTestId('custom-card-plugin-0')).not.toBeInTheDocument()
       expect(screen.getByTestId('custom-card-plugin-1')).toBeInTheDocument()
@@ -408,11 +375,7 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle empty marketplaceCollections', () => {
       render(
-        <List
-          {...defaultProps}
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
-        />,
+        <List {...defaultProps} marketplaceCollections={[]} marketplaceCollectionPluginsMap={{}} />,
       )
 
       // Should not throw and render nothing
@@ -441,12 +404,7 @@ describe('List', () => {
     it('should handle large number of plugins', () => {
       const plugins = createMockPluginList(100)
 
-      const { container } = render(
-        <List
-          {...defaultProps}
-          plugins={plugins}
-        />,
-      )
+      const { container } = render(<List {...defaultProps} plugins={plugins} />)
 
       // Should render all plugin cards
       const cards = container.querySelectorAll('[data-testid^="card-plugin-"]')
@@ -459,12 +417,7 @@ describe('List', () => {
         org: 'test-org',
       })
 
-      render(
-        <List
-          {...defaultProps}
-          plugins={[specialPlugin]}
-        />,
-      )
+      render(<List {...defaultProps} plugins={[specialPlugin]} />)
 
       expect(screen.getByTestId('card-plugin-with-special-chars!@#')).toBeInTheDocument()
     })
@@ -563,11 +516,13 @@ describe('ListWithCollection', () => {
   // ================================
   describe('View More Button', () => {
     it('should render View More button when collection is searchable', () => {
-      const collections = [createMockCollection({
-        name: 'collection-0',
-        searchable: true,
-        search_params: { query: 'test' },
-      })]
+      const collections = [
+        createMockCollection({
+          name: 'collection-0',
+          searchable: true,
+          search_params: { query: 'test' },
+        }),
+      ]
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
@@ -584,10 +539,12 @@ describe('ListWithCollection', () => {
     })
 
     it('should not render View More button when collection is not searchable', () => {
-      const collections = [createMockCollection({
-        name: 'collection-0',
-        searchable: false,
-      })]
+      const collections = [
+        createMockCollection({
+          name: 'collection-0',
+          searchable: false,
+        }),
+      ]
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
@@ -604,12 +561,17 @@ describe('ListWithCollection', () => {
     })
 
     it('should call moreClick hook with search_params when View More is clicked', () => {
-      const searchParams: SearchParamsFromCollection = { query: 'test-query', sort_by: 'install_count' }
-      const collections = [createMockCollection({
-        name: 'collection-0',
-        searchable: true,
-        search_params: searchParams,
-      })]
+      const searchParams: SearchParamsFromCollection = {
+        query: 'test-query',
+        sort_by: 'install_count',
+      }
+      const collections = [
+        createMockCollection({
+          name: 'collection-0',
+          searchable: true,
+          search_params: searchParams,
+        }),
+      ]
       const pluginsMap: Record<string, Plugin[]> = {
         'collection-0': createMockPluginList(1),
       }
@@ -640,9 +602,7 @@ describe('ListWithCollection', () => {
       }
       const customCardRender = (plugin: Plugin) => (
         <div key={plugin.plugin_id} data-testid={`custom-${plugin.name}`}>
-          Custom:
-          {' '}
-          {plugin.name}
+          Custom: {plugin.name}
         </div>
       )
 
@@ -880,11 +840,13 @@ describe('ListWrapper', () => {
     })
 
     it('should show View More button and call moreClick hook', () => {
-      mockMarketplaceData.marketplaceCollections = [createMockCollection({
-        name: 'collection-0',
-        searchable: true,
-        search_params: { query: 'test' },
-      })]
+      mockMarketplaceData.marketplaceCollections = [
+        createMockCollection({
+          name: 'collection-0',
+          searchable: true,
+          search_params: { query: 'test' },
+        }),
+      ]
       mockMarketplaceData.marketplaceCollectionPluginsMap = {
         'collection-0': createMockPluginList(1),
       }
@@ -991,11 +953,7 @@ describe('CardWrapper (via List integration)', () => {
       ]
 
       render(
-        <List
-          marketplaceCollections={[]}
-          marketplaceCollectionPluginsMap={{}}
-          plugins={plugins}
-        />,
+        <List marketplaceCollections={[]} marketplaceCollectionPluginsMap={{}} plugins={plugins} />,
       )
 
       expect(screen.getByTestId('card-plugin1')).toBeInTheDocument()
@@ -1343,10 +1301,12 @@ describe('Accessibility', () => {
   })
 
   it('should have clickable View More button', () => {
-    const collections = [createMockCollection({
-      name: 'collection-0',
-      searchable: true,
-    })]
+    const collections = [
+      createMockCollection({
+        name: 'collection-0',
+        searchable: true,
+      }),
+    ]
     const pluginsMap: Record<string, Plugin[]> = {
       'collection-0': createMockPluginList(1),
     }
@@ -1367,11 +1327,7 @@ describe('Accessibility', () => {
     const plugins = createMockPluginList(4)
 
     const { container } = render(
-      <List
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-        plugins={plugins}
-      />,
+      <List marketplaceCollections={[]} marketplaceCollectionPluginsMap={{}} plugins={plugins} />,
     )
 
     const grid = container.querySelector('.grid-cols-4')
@@ -1392,11 +1348,7 @@ describe('Performance', () => {
 
     const startTime = performance.now()
     render(
-      <List
-        marketplaceCollections={[]}
-        marketplaceCollectionPluginsMap={{}}
-        plugins={plugins}
-      />,
+      <List marketplaceCollections={[]} marketplaceCollectionPluginsMap={{}} plugins={plugins} />,
     )
     const endTime = performance.now()
 

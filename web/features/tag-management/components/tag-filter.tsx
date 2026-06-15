@@ -9,7 +9,8 @@ import XCircleIcon from '@/app/components/base/icons/src/vender/solid/general/XC
 import { consoleQuery } from '@/service/client'
 import { TagSearchContent } from './tag-search-content'
 
-const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) => tag.name.includes(query)
+const tagFilterComboboxFilter: NonNullable<ComboboxRootProps<Tag, true>['filter']> = (tag, query) =>
+  tag.name.includes(query)
 const tagToString = (tag: Tag) => tag.name
 const isSameTag = (item: Tag, value: Tag) => item.id === value.id
 
@@ -29,16 +30,18 @@ export const TagFilter = ({
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
-    input: {
-      query: {
-        type,
+  const { data: tagList = [] } = useQuery(
+    consoleQuery.tags.list.queryOptions({
+      input: {
+        query: {
+          type,
+        },
       },
-    },
-  }))
+    }),
+  )
 
-  const tagById = useMemo(() => new Map(tagList.map(tag => [tag.id, tag])), [tagList])
-  const items = useMemo(() => tagList.filter(tag => tag.type === type), [tagList, type])
+  const tagById = useMemo(() => new Map(tagList.map((tag) => [tag.id, tag])), [tagList])
+  const items = useMemo(() => tagList.filter((tag) => tag.type === type), [tagList, type])
   const selectedTags = useMemo(() => {
     return value.flatMap((tagId) => {
       const tag = tagById.get(tagId)
@@ -48,11 +51,16 @@ export const TagFilter = ({
 
   const firstTagId = value[0]
   const currentTagName = firstTagId ? tagById.get(firstTagId)?.name : undefined
-  const triggerLabel = selectedTags.length ? selectedTags.map(tag => tag.name).join(', ') : t('tag.placeholder', { ns: 'common' })
-  const handleValueChange = useCallback((nextTags: Tag[]) => {
-    const unknownTagIds = value.filter(tagId => !tagById.has(tagId))
-    onChange([...unknownTagIds, ...nextTags.map(tag => tag.id)])
-  }, [onChange, tagById, value])
+  const triggerLabel = selectedTags.length
+    ? selectedTags.map((tag) => tag.name).join(', ')
+    : t('tag.placeholder', { ns: 'common' })
+  const handleValueChange = useCallback(
+    (nextTags: Tag[]) => {
+      const unknownTagIds = value.filter((tagId) => !tagById.has(tagId))
+      onChange([...unknownTagIds, ...nextTags.map((tag) => tag.id)])
+    },
+    [onChange, tagById, value],
+  )
 
   return (
     <Combobox
@@ -79,7 +87,10 @@ export const TagFilter = ({
         >
           <span className="flex w-full min-w-0 items-center gap-1">
             <span className="p-px">
-              <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary" aria-hidden="true" />
+              <span
+                className="i-custom-vender-line-financeAndECommerce-tag-01 size-3.5 text-text-tertiary"
+                aria-hidden="true"
+              />
             </span>
             <span className="min-w-0 grow truncate text-[13px] leading-4.5 text-text-tertiary">
               {!value.length && t('tag.placeholder', { ns: 'common' })}
@@ -105,7 +116,10 @@ export const TagFilter = ({
               onChange([])
             }}
           >
-            <XCircleIcon className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary" aria-hidden="true" />
+            <XCircleIcon
+              className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
+              aria-hidden="true"
+            />
           </button>
         )}
         <ComboboxContent
@@ -123,6 +137,5 @@ export const TagFilter = ({
         </ComboboxContent>
       </div>
     </Combobox>
-
   )
 }

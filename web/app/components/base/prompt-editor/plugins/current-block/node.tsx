@@ -36,12 +36,7 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 
   override decorate(): React.JSX.Element {
-    return (
-      <CurrentBlockComponent
-        nodeKey={this.getKey()}
-        generatorType={this.getGeneratorType()}
-      />
-    )
+    return <CurrentBlockComponent nodeKey={this.getKey()} generatorType={this.getGeneratorType()} />
   }
 
   getGeneratorType(): GeneratorType {

@@ -1,7 +1,4 @@
-import type {
-  FC,
-  ReactNode,
-} from 'react'
+import type { FC, ReactNode } from 'react'
 import type {
   DefaultModel,
   FormValue,
@@ -9,18 +6,15 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
 import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -57,16 +51,20 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
-    if (scopeArray.includes('all'))
-      return []
-    return scopeArray.filter(item => ![
-      ModelTypeEnum.textGeneration,
-      ModelTypeEnum.textEmbedding,
-      ModelTypeEnum.rerank,
-      ModelTypeEnum.moderation,
-      ModelTypeEnum.speech2text,
-      ModelTypeEnum.tts,
-    ].includes(item as ModelTypeEnum)).map(item => item as ModelFeatureEnum)
+    if (scopeArray.includes('all')) return []
+    return scopeArray
+      .filter(
+        (item) =>
+          ![
+            ModelTypeEnum.textGeneration,
+            ModelTypeEnum.textEmbedding,
+            ModelTypeEnum.rerank,
+            ModelTypeEnum.moderation,
+            ModelTypeEnum.speech2text,
+            ModelTypeEnum.tts,
+          ].includes(item as ModelTypeEnum),
+      )
+      .map((item) => item as ModelFeatureEnum)
   }, [scopeArray])
 
   const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
@@ -88,24 +86,28 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         ...moderationList,
       ]
     }
-    if (scopeArray.includes(ModelTypeEnum.textGeneration))
-      return textGenerationList
-    if (scopeArray.includes(ModelTypeEnum.textEmbedding))
-      return textEmbeddingList
-    if (scopeArray.includes(ModelTypeEnum.rerank))
-      return rerankList
-    if (scopeArray.includes(ModelTypeEnum.moderation))
-      return moderationList
-    if (scopeArray.includes(ModelTypeEnum.speech2text))
-      return sttList
-    if (scopeArray.includes(ModelTypeEnum.tts))
-      return ttsList
+    if (scopeArray.includes(ModelTypeEnum.textGeneration)) return textGenerationList
+    if (scopeArray.includes(ModelTypeEnum.textEmbedding)) return textEmbeddingList
+    if (scopeArray.includes(ModelTypeEnum.rerank)) return rerankList
+    if (scopeArray.includes(ModelTypeEnum.moderation)) return moderationList
+    if (scopeArray.includes(ModelTypeEnum.speech2text)) return sttList
+    if (scopeArray.includes(ModelTypeEnum.tts)) return ttsList
     return resultList
-  }, [scopeArray, textGenerationList, textEmbeddingList, rerankList, sttList, ttsList, moderationList])
+  }, [
+    scopeArray,
+    textGenerationList,
+    textEmbeddingList,
+    rerankList,
+    sttList,
+    ttsList,
+    moderationList,
+  ])
 
   const { currentProvider, currentModel } = useMemo(() => {
-    const currentProvider = scopedModelList.find(item => item.provider === value?.provider)
-    const currentModel = currentProvider?.models.find((model: { model: string }) => model.model === value?.model)
+    const currentProvider = scopedModelList.find((item) => item.provider === value?.provider)
+    const currentModel = currentProvider?.models.find(
+      (model: { model: string }) => model.model === value?.model,
+    )
     return {
       currentProvider,
       currentModel,
@@ -116,8 +118,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const disabled = !isAPIKeySet || hasDeprecated || currentModel?.status !== ModelStatusEnum.active
 
   const handleChangeModel = async ({ provider, model }: DefaultModel) => {
-    const targetProvider = scopedModelList.find(modelItem => modelItem.provider === provider)
-    const targetModelItem = targetProvider?.models.find((modelItem: { model: string }) => modelItem.model === model)
+    const targetProvider = scopedModelList.find((modelItem) => modelItem.provider === provider)
+    const targetModelItem = targetProvider?.models.find(
+      (modelItem: { model: string }) => modelItem.model === model,
+    )
     const model_type = targetModelItem?.model_type as string
 
     let nextCompletionParams: FormValue = {}
@@ -134,10 +138,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 
         const keys = Object.keys(removedDetails || {})
         if (keys.length) {
-          toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`)
+          toast.warning(
+            `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+          )
         }
-      }
-      catch {
+      } catch {
         toast.error(t('error', { ns: 'common' }))
       }
     }
@@ -178,49 +183,46 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     <Popover
       open={open}
       onOpenChange={(newOpen) => {
-        if (readonly)
-          return
+        if (readonly) return
         setOpen(newOpen)
       }}
     >
       <div className="relative">
         <PopoverTrigger
-          render={(
-            <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
-              {
-                renderTrigger
-                  ? renderTrigger({
-                      open,
-                      currentProvider,
-                      currentModel,
-                      providerName: value?.provider,
-                      modelId: value?.model,
-                    })
-                  : (isAgentStrategy
-                      ? (
-                          <AgentModelTrigger
-                            disabled={disabled}
-                            hasDeprecated={hasDeprecated}
-                            currentProvider={currentProvider}
-                            currentModel={currentModel}
-                            providerName={value?.provider}
-                            modelId={value?.model}
-                            scope={scope}
-                          />
-                        )
-                      : (
-                          <Trigger
-                            isInWorkflow={isInWorkflow}
-                            currentProvider={currentProvider}
-                            currentModel={currentModel}
-                            providerName={value?.provider}
-                            modelId={value?.model}
-                          />
-                        )
-                    )
-              }
+          render={
+            <button
+              type="button"
+              className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]"
+            >
+              {renderTrigger ? (
+                renderTrigger({
+                  open,
+                  currentProvider,
+                  currentModel,
+                  providerName: value?.provider,
+                  modelId: value?.model,
+                })
+              ) : isAgentStrategy ? (
+                <AgentModelTrigger
+                  disabled={disabled}
+                  hasDeprecated={hasDeprecated}
+                  currentProvider={currentProvider}
+                  currentModel={currentModel}
+                  providerName={value?.provider}
+                  modelId={value?.model}
+                  scope={scope}
+                />
+              ) : (
+                <Trigger
+                  isInWorkflow={isInWorkflow}
+                  currentProvider={currentProvider}
+                  currentModel={currentModel}
+                  providerName={value?.provider}
+                  modelId={value?.model}
+                />
+              )}
             </button>
-          )}
+          }
         />
         <PopoverContent
           placement={isInWorkflow ? 'left' : 'bottom-end'}
@@ -233,13 +235,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
               </div>
               <ModelSelector
-                defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
+                defaultModel={
+                  value?.provider || value?.model
+                    ? { provider: value?.provider, model: value?.model }
+                    : undefined
+                }
                 modelList={scopedModelList}
                 scopeFeatures={scopeFeatures}
                 onSelect={handleChangeModel}
               />
             </div>
-            {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
+            {(currentModel?.model_type === ModelTypeEnum.textGeneration ||
+              currentModel?.model_type === ModelTypeEnum.tts) && (
               <div className="my-3 h-px bg-divider-subtle" />
             )}
             {currentModel?.model_type === ModelTypeEnum.textGeneration && (

@@ -1,14 +1,5 @@
-import type {
-  Node,
-  NodeOutPutVar,
-  ValueSelector,
-  Var,
-} from '@/app/components/workflow/types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -34,15 +25,18 @@ const ConditionVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const handleChange = useCallback((nextValueSelector: ValueSelector, varItem: Var) => {
-    onChange(nextValueSelector, varItem)
-    setOpen(false)
-  }, [onChange])
+  const handleChange = useCallback(
+    (nextValueSelector: ValueSelector, varItem: Var) => {
+      onChange(nextValueSelector, varItem)
+      setOpen(false)
+    },
+    [onChange],
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {!!valueSelector.length && (
               <VariableTag
@@ -64,7 +58,7 @@ const ConditionVariableSelector = ({
               </>
             )}
           </div>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-start"
@@ -72,11 +66,7 @@ const ConditionVariableSelector = ({
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          <VarReferenceVars
-            vars={nodesOutputVars}
-            isSupportFileVar
-            onChange={handleChange}
-          />
+          <VarReferenceVars vars={nodesOutputVars} isSupportFileVar onChange={handleChange} />
         </div>
       </PopoverContent>
     </Popover>

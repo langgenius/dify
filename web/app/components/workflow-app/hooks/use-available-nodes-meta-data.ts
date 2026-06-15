@@ -19,57 +19,69 @@ export const useAvailableNodesMetaData = () => {
   const isChatMode = useIsChatMode()
   const docLink = useDocLink()
 
-  const startNodeMetaData = useMemo(() => ({
-    ...StartDefault,
-    metaData: {
-      ...StartDefault.metaData,
-      isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
-    },
-  }), [isChatMode])
+  const startNodeMetaData = useMemo(
+    () => ({
+      ...StartDefault,
+      metaData: {
+        ...StartDefault.metaData,
+        isUndeletable: isChatMode, // start node is undeletable in chat mode, @use-nodes-interactions: handleNodeDelete function
+      },
+    }),
+    [isChatMode],
+  )
 
   const mergedNodesMetaData = useMemo(() => {
     return [
       ...WORKFLOW_COMMON_NODES,
       startNodeMetaData,
-      ...(
-        isChatMode
-          ? [AnswerDefault]
-          : [
-              StartPlaceholderDefault,
-              EndDefault,
-              TriggerWebhookDefault,
-              TriggerScheduleDefault,
-              TriggerPluginDefault,
-            ]
-      ),
+      ...(isChatMode
+        ? [AnswerDefault]
+        : [
+            StartPlaceholderDefault,
+            EndDefault,
+            TriggerWebhookDefault,
+            TriggerScheduleDefault,
+            TriggerPluginDefault,
+          ]),
     ]
   }, [isChatMode, startNodeMetaData])
 
-  const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
-    const { metaData } = node
-    const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
-    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
-    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
-    return {
-      ...node,
-      metaData: {
-        ...metaData,
-        title,
-        description,
-        helpLinkUri: docLink(helpLinkPath),
-      },
-      defaultValue: {
-        ...node.defaultValue,
-        type: metaData.type,
-        title,
-      },
-    }
-  }), [mergedNodesMetaData, t, docLink])
+  const availableNodesMetaData = useMemo(
+    () =>
+      mergedNodesMetaData.map((node) => {
+        const { metaData } = node
+        const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
+        const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
+        const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
+        return {
+          ...node,
+          metaData: {
+            ...metaData,
+            title,
+            description,
+            helpLinkUri: docLink(helpLinkPath),
+          },
+          defaultValue: {
+            ...node.defaultValue,
+            type: metaData.type,
+            title,
+          },
+        }
+      }),
+    [mergedNodesMetaData, t, docLink],
+  )
 
-  const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
-    acc![node.metaData.type] = node
-    return acc
-  }, {} as AvailableNodesMetaData['nodesMap']), [availableNodesMetaData])
+  const availableNodesMetaDataMap = useMemo(
+    () =>
+      availableNodesMetaData.reduce(
+        (acc, node) => {
+          acc![node.metaData.type] = node
+          return acc
+        },
+        {} as AvailableNodesMetaData['nodesMap'],
+      ),
+    [availableNodesMetaData],
+  )
 
   return useMemo(() => {
     return {

@@ -29,34 +29,33 @@ type Props = Readonly<{
   onHide: () => void
 }>
 
-const PluginDetailPanel: FC<Props> = ({
-  detail,
-  onUpdate,
-  onHide,
-}) => {
-  const handleUpdate = useCallback((isDelete = false) => {
-    if (isDelete)
-      onHide()
-    onUpdate()
-  }, [onHide, onUpdate])
+const PluginDetailPanel: FC<Props> = ({ detail, onUpdate, onHide }) => {
+  const handleUpdate = useCallback(
+    (isDelete = false) => {
+      if (isDelete) onHide()
+      onUpdate()
+    },
+    [onHide, onUpdate],
+  )
 
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    setDetail(!detail
-      ? undefined
-      : {
-          plugin_id: detail.plugin_id,
-          provider: `${detail.plugin_id}/${detail.declaration.name}`,
-          plugin_unique_identifier: detail.plugin_unique_identifier || '',
-          declaration: detail.declaration,
-          name: detail.name,
-          id: detail.id,
-        })
+    setDetail(
+      !detail
+        ? undefined
+        : {
+            plugin_id: detail.plugin_id,
+            provider: `${detail.plugin_id}/${detail.declaration.name}`,
+            plugin_unique_identifier: detail.plugin_unique_identifier || '',
+            declaration: detail.declaration,
+            name: detail.name,
+            id: detail.id,
+          },
+    )
   }, [detail, setDetail])
 
-  if (!detail)
-    return null
+  if (!detail) return null
 
   return (
     <Drawer
@@ -64,14 +63,17 @@ const PluginDetailPanel: FC<Props> = ({
       modal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DrawerPortal>
         <DrawerBackdrop className="bg-transparent" />
         <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+          <DrawerPopup
+            className={cn(
+              'justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+            )}
+          >
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               {detail && (
                 <>
@@ -86,10 +88,14 @@ const PluginDetailPanel: FC<Props> = ({
                           </>
                         )}
                         {!!detail.declaration.tool && <ActionList detail={detail} />}
-                        {!!detail.declaration.agent_strategy && <AgentStrategyList detail={detail} />}
+                        {!!detail.declaration.agent_strategy && (
+                          <AgentStrategyList detail={detail} />
+                        )}
                         {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
                         {!!detail.declaration.model && <ModelList detail={detail} />}
-                        {!!detail.declaration.datasource && <DatasourceActionList detail={detail} />}
+                        {!!detail.declaration.datasource && (
+                          <DatasourceActionList detail={detail} />
+                        )}
                       </div>
                       <ReadmeEntrance pluginDetail={detail} className="mt-auto" />
                     </div>

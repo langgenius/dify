@@ -30,9 +30,15 @@ import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
 import NewAppCard from './new-app-card'
 
-const TagManagementModal = dynamic(() => import('@/features/tag-management/components/tag-management-modal').then(mod => mod.TagManagementModal), {
-  ssr: false,
-})
+const TagManagementModal = dynamic(
+  () =>
+    import('@/features/tag-management/components/tag-management-modal').then(
+      (mod) => mod.TagManagementModal,
+    ),
+  {
+    ssr: false,
+  },
+)
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
 })
@@ -40,12 +46,11 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 type Props = Readonly<{
   controlRefreshList?: number
 }>
-function List({
-  controlRefreshList = 0,
-}: Props) {
+function List({ controlRefreshList = 0 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } =
+    useAppContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { replace } = useRouter()
@@ -64,7 +69,11 @@ function List({
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(
+    NEED_REFRESH_APP_LIST_KEY,
+    '0',
+    { raw: true },
+  )
 
   const handleDSLFileDropped = useCallback((file: File) => {
     setDroppedDSLFile(file)
@@ -78,8 +87,7 @@ function List({
   })
 
   useEffect(() => {
-    if (!searchParams.has('tagIDs'))
-      return
+    if (!searchParams.has('tagIDs')) return
 
     const params = new URLSearchParams(searchParams.toString())
     params.delete('tagIDs')
@@ -87,14 +95,17 @@ function List({
     replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }, [pathname, replace, searchParams])
 
-  const appListQuery = useMemo<AppListQuery>(() => ({
-    page: 1,
-    limit: 30,
-    name: debouncedKeywords,
-    ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
-    ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
-    ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, creatorIDs, debouncedKeywords, tagIDs])
+  const appListQuery = useMemo<AppListQuery>(
+    () => ({
+      page: 1,
+      limit: 30,
+      name: debouncedKeywords,
+      ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
+      ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
+      ...(category !== 'all' ? { mode: category } : {}),
+    }),
+    [category, creatorIDs, debouncedKeywords, tagIDs],
+  )
 
   const {
     data,
@@ -107,13 +118,13 @@ function List({
     refetch,
   } = useInfiniteQuery({
     ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
+      input: (pageParam) => ({
         query: {
           ...appListQuery,
           page: Number(pageParam),
         },
       }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
@@ -137,14 +148,12 @@ function List({
   }, [needRefreshAppList, refetch, setNeedRefreshAppList])
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return
+    if (isCurrentWorkspaceDatasetOperator) return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
     if (error) {
-      if (observer)
-        observer.disconnect()
+      if (observer) observer.disconnect()
       return
     }
 
@@ -153,18 +162,28 @@ function List({
       const containerHeight = containerRef.current.clientHeight
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
-      observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
-          fetchNextPage()
-      }, {
-        root: containerRef.current,
-        rootMargin: `${dynamicMargin}px`,
-        threshold: 0.1, // Trigger when 10% of the anchor element is visible
-      })
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+            fetchNextPage()
+        },
+        {
+          root: containerRef.current,
+          rootMargin: `${dynamicMargin}px`,
+          threshold: 0.1, // Trigger when 10% of the anchor element is visible
+        },
+      )
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
+  }, [
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    error,
+    hasNextPage,
+    isCurrentWorkspaceDatasetOperator,
+  ])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -178,9 +197,7 @@ function List({
     return Array.from(appIds)
   }, [apps])
 
-  const {
-    onlineUsersMap: workflowOnlineUsersMap,
-  } = useWorkflowOnlineUsers({
+  const { onlineUsersMap: workflowOnlineUsersMap } = useWorkflowOnlineUsers({
     appIds: workflowOnlineUserAppIds,
     enabled: systemFeatures.enable_collaboration_mode,
   })
@@ -191,25 +208,29 @@ function List({
 
   return (
     <>
-      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+      <div
+        ref={containerRef}
+        className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body"
+      >
         {dragging && (
-          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
-          </div>
+          <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2"></div>
         )}
 
         <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background-body px-12 pt-7 pb-5">
           <div className="flex flex-wrap items-center gap-2">
-            <AppTypeFilter
-              value={category}
-              onChange={setCategory}
+            <AppTypeFilter value={category} onChange={setCategory} />
+            <CreatorsFilter value={creatorIDs} onChange={setCreatorIDs} />
+            <TagFilter
+              type="app"
+              value={tagIDs}
+              onChange={setTagIDs}
+              onOpenTagManagement={() => setShowTagManagementModal(true)}
             />
-            <CreatorsFilter
-              value={creatorIDs}
-              onChange={setCreatorIDs}
-            />
-            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
             <div className="relative w-50">
-              <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+              />
               <SearchInput
                 className="w-52"
                 value={keywords}
@@ -226,10 +247,11 @@ function List({
             {t('studio.viewSnippets', { ns: 'app' })}
           </Link>
         </div>
-        <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-          !hasAnyApp && 'overflow-hidden',
-        )}
+        <div
+          className={cn(
+            'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+            !hasAnyApp && 'overflow-hidden',
+          )}
         >
           {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
             <NewAppCard
@@ -240,22 +262,22 @@ function List({
               className={cn(!hasAnyApp && 'z-10')}
             />
           )}
-          {showSkeleton
-            ? <AppCardSkeleton count={6} />
-            : hasAnyApp
-              ? apps.map(app => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refetch}
-                    onOpenTagManagement={() => setShowTagManagementModal(true)}
-                  />
-                ))
-              : <Empty />}
-          {isFetchingNextPage && (
-            <AppCardSkeleton count={3} />
+          {showSkeleton ? (
+            <AppCardSkeleton count={6} />
+          ) : hasAnyApp ? (
+            apps.map((app) => (
+              <AppCard
+                key={app.id}
+                app={app}
+                onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                onRefresh={refetch}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+              />
+            ))
+          ) : (
+            <Empty />
           )}
+          {isFetchingNextPage && <AppCardSkeleton count={3} />}
         </div>
 
         {isCurrentWorkspaceEditor && (
@@ -265,14 +287,16 @@ function List({
             aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
             <span className="i-ri-drag-drop-line size-4" />
-            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
+            <span className="system-xs-regular">
+              {t('newApp.dropDSLToCreateApp', { ns: 'app' })}
+            </span>
           </div>
         )}
-        {!systemFeatures.branding.enabled && (
-          <Footer />
-        )}
+        {!systemFeatures.branding.enabled && <Footer />}
         <CheckModal />
-        <div ref={anchorRef} className="h-0"> </div>
+        <div ref={anchorRef} className="h-0">
+          {' '}
+        </div>
         <TagManagementModal
           type="app"
           show={showTagManagementModal}

@@ -3,12 +3,12 @@ import { useInsertSnippet } from '../use-insert-snippet'
 
 type TestNode = {
   id: string
-  position: { x: number, y: number }
+  position: { x: number; y: number }
   selected?: boolean
   parentId?: string
   data: {
     selected?: boolean
-    _children?: { nodeId: string, nodeType: string }[]
+    _children?: { nodeId: string; nodeType: string }[]
     _connectedSourceHandleIds?: string[]
     _connectedTargetHandleIds?: string[]
   }
@@ -94,7 +94,10 @@ describe('useInsertSnippet', () => {
             {
               id: 'snippet-node-1',
               position: { x: 10, y: 20 },
-              data: { selected: false, _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }] },
+              data: {
+                selected: false,
+                _children: [{ nodeId: 'snippet-node-2', nodeType: 'code' }],
+              },
             },
             {
               id: 'snippet-node-2',
@@ -217,37 +220,47 @@ describe('useInsertSnippet', () => {
       })
 
       const nextNodes = mockSetNodes.mock.calls[0]![0] as TestNode[]
-      const insertedEntry = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'))!
-      const insertedExit = nextNodes.find(node => node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'))!
-      const shiftedNextNode = nextNodes.find(node => node.id === 'next-node')!
+      const insertedEntry = nextNodes.find(
+        (node) =>
+          node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-entry'),
+      )!
+      const insertedExit = nextNodes.find(
+        (node) =>
+          node.id !== 'prev-node' && node.id !== 'next-node' && node.id.includes('snippet-exit'),
+      )!
+      const shiftedNextNode = nextNodes.find((node) => node.id === 'next-node')!
       expect(insertedEntry.position).toEqual({ x: 300, y: 0 })
       expect(shiftedNextNode.position.x).toBe(600)
-      expect(nextNodes.find(node => node.id === 'prev-node')!.data._connectedSourceHandleIds).toEqual(['source'])
+      expect(
+        nextNodes.find((node) => node.id === 'prev-node')!.data._connectedSourceHandleIds,
+      ).toEqual(['source'])
       expect(insertedEntry.data._connectedTargetHandleIds).toEqual(['target'])
       expect(insertedExit.data._connectedSourceHandleIds).toEqual(['source'])
       expect(shiftedNextNode.data._connectedTargetHandleIds).toEqual(['target'])
 
       const nextEdges = mockSetEdges.mock.calls[0]![0] as TestEdge[]
       expect(nextEdges).toHaveLength(3)
-      expect(nextEdges.some(edge => edge.id === 'prev-node-source-next-node-target')).toBe(false)
-      expect(nextEdges).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          source: 'prev-node',
-          sourceHandle: 'source',
-          target: insertedEntry.id,
-          targetHandle: 'target',
-        }),
-        expect.objectContaining({
-          source: insertedEntry.id,
-          target: insertedExit.id,
-        }),
-        expect.objectContaining({
-          source: insertedExit.id,
-          sourceHandle: 'source',
-          target: 'next-node',
-          targetHandle: 'target',
-        }),
-      ]))
+      expect(nextEdges.some((edge) => edge.id === 'prev-node-source-next-node-target')).toBe(false)
+      expect(nextEdges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            source: 'prev-node',
+            sourceHandle: 'source',
+            target: insertedEntry.id,
+            targetHandle: 'target',
+          }),
+          expect.objectContaining({
+            source: insertedEntry.id,
+            target: insertedExit.id,
+          }),
+          expect.objectContaining({
+            source: insertedExit.id,
+            sourceHandle: 'source',
+            target: 'next-node',
+            targetHandle: 'target',
+          }),
+        ]),
+      )
       expect(mockIncrementSnippetUseCount).toHaveBeenCalledWith({
         params: { snippetId: 'snippet-1' },
       })

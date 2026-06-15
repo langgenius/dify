@@ -1,7 +1,4 @@
-import {
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '@langgenius/dify-ui/dropdown-menu'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 

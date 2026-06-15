@@ -47,9 +47,7 @@ describe('KeyInput', () => {
 
   it('cycles through validating and error messaging', () => {
     const props = createProps()
-    const { rerender } = render(
-      <KeyInput {...props} validating validatedStatusState={{}} />,
-    )
+    const { rerender } = render(<KeyInput {...props} validating validatedStatusState={{}} />)
 
     expect(screen.getByText('common.provider.validating')).toBeInTheDocument()
 

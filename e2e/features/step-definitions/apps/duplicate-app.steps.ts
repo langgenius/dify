@@ -11,8 +11,7 @@ Given('there is an existing E2E app available for testing', async function (this
 
 When('I open the options menu for the last created E2E app', async function (this: DifyWorld) {
   const appName = this.lastCreatedAppName
-  if (!appName)
-    throw new Error('No app name stored. Run "I enter a unique E2E app name" first.')
+  if (!appName) throw new Error('No app name stored. Run "I enter a unique E2E app name" first.')
 
   const page = this.getPage()
   // Scope to the specific card: the card root is the innermost div that contains

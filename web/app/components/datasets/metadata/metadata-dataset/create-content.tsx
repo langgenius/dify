@@ -18,22 +18,23 @@ export type Props = Readonly<{
   onBack?: () => void
 }>
 
-export function CreateContent({
-  onClose = noop,
-  hasBack,
-  onBack,
-  onSave,
-}: Props) {
+export function CreateContent({ onClose = noop, hasBack, onBack, onSave }: Props) {
   const { t } = useTranslation()
   const [type, setType] = useState(DataType.string)
 
-  const handleTypeChange = useCallback((newType: DataType) => {
-    return () => setType(newType)
-  }, [setType])
+  const handleTypeChange = useCallback(
+    (newType: DataType) => {
+      return () => setType(newType)
+    },
+    [setType],
+  )
   const [name, setName] = useState('')
-  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setName(e.target.value)
-  }, [setName])
+  const handleNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setName(e.target.value)
+    },
+    [setName],
+  )
 
   const handleSave = useCallback(() => {
     onSave({
@@ -51,7 +52,9 @@ export function CreateContent({
           onClick={onBack}
         >
           <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />
-          <span className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`, { ns: 'dataset' })}</span>
+          <span className="system-xs-semibold-uppercase">
+            {t(`${i18nPrefix}.back`, { ns: 'dataset' })}
+          </span>
         </button>
       )}
       <div className="mb-1 flex h-6 items-center justify-between">
@@ -101,16 +104,10 @@ export function CreateContent({
         </div>
       </div>
       <div className="mt-4 flex justify-end">
-        <Button
-          className="mr-2"
-          onClick={onClose}
-        >
+        <Button className="mr-2" onClick={onClose}>
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button
-          onClick={handleSave}
-          variant="primary"
-        >
+        <Button onClick={handleSave} variant="primary">
           {t('operation.save', { ns: 'common' })}
         </Button>
       </div>

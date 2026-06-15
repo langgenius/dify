@@ -60,50 +60,51 @@ describe('E2E / difyctl get app <id> (single)', () => {
       const result = await run(['get', 'app', E.workflowAppId], { configDir: tmp.configDir })
       assertExitCode(result, 4)
       expect(result.stderr).toMatch(/not.?logged.?in|auth/i)
-    }
-    finally {
+    } finally {
       await tmp.cleanup()
     }
   })
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user get app <id> returns insufficient_scope error (3.55)', async () => {
-    // Spec 3.55: dfoe_ token on get app <id> → insufficient_scope, exit 1.
-    // Uses DIFY_E2E_SSO_TOKEN; skipped when not configured.
-    const { mkdir, writeFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
-    const ssoTmp = await withTempConfig()
-    try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `external_subject:`,
-        `  email: sso@example.com`,
-        `  issuer: https://issuer.example.com`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const result = await run(['get', 'app', E.chatAppId], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user get app <id> should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
-    }
-    finally {
-      await ssoTmp.cleanup()
-    }
-  })
+  itWithSso(
+    '[P0] external SSO user get app <id> returns insufficient_scope error (3.55)',
+    async () => {
+      // Spec 3.55: dfoe_ token on get app <id> → insufficient_scope, exit 1.
+      // Uses DIFY_E2E_SSO_TOKEN; skipped when not configured.
+      const { mkdir, writeFile } = await import('node:fs/promises')
+      const { join } = await import('node:path')
+      const ssoTmp = await withTempConfig()
+      try {
+        await mkdir(ssoTmp.configDir, { recursive: true })
+        const hostsYml = `${[
+          `current_host: ${E.host}`,
+          `token_storage: file`,
+          `tokens:`,
+          `  bearer: ${E.ssoToken}`,
+          `external_subject:`,
+          `  email: sso@example.com`,
+          `  issuer: https://issuer.example.com`,
+        ].join('\n')}\n`
+        await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+        const result = await run(['get', 'app', E.chatAppId], { configDir: ssoTmp.configDir })
+        expect(result.exitCode, 'SSO user get app <id> should exit non-zero').not.toBe(0)
+        expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
+      } finally {
+        await ssoTmp.cleanup()
+      }
+    },
+  )
 
   // ── New cases: successful single-app query ───────────────────────────────
 
   it('[P0] get app <valid-id> returns metadata and exits 0 (3.39 / 3.40 / 3.41 / 3.42-44)', async () => {
     // Spec 3.39: returns metadata; 3.40: table format; 3.41: no ANSI;
     // 3.42-44: output contains id, name, mode.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', E.chatAppId]),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', E.chatAppId]), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     assertNoAnsi(result.stdout, 'stdout')
     // table format: has column headers
@@ -116,12 +117,12 @@ describe('E2E / difyctl get app <id> (single)', () => {
 
   it('[P0] get app <id> -o json returns valid JSON with id, name, mode fields (3.45)', async () => {
     // Spec 3.45: -o json → valid JSON, contains id/name/mode per item.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', E.chatAppId, '-o', 'json']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', E.chatAppId, '-o', 'json']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
-    const parsed = assertJson<{ data: Array<{ id: string, name: string, mode: string }> }>(result)
+    const parsed = assertJson<{ data: Array<{ id: string; name: string; mode: string }> }>(result)
     expect(parsed.data.length, 'data array should contain the queried app').toBeGreaterThan(0)
     const app = parsed.data[0]!
     expect(typeof app.id).toBe('string')
@@ -131,10 +132,10 @@ describe('E2E / difyctl get app <id> (single)', () => {
 
   it('[P1] get app <id> -o yaml returns valid YAML and exits 0 (3.46)', async () => {
     // Spec 3.46: -o yaml → valid YAML, exit 0.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', E.chatAppId, '-o', 'yaml']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', E.chatAppId, '-o', 'yaml']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     expect(result.stdout.length).toBeGreaterThan(0)
     expect(result.stdout.trimStart()).not.toMatch(/^\{/)
@@ -142,10 +143,10 @@ describe('E2E / difyctl get app <id> (single)', () => {
 
   it('[P1] get app <id> -o name outputs only the app ID (3.47)', async () => {
     // Spec 3.47: -o name → only the app ID per line.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', E.chatAppId, '-o', 'name']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', E.chatAppId, '-o', 'name']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     const lines = result.stdout.trim().split('\n').filter(Boolean)
     expect(lines.length).toBeGreaterThan(0)
@@ -154,20 +155,20 @@ describe('E2E / difyctl get app <id> (single)', () => {
 
   it('[P1] get app <id> -o wide outputs extended columns (3.48)', async () => {
     // Spec 3.48: -o wide → TAGS/UPDATED/AUTHOR columns, exit 0.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', E.chatAppId, '-o', 'wide']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', E.chatAppId, '-o', 'wide']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/AUTHOR|UPDATED|TAGS/i)
   })
 
   it('[P1] get app <id> -o json is pipe-friendly with no ANSI (3.49)', async () => {
     // Spec 3.49: -o json | jq . works; no ANSI codes.
-    const result = await withRetry(
-      () => fx.r(['get', 'app', E.chatAppId, '-o', 'json']),
-      { attempts: 3, delayMs: 2000 },
-    )
+    const result = await withRetry(() => fx.r(['get', 'app', E.chatAppId, '-o', 'json']), {
+      attempts: 3,
+      delayMs: 2000,
+    })
     assertExitCode(result, 0)
     assertPipeFriendlyJson(result)
   })
@@ -218,8 +219,7 @@ describe('E2E / difyctl get app <id> (single)', () => {
       })
       expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
       expect(result.stderr.length).toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await networkTmp.cleanup()
     }
   })
@@ -237,6 +237,8 @@ describe('E2E / difyctl get app <id> (single)', () => {
       { attempts: 3, delayMs: 2000 },
     )
     expect(result.exitCode, 'app not in workspace should exit non-zero').not.toBe(0)
-    expect(result.stderr).toMatch(/not.?found|404|does not exist|server_5xx|not.?authorized|forbidden|workspace/i)
+    expect(result.stderr).toMatch(
+      /not.?found|404|does not exist|server_5xx|not.?authorized|forbidden|workspace/i,
+    )
   })
 })

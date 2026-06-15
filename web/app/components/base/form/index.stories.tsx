@@ -22,7 +22,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Helper utilities built on top of `@tanstack/react-form` that power form rendering across Dify. These stories demonstrate the `useAppForm` hook, field primitives, conditional visibility, and custom actions.',
+        component:
+          'Helper utilities built on top of `@tanstack/react-form` that power form rendering across Dify. These stories demonstrate the `useAppForm` hook, field primitives, conditional visibility, and custom actions.',
       },
     },
   },
@@ -43,7 +44,7 @@ type PlaygroundFormFieldsProps = {
 
 const PlaygroundFormFields = ({ form, status }: PlaygroundFormFieldsProps) => {
   type PlaygroundFormValues = typeof demoFormOpts.defaultValues
-  const name = useStore(form.store, state => (state.values as PlaygroundFormValues).name)
+  const name = useStore(form.store, (state) => (state.values as PlaygroundFormValues).name)
   const contactFormApi = form as unknown as ContactFieldsFormApi
 
   return (
@@ -57,29 +58,19 @@ const PlaygroundFormFields = ({ form, status }: PlaygroundFormFieldsProps) => {
     >
       <form.AppField
         name="name"
-        children={field => (
-          <field.TextField
-            label="Name"
-            placeholder="Start with a capital letter"
-          />
+        children={(field) => (
+          <field.TextField label="Name" placeholder="Start with a capital letter" />
         )}
       />
       <form.AppField
         name="surname"
-        children={field => (
-          <field.TextField
-            label="Surname"
-            placeholder="Surname must be at least 3 characters"
-          />
+        children={(field) => (
+          <field.TextField label="Surname" placeholder="Surname must be at least 3 characters" />
         )}
       />
       <form.AppField
         name="isAcceptingTerms"
-        children={field => (
-          <field.CheckboxField
-            label="I accept the terms and conditions"
-          />
-        )}
+        children={(field) => <field.CheckboxField label="I accept the terms and conditions" />}
       />
 
       {!!name && <ContactFields form={contactFormApi} />}
@@ -105,8 +96,7 @@ const FormPlayground = () => {
         validators: {
           onSubmit: ({ value: formValue }) => {
             const result = UserSchema.safeParse(formValue as typeof demoFormOpts.defaultValues)
-            if (!result.success)
-              return result.error.issues[0]!.message
+            if (!result.success) return result.error.issues[0]!.message
             return undefined
           },
         },
@@ -115,7 +105,7 @@ const FormPlayground = () => {
         },
       }}
     >
-      {form => <PlaygroundFormFields form={form} status={status} />}
+      {(form) => <PlaygroundFormFields form={form} status={status} />}
     </FormStoryWrapper>
   )
 }
@@ -141,11 +131,14 @@ const mockFieldDefaults = {
 }
 
 const FieldGallery = () => {
-  const selectOptions = useMemo(() => [
-    { value: 'workbench', label: 'Workbench' },
-    { value: 'playground', label: 'Playground' },
-    { value: 'production', label: 'Production' },
-  ], [])
+  const selectOptions = useMemo(
+    () => [
+      { value: 'workbench', label: 'Workbench' },
+      { value: 'playground', label: 'Playground' },
+      { value: 'production', label: 'Production' },
+    ],
+    [],
+  )
 
   return (
     <FormStoryWrapper
@@ -155,7 +148,7 @@ const FieldGallery = () => {
         defaultValues: mockFieldDefaults,
       }}
     >
-      {form => (
+      {(form) => (
         <form
           className="grid w-full max-w-4xl grid-cols-1 gap-4 lg:grid-cols-2"
           onSubmit={(event) => {
@@ -166,16 +159,13 @@ const FieldGallery = () => {
         >
           <form.AppField
             name="headline"
-            children={field => (
-              <field.TextField
-                label="Headline"
-                placeholder="Name your experience"
-              />
+            children={(field) => (
+              <field.TextField label="Headline" placeholder="Name your experience" />
             )}
           />
           <form.AppField
             name="description"
-            children={field => (
+            children={(field) => (
               <field.TextAreaField
                 label="Description"
                 placeholder="Describe what this configuration does"
@@ -184,22 +174,15 @@ const FieldGallery = () => {
           />
           <form.AppField
             name="category"
-            children={field => (
-              <field.SelectField
-                label="Category"
-                options={selectOptions}
-              />
-            )}
+            children={(field) => <field.SelectField label="Category" options={selectOptions} />}
           />
           <form.AppField
             name="allowNotifications"
-            children={field => (
-              <field.CheckboxField label="Enable usage notifications" />
-            )}
+            children={(field) => <field.CheckboxField label="Enable usage notifications" />}
           />
           <form.AppField
             name="dailyLimit"
-            children={field => (
+            children={(field) => (
               <field.NumberSliderField
                 label="Daily session limit"
                 description="Control the maximum number of runs per user each day."
@@ -210,7 +193,7 @@ const FieldGallery = () => {
           />
           <form.AppField
             name="attachment"
-            children={field => (
+            children={(field) => (
               <field.FileUploaderField
                 label="Reference materials"
                 fileConfig={mockFileUploadConfig}
@@ -275,7 +258,7 @@ const ConditionalFieldsStory = () => {
           defaultValues={values}
           formClassName="flex flex-col gap-4"
           onChange={(field, value) => {
-            setValues(prev => ({
+            setValues((prev) => ({
               ...prev,
               [field]: value,
             }))
@@ -284,7 +267,9 @@ const ConditionalFieldsStory = () => {
       </div>
       <aside className="w-full max-w-sm rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary shadow-sm">
         <h3 className="text-sm font-semibold text-text-primary">Live values</h3>
-        <p className="mb-2 text-[11px] text-text-tertiary">`show_on` rules hide or reveal inputs without losing track of the form state.</p>
+        <p className="mb-2 text-[11px] text-text-tertiary">
+          `show_on` rules hide or reveal inputs without losing track of the form state.
+        </p>
         <pre className="max-h-48 overflow-auto rounded-md bg-background-default-subtle p-3 font-mono text-[11px] leading-tight text-text-primary">
           {JSON.stringify(values, null, 2)}
         </pre>
@@ -313,7 +298,7 @@ const CustomActionsStory = () => {
         },
       }}
     >
-      {form => (
+      {(form) => (
         <form
           className="flex w-full max-w-xl flex-col gap-4"
           onSubmit={(event) => {
@@ -324,16 +309,13 @@ const CustomActionsStory = () => {
         >
           <form.AppField
             name="datasetName"
-            children={field => (
-              <field.TextField
-                label="Dataset name"
-                placeholder="Support knowledge base"
-              />
+            children={(field) => (
+              <field.TextField label="Dataset name" placeholder="Support knowledge base" />
             )}
           />
           <form.AppField
             name="datasetDescription"
-            children={field => (
+            children={(field) => (
               <field.TextAreaField
                 label="Description"
                 placeholder="Add a helpful summary for collaborators"
@@ -344,11 +326,7 @@ const CustomActionsStory = () => {
             <form.Actions
               CustomActions={({ form: appForm, isSubmitting, canSubmit }) => (
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => appForm.reset()}
-                    disabled={isSubmitting}
-                  >
+                  <Button variant="ghost" onClick={() => appForm.reset()} disabled={isSubmitting}>
                     Reset
                   </Button>
                   <Button
@@ -480,7 +458,8 @@ export const ConditionalVisibility: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Demonstrates schema-driven visibility using `show_on` conditions rendered through the reusable `BaseForm` component.',
+        story:
+          'Demonstrates schema-driven visibility using `show_on` conditions rendered through the reusable `BaseForm` component.',
       },
       source: {
         language: 'tsx',
@@ -511,7 +490,8 @@ export const CustomActions: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Shows how to replace the default submit button with a fully custom footer leveraging contextual form state.',
+        story:
+          'Shows how to replace the default submit button with a fully custom footer leveraging contextual form state.',
       },
       source: {
         language: 'tsx',

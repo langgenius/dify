@@ -17,30 +17,31 @@ type DatasetsDetailProviderProps = {
   children: React.ReactNode
 }
 
-const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({
-  nodes,
-  children,
-}) => {
+const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, children }) => {
   const storeRef = useRef<DatasetsDetailStoreApi>(undefined)
 
-  if (!storeRef.current)
-    storeRef.current = createDatasetsDetailStore()
+  if (!storeRef.current) storeRef.current = createDatasetsDetailStore()
 
   const updateDatasetsDetail = useCallback(async (datasetIds: string[]) => {
-    const { data: datasetsDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
+    const { data: datasetsDetail } = await fetchDatasets({
+      url: '/datasets',
+      params: { page: 1, ids: datasetIds },
+    })
     if (datasetsDetail && datasetsDetail.length > 0)
       storeRef.current!.getState().updateDatasetsDetail(datasetsDetail)
   }, [])
 
   useEffect(() => {
-    if (!storeRef.current)
-      return
-    const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
+    if (!storeRef.current) return
+    const knowledgeRetrievalNodes = nodes.filter(
+      (node) => node.data.type === BlockEnum.KnowledgeRetrieval,
+    )
     const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
-      return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
+      return Array.from(
+        new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]),
+      )
     }, [])
-    if (allDatasetIds.length === 0)
-      return
+    if (allDatasetIds.length === 0) return
     updateDatasetsDetail(allDatasetIds)
   }, [])
 

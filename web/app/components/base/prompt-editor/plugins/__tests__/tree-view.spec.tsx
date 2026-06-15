@@ -33,9 +33,10 @@ describe('TreeViewPlugin', () => {
         }}
       >
         <TreeViewPlugin />
-        <CaptureEditorPlugin onReady={(value) => {
-          editor = value
-        }}
+        <CaptureEditorPlugin
+          onReady={(value) => {
+            editor = value
+          }}
         />
       </LexicalComposer>,
     )

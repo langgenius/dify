@@ -50,10 +50,11 @@ vi.mock('@/utils/get-icon', () => ({
 }))
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolParametersToFormSchemas: (params: unknown[]) => (params as Record<string, unknown>[]).map(p => ({
-    ...p,
-    variable: p.name,
-  })),
+  toolParametersToFormSchemas: (params: unknown[]) =>
+    (params as Record<string, unknown>[]).map((p) => ({
+      ...p,
+      variable: p.name,
+    })),
   generateFormValue: (value: Record<string, unknown>) => value || {},
   getPlainValue: (value: Record<string, unknown>) => value || {},
   getStructureValue: (value: Record<string, unknown>) => value || {},
@@ -87,9 +88,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should initialize with default panel states', () => {
-    const { result } = renderHook(() =>
-      useToolSelectorState({ onSelect: mockOnSelect }),
-    )
+    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
 
     expect(result.current.isShow).toBe(false)
     expect(result.current.isShowChooseTool).toBe(false)
@@ -139,9 +138,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should toggle panel visibility', () => {
-    const { result } = renderHook(() =>
-      useToolSelectorState({ onSelect: mockOnSelect }),
-    )
+    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
 
     act(() => {
       result.current.setIsShow(true)
@@ -155,9 +152,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should switch tab type', () => {
-    const { result } = renderHook(() =>
-      useToolSelectorState({ onSelect: mockOnSelect }),
-    )
+    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
 
     act(() => {
       result.current.setCurrType('params')
@@ -174,9 +169,11 @@ describe('useToolSelectorState', () => {
       result.current.handleDescriptionChange('New description')
     })
 
-    expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({
-      extra: expect.objectContaining({ description: 'New description' }),
-    }))
+    expect(mockOnSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extra: expect.objectContaining({ description: 'New description' }),
+      }),
+    )
   })
 
   it('should handle enabled change', () => {
@@ -188,9 +185,11 @@ describe('useToolSelectorState', () => {
       result.current.handleEnabledChange(false)
     })
 
-    expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({
-      enabled: false,
-    }))
+    expect(mockOnSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: false,
+      }),
+    )
   })
 
   it('should handle authorization item click', () => {
@@ -202,15 +201,15 @@ describe('useToolSelectorState', () => {
       result.current.handleAuthorizationItemClick('cred-123')
     })
 
-    expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({
-      credential_id: 'cred-123',
-    }))
+    expect(mockOnSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credential_id: 'cred-123',
+      }),
+    )
   })
 
   it('should not call onSelect if value is undefined', () => {
-    const { result } = renderHook(() =>
-      useToolSelectorState({ onSelect: mockOnSelect }),
-    )
+    const { result } = renderHook(() => useToolSelectorState({ onSelect: mockOnSelect }))
 
     act(() => {
       result.current.handleEnabledChange(true)
@@ -233,9 +232,7 @@ describe('useToolSelectorState', () => {
   })
 
   it('should skip plugin checks after resolving the current provider and tool', () => {
-    renderHook(() =>
-      useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }),
-    )
+    renderHook(() => useToolSelectorState({ value: toolValue, onSelect: mockOnSelect }))
 
     expect(mockUsePluginInstalledCheck).toHaveBeenCalledWith({
       providerPluginId: 'org/test-plugin',

@@ -27,15 +27,29 @@ vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
 }))
 vi.mock('react-multi-email', () => ({
-  ReactMultiEmail: ({ emails, onChange, getLabel }: { emails: string[], onChange: (emails: string[]) => void, getLabel: (email: string, index: number, removeEmail: (index: number) => void) => React.ReactNode }) => (
+  ReactMultiEmail: ({
+    emails,
+    onChange,
+    getLabel,
+  }: {
+    emails: string[]
+    onChange: (emails: string[]) => void
+    getLabel: (
+      email: string,
+      index: number,
+      removeEmail: (index: number) => void,
+    ) => React.ReactNode
+  }) => (
     <div>
       <input
         data-testid="mock-email-input"
-        onChange={e => onChange(e.target.value ? e.target.value.split(',') : [])}
+        onChange={(e) => onChange(e.target.value ? e.target.value.split(',') : [])}
       />
       {emails.map((email: string, index: number) => (
         <div key={email}>
-          {getLabel(email, index, (idx: number) => onChange(emails.filter((_: string, i: number) => i !== idx)))}
+          {getLabel(email, index, (idx: number) =>
+            onChange(emails.filter((_: string, i: number) => i !== idx)),
+          )}
         </div>
       ))}
     </div>
@@ -50,15 +64,16 @@ describe('InviteModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 5, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 5, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
   })
 
-  const renderModal = (isEmailSetup = true) => render(
-    <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />,
-  )
+  const renderModal = (isEmailSetup = true) =>
+    render(<InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />)
   const fillEmails = (value: string) => {
     fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
   }
@@ -120,10 +135,12 @@ describe('InviteModal', () => {
   })
 
   it('should keep send button disabled when license limit is exceeded', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -168,10 +185,12 @@ describe('InviteModal', () => {
   })
 
   it('should show unlimited label when workspace member limit is zero', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 5, limit: 0 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 5, limit: 0 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -179,10 +198,12 @@ describe('InviteModal', () => {
   })
 
   it('should initialize usedSize to zero when workspace_members.size is null', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: null, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: null, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -210,10 +231,12 @@ describe('InviteModal', () => {
   })
 
   it('should show destructive text color when used size exceeds limit', async () => {
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -257,10 +280,12 @@ describe('InviteModal', () => {
 
   it('should show destructive color and disable send button when limit is exactly met with one email', async () => {
     // size=10, limit=10 - adding 1 email makes usedSize=11 > limit=10
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 10, limit: 10 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 10, limit: 10 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 
@@ -303,10 +328,12 @@ describe('InviteModal', () => {
 
   it('should not show error text color when isLimited is false even with many emails', async () => {
     // size=0, limit=0 → isLimited=false, usedSize=emails.length
-    vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
-      licenseLimit: { workspace_members: { size: 0, limit: 0 } },
-      refreshLicenseLimit: mockRefreshLicenseLimit,
-    } as unknown as Parameters<typeof selector>[0]))
+    vi.mocked(useProviderContextSelector).mockImplementation((selector) =>
+      selector({
+        licenseLimit: { workspace_members: { size: 0, limit: 0 } },
+        refreshLicenseLimit: mockRefreshLicenseLimit,
+      } as unknown as Parameters<typeof selector>[0]),
+    )
 
     renderModal()
 

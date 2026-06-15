@@ -1,25 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { isBaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import {
-  getKey,
-  knownKeyNames,
-  knownKeys,
-  lookupKey,
-  setKey,
-  unsetKey,
-} from './keys'
+import { getKey, knownKeyNames, knownKeys, lookupKey, setKey, unsetKey } from './keys'
 import { emptyConfig } from './schema'
 
 describe('config keys', () => {
   it('exposes the v1.0 key set: defaults.format, defaults.limit, state.current_app', () => {
-    expect([...knownKeyNames()].sort()).toEqual(
-      ['defaults.format', 'defaults.limit', 'state.current_app'],
-    )
+    expect([...knownKeyNames()].sort()).toEqual([
+      'defaults.format',
+      'defaults.limit',
+      'state.current_app',
+    ])
   })
 
   it('knownKeys is alphabetically sorted', () => {
-    const names = knownKeys().map(k => k.name)
+    const names = knownKeys().map((k) => k.name)
     const sorted = [...names].sort()
     expect(names).toEqual(sorted)
   })
@@ -41,11 +36,11 @@ describe('config keys', () => {
       let caught: unknown
       try {
         getKey(emptyConfig(), 'nope')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
       expect(isBaseError(caught)).toBe(true)
-      if (isBaseError(caught))
-        expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
+      if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
     })
   })
 
@@ -59,8 +54,9 @@ describe('config keys', () => {
       let caught: unknown
       try {
         setKey(emptyConfig(), 'defaults.format', 'csv')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
       expect(isBaseError(caught)).toBe(true)
       if (isBaseError(caught)) {
         expect(caught.code).toBe(ErrorCode.ConfigInvalidValue)
@@ -77,22 +73,22 @@ describe('config keys', () => {
       let caught: unknown
       try {
         setKey(emptyConfig(), 'defaults.limit', '999')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
       expect(isBaseError(caught)).toBe(true)
-      if (isBaseError(caught))
-        expect(caught.code).toBe(ErrorCode.ConfigInvalidValue)
+      if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidValue)
     })
 
     it('throws config_invalid_value for non-numeric limit', () => {
       let caught: unknown
       try {
         setKey(emptyConfig(), 'defaults.limit', 'abc')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
       expect(isBaseError(caught)).toBe(true)
-      if (isBaseError(caught))
-        expect(caught.code).toBe(ErrorCode.ConfigInvalidValue)
+      if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidValue)
     })
 
     it('sets state.current_app to any string', () => {
@@ -131,11 +127,11 @@ describe('config keys', () => {
       let caught: unknown
       try {
         unsetKey(emptyConfig(), 'nope')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
       expect(isBaseError(caught)).toBe(true)
-      if (isBaseError(caught))
-        expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
+      if (isBaseError(caught)) expect(caught.code).toBe(ErrorCode.ConfigInvalidKey)
     })
   })
 })

@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react'
 import { useGotoAnythingResults } from '../use-goto-anything-results'
 
 type MockQueryResult = {
-  data: Array<{ id: string, type: string, title: string }> | undefined
+  data: Array<{ id: string; type: string; title: string }> | undefined
   isLoading: boolean
   isError: boolean
   error: Error | null
@@ -204,10 +204,14 @@ describe('useGotoAnythingResults', () => {
         error: null,
       }
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        cmdVal: 'non-existent',
-        setCmdVal,
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            cmdVal: 'non-existent',
+            setCmdVal,
+          }),
+        ),
+      )
 
       expect(setCmdVal).toHaveBeenCalledWith('app-1')
     })
@@ -221,10 +225,14 @@ describe('useGotoAnythingResults', () => {
         error: null,
       }
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        isCommandsMode: true,
-        setCmdVal,
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            isCommandsMode: true,
+            setCmdVal,
+          }),
+        ),
+      )
 
       expect(setCmdVal).not.toHaveBeenCalled()
     })
@@ -233,9 +241,13 @@ describe('useGotoAnythingResults', () => {
       const setCmdVal = vi.fn()
       mockQueryResult = { data: [], isLoading: false, isError: false, error: null }
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        setCmdVal,
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            setCmdVal,
+          }),
+        ),
+      )
 
       expect(setCmdVal).not.toHaveBeenCalled()
     })
@@ -252,10 +264,14 @@ describe('useGotoAnythingResults', () => {
         error: null,
       }
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        cmdVal: 'app-2',
-        setCmdVal,
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            cmdVal: 'app-2',
+            setCmdVal,
+          }),
+        ),
+      )
 
       expect(setCmdVal).not.toHaveBeenCalled()
     })
@@ -306,13 +322,23 @@ describe('useGotoAnythingResults', () => {
   describe('recent results', () => {
     it('surfaces recent items when the search query is empty', () => {
       mockGetRecentItems.mockReturnValue([
-        { id: 'app-1', title: 'My App', description: 'Desc', path: '/app/app-1', originalType: 'app' },
+        {
+          id: 'app-1',
+          title: 'My App',
+          description: 'Desc',
+          path: '/app/app-1',
+          originalType: 'app',
+        },
         { id: 'kb-1', title: 'My KB', path: '/datasets/kb-1', originalType: 'knowledge' },
       ])
 
-      const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
-        searchQueryDebouncedValue: '',
-      })))
+      const { result } = renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            searchQueryDebouncedValue: '',
+          }),
+        ),
+      )
 
       expect(result.current.dedupedResults).toHaveLength(2)
       expect(result.current.dedupedResults[0]).toMatchObject({
@@ -336,11 +362,15 @@ describe('useGotoAnythingResults', () => {
         error: null,
       }
 
-      const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
-        searchQueryDebouncedValue: 'foo',
-      })))
+      const { result } = renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            searchQueryDebouncedValue: 'foo',
+          }),
+        ),
+      )
 
-      expect(result.current.dedupedResults.map(r => r.id)).toEqual(['s1'])
+      expect(result.current.dedupedResults.map((r) => r.id)).toEqual(['s1'])
     })
 
     it('does not surface recent items in commands mode', () => {
@@ -348,9 +378,13 @@ describe('useGotoAnythingResults', () => {
         { id: 'app-1', title: 'My App', path: '/app/app-1', originalType: 'app' },
       ])
 
-      const { result } = renderHook(() => useGotoAnythingResults(createMockOptions({
-        isCommandsMode: true,
-      })))
+      const { result } = renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            isCommandsMode: true,
+          }),
+        ),
+      )
 
       expect(result.current.dedupedResults).toEqual([])
     })
@@ -362,10 +396,14 @@ describe('useGotoAnythingResults', () => {
       mockMatchAction.mockReturnValue({ key: '@app' })
       mockSearchAnything.mockResolvedValue([])
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        searchQueryDebouncedValue: 'TEST QUERY',
-        Actions: mockActions,
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            searchQueryDebouncedValue: 'TEST QUERY',
+            Actions: mockActions,
+          }),
+        ),
+      )
 
       expect(capturedQueryFn).toBeDefined()
       await capturedQueryFn!()
@@ -379,10 +417,14 @@ describe('useGotoAnythingResults', () => {
       mockMatchAction.mockReturnValue(mockAction)
       mockSearchAnything.mockResolvedValue([{ id: '1', type: 'app', title: 'Result' }])
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        searchQueryDebouncedValue: 'My Query',
-        Actions: mockActions,
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            searchQueryDebouncedValue: 'My Query',
+            Actions: mockActions,
+          }),
+        ),
+      )
 
       expect(capturedQueryFn).toBeDefined()
       const result = await capturedQueryFn!()
@@ -399,9 +441,13 @@ describe('useGotoAnythingResults', () => {
       mockMatchAction.mockReturnValue(null)
       mockSearchAnything.mockResolvedValue(expectedResults)
 
-      renderHook(() => useGotoAnythingResults(createMockOptions({
-        searchQueryDebouncedValue: 'search term',
-      })))
+      renderHook(() =>
+        useGotoAnythingResults(
+          createMockOptions({
+            searchQueryDebouncedValue: 'search term',
+          }),
+        ),
+      )
 
       expect(capturedQueryFn).toBeDefined()
       const result = await capturedQueryFn!()

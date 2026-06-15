@@ -61,7 +61,9 @@ describe('Context Utilities', () => {
       })
 
       // Suppress console.error for this test
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+        /* suppress error */
+      })
 
       expect(() => {
         renderHook(() => useTestContext())
@@ -106,8 +108,8 @@ describe('Context Utilities', () => {
      */
     it('should handle complex context values', () => {
       type ComplexContext = {
-        user: { id: string, name: string }
-        settings: { theme: string, locale: string }
+        user: { id: string; name: string }
+        settings: { theme: string; locale: string }
         actions: Array<() => void>
       }
 
@@ -119,8 +121,12 @@ describe('Context Utilities', () => {
         user: { id: '123', name: 'Test User' },
         settings: { theme: 'dark', locale: 'en-US' },
         actions: [
-          () => { /* empty action 1 */ },
-          () => { /* empty action 2 */ },
+          () => {
+            /* empty action 1 */
+          },
+          () => {
+            /* empty action 2 */
+          },
         ],
       }
 
@@ -206,7 +212,9 @@ describe('Context Utilities', () => {
         name: 'SelectorTest',
       })
 
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+        /* suppress error */
+      })
 
       expect(() => {
         renderHook(() => useTestContext())
@@ -241,7 +249,9 @@ describe('Context Utilities', () => {
       type TestContextValue = { value: string }
       const [, useTestContext] = createCtx<TestContextValue>()
 
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {
+        /* suppress error */
+      })
 
       expect(() => {
         renderHook(() => useTestContext())

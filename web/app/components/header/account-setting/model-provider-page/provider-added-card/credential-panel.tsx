@@ -22,9 +22,7 @@ const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
   'api-required-configure',
 ])
 
-const CredentialPanel = ({
-  provider,
-}: CredentialPanelProps) => {
+const CredentialPanel = ({ provider }: CredentialPanelProps) => {
   const state = useCredentialPanelState(provider)
   const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(provider)
 
@@ -36,9 +34,11 @@ const CredentialPanel = ({
   return (
     <SystemQuotaCard variant={isDestructive ? 'destructive' : 'default'}>
       <SystemQuotaCard.Label className={needsGap ? 'gap-1' : undefined}>
-        {isTextLabel
-          ? <TextLabel variant={variant} />
-          : <CredentialStatus variant={variant} credentialName={credentialName} />}
+        {isTextLabel ? (
+          <TextLabel variant={variant} />
+        ) : (
+          <CredentialStatus variant={variant} credentialName={credentialName} />
+        )}
       </SystemQuotaCard.Label>
       <SystemQuotaCard.Actions>
         <ModelAuthDropdown
@@ -71,14 +71,15 @@ function TextLabel({ variant }: { variant: CardVariant }) {
       <span className={isDestructive ? 'text-text-destructive' : 'text-text-secondary'}>
         {t(labelKey, { ns: 'common' })}
       </span>
-      {variant === 'credits-fallback' && (
-        <Warning className="size-3 shrink-0 text-text-warning" />
-      )}
+      {variant === 'credits-fallback' && <Warning className="size-3 shrink-0 text-text-warning" />}
     </>
   )
 }
 
-function CredentialStatus({ variant, credentialName }: {
+function CredentialStatus({
+  variant,
+  credentialName,
+}: {
   variant: CardVariant
   credentialName: string | undefined
 }) {
@@ -95,9 +96,7 @@ function CredentialStatus({ variant, credentialName }: {
       >
         {credentialName}
       </span>
-      {showWarning && (
-        <Warning className="ml-auto size-3 shrink-0 text-text-warning" />
-      )}
+      {showWarning && <Warning className="ml-auto size-3 shrink-0 text-text-warning" />}
     </>
   )
 }

@@ -3,7 +3,13 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import EconomicalRetrievalMethodConfig from '../index'
 
 vi.mock('../../../settings/option-card', () => ({
-  default: ({ children, title, description, disabled, id }: {
+  default: ({
+    children,
+    title,
+    description,
+    disabled,
+    id,
+  }: {
     children?: React.ReactNode
     title?: string
     description?: React.ReactNode
@@ -18,15 +24,17 @@ vi.mock('../../../settings/option-card', () => ({
 }))
 
 vi.mock('../../retrieval-param-config', () => ({
-  default: ({ value, onChange, type }: {
+  default: ({
+    value,
+    onChange,
+    type,
+  }: {
     value: Record<string, unknown>
     onChange: (value: Record<string, unknown>) => void
     type?: string
   }) => (
     <div data-testid="retrieval-param-config" data-type={type}>
-      <button onClick={() => onChange({ ...value, newProp: 'changed' })}>
-        Change Value
-      </button>
+      <button onClick={() => onChange({ ...value, newProp: 'changed' })}>Change Value</button>
     </div>
   ),
 }))

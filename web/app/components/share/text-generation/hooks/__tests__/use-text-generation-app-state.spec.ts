@@ -60,7 +60,8 @@ vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
     ...actual,
-    fetchSavedMessage: (...args: Parameters<typeof actual.fetchSavedMessage>) => fetchSavedMessageMock(...args),
+    fetchSavedMessage: (...args: Parameters<typeof actual.fetchSavedMessage>) =>
+      fetchSavedMessageMock(...args),
     removeMessage: (...args: Parameters<typeof actual.removeMessage>) => removeMessageMock(...args),
     saveMessage: (...args: Parameters<typeof actual.saveMessage>) => saveMessageMock(...args),
   }
@@ -169,7 +170,8 @@ const resetMockWebAppState = () => {
 }
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) => selector(mockWebAppState),
+  useWebAppStore: (selector: (state: typeof mockWebAppState) => unknown) =>
+    selector(mockWebAppState),
 }))
 
 describe('useTextGenerationAppState', () => {
@@ -185,14 +187,19 @@ describe('useTextGenerationAppState', () => {
   })
 
   it('should initialize app state and fetch saved messages for non-workflow web apps', async () => {
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: false,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: false,
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.appId).toBe('app-123')
-      expect(result.current.promptConfig?.prompt_variables.map(item => item.name)).toEqual(['Name', 'Enabled'])
+      expect(result.current.promptConfig?.prompt_variables.map((item) => item.name)).toEqual([
+        'Name',
+        'Enabled',
+      ])
       expect(result.current.savedMessages).toEqual([{ id: 'saved-1' }])
     })
 
@@ -203,20 +210,24 @@ describe('useTextGenerationAppState', () => {
     expect(changeLanguageMock).toHaveBeenCalledWith('en-US')
     expect(fetchSavedMessageMock).toHaveBeenCalledWith(AppSourceType.webApp, 'app-123')
     expect(useDocumentTitleMock).toHaveBeenCalledWith('Share title')
-    expect(useAppFaviconMock).toHaveBeenCalledWith(expect.objectContaining({
-      enable: true,
-      icon: 'robot',
-    }))
+    expect(useAppFaviconMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enable: true,
+        icon: 'robot',
+      }),
+    )
   })
 
   it('should no-op save actions before the app id is initialized', async () => {
     mockWebAppState.appInfo = null
     mockWebAppState.appParams = null
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: false,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: false,
+      }),
+    )
 
     await act(async () => {
       await result.current.fetchSavedMessages('')
@@ -237,10 +248,12 @@ describe('useTextGenerationAppState', () => {
       custom_config: null,
     }
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: false,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: false,
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.appId).toBe('app-123')
@@ -249,10 +262,12 @@ describe('useTextGenerationAppState', () => {
   })
 
   it('should save and remove messages then refresh saved messages', async () => {
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: false,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: false,
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.appId).toBe('app-123')
@@ -287,10 +302,12 @@ describe('useTextGenerationAppState', () => {
   })
 
   it('should skip saved message fetching for workflows and disable favicon for installed apps', async () => {
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: true,
-      isWorkflow: true,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: true,
+        isWorkflow: true,
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.appId).toBe('app-123')
@@ -298,9 +315,11 @@ describe('useTextGenerationAppState', () => {
 
     expect(result.current.appSourceType).toBe(AppSourceType.installedApp)
     expect(fetchSavedMessageMock).not.toHaveBeenCalled()
-    expect(useAppFaviconMock).toHaveBeenCalledWith(expect.objectContaining({
-      enable: false,
-    }))
+    expect(useAppFaviconMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enable: false,
+      }),
+    )
   })
 
   it('should apply workflow launch inputs from the url to hidden prompt variables', async () => {
@@ -333,23 +352,27 @@ describe('useTextGenerationAppState', () => {
       secret: 'prefilled-secret',
     })
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: true,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: true,
+      }),
+    )
 
     await waitFor(() => {
-      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
-        expect.objectContaining({
-          key: 'visible',
-          default: 'Shown',
-        }),
-        expect.objectContaining({
-          key: 'secret',
-          hide: true,
-          default: 'prefilled-secret',
-        }),
-      ]))
+      expect(result.current.promptConfig?.prompt_variables).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'visible',
+            default: 'Shown',
+          }),
+          expect.objectContaining({
+            key: 'secret',
+            hide: true,
+            default: 'prefilled-secret',
+          }),
+        ]),
+      )
     })
 
     expect(getRawInputsFromUrlParamsMock).toHaveBeenCalled()
@@ -405,18 +428,22 @@ describe('useTextGenerationAppState', () => {
       invalid_cb: 'invalid',
     })
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: true,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: true,
+      }),
+    )
 
     await waitFor(() => {
-      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: 'bool_true', default: true }),
-        expect.objectContaining({ key: 'str_true', default: true }),
-        expect.objectContaining({ key: 'str_false', default: false }),
-        expect.objectContaining({ key: 'invalid_cb', default: false }),
-      ]))
+      expect(result.current.promptConfig?.prompt_variables).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: 'bool_true', default: true }),
+          expect.objectContaining({ key: 'str_true', default: true }),
+          expect.objectContaining({ key: 'str_false', default: false }),
+          expect.objectContaining({ key: 'invalid_cb', default: false }),
+        ]),
+      )
     })
   })
 
@@ -449,16 +476,20 @@ describe('useTextGenerationAppState', () => {
       num_nan: 'not-a-number',
     })
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: true,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: true,
+      }),
+    )
 
     await waitFor(() => {
-      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: 'num_valid', default: 42 }),
-        expect.objectContaining({ key: 'num_nan', default: 0 }),
-      ]))
+      expect(result.current.promptConfig?.prompt_variables).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: 'num_valid', default: 42 }),
+          expect.objectContaining({ key: 'num_nan', default: 0 }),
+        ]),
+      )
     })
   })
 
@@ -493,16 +524,20 @@ describe('useTextGenerationAppState', () => {
       sel_invalid: 'gamma',
     })
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: true,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: true,
+      }),
+    )
 
     await waitFor(() => {
-      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: 'sel_valid', default: 'beta' }),
-        expect.objectContaining({ key: 'sel_invalid', default: 'alpha' }),
-      ]))
+      expect(result.current.promptConfig?.prompt_variables).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: 'sel_valid', default: 'beta' }),
+          expect.objectContaining({ key: 'sel_invalid', default: 'alpha' }),
+        ]),
+      )
     })
   })
 
@@ -526,15 +561,19 @@ describe('useTextGenerationAppState', () => {
       text_field: 12345,
     })
 
-    const { result } = renderHook(() => useTextGenerationAppState({
-      isInstalledApp: false,
-      isWorkflow: true,
-    }))
+    const { result } = renderHook(() =>
+      useTextGenerationAppState({
+        isInstalledApp: false,
+        isWorkflow: true,
+      }),
+    )
 
     await waitFor(() => {
-      expect(result.current.promptConfig?.prompt_variables).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: 'text_field', default: 'original' }),
-      ]))
+      expect(result.current.promptConfig?.prompt_variables).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ key: 'text_field', default: 'original' }),
+        ]),
+      )
     })
   })
 })

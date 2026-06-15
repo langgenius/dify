@@ -4,12 +4,7 @@ import type { BaseConfiguration } from '@/app/components/base/form/form-scenario
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Options from '../options'
 
-const {
-  mockFormValue,
-  mockHandleSubmit,
-  mockToastError,
-  mockBaseField,
-} = vi.hoisted(() => ({
+const { mockFormValue, mockHandleSubmit, mockToastError, mockBaseField } = vi.hoisted(() => ({
   mockFormValue: { chunkSize: 256 } as Record<string, unknown>,
   mockHandleSubmit: vi.fn(),
   mockToastError: vi.fn(),
@@ -42,12 +37,17 @@ vi.mock('@/app/components/base/form', () => ({
   }) => ({
     handleSubmit: () => {
       const validationResult = validators?.onSubmit?.({ value: mockFormValue })
-      if (!validationResult)
-        onSubmit({ value: mockFormValue })
+      if (!validationResult) onSubmit({ value: mockFormValue })
       mockHandleSubmit()
     },
-    AppForm: ({ children }: { children: React.ReactNode }) => <div data-testid="app-form">{children}</div>,
-    Actions: ({ CustomActions }: { CustomActions: (props: CustomActionsProps) => React.ReactNode }) => (
+    AppForm: ({ children }: { children: React.ReactNode }) => (
+      <div data-testid="app-form">{children}</div>
+    ),
+    Actions: ({
+      CustomActions,
+    }: {
+      CustomActions: (props: CustomActionsProps) => React.ReactNode
+    }) => (
       <div data-testid="form-actions">
         {CustomActions({
           form: {
@@ -61,22 +61,24 @@ vi.mock('@/app/components/base/form', () => ({
   }),
 }))
 
-const createSchema = (success: boolean): ZodSchema => ({
-  safeParse: vi.fn(() => {
-    if (success)
-      return { success: true }
+const createSchema = (success: boolean): ZodSchema =>
+  ({
+    safeParse: vi.fn(() => {
+      if (success) return { success: true }
 
-    return {
-      success: false,
-      error: {
-        issues: [{
-          path: ['chunkSize'],
-          message: 'Invalid value',
-        }],
-      },
-    }
-  }),
-}) as unknown as ZodSchema
+      return {
+        success: false,
+        error: {
+          issues: [
+            {
+              path: ['chunkSize'],
+              message: 'Invalid value',
+            },
+          ],
+        },
+      }
+    }),
+  }) as unknown as ZodSchema
 
 describe('Document processing options', () => {
   beforeEach(() => {

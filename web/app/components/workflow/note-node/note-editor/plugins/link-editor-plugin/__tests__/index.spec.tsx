@@ -9,11 +9,7 @@ type NoteEditorStore = ReturnType<typeof createNoteEditorStore>
 
 const emptyValue = JSON.stringify({ root: { children: [] } })
 
-const StoreProbe = ({
-  onReady,
-}: {
-  onReady?: (store: NoteEditorStore) => void
-}) => {
+const StoreProbe = ({ onReady }: { onReady?: (store: NoteEditorStore) => void }) => {
   const store = useNoteEditorStore()
 
   useEffect(() => {
@@ -46,7 +42,7 @@ describe('LinkEditorPlugin', () => {
 
       render(
         <NoteEditorContextProvider value={emptyValue}>
-          <StoreProbe onReady={instance => (store = instance)} />
+          <StoreProbe onReady={(instance) => (store = instance)} />
           <LinkEditorPlugin containerElement={document.createElement('div')} />
         </NoteEditorContextProvider>,
       )

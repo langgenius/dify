@@ -7,10 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Switch } from '@langgenius/dify-ui/switch'
-import {
-  memo,
-  useState,
-} from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
@@ -32,10 +29,7 @@ const Operator = ({
   const [open, setOpen] = useState(false)
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         aria-label={t('operation.more', { ns: 'common' })}
         className={cn(
@@ -46,9 +40,9 @@ const Operator = ({
           event.preventDefault()
           event.stopPropagation()
           ;(event as typeof event & { preventBaseUIHandler?: () => void }).preventBaseUIHandler?.()
-          setOpen(prev => !prev)
+          setOpen((prev) => !prev)
         }}
-        onClick={event => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
@@ -84,14 +78,10 @@ const Operator = ({
           <div className="p-1">
             <div
               className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               <div>{t('nodes.note.editor.showAuthor', { ns: 'workflow' })}</div>
-              <Switch
-                size="lg"
-                checked={showAuthor}
-                onCheckedChange={onShowAuthorChange}
-              />
+              <Switch size="lg" checked={showAuthor} onCheckedChange={onShowAuthorChange} />
             </div>
           </div>
           <DropdownMenuSeparator className="my-0" />

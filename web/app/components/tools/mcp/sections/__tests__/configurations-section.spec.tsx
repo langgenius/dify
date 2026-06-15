@@ -62,7 +62,9 @@ describe('ConfigurationsSection', () => {
 
     it('should call onSseReadTimeoutChange when SSE timeout input changes', () => {
       const onSseReadTimeoutChange = vi.fn()
-      render(<ConfigurationsSection {...defaultProps} onSseReadTimeoutChange={onSseReadTimeoutChange} />)
+      render(
+        <ConfigurationsSection {...defaultProps} onSseReadTimeoutChange={onSseReadTimeoutChange} />,
+      )
 
       const sseInput = screen.getByDisplayValue('300')
       fireEvent.change(sseInput, { target: { value: '500' } })

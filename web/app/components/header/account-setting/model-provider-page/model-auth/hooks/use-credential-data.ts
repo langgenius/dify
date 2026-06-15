@@ -6,16 +6,24 @@ import type {
 import { useMemo } from 'react'
 import { useGetCredential } from './use-auth-service'
 
-export const useCredentialData = (provider: ModelProvider, providerFormSchemaPredefined: boolean, isModelCredential?: boolean, credential?: Credential, model?: CustomModelCredential) => {
+export const useCredentialData = (
+  provider: ModelProvider,
+  providerFormSchemaPredefined: boolean,
+  isModelCredential?: boolean,
+  credential?: Credential,
+  model?: CustomModelCredential,
+) => {
   const configFrom = useMemo(() => {
-    if (providerFormSchemaPredefined)
-      return 'predefined-model'
+    if (providerFormSchemaPredefined) return 'predefined-model'
     return 'custom-model'
   }, [providerFormSchemaPredefined])
-  const {
-    isLoading,
-    data: credentialData = {},
-  } = useGetCredential(provider.provider, isModelCredential, credential?.credential_id, model, configFrom)
+  const { isLoading, data: credentialData = {} } = useGetCredential(
+    provider.provider,
+    isModelCredential,
+    credential?.credential_id,
+    model,
+    configFrom,
+  )
 
   return {
     isLoading,

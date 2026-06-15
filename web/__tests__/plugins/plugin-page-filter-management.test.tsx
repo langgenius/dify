@@ -27,10 +27,7 @@ describe('Plugin Page Filter Management Integration', () => {
       })
       expect(result.current.tagList).toHaveLength(2)
 
-      const updatedTags = [
-        ...initialTags,
-        { name: 'image', label: { en_US: 'Image' } },
-      ]
+      const updatedTags = [...initialTags, { name: 'image', label: { en_US: 'Image' } }]
 
       act(() => {
         result.current.setTagList(updatedTags as never[])

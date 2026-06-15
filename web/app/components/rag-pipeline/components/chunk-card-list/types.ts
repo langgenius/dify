@@ -30,4 +30,4 @@ export const QAItemType = {
   Question: 'question',
   Answer: 'answer',
 } as const
-export type QAItemType = typeof QAItemType[keyof typeof QAItemType]
+export type QAItemType = (typeof QAItemType)[keyof typeof QAItemType]

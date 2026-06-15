@@ -53,13 +53,7 @@ describe('StatusWithAction', () => {
 
     it('should render action button when actionText and onAction are provided', () => {
       const onAction = vi.fn()
-      render(
-        <StatusWithAction
-          description="Test"
-          actionText="Click me"
-          onAction={onAction}
-        />,
-      )
+      render(<StatusWithAction description="Test" actionText="Click me" onAction={onAction} />)
       expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument()
     })
 
@@ -70,11 +64,7 @@ describe('StatusWithAction', () => {
 
     it('should render divider when action is present', () => {
       const { container } = render(
-        <StatusWithAction
-          description="Test"
-          actionText="Click me"
-          onAction={() => {}}
-        />,
+        <StatusWithAction description="Test" actionText="Click me" onAction={() => {}} />,
       )
       // Divider component renders a div with specific classes
       expect(container.querySelector('.bg-divider-regular')).toBeInTheDocument()
@@ -84,13 +74,7 @@ describe('StatusWithAction', () => {
   describe('User Interactions', () => {
     it('should call onAction when action button is clicked', () => {
       const onAction = vi.fn()
-      render(
-        <StatusWithAction
-          description="Test"
-          actionText="Click me"
-          onAction={onAction}
-        />,
-      )
+      render(<StatusWithAction description="Test" actionText="Click me" onAction={onAction} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'Click me' }))
       expect(onAction).toHaveBeenCalledTimes(1)
@@ -99,12 +83,7 @@ describe('StatusWithAction', () => {
     it('should not call onAction when disabled', () => {
       const onAction = vi.fn()
       render(
-        <StatusWithAction
-          description="Test"
-          actionText="Click me"
-          onAction={onAction}
-          disabled
-        />,
+        <StatusWithAction description="Test" actionText="Click me" onAction={onAction} disabled />,
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'Click me' }))
@@ -113,12 +92,7 @@ describe('StatusWithAction', () => {
 
     it('should apply disabled styles when disabled prop is true', () => {
       render(
-        <StatusWithAction
-          description="Test"
-          actionText="Click me"
-          onAction={() => {}}
-          disabled
-        />,
+        <StatusWithAction description="Test" actionText="Click me" onAction={() => {}} disabled />,
       )
 
       const actionButton = screen.getByRole('button', { name: 'Click me' })

@@ -22,7 +22,7 @@ vi.mock('@/hooks/use-theme', () => ({
 
 // Mock BlockIcon as it has complex dependencies
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  default: ({ type, toolIcon }: { type: string, toolIcon?: string }) => (
+  default: ({ type, toolIcon }: { type: string; toolIcon?: string }) => (
     <div data-testid="block-icon" data-type={type} data-tool-icon={toolIcon || ''}>
       BlockIcon
     </div>
@@ -91,12 +91,7 @@ describe('TriggerByDisplay', () => {
     })
 
     it('should hide text when showText is false', () => {
-      render(
-        <TriggerByDisplay
-          triggeredFrom={WorkflowRunTriggeredFrom.APP_RUN}
-          showText={false}
-        />,
-      )
+      render(<TriggerByDisplay triggeredFrom={WorkflowRunTriggeredFrom.APP_RUN} showText={false} />)
 
       expect(screen.queryByText('appLog.triggerBy.appRun')).not.toBeInTheDocument()
     })
@@ -319,10 +314,7 @@ describe('TriggerByDisplay', () => {
 
     it('should handle empty className', () => {
       const { container } = render(
-        <TriggerByDisplay
-          triggeredFrom={WorkflowRunTriggeredFrom.APP_RUN}
-          className=""
-        />,
+        <TriggerByDisplay triggeredFrom={WorkflowRunTriggeredFrom.APP_RUN} className="" />,
       )
 
       const wrapper = container.firstChild as HTMLElement

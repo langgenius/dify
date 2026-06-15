@@ -16,9 +16,7 @@ import { useSendMail } from '@/service/use-common'
 type Props = {
   onSuccess: (email: string, payload: string) => void
 }
-export default function Form({
-  onSuccess,
-}: Props) {
+export default function Form({ onSuccess }: Props) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
@@ -27,8 +25,7 @@ export default function Form({
   const { mutateAsync: submitMail, isPending } = useSendMail()
 
   const handleSubmit = useCallback(async () => {
-    if (isPending)
-      return
+    if (isPending) return
 
     if (!email) {
       toast.error(t('error.emailEmpty', { ns: 'login' }))
@@ -44,10 +41,11 @@ export default function Form({
   }, [email, locale, submitMail, t, isPending, onSuccess])
 
   return (
-    <form onSubmit={(e) => {
-      e.preventDefault()
-      handleSubmit()
-    }}
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        handleSubmit()
+      }}
     >
       <div className="mb-3">
         <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
@@ -56,7 +54,7 @@ export default function Form({
         <div className="mt-1">
           <Input
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             id="email"
             type="email"
             autoComplete="email"
@@ -80,10 +78,7 @@ export default function Form({
 
       <div className="text-[13px] leading-4 font-medium text-text-secondary">
         <span>{t('signup.haveAccount', { ns: 'login' })}</span>
-        <Link
-          className="text-text-accent"
-          href="/signin"
-        >
+        <Link className="text-text-accent" href="/signin">
           {t('signup.signIn', { ns: 'login' })}
         </Link>
       </div>
@@ -113,7 +108,6 @@ export default function Form({
           </div>
         </>
       )}
-
     </form>
   )
 }

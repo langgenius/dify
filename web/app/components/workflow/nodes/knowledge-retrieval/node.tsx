@@ -7,28 +7,23 @@ import { useEffect, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
-const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
-  data,
-}) => {
+const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({ data }) => {
   const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>([])
-  const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+  const datasetsDetail = useDatasetsDetailStore((s) => s.datasetsDetail)
 
   useEffect(() => {
     if (data.dataset_ids?.length > 0) {
       const dataSetsWithDetail = data.dataset_ids.reduce<DataSet[]>((acc, id) => {
-        if (datasetsDetail[id])
-          acc.push(datasetsDetail[id])
+        if (datasetsDetail[id]) acc.push(datasetsDetail[id])
         return acc
       }, [])
       setSelectedDatasets(dataSetsWithDetail)
-    }
-    else {
+    } else {
       setSelectedDatasets([])
     }
   }, [data.dataset_ids, datasetsDetail])
 
-  if (!selectedDatasets.length)
-    return null
+  if (!selectedDatasets.length) return null
 
   return (
     <div className="mb-1 px-3 py-1">
@@ -41,7 +36,10 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
             icon_url: '',
           }
           return (
-            <div key={id} className="flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1">
+            <div
+              key={id}
+              className="flex h-[26px] items-center gap-x-1 rounded-md bg-workflow-block-parma-bg px-1"
+            >
               <AppIcon
                 size="xs"
                 iconType={iconInfo.icon_type}
@@ -50,9 +48,7 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
                 imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
                 className="shrink-0"
               />
-              <div className="w-0 grow truncate system-xs-regular text-text-secondary">
-                {name}
-              </div>
+              <div className="w-0 grow truncate system-xs-regular text-text-secondary">{name}</div>
             </div>
           )
         })}

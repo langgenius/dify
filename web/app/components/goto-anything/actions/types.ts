@@ -39,14 +39,20 @@ type WorkflowNodeSearchResult = {
 
 export type CommandSearchResult = {
   type: 'command'
-} & BaseSearchResult<{ command: string, args?: Record<string, any> }>
+} & BaseSearchResult<{ command: string; args?: Record<string, any> }>
 
 export type RecentSearchResult = {
   type: 'recent'
   originalType: 'app' | 'knowledge'
 } & BaseSearchResult<{ path: string }>
 
-export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult | CommandSearchResult | RecentSearchResult
+export type SearchResult =
+  | AppSearchResult
+  | PluginSearchResult
+  | KnowledgeSearchResult
+  | WorkflowNodeSearchResult
+  | CommandSearchResult
+  | RecentSearchResult
 
 export type ActionItem = {
   key: '@app' | '@knowledge' | '@plugin' | '@node' | '/'
@@ -59,5 +65,5 @@ export type ActionItem = {
     query: string,
     searchTerm: string,
     locale?: string,
-  ) => (Promise<SearchResult[]> | SearchResult[])
+  ) => Promise<SearchResult[]> | SearchResult[]
 }

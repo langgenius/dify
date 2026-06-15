@@ -34,13 +34,14 @@ const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
 const mockGenerationConversationName = vi.mocked(generationConversationName)
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
@@ -65,7 +66,9 @@ const createConversationItem = (overrides: Partial<ConversationItem> = {}): Conv
   ...overrides,
 })
 
-const createConversationData = (overrides: Partial<AppConversationData> = {}): AppConversationData => ({
+const createConversationData = (
+  overrides: Partial<AppConversationData> = {},
+): AppConversationData => ({
   data: [createConversationItem()],
   has_more: false,
   limit: 20,
@@ -95,12 +98,20 @@ describe('useShareConversations', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, undefined, undefined, true, 50)
+      expect(mockFetchConversations).toHaveBeenCalledWith(
+        AppSourceType.webApp,
+        undefined,
+        undefined,
+        true,
+        50,
+      )
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
     })
-    expect(queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(params) })).toBeDefined()
+    expect(
+      queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(params) }),
+    ).toBeDefined()
   })
 
   it('should not fetch conversations when installed app lacks appId', async () => {
@@ -144,7 +155,11 @@ describe('useShareChatList', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.installedApp, 'app-1')
+      expect(mockFetchChatList).toHaveBeenCalledWith(
+        'conversation-1',
+        AppSourceType.installedApp,
+        'app-1',
+      )
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)
@@ -183,7 +198,12 @@ describe('useShareChatList', () => {
       appSourceType: AppSourceType.webApp,
     }
     const initialResponse = { data: [{ id: '1', content: 'initial' }] }
-    const updatedResponse = { data: [{ id: '1', content: 'initial' }, { id: '2', content: 'new message' }] }
+    const updatedResponse = {
+      data: [
+        { id: '1', content: 'initial' },
+        { id: '2', content: 'new message' },
+      ],
+    }
 
     // First fetch
     mockFetchChatList.mockResolvedValueOnce(initialResponse)
@@ -239,7 +259,11 @@ describe('useShareConversationName', () => {
 
     // Assert
     await waitFor(() => {
-      expect(mockGenerationConversationName).toHaveBeenCalledWith(AppSourceType.webApp, undefined, 'conversation-2')
+      expect(mockGenerationConversationName).toHaveBeenCalledWith(
+        AppSourceType.webApp,
+        undefined,
+        'conversation-2',
+      )
     })
     await waitFor(() => {
       expect(result.current.data).toEqual(response)

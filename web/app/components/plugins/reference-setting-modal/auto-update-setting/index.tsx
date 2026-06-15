@@ -18,7 +18,12 @@ import Label from '../label'
 import PluginsPicker from './plugins-picker'
 import StrategyPicker from './strategy-picker'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from './types'
-import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds, dayjsToTimeOfDay, timeOfDayToDayjs } from './utils'
+import {
+  convertLocalSecondsToUTCDaySeconds,
+  convertUTCDaySecondsToLocalSeconds,
+  dayjsToTimeOfDay,
+  timeOfDayToDayjs,
+} from './utils'
 
 const i18nPrefix = 'autoUpdate'
 
@@ -29,10 +34,8 @@ type Props = Readonly<{
 
 const SettingTimeZone: FC<{
   children?: React.ReactNode
-}> = ({
-  children,
-}) => {
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+}> = ({ children }) => {
+  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
   return (
     <button
       type="button"
@@ -43,23 +46,15 @@ const SettingTimeZone: FC<{
     </button>
   )
 }
-const AutoUpdateSetting: FC<Props> = ({
-  payload,
-  onChange,
-}) => {
+const AutoUpdateSetting: FC<Props> = ({ payload, onChange }) => {
   const { t } = useTranslation()
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
-    select: data => data.profile.timezone ?? undefined,
+    select: (data) => data.profile.timezone ?? undefined,
   })
 
-  const {
-    strategy_setting,
-    upgrade_time_of_day,
-    upgrade_mode,
-    exclude_plugins,
-    include_plugins,
-  } = payload
+  const { strategy_setting, upgrade_time_of_day, upgrade_mode, exclude_plugins, include_plugins } =
+    payload
 
   const minuteFilter = useCallback((minutes: string[]) => {
     return minutes.filter((m) => {
@@ -89,59 +84,75 @@ const AutoUpdateSetting: FC<Props> = ({
     }
   }, [upgrade_mode, exclude_plugins, include_plugins])
 
-  const handlePluginsChange = useCallback((newPlugins: string[]) => {
-    if (upgrade_mode === AUTO_UPDATE_MODE.partial) {
-      onChange({
-        ...payload,
-        include_plugins: newPlugins,
-      })
-    }
-    else if (upgrade_mode === AUTO_UPDATE_MODE.exclude) {
-      onChange({
-        ...payload,
-        exclude_plugins: newPlugins,
-      })
-    }
-  }, [payload, upgrade_mode, onChange])
-  const handleChange = useCallback((key: keyof AutoUpdateConfig) => {
-    return (value: AutoUpdateConfig[keyof AutoUpdateConfig]) => {
-      onChange({
-        ...payload,
-        [key]: value,
-      })
-    }
-  }, [payload, onChange])
+  const handlePluginsChange = useCallback(
+    (newPlugins: string[]) => {
+      if (upgrade_mode === AUTO_UPDATE_MODE.partial) {
+        onChange({
+          ...payload,
+          include_plugins: newPlugins,
+        })
+      } else if (upgrade_mode === AUTO_UPDATE_MODE.exclude) {
+        onChange({
+          ...payload,
+          exclude_plugins: newPlugins,
+        })
+      }
+    },
+    [payload, upgrade_mode, onChange],
+  )
+  const handleChange = useCallback(
+    (key: keyof AutoUpdateConfig) => {
+      return (value: AutoUpdateConfig[keyof AutoUpdateConfig]) => {
+        onChange({
+          ...payload,
+          [key]: value,
+        })
+      }
+    },
+    [payload, onChange],
+  )
 
-  const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
-    return (
-      <button
-        type="button"
-        className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-        onClick={onClick}
-      >
-        <div className="flex w-0 grow items-center gap-x-1">
-          <RiTimeLine className={cn(
-            'size-4 shrink-0 text-text-tertiary',
-            isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-          )}
-          />
-          {inputElem}
-        </div>
-        <div className="system-sm-regular text-text-tertiary">{convertTimezoneToOffsetStr(timezone)}</div>
-      </button>
-    )
-  }, [timezone])
+  const renderTimePickerTrigger = useCallback(
+    ({ inputElem, onClick, isOpen }: TriggerParams) => {
+      return (
+        <button
+          type="button"
+          className="group flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg border-none bg-components-input-bg-normal px-2 text-left hover:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          onClick={onClick}
+        >
+          <div className="flex w-0 grow items-center gap-x-1">
+            <RiTimeLine
+              className={cn(
+                'size-4 shrink-0 text-text-tertiary',
+                isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+              )}
+            />
+            {inputElem}
+          </div>
+          <div className="system-sm-regular text-text-tertiary">
+            {convertTimezoneToOffsetStr(timezone)}
+          </div>
+        </button>
+      )
+    },
+    [timezone],
+  )
 
   return (
     <div className="self-stretch px-6">
       <div className="my-3 flex items-center">
-        <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.updateSettings`, { ns: 'plugin' })}</div>
+        <div className="system-xs-medium-uppercase text-text-tertiary">
+          {t(`${i18nPrefix}.updateSettings`, { ns: 'plugin' })}
+        </div>
         <div className="ml-2 h-px grow bg-divider-subtle"></div>
       </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label label={t(`${i18nPrefix}.automaticUpdates`, { ns: 'plugin' })} description={strategyDescription} />
+          <Label
+            label={t(`${i18nPrefix}.automaticUpdates`, { ns: 'plugin' })}
+            description={strategyDescription}
+          />
           <StrategyPicker value={strategy_setting} onChange={handleChange('strategy_setting')} />
         </div>
         {strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
@@ -150,10 +161,20 @@ const AutoUpdateSetting: FC<Props> = ({
               <Label label={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })} />
               <div className="flex flex-col items-end">
                 <TimePicker
-                  value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
+                  value={timeOfDayToDayjs(
+                    convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!),
+                  )}
                   timezone={timezone}
-                  onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
-                  onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
+                  onChange={(v) =>
+                    handleChange('upgrade_time_of_day')(
+                      convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!),
+                    )
+                  }
+                  onClear={() =>
+                    handleChange('upgrade_time_of_day')(
+                      convertLocalSecondsToUTCDaySeconds(0, timezone!),
+                    )
+                  }
                   title={t(`${i18nPrefix}.updateTime`, { ns: 'plugin' })}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
@@ -173,7 +194,11 @@ const AutoUpdateSetting: FC<Props> = ({
             <div>
               <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`, { ns: 'plugin' })} />
               <div className="mt-1 flex w-full items-start justify-between gap-2">
-                {[AUTO_UPDATE_MODE.update_all, AUTO_UPDATE_MODE.exclude, AUTO_UPDATE_MODE.partial].map(option => (
+                {[
+                  AUTO_UPDATE_MODE.update_all,
+                  AUTO_UPDATE_MODE.exclude,
+                  AUTO_UPDATE_MODE.partial,
+                ].map((option) => (
                   <OptionCard
                     key={option}
                     title={t(`${i18nPrefix}.upgradeMode.${option}`, { ns: 'plugin' })}

@@ -18,17 +18,17 @@ const Footer: FC<DatePickerFooterProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn(
-      'flex items-center justify-between border-t-[0.5px] border-divider-regular p-2',
-      !needTimePicker && 'justify-end',
-    )}
+    <div
+      className={cn(
+        'flex items-center justify-between border-t-[0.5px] border-divider-regular p-2',
+        !needTimePicker && 'justify-end',
+      )}
     >
       {/* Time Picker */}
       {needTimePicker && (
         <button
           type="button"
-          className="flex items-center gap-x-px rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1
-                      system-xs-medium text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
+          className="flex items-center gap-x-px rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 system-xs-medium text-components-button-secondary-accent-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]"
           onClick={handleClickTimePicker}
         >
           <RiTimeLine className="size-3.5" />

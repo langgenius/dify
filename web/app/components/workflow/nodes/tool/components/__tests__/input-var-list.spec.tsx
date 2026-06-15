@@ -29,12 +29,14 @@ const mockApps: App[] = [
     icon: 'W',
     icon_background: '#FFEAD5',
     model_config: {
-      user_input_form: [{
-        'text-input': {
-          label: 'Topic',
-          variable: 'topic',
+      user_input_form: [
+        {
+          'text-input': {
+            label: 'Topic',
+            variable: 'topic',
+          },
         },
-      }],
+      ],
     },
   } as App,
 ]
@@ -62,33 +64,37 @@ class MockMutationObserver {
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
   useModelList: () => ({
-    data: [{
-      provider: 'openai',
-      icon_small: {
-        en_US: 'https://example.com/openai.png',
-        zh_Hans: 'https://example.com/openai.png',
-      },
-      label: {
-        en_US: 'OpenAI',
-        zh_Hans: 'OpenAI',
-      },
-      models: [{
-        model: 'gpt-4o',
+    data: [
+      {
+        provider: 'openai',
+        icon_small: {
+          en_US: 'https://example.com/openai.png',
+          zh_Hans: 'https://example.com/openai.png',
+        },
         label: {
-          en_US: 'GPT-4o',
-          zh_Hans: 'GPT-4o',
+          en_US: 'OpenAI',
+          zh_Hans: 'OpenAI',
         },
-        model_type: ModelTypeEnum.textGeneration,
-        fetch_from: ConfigurationMethodEnum.predefinedModel,
+        models: [
+          {
+            model: 'gpt-4o',
+            label: {
+              en_US: 'GPT-4o',
+              zh_Hans: 'GPT-4o',
+            },
+            model_type: ModelTypeEnum.textGeneration,
+            fetch_from: ConfigurationMethodEnum.predefinedModel,
+            status: ModelStatusEnum.active,
+            model_properties: {
+              mode: 'chat',
+            },
+            load_balancing_enabled: false,
+            features: [],
+          },
+        ],
         status: ModelStatusEnum.active,
-        model_properties: {
-          mode: 'chat',
-        },
-        load_balancing_enabled: false,
-        features: [],
-      }],
-      status: ModelStatusEnum.active,
-    }],
+      },
+    ],
     mutate: vi.fn(),
     isLoading: false,
   }),
@@ -103,10 +109,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
       provider: string
       models: Array<{ model: string }>
     }>,
-    defaultModel?: { provider: string, model: string },
+    defaultModel?: { provider: string; model: string },
   ) => {
-    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+    const currentProvider = modelList.find(
+      (provider) => provider.provider === defaultModel?.provider,
+    )
+    const currentModel = currentProvider?.models.find(
+      (model) => model.model === defaultModel?.model,
+    )
 
     return {
       currentProvider,
@@ -117,7 +127,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/service/use-apps', () => ({
   useAppDetail: (appId: string) => ({
-    data: mockApps.find(app => app.id === appId),
+    data: mockApps.find((app) => app.id === appId),
     isFetching: false,
   }),
 }))
@@ -128,9 +138,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useInfiniteQuery: () => ({
       data: {
-        pages: [{
-          data: mockApps,
-        }],
+        pages: [
+          {
+            data: mockApps,
+          },
+        ],
       },
       isLoading: false,
       isFetchingNextPage: false,
@@ -187,7 +199,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/input-support-select-v
       value={value}
       onFocus={() => onFocusChange?.(true)}
       onBlur={() => onFocusChange?.(false)}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
     />
   ),
 }))
@@ -210,8 +222,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
         onOpen?.()
         if (defaultVarKindType === ToolVarType.variable)
           onChange(['node-1', 'file'], ToolVarType.variable)
-        else
-          onChange('42', defaultVarKindType || ToolVarType.constant)
+        else onChange('42', defaultVarKindType || ToolVarType.constant)
       }}
     >
       {`pick-${schema?.variable || 'var'}`}
@@ -219,31 +230,40 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   ),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-trial-credits', () => ({
-  useTrialCredits: () => ({
-    isExhausted: false,
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-trial-credits',
+  () => ({
+    useTrialCredits: () => ({
+      isExhausted: false,
+    }),
   }),
-}))
+)
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-change-provider-priority', () => ({
-  useChangeProviderPriority: () => ({
-    isChangingPriority: false,
-    handleChangePriority: vi.fn(),
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-change-provider-priority',
+  () => ({
+    useChangeProviderPriority: () => ({
+      isChangingPriority: false,
+      handleChangePriority: vi.fn(),
+    }),
   }),
-}))
+)
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state', () => ({
-  useCredentialPanelState: () => ({
-    variant: 'api-active',
-    priority: 'apiKeyOnly',
-    supportsCredits: false,
-    showPrioritySwitcher: false,
-    hasCredentials: true,
-    isCreditsExhausted: false,
-    credentialName: 'Primary key',
-    credits: 0,
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
+  () => ({
+    useCredentialPanelState: () => ({
+      variant: 'api-active',
+      priority: 'apiKeyOnly',
+      supportsCredits: false,
+      showPrioritySwitcher: false,
+      hasCredentials: true,
+      isCreditsExhausted: false,
+      credentialName: 'Primary key',
+      credits: 0,
+    }),
   }),
-}))
+)
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth/hooks', () => ({
   useCredentialStatus: () => ({
@@ -303,12 +323,7 @@ type TestHarnessProps = {
   onOpen?: (index: number) => void
 }
 
-const TestHarness = ({
-  schema,
-  initialValue = {},
-  onChangeSpy,
-  onOpen,
-}: TestHarnessProps) => {
+const TestHarness = ({ schema, initialValue = {}, onChangeSpy, onOpen }: TestHarnessProps) => {
   const [value, setValue] = useState<ToolVarInputs>(initialValue)
 
   return (
@@ -329,22 +344,22 @@ const TestHarness = ({
 const renderInputVarList = (ui: React.ReactElement) => {
   const providerContextValue = createMockProviderContextValue({
     isAPIKeySet: true,
-    modelProviders: [{
-      provider: 'openai',
-      label: {
-        en_US: 'OpenAI',
-        zh_Hans: 'OpenAI',
+    modelProviders: [
+      {
+        provider: 'openai',
+        label: {
+          en_US: 'OpenAI',
+          zh_Hans: 'OpenAI',
+        },
+        preferred_provider_type: 'custom',
+        configurate_methods: [ConfigurationMethodEnum.predefinedModel],
+        supported_model_types: [ModelTypeEnum.textGeneration],
       },
-      preferred_provider_type: 'custom',
-      configurate_methods: [ConfigurationMethodEnum.predefinedModel],
-      supported_model_types: [ModelTypeEnum.textGeneration],
-    }] as ReturnType<typeof createMockProviderContextValue>['modelProviders'],
+    ] as ReturnType<typeof createMockProviderContextValue>['modelProviders'],
   })
 
   return renderWithSystemFeatures(
-    <ProviderContext.Provider value={providerContextValue}>
-      {ui}
-    </ProviderContext.Provider>,
+    <ProviderContext.Provider value={providerContextValue}>{ui}</ProviderContext.Provider>,
   )
 }
 
@@ -357,11 +372,13 @@ describe('InputVarList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAvailableVarList.mockReturnValue({
-      availableVars: [{
-        nodeId: 'node-1',
-        title: 'Node 1',
-        vars: [{ variable: 'score', type: VarType.number }],
-      }],
+      availableVars: [
+        {
+          nodeId: 'node-1',
+          title: 'Node 1',
+          vars: [{ variable: 'score', type: VarType.number }],
+        },
+      ],
       availableNodesWithParent: [],
     })
   })
@@ -455,11 +472,13 @@ describe('InputVarList', () => {
             scope: 'llm',
           }),
         ]}
-        initialValue={{
-          model: {
-            credential_id: 'credential-1',
-          },
-        } as unknown as ToolVarInputs}
+        initialValue={
+          {
+            model: {
+              credential_id: 'credential-1',
+            },
+          } as unknown as ToolVarInputs
+        }
         onChangeSpy={onChange}
       />,
     )
@@ -497,7 +516,9 @@ describe('InputVarList', () => {
 
     await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
     await user.click(screen.getByText('workflow:errorMsg.configureModel'))
-    await user.click(await screen.findByRole('combobox', { name: 'plugin.detailPanel.configureModel' }))
+    await user.click(
+      await screen.findByRole('combobox', { name: 'plugin.detailPanel.configureModel' }),
+    )
     await user.click(await screen.findByRole('option', { name: /GPT-4o/i }))
 
     expect(onChange).toHaveBeenLastCalledWith({

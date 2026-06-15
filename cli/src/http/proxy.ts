@@ -3,7 +3,7 @@ import { EnvHttpProxyAgent } from 'undici'
 const PROXY_ENV_KEYS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy'] as const
 
 export function hasProxyEnv(): boolean {
-  return PROXY_ENV_KEYS.some(k => (process.env[k] ?? '') !== '')
+  return PROXY_ENV_KEYS.some((k) => (process.env[k] ?? '') !== '')
 }
 
 let resolved = false

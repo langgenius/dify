@@ -2,23 +2,17 @@ import type { FC } from 'react'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-} from 'react'
-import {
-  Background,
-  useViewport,
-} from 'reactflow'
+import { memo } from 'react'
+import { Background, useViewport } from 'reactflow'
 
-const Node: FC<NodeProps<IterationNodeType>> = ({
-  id,
-}) => {
+const Node: FC<NodeProps<IterationNodeType>> = ({ id }) => {
   const { zoom } = useViewport()
 
   return (
-    <div className={cn(
-      'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
-    )}
+    <div
+      className={cn(
+        'relative h-full min-h-[90px] w-full min-w-[240px] rounded-2xl bg-workflow-canvas-workflow-bg',
+      )}
     >
       <Background
         id={`iteration-background-${id}`}

@@ -17,8 +17,9 @@ export const fetchTryAppDatasets = (appId: string, ids: string[]): Promise<DataS
 }
 
 export const fetchTryAppFlowPreview = (appId: string): Promise<TryAppFlowPreview> => {
-  return consoleClient.trialApps.workflows({ params: { appId } })
-    .then(res => res as TryAppFlowPreview)
+  return consoleClient.trialApps
+    .workflows({ params: { appId } })
+    .then((res) => res as TryAppFlowPreview)
 }
 
 export const fetchTryAppParams = (appId: string): Promise<ChatConfig> => {

@@ -15,7 +15,15 @@ vi.mock('@/app/components/workflow/nodes/knowledge-base/default', () => ({
 }))
 
 vi.mock('@/app/components/workflow/utils', () => ({
-  generateNewNode: ({ id, data, position }: { id: string, data: Record<string, unknown>, position: { x: number, y: number } }) => ({
+  generateNewNode: ({
+    id,
+    data,
+    position,
+  }: {
+    id: string
+    data: Record<string, unknown>
+    position: { x: number; y: number }
+  }) => ({
     newNode: { id, data, position, type: 'custom' },
   }),
 }))

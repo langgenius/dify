@@ -16,14 +16,11 @@ type Props = Readonly<{
   onOpenTagManagement?: () => void
 }>
 
-const Datasets = ({
-  tags,
-  keywords,
-  includeAll,
-  onOpenTagManagement = () => {},
-}: Props) => {
+const Datasets = ({ tags, keywords, includeAll, onOpenTagManagement = () => {} }: Props) => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
+  const isCurrentWorkspaceEditor = useAppContextWithSelector(
+    (state) => state.isCurrentWorkspaceEditor,
+  )
   const {
     data: datasetList,
     fetchNextPage,
@@ -44,7 +41,8 @@ const Datasets = ({
   const observerRef = useRef<IntersectionObserver>(null)
   const pages = datasetList?.pages ?? []
   const datasets = pages.flatMap(({ data }) => data)
-  const showDatasetSkeleton = !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
+  const showDatasetSkeleton =
+    !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
 
   useEffect(() => {
     document.title = `${t('knowledge', { ns: 'dataset' })} - Dify`
@@ -52,12 +50,15 @@ const Datasets = ({
 
   useEffect(() => {
     if (anchorRef.current) {
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && hasNextPage && !isFetching && !isPlaceholderData)
-          fetchNextPage()
-      }, {
-        rootMargin: '100px',
-      })
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]!.isIntersecting && hasNextPage && !isFetching && !isPlaceholderData)
+            fetchNextPage()
+        },
+        {
+          rootMargin: '100px',
+        },
+      )
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
@@ -67,11 +68,18 @@ const Datasets = ({
     <>
       <nav className="grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {isCurrentWorkspaceEditor && <NewDatasetCard />}
-        {showDatasetSkeleton
-          ? <DatasetCardSkeleton label={t('loading', { ns: 'common' })} />
-          : datasets.map(dataset => (
-              <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
-            )}
+        {showDatasetSkeleton ? (
+          <DatasetCardSkeleton label={t('loading', { ns: 'common' })} />
+        ) : (
+          datasets.map((dataset) => (
+            <DatasetCard
+              key={dataset.id}
+              dataset={dataset}
+              onSuccess={invalidDatasetList}
+              onOpenTagManagement={onOpenTagManagement}
+            />
+          ))
+        )}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
       </nav>

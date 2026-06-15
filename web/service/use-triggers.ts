@@ -32,12 +32,12 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     labels: provider.tags || [],
     plugin_id: provider.plugin_id,
     plugin_unique_identifier: provider.plugin_unique_identifier || '',
-    events: provider.events.map(event => ({
+    events: provider.events.map((event) => ({
       name: event.name,
       author: provider.author,
       label: event.identity.label,
       description: event.description,
-      parameters: event.parameters.map(param => ({
+      parameters: event.parameters.map((param) => ({
         name: param.name,
         label: param.label,
         human_description: param.description || param.label,
@@ -46,10 +46,11 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
         llm_description: JSON.stringify(param.description || {}),
         required: param.required || false,
         default: param.default || '',
-        options: param.options?.map(option => ({
-          label: option.label,
-          value: option.value,
-        })) || [],
+        options:
+          param.options?.map((option) => ({
+            label: option.label,
+            value: option.value,
+          })) || [],
         multiple: param.multiple || false,
       })),
       labels: provider.tags || [],
@@ -100,10 +101,7 @@ export const useTriggerSubscriptions = (provider: string, enabled = true) => {
 export const useCreateTriggerSubscriptionBuilder = () => {
   return useMutation({
     mutationKey: consoleQuery.triggers.subscriptionBuilderCreate.mutationKey(),
-    mutationFn: (payload: {
-      provider: string
-      credential_type?: string
-    }) => {
+    mutationFn: (payload: { provider: string; credential_type?: string }) => {
       const { provider, ...body } = payload
       return consoleClient.triggers.subscriptionBuilderCreate({
         params: { provider },
@@ -232,8 +230,13 @@ export const useTriggerSubscriptionBuilderLogs = (
   const { enabled = true, refetchInterval = false } = options
 
   return useQuery<{ logs: TriggerLogEntity[] }>({
-    queryKey: consoleQuery.triggers.subscriptionBuilderLogs.queryKey({ input: { params: { provider, subscriptionBuilderId } } }),
-    queryFn: () => consoleClient.triggers.subscriptionBuilderLogs({ params: { provider, subscriptionBuilderId } }),
+    queryKey: consoleQuery.triggers.subscriptionBuilderLogs.queryKey({
+      input: { params: { provider, subscriptionBuilderId } },
+    }),
+    queryFn: () =>
+      consoleClient.triggers.subscriptionBuilderLogs({
+        params: { provider, subscriptionBuilderId },
+      }),
     enabled: enabled && !!provider && !!subscriptionBuilderId,
     refetchInterval,
   })
@@ -282,7 +285,7 @@ export const useInitiateTriggerOAuth = () => {
   return useMutation({
     mutationKey: consoleQuery.triggers.oauthInitiate.mutationKey(),
     mutationFn: (provider: string) => {
-      return get<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>(
+      return get<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
         {},
         { silent: true },
@@ -292,17 +295,30 @@ export const useInitiateTriggerOAuth = () => {
 }
 
 // ===== Dynamic Options Support =====
-export const useTriggerPluginDynamicOptions = (payload: {
-  plugin_id: string
-  provider: string
-  action: string
-  parameter: string
-  credential_id: string
-  credentials?: Record<string, unknown>
-  extra?: Record<string, unknown>
-}, enabled = true) => {
+export const useTriggerPluginDynamicOptions = (
+  payload: {
+    plugin_id: string
+    provider: string
+    action: string
+    parameter: string
+    credential_id: string
+    credentials?: Record<string, unknown>
+    extra?: Record<string, unknown>
+  },
+  enabled = true,
+) => {
   return useQuery<{ options: FormOption[] }>({
-    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.credentials, payload.extra],
+    queryKey: [
+      NAME_SPACE,
+      'dynamic-options',
+      payload.plugin_id,
+      payload.provider,
+      payload.action,
+      payload.parameter,
+      payload.credential_id,
+      payload.credentials,
+      payload.extra,
+    ],
     queryFn: () => {
       if (payload.credentials) {
         return post<{ options: FormOption[] }>(
@@ -335,7 +351,13 @@ export const useTriggerPluginDynamicOptions = (payload: {
         { silent: true },
       )
     },
-    enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
+    enabled:
+      enabled &&
+      !!payload.plugin_id &&
+      !!payload.provider &&
+      !!payload.action &&
+      !!payload.parameter &&
+      !!payload.credential_id,
     retry: 0,
     staleTime: 0,
   })

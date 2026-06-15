@@ -54,62 +54,63 @@ const Metadata: FC<MetadataProps> = ({ docDetail, loading, onUpdate }) => {
       {/* Header: title + action buttons */}
       <div className={s.titleWrapper}>
         <span className={s.title}>{t('metadata.title', { ns: 'datasetDocuments' })}</span>
-        {!editStatus
-          ? (
-              <Button onClick={enableEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                <PencilIcon className={s.opIcon} />
-                {t('operation.edit', { ns: 'common' })}
+        {!editStatus ? (
+          <Button onClick={enableEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
+            <PencilIcon className={s.opIcon} />
+            {t('operation.edit', { ns: 'common' })}
+          </Button>
+        ) : (
+          !showDocTypes && (
+            <div className={s.opBtnWrapper}>
+              <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
+                {t('operation.cancel', { ns: 'common' })}
               </Button>
-            )
-          : !showDocTypes && (
-              <div className={s.opBtnWrapper}>
-                <Button onClick={cancelEdit} className={`${s.opBtn} ${s.opCancelBtn}`}>
-                  {t('operation.cancel', { ns: 'common' })}
-                </Button>
-                <Button onClick={saveMetadata} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary" loading={saveLoading}>
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
-              </div>
-            )}
+              <Button
+                onClick={saveMetadata}
+                className={`${s.opBtn} ${s.opSaveBtn}`}
+                variant="primary"
+                loading={saveLoading}
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          )
+        )}
       </div>
 
       {/* Document type display / selector */}
-      {!editStatus
-        ? <DocumentTypeDisplay displayType={docType} />
-        : showDocTypes
-          ? null
-          : (
-              <DocumentTypeDisplay
-                displayType={metadataParams.documentType || ''}
-                showChangeLink={editStatus}
-                onChangeClick={() => setShowDocTypes(true)}
-              />
-            )}
+      {!editStatus ? (
+        <DocumentTypeDisplay displayType={docType} />
+      ) : showDocTypes ? null : (
+        <DocumentTypeDisplay
+          displayType={metadataParams.documentType || ''}
+          showChangeLink={editStatus}
+          onChangeClick={() => setShowDocTypes(true)}
+        />
+      )}
 
       {/* Divider between type display and fields (skip when in first-time selection) */}
-      {(!docType && showDocTypes) ? null : <Divider />}
+      {!docType && showDocTypes ? null : <Divider />}
 
       {/* Doc type selector or editable metadata fields */}
-      {showDocTypes
-        ? (
-            <DocTypeSelector
-              docType={docType}
-              documentType={metadataParams.documentType}
-              tempDocType={tempDocType}
-              onTempDocTypeChange={setTempDocType}
-              onConfirm={confirmDocType}
-              onCancel={cancelDocType}
-            />
-          )
-        : (
-            <MetadataFieldList
-              mainField={metadataParams.documentType || ''}
-              canEdit={editStatus}
-              metadata={metadataParams.metadata}
-              docDetail={docDetail}
-              onFieldUpdate={updateMetadataField}
-            />
-          )}
+      {showDocTypes ? (
+        <DocTypeSelector
+          docType={docType}
+          documentType={metadataParams.documentType}
+          tempDocType={tempDocType}
+          onTempDocTypeChange={setTempDocType}
+          onConfirm={confirmDocType}
+          onCancel={cancelDocType}
+        />
+      ) : (
+        <MetadataFieldList
+          mainField={metadataParams.documentType || ''}
+          canEdit={editStatus}
+          metadata={metadataParams.metadata}
+          docDetail={docDetail}
+          onFieldUpdate={updateMetadataField}
+        />
+      )}
 
       {/* Fixed fields: origin info */}
       <Divider />

@@ -1,12 +1,14 @@
 # Rule Catalog — DB Schema Design
 
 ## Scope
+
 - Covers: model/base inheritance, schema boundaries in model properties, tenant-aware schema design, index redundancy checks, dialect portability in models, and cross-database compatibility in migrations.
 - Does NOT cover: session lifecycle, transaction boundaries, and query execution patterns (handled by `sqlalchemy-rule.md`).
 
 ## Rules
 
 ### Do not query other tables inside `@property`
+
 - Category: [maintainability, performance]
 - Severity: critical
 - Description: A model `@property` must not open sessions or query other tables. This hides dependencies across models, tightly couples schema objects to data access, and can cause N+1 query explosions when iterating collections.
@@ -16,6 +18,7 @@
   - For list/batch reads, fetch required related data explicitly (join/preload/bulk query) before rendering derived values.
 - Example:
   - Bad:
+
     ```python
     class Conversation(TypeBase):
         __tablename__ = "conversations"
@@ -26,7 +29,9 @@
                 app = session.execute(select(App).where(App.id == self.app_id)).scalar_one()
                 return app.name
     ```
+
   - Good:
+
     ```python
     class Conversation(TypeBase):
         __tablename__ = "conversations"
@@ -40,6 +45,7 @@
     ```
 
 ### Prefer including `tenant_id` in model definitions
+
 - Category: maintainability
 - Severity: suggestion
 - Description: In multi-tenant domains, include `tenant_id` in schema definitions whenever the entity belongs to tenant-owned data. This improves data isolation safety and keeps future partitioning/sharding strategies practical as data volume grows.
@@ -49,6 +55,7 @@
   - Exception: if a table is explicitly designed as non-tenant-scoped global metadata, document that design decision clearly.
 - Example:
   - Bad:
+
     ```python
     from sqlalchemy.orm import Mapped
 
@@ -57,7 +64,9 @@
         id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
         name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     ```
+
   - Good:
+
     ```python
     from sqlalchemy.orm import Mapped
 
@@ -69,6 +78,7 @@
     ```
 
 ### Detect and avoid duplicate/redundant indexes
+
 - Category: performance
 - Severity: suggestion
 - Description: Review index definitions for leftmost-prefix redundancy. For example, index `(a, b, c)` can safely cover most lookups for `(a, b)`. Keeping both may increase write overhead and can mislead the optimizer into suboptimal execution plans.
@@ -93,6 +103,7 @@
     ```
 
 ### Avoid PostgreSQL-only dialect usage in models; wrap in `models.types`
+
 - Category: maintainability
 - Severity: critical
 - Description: Model/schema definitions should avoid PostgreSQL-only constructs directly in business models. When database-specific behavior is required, encapsulate it in `api/models/types.py` using both PostgreSQL and MySQL dialect implementations, then consume that abstraction from model code.
@@ -101,6 +112,7 @@
   - Add or extend wrappers in `models.types` (for example, `AdjustedJSON`, `LongText`, `BinaryData`) to normalize behavior across PostgreSQL and MySQL.
 - Example:
   - Bad:
+
     ```python
     from sqlalchemy.dialects.postgresql import JSONB
     from sqlalchemy.orm import Mapped
@@ -109,7 +121,9 @@
         __tablename__ = "tool_configs"
         config: Mapped[dict] = mapped_column(JSONB, nullable=False)
     ```
+
   - Good:
+
     ```python
     from sqlalchemy.orm import Mapped
 
@@ -121,6 +135,7 @@
     ```
 
 ### Guard migration incompatibilities with dialect checks and shared types
+
 - Category: maintainability
 - Severity: critical
 - Description: Migration scripts under `api/migrations/versions/` must account for PostgreSQL/MySQL incompatibilities explicitly. For dialect-sensitive DDL or defaults, branch on the active dialect (for example, `conn.dialect.name == "postgresql"`), and prefer reusable compatibility abstractions from `models.types` where applicable.
@@ -142,6 +157,7 @@
         )
     ```
   - Good:
+
     ```python
     def _is_pg(conn) -> bool:
         return conn.dialect.name == "postgresql"

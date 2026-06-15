@@ -9,13 +9,15 @@ import { AppModeEnum } from '@/types/app'
 import { useMCPServiceCardState } from '../use-mcp-service-card'
 
 // Mutable mock data for MCP server detail
-let mockMCPServerDetailData: {
-  id: string
-  status: string
-  server_code: string
-  description: string
-  parameters: Record<string, unknown>
-} | undefined = {
+let mockMCPServerDetailData:
+  | {
+      id: string
+      status: string
+      server_code: string
+      description: string
+      parameters: Record<string, unknown>
+    }
+  | undefined = {
   id: 'server-123',
   status: 'active',
   server_code: 'abc123',
@@ -84,12 +86,15 @@ describe('useMCPServiceCardState', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 
-  const createMockAppInfo = (mode: AppModeEnum = AppModeEnum.CHAT): AppDetailResponse & Partial<AppSSO> => ({
-    id: 'app-123',
-    name: 'Test App',
-    mode,
-    api_base_url: 'https://api.example.com/v1',
-  } as AppDetailResponse & Partial<AppSSO>)
+  const createMockAppInfo = (
+    mode: AppModeEnum = AppModeEnum.CHAT,
+  ): AppDetailResponse & Partial<AppSSO> =>
+    ({
+      id: 'app-123',
+      name: 'Test App',
+      mode,
+      api_base_url: 'https://api.example.com/v1',
+    }) as AppDetailResponse & Partial<AppSSO>
 
   beforeEach(() => {
     // Reset mock data to default (published server)
@@ -105,10 +110,9 @@ describe('useMCPServiceCardState', () => {
   describe('Initialization', () => {
     it('should initialize with correct default values for basic app', () => {
       const appInfo = createMockAppInfo(AppModeEnum.CHAT)
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.serverPublished).toBe(true)
       expect(result.current.serverActivated).toBe(true)
@@ -118,20 +122,18 @@ describe('useMCPServiceCardState', () => {
 
     it('should initialize with correct values for workflow app', () => {
       const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.isLoading).toBe(false)
     })
 
     it('should initialize with correct values for advanced chat app', () => {
       const appInfo = createMockAppInfo(AppModeEnum.ADVANCED_CHAT)
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.isLoading).toBe(false)
     })
@@ -140,10 +142,9 @@ describe('useMCPServiceCardState', () => {
   describe('Server URL Generation', () => {
     it('should generate correct server URL when published', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.serverURL).toBe('https://api.example.com/mcp/server/abc123/mcp')
     })
@@ -152,20 +153,18 @@ describe('useMCPServiceCardState', () => {
   describe('Permission Flags', () => {
     it('should have isCurrentWorkspaceManager as true', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.isCurrentWorkspaceManager).toBe(true)
     })
 
     it('should have toggleDisabled false when editor has permissions', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       // Toggle is not disabled when user has permissions and app is published
       expect(typeof result.current.toggleDisabled).toBe('boolean')
@@ -173,10 +172,9 @@ describe('useMCPServiceCardState', () => {
 
     it('should have toggleDisabled true when triggerModeDisabled is true', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, true),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, true), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.toggleDisabled).toBe(true)
     })
@@ -185,10 +183,9 @@ describe('useMCPServiceCardState', () => {
   describe('UI State Actions', () => {
     it('should open confirm delete modal', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.showConfirmDelete).toBe(false)
 
@@ -201,10 +198,9 @@ describe('useMCPServiceCardState', () => {
 
     it('should close confirm delete modal', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.openConfirmDelete()
@@ -219,10 +215,9 @@ describe('useMCPServiceCardState', () => {
 
     it('should open server modal', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.showMCPServerModal).toBe(false)
 
@@ -235,10 +230,9 @@ describe('useMCPServiceCardState', () => {
 
     it('should handle server modal hide', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       act(() => {
         result.current.openServerModal()
@@ -256,10 +250,9 @@ describe('useMCPServiceCardState', () => {
 
     it('should not deactivate when wasActivated is true', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       let hideResult: { shouldDeactivate: boolean } | undefined
       act(() => {
@@ -273,20 +266,18 @@ describe('useMCPServiceCardState', () => {
   describe('Handler Functions', () => {
     it('should have handleGenCode function', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(typeof result.current.handleGenCode).toBe('function')
     })
 
     it('should call handleGenCode and invalidate server detail', async () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       await act(async () => {
         await result.current.handleGenCode()
@@ -298,30 +289,27 @@ describe('useMCPServiceCardState', () => {
 
     it('should have handleStatusChange function', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(typeof result.current.handleStatusChange).toBe('function')
     })
 
     it('should have invalidateBasicAppConfig function', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(typeof result.current.invalidateBasicAppConfig).toBe('function')
     })
 
     it('should call invalidateBasicAppConfig', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       // Call the function - should not throw
       act(() => {
@@ -336,10 +324,9 @@ describe('useMCPServiceCardState', () => {
   describe('Status Change', () => {
     it('should return activated state when status change succeeds', async () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       let statusResult: { activated: boolean } | undefined
       await act(async () => {
@@ -351,10 +338,9 @@ describe('useMCPServiceCardState', () => {
 
     it('should return deactivated state when disabling', async () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       let statusResult: { activated: boolean } | undefined
       await act(async () => {
@@ -371,10 +357,9 @@ describe('useMCPServiceCardState', () => {
       mockMCPServerDetailData = undefined
 
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       // Verify server is not published
       expect(result.current.serverPublished).toBe(false)
@@ -393,20 +378,18 @@ describe('useMCPServiceCardState', () => {
   describe('Loading States', () => {
     it('should have genLoading state', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(typeof result.current.genLoading).toBe('boolean')
     })
 
     it('should have isLoading state for basic app', () => {
       const appInfo = createMockAppInfo(AppModeEnum.CHAT)
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       // Basic app doesn't need workflow, so isLoading should be false
       expect(result.current.isLoading).toBe(false)
@@ -416,10 +399,9 @@ describe('useMCPServiceCardState', () => {
   describe('Detail Data', () => {
     it('should return detail data when available', () => {
       const appInfo = createMockAppInfo()
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(result.current.detail).toBeDefined()
       expect(result.current.detail?.id).toBe('server-123')
@@ -430,20 +412,18 @@ describe('useMCPServiceCardState', () => {
   describe('Latest Params', () => {
     it('should return latestParams for workflow app', () => {
       const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW)
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(Array.isArray(result.current.latestParams)).toBe(true)
     })
 
     it('should return latestParams for basic app', () => {
       const appInfo = createMockAppInfo(AppModeEnum.CHAT)
-      const { result } = renderHook(
-        () => useMCPServiceCardState(appInfo, false),
-        { wrapper: createWrapper() },
-      )
+      const { result } = renderHook(() => useMCPServiceCardState(appInfo, false), {
+        wrapper: createWrapper(),
+      })
 
       expect(Array.isArray(result.current.latestParams)).toBe(true)
     })

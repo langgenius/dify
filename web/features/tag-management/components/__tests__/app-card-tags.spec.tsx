@@ -18,9 +18,13 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
 
     return (
       <div role="group" aria-label="Tag selector mock">
-        <span>{props.value.map(tag => tag.name).join(',')}</span>
-        <button type="button" onClick={props.onOpenTagManagement}>Manage Tags</button>
-        <button type="button" onClick={props.onTagsChange}>Tags Changed</button>
+        <span>{props.value.map((tag) => tag.name).join(',')}</span>
+        <button type="button" onClick={props.onOpenTagManagement}>
+          Manage Tags
+        </button>
+        <button type="button" onClick={props.onTagsChange}>
+          Tags Changed
+        </button>
       </div>
     )
   },
@@ -42,12 +46,14 @@ describe('AppCardTags', () => {
 
       expect(screen.getByRole('group', { name: 'Tag selector mock' })).toBeInTheDocument()
       expect(screen.getByText('Frontend,Backend')).toBeInTheDocument()
-      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        placement: 'bottom-start',
-        targetId: 'app-1',
-        type: 'app',
-        value: tags,
-      }))
+      expect(renderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          placement: 'bottom-start',
+          targetId: 'app-1',
+          type: 'app',
+          value: tags,
+        }),
+      )
     })
 
     it('should keep the overflow mask independent from app card hover', () => {
@@ -87,9 +93,11 @@ describe('AppCardTags', () => {
     it('should pass an empty selection when the app has no tags', () => {
       render(<AppCardTags appId="app-1" tags={[]} />)
 
-      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
-        value: [],
-      }))
+      expect(renderTagSelector).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: [],
+        }),
+      )
     })
   })
 })

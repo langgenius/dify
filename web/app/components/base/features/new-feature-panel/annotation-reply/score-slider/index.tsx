@@ -11,8 +11,7 @@ type Props = Readonly<{
 }>
 
 const clamp = (value: number, min: number, max: number) => {
-  if (!Number.isFinite(value))
-    return min
+  if (!Number.isFinite(value)) return min
 
   return Math.min(Math.max(value, min), max)
 }
@@ -20,11 +19,7 @@ const clamp = (value: number, min: number, max: number) => {
 const SCORE_MIN = 0
 const SCORE_MAX = 100
 
-const ScoreSlider: FC<Props> = ({
-  className,
-  value,
-  onChange,
-}) => {
+const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
   const { t } = useTranslation()
   const safeValue = clamp(value, SCORE_MIN, SCORE_MAX)
 

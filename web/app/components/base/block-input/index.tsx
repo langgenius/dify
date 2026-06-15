@@ -13,15 +13,15 @@ import VarHighlight from '../../app/configuration/base/var-highlight'
 const regex = /\{\{([^}]+)\}\}/g
 
 export const getInputKeys = (value: string) => {
-  const keys = value.match(regex)?.map((item) => {
-    return item.replace('{{', '').replace('}}', '')
-  }) || []
+  const keys =
+    value.match(regex)?.map((item) => {
+      return item.replace('{{', '').replace('}}', '')
+    }) || []
   const keyObj: Record<string, boolean> = {}
   // remove duplicate keys
   const res: string[] = []
   keys.forEach((key) => {
-    if (keyObj[key])
-      return
+    if (keyObj[key]) return
 
     keyObj[key] = true
     res.push(key)
@@ -72,15 +72,9 @@ const BlockInput: FC<IBlockInputProps> = ({
     return parts.map((part, index) => {
       const variableMatch = /^\{\{([^}]+)\}\}$/.exec(part)
       if (variableMatch) {
-        return (
-          <VarHighlight
-            key={`var-${index}`}
-            name={variableMatch[1]!}
-          />
-        )
+        return <VarHighlight key={`var-${index}`} name={variableMatch[1]!} />
       }
-      if (part === '\n')
-        return <br key={`br-${index}`} />
+      if (part === '\n') return <br key={`br-${index}`} />
 
       return <span key={`text-${index}`}>{part}</span>
     })
@@ -92,7 +86,9 @@ const BlockInput: FC<IBlockInputProps> = ({
       const keys = getInputKeys(value)
       const result = checkKeys(keys)
       if (!result.isValid) {
-        toast.error(t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }))
+        toast.error(
+          t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
+        )
         return
       }
       onConfirm(value, keys)
@@ -118,41 +114,48 @@ const BlockInput: FC<IBlockInputProps> = ({
   const editAreaClassName = 'focus:outline-hidden bg-transparent text-sm'
 
   const textAreaContent = (
-    <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
-      {isEditing
-        ? (
-            <div className="h-full px-4 py-2">
-              <textarea
-                ref={contentEditableRef}
-                className={cn(editAreaClassName, 'block size-full resize-none')}
-                placeholder={placeholder}
-                onChange={onValueChange}
-                value={currentValue}
-                onBlur={() => {
-                  blur()
-                  setIsEditing(false)
-                // click confirm also make blur. Then outer value is change. So below code has problem.
-                // setTimeout(() => {
-                //   handleCancel()
-                // }, 1000)
-                }}
-              />
-            </div>
-          )
-        : <TextAreaContentView />}
+    <div
+      className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', 'overflow-y-auto')}
+      onClick={() => !readonly && setIsEditing(true)}
+    >
+      {isEditing ? (
+        <div className="h-full px-4 py-2">
+          <textarea
+            ref={contentEditableRef}
+            className={cn(editAreaClassName, 'block size-full resize-none')}
+            placeholder={placeholder}
+            onChange={onValueChange}
+            value={currentValue}
+            onBlur={() => {
+              blur()
+              setIsEditing(false)
+              // click confirm also make blur. Then outer value is change. So below code has problem.
+              // setTimeout(() => {
+              //   handleCancel()
+              // }, 1000)
+            }}
+          />
+        </div>
+      ) : (
+        <TextAreaContentView />
+      )}
     </div>
   )
 
   return (
-    <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')} data-testid="block-input">
+    <div
+      className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}
+      data-testid="block-input"
+    >
       {textAreaContent}
       {/* footer */}
       {!readonly && (
         <div className="flex pb-2 pl-4">
-          <div className="h-[18px] rounded-md bg-gray-100 px-1 text-xs leading-[18px] text-gray-500">{currentValue?.length}</div>
+          <div className="h-[18px] rounded-md bg-gray-100 px-1 text-xs leading-[18px] text-gray-500">
+            {currentValue?.length}
+          </div>
         </div>
       )}
-
     </div>
   )
 }

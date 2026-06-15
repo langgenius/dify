@@ -6,9 +6,7 @@ import List from './list'
 
 const CreateFromPipeline = () => {
   return (
-    <div
-      className="relative flex h-[calc(100vh-56px)] flex-col overflow-hidden rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
-    >
+    <div className="relative flex h-[calc(100vh-56px)] flex-col overflow-hidden rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle">
       <Effect className="top-[-34px] left-8 opacity-20" />
       <Header />
       <List />

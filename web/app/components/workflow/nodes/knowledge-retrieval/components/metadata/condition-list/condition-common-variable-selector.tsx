@@ -1,15 +1,11 @@
 import type { VarType } from '@/app/components/workflow/types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionCommonVariableSelectorProps = {
-  variables?: { name: string, type: string, value: string }[]
+  variables?: { name: string; type: string; value: string }[]
   value?: string | number
   varType?: VarType
   onChange: (v: string) => void
@@ -24,16 +20,19 @@ const ConditionCommonVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const selected = variables.find(v => v.value === value)
-  const handleChange = useCallback((v: string) => {
-    onChange(v)
-    setOpen(false)
-  }, [onChange])
+  const selected = variables.find((v) => v.value === value)
+  const handleChange = useCallback(
+    (v: string) => {
+      onChange(v)
+      setOpen(false)
+    },
+    [onChange],
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <div className="flex h-6 grow cursor-pointer items-center">
             {selected && (
               <div className="inline-flex h-6 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pr-1.5 pl-[5px] system-xs-medium text-text-secondary shadow-xs">
@@ -53,10 +52,9 @@ const ConditionCommonVariableSelector = ({
               </>
             )}
           </div>
-        )}
+        }
         onClick={(e) => {
-          if (!variables.length)
-            e.preventDefault()
+          if (!variables.length) e.preventDefault()
         }}
       />
       <PopoverContent
@@ -65,7 +63,7 @@ const ConditionCommonVariableSelector = ({
         popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-          {variables.map(v => (
+          {variables.map((v) => (
             <div
               key={v.value}
               className="flex h-6 cursor-pointer items-center rounded-md px-2 system-xs-medium text-text-secondary hover:bg-state-base-hover"

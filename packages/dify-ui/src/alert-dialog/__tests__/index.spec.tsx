@@ -25,8 +25,12 @@ describe('AlertDialog wrapper', () => {
       )
 
       await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Confirm Delete')
-      await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('This action cannot be undone.')
-      await expect.element(document.body.querySelector('.bg-background-overlay') as HTMLElement).toHaveClass('absolute', 'inset-0', 'z-50')
+      await expect
+        .element(screen.getByRole('alertdialog'))
+        .toHaveTextContent('This action cannot be undone.')
+      await expect
+        .element(document.body.querySelector('.bg-background-overlay') as HTMLElement)
+        .toHaveClass('absolute', 'inset-0', 'z-50')
     })
 
     it('should not render content when dialog is closed', async () => {
@@ -108,8 +112,20 @@ describe('AlertDialog wrapper', () => {
         </AlertDialog>,
       )
 
-      await expect.element(screen.getByTestId('actions')).toHaveClass('flex', 'items-start', 'justify-end', 'gap-2', 'self-stretch', 'p-6', 'custom-actions')
-      await expect.element(screen.getByRole('button', { name: 'Confirm' })).toHaveClass('bg-components-button-destructive-primary-bg')
+      await expect
+        .element(screen.getByTestId('actions'))
+        .toHaveClass(
+          'flex',
+          'items-start',
+          'justify-end',
+          'gap-2',
+          'self-stretch',
+          'p-6',
+          'custom-actions',
+        )
+      await expect
+        .element(screen.getByRole('button', { name: 'Confirm' }))
+        .toHaveClass('bg-components-button-destructive-primary-bg')
     })
 
     it('should keep dialog open after confirm click and close via cancel helper', async () => {

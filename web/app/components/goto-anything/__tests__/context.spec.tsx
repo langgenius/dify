@@ -16,9 +16,7 @@ const ContextConsumer = () => {
   const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   return (
     <div data-testid="status">
-      {String(isWorkflowPage)}
-      |
-      {String(isRagPipelinePage)}
+      {String(isWorkflowPage)}|{String(isRagPipelinePage)}
     </div>
   )
 }
@@ -121,9 +119,7 @@ describe('useGotoAnythingContext', () => {
       const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
       return (
         <div data-testid="context">
-          {String(isWorkflowPage)}
-          |
-          {String(isRagPipelinePage)}
+          {String(isWorkflowPage)}|{String(isRagPipelinePage)}
         </div>
       )
     }

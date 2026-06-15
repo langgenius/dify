@@ -4,7 +4,7 @@ import * as React from 'react'
 import { FeaturesProvider } from '../../context'
 import SpeechToText from '../speech-to-text'
 
-const renderWithProvider = (props: { disabled?: boolean, onChange?: OnFeaturesChange } = {}) => {
+const renderWithProvider = (props: { disabled?: boolean; onChange?: OnFeaturesChange } = {}) => {
   return render(
     <FeaturesProvider>
       <SpeechToText disabled={props.disabled ?? false} onChange={props.onChange} />

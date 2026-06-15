@@ -6,10 +6,7 @@ type SummaryLabelProps = {
   summary?: string
   className?: string
 }
-const SummaryLabel = ({
-  summary,
-  className,
-}: SummaryLabelProps) => {
+const SummaryLabel = ({ summary, className }: SummaryLabelProps) => {
   const { t } = useTranslation()
 
   return (

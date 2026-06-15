@@ -10,10 +10,7 @@ type ImageLinkInputProps = {
   disabled?: boolean
 }
 const regex = /^(https?|ftp):\/\//
-const ImageLinkInput: FC<ImageLinkInputProps> = ({
-  onUpload,
-  disabled,
-}) => {
+const ImageLinkInput: FC<ImageLinkInputProps> = ({ onUpload, disabled }) => {
   const { t } = useTranslation()
   const [imageLink, setImageLink] = useState('')
 
@@ -23,8 +20,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
 
   const handleClick = () => {
     /* v8 ignore next 2 -- same condition drives Button.disabled; when true, click does not invoke onClick in user-level flow. @preserve */
-    if (disabled)
-      return
+    if (disabled) return
 
     const imageFile = {
       type: TransferMethod.remote_url,
@@ -43,7 +39,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         type="text"
         className="mr-0.5 h-[18px] grow appearance-none bg-transparent px-1 text-[13px] text-text-primary outline-hidden"
         value={imageLink}
-        onChange={e => setImageLink(e.target.value)}
+        onChange={(e) => setImageLink(e.target.value)}
         placeholder={safeText}
         data-testid="image-link-input"
       />

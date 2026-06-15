@@ -73,7 +73,7 @@ const toWords = (value: string) => {
 }
 
 const toPascalCase = (words: string[]) => {
-  return words.map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
+  return words.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
 }
 
 const toCamelCase = (words: string[]) => {
@@ -86,28 +86,27 @@ const toKebabCase = (value: string) => {
 }
 
 const segmentWords = (segment: string) => {
-  if (segment.startsWith('{') && segment.endsWith('}'))
-    return ['by', ...toWords(segment)]
+  if (segment.startsWith('{') && segment.endsWith('}')) return ['by', ...toWords(segment)]
 
   return toWords(segment)
 }
 
 const routeWords = (routePath: string) => {
-  return routePath
-    .split('/')
-    .filter(Boolean)
-    .flatMap(segmentWords)
+  return routePath.split('/').filter(Boolean).flatMap(segmentWords)
 }
 
 const operationId = (method: string, routePath: string) => {
-  return toCamelCase([method, ...(routeWords(routePath).length > 0 ? routeWords(routePath) : ['root'])])
+  return toCamelCase([
+    method,
+    ...(routeWords(routePath).length > 0 ? routeWords(routePath) : ['root']),
+  ])
 }
 
 const contractPathSegments = (operation: ApiContractOperation) => {
   const segments = operation.path
     .split('/')
     .filter(Boolean)
-    .map(segment => toCamelCase(segmentWords(segment)))
+    .map((segment) => toCamelCase(segmentWords(segment)))
 
   return [...(segments.length > 0 ? segments : ['root']), operation.method.toLowerCase()]
 }
@@ -135,27 +134,24 @@ const clone = <T>(value: T): T => {
 const componentSchemaRefPrefix = '#/components/schemas/'
 
 const schemaNameFromRef = (ref: string) => {
-  if (ref.startsWith(componentSchemaRefPrefix))
-    return ref.slice(componentSchemaRefPrefix.length)
+  if (ref.startsWith(componentSchemaRefPrefix)) return ref.slice(componentSchemaRefPrefix.length)
   return undefined
 }
 
 const getDocumentSchemas = (document: SwaggerDocument) => {
-  const components = document.components ??= {}
-  return components.schemas ??= {}
+  const components = (document.components ??= {})
+  return (components.schemas ??= {})
 }
 
 const collectSchemaRefs = (value: unknown, refs: Set<string>, visited = new WeakSet<object>()) => {
-  if (!value || typeof value !== 'object')
-    return
+  if (!value || typeof value !== 'object') return
 
-  if (visited.has(value))
-    return
+  if (visited.has(value)) return
 
   visited.add(value)
 
   if (Array.isArray(value)) {
-    value.forEach(item => collectSchemaRefs(item, refs, visited))
+    value.forEach((item) => collectSchemaRefs(item, refs, visited))
     return
   }
 
@@ -163,18 +159,16 @@ const collectSchemaRefs = (value: unknown, refs: Set<string>, visited = new Weak
   const ref = objectValue.$ref
   if (typeof ref === 'string') {
     const refName = schemaNameFromRef(ref)
-    if (refName)
-      refs.add(refName)
+    if (refName) refs.add(refName)
   }
 
-  Object.values(objectValue).forEach(item => collectSchemaRefs(item, refs, visited))
+  Object.values(objectValue).forEach((item) => collectSchemaRefs(item, refs, visited))
 }
 
 const addOperationIds = (document: SwaggerDocument) => {
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
-      if (!operationMethods.has(method) || !isObject(operation))
-        continue
+      if (!operationMethods.has(method) || !isObject(operation)) continue
 
       const swaggerOperation = operation as SwaggerOperation
       swaggerOperation.operationId = operationId(method, routePath)
@@ -183,24 +177,22 @@ const addOperationIds = (document: SwaggerDocument) => {
 }
 
 const hasSuccessResponse = (operation: SwaggerOperation) => {
-  return Object.keys(operation.responses ?? {}).some(status => /^2\d\d$/.test(status))
+  return Object.keys(operation.responses ?? {}).some((status) => /^2\d\d$/.test(status))
 }
 
 const filterContractOperations = (document: SwaggerDocument) => {
   for (const [routePath, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
-      if (!operationMethods.has(method) || !isObject(operation))
-        continue
+      if (!operationMethods.has(method) || !isObject(operation)) continue
 
-      if (!hasSuccessResponse(operation as SwaggerOperation))
-        delete pathItem[method]
+      if (!hasSuccessResponse(operation as SwaggerOperation)) delete pathItem[method]
     }
 
-    const hasOperations = Object.entries(pathItem)
-      .some(([method, operation]) => operationMethods.has(method) && isObject(operation))
+    const hasOperations = Object.entries(pathItem).some(
+      ([method, operation]) => operationMethods.has(method) && isObject(operation),
+    )
 
-    if (!hasOperations)
-      delete document.paths?.[routePath]
+    if (!hasOperations) delete document.paths?.[routePath]
   }
 }
 
@@ -225,25 +217,21 @@ const selectReferencedSchemas = (
 
   while (pendingRefs.size > 0) {
     const refName = pendingRefs.values().next().value
-    if (!refName)
-      break
+    if (!refName) break
 
     pendingRefs.delete(refName)
 
-    if (selectedSchemas[refName])
-      continue
+    if (selectedSchemas[refName]) continue
 
     const schema = schemas[refName]
-    if (!schema)
-      throw new Error(`Missing referenced schema: ${refName}`)
+    if (!schema) throw new Error(`Missing referenced schema: ${refName}`)
 
     selectedSchemas[refName] = schema
 
     const nestedRefs = new Set<string>()
     collectSchemaRefs(selectedSchemas[refName], nestedRefs)
     for (const nestedRef of nestedRefs) {
-      if (!selectedSchemas[nestedRef])
-        pendingRefs.add(nestedRef)
+      if (!selectedSchemas[nestedRef]) pendingRefs.add(nestedRef)
     }
   }
 
@@ -277,9 +265,9 @@ const consoleContractEntryContent = (segments: string[]) => {
   })
 
   const imports = contracts
-    .map(contract => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
+    .map((contract) => `import { ${contract.name} } from './${contract.importPath}/orpc.gen'`)
     .join('\n')
-  const contractEntries = contracts.map(contract => `  ${contract.name},`).join('\n')
+  const contractEntries = contracts.map((contract) => `  ${contract.name},`).join('\n')
 
   return `// This file is auto-generated by @hey-api/openapi-ts
 
@@ -323,10 +311,12 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
   }
 
   const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
-  const jobs = segments.map((segment): ApiJob => ({
-    document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
-    outputPath: `generated/api/console/${toKebabCase(segment)}`,
-  }))
+  const jobs = segments.map(
+    (segment): ApiJob => ({
+      document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
+      outputPath: `generated/api/console/${toKebabCase(segment)}`,
+    }),
+  )
 
   return [...jobs, createConsoleContractEntryJob(document, segments)]
 }
@@ -334,8 +324,7 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
   const document = normalizeApiSwagger(readApiSwagger(spec.filename))
 
-  if (spec.name === 'console')
-    return splitConsoleDocument(document)
+  if (spec.name === 'console') return splitConsoleDocument(document)
 
   return [
     {
@@ -367,13 +356,15 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       name: '@hey-api/typescript',
     },
     {
-      'name': 'zod',
+      name: 'zod',
       '~resolvers': {
         string: (ctx) => {
-          if (ctx.schema.format !== 'binary')
-            return undefined
+          if (ctx.schema.format !== 'binary') return undefined
 
-          return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+          return $(ctx.symbols.z)
+            .attr('custom')
+            .call()
+            .generic($.type.or($.type('Blob'), $.type('File')))
         },
       },
     },

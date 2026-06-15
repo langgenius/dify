@@ -7,19 +7,14 @@ type VideoPreviewProps = {
   title: string
   onCancel: () => void
 }
-const VideoPreview: FC<VideoPreviewProps> = ({
-  url,
-  title,
-  onCancel,
-}) => {
+const VideoPreview: FC<VideoPreviewProps> = ({ url, title, onCancel }) => {
   const { t } = useTranslation()
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
       disablePointerDismissal
     >
@@ -31,14 +26,16 @@ const VideoPreview: FC<VideoPreviewProps> = ({
           aria-label={title}
           data-testid="video-preview"
           tabIndex={-1}
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          <video controls title={title} autoPlay={false} preload="metadata" data-testid="video-element">
-            <source
-              type="video/mp4"
-              src={url}
-              className="max-h-full max-w-full"
-            />
+          <video
+            controls
+            title={title}
+            autoPlay={false}
+            preload="metadata"
+            data-testid="video-element"
+          >
+            <source type="video/mp4" src={url} className="max-h-full max-w-full" />
           </video>
         </div>
         <button

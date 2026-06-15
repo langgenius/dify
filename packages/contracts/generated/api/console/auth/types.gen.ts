@@ -58,8 +58,8 @@ export type GetAuthPluginDatasourceDefaultListResponses = {
   200: DatasourceCredentialsResponse
 }
 
-export type GetAuthPluginDatasourceDefaultListResponse
-  = GetAuthPluginDatasourceDefaultListResponses[keyof GetAuthPluginDatasourceDefaultListResponses]
+export type GetAuthPluginDatasourceDefaultListResponse =
+  GetAuthPluginDatasourceDefaultListResponses[keyof GetAuthPluginDatasourceDefaultListResponses]
 
 export type GetAuthPluginDatasourceListData = {
   body?: never
@@ -72,8 +72,8 @@ export type GetAuthPluginDatasourceListResponses = {
   200: DatasourceCredentialsResponse
 }
 
-export type GetAuthPluginDatasourceListResponse
-  = GetAuthPluginDatasourceListResponses[keyof GetAuthPluginDatasourceListResponses]
+export type GetAuthPluginDatasourceListResponse =
+  GetAuthPluginDatasourceListResponses[keyof GetAuthPluginDatasourceListResponses]
 
 export type GetAuthPluginDatasourceByProviderIdData = {
   body?: never
@@ -88,8 +88,8 @@ export type GetAuthPluginDatasourceByProviderIdResponses = {
   200: DatasourceCredentialsResponse
 }
 
-export type GetAuthPluginDatasourceByProviderIdResponse
-  = GetAuthPluginDatasourceByProviderIdResponses[keyof GetAuthPluginDatasourceByProviderIdResponses]
+export type GetAuthPluginDatasourceByProviderIdResponse =
+  GetAuthPluginDatasourceByProviderIdResponses[keyof GetAuthPluginDatasourceByProviderIdResponses]
 
 export type PostAuthPluginDatasourceByProviderIdData = {
   body: DatasourceCredentialPayload
@@ -104,8 +104,8 @@ export type PostAuthPluginDatasourceByProviderIdResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAuthPluginDatasourceByProviderIdResponse
-  = PostAuthPluginDatasourceByProviderIdResponses[keyof PostAuthPluginDatasourceByProviderIdResponses]
+export type PostAuthPluginDatasourceByProviderIdResponse =
+  PostAuthPluginDatasourceByProviderIdResponses[keyof PostAuthPluginDatasourceByProviderIdResponses]
 
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientData = {
   body?: never
@@ -120,8 +120,8 @@ export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponses = {
   200: SimpleResultResponse
 }
 
-export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponse
-  = DeleteAuthPluginDatasourceByProviderIdCustomClientResponses[keyof DeleteAuthPluginDatasourceByProviderIdCustomClientResponses]
+export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponse =
+  DeleteAuthPluginDatasourceByProviderIdCustomClientResponses[keyof DeleteAuthPluginDatasourceByProviderIdCustomClientResponses]
 
 export type PostAuthPluginDatasourceByProviderIdCustomClientData = {
   body: DatasourceCustomClientPayload
@@ -136,8 +136,8 @@ export type PostAuthPluginDatasourceByProviderIdCustomClientResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAuthPluginDatasourceByProviderIdCustomClientResponse
-  = PostAuthPluginDatasourceByProviderIdCustomClientResponses[keyof PostAuthPluginDatasourceByProviderIdCustomClientResponses]
+export type PostAuthPluginDatasourceByProviderIdCustomClientResponse =
+  PostAuthPluginDatasourceByProviderIdCustomClientResponses[keyof PostAuthPluginDatasourceByProviderIdCustomClientResponses]
 
 export type PostAuthPluginDatasourceByProviderIdDefaultData = {
   body: DatasourceDefaultPayload
@@ -152,8 +152,8 @@ export type PostAuthPluginDatasourceByProviderIdDefaultResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAuthPluginDatasourceByProviderIdDefaultResponse
-  = PostAuthPluginDatasourceByProviderIdDefaultResponses[keyof PostAuthPluginDatasourceByProviderIdDefaultResponses]
+export type PostAuthPluginDatasourceByProviderIdDefaultResponse =
+  PostAuthPluginDatasourceByProviderIdDefaultResponses[keyof PostAuthPluginDatasourceByProviderIdDefaultResponses]
 
 export type PostAuthPluginDatasourceByProviderIdDeleteData = {
   body: DatasourceCredentialDeletePayload
@@ -168,8 +168,8 @@ export type PostAuthPluginDatasourceByProviderIdDeleteResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAuthPluginDatasourceByProviderIdDeleteResponse
-  = PostAuthPluginDatasourceByProviderIdDeleteResponses[keyof PostAuthPluginDatasourceByProviderIdDeleteResponses]
+export type PostAuthPluginDatasourceByProviderIdDeleteResponse =
+  PostAuthPluginDatasourceByProviderIdDeleteResponses[keyof PostAuthPluginDatasourceByProviderIdDeleteResponses]
 
 export type PostAuthPluginDatasourceByProviderIdUpdateData = {
   body: DatasourceCredentialUpdatePayload
@@ -184,8 +184,8 @@ export type PostAuthPluginDatasourceByProviderIdUpdateResponses = {
   201: SimpleResultResponse
 }
 
-export type PostAuthPluginDatasourceByProviderIdUpdateResponse
-  = PostAuthPluginDatasourceByProviderIdUpdateResponses[keyof PostAuthPluginDatasourceByProviderIdUpdateResponses]
+export type PostAuthPluginDatasourceByProviderIdUpdateResponse =
+  PostAuthPluginDatasourceByProviderIdUpdateResponses[keyof PostAuthPluginDatasourceByProviderIdUpdateResponses]
 
 export type PostAuthPluginDatasourceByProviderIdUpdateNameData = {
   body: DatasourceUpdateNamePayload
@@ -200,5 +200,5 @@ export type PostAuthPluginDatasourceByProviderIdUpdateNameResponses = {
   200: SimpleResultResponse
 }
 
-export type PostAuthPluginDatasourceByProviderIdUpdateNameResponse
-  = PostAuthPluginDatasourceByProviderIdUpdateNameResponses[keyof PostAuthPluginDatasourceByProviderIdUpdateNameResponses]
+export type PostAuthPluginDatasourceByProviderIdUpdateNameResponse =
+  PostAuthPluginDatasourceByProviderIdUpdateNameResponses[keyof PostAuthPluginDatasourceByProviderIdUpdateNameResponses]

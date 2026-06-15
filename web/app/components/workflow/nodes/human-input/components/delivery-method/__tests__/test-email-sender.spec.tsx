@@ -1,6 +1,11 @@
 /* eslint-disable react/no-context-provider -- use-context-selector contexts require .Provider in tests. */
 import type { ReactNode } from 'react'
-import type { EmailConfig, FormInputItem, ParagraphFormInput, SelectFormInput } from '../../../types'
+import type {
+  EmailConfig,
+  FormInputItem,
+  ParagraphFormInput,
+  SelectFormInput,
+} from '../../../types'
 import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 import type { App, AppSSO } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -12,7 +17,12 @@ import { HooksStoreContext } from '@/app/components/workflow/hooks-store/provide
 import { createHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
-import { AppContext, initialLangGeniusVersionInfo, initialWorkspaceInfo, userProfilePlaceholder } from '@/context/app-context'
+import {
+  AppContext,
+  initialLangGeniusVersionInfo,
+  initialWorkspaceInfo,
+  userProfilePlaceholder,
+} from '@/context/app-context'
 import EmailSenderModal from '../test-email-sender'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -27,16 +37,17 @@ type RecordedRequest = {
   body?: unknown
 }
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
-    },
-  },
-})
+  })
 
 const renderWithProviders = (ui: ReactNode) => {
   const queryClient = createQueryClient()
@@ -64,36 +75,35 @@ const renderWithProviders = (ui: ReactNode) => {
           mutateUserProfile: vi.fn(),
           mutateCurrentWorkspace: vi.fn(),
           langGeniusVersionInfo: initialLangGeniusVersionInfo,
-          useSelector: selector => selector({
-            userProfile: {
-              ...userProfilePlaceholder,
-              id: 'user-1',
-              email: 'owner@example.com',
-              name: 'Owner',
-            },
-            currentWorkspace: {
-              ...initialWorkspaceInfo,
-              id: 'workspace-1',
-              name: 'Product Team',
-            },
-            isCurrentWorkspaceManager: true,
-            isCurrentWorkspaceOwner: true,
-            isCurrentWorkspaceEditor: true,
-            isCurrentWorkspaceDatasetOperator: true,
-            mutateUserProfile: vi.fn(),
-            mutateCurrentWorkspace: vi.fn(),
-            langGeniusVersionInfo: initialLangGeniusVersionInfo,
-            useSelector: vi.fn(),
-            isLoadingCurrentWorkspace: false,
-            isValidatingCurrentWorkspace: false,
-          }),
+          useSelector: (selector) =>
+            selector({
+              userProfile: {
+                ...userProfilePlaceholder,
+                id: 'user-1',
+                email: 'owner@example.com',
+                name: 'Owner',
+              },
+              currentWorkspace: {
+                ...initialWorkspaceInfo,
+                id: 'workspace-1',
+                name: 'Product Team',
+              },
+              isCurrentWorkspaceManager: true,
+              isCurrentWorkspaceOwner: true,
+              isCurrentWorkspaceEditor: true,
+              isCurrentWorkspaceDatasetOperator: true,
+              mutateUserProfile: vi.fn(),
+              mutateCurrentWorkspace: vi.fn(),
+              langGeniusVersionInfo: initialLangGeniusVersionInfo,
+              useSelector: vi.fn(),
+              isLoadingCurrentWorkspace: false,
+              isValidatingCurrentWorkspace: false,
+            }),
           isLoadingCurrentWorkspace: false,
           isValidatingCurrentWorkspace: false,
         }}
       >
-        <HooksStoreContext.Provider value={hooksStore}>
-          {ui}
-        </HooksStoreContext.Provider>
+        <HooksStoreContext.Provider value={hooksStore}>{ui}</HooksStoreContext.Provider>
       </AppContext.Provider>
     </QueryClientProvider>,
   )
@@ -101,42 +111,47 @@ const renderWithProviders = (ui: ReactNode) => {
 
 const setupFetch = () => {
   const requests: RecordedRequest[] = []
-  const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (resource: RequestInfo | URL, options?: RequestInit) => {
-    const request = resource instanceof Request ? resource : new Request(resource, options)
-    const body = request.method === 'GET' ? undefined : await request.clone().json()
-    requests.push({
-      url: request.url,
-      method: request.method,
-      body,
-    })
+  const fetchSpy = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (resource: RequestInfo | URL, options?: RequestInit) => {
+      const request = resource instanceof Request ? resource : new Request(resource, options)
+      const body = request.method === 'GET' ? undefined : await request.clone().json()
+      requests.push({
+        url: request.url,
+        method: request.method,
+        body,
+      })
 
-    if (request.url.includes('/workspaces/current/members')) {
-      return new Response(JSON.stringify({
-        accounts: [
+      if (request.url.includes('/workspaces/current/members')) {
+        return new Response(
+          JSON.stringify({
+            accounts: [
+              {
+                id: 'member-1',
+                email: 'member@example.com',
+                name: 'Member One',
+                avatar: '',
+                avatar_url: '',
+                status: 'active',
+                role: 'normal',
+                created_at: '',
+                last_active_at: '',
+                last_login_at: '',
+              },
+            ],
+          }),
           {
-            id: 'member-1',
-            email: 'member@example.com',
-            name: 'Member One',
-            avatar: '',
-            avatar_url: '',
-            status: 'active',
-            role: 'normal',
-            created_at: '',
-            last_active_at: '',
-            last_login_at: '',
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
           },
-        ],
-      }), {
+        )
+      }
+
+      return new Response(JSON.stringify({ result: 'success' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       })
-    }
-
-    return new Response(JSON.stringify({ result: 'success' }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
     })
-  })
 
   return {
     fetchSpy,
@@ -236,7 +251,9 @@ describe('human-input/delivery-method/test-email-sender', () => {
       />,
     )
 
-    const sendButton = screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' })
+    const sendButton = screen.getByRole('button', {
+      name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+    })
     expect(sendButton).toBeDisabled()
 
     await user.type(screen.getByPlaceholderText('user_name'), 'Ada')
@@ -245,18 +262,24 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(sendButton)
 
-    await waitFor(() => expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done')).toBeInTheDocument())
-    expect(requests).toContainEqual(expect.objectContaining({
-      url: 'http://localhost:5001/console/api/apps/app-1/workflows/draft/human-input/nodes/human-node/delivery-test',
-      method: 'POST',
-      body: {
-        delivery_method_id: 'delivery-1',
-        inputs: {
-          '#start.user_name#': 'Ada',
-          '#start.score#': 42,
+    await waitFor(() =>
+      expect(
+        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.done'),
+      ).toBeInTheDocument(),
+    )
+    expect(requests).toContainEqual(
+      expect.objectContaining({
+        url: 'http://localhost:5001/console/api/apps/app-1/workflows/draft/human-input/nodes/human-node/delivery-test',
+        method: 'POST',
+        body: {
+          delivery_method_id: 'delivery-1',
+          inputs: {
+            '#start.user_name#': 'Ada',
+            '#start.score#': 42,
+          },
         },
-      },
-    }))
+      }),
+    )
 
     await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 
@@ -314,7 +337,9 @@ describe('human-input/delivery-method/test-email-sender', () => {
       />,
     )
 
-    const sendButton = screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' })
+    const sendButton = screen.getByRole('button', {
+      name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+    })
     expect(sendButton).toBeDisabled()
 
     expect(screen.queryByPlaceholderText('result')).not.toBeInTheDocument()
@@ -326,16 +351,20 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     await user.click(sendButton)
 
-    await waitFor(() => expect(requests).toContainEqual(expect.objectContaining({
-      url: 'http://localhost:5001/console/api/apps/app-1/workflows/draft/human-input/nodes/human-node/delivery-test',
-      method: 'POST',
-      body: {
-        delivery_method_id: 'delivery-1',
-        inputs: {
-          '#code.result#': ['approve', 'reject'],
-        },
-      },
-    })))
+    await waitFor(() =>
+      expect(requests).toContainEqual(
+        expect.objectContaining({
+          url: 'http://localhost:5001/console/api/apps/app-1/workflows/draft/human-input/nodes/human-node/delivery-test',
+          method: 'POST',
+          body: {
+            delivery_method_id: 'delivery-1',
+            inputs: {
+              '#code.result#': ['approve', 'reject'],
+            },
+          },
+        }),
+      ),
+    )
   })
 
   it('should render fallback variable inputs and allow cancelling', async () => {
@@ -358,7 +387,11 @@ describe('human-input/delivery-method/test-email-sender', () => {
 
     expect(screen.getByPlaceholderText('message')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.vars' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.vars',
+      }),
+    )
 
     expect(screen.queryByPlaceholderText('message')).not.toBeInTheDocument()
 
@@ -444,13 +477,19 @@ describe('human-input/delivery-method/test-email-sender', () => {
     fireEvent.change(screen.getByTestId('monaco-editor'), {
       target: { value: '{invalid' },
     })
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
 
     expect(toast.error).toHaveBeenCalledWith('workflow.errorMsg.invalidJson:{"field":"payload"}')
-    expect(requests).not.toContainEqual(expect.objectContaining({
-      url: 'http://localhost:5001/console/api/apps/app-1/workflows/draft/human-input/nodes/human-node/delivery-test',
-      method: 'POST',
-    }))
+    expect(requests).not.toContainEqual(
+      expect.objectContaining({
+        url: 'http://localhost:5001/console/api/apps/app-1/workflows/draft/human-input/nodes/human-node/delivery-test',
+        method: 'POST',
+      }),
+    )
   })
 
   it('should show debug success copy after sending in debug mode', async () => {
@@ -471,11 +510,21 @@ describe('human-input/delivery-method/test-email-sender', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugModeTip')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.debugModeTip'),
+    ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
 
-    await waitFor(() => expect(screen.getByText('nodes.humanInput.deliveryMethod.emailSender.debugDone')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        screen.getByText('nodes.humanInput.deliveryMethod.emailSender.debugDone'),
+      ).toBeInTheDocument(),
+    )
   })
 
   it('should show specific-recipient success copy after sending', async () => {
@@ -499,9 +548,17 @@ describe('human-input/delivery-method/test-email-sender', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send' }))
+    await user.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.humanInput.deliveryMethod.emailSender.send',
+      }),
+    )
 
-    await waitFor(() => expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.wholeTeamDone3')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(
+        screen.getByText('workflow.nodes.humanInput.deliveryMethod.emailSender.wholeTeamDone3'),
+      ).toBeInTheDocument(),
+    )
     expect(screen.getByText('external@example.com')).toBeInTheDocument()
   })
 })

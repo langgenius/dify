@@ -24,21 +24,15 @@ const NumberSliderField = ({
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
       <div>
-        <Label
-          htmlFor={field.name}
-          label={label}
-          {...(labelOptions ?? {})}
-        />
+        <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
         {description && (
-          <div className="pb-0.5 body-xs-regular text-text-tertiary">
-            {description}
-          </div>
+          <div className="pb-0.5 body-xs-regular text-text-tertiary">{description}</div>
         )}
       </div>
       <InputNumberWithSlider
         label={label}
         value={field.state.value}
-        onChange={value => field.handleChange(value)}
+        onChange={(value) => field.handleChange(value)}
         {...InputNumberWithSliderProps}
       />
     </div>

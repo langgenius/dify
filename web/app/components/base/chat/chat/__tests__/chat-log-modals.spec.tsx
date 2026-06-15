@@ -12,7 +12,9 @@ vi.mock('@/service/log', () => ({
 describe('ChatLogModals', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    useAppStore.setState({ appDetail: { id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'] })
+    useAppStore.setState({
+      appDetail: { id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'],
+    })
   })
 
   // Modal visibility should follow the two booleans unless log modals are globally hidden.
@@ -23,14 +25,16 @@ describe('ChatLogModals', () => {
       render(
         <ChatLogModals
           width={480}
-          currentLogItem={{
-            id: 'log-1',
-            isAnswer: true,
-            content: 'reply',
-            input: { question: 'hello' },
-            log: [{ role: 'user', text: 'Prompt body' }],
-            conversationId: 'conversation-1',
-          } as IChatItem}
+          currentLogItem={
+            {
+              id: 'log-1',
+              isAnswer: true,
+              content: 'reply',
+              input: { question: 'hello' },
+              log: [{ role: 'user', text: 'Prompt body' }],
+              conversationId: 'conversation-1',
+            } as IChatItem
+          }
           showPromptLogModal={true}
           showAgentLogModal={true}
           setCurrentLogItem={vi.fn()}
@@ -43,7 +47,9 @@ describe('ChatLogModals', () => {
       expect(screen.getByText('Prompt body')).toBeInTheDocument()
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i })).toBeInTheDocument()
+        expect(
+          screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }),
+        ).toBeInTheDocument()
       })
     })
 
@@ -51,13 +57,15 @@ describe('ChatLogModals', () => {
       render(
         <ChatLogModals
           width={320}
-          currentLogItem={{
-            id: 'log-2',
-            isAnswer: true,
-            content: 'reply',
-            log: [{ role: 'user', text: 'Prompt body' }],
-            conversationId: 'conversation-2',
-          } as IChatItem}
+          currentLogItem={
+            {
+              id: 'log-2',
+              isAnswer: true,
+              content: 'reply',
+              log: [{ role: 'user', text: 'Prompt body' }],
+              conversationId: 'conversation-2',
+            } as IChatItem
+          }
           showPromptLogModal={true}
           showAgentLogModal={true}
           hideLogModal={true}
@@ -68,7 +76,9 @@ describe('ChatLogModals', () => {
       )
 
       expect(screen.queryByText('PROMPT LOG')).not.toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: /appLog.runDetail.workflowTitle/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: /appLog.runDetail.workflowTitle/i }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -83,13 +93,15 @@ describe('ChatLogModals', () => {
       render(
         <ChatLogModals
           width={480}
-          currentLogItem={{
-            id: 'log-3',
-            isAnswer: true,
-            content: 'reply',
-            input: { question: 'hello' },
-            log: [{ role: 'user', text: 'Prompt body' }],
-          } as IChatItem}
+          currentLogItem={
+            {
+              id: 'log-3',
+              isAnswer: true,
+              content: 'reply',
+              input: { question: 'hello' },
+              log: [{ role: 'user', text: 'Prompt body' }],
+            } as IChatItem
+          }
           showPromptLogModal={true}
           showAgentLogModal={false}
           setCurrentLogItem={setCurrentLogItem}
@@ -115,14 +127,16 @@ describe('ChatLogModals', () => {
       render(
         <ChatLogModals
           width={480}
-          currentLogItem={{
-            id: 'log-4',
-            isAnswer: true,
-            content: 'reply',
-            input: { question: 'hello' },
-            log: [{ role: 'user', text: 'Prompt body' }],
-            conversationId: 'conversation-4',
-          } as IChatItem}
+          currentLogItem={
+            {
+              id: 'log-4',
+              isAnswer: true,
+              content: 'reply',
+              input: { question: 'hello' },
+              log: [{ role: 'user', text: 'Prompt body' }],
+              conversationId: 'conversation-4',
+            } as IChatItem
+          }
           showPromptLogModal={false}
           showAgentLogModal={true}
           setCurrentLogItem={setCurrentLogItem}
@@ -132,9 +146,14 @@ describe('ChatLogModals', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i })).toBeInTheDocument()
+        expect(
+          screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }),
+        ).toBeInTheDocument()
       })
-      await user.click(screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i }).nextElementSibling as HTMLElement)
+      await user.click(
+        screen.getByRole('heading', { name: /appLog.runDetail.workflowTitle/i })
+          .nextElementSibling as HTMLElement,
+      )
 
       expect(setCurrentLogItem).toHaveBeenCalled()
       expect(setShowAgentLogModal).toHaveBeenCalledWith(false)

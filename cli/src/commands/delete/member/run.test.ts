@@ -33,7 +33,10 @@ describe('runDeleteMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.remove).toHaveBeenCalledExactlyOnceWith('550e8400-e29b-41d4-a716-446655440000', 'acct-2')
+    expect(client.remove).toHaveBeenCalledExactlyOnceWith(
+      '550e8400-e29b-41d4-a716-446655440000',
+      'acct-2',
+    )
     expect(result.data.text()).toMatch(/Removed acct-2/)
     expect(result.data.name()).toBe('acct-2')
     expect(result.data.json()).toEqual({ id: 'acct-2', deleted: true })

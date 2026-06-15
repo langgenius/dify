@@ -69,18 +69,19 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: {
-      id: 'app-1',
-      model_config: {
-        updated_at: 1710000000,
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: {
+        id: 'app-1',
+        model_config: {
+          updated_at: 1710000000,
+        },
+        mode: AppModeEnum.CHAT,
       },
-      mode: AppModeEnum.CHAT,
-    },
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-    showAppConfigureFeaturesModal: false,
-    setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
-  }),
+      setAppSidebarExpand: mockSetAppSidebarExpand,
+      showAppConfigureFeaturesModal: false,
+      setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal,
+    }),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -166,7 +167,8 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 vi.mock('@/utils/completion-params', () => ({
-  fetchAndMergeValidCompletionParams: (...args: unknown[]) => mockFetchAndMergeValidCompletionParams(...args),
+  fetchAndMergeValidCompletionParams: (...args: unknown[]) =>
+    mockFetchAndMergeValidCompletionParams(...args),
 }))
 
 describe('useConfiguration', () => {
@@ -273,9 +275,11 @@ describe('useConfiguration', () => {
       await result.current.appPublisherProps.onPublish!(undefined, result.current.featuresData)
     })
 
-    expect(updateAppModelConfig).toHaveBeenCalledWith(expect.objectContaining({
-      url: '/apps/app-1/model-config',
-    }))
+    expect(updateAppModelConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/apps/app-1/model-config',
+      }),
+    )
   })
 
   it('should expose derived feature flags and imperative callbacks', async () => {
@@ -356,8 +360,15 @@ describe('useConfiguration', () => {
     act(() => {
       result.current.onFeaturesChange(undefined as never)
       result.current.onFeaturesChange({ moreLikeThis: { enabled: true } } as never)
-      result.current.onAutoAddPromptVariable([{ key: 'city', name: 'City', type: 'string', required: true } as never])
-      result.current.onAgentSettingChange({ enabled: true, max_iteration: 5, strategy: 'react', tools: [] } as never)
+      result.current.onAutoAddPromptVariable([
+        { key: 'city', name: 'City', type: 'string', required: true } as never,
+      ])
+      result.current.onAgentSettingChange({
+        enabled: true,
+        max_iteration: 5,
+        strategy: 'react',
+        tools: [],
+      } as never)
       result.current.onEnableMultipleModelDebug()
       result.current.setShowUseGPT4Confirm(true)
       result.current.onConfirmUseGPT4()

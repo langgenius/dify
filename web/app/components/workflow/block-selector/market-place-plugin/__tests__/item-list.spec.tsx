@@ -17,23 +17,28 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
   }) => (
     <div data-testid="install-from-marketplace">
       {uniqueIdentifier}
-      <button type="button" onClick={onSuccess}>install-success</button>
-      <button type="button" onClick={onClose}>install-close</button>
+      <button type="button" onClick={onSuccess}>
+        install-success
+      </button>
+      <button type="button" onClick={onClose}>
+        install-close
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../action', () => ({
-  default: ({ open, onOpenChange }: { open: boolean, onOpenChange: (open: boolean) => void }) => (
+  default: ({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) => (
     <button type="button" onClick={() => onOpenChange(!open)}>
       marketplace-action
     </button>
   ),
 }))
 
-vi.mock('@/utils/var', async importOriginal => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
-  getMarketplaceUrl: (_path?: string, params?: Record<string, unknown>) => `https://marketplace.test?${new URLSearchParams(params as Record<string, string>).toString()}`,
+  getMarketplaceUrl: (_path?: string, params?: Record<string, unknown>) =>
+    `https://marketplace.test?${new URLSearchParams(params as Record<string, string>).toString()}`,
 }))
 
 describe('marketplace plugin selector components', () => {
@@ -82,20 +87,20 @@ describe('marketplace plugin selector components', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })).toHaveAttribute('href', expect.stringContaining('category=tool'))
+    expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('category=tool'),
+    )
 
     rerender(
-      <List
-        wrapElemRef={wrapElemRef}
-        list={[plugin]}
-        searchText="filtered"
-        tags={['rag']}
-      />,
+      <List wrapElemRef={wrapElemRef} list={[plugin]} searchText="filtered" tags={['rag']} />,
     )
 
     expect(screen.getByText('plugin.fromMarketplace')).toBeInTheDocument()
     expect(screen.getByText('Filtered Plugin')).toBeInTheDocument()
-    const marketplaceSearchLinks = screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })
+    const marketplaceSearchLinks = screen.getAllByRole('link', {
+      name: /plugin\.searchInMarketplace/i,
+    })
     expect(marketplaceSearchLinks).toHaveLength(1)
     expect(marketplaceSearchLinks[0]).toHaveAttribute('href', expect.stringContaining('q=filtered'))
   })

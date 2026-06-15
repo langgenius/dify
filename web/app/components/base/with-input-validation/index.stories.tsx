@@ -46,10 +46,7 @@ const ProductCard = ({ name, price, category, inStock }: ProductCardProps) => {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <h3 className="mb-2 text-lg font-semibold">{name}</h3>
       <div className="space-y-1 text-sm">
-        <div className="text-xl font-bold text-green-600">
-          $
-          {price}
-        </div>
+        <div className="text-xl font-bold text-green-600">${price}</div>
         <div className="text-gray-600">
           Category:
           {category}
@@ -85,7 +82,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Higher-order component (HOC) for wrapping components with Zod schema validation. Validates props before rendering and returns null if validation fails, logging errors to console.',
+        component:
+          'Higher-order component (HOC) for wrapping components with Zod schema validation. Validates props before rendering and returns null if validation fails, logging errors to console.',
       },
     },
   },
@@ -100,12 +98,7 @@ export const ValidData: Story = {
   render: () => (
     <div style={{ width: '400px' }}>
       <h3 className="mb-4 text-lg font-semibold">Valid Props (Renders Successfully)</h3>
-      <ValidatedUserCard
-        name="John Doe"
-        email="john@example.com"
-        age={30}
-        role="Developer"
-      />
+      <ValidatedUserCard name="John Doe" email="john@example.com" age={30} role="Developer" />
     </div>
   ),
 }
@@ -118,12 +111,7 @@ export const InvalidEmail: Story = {
       <p className="mb-4 text-sm text-gray-600">
         Check console for validation error. Component won't render.
       </p>
-      <ValidatedUserCard
-        name="John Doe"
-        email="invalid-email"
-        age={30}
-        role="Developer"
-      />
+      <ValidatedUserCard name="John Doe" email="invalid-email" age={30} role="Developer" />
       <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
         ⚠️ Validation failed: Invalid email format
       </div>
@@ -136,15 +124,8 @@ export const InvalidAge: Story = {
   render: () => (
     <div style={{ width: '400px' }}>
       <h3 className="mb-4 text-lg font-semibold">Invalid Age (Returns null)</h3>
-      <p className="mb-4 text-sm text-gray-600">
-        Age must be between 0 and 150. Check console.
-      </p>
-      <ValidatedUserCard
-        name="John Doe"
-        email="john@example.com"
-        age={200}
-        role="Developer"
-      />
+      <p className="mb-4 text-sm text-gray-600">Age must be between 0 and 150. Check console.</p>
+      <ValidatedUserCard name="John Doe" email="john@example.com" age={200} role="Developer" />
       <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
         ⚠️ Validation failed: Age must be ≤ 150
       </div>
@@ -157,12 +138,7 @@ export const ValidProduct: Story = {
   render: () => (
     <div style={{ width: '400px' }}>
       <h3 className="mb-4 text-lg font-semibold">Valid Product</h3>
-      <ValidatedProductCard
-        name="Laptop Pro"
-        price={1299}
-        category="Electronics"
-        inStock={true}
-      />
+      <ValidatedProductCard name="Laptop Pro" price={1299} category="Electronics" inStock={true} />
     </div>
   ),
 }
@@ -172,15 +148,8 @@ export const InvalidPrice: Story = {
   render: () => (
     <div style={{ width: '400px' }}>
       <h3 className="mb-4 text-lg font-semibold">Invalid Price (Returns null)</h3>
-      <p className="mb-4 text-sm text-gray-600">
-        Price must be positive. Check console.
-      </p>
-      <ValidatedProductCard
-        name="Laptop Pro"
-        price={-100}
-        category="Electronics"
-        inStock={true}
-      />
+      <p className="mb-4 text-sm text-gray-600">Price must be positive. Check console.</p>
+      <ValidatedProductCard name="Laptop Pro" price={-100} category="Electronics" inStock={true} />
       <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
         ⚠️ Validation failed: Price must be positive
       </div>
@@ -195,27 +164,15 @@ export const ValidationComparison: Story = {
       <div>
         <h3 className="mb-4 text-lg font-semibold">Without Validation</h3>
         <div className="space-y-3">
-          <UserCard
-            name="John Doe"
-            email="invalid-email"
-            age={200}
-            role="Developer"
-          />
-          <div className="text-xs text-gray-500">
-            ⚠️ Renders with invalid data (no validation)
-          </div>
+          <UserCard name="John Doe" email="invalid-email" age={200} role="Developer" />
+          <div className="text-xs text-gray-500">⚠️ Renders with invalid data (no validation)</div>
         </div>
       </div>
 
       <div className="border-t border-gray-200 pt-6">
         <h3 className="mb-4 text-lg font-semibold">With Validation (HOC)</h3>
         <div className="space-y-3">
-          <ValidatedUserCard
-            name="John Doe"
-            email="invalid-email"
-            age={200}
-            role="Developer"
-          />
+          <ValidatedUserCard name="John Doe" email="invalid-email" age={200} role="Developer" />
           <div className="text-xs text-gray-500">
             ✓ Returns null when validation fails (check console)
           </div>
@@ -316,15 +273,11 @@ export const APIResponseValidation: Story = {
           {mockAPIResponses.map((product, index) => (
             <div key={index}>
               <ValidatedProductCard {...product} />
-              {!product.name || product.price <= 0
-                ? (
-                    <div className="mt-2 text-xs text-red-600">
-                      ⚠️ Validation failed for product
-                      {' '}
-                      {index + 1}
-                    </div>
-                  )
-                : null}
+              {!product.name || product.price <= 0 ? (
+                <div className="mt-2 text-xs text-red-600">
+                  ⚠️ Validation failed for product {index + 1}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -422,8 +375,8 @@ export const UsageDocumentation: Story = {
         <div>
           <h4 className="mb-2 text-sm font-semibold text-gray-900">Purpose</h4>
           <p className="text-sm text-gray-600">
-            Wraps React components with Zod schema validation for their props.
-            Returns null and logs errors if validation fails.
+            Wraps React components with Zod schema validation for their props. Returns null and logs
+            errors if validation fails.
           </p>
         </div>
 
@@ -499,12 +452,7 @@ export const Playground: Story = {
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-gray-700">Try Invalid Data</h4>
-          <ValidatedUserCard
-            name="Bob"
-            email="invalid-email"
-            age={-10}
-            role="Manager"
-          />
+          <ValidatedUserCard name="Bob" email="invalid-email" age={-10} role="Manager" />
           <p className="mt-2 text-xs text-gray-500">
             Open browser console to see validation errors
           </p>

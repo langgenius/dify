@@ -16,12 +16,9 @@ type Props = Readonly<{
   onChange?: OnFeaturesChange
 }>
 
-const FileUpload = ({
-  disabled,
-  onChange,
-}: Props) => {
+const FileUpload = ({ disabled, onChange }: Props) => {
   const { t } = useTranslation()
-  const file = useFeatures(s => s.features.file)
+  const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const [modalOpen, setModalOpen] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
@@ -30,32 +27,31 @@ const FileUpload = ({
     return file?.allowed_file_types?.join(',') || '-'
   }, [file?.allowed_file_types])
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-        image: { enabled },
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange()
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+          image: { enabled },
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange()
+    },
+    [featuresStore, onChange],
+  )
 
   return (
     <FeatureCard
-      icon={(
+      icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
           <RiImage2Fill className="size-4 text-text-primary-on-surface" />
         </div>
-      )}
-      title={(
+      }
+      title={
         <div className="flex items-center">
           {t('feature.imageUpload.title', { ns: 'appDebug' })}
           <Badge
@@ -63,28 +59,34 @@ const FileUpload = ({
             className="mx-1 shrink-0 border-text-accent-secondary text-text-accent-secondary"
           />
         </div>
-      )}
+      }
       value={file?.enabled}
-      onChange={state => handleChange(FeatureEnum.file, state)}
+      onChange={(state) => handleChange(FeatureEnum.file, state)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       disabled={disabled}
     >
       <>
         {!file?.enabled && (
-          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t('feature.imageUpload.description', { ns: 'appDebug' })}</div>
+          <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+            {t('feature.imageUpload.description', { ns: 'appDebug' })}
+          </div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                    {t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}
+                  </div>
                   <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}</div>
+                  <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                    {t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}
+                  </div>
                   <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>
               </div>

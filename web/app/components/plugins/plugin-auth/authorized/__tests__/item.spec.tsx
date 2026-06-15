@@ -7,7 +7,12 @@ import Item from '../item'
 
 // Item uses useAppContextWithSelector(state => state.userProfile) for the
 // borrowed-row heuristic; provide a minimal mock so the selector resolves.
-const mockUserProfile = { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' }
+const mockUserProfile = {
+  id: 'test-user',
+  name: 'Test User',
+  email: 'test@example.com',
+  avatar_url: '',
+}
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { userProfile: typeof mockUserProfile }) => unknown) =>
     selector({ userProfile: mockUserProfile }),
@@ -79,11 +84,7 @@ describe('Item Component', () => {
       const credential = createCredential({ id: 'selected-id' })
 
       const { container } = render(
-        <Item
-          credential={credential}
-          showSelectedIcon={true}
-          selectedCredentialId="selected-id"
-        />,
+        <Item credential={credential} showSelectedIcon={true} selectedCredentialId="selected-id" />,
       )
 
       const svgs = container.querySelectorAll('svg')
@@ -105,11 +106,7 @@ describe('Item Component', () => {
       cleanup()
 
       const { container: unselectedContainer } = render(
-        <Item
-          credential={credential}
-          showSelectedIcon={true}
-          selectedCredentialId="other-id"
-        />,
+        <Item credential={credential} showSelectedIcon={true} selectedCredentialId="other-id" />,
       )
       const unselectedSvgCount = unselectedContainer.querySelectorAll('svg').length
 
@@ -128,7 +125,9 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential()
 
-      const { container } = render(<Item credential={credential} onItemClick={onItemClick} disabled={true} />)
+      const { container } = render(
+        <Item credential={credential} onItemClick={onItemClick} disabled={true} />,
+      )
 
       fireEvent.click(container.firstElementChild!)
 
@@ -153,9 +152,7 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential({ id: 'click-test-id' })
 
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
       fireEvent.click(container.firstElementChild!)
 
@@ -166,9 +163,7 @@ describe('Item Component', () => {
       const onItemClick = vi.fn()
       const credential = createCredential({ id: '__workspace_default__' })
 
-      const { container } = render(
-        <Item credential={credential} onItemClick={onItemClick} />,
-      )
+      const { container } = render(<Item credential={credential} onItemClick={onItemClick} />)
 
       fireEvent.click(container.firstElementChild!)
 

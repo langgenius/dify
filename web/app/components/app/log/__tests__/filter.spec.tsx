@@ -8,8 +8,7 @@ let mockAnnotationsCountData: { count: number } | null = { count: 10 }
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
+      if (options?.count !== undefined) return `${key} (${options.count})`
       return key
     },
   }),
@@ -29,12 +28,12 @@ vi.mock('@/app/components/base/chip', () => ({
     onSelect,
     onClear,
   }: {
-    items: Array<{ value: string, name: string }>
+    items: Array<{ value: string; name: string }>
     value?: string
-    onSelect: (item: { value: string, name: string }) => void
+    onSelect: (item: { value: string; name: string }) => void
     onClear: () => void
   }) => {
-    const currentItem = items.find(item => item.value === value) ?? items[0]
+    const currentItem = items.find((item) => item.value === value) ?? items[0]
     return (
       <div>
         <div>{currentItem?.name}</div>
@@ -46,11 +45,9 @@ vi.mock('@/app/components/base/chip', () => ({
 }))
 
 vi.mock('@/app/components/base/sort', () => ({
-  default: ({
-    onSelect,
-  }: {
-    onSelect: (value: string) => void
-  }) => <button onClick={() => onSelect('-updated_at')}>select-sort</button>,
+  default: ({ onSelect }: { onSelect: (value: string) => void }) => (
+    <button onClick={() => onSelect('-updated_at')}>select-sort</button>
+  ),
 }))
 
 describe('Filter', () => {
@@ -101,7 +98,17 @@ describe('Filter', () => {
 
   describe('TIME_PERIOD_MAPPING', () => {
     it('should have correct period keys', () => {
-      expect(Object.keys(TIME_PERIOD_MAPPING)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
+      expect(Object.keys(TIME_PERIOD_MAPPING)).toEqual([
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+      ])
     })
 
     it('should have today period with value 0', () => {

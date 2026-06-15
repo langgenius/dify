@@ -28,33 +28,29 @@ type PopoverContentProps = React.HTMLAttributes<HTMLDivElement> & {
   popupProps?: React.HTMLAttributes<HTMLDivElement>
 }
 
-export const Popover = ({
-  children,
-  open,
-  onOpenChange,
-}: PopoverProps) => {
+export const Popover = ({ children, open, onOpenChange }: PopoverProps) => {
   const [localOpen, setLocalOpen] = React.useState(false)
   const resolvedOpen = open ?? localOpen
-  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setLocalOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }, [onOpenChange])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      setLocalOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    },
+    [onOpenChange],
+  )
 
   React.useEffect(() => {
-    if (!resolvedOpen)
-      return
+    if (!resolvedOpen) return
 
     const handleMouseDown = (event: MouseEvent) => {
       const target = event.target as Element | null
-      if (target?.closest?.('[data-popover-trigger="true"], [data-popover-content="true"]'))
-        return
+      if (target?.closest?.('[data-popover-trigger="true"], [data-popover-content="true"]')) return
 
       handleOpenChange(false)
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape')
-        handleOpenChange(false)
+      if (event.key === 'Escape') handleOpenChange(false)
     }
 
     document.addEventListener('mousedown', handleMouseDown)
@@ -67,10 +63,11 @@ export const Popover = ({
   }, [resolvedOpen, handleOpenChange])
 
   return (
-    <PopoverContext.Provider value={{
-      open: resolvedOpen,
-      onOpenChange: handleOpenChange,
-    }}
+    <PopoverContext.Provider
+      value={{
+        open: resolvedOpen,
+        onOpenChange: handleOpenChange,
+      }}
     >
       <div data-testid="popover" data-open={String(resolvedOpen)}>
         {children}
@@ -91,23 +88,29 @@ export const PopoverTrigger = ({
 
   if (React.isValidElement(node)) {
     const triggerElement = node as React.ReactElement<Record<string, unknown>>
-    const childProps = (triggerElement.props ?? {}) as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
+    const childProps = (triggerElement.props ?? {}) as React.HTMLAttributes<HTMLElement> & {
+      'data-testid'?: string
+    }
     const triggerProps = props as React.HTMLAttributes<HTMLElement> & { 'data-testid'?: string }
 
-    return React.cloneElement(triggerElement, {
-      ...props,
-      ...childProps,
-      'data-testid': childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'popover-trigger',
-      'data-popover-trigger': 'true',
-      'data-popup-open': open ? '' : undefined,
-      'onClick': (event: React.MouseEvent<HTMLElement>) => {
-        childProps.onClick?.(event)
-        onClick?.(event)
-        if (event.defaultPrevented)
-          return
-        onOpenChange(!open)
+    return React.cloneElement(
+      triggerElement,
+      {
+        ...props,
+        ...childProps,
+        'data-testid':
+          childProps['data-testid'] ?? triggerProps['data-testid'] ?? 'popover-trigger',
+        'data-popover-trigger': 'true',
+        'data-popup-open': open ? '' : undefined,
+        onClick: (event: React.MouseEvent<HTMLElement>) => {
+          childProps.onClick?.(event)
+          onClick?.(event)
+          if (event.defaultPrevented) return
+          onOpenChange(!open)
+        },
       },
-    }, render ? (children ?? childProps.children) : childProps.children)
+      render ? (children ?? childProps.children) : childProps.children,
+    )
   }
 
   return (
@@ -117,8 +120,7 @@ export const PopoverTrigger = ({
       data-popup-open={open ? '' : undefined}
       onClick={(event) => {
         onClick?.(event)
-        if (event.defaultPrevented)
-          return
+        if (event.defaultPrevented) return
         onOpenChange(!open)
       }}
       {...props}
@@ -141,8 +143,7 @@ export const PopoverContent = ({
 }: PopoverContentProps) => {
   const { open } = React.useContext(PopoverContext)
 
-  if (!open)
-    return null
+  if (!open) return null
 
   return (
     <div

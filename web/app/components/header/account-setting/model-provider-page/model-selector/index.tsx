@@ -38,16 +38,9 @@ function ModelSelector({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const {
-    currentProvider,
-    currentModel,
-  } = useCurrentProviderAndModel(
-    modelList,
-    defaultModel,
-  )
+  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, defaultModel)
   const currentValue = useMemo<ModelSelectorValue | null>(() => {
-    if (!currentProvider || !currentModel)
-      return null
+    if (!currentProvider || !currentModel) return null
 
     return {
       provider: currentProvider.provider,
@@ -55,42 +48,47 @@ function ModelSelector({
     }
   }, [currentModel, currentProvider])
 
-  const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (readonly)
-      return
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if (readonly) return
 
-    setOpen(newOpen)
-    if (!newOpen)
+      setOpen(newOpen)
+      if (!newOpen) setInputValue('')
+    },
+    [readonly],
+  )
+
+  const handleSelect = useCallback(
+    (provider: string, model: ModelItem) => {
+      setOpen(false)
       setInputValue('')
-  }, [readonly])
 
-  const handleSelect = useCallback((provider: string, model: ModelItem) => {
-    setOpen(false)
-    setInputValue('')
+      if (onSelect) onSelect({ provider, model: model.model })
+    },
+    [onSelect],
+  )
 
-    if (onSelect)
-      onSelect({ provider, model: model.model })
-  }, [onSelect])
+  const handleValueChange = useCallback(
+    (value: ModelSelectorValue | null) => {
+      if (!value) return
 
-  const handleValueChange = useCallback((value: ModelSelectorValue | null) => {
-    if (!value)
-      return
+      const provider = modelList.find((model) => model.provider === value.provider)
+      const model = provider?.models.find((model) => model.model === value.model)
 
-    const provider = modelList.find(model => model.provider === value.provider)
-    const model = provider?.models.find(model => model.model === value.model)
+      if (!provider || !model) return
+      if (model.status !== ModelStatusEnum.active) return
 
-    if (!provider || !model)
-      return
-    if (model.status !== ModelStatusEnum.active)
-      return
+      handleSelect(provider.provider, model)
+    },
+    [handleSelect, modelList],
+  )
 
-    handleSelect(provider.provider, model)
-  }, [handleSelect, modelList])
-
-  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxRootChangeEventDetails) => {
-    if (details.reason !== 'item-press')
-      setInputValue(inputValue)
-  }, [])
+  const handleInputValueChange = useCallback(
+    (inputValue: string, details: ComboboxRootChangeEventDetails) => {
+      if (details.reason !== 'item-press') setInputValue(inputValue)
+    },
+    [],
+  )
 
   const handleHide = useCallback(() => {
     setOpen(false)

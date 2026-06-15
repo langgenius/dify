@@ -16,15 +16,15 @@ import CodeInput from './components/code-input'
 import { classifyLookupError, ssoErrorCopy } from './utils/error-copy'
 import { isValidUserCode } from './utils/user-code'
 
-type View
-  = | { kind: 'code_entry' }
-    | { kind: 'chooser', userCode: string }
-    | { kind: 'authorize_account', userCode: string }
-    | { kind: 'authorize_sso' }
-    | { kind: 'success' }
-    | { kind: 'error_expired' }
-    | { kind: 'error_rate_limited' }
-    | { kind: 'error_lookup_failed' }
+type View =
+  | { kind: 'code_entry' }
+  | { kind: 'chooser'; userCode: string }
+  | { kind: 'authorize_account'; userCode: string }
+  | { kind: 'authorize_sso' }
+  | { kind: 'success' }
+  | { kind: 'error_expired' }
+  | { kind: 'error_rate_limited' }
+  | { kind: 'error_lookup_failed' }
 
 export default function DevicePage() {
   const searchParams = useSearchParams()
@@ -60,9 +60,10 @@ export default function DevicePage() {
   // Device-flow SSO branch uses external-user (webapp) SSO, not console SSO —
   // backend mints EXTERNAL_SSO tokens via Enterprise's external ACS. Gate on
   // webapp_auth.{enabled, allow_sso} + a configured webapp SSO protocol.
-  const ssoAvailable = !!sys?.webapp_auth?.enabled
-    && !!sys?.webapp_auth?.allow_sso
-    && (sys?.webapp_auth?.sso_config?.protocol || '') !== ''
+  const ssoAvailable =
+    !!sys?.webapp_auth?.enabled &&
+    !!sys?.webapp_auth?.allow_sso &&
+    (sys?.webapp_auth?.sso_config?.protocol || '') !== ''
 
   // URL-driven view transitions. Only advances while the user is still on
   // the entry/chooser screens — never clobbers terminal views (success /
@@ -70,8 +71,7 @@ export default function DevicePage() {
   // After consuming the params, scrub them from the URL so they don't
   // leak via history / Referer / server logs (RFC 8628 §5.4).
   useEffect(() => {
-    if (view.kind !== 'code_entry' && view.kind !== 'chooser')
-      return
+    if (view.kind !== 'code_entry' && view.kind !== 'chooser') return
     // Post-login bounce: chooser holds the typed code, account just loaded.
     // The URL was already scrubbed on the first effect run, so urlUserCode
     // is empty here — advance using the userCode stashed in view state.
@@ -83,40 +83,31 @@ export default function DevicePage() {
     if (ssoVerified) {
       setView({ kind: 'authorize_sso' }) // eslint-disable-line react/set-state-in-effect
       consumed = true
-    }
-    else if (urlUserCode && isValidUserCode(urlUserCode)) {
+    } else if (urlUserCode && isValidUserCode(urlUserCode)) {
       if (account)
         setView({ kind: 'authorize_account', userCode: urlUserCode }) // eslint-disable-line react/set-state-in-effect
-      else
-        setView({ kind: 'chooser', userCode: urlUserCode }) // eslint-disable-line react/set-state-in-effect
+      else setView({ kind: 'chooser', userCode: urlUserCode }) // eslint-disable-line react/set-state-in-effect
       consumed = true
     }
-    if (consumed && (urlUserCode || ssoVerified))
-      router.replace(pathname)
+    if (consumed && (urlUserCode || ssoVerified)) router.replace(pathname)
   }, [urlUserCode, ssoVerified, account, view, router, pathname])
 
   const onContinue = async () => {
-    if (!isValidUserCode(typed))
-      return
+    if (!isValidUserCode(typed)) return
     try {
       const reply = await deviceLookup(typed)
       if (!reply.valid) {
         setView({ kind: 'error_expired' })
         return
       }
-    }
-    catch (e) {
+    } catch (e) {
       const outcome = classifyLookupError(e)
-      if (outcome === 'rate_limited')
-        setView({ kind: 'error_rate_limited' })
-      else if (outcome === 'failed')
-        setView({ kind: 'error_lookup_failed' })
-      else
-        setView({ kind: 'error_expired' })
+      if (outcome === 'rate_limited') setView({ kind: 'error_rate_limited' })
+      else if (outcome === 'failed') setView({ kind: 'error_lookup_failed' })
+      else setView({ kind: 'error_expired' })
       return
     }
-    if (account)
-      setView({ kind: 'authorize_account', userCode: typed })
+    if (account) setView({ kind: 'authorize_account', userCode: typed })
     else setView({ kind: 'chooser', userCode: typed })
   }
 
@@ -154,10 +145,10 @@ export default function DevicePage() {
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">Sign in to authorize</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              Code
-              {' '}
-              <code className="rounded bg-components-input-bg-normal px-1 font-mono">{view.userCode}</code>
-              {' '}
+              Code{' '}
+              <code className="rounded bg-components-input-bg-normal px-1 font-mono">
+                {view.userCode}
+              </code>{' '}
               is valid. Choose how to sign in.
             </p>
           </div>
@@ -174,14 +165,14 @@ export default function DevicePage() {
           defaultWorkspace={currentWorkspace?.name ?? undefined}
           onApproved={() => setView({ kind: 'success' })}
           onDenied={() => setView({ kind: 'error_expired' })}
-          onError={e => setErrMsg(e)}
+          onError={(e) => setErrMsg(e)}
         />
       )}
 
       {view.kind === 'authorize_sso' && (
         <AuthorizeSSO
           onApproved={() => setView({ kind: 'success' })}
-          onError={e => setErrMsg(e)}
+          onError={(e) => setErrMsg(e)}
         />
       )}
 
@@ -206,10 +197,10 @@ export default function DevicePage() {
           </div>
           <h1 className="text-xl font-semibold text-text-primary">Code no longer valid</h1>
           <p className="text-sm text-text-secondary">
-            Expired or already used. Run
-            {' '}
-            <code className="rounded bg-components-input-bg-normal px-1 font-mono">difyctl auth login</code>
-            {' '}
+            Expired or already used. Run{' '}
+            <code className="rounded bg-components-input-bg-normal px-1 font-mono">
+              difyctl auth login
+            </code>{' '}
             to get a new code.
           </p>
           <Divider className="my-3" />
@@ -270,9 +261,7 @@ export default function DevicePage() {
         </div>
       )}
 
-      {errMsg && (
-        <p className="mt-4 text-sm text-text-destructive">{errMsg}</p>
-      )}
+      {errMsg && <p className="mt-4 text-sm text-text-destructive">{errMsg}</p>}
     </>
   )
 }

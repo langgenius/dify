@@ -17,11 +17,11 @@ type VariableConfigKeySuffix = I18nKeysByPrefix<'appDebug', 'variableConfig.'>
 
 const i18nFileTypeMap = {
   'text-input': 'text-input',
-  'paragraph': 'paragraph',
-  'number': 'number',
-  'select': 'select',
-  'checkbox': 'checkbox',
-  'file': 'single-file',
+  paragraph: 'paragraph',
+  number: 'number',
+  select: 'select',
+  checkbox: 'checkbox',
+  file: 'single-file',
   'file-list': 'multi-files',
 } satisfies Record<InputType, VariableConfigKeySuffix>
 
@@ -47,7 +47,9 @@ const DATA_TYPE = {
 
 export const useInputTypeOptions = (supportFile: boolean) => {
   const { t } = useTranslation()
-  const options = supportFile ? InputTypeEnum.options : InputTypeEnum.exclude(['file', 'file-list']).options
+  const options = supportFile
+    ? InputTypeEnum.options
+    : InputTypeEnum.exclude(['file', 'file-list']).options
 
   return options.map((value) => {
     return {

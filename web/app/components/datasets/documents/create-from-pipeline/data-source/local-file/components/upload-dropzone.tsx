@@ -37,7 +37,7 @@ const UploadDropzone = ({
   allowedExtensions,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
 
   return (
     <>
@@ -60,9 +60,13 @@ const UploadDropzone = ({
         <div className="flex min-h-5 items-center justify-center text-sm/4 text-text-secondary">
           <span className="mr-2 i-ri-upload-cloud-2-line size-5" />
           <span>
-            {supportBatchUpload ? t('stepOne.uploader.button', { ns: 'datasetCreation' }) : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
+            {supportBatchUpload
+              ? t('stepOne.uploader.button', { ns: 'datasetCreation' })
+              : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
             {allowedExtensions.length > 0 && (
-              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>{t('stepOne.uploader.browse', { ns: 'datasetCreation' })}</label>
+              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>
+                {t('stepOne.uploader.browse', { ns: 'datasetCreation' })}
+              </label>
             )}
           </span>
         </div>

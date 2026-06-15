@@ -1,10 +1,6 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import { IndexingType } from '../../create/step-two'
@@ -51,11 +47,7 @@ const IndexMethod = ({
       />
       {/* Economy */}
       <Popover>
-        <PopoverTrigger
-          nativeButton={false}
-          openOnHover={isEconomyDisabled}
-          render={<div />}
-        >
+        <PopoverTrigger nativeButton={false} openOnHover={isEconomyDisabled} render={<div />}>
           <OptionCard
             id={IndexingType.ECONOMICAL}
             isActive={value === IndexingType.ECONOMICAL}
@@ -63,7 +55,10 @@ const IndexMethod = ({
             icon={<Economic className="size-[18px]" />}
             iconActiveColor="text-util-colors-indigo-indigo-600"
             title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-            description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
+            description={t('form.indexMethodEconomyTip', {
+              ns: 'datasetSettings',
+              count: keywordNumber,
+            })}
             disabled={disabled || isEconomyDisabled}
             effectColor={EffectColor.indigo}
             showEffectColor

@@ -21,9 +21,13 @@ const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
           {t('stepOne.notionSyncTitle', { ns: 'datasetCreation' })}
           <Icon3Dots className="relative -top-2.5 -left-1.5 inline size-4 text-text-secondary" />
         </span>
-        <div className="system-sm-regular text-text-tertiary">{t('stepOne.notionSyncTip', { ns: 'datasetCreation' })}</div>
+        <div className="system-sm-regular text-text-tertiary">
+          {t('stepOne.notionSyncTip', { ns: 'datasetCreation' })}
+        </div>
       </div>
-      <Button variant="primary" onClick={onSetting}>{t('stepOne.connect', { ns: 'datasetCreation' })}</Button>
+      <Button variant="primary" onClick={onSetting}>
+        {t('stepOne.connect', { ns: 'datasetCreation' })}
+      </Button>
     </div>
   )
 }

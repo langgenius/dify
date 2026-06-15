@@ -18,17 +18,14 @@ type JsonImporterProps = {
   updateBtnWidth: (width: number) => void
 }
 
-const JsonImporter: FC<JsonImporterProps> = ({
-  onSubmit,
-  updateBtnWidth,
-}) => {
+const JsonImporter: FC<JsonImporterProps> = ({ onSubmit, updateBtnWidth }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)
   const importBtnRef = useRef<HTMLButtonElement>(null)
-  const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
-  const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
+  const advancedEditing = useVisualEditorStore((state) => state.advancedEditing)
+  const isAddingNewField = useVisualEditorStore((state) => state.isAddingNewField)
   const { emit } = useMittContext()
 
   useEffect(() => {
@@ -38,11 +35,13 @@ const JsonImporter: FC<JsonImporterProps> = ({
     }
   }, [updateBtnWidth])
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (nextOpen && (advancedEditing || isAddingNewField))
-      emit('quitEditing', {})
-    setOpen(nextOpen)
-  }, [advancedEditing, emit, isAddingNewField])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen && (advancedEditing || isAddingNewField)) emit('quitEditing', {})
+      setOpen(nextOpen)
+    },
+    [advancedEditing, emit, isAddingNewField],
+  )
 
   const onClose = useCallback(() => {
     setOpen(false)
@@ -66,23 +65,17 @@ const JsonImporter: FC<JsonImporterProps> = ({
       onSubmit(parsedJSON)
       setParseError(null)
       setOpen(false)
-    }
-    catch (e: any) {
-      if (e instanceof Error)
-        setParseError(e)
-      else
-        setParseError(new Error('Invalid JSON'))
+    } catch (e: any) {
+      if (e instanceof Error) setParseError(e)
+      else setParseError(new Error('Invalid JSON'))
     }
   }, [onSubmit, json])
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         ref={importBtnRef}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         className={cn(
           'flex shrink-0 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover',
           open && 'bg-components-button-ghost-bg-hover',

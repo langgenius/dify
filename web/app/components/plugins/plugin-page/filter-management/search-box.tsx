@@ -8,10 +8,7 @@ type SearchBoxProps = {
   onChange: (query: string) => void
 }
 
-const SearchBox: React.FC<SearchBoxProps> = ({
-  searchQuery,
-  onChange,
-}) => {
+const SearchBox: React.FC<SearchBoxProps> = ({ searchQuery, onChange }) => {
   const { t } = useTranslation()
 
   return (

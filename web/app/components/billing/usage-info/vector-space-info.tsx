@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { BasicPlan } from '../type'
-import {
-  RiHardDrive3Line,
-} from '@remixicon/react'
+import { RiHardDrive3Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
@@ -19,9 +17,7 @@ type Props = Readonly<{
 // Storage threshold in MB - usage below this shows as "< 50 MB"
 const STORAGE_THRESHOLD_MB = getPlanVectorSpaceLimitMB(Plan.sandbox)
 
-const VectorSpaceInfo: FC<Props> = ({
-  className,
-}) => {
+const VectorSpaceInfo: FC<Props> = ({ className }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { data: vectorSpace } = useCurrentPlanVectorSpace()
@@ -38,11 +34,7 @@ const VectorSpaceInfo: FC<Props> = ({
         },
       }
     : plan
-  const {
-    type,
-    usage,
-    total,
-  } = displayPlan
+  const { type, usage, total } = displayPlan
 
   // Determine total based on plan type (in MB), derived from ALL_PLANS config
   const getTotalInMB = () => {

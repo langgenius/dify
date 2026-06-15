@@ -89,7 +89,11 @@ describe('BlockInput', () => {
     it('should update value when typing in edit mode', async () => {
       const onConfirm = vi.fn()
       const { checkKeys } = await import('@/utils/var')
-        ; (checkKeys as ReturnType<typeof vi.fn>).mockReturnValue({ isValid: true, errorMessageKey: '', errorKey: '' })
+      ;(checkKeys as ReturnType<typeof vi.fn>).mockReturnValue({
+        isValid: true,
+        errorMessageKey: '',
+        errorKey: '',
+      })
 
       render(<BlockInput value="Hello" onConfirm={onConfirm} />)
 
@@ -105,7 +109,11 @@ describe('BlockInput', () => {
     it('should call onConfirm on value change with valid keys', async () => {
       const onConfirm = vi.fn()
       const { checkKeys } = await import('@/utils/var')
-        ; (checkKeys as ReturnType<typeof vi.fn>).mockReturnValue({ isValid: true, errorMessageKey: '', errorKey: '' })
+      ;(checkKeys as ReturnType<typeof vi.fn>).mockReturnValue({
+        isValid: true,
+        errorMessageKey: '',
+        errorKey: '',
+      })
 
       render(<BlockInput value="initial" onConfirm={onConfirm} />)
 
@@ -122,8 +130,8 @@ describe('BlockInput', () => {
 
     it('should show error toast on value change with invalid keys', async () => {
       const onConfirm = vi.fn()
-      const { checkKeys } = await import('@/utils/var');
-      (checkKeys as ReturnType<typeof vi.fn>).mockReturnValue({
+      const { checkKeys } = await import('@/utils/var')
+      ;(checkKeys as ReturnType<typeof vi.fn>).mockReturnValue({
         isValid: false,
         errorMessageKey: 'invalidKey',
         errorKey: 'test_key',

@@ -58,7 +58,7 @@ const DocumentList = ({
   const { t } = useTranslation()
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
-  const datasetConfig = useDatasetDetailContext(s => s.dataset)
+  const datasetConfig = useDatasetDetailContext((s) => s.dataset)
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
@@ -70,16 +70,13 @@ const DocumentList = ({
   })
 
   // Selection
-  const {
-    hasErrorDocumentsSelected,
-    downloadableSelectedIds,
-    clearSelection,
-  } = useDocumentSelection({
-    documents,
-    selectedIds,
-    onSelectedIdChange,
-  })
-  const documentIds = useMemo(() => documents.map(doc => doc.id), [documents])
+  const { hasErrorDocumentsSelected, downloadableSelectedIds, clearSelection } =
+    useDocumentSelection({
+      documents,
+      selectedIds,
+      onSelectedIdChange,
+    })
+  const documentIds = useMemo(() => documents.map((doc) => doc.id), [documents])
 
   // Actions
   const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
@@ -91,30 +88,28 @@ const DocumentList = ({
   })
 
   // Batch edit metadata
-  const {
-    isShowEditModal,
-    showEditModal,
-    hideEditModal,
-    originalList,
-    handleSave,
-  } = useBatchEditDocumentMetadata({
-    datasetId,
-    docList: documents.filter(doc => selectedIds.includes(doc.id)),
-    selectedDocumentIds: selectedIds,
-    onUpdate,
-  })
+  const { isShowEditModal, showEditModal, hideEditModal, originalList, handleSave } =
+    useBatchEditDocumentMetadata({
+      datasetId,
+      docList: documents.filter((doc) => selectedIds.includes(doc.id)),
+      selectedDocumentIds: selectedIds,
+      onUpdate,
+    })
 
   // Rename modal
   const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
-  const [isShowRenameModal, {
-    setTrue: setShowRenameModalTrue,
-    setFalse: setShowRenameModalFalse,
-  }] = useBoolean(false)
+  const [
+    isShowRenameModal,
+    { setTrue: setShowRenameModalTrue, setFalse: setShowRenameModalFalse },
+  ] = useBoolean(false)
 
-  const handleShowRenameModal = useCallback((doc: LocalDoc) => {
-    setCurrDocument(doc)
-    setShowRenameModalTrue()
-  }, [setShowRenameModalTrue])
+  const handleShowRenameModal = useCallback(
+    (doc: LocalDoc) => {
+      setCurrDocument(doc)
+      setShowRenameModalTrue()
+    },
+    [setShowRenameModalTrue],
+  )
 
   const handleRenamed = useCallback(() => {
     onUpdate()
@@ -124,15 +119,17 @@ const DocumentList = ({
     <div className="relative mt-3 flex size-full flex-col">
       <CheckboxGroup
         value={selectedIds}
-        onValueChange={nextSelectedIds => onSelectedIdChange(nextSelectedIds)}
+        onValueChange={(nextSelectedIds) => onSelectedIdChange(nextSelectedIds)}
         allValues={documentIds}
         className="relative h-0 grow overflow-x-auto"
       >
-        <table className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}>
+        <table
+          className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}
+        >
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
             <tr>
               <td className="w-12">
-                <div className="flex items-center" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
                   {embeddingAvailable && (
                     <Checkbox
                       className="mr-2 shrink-0"
@@ -143,10 +140,10 @@ const DocumentList = ({
                   #
                 </div>
               </td>
-              <td>
-                {t('list.table.header.fileName', { ns: 'datasetDocuments' })}
+              <td>{t('list.table.header.fileName', { ns: 'datasetDocuments' })}</td>
+              <td className="w-[130px]">
+                {t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}
               </td>
-              <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
               <td className="w-24">{t('list.table.header.words', { ns: 'datasetDocuments' })}</td>
               <td className="w-44">
                 <SortHeader
@@ -211,22 +208,25 @@ const DocumentList = ({
           className="shrink-0"
           page={pagination.current + 1}
           totalPages={totalPages}
-          onPageChange={page => pagination.onChange(page - 1)}
+          onPageChange={(page) => pagination.onChange(page - 1)}
           labels={{
             previous: t('pagination.previous', { ns: 'common' }),
             next: t('pagination.next', { ns: 'common' }),
-            editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+            editPageNumber: (page, totalPages) =>
+              t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
             pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
           }}
-          pageSize={pagination.onLimitChange
-            ? {
-                value: pageSize,
-                options: [10, 25, 50],
-                onValueChange: pagination.onLimitChange,
-                label: t('pagination.perPage', { ns: 'common' }),
-                ariaLabel: t('pagination.perPage', { ns: 'common' }),
-              }
-            : undefined}
+          pageSize={
+            pagination.onLimitChange
+              ? {
+                  value: pageSize,
+                  options: [10, 25, 50],
+                  onValueChange: pagination.onLimitChange,
+                  label: t('pagination.perPage', { ns: 'common' }),
+                  ariaLabel: t('pagination.perPage', { ns: 'common' }),
+                }
+              : undefined
+          }
         />
       )}
 

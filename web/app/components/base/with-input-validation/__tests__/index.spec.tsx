@@ -12,11 +12,7 @@ describe('withValidation HOC', () => {
 
   const TestComponent = ({ name, age }: Props) => (
     <div>
-      {name}
-      {' '}
-      -
-      {' '}
-      {age}
+      {name} - {age}
     </div>
   )
   const WrappedComponent = withValidation(TestComponent, schema)

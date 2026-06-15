@@ -14,16 +14,16 @@ export type ResolveHostOptions = {
 
 export function resolveHost(opts: ResolveHostOptions): string {
   let raw = opts.raw.trim()
-  if (raw === '')
-    raw = DEFAULT_HOST
-  if (!raw.includes('://'))
-    raw = `https://${raw}`
+  if (raw === '') raw = DEFAULT_HOST
+  if (!raw.includes('://')) raw = `https://${raw}`
   let url: URL
   try {
     url = new URL(raw)
-  }
-  catch (err) {
-    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `host parse: ${(err as Error).message}` })
+  } catch (err) {
+    throw new BaseError({
+      code: ErrorCode.UsageInvalidFlag,
+      message: `host parse: ${(err as Error).message}`,
+    })
   }
   url.pathname = url.pathname.replace(/\/+$/, '')
   if (url.protocol !== 'https:' && !(opts.insecure && url.protocol === 'http:')) {
@@ -38,8 +38,7 @@ export function resolveHost(opts: ResolveHostOptions): string {
 }
 
 export function hostWithScheme(host: string, scheme: string | undefined): string {
-  if (host.includes('://'))
-    return host
+  if (host.includes('://')) return host
   const proto = scheme === undefined || scheme === '' ? 'https' : scheme
   return `${proto}://${host}`
 }
@@ -48,8 +47,7 @@ export function bareHost(raw: string): string {
   try {
     const u = new URL(raw)
     return u.host !== '' ? u.host : raw
-  }
-  catch {
+  } catch {
     return raw
   }
 }
@@ -58,9 +56,11 @@ export function validateVerificationURI(raw: string, insecure: boolean): void {
   let url: URL
   try {
     url = new URL(raw.trim())
-  }
-  catch {
-    throw new BaseError({ code: ErrorCode.Unknown, message: `server returned invalid verification_uri "${raw}"` })
+  } catch {
+    throw new BaseError({
+      code: ErrorCode.Unknown,
+      message: `server returned invalid verification_uri "${raw}"`,
+    })
   }
   if (url.protocol !== 'https:' && !(insecure && url.protocol === 'http:')) {
     throw new BaseError({
@@ -70,5 +70,8 @@ export function validateVerificationURI(raw: string, insecure: boolean): void {
     })
   }
   if (url.host === '')
-    throw new BaseError({ code: ErrorCode.Unknown, message: `server returned verification_uri without host: "${raw}"` })
+    throw new BaseError({
+      code: ErrorCode.Unknown,
+      message: `server returned verification_uri without host: "${raw}"`,
+    })
 }

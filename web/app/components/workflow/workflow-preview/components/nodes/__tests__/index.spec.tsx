@@ -4,8 +4,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import CustomNode from '../index'
 
 vi.mock('reactflow', () => ({
-  Handle: (props: { id: string, type: string, className?: string }) => (
-    <div data-testid="handle" data-handleid={props.id} data-type={props.type} className={props.className} />
+  Handle: (props: { id: string; type: string; className?: string }) => (
+    <div
+      data-testid="handle"
+      data-handleid={props.id}
+      data-type={props.type}
+      className={props.className}
+    />
   ),
   Position: {
     Left: 'left',
@@ -29,15 +34,11 @@ describe('workflow preview custom node', () => {
         type: BlockEnum.QuestionClassifier,
         title: 'Classifier node',
         desc: '',
-        classes: [
-          { id: 'class-a', name: 'Billing' },
-        ],
+        classes: [{ id: 'class-a', name: 'Billing' }],
       } as never,
     }
 
-    const { container, getByText } = render(
-      <CustomNode {...props} />,
-    )
+    const { container, getByText } = render(<CustomNode {...props} />)
 
     expect(getByText('Classifier node')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="class-a"]')).toBeInTheDocument()
@@ -69,9 +70,7 @@ describe('workflow preview custom node', () => {
       } as never,
     }
 
-    const { container, getByText } = render(
-      <CustomNode {...props} />,
-    )
+    const { container, getByText } = render(<CustomNode {...props} />)
 
     expect(getByText('Human Input')).toBeInTheDocument()
     expect(container.querySelector('[data-handleid="approve"]')).toBeInTheDocument()

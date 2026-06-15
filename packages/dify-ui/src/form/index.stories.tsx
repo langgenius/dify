@@ -63,7 +63,9 @@ export const Basic: Story = {
       </FieldRoot>
 
       <div className="flex justify-end">
-        <Button type="submit" variant="primary">Save</Button>
+        <Button type="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </Form>
   ),

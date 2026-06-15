@@ -24,7 +24,7 @@ const DemoForm = () => {
     },
   })
 
-  const name = useStore(form.store, state => state.values.name)
+  const name = useStore(form.store, (state) => state.values.name)
 
   return (
     <form
@@ -35,29 +35,13 @@ const DemoForm = () => {
         form.handleSubmit()
       }}
     >
-      <form.AppField
-        name="name"
-        children={field => (
-          <field.TextField label="Name" />
-        )}
-      />
-      <form.AppField
-        name="surname"
-        children={field => (
-          <field.TextField label="Surname" />
-        )}
-      />
+      <form.AppField name="name" children={(field) => <field.TextField label="Name" />} />
+      <form.AppField name="surname" children={(field) => <field.TextField label="Surname" />} />
       <form.AppField
         name="isAcceptingTerms"
-        children={field => (
-          <field.CheckboxField label="I accept the terms and conditions." />
-        )}
+        children={(field) => <field.CheckboxField label="I accept the terms and conditions." />}
       />
-      {
-        !!name && (
-          <ContactFields form={form} />
-        )
-      }
+      {!!name && <ContactFields form={form} />}
       <form.AppForm>
         <form.Actions />
       </form.AppForm>

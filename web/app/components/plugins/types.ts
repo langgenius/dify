@@ -232,7 +232,15 @@ export type PluginInfoFromMarketPlace = {
 }
 
 export type Plugin = {
-  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy' | 'datasource' | 'trigger'
+  type:
+    | 'plugin'
+    | 'bundle'
+    | 'model'
+    | 'extension'
+    | 'tool'
+    | 'agent_strategy'
+    | 'datasource'
+    | 'trigger'
   org: string
   author?: string
   name: string

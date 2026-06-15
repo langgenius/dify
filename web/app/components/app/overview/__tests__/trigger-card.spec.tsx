@@ -6,8 +6,7 @@ import TriggerCard from '../trigger-card'
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) => {
-      if (options?.count !== undefined)
-        return `${key} (${options.count})`
+      if (options?.count !== undefined) return `${key} (${options.count})`
       return key
     },
   }),
@@ -57,9 +56,7 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/service/use-triggers', () => ({
   useAllTriggerPlugins: () => ({
-    data: [
-      { id: 'plugin-1', name: 'Test Plugin', icon: 'test-icon' },
-    ],
+    data: [{ id: 'plugin-1', name: 'Test Plugin', icon: 'test-icon' }],
   }),
 }))
 
@@ -69,12 +66,22 @@ vi.mock('@/utils', () => ({
 
 vi.mock('@/app/components/workflow/block-icon', () => ({
   default: ({ type }: { type: string }) => (
-    <div data-testid="block-icon" data-type={type}>BlockIcon</div>
+    <div data-testid="block-icon" data-type={type}>
+      BlockIcon
+    </div>
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange, disabled }: { checked: boolean, onCheckedChange: (v: boolean) => void, disabled: boolean }) => (
+  Switch: ({
+    checked,
+    onCheckedChange,
+    disabled,
+  }: {
+    checked: boolean
+    onCheckedChange: (v: boolean) => void
+    disabled: boolean
+  }) => (
     <button
       data-testid="switch"
       data-checked={checked ? 'true' : 'false'}
@@ -146,7 +153,10 @@ describe('TriggerCard', () => {
 
       const learnMoreLink = screen.getByText('overview.triggerInfo.learnAboutTriggers')
       expect(learnMoreLink).toBeInTheDocument()
-      expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example.com/use-dify/nodes/trigger/overview')
+      expect(learnMoreLink).toHaveAttribute(
+        'href',
+        'https://docs.example.com/use-dify/nodes/trigger/overview',
+      )
     })
   })
 

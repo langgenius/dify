@@ -15,13 +15,14 @@ type Action = {
   setShowCategoryManagementModal: (showCategoryManagementModal: boolean) => void
 }
 
-export const useStore = create<State & Action>(set => ({
+export const useStore = create<State & Action>((set) => ({
   tagList: [],
   categoryList: [],
-  setTagList: tagList => set(() => ({ tagList })),
-  setCategoryList: categoryList => set(() => ({ categoryList })),
+  setTagList: (tagList) => set(() => ({ tagList })),
+  setCategoryList: (categoryList) => set(() => ({ categoryList })),
   showTagManagementModal: false,
   showCategoryManagementModal: false,
-  setShowTagManagementModal: showTagManagementModal => set(() => ({ showTagManagementModal })),
-  setShowCategoryManagementModal: showCategoryManagementModal => set(() => ({ showCategoryManagementModal })),
+  setShowTagManagementModal: (showTagManagementModal) => set(() => ({ showTagManagementModal })),
+  setShowCategoryManagementModal: (showCategoryManagementModal) =>
+    set(() => ({ showCategoryManagementModal })),
 }))

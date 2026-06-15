@@ -12,10 +12,7 @@ type SnippetLayoutProps = {
   snippetId: string
 }
 
-const SnippetLayout = ({
-  children,
-  snippet,
-}: SnippetLayoutProps) => {
+const SnippetLayout = ({ children, snippet }: SnippetLayoutProps) => {
   const { t } = useTranslation('snippet')
 
   useDocumentTitle(snippet.name || t('typeLabel'))
@@ -23,9 +20,7 @@ const SnippetLayout = ({
   return (
     <div className="relative flex h-full overflow-hidden bg-background-body">
       <div className="relative min-h-0 min-w-0 grow overflow-hidden">
-        <div className="absolute inset-0 min-h-0 min-w-0 overflow-hidden">
-          {children}
-        </div>
+        <div className="absolute inset-0 min-h-0 min-w-0 overflow-hidden">{children}</div>
       </div>
     </div>
   )

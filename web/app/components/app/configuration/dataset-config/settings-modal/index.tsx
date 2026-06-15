@@ -42,11 +42,7 @@ const labelClass = `
   flex w-[168px] shrink-0
 `
 
-const SettingsModal: FC<SettingsModalProps> = ({
-  currentDataset,
-  onCancel,
-  onSave,
-}) => {
+const SettingsModal: FC<SettingsModalProps> = ({ currentDataset, onCancel, onSave }) => {
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
@@ -58,27 +54,39 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
-  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
+  const [scoreThreshold, setScoreThreshold] = useState(
+    localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5,
+  )
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(
+    localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false,
+  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    currentDataset.partial_member_list || [],
+  )
   const [memberList, setMemberList] = useState<Member[]>([])
   const { data: membersData } = useMembers()
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
-  const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [retrievalConfig, setRetrievalConfig] = useState(
+    localeCurrentDataset?.retrieval_model_dict as RetrievalConfig,
+  )
   const [keywordNumber, setKeywordNumber] = useState(currentDataset.keyword_number ?? 10)
 
   const handleValueChange = (type: string, value: string) => {
     setLocaleCurrentDataset({ ...localeCurrentDataset, [type]: value })
   }
   const [isHideChangedTip, setIsHideChangedTip] = useState(false)
-  const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
+  const isRetrievalChanged =
+    !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) ||
+    indexMethod !== localeCurrentDataset?.indexing_technique
 
-  const handleSettingsChange = (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
-    if (data.top_k !== undefined)
-      setTopK(data.top_k)
-    if (data.score_threshold !== undefined)
-      setScoreThreshold(data.score_threshold)
+  const handleSettingsChange = (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => {
+    if (data.top_k !== undefined) setTopK(data.top_k)
+    if (data.score_threshold !== undefined) setScoreThreshold(data.score_threshold)
     if (data.score_threshold_enabled !== undefined)
       setScoreThresholdEnabled(data.score_threshold_enabled)
 
@@ -92,8 +100,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   }
 
   const handleSave = async () => {
-    if (loading)
-      return
+    if (loading) return
     if (!localeCurrentDataset.name?.trim()) {
       toast.error(t('form.nameError', { ns: 'datasetSettings' }))
       return
@@ -121,13 +128,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
           keyword_number: keywordNumber,
           retrieval_model: {
             ...retrievalConfig,
-            score_threshold: retrievalConfig.score_threshold_enabled ? retrievalConfig.score_threshold : 0,
+            score_threshold: retrievalConfig.score_threshold_enabled
+              ? retrievalConfig.score_threshold
+              : 0,
           },
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
           ...(isExternal && {
             external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
-            external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
+            external_knowledge_api_id:
+              currentDataset!.external_knowledge_info.external_knowledge_api_id,
             external_retrieval_model: {
               top_k: topK,
               score_threshold: scoreThreshold,
@@ -140,7 +150,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,
-            role: memberList.find(member => member.id === id)?.role,
+            role: memberList.find((member) => member.id === id)?.role,
           }
         })
       }
@@ -151,20 +161,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexing_technique: indexMethod,
         retrieval_model_dict: retrievalConfig,
       })
-    }
-    catch {
+    } catch {
       toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (!membersData?.accounts)
-      setMemberList([])
-    else
-      setMemberList(membersData.accounts)
+    if (!membersData?.accounts) setMemberList([])
+    else setMemberList(membersData.accounts)
   }, [membersData])
 
   const showMultiModalTip = useMemo(() => {
@@ -182,7 +188,15 @@ const SettingsModal: FC<SettingsModalProps> = ({
       embeddingModelList,
       rerankModelList,
     })
-  }, [localeCurrentDataset.embedding_model, localeCurrentDataset.embedding_model_provider, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexMethod, embeddingModelList, rerankModelList])
+  }, [
+    localeCurrentDataset.embedding_model,
+    localeCurrentDataset.embedding_model_provider,
+    retrievalConfig.reranking_enable,
+    retrievalConfig.reranking_model,
+    indexMethod,
+    embeddingModelList,
+    rerankModelList,
+  ])
 
   return (
     <div
@@ -209,24 +223,28 @@ const SettingsModal: FC<SettingsModalProps> = ({
       <div className="overflow-y-auto border-b border-divider-regular p-6 pt-5 pb-[68px]">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.name', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t('form.name', { ns: 'datasetSettings' })}
+            </div>
           </div>
           <Input
             value={localeCurrentDataset.name}
-            onChange={e => handleValueChange('name', e.target.value)}
+            onChange={(e) => handleValueChange('name', e.target.value)}
             className="block h-9"
             placeholder={t('form.namePlaceholder', { ns: 'datasetSettings' }) || ''}
           />
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t('form.desc', { ns: 'datasetSettings' })}
+            </div>
           </div>
           <div className="w-full">
             <Textarea
               aria-label={t('form.desc', { ns: 'datasetSettings' })}
               value={localeCurrentDataset.description || ''}
-              onValueChange={value => handleValueChange('description', value)}
+              onValueChange={(value) => handleValueChange('description', value)}
               className="resize-none"
               placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             />
@@ -234,14 +252,18 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t('form.permissions', { ns: 'datasetSettings' })}
+            </div>
           </div>
           <div className="w-full">
             <PermissionSelector
-              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+              disabled={
+                !localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator
+              }
               permission={localeCurrentDataset.permission}
               value={selectedMemberIDs}
-              onChange={v => handleValueChange('permission', v!)}
+              onChange={(v) => handleValueChange('permission', v!)}
               onMemberSelect={setSelectedMemberIDs}
               memberList={memberList}
             />
@@ -250,7 +272,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {!!(currentDataset && currentDataset.indexing_technique) && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">
+                {t('form.indexMethod', { ns: 'datasetSettings' })}
+              </div>
             </div>
             <div className="grow">
               <IndexMethod
@@ -267,7 +291,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className="system-sm-semibold text-text-secondary">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
+              <div className="system-sm-semibold text-text-secondary">
+                {t('form.embeddingModel', { ns: 'datasetSettings' })}
+              </div>
             </div>
             <div className="w-full">
               <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
@@ -285,7 +311,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 <button
                   type="button"
                   className="cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                  onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                  onClick={() =>
+                    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+                  }
                 >
                   {t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}
                 </button>
@@ -295,33 +323,31 @@ const SettingsModal: FC<SettingsModalProps> = ({
         )}
 
         {/* Retrieval Method Config */}
-        {isExternal
-          ? (
-              <RetrievalSection
-                isExternal
-                rowClass={rowClass}
-                labelClass={labelClass}
-                t={t as any}
-                topK={topK}
-                scoreThreshold={scoreThreshold}
-                scoreThresholdEnabled={scoreThresholdEnabled}
-                onExternalSettingChange={handleSettingsChange}
-                currentDataset={currentDataset}
-              />
-            )
-          : (
-              <RetrievalSection
-                isExternal={false}
-                rowClass={rowClass}
-                labelClass={labelClass}
-                t={t as any}
-                indexMethod={indexMethod}
-                retrievalConfig={retrievalConfig}
-                showMultiModalTip={showMultiModalTip}
-                onRetrievalConfigChange={setRetrievalConfig}
-                docLink={docLink}
-              />
-            )}
+        {isExternal ? (
+          <RetrievalSection
+            isExternal
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t as any}
+            topK={topK}
+            scoreThreshold={scoreThreshold}
+            scoreThresholdEnabled={scoreThresholdEnabled}
+            onExternalSettingChange={handleSettingsChange}
+            currentDataset={currentDataset}
+          />
+        ) : (
+          <RetrievalSection
+            isExternal={false}
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t as any}
+            indexMethod={indexMethod}
+            retrievalConfig={retrievalConfig}
+            showMultiModalTip={showMultiModalTip}
+            onRetrievalConfigChange={setRetrievalConfig}
+            docLink={docLink}
+          />
+        )}
       </div>
       <RetrievalChangeTip
         visible={isRetrievalChanged && !isHideChangedTip}
@@ -329,20 +355,11 @@ const SettingsModal: FC<SettingsModalProps> = ({
         onDismiss={() => setIsHideChangedTip(true)}
       />
 
-      <div
-        className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
-      >
-        <Button
-          onClick={onCancel}
-          className="mr-2"
-        >
+      <div className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4">
+        <Button onClick={onCancel} className="mr-2">
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button
-          variant="primary"
-          disabled={loading}
-          onClick={handleSave}
-        >
+        <Button variant="primary" disabled={loading} onClick={handleSave}>
           {t('operation.save', { ns: 'common' })}
         </Button>
       </div>

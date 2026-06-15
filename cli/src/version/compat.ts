@@ -36,15 +36,17 @@ export function evaluateCompat(
 
   const parsedServer = tryParse(serverVersion)
   if (parsedServer === undefined)
-    return { status: 'unknown', detail: `server version ${JSON.stringify(clamp(serverVersion))} is not valid semver` }
+    return {
+      status: 'unknown',
+      detail: `server version ${JSON.stringify(clamp(serverVersion))} is not valid semver`,
+    }
 
   // The compat range is inclusive at both ends, exactly the format compatString prints.
   const expr = `>=${range.minDify} <=${range.maxDify}`
   const parsedRange = (() => {
     try {
       return parseRange(expr)
-    }
-    catch {
+    } catch {
       return undefined
     }
   })()
@@ -52,7 +54,13 @@ export function evaluateCompat(
     return { status: 'unknown', detail: `compat range ${JSON.stringify(expr)} is not valid semver` }
 
   if (satisfies(parsedServer, parsedRange))
-    return { status: 'compatible', detail: `server ${serverVersion} in [${range.minDify}, ${range.maxDify}]` }
+    return {
+      status: 'compatible',
+      detail: `server ${serverVersion} in [${range.minDify}, ${range.maxDify}]`,
+    }
 
-  return { status: 'unsupported', detail: `server ${serverVersion} outside [${range.minDify}, ${range.maxDify}]` }
+  return {
+    status: 'unsupported',
+    detail: `server ${serverVersion} outside [${range.minDify}, ${range.maxDify}]`,
+  }
 }

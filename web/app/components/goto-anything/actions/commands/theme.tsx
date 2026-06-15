@@ -34,12 +34,13 @@ const THEME_ITEMS = [
 const buildThemeCommands = (query: string, locale?: string): CommandSearchResult[] => {
   const i18n = getI18n()
   const q = query.toLowerCase()
-  const list = THEME_ITEMS.filter(item =>
-    !q
-    || i18n.t(item.titleKey, { ns: 'app', lng: locale }).toLowerCase().includes(q)
-    || item.id.includes(q),
+  const list = THEME_ITEMS.filter(
+    (item) =>
+      !q ||
+      i18n.t(item.titleKey, { ns: 'app', lng: locale }).toLowerCase().includes(q) ||
+      item.id.includes(q),
   )
-  return list.map(item => ({
+  return list.map((item) => ({
     id: item.id,
     title: i18n.t(item.titleKey, { ns: 'app', lng: locale }),
     description: i18n.t(item.descKey, { ns: 'app', lng: locale }),

@@ -1,15 +1,10 @@
 import type { FC, Ref } from 'react'
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import type {
-  EnableType,
-} from '../../types'
+import type { EnableType } from '../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiMicLine,
-  RiSendPlane2Fill,
-} from '@remixicon/react'
+import { RiMicLine, RiSendPlane2Fill } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,29 +32,22 @@ const Operation: FC<OperationProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div
-      className={cn(
-        'flex shrink-0 items-center justify-end',
-      )}
-    >
-      <div
-        className="flex items-center pl-1"
-        ref={ref}
-      >
+    <div className={cn('flex shrink-0 items-center justify-end')}>
+      <div className="flex items-center pl-1" ref={ref}>
         <div className="flex items-center space-x-1">
-          {fileConfig?.enabled && <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />}
-          {
-            speechToTextConfig?.enabled && (
-              <ActionButton
-                size="l"
-                aria-label={t('voiceInput.start', { ns: 'common' })}
-                disabled={readonly}
-                onClick={onShowVoiceInput}
-              >
-                <RiMicLine className="size-5" aria-hidden="true" />
-              </ActionButton>
-            )
-          }
+          {fileConfig?.enabled && (
+            <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />
+          )}
+          {speechToTextConfig?.enabled && (
+            <ActionButton
+              size="l"
+              aria-label={t('voiceInput.start', { ns: 'common' })}
+              disabled={readonly}
+              onClick={onShowVoiceInput}
+            >
+              <RiMicLine className="size-5" aria-hidden="true" />
+            </ActionButton>
+          )}
         </div>
         <Button
           aria-label={t('operation.send', { ns: 'common' })}

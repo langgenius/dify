@@ -1,12 +1,7 @@
 import type { LabelProps } from '../../label'
 import type { FileTypeSelectOption, InputType } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useFieldContext } from '../../..'
 import Label from '../../label'
 import { useInputTypeOptions } from './hooks'
@@ -31,21 +26,16 @@ const InputTypeSelectField = ({
 }: InputTypeSelectFieldProps) => {
   const field = useFieldContext<InputType>()
   const inputTypeOptions = useInputTypeOptions(supportFile)
-  const selected = inputTypeOptions.find(option => option.value === field.state.value)
+  const selected = inputTypeOptions.find((option) => option.value === field.state.value)
 
   const handleInputTypeChange = (next: string | null) => {
     const inputType = InputTypeEnum.safeParse(next)
-    if (inputType.success)
-      field.handleChange(inputType.data)
+    if (inputType.success) field.handleChange(inputType.data)
   }
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        {...(labelOptions ?? {})}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
       <Select
         items={inputTypeOptions}
         value={field.state.value ?? null}
@@ -57,11 +47,7 @@ const InputTypeSelectField = ({
         </SelectTrigger>
         <SelectContent popupClassName="w-[368px] bg-components-panel-bg-blur shadow-shadow-shadow-5">
           {inputTypeOptions.map((option: FileTypeSelectOption) => (
-            <SelectItem
-              key={option.value}
-              value={option.value}
-              className="gap-x-1"
-            >
+            <SelectItem key={option.value} value={option.value} className="gap-x-1">
               <Option option={option} />
             </SelectItem>
           ))}

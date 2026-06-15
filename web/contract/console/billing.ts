@@ -14,12 +14,14 @@ export const bindPartnerStackContract = base
     path: '/billing/partners/{partnerKey}/tenants',
     method: 'PUT',
   })
-  .input(type<{
-    params: {
-      partnerKey: string
-    }
-    body: {
-      click_id: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        partnerKey: string
+      }
+      body: {
+        click_id: string
+      }
+    }>(),
+  )
   .output(type<unknown>())

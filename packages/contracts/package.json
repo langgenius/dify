@@ -1,8 +1,8 @@
 {
   "name": "@dify/contracts",
-  "type": "module",
   "version": "0.0.0-private",
   "private": true,
+  "type": "module",
   "exports": {
     "./api/*": {
       "types": "./generated/api/*.ts",

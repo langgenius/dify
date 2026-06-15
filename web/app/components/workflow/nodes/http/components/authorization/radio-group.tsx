@@ -14,17 +14,15 @@ type ItemProps = {
   onClick: () => void
   isSelected: boolean
 }
-const Item: FC<ItemProps> = ({
-  title,
-  onClick,
-  isSelected,
-}) => {
+const Item: FC<ItemProps> = ({ title, onClick, isSelected }) => {
   return (
     <div
       className={cn(
         'flex h-8 grow cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-        !isSelected && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-        isSelected && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+        !isSelected &&
+          'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        isSelected &&
+          'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
       )}
       onClick={onClick}
     >
@@ -39,17 +37,16 @@ type Props = Readonly<{
   onChange: (value: string) => void
 }>
 
-const RadioGroup: FC<Props> = ({
-  options,
-  value,
-  onChange,
-}) => {
-  const handleChange = useCallback((value: string) => {
-    return () => onChange(value)
-  }, [onChange])
+const RadioGroup: FC<Props> = ({ options, value, onChange }) => {
+  const handleChange = useCallback(
+    (value: string) => {
+      return () => onChange(value)
+    },
+    [onChange],
+  )
   return (
     <div className="flex space-x-2">
-      {options.map(option => (
+      {options.map((option) => (
         <Item
           key={option.value}
           title={option.label}

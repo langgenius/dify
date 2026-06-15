@@ -1,9 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type {
-  AgentLogItemWithChildren,
-  NodeTracing,
-} from '@/types/workflow'
+import type { AgentLogItemWithChildren, NodeTracing } from '@/types/workflow'
 import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
@@ -98,38 +95,21 @@ const ResultPanel: FC<ResultPanelProps> = ({
         />
       </div>
       <div className="px-4">
-        {
-          isIterationNode && handleShowIterationResultList && (
-            <IterationLogTrigger
-              nodeInfo={nodeInfo}
-              onShowIterationResultList={handleShowIterationResultList}
-            />
-          )
-        }
-        {
-          isLoopNode && handleShowLoopResultList && (
-            <LoopLogTrigger
-              nodeInfo={nodeInfo}
-              onShowLoopResultList={handleShowLoopResultList}
-            />
-          )
-        }
-        {
-          isRetryNode && onShowRetryDetail && (
-            <RetryLogTrigger
-              nodeInfo={nodeInfo}
-              onShowRetryResultList={onShowRetryDetail}
-            />
-          )
-        }
-        {
-          (isAgentNode || isToolNode) && handleShowAgentOrToolLog && (
-            <AgentLogTrigger
-              nodeInfo={nodeInfo}
-              onShowAgentOrToolLog={handleShowAgentOrToolLog}
-            />
-          )
-        }
+        {isIterationNode && handleShowIterationResultList && (
+          <IterationLogTrigger
+            nodeInfo={nodeInfo}
+            onShowIterationResultList={handleShowIterationResultList}
+          />
+        )}
+        {isLoopNode && handleShowLoopResultList && (
+          <LoopLogTrigger nodeInfo={nodeInfo} onShowLoopResultList={handleShowLoopResultList} />
+        )}
+        {isRetryNode && onShowRetryDetail && (
+          <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
+        )}
+        {(isAgentNode || isToolNode) && handleShowAgentOrToolLog && (
+          <AgentLogTrigger nodeInfo={nodeInfo} onShowAgentOrToolLog={handleShowAgentOrToolLog} />
+        )}
       </div>
       <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
@@ -138,7 +118,9 @@ const ResultPanel: FC<ResultPanelProps> = ({
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
-          footer={inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
+          footer={
+            inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
+          }
         />
         {process_data && (
           <CodeEditor
@@ -148,7 +130,11 @@ const ResultPanel: FC<ResultPanelProps> = ({
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
-            footer={process_data_truncated && <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />}
+            footer={
+              process_data_truncated && (
+                <LargeDataAlert textHasNoExport className="mx-1 mt-2 mb-1 h-7" />
+              )
+            }
           />
         )}
         {(outputs || status === 'running') && (
@@ -160,7 +146,15 @@ const ResultPanel: FC<ResultPanelProps> = ({
             value={outputs}
             isJSONStringifyBeauty
             tip={<ErrorHandleTip type={execution_metadata?.error_strategy} />}
-            footer={outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={outputs_full_content?.download_url} className="mx-1 mt-2 mb-1 h-7" />}
+            footer={
+              outputs_truncated && (
+                <LargeDataAlert
+                  textHasNoExport
+                  downloadUrl={outputs_full_content?.download_url}
+                  className="mx-1 mt-2 mb-1 h-7"
+                />
+              )
+            }
           />
         )}
       </div>

@@ -1,4 +1,8 @@
-import { deepSanitizeFormValues, findMissingRequiredField, sanitizeFormValues } from '../form-helpers'
+import {
+  deepSanitizeFormValues,
+  findMissingRequiredField,
+  sanitizeFormValues,
+} from '../form-helpers'
 
 describe('Form Helpers', () => {
   describe('sanitizeFormValues', () => {

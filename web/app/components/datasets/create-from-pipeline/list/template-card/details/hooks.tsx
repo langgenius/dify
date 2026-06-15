@@ -1,6 +1,10 @@
 import type { Option } from './types'
 import { useTranslation } from 'react-i18next'
-import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
+import {
+  GeneralChunk,
+  ParentChildChunk,
+  QuestionAndAnswer,
+} from '@/app/components/base/icons/src/vender/knowledge'
 import { ChunkingMode } from '@/models/datasets'
 import { EffectColor } from './types'
 
@@ -24,7 +28,6 @@ export const useChunkStructureConfig = () => {
     title: 'Q&A',
     description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
     effectColor: EffectColor.green,
-
   }
 
   const chunkStructureConfig: Record<ChunkingMode, Option> = {

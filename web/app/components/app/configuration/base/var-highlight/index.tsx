@@ -9,10 +9,7 @@ type IVarHighlightProps = {
   className?: string
 }
 
-const VarHighlight: FC<IVarHighlightProps> = ({
-  name,
-  className = '',
-}) => {
+const VarHighlight: FC<IVarHighlightProps> = ({ name, className = '' }) => {
   return (
     <div
       key={name}

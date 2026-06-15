@@ -50,13 +50,17 @@ describe('Billing', () => {
   it('hides the billing action when user is not manager or billing is disabled', () => {
     isManager = false
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
 
     vi.clearAllMocks()
     isManager = true
     enableBilling = false
     render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('opens the billing window with the immediate url when the button is clicked', async () => {

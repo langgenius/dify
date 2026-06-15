@@ -13,47 +13,39 @@ type PluginsNavProps = {
   className?: string
 }
 
-const PluginsNav = ({
-  className,
-}: PluginsNavProps) => {
+const PluginsNav = ({ className }: PluginsNavProps) => {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
   const activated = selectedSegment === 'plugins'
-  const {
-    isInstalling,
-    isInstallingWithError,
-    isFailed,
-  } = usePluginTaskStatus()
+  const { isInstalling, isInstallingWithError, isFailed } = usePluginTaskStatus()
 
   return (
     <Link
       href="/plugins"
-      className={cn(className, 'group', 'plugins-nav-button',
-      // used for use-fold-anim-into.ts
+      className={cn(
+        className,
+        'group',
+        'plugins-nav-button',
+        // used for use-fold-anim-into.ts
       )}
     >
       <div
-        className={cn('relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5 system-sm-medium', activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md', !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle')}
+        className={cn(
+          'relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5 system-sm-medium',
+          activated &&
+            'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md',
+          !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          (isInstallingWithError || isFailed) &&
+            !activated &&
+            'border-components-panel-border-subtle',
+        )}
       >
-        {
-          (isFailed || isInstallingWithError) && !activated && (
-            <StatusDot
-              status="error"
-              className="absolute -top-px -left-px"
-            />
-          )
-        }
+        {(isFailed || isInstallingWithError) && !activated && (
+          <StatusDot status="error" className="absolute -top-px -left-px" />
+        )}
         <div className="mr-0.5 flex size-5 items-center justify-center">
-          {
-            (!(isInstalling || isInstallingWithError) || activated) && (
-              <Group className="size-4" />
-            )
-          }
-          {
-            (isInstalling || isInstallingWithError) && !activated && (
-              <DownloadingIcon />
-            )
-          }
+          {(!(isInstalling || isInstallingWithError) || activated) && <Group className="size-4" />}
+          {(isInstalling || isInstallingWithError) && !activated && <DownloadingIcon />}
         </div>
         <span className="px-0.5">{t('menus.plugins', { ns: 'common' })}</span>
       </div>

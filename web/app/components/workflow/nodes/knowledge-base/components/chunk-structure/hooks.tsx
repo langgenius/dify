@@ -59,11 +59,7 @@ export const useChunkStructure = () => {
     [ChunkStructureEnum.question_answer]: QuestionAnswerOption,
   }
 
-  const options = [
-    GeneralOption,
-    ParentChildOption,
-    QuestionAnswerOption,
-  ]
+  const options = [GeneralOption, ParentChildOption, QuestionAnswerOption]
 
   return {
     options,

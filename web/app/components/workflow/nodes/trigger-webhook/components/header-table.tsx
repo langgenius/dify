@@ -12,11 +12,7 @@ type HeaderTableProps = {
   onChange: (headers: WebhookHeader[]) => void
 }
 
-const HeaderTable: FC<HeaderTableProps> = ({
-  readonly = false,
-  headers = [],
-  onChange,
-}) => {
+const HeaderTable: FC<HeaderTableProps> = ({ readonly = false, headers = [], onChange }) => {
   const { t } = useTranslation()
 
   // Define columns for header table - matching prototype design
@@ -45,7 +41,7 @@ const HeaderTable: FC<HeaderTableProps> = ({
   }
 
   // Convert WebhookHeader[] to GenericTableRow[]
-  const tableData: GenericTableRow[] = headers.map(header => ({
+  const tableData: GenericTableRow[] = headers.map((header) => ({
     name: header.name,
     required: header.required,
   }))
@@ -53,8 +49,8 @@ const HeaderTable: FC<HeaderTableProps> = ({
   // Handle data changes
   const handleDataChange = (data: GenericTableRow[]) => {
     const newHeaders: WebhookHeader[] = data
-      .filter(row => row.name && typeof row.name === 'string' && row.name.trim() !== '')
-      .map(row => ({
+      .filter((row) => row.name && typeof row.name === 'string' && row.name.trim() !== '')
+      .map((row) => ({
         name: (row.name as string) || '',
         required: !!row.required,
       }))

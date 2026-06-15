@@ -44,11 +44,12 @@ describe('EditWorkspaceModal', () => {
     vi.unstubAllGlobals()
   })
 
-  const renderModal = () => render(
-    <>
-      <EditWorkspaceModal onCancel={mockOnCancel} />
-    </>,
-  )
+  const renderModal = () =>
+    render(
+      <>
+        <EditWorkspaceModal onCancel={mockOnCancel} />
+      </>,
+    )
 
   it('should show current workspace name in the input', async () => {
     renderModal()
@@ -77,7 +78,11 @@ describe('EditWorkspaceModal', () => {
   it('should submit update when confirming as owner', async () => {
     const user = userEvent.setup()
     const mockAssign = vi.fn()
-    vi.stubGlobal('location', { ...window.location, assign: mockAssign, origin: 'http://localhost' })
+    vi.stubGlobal('location', {
+      ...window.location,
+      assign: mockAssign,
+      origin: 'http://localhost',
+    })
     vi.mocked(updateWorkspaceInfo).mockResolvedValue({} as ICurrentWorkspace)
 
     renderModal()
@@ -111,9 +116,11 @@ describe('EditWorkspaceModal', () => {
     await user.click(getSaveButton())
 
     await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
     })
   })
 

@@ -38,9 +38,12 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const handleInstructionChange = useCallback((value: string) => {
-    onInstructionChange(value)
-  }, [onInstructionChange])
+  const handleInstructionChange = useCallback(
+    (value: string) => {
+      onInstructionChange(value)
+    },
+    [onInstructionChange],
+  )
 
   return (
     <div className="relative flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
@@ -103,11 +106,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <Button variant="secondary" onClick={onClose}>
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button
-          variant="primary"
-          className="flex items-center gap-x-0.5"
-          onClick={onGenerate}
-        >
+        <Button variant="primary" className="flex items-center gap-x-0.5" onClick={onGenerate}>
           <RiSparklingFill className="size-4" />
           <span>{t('nodes.llm.jsonSchema.generate', { ns: 'workflow' })}</span>
         </Button>

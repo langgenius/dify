@@ -80,7 +80,12 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         isInstalledApp && 'rounded-l-2xl',
       )}
     >
-      <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
+      <div
+        className={cn(
+          'shrink-0 space-y-4 border-b border-divider-subtle',
+          isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0',
+        )}
+      >
         <div className="flex items-center gap-3">
           <AppIcon
             size={isPC ? 'large' : 'small'}
@@ -89,8 +94,13 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             background={siteInfo.icon_background || appDefaultIconBackground}
             imageUrl={siteInfo.icon_url}
           />
-          <div className="grow truncate system-md-semibold text-text-secondary">{siteInfo.title}</div>
-          <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
+          <div className="grow truncate system-md-semibold text-text-secondary">
+            {siteInfo.title}
+          </div>
+          <MenuDropdown
+            hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC}
+            data={siteInfo}
+          />
         </div>
         {siteInfo.description && (
           <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
@@ -106,11 +116,7 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             <TabsTab value="saved" className="ml-auto">
               <span aria-hidden className="i-ri-bookmark-3-line size-4" />
               <span className="ml-2">{t('generation.tabs.saved', { ns: 'share' })}</span>
-              {savedMessages.length > 0 && (
-                <Badge className="ml-1">
-                  {savedMessages.length}
-                </Badge>
-              )}
+              {savedMessages.length > 0 && <Badge className="ml-1">{savedMessages.length}</Badge>}
             </TabsTab>
           )}
         </TabsList>
@@ -119,7 +125,10 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
         className={cn(
           'h-0 grow overflow-y-auto bg-components-panel-bg',
           isPC ? 'px-8' : 'px-4',
-          !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
+          !isPC &&
+            resultExisted &&
+            customConfig?.remove_webapp_brand &&
+            'rounded-b-2xl border-b-[0.5px] border-divider-regular',
         )}
       >
         <TabsPanel value="create" keepMounted>
@@ -162,12 +171,20 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}
         >
-          <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-            ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
-            : customConfig?.replace_webapp_logo
-              ? <img src={customConfig.replace_webapp_logo} alt="logo" className="block h-5 w-auto" />
-              : <DifyLogo size="small" />}
+          <div className="system-2xs-medium-uppercase text-text-tertiary">
+            {t('chat.poweredBy', { ns: 'share' })}
+          </div>
+          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo ? (
+            <img
+              src={systemFeatures.branding.workspace_logo}
+              alt="logo"
+              className="block h-5 w-auto"
+            />
+          ) : customConfig?.replace_webapp_logo ? (
+            <img src={customConfig.replace_webapp_logo} alt="logo" className="block h-5 w-auto" />
+          ) : (
+            <DifyLogo size="small" />
+          )}
         </div>
       )}
     </Tabs>

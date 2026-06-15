@@ -18,7 +18,6 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@langgenius/dify-ui/toast')>()
   return {
     ...actual,
-
   }
 })
 
@@ -52,9 +51,7 @@ describe('PluginPage', () => {
 
   it('should render plugin settings with edit action when serpapi key exists', () => {
     mockUsePluginProviders.mockReturnValue({
-      data: [
-        { tool_name: 'serpapi', credentials: { api_key: 'test-key' } },
-      ],
+      data: [{ tool_name: 'serpapi', credentials: { api_key: 'test-key' } }],
       refetch: vi.fn(),
     })
 
@@ -64,9 +61,7 @@ describe('PluginPage', () => {
 
   it('should render plugin settings with add action when serpapi key is missing', () => {
     mockUsePluginProviders.mockReturnValue({
-      data: [
-        { tool_name: 'serpapi', credentials: null },
-      ],
+      data: [{ tool_name: 'serpapi', credentials: null }],
       refetch: vi.fn(),
     })
 
@@ -85,7 +80,10 @@ describe('PluginPage', () => {
     expect(screen.getByText(/common\.provider\.encrypted\.back/)).toBeInTheDocument()
     const link = screen.getByRole('link', { name: 'PKCS1_OAEP' })
     expect(link).toHaveAttribute('target', '_blank')
-    expect(link).toHaveAttribute('href', 'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html')
+    expect(link).toHaveAttribute(
+      'href',
+      'https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html',
+    )
   })
 
   it('should show reload state after saving key', async () => {

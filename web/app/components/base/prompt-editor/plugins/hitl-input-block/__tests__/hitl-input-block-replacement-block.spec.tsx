@@ -6,10 +6,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import {
-  BlockEnum,
-  InputVarType,
-} from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodesByType,
@@ -75,7 +72,8 @@ const renderReplacementPlugin = (props?: {
   getVarType?: GetVarType
   formInputs?: FormInputItem[] | null
 }) => {
-  const formInputs = props?.formInputs === null ? undefined : (props?.formInputs ?? [createFormInput()])
+  const formInputs =
+    props?.formInputs === null ? undefined : (props?.formInputs ?? [createFormInput()])
 
   return renderLexicalEditor({
     namespace: 'hitl-input-replacement-plugin-test',
@@ -110,8 +108,7 @@ type HITLInputNodeSnapshot = {
 const readFirstHITLInputNodeSnapshot = (editor: LexicalEditor): HITLInputNodeSnapshot | null => {
   return readEditorStateValue(editor, () => {
     const node = $nodesOfType(HITLInputNode)[0]
-    if (!node)
-      return null
+    if (!node) return null
 
     return {
       variableName: node.getVariableName(),
@@ -142,7 +139,11 @@ describe('HITLInputReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, 'before {{#$output.user_name#}} after', text => new CustomTextNode(text))
+      setEditorRootText(
+        editor,
+        'before {{#$output.user_name#}} after',
+        (text) => new CustomTextNode(text),
+      )
 
       await waitFor(() => {
         expect(getNodesByType(editor, HITLInputNode)).toHaveLength(1)
@@ -150,15 +151,16 @@ describe('HITLInputReplacementBlock', () => {
 
       const node = readFirstHITLInputNodeSnapshot(editor)
       expect(node).not.toBeNull()
-      if (!node)
-        throw new Error('Expected HITLInputNode snapshot')
+      if (!node) throw new Error('Expected HITLInputNode snapshot')
 
       expect(node.variableName).toBe('user_name')
       expect(node.nodeId).toBe('node-1')
       expect(node.getVarType).toBe(getVarType)
       expect(node.readonly).toBe(true)
       expect(node.environmentVariables).toEqual([{ variable: 'env.api_key', type: 'string' }])
-      expect(node.conversationVariables).toEqual([{ variable: 'conversation.user_id', type: 'number' }])
+      expect(node.conversationVariables).toEqual([
+        { variable: 'conversation.user_id', type: 'number' },
+      ])
       expect(node.ragVariables).toEqual([
         { variable: 'rag.shared.file_name', type: 'string', isRagVariable: true },
         { variable: 'node-1.doc_name', type: 'string', isRagVariable: true },
@@ -172,7 +174,11 @@ describe('HITLInputReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, 'plain text without replacement token', text => new CustomTextNode(text))
+      setEditorRootText(
+        editor,
+        'plain text without replacement token',
+        (text) => new CustomTextNode(text),
+      )
 
       await waitFor(() => {
         expect(getNodesByType(editor, HITLInputNode)).toHaveLength(0)
@@ -184,7 +190,7 @@ describe('HITLInputReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, '{{#$output.user_name#}}', text => new CustomTextNode(text))
+      setEditorRootText(editor, '{{#$output.user_name#}}', (text) => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodesByType(editor, HITLInputNode)).toHaveLength(1)
@@ -192,8 +198,7 @@ describe('HITLInputReplacementBlock', () => {
 
       const node = readFirstHITLInputNodeSnapshot(editor)
       expect(node).not.toBeNull()
-      if (!node)
-        throw new Error('Expected HITLInputNode snapshot')
+      if (!node) throw new Error('Expected HITLInputNode snapshot')
 
       expect(node.environmentVariables).toEqual([])
       expect(node.conversationVariables).toEqual([])
@@ -206,7 +211,7 @@ describe('HITLInputReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, '{{#$output.user_name#}}', text => new CustomTextNode(text))
+      setEditorRootText(editor, '{{#$output.user_name#}}', (text) => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodesByType(editor, HITLInputNode)).toHaveLength(1)
@@ -214,8 +219,7 @@ describe('HITLInputReplacementBlock', () => {
 
       const node = readFirstHITLInputNodeSnapshot(editor)
       expect(node).not.toBeNull()
-      if (!node)
-        throw new Error('Expected HITLInputNode snapshot')
+      if (!node) throw new Error('Expected HITLInputNode snapshot')
 
       expect(node.formInputsLength).toBe(0)
     })

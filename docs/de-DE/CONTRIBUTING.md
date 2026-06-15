@@ -32,11 +32,11 @@ Vergessen Sie nicht, in der PR-Beschreibung ein bestehendes Issue zu verlinken o
 
 Unsere Priorisierung:
 
-| Fehlertyp | Priorität |
-| ------------------------------------------------------------ | --------------- |
-| Fehler in Kernfunktionen (Cloud-Service, Login nicht möglich, Anwendungen funktionieren nicht, Sicherheitslücken) | Kritisch |
-| Nicht-kritische Fehler, Leistungsverbesserungen | Mittlere Priorität |
-| Kleinere Korrekturen (Tippfehler, verwirrende aber funktionierende UI) | Niedrige Priorität |
+| Fehlertyp                                                                                                         | Priorität          |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Fehler in Kernfunktionen (Cloud-Service, Login nicht möglich, Anwendungen funktionieren nicht, Sicherheitslücken) | Kritisch           |
+| Nicht-kritische Fehler, Leistungsverbesserungen                                                                   | Mittlere Priorität |
+| Kleinere Korrekturen (Tippfehler, verwirrende aber funktionierende UI)                                            | Niedrige Priorität |
 
 ### Feature-Anfragen
 
@@ -50,12 +50,12 @@ Unsere Priorisierung:
 
 Unsere Priorisierung:
 
-| Feature-Typ | Priorität |
-| ------------------------------------------------------------ | --------------- |
-| Hochprioritäre Features (durch Teammitglied gekennzeichnet) | Hohe Priorität |
+| Feature-Typ                                                                                                                           | Priorität          |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Hochprioritäre Features (durch Teammitglied gekennzeichnet)                                                                           | Hohe Priorität     |
 | Beliebte Feature-Anfragen aus unserem [Community-Feedback-Board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Mittlere Priorität |
-| Nicht-Kernfunktionen und kleinere Verbesserungen | Niedrige Priorität |
-| Wertvoll, aber nicht dringend | Zukunfts-Feature |
+| Nicht-Kernfunktionen und kleinere Verbesserungen                                                                                      | Niedrige Priorität |
+| Wertvoll, aber nicht dringend                                                                                                         | Zukunfts-Feature   |
 
 ## Einreichen Ihres PRs
 

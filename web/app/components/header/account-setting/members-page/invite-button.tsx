@@ -16,7 +16,8 @@ const InviteButton = (props: InviteButtonProps) => {
   const { t } = useTranslation()
   const { currentWorkspace } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } = useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
+  const { data: workspacePermissions, isFetching: isFetchingWorkspacePermissions } =
+    useWorkspacePermissions(currentWorkspace!.id, systemFeatures.branding.enabled)
   if (systemFeatures.branding.enabled) {
     if (isFetchingWorkspacePermissions) {
       return <Loading />

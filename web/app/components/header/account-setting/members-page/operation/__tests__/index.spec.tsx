@@ -33,11 +33,19 @@ const defaultMember: Member = {
   created_at: '',
 }
 
-const renderOperation = (propsOverride: Partial<Member> = {}, operatorRole = 'owner', onOperate?: () => void) => {
+const renderOperation = (
+  propsOverride: Partial<Member> = {},
+  operatorRole = 'owner',
+  onOperate?: () => void,
+) => {
   const mergedMember = { ...defaultMember, ...propsOverride }
   return render(
     <>
-      <Operation member={mergedMember} operatorRole={operatorRole} onOperate={onOperate ?? vi.fn()} />
+      <Operation
+        member={mergedMember}
+        operatorRole={operatorRole}
+        onOperate={onOperate ?? vi.fn()}
+      />
     </>,
   )
 }

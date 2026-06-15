@@ -27,11 +27,13 @@ const renderBatchHook = (promptConfig: PromptConfig = createPromptConfig()) => {
   const onStart = vi.fn()
   const t = createTranslator()
 
-  const hook = renderHook(() => useTextGenerationBatch({
-    promptConfig,
-    notify,
-    t,
-  }))
+  const hook = renderHook(() =>
+    useTextGenerationBatch({
+      promptConfig,
+      notify,
+      t,
+    }),
+  )
 
   return {
     ...hook,
@@ -58,7 +60,11 @@ describe('useTextGenerationBatch', () => {
     expect(onStart).toHaveBeenCalledTimes(1)
     expect(result.current.isCallBatchAPI).toBe(true)
     expect(result.current.allTaskList).toHaveLength(BATCH_CONCURRENCY + 1)
-    expect(result.current.allTaskList.slice(0, BATCH_CONCURRENCY).every(task => task.status === TaskStatus.running)).toBe(true)
+    expect(
+      result.current.allTaskList
+        .slice(0, BATCH_CONCURRENCY)
+        .every((task) => task.status === TaskStatus.running),
+    ).toBe(true)
     expect(result.current.allTaskList.at(-1)?.status).toBe(TaskStatus.pending)
     expect(result.current.allTaskList[0]?.params.inputs).toEqual({
       name: 'Item 1',
@@ -71,10 +77,13 @@ describe('useTextGenerationBatch', () => {
 
     let isStarted = true
     act(() => {
-      isStarted = result.current.handleRunBatch([
-        ['Prompt', 'Score'],
-        ['Hello', '1'],
-      ], { onStart })
+      isStarted = result.current.handleRunBatch(
+        [
+          ['Prompt', 'Score'],
+          ['Hello', '1'],
+        ],
+        { onStart },
+      )
     })
 
     expect(isStarted).toBe(false)
@@ -103,9 +112,7 @@ describe('useTextGenerationBatch', () => {
     notify.mockClear()
 
     act(() => {
-      isStarted = result.current.handleRunBatch([
-        ['Name', 'Score'],
-      ], { onStart })
+      isStarted = result.current.handleRunBatch([['Name', 'Score']], { onStart })
     })
 
     expect(isStarted).toBe(false)
@@ -117,10 +124,13 @@ describe('useTextGenerationBatch', () => {
     notify.mockClear()
 
     act(() => {
-      isStarted = result.current.handleRunBatch([
-        ['Name', 'Score'],
-        ['', ''],
-      ], { onStart })
+      isStarted = result.current.handleRunBatch(
+        [
+          ['Name', 'Score'],
+          ['', ''],
+        ],
+        { onStart },
+      )
     })
 
     expect(isStarted).toBe(false)
@@ -135,14 +145,17 @@ describe('useTextGenerationBatch', () => {
 
     let isStarted = true
     act(() => {
-      isStarted = result.current.handleRunBatch([
-        ['Name', 'Score'],
-        ['Alice', '1'],
-        ['', ''],
-        ['Bob', '2'],
-        ['', ''],
-        ['', ''],
-      ], { onStart })
+      isStarted = result.current.handleRunBatch(
+        [
+          ['Name', 'Score'],
+          ['Alice', '1'],
+          ['', ''],
+          ['Bob', '2'],
+          ['', ''],
+          ['', ''],
+        ],
+        { onStart },
+      )
     })
 
     expect(isStarted).toBe(false)
@@ -157,10 +170,13 @@ describe('useTextGenerationBatch', () => {
 
     let isStarted = true
     act(() => {
-      isStarted = result.current.handleRunBatch([
-        ['Name', 'Score'],
-        ['', '1'],
-      ], { onStart })
+      isStarted = result.current.handleRunBatch(
+        [
+          ['Name', 'Score'],
+          ['', '1'],
+        ],
+        { onStart },
+      )
     })
 
     expect(isStarted).toBe(false)
@@ -174,17 +190,26 @@ describe('useTextGenerationBatch', () => {
     const { result, notify, onStart } = renderBatchHook({
       prompt_template: 'template',
       prompt_variables: [
-        createVariable({ key: 'name', name: 'Name', type: 'string', required: true, max_length: 3 }),
+        createVariable({
+          key: 'name',
+          name: 'Name',
+          type: 'string',
+          required: true,
+          max_length: 3,
+        }),
         createVariable({ key: 'score', name: 'Score', type: 'number', required: false }),
       ],
     })
 
     let isStarted = true
     act(() => {
-      isStarted = result.current.handleRunBatch([
-        ['Name', 'Score'],
-        ['Alice', '1'],
-      ], { onStart })
+      isStarted = result.current.handleRunBatch(
+        [
+          ['Name', 'Score'],
+          ['Alice', '1'],
+        ],
+        { onStart },
+      )
     })
 
     expect(isStarted).toBe(false)
@@ -198,7 +223,10 @@ describe('useTextGenerationBatch', () => {
     const { result } = renderBatchHook()
     const csvData = [
       ['Name', 'Score'],
-      ...Array.from({ length: BATCH_CONCURRENCY + 1 }, (_, index) => [`Item ${index + 1}`, `${index + 1}`]),
+      ...Array.from({ length: BATCH_CONCURRENCY + 1 }, (_, index) => [
+        `Item ${index + 1}`,
+        `${index + 1}`,
+      ]),
     ]
 
     act(() => {
@@ -213,8 +241,8 @@ describe('useTextGenerationBatch', () => {
 
     expect(result.current.allTaskList.at(-1)?.status).toBe(TaskStatus.running)
     expect(result.current.exportRes.at(0)).toEqual({
-      'Name': 'Item 1',
-      'Score': '1',
+      Name: 'Item 1',
+      Score: '1',
       'generation.completionResult': 'Result 1',
     })
   })
@@ -223,7 +251,10 @@ describe('useTextGenerationBatch', () => {
     const { result, notify, onStart } = renderBatchHook()
     const csvData = [
       ['Name', 'Score'],
-      ...Array.from({ length: BATCH_CONCURRENCY + 1 }, (_, index) => [`Item ${index + 1}`, `${index + 1}`]),
+      ...Array.from({ length: BATCH_CONCURRENCY + 1 }, (_, index) => [
+        `Item ${index + 1}`,
+        `${index + 1}`,
+      ]),
     ]
 
     act(() => {
@@ -249,10 +280,13 @@ describe('useTextGenerationBatch', () => {
     const { result } = renderBatchHook()
 
     act(() => {
-      result.current.handleRunBatch([
-        ['Name', 'Score'],
-        ['Alice', '1'],
-      ], { onStart: vi.fn() })
+      result.current.handleRunBatch(
+        [
+          ['Name', 'Score'],
+          ['Alice', '1'],
+        ],
+        { onStart: vi.fn() },
+      )
     })
 
     const taskSnapshot = result.current.allTaskList
@@ -268,10 +302,13 @@ describe('useTextGenerationBatch', () => {
     const { result } = renderBatchHook()
 
     act(() => {
-      result.current.handleRunBatch([
-        ['Name', 'Score'],
-        ['Alice', ''],
-      ], { onStart: vi.fn() })
+      result.current.handleRunBatch(
+        [
+          ['Name', 'Score'],
+          ['Alice', ''],
+        ],
+        { onStart: vi.fn() },
+      )
     })
 
     act(() => {
@@ -289,8 +326,8 @@ describe('useTextGenerationBatch', () => {
     expect(result.current.noPendingTask).toBe(true)
     expect(result.current.exportRes).toEqual([
       {
-        'Name': 'Alice',
-        'Score': '',
+        Name: 'Alice',
+        Score: '',
         'generation.completionResult': '{"answer":"failed"}',
       },
     ])

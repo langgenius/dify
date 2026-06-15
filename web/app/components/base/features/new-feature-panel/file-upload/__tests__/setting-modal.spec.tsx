@@ -27,11 +27,7 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (ui: React.ReactNode) => {
-  return render(
-    <FeaturesProvider features={defaultFeatures}>
-      {ui}
-    </FeaturesProvider>,
-  )
+  return render(<FeaturesProvider features={defaultFeatures}>{ui}</FeaturesProvider>)
 }
 
 describe('FileUploadSettings (setting-modal)', () => {

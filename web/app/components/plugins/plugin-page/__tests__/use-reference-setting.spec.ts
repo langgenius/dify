@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 
-import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
+import {
+  useInvalidateReferenceSettings,
+  useMutationReferenceSettings,
+  useReferenceSettings,
+} from '@/service/use-plugins'
 import { PermissionType } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -214,8 +218,7 @@ describe('useReferenceSetting Hook', () => {
       renderHook(() => useReferenceSetting())
 
       // Trigger the onSuccess callback
-      if (onSuccessCallback)
-        onSuccessCallback()
+      if (onSuccessCallback) onSuccessCallback()
 
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()

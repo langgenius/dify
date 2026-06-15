@@ -18,13 +18,15 @@ vi.mock('@/context/i18n', () => ({
 // Mock dataset-detail context - context provider requires mocking
 let mockPipelineId: string | undefined = 'pipeline-123'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) => selector({ dataset: { pipeline_id: mockPipelineId } }),
+  useDatasetDetailContextWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock modal context - context provider requires mocking
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
+  useModalContextSelector: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 
 // Mock ssePost - API service requires mocking
@@ -87,7 +89,8 @@ const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
 vi.mock('../../store', () => ({
-  useDataSourceStoreWithSelector: (selector: (s: Record<string, unknown>) => unknown) => selector(mockStoreState as unknown as Record<string, unknown>),
+  useDataSourceStoreWithSelector: (selector: (s: Record<string, unknown>) => unknown) =>
+    selector(mockStoreState as unknown as Record<string, unknown>),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
@@ -99,9 +102,21 @@ vi.mock('../../base/header', () => ({
       <span data-testid="header-doc-link">{props.docLink as string}</span>
       <span data-testid="header-plugin-name">{props.pluginName as string}</span>
       <span data-testid="header-credential-id">{props.currentCredentialId as string}</span>
-      <button data-testid="header-config-btn" onClick={props.onClickConfiguration as React.MouseEventHandler}>Configure</button>
-      <button data-testid="header-credential-change" onClick={() => (props.onCredentialChange as (id: string) => void)('new-cred-id')}>Change Credential</button>
-      <span data-testid="header-credentials-count">{(props.credentials as unknown[] | undefined)?.length || 0}</span>
+      <button
+        data-testid="header-config-btn"
+        onClick={props.onClickConfiguration as React.MouseEventHandler}
+      >
+        Configure
+      </button>
+      <button
+        data-testid="header-credential-change"
+        onClick={() => (props.onCredentialChange as (id: string) => void)('new-cred-id')}
+      >
+        Change Credential
+      </button>
+      <span data-testid="header-credentials-count">
+        {(props.credentials as unknown[] | undefined)?.length || 0}
+      </span>
     </div>
   ),
 }))
@@ -110,9 +125,15 @@ vi.mock('../../base/header', () => ({
 vi.mock('../file-list', () => ({
   default: (props: Record<string, unknown>) => (
     <div data-testid="file-list">
-      <span data-testid="file-list-count">{(props.fileList as unknown[] | undefined)?.length || 0}</span>
-      <span data-testid="file-list-selected-count">{(props.selectedFileIds as unknown[] | undefined)?.length || 0}</span>
-      <span data-testid="file-list-breadcrumbs">{(props.breadcrumbs as string[] | undefined)?.join('/') || ''}</span>
+      <span data-testid="file-list-count">
+        {(props.fileList as unknown[] | undefined)?.length || 0}
+      </span>
+      <span data-testid="file-list-selected-count">
+        {(props.selectedFileIds as unknown[] | undefined)?.length || 0}
+      </span>
+      <span data-testid="file-list-breadcrumbs">
+        {(props.breadcrumbs as string[] | undefined)?.join('/') || ''}
+      </span>
       <span data-testid="file-list-keywords">{props.keywords as string}</span>
       <span data-testid="file-list-bucket">{props.bucket as string}</span>
       <span data-testid="file-list-loading">{String(props.isLoading)}</span>
@@ -120,13 +141,22 @@ vi.mock('../file-list', () => ({
       <span data-testid="file-list-support-batch">{String(props.supportBatchUpload)}</span>
       <input
         data-testid="file-list-search-input"
-        onChange={e => (props.updateKeywords as (v: string) => void)(e.target.value)}
+        onChange={(e) => (props.updateKeywords as (v: string) => void)(e.target.value)}
       />
-      <button data-testid="file-list-reset-keywords" onClick={props.resetKeywords as React.MouseEventHandler}>Reset</button>
+      <button
+        data-testid="file-list-reset-keywords"
+        onClick={props.resetKeywords as React.MouseEventHandler}
+      >
+        Reset
+      </button>
       <button
         data-testid="file-list-select-file"
         onClick={() => {
-          const file: OnlineDriveFile = { id: 'file-1', name: 'test.txt', type: OnlineDriveFileType.file }
+          const file: OnlineDriveFile = {
+            id: 'file-1',
+            name: 'test.txt',
+            type: OnlineDriveFileType.file,
+          }
           ;(props.handleSelectFile as (f: OnlineDriveFile) => void)(file)
         }}
       >
@@ -135,7 +165,11 @@ vi.mock('../file-list', () => ({
       <button
         data-testid="file-list-select-bucket"
         onClick={() => {
-          const file: OnlineDriveFile = { id: 'bucket-1', name: 'my-bucket', type: OnlineDriveFileType.bucket }
+          const file: OnlineDriveFile = {
+            id: 'bucket-1',
+            name: 'my-bucket',
+            type: OnlineDriveFileType.bucket,
+          }
           ;(props.handleSelectFile as (f: OnlineDriveFile) => void)(file)
         }}
       >
@@ -144,7 +178,11 @@ vi.mock('../file-list', () => ({
       <button
         data-testid="file-list-open-folder"
         onClick={() => {
-          const file: OnlineDriveFile = { id: 'folder-1', name: 'my-folder', type: OnlineDriveFileType.folder }
+          const file: OnlineDriveFile = {
+            id: 'folder-1',
+            name: 'my-folder',
+            type: OnlineDriveFileType.folder,
+          }
           ;(props.handleOpenFolder as (f: OnlineDriveFile) => void)(file)
         }}
       >
@@ -153,7 +191,11 @@ vi.mock('../file-list', () => ({
       <button
         data-testid="file-list-open-bucket"
         onClick={() => {
-          const file: OnlineDriveFile = { id: 'bucket-1', name: 'my-bucket', type: OnlineDriveFileType.bucket }
+          const file: OnlineDriveFile = {
+            id: 'bucket-1',
+            name: 'my-bucket',
+            type: OnlineDriveFileType.bucket,
+          }
           ;(props.handleOpenFolder as (f: OnlineDriveFile) => void)(file)
         }}
       >
@@ -162,7 +204,11 @@ vi.mock('../file-list', () => ({
       <button
         data-testid="file-list-open-file"
         onClick={() => {
-          const file: OnlineDriveFile = { id: 'file-1', name: 'test.txt', type: OnlineDriveFileType.file }
+          const file: OnlineDriveFile = {
+            id: 'file-1',
+            name: 'test.txt',
+            type: OnlineDriveFileType.file,
+          }
           ;(props.handleOpenFolder as (f: OnlineDriveFile) => void)(file)
         }}
       >
@@ -172,17 +218,18 @@ vi.mock('../file-list', () => ({
   ),
 }))
 
-const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
-  title: 'Test Node',
-  plugin_id: 'plugin-123',
-  provider_type: 'online_drive',
-  provider_name: 'online-drive-provider',
-  datasource_name: 'online-drive-ds',
-  datasource_label: 'Online Drive',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as DataSourceNodeType)
+const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
+  ({
+    title: 'Test Node',
+    plugin_id: 'plugin-123',
+    provider_type: 'online_drive',
+    provider_name: 'online-drive-provider',
+    datasource_name: 'online-drive-ds',
+    datasource_label: 'Online Drive',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as DataSourceNodeType
 
 const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): OnlineDriveFile => ({
   id: 'file-1',
@@ -192,7 +239,7 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -302,7 +349,9 @@ describe('OnlineDrive', () => {
 
       render(<OnlineDrive {...props} />)
 
-      expect(mockDocLink).toHaveBeenCalledWith('/use-dify/knowledge/knowledge-pipeline/authorize-data-source')
+      expect(mockDocLink).toHaveBeenCalledWith(
+        '/use-dify/knowledge/knowledge-pipeline/authorize-data-source',
+      )
     })
   })
 
@@ -320,7 +369,9 @@ describe('OnlineDrive', () => {
         // Assert - ssePost should be called with correct URL
         await waitFor(() => {
           expect(mockSsePost).toHaveBeenCalledWith(
-            expect.stringContaining('/rag/pipelines/pipeline-123/workflows/published/datasource/nodes/custom-node-id/run'),
+            expect.stringContaining(
+              '/rag/pipelines/pipeline-123/workflows/published/datasource/nodes/custom-node-id/run',
+            ),
             expect.any(Object),
             expect.any(Object),
           )
@@ -339,7 +390,9 @@ describe('OnlineDrive', () => {
         // Assert - ssePost should be called with correct URL for draft
         await waitFor(() => {
           expect(mockSsePost).toHaveBeenCalledWith(
-            expect.stringContaining('/rag/pipelines/pipeline-123/workflows/draft/datasource/nodes/custom-node-id/run'),
+            expect.stringContaining(
+              '/rag/pipelines/pipeline-123/workflows/draft/datasource/nodes/custom-node-id/run',
+            ),
             expect.any(Object),
             expect.any(Object),
           )
@@ -479,7 +532,7 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       // Assert - Wait a bit to ensure no call is made
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(mockSsePost).not.toHaveBeenCalled()
     })
 
@@ -490,7 +543,7 @@ describe('OnlineDrive', () => {
       render(<OnlineDrive {...props} />)
 
       // Assert - Wait a bit to ensure no call is made
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       expect(mockSsePost).not.toHaveBeenCalled()
     })
 
@@ -516,12 +569,14 @@ describe('OnlineDrive', () => {
       ]
       mockSsePost.mockImplementation((url, options, callbacks) => {
         callbacks.onDataSourceNodeCompleted({
-          data: [{
-            bucket: '',
-            files: mockFiles,
-            is_truncated: false,
-            next_page_parameters: {},
-          }],
+          data: [
+            {
+              bucket: '',
+              files: mockFiles,
+              is_truncated: false,
+              next_page_parameters: {},
+            },
+          ],
           time_consuming: 1.0,
         })
       })
@@ -616,7 +671,9 @@ describe('OnlineDrive', () => {
       const props = createDefaultProps()
       render(<OnlineDrive {...props} />)
 
-      fireEvent.change(screen.getByTestId('file-list-search-input'), { target: { value: 'new-keyword' } })
+      fireEvent.change(screen.getByTestId('file-list-search-input'), {
+        target: { value: 'new-keyword' },
+      })
 
       expect(mockStoreState.setKeywords).toHaveBeenCalledWith('new-keyword')
     })
@@ -879,15 +936,17 @@ describe('OnlineDrive', () => {
       mockStoreState.currentCredentialId = 'cred-1'
       mockStoreState.breadcrumbs = ['folder1']
       mockStoreState.bucket = 'my-bucket'
-      const mockResponseData = [{
-        bucket: 'my-bucket',
-        files: [
-          { id: 'file-1', name: 'file1.txt', size: 1024, type: 'file' as const },
-          { id: 'file-2', name: 'file2.txt', size: 2048, type: 'file' as const },
-        ],
-        is_truncated: true,
-        next_page_parameters: { cursor: 'next-cursor' },
-      }]
+      const mockResponseData = [
+        {
+          bucket: 'my-bucket',
+          files: [
+            { id: 'file-1', name: 'file1.txt', size: 1024, type: 'file' as const },
+            { id: 'file-2', name: 'file2.txt', size: 2048, type: 'file' as const },
+          ],
+          is_truncated: true,
+          next_page_parameters: { cursor: 'next-cursor' },
+        },
+      ]
       mockSsePost.mockImplementation((url, options, callbacks) => {
         callbacks.onDataSourceNodeCompleted({
           data: mockResponseData,
@@ -902,7 +961,9 @@ describe('OnlineDrive', () => {
         expect(mockStoreState.setOnlineDriveFileList).toHaveBeenCalled()
         expect(mockStoreState.setHasBucket).toHaveBeenCalledWith(true)
         expect(mockStoreState.isTruncated.current).toBe(true)
-        expect(mockStoreState.currentNextPageParametersRef.current).toEqual({ cursor: 'next-cursor' })
+        expect(mockStoreState.currentNextPageParametersRef.current).toEqual({
+          cursor: 'next-cursor',
+        })
       })
     })
 
@@ -1008,9 +1069,7 @@ describe('OnlineDrive', () => {
 
     it('should handle very long file names', () => {
       const longName = `${'a'.repeat(500)}.txt`
-      mockStoreState.onlineDriveFileList = [
-        createMockOnlineDriveFile({ id: '1', name: longName }),
-      ]
+      mockStoreState.onlineDriveFileList = [createMockOnlineDriveFile({ id: '1', name: longName })]
       const props = createDefaultProps()
 
       render(<OnlineDrive {...props} />)
@@ -1048,16 +1107,23 @@ describe('OnlineDrive', () => {
       { isInPipeline: true, supportBatchUpload: false },
       { isInPipeline: false, supportBatchUpload: true },
       { isInPipeline: false, supportBatchUpload: false },
-    ])('should render correctly with isInPipeline=%s and supportBatchUpload=%s', (propVariation) => {
-      const props = createDefaultProps(propVariation)
+    ])(
+      'should render correctly with isInPipeline=%s and supportBatchUpload=%s',
+      (propVariation) => {
+        const props = createDefaultProps(propVariation)
 
-      render(<OnlineDrive {...props} />)
+        render(<OnlineDrive {...props} />)
 
-      expect(screen.getByTestId('header'))!.toBeInTheDocument()
-      expect(screen.getByTestId('file-list'))!.toBeInTheDocument()
-      expect(screen.getByTestId('file-list-is-in-pipeline'))!.toHaveTextContent(String(propVariation.isInPipeline))
-      expect(screen.getByTestId('file-list-support-batch'))!.toHaveTextContent(String(propVariation.supportBatchUpload))
-    })
+        expect(screen.getByTestId('header'))!.toBeInTheDocument()
+        expect(screen.getByTestId('file-list'))!.toBeInTheDocument()
+        expect(screen.getByTestId('file-list-is-in-pipeline'))!.toHaveTextContent(
+          String(propVariation.isInPipeline),
+        )
+        expect(screen.getByTestId('file-list-support-batch'))!.toHaveTextContent(
+          String(propVariation.supportBatchUpload),
+        )
+      },
+    )
 
     it.each([
       { nodeId: 'node-a', expectedUrlPart: 'nodes/node-a/run' },
@@ -1082,21 +1148,24 @@ describe('OnlineDrive', () => {
       { pluginId: 'plugin-a', providerName: 'provider-a' },
       { pluginId: 'plugin-b', providerName: 'provider-b' },
       { pluginId: '', providerName: '' },
-    ])('should call useGetDataSourceAuth with pluginId=%s and providerName=%s', ({ pluginId, providerName }) => {
-      const props = createDefaultProps({
-        nodeData: createMockNodeData({
-          plugin_id: pluginId,
-          provider_name: providerName,
-        }),
-      })
+    ])(
+      'should call useGetDataSourceAuth with pluginId=%s and providerName=%s',
+      ({ pluginId, providerName }) => {
+        const props = createDefaultProps({
+          nodeData: createMockNodeData({
+            plugin_id: pluginId,
+            provider_name: providerName,
+          }),
+        })
 
-      render(<OnlineDrive {...props} />)
+        render(<OnlineDrive {...props} />)
 
-      expect(mockUseGetDataSourceAuth).toHaveBeenCalledWith({
-        pluginId,
-        provider: providerName,
-      })
-    })
+        expect(mockUseGetDataSourceAuth).toHaveBeenCalledWith({
+          pluginId,
+          provider: providerName,
+        })
+      },
+    )
   })
 })
 
@@ -1155,19 +1224,16 @@ describe('Header', () => {
 
   describe('Props', () => {
     describe('docTitle prop', () => {
-      it.each([
-        'Getting Started',
-        'API Reference',
-        'Installation Guide',
-        '',
-      ])('should render docTitle="%s"', (docTitle) => {
-        const props = createHeaderProps({ docTitle })
+      it.each(['Getting Started', 'API Reference', 'Installation Guide', ''])(
+        'should render docTitle="%s"',
+        (docTitle) => {
+          const props = createHeaderProps({ docTitle })
 
-        render(<Header {...props} />)
+          render(<Header {...props} />)
 
-        if (docTitle)
-          expect(screen.getByText(docTitle))!.toBeInTheDocument()
-      })
+          if (docTitle) expect(screen.getByText(docTitle))!.toBeInTheDocument()
+        },
+      )
     })
 
     describe('docLink prop', () => {
@@ -1256,7 +1322,12 @@ describe('utils', () => {
 
     it('should return false when data items have no bucket', () => {
       const data: OnlineDriveData[] = [
-        { bucket: '', files: [{ id: '1', name: 'file.txt', size: 1024, type: 'file' }], is_truncated: false, next_page_parameters: {} },
+        {
+          bucket: '',
+          files: [{ id: '1', name: 'file.txt', size: 1024, type: 'file' }],
+          is_truncated: false,
+          next_page_parameters: {},
+        },
       ]
 
       expect(isBucketListInitiation(data, [], '')).toBe(false)
@@ -1281,7 +1352,12 @@ describe('utils', () => {
 
     it('should return false for single bucket with files', () => {
       const data: OnlineDriveData[] = [
-        { bucket: 'my-bucket', files: [{ id: '1', name: 'file.txt', size: 1024, type: 'file' }], is_truncated: false, next_page_parameters: {} },
+        {
+          bucket: 'my-bucket',
+          files: [{ id: '1', name: 'file.txt', size: 1024, type: 'file' }],
+          is_truncated: false,
+          next_page_parameters: {},
+        },
       ]
 
       expect(isBucketListInitiation(data, [], '')).toBe(false)

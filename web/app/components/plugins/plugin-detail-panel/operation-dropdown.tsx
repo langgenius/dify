@@ -41,14 +41,12 @@ const OperationDropdown: FC<Props> = ({
   const { t } = useTranslation()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="action-btn action-btn-m data-popup-open:bg-state-base-hover"
-      >
+      <DropdownMenuTrigger className="action-btn action-btn-m data-popup-open:bg-state-base-hover">
         <span className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -67,15 +65,19 @@ const OperationDropdown: FC<Props> = ({
             {t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}
           </DropdownMenuItem>
         )}
-        {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
-          <DropdownMenuItem render={<a href={detailUrl} target="_blank" rel="noopener noreferrer" />}>
-            <span className="grow">{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
-            <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
-          </DropdownMenuItem>
-        )}
-        {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
-          <DropdownMenuSeparator />
-        )}
+        {(source === PluginSource.marketplace || source === PluginSource.github) &&
+          enable_marketplace && (
+            <DropdownMenuItem
+              render={<a href={detailUrl} target="_blank" rel="noopener noreferrer" />}
+            >
+              <span className="grow">
+                {t('detailPanel.operation.viewDetail', { ns: 'plugin' })}
+              </span>
+              <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
+            </DropdownMenuItem>
+          )}
+        {(source === PluginSource.marketplace || source === PluginSource.github) &&
+          enable_marketplace && <DropdownMenuSeparator />}
         <DropdownMenuItem variant="destructive" onClick={onRemove}>
           {t('detailPanel.operation.remove', { ns: 'plugin' })}
         </DropdownMenuItem>

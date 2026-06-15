@@ -2,7 +2,10 @@ import { render, screen } from '@testing-library/react'
 import GridMask from '../index'
 import Style from '../style.module.css'
 
-function renderGridMask(props: Partial<React.ComponentProps<typeof GridMask>> = {}, children: React.ReactNode = <span>Child</span>) {
+function renderGridMask(
+  props: Partial<React.ComponentProps<typeof GridMask>> = {},
+  children: React.ReactNode = <span>Child</span>,
+) {
   const { container } = render(<GridMask {...props}>{children}</GridMask>)
   const wrapper = container.firstElementChild as HTMLElement
   const canvasLayer = wrapper.children[0] as HTMLElement
@@ -19,7 +22,10 @@ describe('GridMask', () => {
     })
 
     it('should render correctly without optional className props', () => {
-      const { wrapper, canvasLayer, gradientLayer, contentLayer } = renderGridMask({}, <span>Plain child</span>)
+      const { wrapper, canvasLayer, gradientLayer, contentLayer } = renderGridMask(
+        {},
+        <span>Plain child</span>,
+      )
 
       expect(wrapper)!.toHaveClass('bg-saas-background')
       expect(canvasLayer)!.toHaveClass('absolute')
@@ -28,7 +34,10 @@ describe('GridMask', () => {
     })
 
     it('should render wrapper, canvas, gradient and content layers in order', () => {
-      const { wrapper, canvasLayer, gradientLayer, contentLayer } = renderGridMask({}, <span>Content</span>)
+      const { wrapper, canvasLayer, gradientLayer, contentLayer } = renderGridMask(
+        {},
+        <span>Content</span>,
+      )
       expect(wrapper)!.toBeInTheDocument()
       expect(wrapper.children).toHaveLength(3)
       expect(canvasLayer)!.toHaveClass('z-0')
@@ -46,14 +55,20 @@ describe('GridMask', () => {
     })
 
     it('should apply canvasClassName and grid background class to canvas layer', () => {
-      const { canvasLayer } = renderGridMask({ canvasClassName: 'custom-canvas' }, <span>Child</span>)
+      const { canvasLayer } = renderGridMask(
+        { canvasClassName: 'custom-canvas' },
+        <span>Child</span>,
+      )
 
       expect(canvasLayer)!.toHaveClass('custom-canvas')
       expect(canvasLayer)!.toHaveClass(Style.gridBg!)
     })
 
     it('should apply gradientClassName to gradient layer', () => {
-      const { gradientLayer } = renderGridMask({ gradientClassName: 'custom-gradient' }, <span>Child</span>)
+      const { gradientLayer } = renderGridMask(
+        { gradientClassName: 'custom-gradient' },
+        <span>Child</span>,
+      )
 
       expect(gradientLayer)!.toHaveClass('custom-gradient')
       expect(gradientLayer)!.toHaveClass('bg-grid-mask-background')

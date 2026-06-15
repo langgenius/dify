@@ -43,5 +43,5 @@ export type PostWorkflowGenerateResponses = {
   200: GeneratorResponse
 }
 
-export type PostWorkflowGenerateResponse
-  = PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
+export type PostWorkflowGenerateResponse =
+  PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]

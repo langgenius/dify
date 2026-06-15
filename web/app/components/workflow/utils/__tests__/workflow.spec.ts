@@ -111,11 +111,21 @@ describe('getNodesConnectedSourceOrTargetHandleIdsMap', () => {
   it('should remove handle ids when type is remove', () => {
     const node1 = createNode({
       id: 'a',
-      data: { type: BlockEnum.Start, title: '', desc: '', _connectedSourceHandleIds: ['src-handle'] },
+      data: {
+        type: BlockEnum.Start,
+        title: '',
+        desc: '',
+        _connectedSourceHandleIds: ['src-handle'],
+      },
     })
     const node2 = createNode({
       id: 'b',
-      data: { type: BlockEnum.Code, title: '', desc: '', _connectedTargetHandleIds: ['tgt-handle'] },
+      data: {
+        type: BlockEnum.Code,
+        title: '',
+        desc: '',
+        _connectedTargetHandleIds: ['tgt-handle'],
+      },
     })
     const edge = createEdge({
       source: 'a',
@@ -153,10 +163,7 @@ describe('getNodesConnectedSourceOrTargetHandleIdsMap', () => {
     const node2 = createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } })
     const edge = createEdge({ source: 'missing', target: 'b', sourceHandle: 'src' })
 
-    const result = getNodesConnectedSourceOrTargetHandleIdsMap(
-      [{ type: 'add', edge }],
-      [node2],
-    )
+    const result = getNodesConnectedSourceOrTargetHandleIdsMap([{ type: 'add', edge }], [node2])
 
     expect(result.missing).toBeUndefined()
     expect(result.b._connectedTargetHandleIds).toBeDefined()
@@ -166,10 +173,7 @@ describe('getNodesConnectedSourceOrTargetHandleIdsMap', () => {
     const node1 = createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })
     const edge = createEdge({ source: 'a', target: 'missing', targetHandle: 'tgt' })
 
-    const result = getNodesConnectedSourceOrTargetHandleIdsMap(
-      [{ type: 'add', edge }],
-      [node1],
-    )
+    const result = getNodesConnectedSourceOrTargetHandleIdsMap([{ type: 'add', edge }], [node1])
 
     expect(result.a._connectedSourceHandleIds).toBeDefined()
     expect(result.missing).toBeUndefined()
@@ -183,7 +187,10 @@ describe('getNodesConnectedSourceOrTargetHandleIdsMap', () => {
     const edge2 = createEdge({ source: 'a', target: 'c', sourceHandle: 'h2' })
 
     const result = getNodesConnectedSourceOrTargetHandleIdsMap(
-      [{ type: 'add', edge: edge1 }, { type: 'add', edge: edge2 }],
+      [
+        { type: 'add', edge: edge1 },
+        { type: 'add', edge: edge2 },
+      ],
       [node1, node2, node3],
     )
 
@@ -213,9 +220,7 @@ describe('getNodesConnectedSourceOrTargetHandleIdsMap', () => {
 
 describe('getValidTreeNodes', () => {
   it('should return empty when there are no start/trigger nodes', () => {
-    const nodes = [
-      createNode({ id: 'n1', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
+    const nodes = [createNode({ id: 'n1', data: { type: BlockEnum.Code, title: '', desc: '' } })]
     const result = getValidTreeNodes(nodes, [])
     expect(result.validNodes).toEqual([])
     expect(result.maxDepth).toBe(0)
@@ -233,7 +238,7 @@ describe('getValidTreeNodes', () => {
     ]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toEqual(['start', 'llm', 'end'])
+    expect(result.validNodes.map((n) => n.id)).toEqual(['start', 'llm', 'end'])
     expect(result.maxDepth).toBe(3)
   })
 
@@ -242,34 +247,38 @@ describe('getValidTreeNodes', () => {
       createNode({ id: 'trigger', data: { type: BlockEnum.TriggerWebhook, title: '', desc: '' } }),
       createNode({ id: 'code', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const edges = [
-      createEdge({ source: 'trigger', target: 'code' }),
-    ]
+    const edges = [createEdge({ source: 'trigger', target: 'code' })]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toContain('trigger')
-    expect(result.validNodes.map(n => n.id)).toContain('code')
+    expect(result.validNodes.map((n) => n.id)).toContain('trigger')
+    expect(result.validNodes.map((n) => n.id)).toContain('code')
   })
 
   it('should include iteration children as valid nodes', () => {
     const nodes = [
       createNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       createNode({ id: 'iter', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
-      createNode({ id: 'child1', data: { type: BlockEnum.Code, title: '', desc: '' }, parentId: 'iter' }),
+      createNode({
+        id: 'child1',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+        parentId: 'iter',
+      }),
     ]
-    const edges = [
-      createEdge({ source: 'start', target: 'iter' }),
-    ]
+    const edges = [createEdge({ source: 'start', target: 'iter' })]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toContain('child1')
+    expect(result.validNodes.map((n) => n.id)).toContain('child1')
   })
 
   it('should include loop children when loop has outgoers', () => {
     const nodes = [
       createNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       createNode({ id: 'loop', data: { type: BlockEnum.Loop, title: '', desc: '' } }),
-      createNode({ id: 'loop-child', data: { type: BlockEnum.Code, title: '', desc: '' }, parentId: 'loop' }),
+      createNode({
+        id: 'loop-child',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+        parentId: 'loop',
+      }),
       createNode({ id: 'end', data: { type: BlockEnum.End, title: '', desc: '' } }),
     ]
     const edges = [
@@ -278,21 +287,23 @@ describe('getValidTreeNodes', () => {
     ]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toContain('loop-child')
+    expect(result.validNodes.map((n) => n.id)).toContain('loop-child')
   })
 
   it('should include loop children as valid nodes when loop is a leaf', () => {
     const nodes = [
       createNode({ id: 'start', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       createNode({ id: 'loop', data: { type: BlockEnum.Loop, title: '', desc: '' } }),
-      createNode({ id: 'loop-child', data: { type: BlockEnum.Code, title: '', desc: '' }, parentId: 'loop' }),
+      createNode({
+        id: 'loop-child',
+        data: { type: BlockEnum.Code, title: '', desc: '' },
+        parentId: 'loop',
+      }),
     ]
-    const edges = [
-      createEdge({ source: 'start', target: 'loop' }),
-    ]
+    const edges = [createEdge({ source: 'start', target: 'loop' })]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toContain('loop-child')
+    expect(result.validNodes.map((n) => n.id)).toContain('loop-child')
   })
 
   it('should handle cycles without infinite loop', () => {
@@ -317,12 +328,10 @@ describe('getValidTreeNodes', () => {
       createNode({ id: 'connected', data: { type: BlockEnum.Code, title: '', desc: '' } }),
       createNode({ id: 'isolated', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const edges = [
-      createEdge({ source: 'start', target: 'connected' }),
-    ]
+    const edges = [createEdge({ source: 'start', target: 'connected' })]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).not.toContain('isolated')
+    expect(result.validNodes.map((n) => n.id)).not.toContain('isolated')
   })
 
   it('should handle multiple start nodes without double-traversal', () => {
@@ -337,9 +346,9 @@ describe('getValidTreeNodes', () => {
     ]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toContain('start1')
-    expect(result.validNodes.map(n => n.id)).toContain('trigger')
-    expect(result.validNodes.map(n => n.id)).toContain('shared')
+    expect(result.validNodes.map((n) => n.id)).toContain('start1')
+    expect(result.validNodes.map((n) => n.id)).toContain('trigger')
+    expect(result.validNodes.map((n) => n.id)).toContain('shared')
   })
 
   it('should not increase maxDepth when visiting nodes at same or lower depth', () => {
@@ -385,9 +394,9 @@ describe('getValidTreeNodes', () => {
     ]
 
     const result = getValidTreeNodes(nodes, edges)
-    expect(result.validNodes.map(n => n.id)).toContain('start1')
-    expect(result.validNodes.map(n => n.id)).toContain('start2')
-    expect(result.validNodes.map(n => n.id)).toContain('shared')
+    expect(result.validNodes.map((n) => n.id)).toContain('start1')
+    expect(result.validNodes.map((n) => n.id)).toContain('start2')
+    expect(result.validNodes.map((n) => n.id)).toContain('shared')
   })
 })
 
@@ -397,9 +406,7 @@ describe('changeNodesAndEdgesId', () => {
       createNode({ id: 'old-1', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       createNode({ id: 'old-2', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const edges = [
-      createEdge({ source: 'old-1', target: 'old-2' }),
-    ]
+    const edges = [createEdge({ source: 'old-1', target: 'old-2' })]
 
     const [newNodes, newEdges] = changeNodesAndEdgesId(nodes, edges)
 
@@ -410,14 +417,10 @@ describe('changeNodesAndEdgesId', () => {
   })
 
   it('should generate unique ids for all nodes', () => {
-    const nodes = [
-      createNode({ id: 'a' }),
-      createNode({ id: 'b' }),
-      createNode({ id: 'c' }),
-    ]
+    const nodes = [createNode({ id: 'a' }), createNode({ id: 'b' }), createNode({ id: 'c' })]
 
     const [newNodes] = changeNodesAndEdgesId(nodes, [])
-    const ids = new Set(newNodes.map(n => n.id))
+    const ids = new Set(newNodes.map((n) => n.id))
     expect(ids.size).toBe(3)
   })
 })

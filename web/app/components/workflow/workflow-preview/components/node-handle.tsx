@@ -1,26 +1,15 @@
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  memo,
-} from 'react'
-import {
-  Handle,
-  Position,
-} from 'reactflow'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
+import { memo } from 'react'
+import { Handle, Position } from 'reactflow'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type NodeHandleProps = {
   handleId: string
   handleClassName?: string
 } & Pick<Node, 'id' | 'data'>
 
-export const NodeTargetHandle = memo(({
-  data,
-  handleId,
-  handleClassName,
-}: NodeHandleProps) => {
+export const NodeTargetHandle = memo(({ data, handleId, handleClassName }: NodeHandleProps) => {
   const connected = data._connectedTargetHandleIds?.includes(handleId)
 
   return (
@@ -34,24 +23,20 @@ export const NodeTargetHandle = memo(({
           'after:absolute after:top-1 after:left-1.5 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           !connected && 'after:opacity-0',
-          (data.type === BlockEnum.Start
-            || data.type === BlockEnum.TriggerWebhook
-            || data.type === BlockEnum.TriggerSchedule
-            || data.type === BlockEnum.TriggerPlugin) && 'opacity-0',
+          (data.type === BlockEnum.Start ||
+            data.type === BlockEnum.TriggerWebhook ||
+            data.type === BlockEnum.TriggerSchedule ||
+            data.type === BlockEnum.TriggerPlugin) &&
+            'opacity-0',
           handleClassName,
         )}
-      >
-      </Handle>
+      ></Handle>
     </>
   )
 })
 NodeTargetHandle.displayName = 'NodeTargetHandle'
 
-export const NodeSourceHandle = memo(({
-  data,
-  handleId,
-  handleClassName,
-}: NodeHandleProps) => {
+export const NodeSourceHandle = memo(({ data, handleId, handleClassName }: NodeHandleProps) => {
   const connected = data._connectedSourceHandleIds?.includes(handleId)
 
   return (
@@ -66,8 +51,7 @@ export const NodeSourceHandle = memo(({
         !connected && 'after:opacity-0',
         handleClassName,
       )}
-    >
-    </Handle>
+    ></Handle>
   )
 })
 NodeSourceHandle.displayName = 'NodeSourceHandle'

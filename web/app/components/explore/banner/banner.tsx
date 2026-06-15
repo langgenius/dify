@@ -39,12 +39,10 @@ const BannerImpressionTracker: FC<BannerImpressionTrackerProps> = ({
   const { selectedIndex } = useCarousel()
 
   useEffect(() => {
-    if (!accountId)
-      return
+    if (!accountId) return
 
     const currentBanner = banners[selectedIndex]
-    if (!currentBanner || trackedBannerIdsRef.current.has(currentBanner.id))
-      return
+    if (!currentBanner || trackedBannerIdsRef.current.has(currentBanner.id)) return
 
     trackEvent('explore_banner_impression', {
       banner_id: currentBanner.id,
@@ -65,14 +63,14 @@ const BannerImpressionTracker: FC<BannerImpressionTrackerProps> = ({
 const Banner: FC = () => {
   const locale = useLocale()
   const { data: banners, isLoading, isError } = useGetBanners(locale)
-  const accountId = useSelector(s => s.userProfile.id)
+  const accountId = useSelector((s) => s.userProfile.id)
   const [isHovered, setIsHovered] = useState(false)
   const [isResizing, setIsResizing] = useState(false)
   const resizeTimerRef = useRef<NodeJS.Timeout | null>(null)
   const trackedBannerIdsRef = useRef<Set<string>>(new Set())
 
   const enabledBanners = useMemo(
-    () => banners?.filter(banner => banner.status === 'enabled') ?? [],
+    () => banners?.filter((banner) => banner.status === 'enabled') ?? [],
     [banners],
   )
 
@@ -83,8 +81,7 @@ const Banner: FC = () => {
     const handleResize = () => {
       setIsResizing(true)
 
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
 
       resizeTimerRef.current = setTimeout(() => {
         setIsResizing(false)
@@ -95,16 +92,13 @@ const Banner: FC = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (resizeTimerRef.current)
-        clearTimeout(resizeTimerRef.current)
+      if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current)
     }
   }, [])
 
-  if (isLoading)
-    return <LoadingState />
+  if (isLoading) return <LoadingState />
 
-  if (isError || enabledBanners.length === 0)
-    return null
+  if (isError || enabledBanners.length === 0) return null
 
   return (
     <Carousel

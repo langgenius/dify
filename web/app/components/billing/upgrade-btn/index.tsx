@@ -17,7 +17,10 @@ type Props = Readonly<{
   isShort?: boolean
   onClick?: () => void
   loc?: string
-  labelKey?: Exclude<I18nKeysWithPrefix<'billing'>, 'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'>
+  labelKey?: Exclude<
+    I18nKeysWithPrefix<'billing'>,
+    'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'
+  >
 }>
 
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
@@ -35,10 +38,8 @@ const UpgradeBtn: FC<Props> = ({
   const { t } = useTranslation()
   const { setShowPricingModal } = useModalContext()
   const handleClick = () => {
-    if (_onClick)
-      _onClick()
-    else
-      setShowPricingModal()
+    if (_onClick) _onClick()
+    else setShowPricingModal()
   }
   const onClick = () => {
     handleClick()
@@ -50,16 +51,14 @@ const UpgradeBtn: FC<Props> = ({
     }
   }
 
-  const defaultBadgeLabel = t(isShort ? 'upgradeBtn.encourageShort' : 'upgradeBtn.encourage', { ns: 'billing' })
+  const defaultBadgeLabel = t(isShort ? 'upgradeBtn.encourageShort' : 'upgradeBtn.encourage', {
+    ns: 'billing',
+  })
   const label = labelKey ? t(labelKey, { ns: 'billing' }) : defaultBadgeLabel
 
   if (isPlain) {
     return (
-      <Button
-        className={className}
-        style={style}
-        onClick={onClick}
-      >
+      <Button className={className} style={style} onClick={onClick}>
         {labelKey ? label : t('upgradeBtn.plain', { ns: 'billing' })}
       </Button>
     )
@@ -73,11 +72,12 @@ const UpgradeBtn: FC<Props> = ({
       className={className}
       style={style}
     >
-      <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+      <SparklesSoft
+        aria-hidden="true"
+        className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+      />
       <div className="system-xs-medium">
-        <span className="p-1">
-          {label}
-        </span>
+        <span className="p-1">{label}</span>
       </div>
     </PremiumBadgeButton>
   )

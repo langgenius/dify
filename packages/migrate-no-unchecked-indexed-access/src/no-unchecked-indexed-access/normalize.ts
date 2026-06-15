@@ -11,17 +11,15 @@ async function collectFiles(directory: string): Promise<string[]> {
   const files: string[] = []
 
   for (const entry of entries) {
-    if (entry.name === 'node_modules' || entry.name === '.next')
-      continue
+    if (entry.name === 'node_modules' || entry.name === '.next') continue
 
     const absolutePath = path.join(directory, entry.name)
     if (entry.isDirectory()) {
-      files.push(...await collectFiles(absolutePath))
+      files.push(...(await collectFiles(absolutePath)))
       continue
     }
 
-    if (!EXTENSIONS.has(path.extname(entry.name)))
-      continue
+    if (!EXTENSIONS.has(path.extname(entry.name))) continue
 
     files.push(absolutePath)
   }
@@ -33,15 +31,16 @@ async function main() {
   const files = await collectFiles(ROOT)
   let changedFileCount = 0
 
-  await Promise.all(files.map(async (fileName) => {
-    const currentText = await fs.readFile(fileName, 'utf8')
-    const nextText = normalizeMalformedAssertions(currentText)
-    if (nextText === currentText)
-      return
+  await Promise.all(
+    files.map(async (fileName) => {
+      const currentText = await fs.readFile(fileName, 'utf8')
+      const nextText = normalizeMalformedAssertions(currentText)
+      if (nextText === currentText) return
 
-    await fs.writeFile(fileName, nextText)
-    changedFileCount += 1
-  }))
+      await fs.writeFile(fileName, nextText)
+      changedFileCount += 1
+    }),
+  )
 
   console.log(`Normalized malformed assertion syntax in ${changedFileCount} file(s).`)
 }

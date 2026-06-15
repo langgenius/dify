@@ -1,7 +1,10 @@
 import type { ZodSchema, ZodString } from 'zod'
 import type { InputFieldConfiguration } from './types'
 import * as z from 'zod'
-import { SupportedFileTypes, TransferMethod } from '@/app/components/rag-pipeline/components/panel/input-field/editor/form/schema'
+import {
+  SupportedFileTypes,
+  TransferMethod,
+} from '@/app/components/rag-pipeline/components/panel/input-field/editor/form/schema'
 import { InputFieldType } from './types'
 
 export const generateZodSchema = (fields: InputFieldConfiguration[]) => {
@@ -48,24 +51,32 @@ export const generateZodSchema = (fields: InputFieldConfiguration[]) => {
 
     if (field.maxLength) {
       if ([InputFieldType.textInput].includes(field.type))
-        zodType = (zodType as ZodString).max(field.maxLength, `${field.label} exceeds max length of ${field.maxLength}`)
+        zodType = (zodType as ZodString).max(
+          field.maxLength,
+          `${field.label} exceeds max length of ${field.maxLength}`,
+        )
     }
 
     if (field.min) {
       if ([InputFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodString).min(field.min, `${field.label} must be at least ${field.min}`)
+        zodType = (zodType as ZodString).min(
+          field.min,
+          `${field.label} must be at least ${field.min}`,
+        )
     }
 
     if (field.max) {
       if ([InputFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodString).max(field.max, `${field.label} exceeds max value of ${field.max}`)
+        zodType = (zodType as ZodString).max(
+          field.max,
+          `${field.label} exceeds max value of ${field.max}`,
+        )
     }
 
     if (field.required) {
       if ([InputFieldType.textInput].includes(field.type))
         zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
-    }
-    else {
+    } else {
       zodType = zodType.optional()
     }
 

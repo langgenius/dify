@@ -51,12 +51,8 @@ describe('PluginsNav', () => {
       render(<PluginsNav />)
 
       const container = screen.getByText('common.menus.plugins').closest('div')
-      expect(container).toHaveClass(
-        'border-components-main-nav-nav-button-border',
-      )
-      expect(container).toHaveClass(
-        'bg-components-main-nav-nav-button-bg-active',
-      )
+      expect(container).toHaveClass('border-components-main-nav-nav-button-border')
+      expect(container).toHaveClass('bg-components-main-nav-nav-button-bg-active')
     })
   })
 

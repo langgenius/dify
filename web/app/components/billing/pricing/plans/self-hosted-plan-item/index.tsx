@@ -43,9 +43,7 @@ type SelfHostedPlanItemProps = {
   plan: SelfHostedPlan
 }
 
-const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
-  plan,
-}) => {
+const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({ plan }) => {
   const { t } = useTranslation()
   const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === SelfHostedPlan.community
@@ -68,8 +66,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
       return
     }
 
-    if (isEnterprisePlan)
-      window.location.href = contactSalesUrl
+    if (isEnterprisePlan) window.location.href = contactSalesUrl
   }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
@@ -81,23 +78,26 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
         <div className="flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
-            <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
-            <div className="line-clamp-2 system-md-regular text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
+            <div className="text-[30px] leading-[1.2] font-medium text-text-primary">
+              {t(`${i18nPrefix}.name`, { ns: 'billing' })}
+            </div>
+            <div className="line-clamp-2 system-md-regular text-text-secondary">
+              {t(`${i18nPrefix}.description`, { ns: 'billing' })}
+            </div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
-          <div className="shrink-0 title-4xl-semi-bold text-text-primary">{t(`${i18nPrefix}.price`, { ns: 'billing' })}</div>
+          <div className="shrink-0 title-4xl-semi-bold text-text-primary">
+            {t(`${i18nPrefix}.price`, { ns: 'billing' })}
+          </div>
           {!isFreePlan && (
             <span className="pb-0.5 system-md-regular text-text-tertiary">
               {t(`${i18nPrefix}.priceTip`, { ns: 'billing' })}
             </span>
           )}
         </div>
-        <Button
-          plan={plan}
-          handleGetPayUrl={handleGetPayUrl}
-        />
+        <Button plan={plan} handleGetPayUrl={handleGetPayUrl} />
       </div>
       <List plan={plan} />
       {isPremiumPlan && (

@@ -9,14 +9,17 @@ type InstructionProps = {
   className?: string
 }
 
-const Instruction = ({
-  className,
-}: InstructionProps) => {
+const Instruction = ({ className }: InstructionProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
 
   return (
-    <div className={cn('flex flex-col gap-y-2 overflow-hidden rounded-[10px] bg-workflow-process-bg p-4', className)}>
+    <div
+      className={cn(
+        'flex flex-col gap-y-2 overflow-hidden rounded-[10px] bg-workflow-process-bg p-4',
+        className,
+      )}
+    >
       <div className="relative flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">
         <AddChunks className="size-5 text-text-accent" />
         <Line className="absolute bottom-[-76px] -left-px" type="vertical" />
@@ -29,7 +32,9 @@ const Instruction = ({
           {t('nodes.knowledgeBase.chunkStructureTip.title', { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular">
-          <p className="text-text-tertiary">{t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' })}</p>
+          <p className="text-text-tertiary">
+            {t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' })}
+          </p>
           <a
             href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
             target="_blank"

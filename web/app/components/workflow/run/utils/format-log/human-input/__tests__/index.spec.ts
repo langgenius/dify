@@ -61,10 +61,7 @@ describe('formatHumanInputNode', () => {
       }),
     ]
 
-    expect(formatHumanInputNode(list)).toEqual([
-      list[2],
-      list[1],
-    ])
+    expect(formatHumanInputNode(list)).toEqual([list[2], list[1]])
   })
 
   it('returns the original list when there are no human-input nodes', () => {

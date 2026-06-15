@@ -7,9 +7,7 @@ type LogoSiteProps = {
   className?: string
 }
 
-const LogoSite: FC<LogoSiteProps> = ({
-  className,
-}) => {
+const LogoSite: FC<LogoSiteProps> = ({ className }) => {
   return (
     <img
       src={`${basePath}/logo/logo.png`}

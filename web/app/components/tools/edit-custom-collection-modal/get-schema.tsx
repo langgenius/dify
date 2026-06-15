@@ -19,9 +19,7 @@ type Props = Readonly<{
   onChange: (value: string) => void
 }>
 
-const GetSchema: FC<Props> = ({
-  onChange,
-}) => {
+const GetSchema: FC<Props> = ({ onChange }) => {
   const { t } = useTranslation()
   const [showImportFromUrl, setShowImportFromUrl] = useState(false)
   const [importUrl, setImportUrl] = useState('')
@@ -36,8 +34,7 @@ const GetSchema: FC<Props> = ({
       const { schema } = await importSchemaFromURL(importUrl)
       setImportUrl('')
       onChange(schema)
-    }
-    finally {
+    } finally {
       setIsParsing(false)
       setShowImportFromUrl(false)
     }
@@ -48,29 +45,20 @@ const GetSchema: FC<Props> = ({
   return (
     <div className="flex w-[224px] justify-end gap-1">
       <DropdownMenu open={showImportFromUrl} onOpenChange={setShowImportFromUrl}>
-        <DropdownMenuTrigger
-          render={(
-            <Button
-              size="small"
-              className="gap-1"
-            />
-          )}
-        >
+        <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
           <span className="i-ri-add-line size-3" aria-hidden />
-          <span className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</span>
+          <span className="system-xs-medium text-text-secondary">
+            {t('createTool.importFromUrl', { ns: 'tools' })}
+          </span>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-start"
-          sideOffset={2}
-          popupClassName="w-[300px] p-2"
-        >
+        <DropdownMenuContent placement="bottom-start" sideOffset={2} popupClassName="w-[300px] p-2">
           <div className="relative">
             <Input
               type="text"
               className="w-full"
               placeholder={t('createTool.importFromUrlPlaceHolder', { ns: 'tools' })!}
               value={importUrl}
-              onChange={e => setImportUrl(e.target.value)}
+              onChange={(e) => setImportUrl(e.target.value)}
             />
             <Button
               className="absolute top-1 right-1"
@@ -86,23 +74,14 @@ const GetSchema: FC<Props> = ({
         </DropdownMenuContent>
       </DropdownMenu>
       <DropdownMenu open={showExamples} onOpenChange={setShowExamples}>
-        <DropdownMenuTrigger
-          render={(
-            <Button
-              size="small"
-              className="gap-1"
-            />
-          )}
-        >
-          <span className="system-xs-medium text-text-secondary">{t('createTool.examples', { ns: 'tools' })}</span>
+        <DropdownMenuTrigger render={<Button size="small" className="gap-1" />}>
+          <span className="system-xs-medium text-text-secondary">
+            {t('createTool.examples', { ns: 'tools' })}
+          </span>
           <span className="i-ri-arrow-down-s-line size-3" aria-hidden />
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={2}
-          popupClassName="min-w-max"
-        >
-          {examples.map(item => (
+        <DropdownMenuContent placement="bottom-end" sideOffset={2} popupClassName="min-w-max">
+          {examples.map((item) => (
             <DropdownMenuItem
               key={item.key}
               onClick={() => {

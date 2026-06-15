@@ -35,12 +35,11 @@ export function SearchInput({
   }
 
   return (
-    <div className={cn(
-      'relative',
-      className,
-    )}
-    >
-      <span className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" aria-hidden="true" />
+    <div className={cn('relative', className)}>
+      <span
+        className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+        aria-hidden="true"
+      />
       <Input
         ref={inputRef}
         type="search"
@@ -75,8 +74,7 @@ export function SearchInput({
           setCompositionValue(value)
         }}
         onCompositionEnd={(e) => {
-          if (!isComposingRef.current)
-            return
+          if (!isComposingRef.current) return
 
           isComposingRef.current = false
           setCompositionValue('')
@@ -95,7 +93,10 @@ export function SearchInput({
           className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
           onClick={handleClear}
         >
-          <span className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary" aria-hidden="true" />
+          <span
+            className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary"
+            aria-hidden="true"
+          />
         </button>
       )}
     </div>

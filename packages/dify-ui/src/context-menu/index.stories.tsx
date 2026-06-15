@@ -22,7 +22,12 @@ import {
 const TriggerArea = ({ label = 'Right-click inside this area' }: { label?: string }) => (
   <ContextMenuTrigger
     aria-label="context menu trigger area"
-    render={<button type="button" className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none" />}
+    render={
+      <button
+        type="button"
+        className="flex h-44 w-80 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center text-sm text-text-tertiary select-none"
+      />
+    }
   >
     {label}
   </ContextMenuTrigger>
@@ -35,7 +40,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound context menu built on Base UI ContextMenu. Open by right-clicking the trigger area.',
+        component:
+          'Compound context menu built on Base UI ContextMenu. Open by right-clicking the trigger area.',
       },
     },
   },
@@ -167,11 +173,20 @@ export const WithLinkItems: Story = {
         <ContextMenuLinkItem href="https://docs.dify.ai" rel="noopener noreferrer" target="_blank">
           Dify Docs
         </ContextMenuLinkItem>
-        <ContextMenuLinkItem href="https://roadmap.dify.ai" rel="noopener noreferrer" target="_blank">
+        <ContextMenuLinkItem
+          href="https://roadmap.dify.ai"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           Product Roadmap
         </ContextMenuLinkItem>
         <ContextMenuSeparator />
-        <ContextMenuLinkItem variant="destructive" href="https://example.com/delete" rel="noopener noreferrer" target="_blank">
+        <ContextMenuLinkItem
+          variant="destructive"
+          href="https://example.com/delete"
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           Dangerous External Action
         </ContextMenuLinkItem>
       </ContextMenuContent>

@@ -44,7 +44,7 @@ describe('Mixed variable placeholder', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useLexicalComposerContext).mockReturnValue(lexicalContextValue)
-    vi.mocked($insertNodes).mockImplementation(nodes => mockInsertNodes(nodes))
+    vi.mocked($insertNodes).mockImplementation((nodes) => mockInsertNodes(nodes))
   })
 
   it('should insert an empty text node and focus the editor when the placeholder background is clicked', () => {

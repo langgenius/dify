@@ -23,10 +23,10 @@ If you are unsure whether your use case qualifies as high-risk, consult a qualif
 
 ## Self-hosted vs cloud: different compliance profiles
 
-| Deployment | Your role | Dify's role | Who handles compliance? |
-|-----------|----------|-------------|------------------------|
-| **Self-hosted** | Provider and deployer | Framework provider — obligations under Article 25 apply only if Dify is placed on the market or put into service as part of a complete AI system bearing its name or trademark | You |
-| **Dify Cloud** | Deployer | Provider and processor | Shared — Dify handles SOC 2 and GDPR for the platform; you handle AI Act obligations for your specific use case |
+| Deployment      | Your role             | Dify's role                                                                                                                                                                    | Who handles compliance?                                                                                         |
+| --------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| **Self-hosted** | Provider and deployer | Framework provider — obligations under Article 25 apply only if Dify is placed on the market or put into service as part of a complete AI system bearing its name or trademark | You                                                                                                             |
+| **Dify Cloud**  | Deployer              | Provider and processor                                                                                                                                                         | Shared — Dify handles SOC 2 and GDPR for the platform; you handle AI Act obligations for your specific use case |
 
 Dify Cloud already has SOC 2 Type II and GDPR compliance for the platform itself. But the EU AI Act adds obligations specific to AI systems that SOC 2 does not cover: risk classification, technical documentation, transparency, and human oversight.
 
@@ -69,6 +69,7 @@ graph LR
 ```
 
 **GDPR roles** (providers are typically processors for customer-submitted data, but the exact role depends on each provider's terms of service and processing purpose; deployers should review each provider's DPA):
+
 - **Cloud LLM providers (OpenAI, Anthropic, Google)** typically act as processors — requires DPA.
 - **Cloud embedding services** typically act as processors — requires DPA.
 - **Self-hosted vector stores (Weaviate, Qdrant, pgvector):** Your organization remains the controller — no third-party transfer.
@@ -79,13 +80,13 @@ graph LR
 
 High-risk systems need Annex IV documentation. For Dify deployments, key sections include:
 
-| Section | What Dify provides | What you must document |
-|---------|-------------------|----------------------|
-| General description | Platform capabilities, supported models | Your specific use case, intended users, deployment context |
-| Development process | Dify's architecture, plugin system | Your RAG pipeline design, prompt engineering, knowledge base curation |
-| Monitoring | Dify's built-in logging and analytics | Your monitoring plan, alert thresholds, incident response |
-| Performance metrics | Dify's evaluation features | Your accuracy benchmarks, quality thresholds, bias testing |
-| Risk management | — | Risk assessment for your specific use case |
+| Section             | What Dify provides                      | What you must document                                                |
+| ------------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| General description | Platform capabilities, supported models | Your specific use case, intended users, deployment context            |
+| Development process | Dify's architecture, plugin system      | Your RAG pipeline design, prompt engineering, knowledge base curation |
+| Monitoring          | Dify's built-in logging and analytics   | Your monitoring plan, alert thresholds, incident response             |
+| Performance metrics | Dify's evaluation features              | Your accuracy benchmarks, quality thresholds, bias testing            |
+| Risk management     | —                                       | Risk assessment for your specific use case                            |
 
 Some sections can be derived from Dify's architecture and your deployment configuration, as shown in the table above. The remaining sections require your input.
 
@@ -93,16 +94,16 @@ Some sections can be derived from Dify's architecture and your deployment config
 
 Dify's built-in logging covers several Article 12 requirements:
 
-| Requirement | Dify Feature | Status |
-|------------|-------------|--------|
-| Conversation logs | Full conversation history with timestamps | **Covered** |
-| Model tracking | Model name recorded per interaction | **Covered** |
-| Token usage | Token counts per message | **Covered** |
-| Cost tracking | Cost per conversation (if provider reports it) | **Partial** |
-| Document retrieval | RAG source documents logged | **Covered** |
-| User identification | User session tracking | **Covered** |
-| Error logging | Failed generation logs | **Covered** |
-| Data retention | Configurable | **Your responsibility** |
+| Requirement         | Dify Feature                                   | Status                  |
+| ------------------- | ---------------------------------------------- | ----------------------- |
+| Conversation logs   | Full conversation history with timestamps      | **Covered**             |
+| Model tracking      | Model name recorded per interaction            | **Covered**             |
+| Token usage         | Token counts per message                       | **Covered**             |
+| Cost tracking       | Cost per conversation (if provider reports it) | **Partial**             |
+| Document retrieval  | RAG source documents logged                    | **Covered**             |
+| User identification | User session tracking                          | **Covered**             |
+| Error logging       | Failed generation logs                         | **Covered**             |
+| Data retention      | Configurable                                   | **Your responsibility** |
 
 **Retention periods:** The required retention period depends on your role under the Act. Article 18 requires **providers** of high-risk systems to retain logs and technical documentation for **10 years** after market placement. Article 26(6) requires **deployers** to retain logs for at least **6 months**. If you self-host Dify and have substantially modified the system, you may be classified as a provider rather than a deployer. Confirm the applicable retention period with legal counsel.
 
@@ -118,6 +119,7 @@ Article 13 requires providers of high-risk AI systems to supply deployers with t
 As a deployer, collect model cards, system documentation, and accuracy reports from each AI provider your Dify application uses. Maintain these as part of your Annex IV technical documentation.
 
 Dify's platform features provide **supporting evidence** that can inform Article 13 documentation, but they do not satisfy Article 13 on their own:
+
 - **Source attribution** — Dify's RAG citation feature shows which documents informed the response, supporting deployer-side auditing
 - **Model identification** — Dify logs which LLM model generates responses, providing evidence for system documentation
 - **Conversation logs** — execution history helps compile performance and behavior evidence
@@ -141,14 +143,15 @@ Dify's "citation" feature also supports end-user transparency by showing users w
 
 Article 14 requires that high-risk AI systems be designed so that natural persons can effectively oversee them. Dify provides **automated technical safeguards** that support human oversight, but they are not a substitute for it:
 
-| Dify Feature | What It Does | Oversight Role |
-|-------------|-------------|----------------|
-| Annotation/feedback system | Human review of AI outputs | **Direct oversight** — humans evaluate and correct AI responses |
-| Content moderation | Built-in filtering before responses reach users | **Automated safeguard** — reduces harmful outputs but does not replace human judgment on edge cases |
-| Rate limiting | Controls on API usage | **Automated safeguard** — bounds system behavior, supports overseer's ability to maintain control |
-| Workflow control | Insert human review steps between AI generation and output | **Oversight enabler** — allows building approval gates into the pipeline |
+| Dify Feature               | What It Does                                               | Oversight Role                                                                                      |
+| -------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Annotation/feedback system | Human review of AI outputs                                 | **Direct oversight** — humans evaluate and correct AI responses                                     |
+| Content moderation         | Built-in filtering before responses reach users            | **Automated safeguard** — reduces harmful outputs but does not replace human judgment on edge cases |
+| Rate limiting              | Controls on API usage                                      | **Automated safeguard** — bounds system behavior, supports overseer's ability to maintain control   |
+| Workflow control           | Insert human review steps between AI generation and output | **Oversight enabler** — allows building approval gates into the pipeline                            |
 
 These automated controls are necessary building blocks, but Article 14 compliance requires **human oversight procedures** on top of them:
+
 - **Escalation procedures** — define what happens when moderation triggers or edge cases arise (who is notified, what action is taken)
 - **Human review pipeline** — for high-stakes decisions, route AI outputs to a qualified person before they take effect
 - **Override mechanism** — a human must be able to halt AI responses or override the system's output
@@ -183,4 +186,4 @@ Dify's knowledge base feature has specific compliance implications:
 
 ---
 
-*This is not legal advice. Consult a qualified professional for compliance decisions.*
+_This is not legal advice. Consult a qualified professional for compliance decisions._

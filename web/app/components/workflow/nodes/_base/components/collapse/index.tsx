@@ -1,7 +1,4 @@
-import type {
-  ComponentProps,
-  ReactNode,
-} from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   CollapsiblePanel,
@@ -14,15 +11,11 @@ type CollapseProps = Omit<ComponentProps<typeof CollapsibleRoot>, 'open' | 'onOp
   onCollapse?: (collapsed: boolean) => void
 }
 
-export function Collapse({
-  collapsed,
-  onCollapse,
-  ...props
-}: CollapseProps) {
+export function Collapse({ collapsed, onCollapse, ...props }: CollapseProps) {
   return (
     <CollapsibleRoot
       open={collapsed === undefined ? undefined : !collapsed}
-      onOpenChange={open => onCollapse?.(!open)}
+      onOpenChange={(open) => onCollapse?.(!open)}
       {...props}
     />
   )
@@ -32,36 +25,21 @@ type CollapseHeaderProps = {
   children: ReactNode
 }
 
-export function CollapseHeader({
-  children,
-}: CollapseHeaderProps) {
-  return (
-    <div className="group/collapse flex items-center">
-      {children}
-    </div>
-  )
+export function CollapseHeader({ children }: CollapseHeaderProps) {
+  return <div className="group/collapse flex items-center">{children}</div>
 }
 
 type CollapseActionsProps = {
   children: ReactNode
 }
 
-export function CollapseActions({
-  children,
-}: CollapseActionsProps) {
-  return (
-    <div className="ml-auto shrink-0">
-      {children}
-    </div>
-  )
+export function CollapseActions({ children }: CollapseActionsProps) {
+  return <div className="ml-auto shrink-0">{children}</div>
 }
 
 type CollapseTriggerProps = ComponentProps<typeof CollapsibleTrigger>
 
-export function CollapseTrigger({
-  className,
-  ...props
-}: CollapseTriggerProps) {
+export function CollapseTrigger({ className, ...props }: CollapseTriggerProps) {
   return (
     <CollapsibleTrigger
       className={cn(
@@ -78,12 +56,11 @@ type CollapseTitleProps = {
   className?: string
 }
 
-export function CollapseTitle({
-  children,
-  className,
-}: CollapseTitleProps) {
+export function CollapseTitle({ children, className }: CollapseTitleProps) {
   return (
-    <span className={cn('min-w-0 truncate system-sm-semibold-uppercase text-text-secondary', className)}>
+    <span
+      className={cn('min-w-0 truncate system-sm-semibold-uppercase text-text-secondary', className)}
+    >
       {children}
     </span>
   )
@@ -100,16 +77,8 @@ export function CollapseIndicator() {
 
 type CollapseContentProps = ComponentProps<typeof CollapsiblePanel>
 
-export function CollapseContent({
-  className,
-  ...props
-}: CollapseContentProps) {
-  return (
-    <CollapsiblePanel
-      className={cn(className)}
-      {...props}
-    />
-  )
+export function CollapseContent({ className, ...props }: CollapseContentProps) {
+  return <CollapsiblePanel className={cn(className)} {...props} />
 }
 
 type FieldCollapseProps = {
@@ -135,16 +104,10 @@ export function FieldCollapse({
             <CollapseTitle>{title}</CollapseTitle>
             <CollapseIndicator />
           </CollapseTrigger>
-          {actions != null && (
-            <CollapseActions>
-              {actions}
-            </CollapseActions>
-          )}
+          {actions != null && <CollapseActions>{actions}</CollapseActions>}
         </CollapseHeader>
         <CollapseContent>
-          <div className="px-4">
-            {children}
-          </div>
+          <div className="px-4">{children}</div>
         </CollapseContent>
       </Collapse>
     </div>

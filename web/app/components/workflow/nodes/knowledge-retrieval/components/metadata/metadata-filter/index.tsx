@@ -1,9 +1,6 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { noop } from 'es-toolkit/function'
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -36,16 +33,21 @@ const MetadataFilter = ({
   const { t } = useTranslation()
   const [collapsed, setCollapsed] = useState(true)
 
-  const handleMetadataFilterModeChangeWrapped = useCallback((mode: MetadataFilteringModeEnum) => {
-    if (mode === MetadataFilteringModeEnum.automatic)
-      setCollapsed(false)
+  const handleMetadataFilterModeChangeWrapped = useCallback(
+    (mode: MetadataFilteringModeEnum) => {
+      if (mode === MetadataFilteringModeEnum.automatic) setCollapsed(false)
 
-    handleMetadataFilterModeChange(mode)
-  }, [handleMetadataFilterModeChange])
+      handleMetadataFilterModeChange(mode)
+    },
+    [handleMetadataFilterModeChange],
+  )
 
   return (
     <Collapse
-      disabled={metadataFilterMode === MetadataFilteringModeEnum.disabled || metadataFilterMode === MetadataFilteringModeEnum.manual}
+      disabled={
+        metadataFilterMode === MetadataFilteringModeEnum.disabled ||
+        metadataFilterMode === MetadataFilteringModeEnum.manual
+      }
       collapsed={collapsed}
       onCollapse={setCollapsed}
     >
@@ -56,7 +58,10 @@ const MetadataFilter = ({
           </CollapseTitle>
           {metadataFilterMode === MetadataFilteringModeEnum.automatic && <CollapseIndicator />}
         </CollapseTrigger>
-        <Infotip aria-label={t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })} popupClassName="w-[200px]">
+        <Infotip
+          aria-label={t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
+          popupClassName="w-[200px]"
+        >
           {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
         </Infotip>
         <CollapseActions>

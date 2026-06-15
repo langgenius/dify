@@ -28,20 +28,14 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
   checkValid(payload: IterationNodeType, t: any) {
     let errorMessages = ''
 
-    if (
-      !errorMessages
-      && (!payload.iterator_selector || payload.iterator_selector.length === 0)
-    ) {
+    if (!errorMessages && (!payload.iterator_selector || payload.iterator_selector.length === 0)) {
       errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, {
         ns: 'workflow',
         field: t(`${i18nPrefix}nodes.iteration.input`, { ns: 'workflow' }),
       })
     }
 
-    if (
-      !errorMessages
-      && (!payload.output_selector || payload.output_selector.length === 0)
-    ) {
+    if (!errorMessages && (!payload.output_selector || payload.output_selector.length === 0)) {
       errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, {
         ns: 'workflow',
         field: t(`${i18nPrefix}nodes.iteration.output`, { ns: 'workflow' }),

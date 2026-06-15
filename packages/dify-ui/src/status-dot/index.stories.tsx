@@ -38,12 +38,10 @@ export const Matrix: Story = {
       <div />
       <div className="system-xs-medium text-text-tertiary">Small</div>
       <div className="system-xs-medium text-text-tertiary">Medium</div>
-      {statuses.map(status => (
+      {statuses.map((status) => (
         <React.Fragment key={status}>
-          <div className="system-xs-semibold-uppercase text-text-secondary">
-            {status}
-          </div>
-          {sizes.map(size => (
+          <div className="system-xs-semibold-uppercase text-text-secondary">{status}</div>
+          {sizes.map((size) => (
             <StatusDot key={`${status}-${size}`} status={status} size={size} />
           ))}
         </React.Fragment>

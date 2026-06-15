@@ -28,8 +28,7 @@ export async function loadNudgeStore(opts: NudgeStoreOptions = {}): Promise<Nudg
   return {
     canWarn: (host, now) => {
       const last = memory.get(host)
-      if (last === undefined)
-        return true
+      if (last === undefined) return true
       const elapsed = Math.max(0, (now ?? clock()).getTime() - last)
       return elapsed >= intervalMs
     },
@@ -51,21 +50,18 @@ async function readWarned(store: Store): Promise<Map<string, number>> {
   let raw: Record<string, string>
   try {
     raw = await store.get(WARNED_KEY)
-  }
-  catch {
+  } catch {
     return out
   }
   for (const [host, iso] of Object.entries(raw)) {
     const t = Date.parse(iso)
-    if (!Number.isNaN(t))
-      out.set(host, t)
+    if (!Number.isNaN(t)) out.set(host, t)
   }
   return out
 }
 
 async function writeWarned(store: Store, state: Map<string, number>): Promise<void> {
   const warned: Record<string, string> = {}
-  for (const [host, t] of state)
-    warned[host] = new Date(t).toISOString()
+  for (const [host, t] of state) warned[host] = new Date(t).toISOString()
   await store.set(WARNED_KEY, warned)
 }

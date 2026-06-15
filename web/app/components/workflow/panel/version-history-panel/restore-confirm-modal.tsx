@@ -31,8 +31,7 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <AlertDialogContent className="overflow-hidden! border-none text-left align-middle shadow-xl">
@@ -52,7 +51,11 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
           >
             {t('operation.cancel', { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton nativeButton={false} tone="default" onClick={onRestore.bind(null, versionInfo)}>
+          <AlertDialogConfirmButton
+            nativeButton={false}
+            tone="default"
+            onClick={onRestore.bind(null, versionInfo)}
+          >
             {t('common.restore', { ns: 'workflow' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

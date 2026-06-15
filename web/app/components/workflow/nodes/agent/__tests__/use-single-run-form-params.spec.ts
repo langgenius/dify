@@ -74,10 +74,12 @@ describe('agent/use-single-run-form-params', () => {
       strategyStatus: undefined,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useStrategyInfo>)
-    mockFormatTracing.mockReturnValue([{
-      id: 'agent-node',
-      status: 'succeeded',
-    }] as unknown as ReturnType<typeof formatTracing>)
+    mockFormatTracing.mockReturnValue([
+      {
+        id: 'agent-node',
+        status: 'succeeded',
+      },
+    ] as unknown as ReturnType<typeof formatTracing>)
   })
 
   it('builds a single-run variable form, returns node info, and skips malformed dependent vars', () => {
@@ -97,16 +99,18 @@ describe('agent/use-single-run-form-params', () => {
       },
     ])
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'agent-node',
-      payload: createData(),
-      runInputData: { topic: 'finance' },
-      runInputDataRef: { current: { topic: 'finance' } },
-      getInputVars,
-      setRunInputData,
-      toVarInputs: () => [],
-      runResult: { id: 'trace-1' } as never,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'agent-node',
+        payload: createData(),
+        runInputData: { topic: 'finance' },
+        runInputDataRef: { current: { topic: 'finance' } },
+        getInputVars,
+        setRunInputData,
+        toVarInputs: () => [],
+        runResult: { id: 'trace-1' } as never,
+      }),
+    )
 
     expect(getInputVars).toHaveBeenCalledWith(['#start.topic#', '#node-2.answer#'])
     expect(result.current.forms).toHaveLength(1)
@@ -120,22 +124,22 @@ describe('agent/use-single-run-form-params', () => {
     result.current.forms[0]!.onChange({ topic: 'updated' })
 
     expect(setRunInputData).toHaveBeenCalledWith({ topic: 'updated' })
-    expect(result.current.getDependentVars()).toEqual([
-      ['start', 'topic'],
-    ])
+    expect(result.current.getDependentVars()).toEqual([['start', 'topic']])
   })
 
   it('returns an empty form list when no variable input is required and no run result is available', () => {
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'agent-node',
-      payload: createData(),
-      runInputData: {},
-      runInputDataRef: { current: {} },
-      getInputVars: () => [],
-      setRunInputData: vi.fn(),
-      toVarInputs: () => [],
-      runResult: undefined as never,
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'agent-node',
+        payload: createData(),
+        runInputData: {},
+        runInputDataRef: { current: {} },
+        getInputVars: () => [],
+        setRunInputData: vi.fn(),
+        toVarInputs: () => [],
+        runResult: undefined as never,
+      }),
+    )
 
     expect(result.current.forms).toEqual([])
     expect(result.current.nodeInfo).toBeUndefined()

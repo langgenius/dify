@@ -1,7 +1,5 @@
 import type { NodeDefault } from '../../types'
-import type {
-  SimpleNodeType,
-} from '@/app/components/workflow/simple-node/types'
+import type { SimpleNodeType } from '@/app/components/workflow/simple-node/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'

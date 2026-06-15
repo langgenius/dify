@@ -49,8 +49,14 @@ describe('CreateSnippetDialog', () => {
       />,
     )
 
-    await user.type(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), '  Support snippet  ')
-    await user.type(screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder'), '  Helps agents  ')
+    await user.type(
+      screen.getByPlaceholderText('workflow.snippet.namePlaceholder'),
+      '  Support snippet  ',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.snippet.descriptionPlaceholder'),
+      '  Helps agents  ',
+    )
     await user.click(screen.getByRole('button', { name: 'workflow.snippet.confirm' }))
 
     expect(onConfirm).toHaveBeenCalledWith({
@@ -109,7 +115,10 @@ describe('CreateSnippetDialog', () => {
 
     expect(screen.getByText('Save as snippet')).toBeInTheDocument()
 
-    await user.type(screen.getByPlaceholderText('workflow.snippet.namePlaceholder'), 'Simple snippet')
+    await user.type(
+      screen.getByPlaceholderText('workflow.snippet.namePlaceholder'),
+      'Simple snippet',
+    )
     await user.click(screen.getByRole('button', { name: 'Create now' }))
 
     expect(onConfirm).toHaveBeenCalledWith({
@@ -164,9 +173,11 @@ describe('CreateSnippetDialog', () => {
 
     capturedKeyPressHandler?.()
 
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Keyboard snippet',
-    }))
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Keyboard snippet',
+      }),
+    )
   })
 
   it('should disable form controls while submitting', () => {

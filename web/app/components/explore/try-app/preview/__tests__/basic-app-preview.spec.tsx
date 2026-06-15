@@ -349,10 +349,7 @@ describe('BasicAppPreview', () => {
       const modelConfig = appWithDatasets.model_config as Record<string, unknown>
       modelConfig.dataset_configs = {
         datasets: {
-          datasets: [
-            { dataset: { id: 'dataset-1' } },
-            { dataset: { id: 'dataset-2' } },
-          ],
+          datasets: [{ dataset: { id: 'dataset-1' } }, { dataset: { id: 'dataset-2' } }],
         },
       }
 

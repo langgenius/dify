@@ -74,8 +74,7 @@ const List = ({
   }
 
   if (noFilter) {
-    if (hideFindMoreFooter)
-      return null
+    if (hideFindMoreFooter) return null
 
     return (
       <Link
@@ -96,7 +95,11 @@ const List = ({
     <>
       {hasRes && (
         <div
-          className={cn('sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 system-sm-medium text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
+          className={cn(
+            'sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 system-sm-medium text-text-primary',
+            stickyClassName,
+            !disableMaxWidth && maxWidthClassName,
+          )}
           onClick={handleHeadClick}
         >
           <span>{t('fromMarketplace', { ns: 'plugin' })}</span>
@@ -105,7 +108,7 @@ const List = ({
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center text-text-accent-light-mode-only"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
             <RiArrowRightUpLine className="ml-0.5 size-3" />
@@ -114,11 +117,7 @@ const List = ({
       )}
       <div className={cn('p-1', !disableMaxWidth && maxWidthClassName)} ref={nextToStickyELemRef}>
         {list.map((item, index) => (
-          <Item
-            key={index}
-            payload={item}
-            onAction={noop}
-          />
+          <Item key={index} payload={item} onAction={noop} />
         ))}
       </div>
     </>

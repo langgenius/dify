@@ -21,10 +21,7 @@ type InstallFromLocalPackageProps = {
   onClose: () => void
 }
 
-const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
-  file,
-  onClose,
-}) => {
+const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({ file, onClose }) => {
   const { t } = useTranslation()
   // uploading -> !uploadFailed -> readyToInstall -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.uploading)
@@ -34,16 +31,11 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const isBundle = file.name.endsWith('.difybndl')
   const [dependencies, setDependencies] = useState<Dependency[]>([])
 
-  const {
-    modalClassName,
-    foldAnimInto,
-    setIsInstalling,
-    handleStartToInstall,
-  } = useHideLogic(onClose)
+  const { modalClassName, foldAnimInto, setIsInstalling, handleStartToInstall } =
+    useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
-    if (step === InstallStep.uploadFailed)
-      return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
+    if (step === InstallStep.uploadFailed) return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
     if (isBundle && step === InstallStep.installed)
       return t(`${i18nPrefix}.installComplete`, { ns: 'plugin' })
     if (step === InstallStep.installed)
@@ -56,24 +48,21 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
 
   const { getIconUrl } = useGetIcon()
 
-  const handlePackageUploaded = useCallback(async (result: {
-    uniqueIdentifier: string
-    manifest: PluginDeclaration
-  }) => {
-    const {
-      manifest,
-      uniqueIdentifier,
-    } = result
-    const icon = await getIconUrl(manifest!.icon)
-    const iconDark = manifest.icon_dark ? await getIconUrl(manifest.icon_dark) : undefined
-    setUniqueIdentifier(uniqueIdentifier)
-    setManifest({
-      ...manifest,
-      icon,
-      icon_dark: iconDark,
-    })
-    setStep(InstallStep.readyToInstall)
-  }, [getIconUrl])
+  const handlePackageUploaded = useCallback(
+    async (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => {
+      const { manifest, uniqueIdentifier } = result
+      const icon = await getIconUrl(manifest!.icon)
+      const iconDark = manifest.icon_dark ? await getIconUrl(manifest.icon_dark) : undefined
+      setUniqueIdentifier(uniqueIdentifier)
+      setManifest({
+        ...manifest,
+        icon,
+        icon_dark: iconDark,
+      })
+      setStep(InstallStep.readyToInstall)
+    },
+    [getIconUrl],
+  )
 
   const handleBundleUploaded = useCallback((result: Dependency[]) => {
     setDependencies(result)
@@ -89,17 +78,22 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          foldAnimInto()
+        if (!open) foldAnimInto()
       }}
     >
-      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, 'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0'))}>
+      <DialogContent
+        className={cn(
+          'w-[560px] max-w-none! overflow-hidden! text-left align-middle',
+          cn(
+            modalClassName,
+            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+          ),
+        )}
+      >
         <DialogCloseButton />
 
         <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <div className="self-stretch title-2xl-semi-bold text-text-primary">
-            {getTitle()}
-          </div>
+          <div className="self-stretch title-2xl-semi-bold text-text-primary">{getTitle()}</div>
         </div>
         {step === InstallStep.uploading && (
           <Uploading
@@ -111,30 +105,28 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
             onFailed={handleUploadFail}
           />
         )}
-        {isBundle
-          ? (
-              <ReadyToInstallBundle
-                step={step}
-                onStepChange={setStep}
-                onStartToInstall={handleStartToInstall}
-                setIsInstalling={setIsInstalling}
-                onClose={onClose}
-                allPlugins={dependencies}
-              />
-            )
-          : (
-              <ReadyToInstallPackage
-                step={step}
-                onStepChange={setStep}
-                onStartToInstall={handleStartToInstall}
-                setIsInstalling={setIsInstalling}
-                onClose={onClose}
-                uniqueIdentifier={uniqueIdentifier}
-                manifest={manifest}
-                errorMsg={errorMsg}
-                onError={setErrorMsg}
-              />
-            )}
+        {isBundle ? (
+          <ReadyToInstallBundle
+            step={step}
+            onStepChange={setStep}
+            onStartToInstall={handleStartToInstall}
+            setIsInstalling={setIsInstalling}
+            onClose={onClose}
+            allPlugins={dependencies}
+          />
+        ) : (
+          <ReadyToInstallPackage
+            step={step}
+            onStepChange={setStep}
+            onStartToInstall={handleStartToInstall}
+            setIsInstalling={setIsInstalling}
+            onClose={onClose}
+            uniqueIdentifier={uniqueIdentifier}
+            manifest={manifest}
+            errorMsg={errorMsg}
+            onError={setErrorMsg}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

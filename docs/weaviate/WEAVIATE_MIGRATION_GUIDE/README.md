@@ -150,11 +150,11 @@ docker compose up -d
 
 ## Compatibility
 
-| Component | Old Version | New Version | Compatible |
-|-----------|-------------|-------------|------------|
-| Weaviate Server | 1.19.0 | 1.27.0 | ✅ Yes |
-| weaviate-client | ~3.24.0 | ==4.17.0 | ✅ Yes |
-| Existing Data | v1.19 format | v1.27 format | ✅ Yes |
+| Component       | Old Version  | New Version  | Compatible |
+| --------------- | ------------ | ------------ | ---------- |
+| Weaviate Server | 1.19.0       | 1.27.0       | ✅ Yes     |
+| weaviate-client | ~3.24.0      | ==4.17.0     | ✅ Yes     |
+| Existing Data   | v1.19 format | v1.27 format | ✅ Yes     |
 
 ## Testing Checklist
 

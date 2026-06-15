@@ -30,10 +30,12 @@ describe('useWorkflowNodeStarted', () => {
       expect(transform[1]).toBe(310)
       expect(transform[2]).toBe(1)
 
-      const node = result.current.nodes.find(item => item.id === 'n1')
+      const node = result.current.nodes.find((item) => item.id === 'n1')
       expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
       expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(NodeRunningStatus.Running)
+      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+        NodeRunningStatus.Running,
+      )
     })
   })
 
@@ -43,9 +45,12 @@ describe('useWorkflowNodeStarted', () => {
     })
 
     act(() => {
-      result.current.handleWorkflowNodeStarted(createNodeStartedResponse({
-        data: { node_id: 'n2' } as never,
-      }), containerParams)
+      result.current.handleWorkflowNodeStarted(
+        createNodeStartedResponse({
+          data: { node_id: 'n2' } as never,
+        }),
+        containerParams,
+      )
     })
 
     await waitFor(() => {
@@ -53,7 +58,9 @@ describe('useWorkflowNodeStarted', () => {
       expect(transform[0]).toBe(0)
       expect(transform[1]).toBe(0)
       expect(transform[2]).toBe(1)
-      expect(getNodeRuntimeState(result.current.nodes.find(item => item.id === 'n2'))._runningStatus).toBe(NodeRunningStatus.Running)
+      expect(
+        getNodeRuntimeState(result.current.nodes.find((item) => item.id === 'n2'))._runningStatus,
+      ).toBe(NodeRunningStatus.Running)
     })
   })
 

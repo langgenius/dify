@@ -10,13 +10,11 @@ type NextExecutionTimesProps = {
 const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   const { t } = useTranslation()
 
-  if (!data.frequency)
-    return null
+  if (!data.frequency) return null
 
   const executionTimes = getFormattedExecutionTimes(data, 5)
 
-  if (executionTimes.length === 0)
-    return null
+  if (executionTimes.length === 0) return null
 
   return (
     <div className="space-y-2">

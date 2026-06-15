@@ -12,16 +12,18 @@ type MockPluginDetail = {
   name: string
   declaration: {
     trigger: {
-      subscription_schema: Array<{ name: string, type: string, description?: string }>
+      subscription_schema: Array<{ name: string; type: string; description?: string }>
       subscription_constructor: {
-        credentials_schema: Array<{ name: string, type: string, help?: string }>
-        parameters: Array<{ name: string, type: string }>
+        credentials_schema: Array<{ name: string; type: string; help?: string }>
+        parameters: Array<{ name: string; type: string }>
       }
     }
   }
 }
 
-const createMockBuilder = (overrides: Partial<TriggerSubscriptionBuilder> = {}): TriggerSubscriptionBuilder => ({
+const createMockBuilder = (
+  overrides: Partial<TriggerSubscriptionBuilder> = {},
+): TriggerSubscriptionBuilder => ({
   id: 'builder-1',
   name: 'builder',
   provider: 'provider-a',
@@ -69,14 +71,18 @@ let mockIsBuilding = false
 vi.mock('@/service/use-triggers', () => ({
   useVerifyAndUpdateTriggerSubscriptionBuilder: () => ({
     mutate: mockVerifyCredentials,
-    get isPending() { return mockIsVerifyingCredentials },
+    get isPending() {
+      return mockIsVerifyingCredentials
+    },
   }),
   useCreateTriggerSubscriptionBuilder: () => ({
     mutateAsync: mockCreateBuilder,
   }),
   useBuildTriggerSubscription: () => ({
     mutate: mockBuildSubscription,
-    get isPending() { return mockIsBuilding },
+    get isPending() {
+      return mockIsBuilding
+    },
   }),
   useUpdateTriggerSubscriptionBuilder: () => ({
     mutate: mockUpdateBuilder,
@@ -109,13 +115,14 @@ const createFormRef = ({
 }: {
   values?: Record<string, unknown>
   isCheckValidated?: boolean
-} = {}): FormRefObject => ({
-  getFormValues: vi.fn().mockReturnValue({ values, isCheckValidated }),
-  setFields: vi.fn(),
-  getForm: vi.fn().mockReturnValue({
-    setFieldValue: vi.fn(),
-  }),
-} as unknown as FormRefObject)
+} = {}): FormRefObject =>
+  ({
+    getFormValues: vi.fn().mockReturnValue({ values, isCheckValidated }),
+    setFields: vi.fn(),
+    getForm: vi.fn().mockReturnValue({
+      setFieldValue: vi.fn(),
+    }),
+  }) as unknown as FormRefObject
 
 describe('useCommonModalState', () => {
   beforeEach(() => {
@@ -128,10 +135,12 @@ describe('useCommonModalState', () => {
   })
 
   it('should initialize api key builders and expose verify step state', async () => {
-    const { result } = renderHook(() => useCommonModalState({
-      createType: SupportedCreationMethods.APIKEY,
-      onClose: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useCommonModalState({
+        createType: SupportedCreationMethods.APIKEY,
+        onClose: vi.fn(),
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.subscriptionBuilder?.id).toBe('builder-1')
@@ -154,13 +163,17 @@ describe('useCommonModalState', () => {
     })
 
     const builder = createMockBuilder()
-    const { result } = renderHook(() => useCommonModalState({
-      createType: SupportedCreationMethods.APIKEY,
-      builder,
-      onClose: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useCommonModalState({
+        createType: SupportedCreationMethods.APIKEY,
+        builder,
+        onClose: vi.fn(),
+      }),
+    )
 
-    const credentialsFormRef = result.current.formRefs.apiKeyCredentialsFormRef as { current: FormRefObject | null }
+    const credentialsFormRef = result.current.formRefs.apiKeyCredentialsFormRef as {
+      current: FormRefObject | null
+    }
     credentialsFormRef.current = createFormRef({
       values: { api_key: 'secret' },
     })
@@ -169,31 +182,42 @@ describe('useCommonModalState', () => {
       result.current.handleVerify()
     })
 
-    expect(mockVerifyCredentials).toHaveBeenCalledWith({
-      provider: 'provider-a',
-      subscriptionBuilderId: builder.id,
-      credentials: { api_key: 'secret' },
-    }, expect.objectContaining({
-      onSuccess: expect.any(Function),
-      onError: expect.any(Function),
-    }))
+    expect(mockVerifyCredentials).toHaveBeenCalledWith(
+      {
+        provider: 'provider-a',
+        subscriptionBuilderId: builder.id,
+        credentials: { api_key: 'secret' },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    )
     expect(result.current.currentStep).toBe(ApiKeyStep.Configuration)
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'success',
-    }))
+    expect(mockToastNotify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+      }),
+    )
   })
 
   it('should build subscriptions with validated automatic parameters', () => {
     const onClose = vi.fn()
     const builder = createMockBuilder()
-    const { result } = renderHook(() => useCommonModalState({
-      createType: SupportedCreationMethods.APIKEY,
-      builder,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCommonModalState({
+        createType: SupportedCreationMethods.APIKEY,
+        builder,
+        onClose,
+      }),
+    )
 
-    const subscriptionFormRef = result.current.formRefs.subscriptionFormRef as { current: FormRefObject | null }
-    const autoParamsFormRef = result.current.formRefs.autoCommonParametersFormRef as { current: FormRefObject | null }
+    const subscriptionFormRef = result.current.formRefs.subscriptionFormRef as {
+      current: FormRefObject | null
+    }
+    const autoParamsFormRef = result.current.formRefs.autoCommonParametersFormRef as {
+      current: FormRefObject | null
+    }
 
     subscriptionFormRef.current = createFormRef({
       values: { subscription_name: 'Subscription A' },
@@ -206,15 +230,18 @@ describe('useCommonModalState', () => {
       result.current.handleCreate()
     })
 
-    expect(mockBuildSubscription).toHaveBeenCalledWith({
-      provider: 'provider-a',
-      subscriptionBuilderId: builder.id,
-      name: 'Subscription A',
-      parameters: { repo_name: 'repo-a' },
-    }, expect.objectContaining({
-      onSuccess: expect.any(Function),
-      onError: expect.any(Function),
-    }))
+    expect(mockBuildSubscription).toHaveBeenCalledWith(
+      {
+        provider: 'provider-a',
+        subscriptionBuilderId: builder.id,
+        name: 'Subscription A',
+        parameters: { repo_name: 'repo-a' },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    )
   })
 
   it('should debounce manual property updates', async () => {
@@ -223,13 +250,17 @@ describe('useCommonModalState', () => {
     const builder = createMockBuilder({
       credential_type: TriggerCredentialTypeEnum.Unauthorized,
     })
-    const { result } = renderHook(() => useCommonModalState({
-      createType: SupportedCreationMethods.MANUAL,
-      builder,
-      onClose: vi.fn(),
-    }))
+    const { result } = renderHook(() =>
+      useCommonModalState({
+        createType: SupportedCreationMethods.MANUAL,
+        builder,
+        onClose: vi.fn(),
+      }),
+    )
 
-    const manualFormRef = result.current.formRefs.manualPropertiesFormRef as { current: FormRefObject | null }
+    const manualFormRef = result.current.formRefs.manualPropertiesFormRef as {
+      current: FormRefObject | null
+    }
     manualFormRef.current = createFormRef({
       values: { webhook_url: 'https://hook.example.com' },
       isCheckValidated: true,
@@ -240,13 +271,16 @@ describe('useCommonModalState', () => {
       vi.advanceTimersByTime(500)
     })
 
-    expect(mockUpdateBuilder).toHaveBeenCalledWith({
-      provider: 'provider-a',
-      subscriptionBuilderId: builder.id,
-      properties: { webhook_url: 'https://hook.example.com' },
-    }, expect.objectContaining({
-      onError: expect.any(Function),
-    }))
+    expect(mockUpdateBuilder).toHaveBeenCalledWith(
+      {
+        provider: 'provider-a',
+        subscriptionBuilderId: builder.id,
+        properties: { webhook_url: 'https://hook.example.com' },
+      },
+      expect.objectContaining({
+        onError: expect.any(Function),
+      }),
+    )
 
     vi.useRealTimers()
   })

@@ -3,7 +3,15 @@
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { FieldRoot } from '@langgenius/dify-ui/field'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -25,10 +33,7 @@ type SelectPackageProps = {
   selectedPackage: string
   packages: SelectOption[]
   onSelectPackage: (item: SelectOption) => void
-  onUploaded: (result: {
-    uniqueIdentifier: string
-    manifest: PluginDeclaration
-  }) => void
+  onUploaded: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
   onFailed: (errorMsg: string) => void
   onBack: () => void
 }
@@ -49,12 +54,13 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { t } = useTranslation()
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
-  const selectedVersionOption = versions.find(item => String(item.value) === selectedVersion) ?? null
-  const selectedPackageOption = packages.find(item => String(item.value) === selectedPackage) ?? null
+  const selectedVersionOption =
+    versions.find((item) => String(item.value) === selectedVersion) ?? null
+  const selectedPackageOption =
+    packages.find((item) => String(item.value) === selectedPackage) ?? null
 
   const handleUploadPackage = async () => {
-    if (isUploading)
-      return
+    if (isUploading) return
     setIsUploading(true)
     try {
       const repo = repoUrl.replace('https://github.com/', '')
@@ -64,14 +70,10 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           manifest: GitHubPackage.manifest,
         })
       })
-    }
-    catch (e: any) {
-      if (e.response?.message)
-        onFailed(e.response?.message)
-      else
-        onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
-    }
-    finally {
+    } catch (e: any) {
+      if (e.response?.message) onFailed(e.response?.message)
+      else onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
+    } finally {
       setIsUploading(false)
     }
   }
@@ -82,38 +84,42 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         <Select
           value={selectedVersionOption ? String(selectedVersionOption.value) : null}
           onValueChange={(value) => {
-            if (!value)
-              return
-            const selectedItem = versions.find(item => String(item.value) === value)
-            if (selectedItem)
-              onSelectVersion(selectedItem)
+            if (!value) return
+            const selectedItem = versions.find((item) => String(item.value) === value)
+            if (selectedItem) onSelectVersion(selectedItem)
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">
+              {t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}
+            </span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
             <div className="flex items-center justify-between gap-2">
               <span className="truncate">
-                {selectedVersionOption?.name ?? t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) ?? ''}
+                {selectedVersionOption?.name ??
+                  t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) ??
+                  ''}
               </span>
-              {!!(updatePayload?.originalPackageInfo.version && selectedVersionOption && selectedVersionOption.value !== updatePayload.originalPackageInfo.version) && (
+              {!!(
+                updatePayload?.originalPackageInfo.version &&
+                selectedVersionOption &&
+                selectedVersionOption.value !== updatePayload.originalPackageInfo.version
+              ) && (
                 <Badge>
-                  {updatePayload.originalPackageInfo.version}
-                  {' '}
-                  {'->'}
-                  {' '}
-                  {selectedVersionOption.value}
+                  {updatePayload.originalPackageInfo.version} {'->'} {selectedVersionOption.value}
                 </Badge>
               )}
             </div>
           </SelectTrigger>
           <SelectContent popupClassName="w-[512px]">
-            {versions.map(item => (
+            {versions.map((item) => (
               <SelectItem key={item.value} value={String(item.value)}>
                 <SelectItemText>{item.name}</SelectItemText>
                 {item.value === updatePayload?.originalPackageInfo.version && (
-                  <Badge uppercase={true} className="ml-1 shrink-0">INSTALLED</Badge>
+                  <Badge uppercase={true} className="ml-1 shrink-0">
+                    INSTALLED
+                  </Badge>
                 )}
                 <SelectItemIndicator />
               </SelectItem>
@@ -126,21 +132,23 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           value={selectedPackageOption ? String(selectedPackageOption.value) : null}
           readOnly={!selectedVersion}
           onValueChange={(value) => {
-            if (!value)
-              return
-            const selectedItem = packages.find(item => String(item.value) === value)
-            if (selectedItem)
-              onSelectPackage(selectedItem)
+            if (!value) return
+            const selectedItem = packages.find((item) => String(item.value) === value)
+            if (selectedItem) onSelectPackage(selectedItem)
           }}
         >
           <SelectLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
-            <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
+            <span className="system-sm-semibold">
+              {t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}
+            </span>
           </SelectLabel>
           <SelectTrigger className="h-9 text-components-input-text-filled">
-            {selectedPackageOption?.name ?? t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ?? ''}
+            {selectedPackageOption?.name ??
+              t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) ??
+              ''}
           </SelectTrigger>
           <SelectContent popupClassName="w-[512px]">
-            {packages.map(item => (
+            {packages.map((item) => (
               <SelectItem key={item.value} value={String(item.value)}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
@@ -150,17 +158,16 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         </Select>
       </FieldRoot>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
-        {!isEdit
-          && (
-            <Button
-              variant="secondary"
-              className="min-w-[72px]"
-              onClick={onBack}
-              disabled={isUploading}
-            >
-              {t('installModal.back', { ns: 'plugin' })}
-            </Button>
-          )}
+        {!isEdit && (
+          <Button
+            variant="secondary"
+            className="min-w-[72px]"
+            onClick={onBack}
+            disabled={isUploading}
+          >
+            {t('installModal.back', { ns: 'plugin' })}
+          </Button>
+        )}
         <Button
           variant="primary"
           className="min-w-[72px]"

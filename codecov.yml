@@ -11,15 +11,15 @@ coverage:
 flags:
   web:
     paths:
-      - "web/"
+      - 'web/'
     carryforward: true
 
   dify-ui:
     paths:
-      - "packages/dify-ui/"
+      - 'packages/dify-ui/'
     carryforward: true
 
   api:
     paths:
-      - "api/"
+      - 'api/'
     carryforward: true

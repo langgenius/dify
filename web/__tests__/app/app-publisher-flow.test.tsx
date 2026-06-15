@@ -44,10 +44,11 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-    setAppDetail: mockSetAppDetail,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+      setAppDetail: mockSetAppDetail,
+    }),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -91,15 +92,12 @@ vi.mock('@/app/components/base/amplitude', () => ({
 }))
 
 vi.mock('@/app/components/app/overview/embedded', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="embedded-modal">
-            <button onClick={onClose}>close-embedded</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
+    isShow ? (
+      <div data-testid="embedded-modal">
+        <button onClick={onClose}>close-embedded</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/workflow/collaboration/core/websocket-manager', () => ({
@@ -144,28 +142,21 @@ describe('App Publisher Flow', () => {
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
     })
-    mockOpenAsyncWindow.mockImplementation(async (
-      resolver: () => Promise<string>,
-      options?: { onError?: (error: Error) => void },
-    ) => {
-      try {
-        return await resolver()
-      }
-      catch (error) {
-        options?.onError?.(error as Error)
-      }
-    })
+    mockOpenAsyncWindow.mockImplementation(
+      async (resolver: () => Promise<string>, options?: { onError?: (error: Error) => void }) => {
+        try {
+          return await resolver()
+        } catch (error) {
+          options?.onError?.(error as Error)
+        }
+      },
+    )
   })
 
   it('publishes from the summary panel and tracks the publish event', async () => {
     const onPublish = vi.fn().mockResolvedValue(undefined)
 
-    renderWithQueryClient(
-      <AppPublisher
-        publishedAt={1700000000}
-        onPublish={onPublish}
-      />,
-    )
+    renderWithQueryClient(<AppPublisher publishedAt={1700000000} onPublish={onPublish} />)
 
     fireEvent.click(screen.getByText('common.publish'))
 
@@ -176,11 +167,14 @@ describe('App Publisher Flow', () => {
 
     await waitFor(() => {
       expect(onPublish).toHaveBeenCalledTimes(1)
-      expect(mockTrackEvent).toHaveBeenCalledWith('app_published_time', expect.objectContaining({
-        action_mode: 'app',
-        app_id: 'app-1',
-        app_name: 'Demo App',
-      }))
+      expect(mockTrackEvent).toHaveBeenCalledWith(
+        'app_published_time',
+        expect.objectContaining({
+          action_mode: 'app',
+          app_id: 'app-1',
+          app_name: 'Demo App',
+        }),
+      )
     })
 
     expect(mockRefetch).toHaveBeenCalled()

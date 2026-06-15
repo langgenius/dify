@@ -20,79 +20,118 @@ export const triggerProviderInfoContract = base
   .output(type<TriggerProviderApiEntity>())
 
 export const triggerSubscriptionsContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/list', method: 'GET' })
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/list',
+    method: 'GET',
+  })
   .input(type<{ params: { provider: string } }>())
   .output(type<TriggerSubscription[]>())
 
 export const triggerSubscriptionBuilderCreateContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/create', method: 'POST' })
-  .input(type<{
-    params: { provider: string }
-    body?: { credential_type?: string }
-  }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/create',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: { provider: string }
+      body?: { credential_type?: string }
+    }>(),
+  )
   .output(type<{ subscription_builder: TriggerSubscriptionBuilder }>())
 
 export const triggerSubscriptionBuilderUpdateContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscriptionBuilderId}', method: 'POST' })
-  .input(type<{
-    params: { provider: string, subscriptionBuilderId: string }
-    body?: {
-      name?: string
-      properties?: Record<string, unknown>
-      parameters?: Record<string, unknown>
-      credentials?: Record<string, unknown>
-    }
-  }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscriptionBuilderId}',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: { provider: string; subscriptionBuilderId: string }
+      body?: {
+        name?: string
+        properties?: Record<string, unknown>
+        parameters?: Record<string, unknown>
+        credentials?: Record<string, unknown>
+      }
+    }>(),
+  )
   .output(type<TriggerSubscriptionBuilder>())
 
 export const triggerSubscriptionBuilderVerifyUpdateContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscriptionBuilderId}', method: 'POST' })
-  .input(type<{
-    params: { provider: string, subscriptionBuilderId: string }
-    body?: { credentials?: Record<string, unknown> }
-  }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscriptionBuilderId}',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: { provider: string; subscriptionBuilderId: string }
+      body?: { credentials?: Record<string, unknown> }
+    }>(),
+  )
   .output(type<{ verified: boolean }>())
 
 export const triggerSubscriptionVerifyContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscriptionId}', method: 'POST' })
-  .input(type<{
-    params: { provider: string, subscriptionId: string }
-    body?: { credentials?: Record<string, unknown> }
-  }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscriptionId}',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: { provider: string; subscriptionId: string }
+      body?: { credentials?: Record<string, unknown> }
+    }>(),
+  )
   .output(type<{ verified: boolean }>())
 
 export const triggerSubscriptionBuildContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscriptionBuilderId}', method: 'POST' })
-  .input(type<{
-    params: { provider: string, subscriptionBuilderId: string }
-    body?: {
-      name?: string
-      parameters?: Record<string, unknown>
-    }
-  }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscriptionBuilderId}',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: { provider: string; subscriptionBuilderId: string }
+      body?: {
+        name?: string
+        parameters?: Record<string, unknown>
+      }
+    }>(),
+  )
   .output(type<unknown>())
 
 export const triggerSubscriptionDeleteContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{subscriptionId}/subscriptions/delete', method: 'POST' })
+  .route({
+    path: '/workspaces/current/trigger-provider/{subscriptionId}/subscriptions/delete',
+    method: 'POST',
+  })
   .input(type<{ params: { subscriptionId: string } }>())
   .output(type<{ result: string }>())
 
 export const triggerSubscriptionUpdateContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{subscriptionId}/subscriptions/update', method: 'POST' })
-  .input(type<{
-    params: { subscriptionId: string }
-    body?: {
-      name?: string
-      properties?: Record<string, unknown>
-      parameters?: Record<string, unknown>
-      credentials?: Record<string, unknown>
-    }
-  }>())
-  .output(type<{ result: string, id: string }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{subscriptionId}/subscriptions/update',
+    method: 'POST',
+  })
+  .input(
+    type<{
+      params: { subscriptionId: string }
+      body?: {
+        name?: string
+        properties?: Record<string, unknown>
+        parameters?: Record<string, unknown>
+        credentials?: Record<string, unknown>
+      }
+    }>(),
+  )
+  .output(type<{ result: string; id: string }>())
 
 export const triggerSubscriptionBuilderLogsContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscriptionBuilderId}', method: 'GET' })
-  .input(type<{ params: { provider: string, subscriptionBuilderId: string } }>())
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscriptionBuilderId}',
+    method: 'GET',
+  })
+  .input(type<{ params: { provider: string; subscriptionBuilderId: string } }>())
   .output(type<{ logs: TriggerLogEntity[] }>())
 
 export const triggerOAuthConfigContract = base
@@ -102,10 +141,12 @@ export const triggerOAuthConfigContract = base
 
 export const triggerOAuthConfigureContract = base
   .route({ path: '/workspaces/current/trigger-provider/{provider}/oauth/client', method: 'POST' })
-  .input(type<{
-    params: { provider: string }
-    body: { client_params?: TriggerOAuthClientParams, enabled: boolean }
-  }>())
+  .input(
+    type<{
+      params: { provider: string }
+      body: { client_params?: TriggerOAuthClientParams; enabled: boolean }
+    }>(),
+  )
   .output(type<{ result: string }>())
 
 export const triggerOAuthDeleteContract = base
@@ -114,6 +155,9 @@ export const triggerOAuthDeleteContract = base
   .output(type<{ result: string }>())
 
 export const triggerOAuthInitiateContract = base
-  .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize', method: 'GET' })
+  .route({
+    path: '/workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize',
+    method: 'GET',
+  })
   .input(type<{ params: { provider: string } }>())
-  .output(type<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>())
+  .output(type<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>())

@@ -35,15 +35,14 @@ export class AppDescribeOutput {
       ]
       if (info.description !== '' && info.description !== undefined)
         rows.push(['Description', info.description ?? ''])
-      if (info.is_agent)
-        rows.push(['Agent', 'true'])
+      if (info.is_agent) rows.push(['Agent', 'true'])
       lines.push(...alignedRows(rows))
     }
     if (this.payload.parameters !== null && this.payload.parameters !== undefined) {
       lines.push('Parameters:')
       const indented = JSON.stringify(this.payload.parameters, null, 2)
         .split('\n')
-        .map(l => `  ${l}`)
+        .map((l) => `  ${l}`)
         .join('\n')
       lines.push(indented)
     }
@@ -56,9 +55,8 @@ export class AppDescribeOutput {
 }
 
 function joinTags(tags: readonly TagItem[]): string {
-  if (tags.length === 0)
-    return '<none>'
-  return tags.map(t => t.name).join(',')
+  if (tags.length === 0) return '<none>'
+  return tags.map((t) => t.name).join(',')
 }
 
 function alignedRows(rows: readonly [string, string][]): string[] {

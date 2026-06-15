@@ -55,14 +55,14 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should filter out HumanInput node', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).not.toContain(BlockEnum.HumanInput)
   })
 
   it('should include DataSource with _dataSourceStartToAdd flag', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const dsNode = result.current.nodes.find(n => n.metaData.type === BlockEnum.DataSource)
+    const dsNode = result.current.nodes.find((n) => n.metaData.type === BlockEnum.DataSource)
 
     expect(dsNode).toBeDefined()
     expect(dsNode!.defaultValue._dataSourceStartToAdd).toBe(true)
@@ -70,7 +70,7 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should include KnowledgeBase and DataSourceEmpty nodes', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.KnowledgeBase)
     expect(nodeTypes).toContain(BlockEnum.DataSourceEmpty)
@@ -121,7 +121,7 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should include common nodes except HumanInput', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.LLM)
     expect(nodeTypes).toContain(BlockEnum.HttpRequest)

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import Icon from '../card-icon'
 
 vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ icon, background }: { icon: string, background: string }) => (
+  default: ({ icon, background }: { icon: string; background: string }) => (
     <div data-testid="app-icon" data-icon={icon} data-bg={background} />
   ),
 }))

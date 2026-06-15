@@ -14,10 +14,7 @@ type PlanRangeSwitcherProps = {
   onChange: (value: PlanRange) => void
 }
 
-const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
-  value,
-  onChange,
-}) => {
+const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
 
   return (

@@ -51,8 +51,12 @@ const E = resolveEnv(caps)
 describe('E2E / table output — header and column format (spec 5.1–5.19)', () => {
   let fx: AuthFixture
 
-  beforeEach(async () => { fx = await withAuthFixture(E) })
-  afterEach(async () => { await fx.cleanup() })
+  beforeEach(async () => {
+    fx = await withAuthFixture(E)
+  })
+  afterEach(async () => {
+    await fx.cleanup()
+  })
 
   it('[P0] 5.1 default output (no -o) is an aligned text table, not JSON or YAML', async () => {
     // Spec 5.1: the default format is a text table; -o table does not exist.
@@ -104,7 +108,10 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // Spec 5.5: when there are multiple apps, all rows are rendered.
     const result = await fx.r(['get', 'app'])
     assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n').filter(l => l.trim())
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim())
     // At least header + 1 data row
     expect(lines.length).toBeGreaterThan(1)
   })
@@ -114,7 +121,10 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // row with no data rows underneath (not an error, exit 0).
     const result = await fx.r(['get', 'app', '--name', 'zzz-nonexistent-app-xyz-000'])
     assertExitCode(result, 0)
-    const lines = result.stdout.trim().split('\n').filter(l => l.trim())
+    const lines = result.stdout
+      .trim()
+      .split('\n')
+      .filter((l) => l.trim())
     // Only the header row should remain
     expect(lines).toHaveLength(1)
     expect(lines[0] ?? '').toMatch(/NAME/i)
@@ -128,7 +138,7 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     // Extract word-like tokens from the header
     const tokens = header.match(/[A-Z]{2,}/g) ?? []
     expect(tokens.length).toBeGreaterThan(0)
-    tokens.forEach(token =>
+    tokens.forEach((token) =>
       expect(token, `header token "${token}" should be uppercase`).toBe(token.toUpperCase()),
     )
   })
@@ -165,14 +175,13 @@ describe('E2E / table output — header and column format (spec 5.1–5.19)', ()
     const tagsStart = header.indexOf('TAGS')
     const updatedStart = header.indexOf('UPDATED')
     // Check at least one data row: the TAGS slice should be blank, not '-'
-    const dataLines = lines.slice(1).filter(l => l.trim())
+    const dataLines = lines.slice(1).filter((l) => l.trim())
     if (dataLines.length > 0 && tagsStart >= 0 && updatedStart > tagsStart) {
       const tagsSlice = (dataLines[0] ?? '').substring(tagsStart, updatedStart).trim()
       // If there are no tags, the slice should be empty (not contain a lone '-')
       if (tagsSlice === '') {
         expect(tagsSlice).toBe('')
-      }
-      else {
+      } else {
         // Tags are present — just verify it's not the placeholder dash
         expect(tagsSlice).not.toBe('-')
       }

@@ -15,9 +15,7 @@ const renderVariableBlock = () => {
   return renderLexicalEditor({
     namespace: 'variable-block-plugin-test',
     nodes: [CustomTextNode],
-    children: (
-      <VariableBlock />
-    ),
+    children: <VariableBlock />,
   })
 }
 

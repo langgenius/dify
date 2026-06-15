@@ -60,12 +60,7 @@ describe('CommandSelector', () => {
 
   describe('Basic Rendering', () => {
     it('should render all actions when no filter is provided', () => {
-      render(
-        <CommandSelector
-          actions={mockActions}
-          onCommandSelect={mockOnCommandSelect}
-        />,
-      )
+      render(<CommandSelector actions={mockActions} onCommandSelect={mockOnCommandSelect} />)
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()
@@ -248,13 +243,7 @@ describe('CommandSelector', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty actions object', () => {
-      render(
-        <CommandSelector
-          actions={{}}
-          onCommandSelect={mockOnCommandSelect}
-          searchFilter=""
-        />,
-      )
+      render(<CommandSelector actions={{}} onCommandSelect={mockOnCommandSelect} searchFilter="" />)
 
       expect(screen.getByText('app.gotoAnything.noMatchingCommands')).toBeInTheDocument()
     })
@@ -297,12 +286,7 @@ describe('CommandSelector', () => {
 
   describe('Backward Compatibility', () => {
     it('should work without searchFilter prop (backward compatible)', () => {
-      render(
-        <CommandSelector
-          actions={mockActions}
-          onCommandSelect={mockOnCommandSelect}
-        />,
-      )
+      render(<CommandSelector actions={mockActions} onCommandSelect={mockOnCommandSelect} />)
 
       expect(screen.getByTestId('command-item-@app')).toBeInTheDocument()
       expect(screen.getByTestId('command-item-@kb')).toBeInTheDocument()

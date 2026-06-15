@@ -4,9 +4,7 @@ import { useTranslation } from 'react-i18next'
 type Props = Readonly<{
   title?: string
 }>
-const Header = ({
-  title,
-}: Props) => {
+const Header = ({ title }: Props) => {
   const { t } = useTranslation()
 
   return (

@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react'
-import {
-  RiGraduationCapFill,
-} from '@remixicon/react'
+import { RiGraduationCapFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import { SparklesSoft } from '../../base/icons/src/public/common'
@@ -28,7 +26,13 @@ function PlanBadgeShell({
 }) {
   if (onClick) {
     return (
-      <PremiumBadgeButton className="select-none" size={size} color={color} allowHover={allowHover} onClick={onClick}>
+      <PremiumBadgeButton
+        className="select-none"
+        size={size}
+        color={color}
+        allowHover={allowHover}
+        onClick={onClick}
+      >
         {children}
       </PremiumBadgeButton>
     )
@@ -45,12 +49,14 @@ export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick 
   const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
-  if (!isFetchedPlan)
-    return null
+  if (!isFetchedPlan) return null
   if (plan === Plan.sandbox && sandboxAsUpgrade) {
     return (
       <PlanBadgeShell color="blue" allowHover={allowHover} onClick={onClick}>
-        <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+        <SparklesSoft
+          aria-hidden="true"
+          className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0"
+        />
         <div className="system-xs-medium">
           <span className="p-1 whitespace-nowrap">
             {t('upgradeBtn.encourageShort', { ns: 'billing' })}
@@ -63,9 +69,7 @@ export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick 
     return (
       <PlanBadgeShell size="s" color="gray" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
-          <span className="p-1">
-            {plan}
-          </span>
+          <span className="p-1">{plan}</span>
         </div>
       </PlanBadgeShell>
     )
@@ -86,9 +90,7 @@ export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick 
     return (
       <PlanBadgeShell size="s" color="indigo" allowHover={allowHover} onClick={onClick}>
         <div className="system-2xs-medium-uppercase">
-          <span className="p-1">
-            {plan}
-          </span>
+          <span className="p-1">{plan}</span>
         </div>
       </PlanBadgeShell>
     )

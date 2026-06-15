@@ -12,42 +12,43 @@ vi.mock('../basic-app-preview', () => ({
 }))
 
 vi.mock('../flow-app-preview', () => ({
-  default: ({ appId, className }: { appId: string, className?: string }) => (
+  default: ({ appId, className }: { appId: string; className?: string }) => (
     <div data-testid="flow-app-preview" data-app-id={appId} className={className}>
       FlowAppPreview
     </div>
   ),
 }))
 
-const createMockAppDetail = (mode: string): TryAppInfo => ({
-  id: 'test-app-id',
-  name: 'Test App',
-  description: 'Test Description',
-  mode,
-  site: {
-    title: 'Test Site Title',
-    icon: 'icon',
-    icon_type: 'emoji',
-    icon_background: '#FFFFFF',
-    icon_url: '',
-  },
-  model_config: {
-    model: {
-      provider: 'test/provider',
-      name: 'test-model',
-      mode: 'chat',
+const createMockAppDetail = (mode: string): TryAppInfo =>
+  ({
+    id: 'test-app-id',
+    name: 'Test App',
+    description: 'Test Description',
+    mode,
+    site: {
+      title: 'Test Site Title',
+      icon: 'icon',
+      icon_type: 'emoji',
+      icon_background: '#FFFFFF',
+      icon_url: '',
     },
-    dataset_configs: {
-      datasets: {
-        datasets: [],
+    model_config: {
+      model: {
+        provider: 'test/provider',
+        name: 'test-model',
+        mode: 'chat',
       },
+      dataset_configs: {
+        datasets: {
+          datasets: [],
+        },
+      },
+      agent_mode: {
+        tools: [],
+      },
+      user_input_form: [],
     },
-    agent_mode: {
-      tools: [],
-    },
-    user_input_form: [],
-  },
-} as unknown as TryAppInfo)
+  }) as unknown as TryAppInfo
 
 describe('Preview', () => {
   afterEach(() => {

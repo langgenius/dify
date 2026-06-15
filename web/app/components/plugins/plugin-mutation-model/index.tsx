@@ -36,19 +36,14 @@ const PluginMutationModal: FC<Props> = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onCancel()
+        if (!open) onCancel()
       }}
     >
       <DialogContent className="w-full min-w-[560px] overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
-        <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {modelTitle}
-        </DialogTitle>
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">{modelTitle}</DialogTitle>
 
-        <div className="mt-3 mb-2 system-md-regular text-text-secondary">
-          {description}
-        </div>
+        <div className="mt-3 mb-2 system-md-regular text-text-secondary">{description}</div>
         <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
             installed={mutation.isSuccess}
@@ -58,15 +53,9 @@ const PluginMutationModal: FC<Props> = ({
           />
         </div>
         <div className="flex items-center gap-2 self-stretch pt-5">
-          <div>
-            {modalBottomLeft}
-          </div>
+          <div>{modalBottomLeft}</div>
           <div className="ml-auto flex gap-2">
-            {!mutation.isPending && (
-              <Button onClick={onCancel}>
-                {cancelButtonText}
-              </Button>
-            )}
+            {!mutation.isPending && <Button onClick={onCancel}>{cancelButtonText}</Button>}
             <Button
               variant="primary"
               loading={mutation.isPending}

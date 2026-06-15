@@ -36,38 +36,49 @@ describe('Plugin Utils', () => {
       serviceErrorMessage: 'Update failed',
       thrownErrorMessage: 'Request failed',
     },
-  ])('$name', ({ utilFn, serviceMock, successBody, failureBody, exceptionBody, serviceErrorMessage, thrownErrorMessage }) => {
-    it('should return success status when service succeeds', async () => {
-      serviceMock.mockResolvedValue({ result: 'success' })
+  ])(
+    '$name',
+    ({
+      utilFn,
+      serviceMock,
+      successBody,
+      failureBody,
+      exceptionBody,
+      serviceErrorMessage,
+      thrownErrorMessage,
+    }) => {
+      it('should return success status when service succeeds', async () => {
+        serviceMock.mockResolvedValue({ result: 'success' })
 
-      const result = await utilFn('serpapi', successBody)
+        const result = await utilFn('serpapi', successBody)
 
-      expect(result.status).toBe(ValidatedStatus.Success)
-    })
-
-    it('should return error status with message when service returns an error', async () => {
-      serviceMock.mockResolvedValue({
-        result: 'error',
-        error: serviceErrorMessage,
+        expect(result.status).toBe(ValidatedStatus.Success)
       })
 
-      const result = await utilFn('serpapi', failureBody)
+      it('should return error status with message when service returns an error', async () => {
+        serviceMock.mockResolvedValue({
+          result: 'error',
+          error: serviceErrorMessage,
+        })
 
-      expect(result).toMatchObject({
-        status: ValidatedStatus.Error,
-        message: serviceErrorMessage,
+        const result = await utilFn('serpapi', failureBody)
+
+        expect(result).toMatchObject({
+          status: ValidatedStatus.Error,
+          message: serviceErrorMessage,
+        })
       })
-    })
 
-    it('should return error status when service throws exception', async () => {
-      serviceMock.mockRejectedValue(new Error(thrownErrorMessage))
+      it('should return error status when service throws exception', async () => {
+        serviceMock.mockRejectedValue(new Error(thrownErrorMessage))
 
-      const result = await utilFn('serpapi', exceptionBody)
+        const result = await utilFn('serpapi', exceptionBody)
 
-      expect(result).toMatchObject({
-        status: ValidatedStatus.Error,
-        message: thrownErrorMessage,
+        expect(result).toMatchObject({
+          status: ValidatedStatus.Error,
+          message: thrownErrorMessage,
+        })
       })
-    })
-  })
+    },
+  )
 })

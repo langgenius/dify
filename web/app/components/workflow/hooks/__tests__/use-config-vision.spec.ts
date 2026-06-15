@@ -24,7 +24,9 @@ const createModel = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   ...overrides,
 })
 
-const createVisionPayload = (overrides: Partial<{ enabled: boolean, configs?: VisionSetting }> = {}) => ({
+const createVisionPayload = (
+  overrides: Partial<{ enabled: boolean; configs?: VisionSetting }> = {},
+) => ({
   enabled: false,
   ...overrides,
 })
@@ -49,10 +51,12 @@ describe('useConfigVision', () => {
       },
     })
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload(),
-      onChange,
-    }))
+    const { result } = renderHook(() =>
+      useConfigVision(createModel(), {
+        payload: createVisionPayload(),
+        onChange,
+      }),
+    )
 
     expect(result.current.isVisionModel).toBe(true)
 
@@ -72,16 +76,18 @@ describe('useConfigVision', () => {
   it('should clear configs when disabling vision resolution', () => {
     const onChange = vi.fn()
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({
-        enabled: true,
-        configs: {
-          detail: Resolution.low,
-          variable_selector: ['node', 'files'],
-        },
+    const { result } = renderHook(() =>
+      useConfigVision(createModel(), {
+        payload: createVisionPayload({
+          enabled: true,
+          configs: {
+            detail: Resolution.low,
+            variable_selector: ['node', 'files'],
+          },
+        }),
+        onChange,
       }),
-      onChange,
-    }))
+    )
 
     act(() => {
       result.current.handleVisionResolutionEnabledChange(false)
@@ -99,10 +105,12 @@ describe('useConfigVision', () => {
       variable_selector: ['upstream', 'images'],
     }
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({ enabled: true }),
-      onChange,
-    }))
+    const { result } = renderHook(() =>
+      useConfigVision(createModel(), {
+        payload: createVisionPayload({ enabled: true }),
+        onChange,
+      }),
+    )
 
     act(() => {
       result.current.handleVisionResolutionChange(config)
@@ -117,16 +125,18 @@ describe('useConfigVision', () => {
   it('should disable vision settings when the selected model is no longer a vision model', () => {
     const onChange = vi.fn()
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({
-        enabled: true,
-        configs: {
-          detail: Resolution.high,
-          variable_selector: ['sys', 'files'],
-        },
+    const { result } = renderHook(() =>
+      useConfigVision(createModel(), {
+        payload: createVisionPayload({
+          enabled: true,
+          configs: {
+            detail: Resolution.high,
+            variable_selector: ['sys', 'files'],
+          },
+        }),
+        onChange,
       }),
-      onChange,
-    }))
+    )
 
     act(() => {
       result.current.handleModelChanged()
@@ -145,16 +155,18 @@ describe('useConfigVision', () => {
       },
     })
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({
-        enabled: true,
-        configs: {
-          detail: Resolution.low,
-          variable_selector: ['old', 'files'],
-        },
+    const { result } = renderHook(() =>
+      useConfigVision(createModel(), {
+        payload: createVisionPayload({
+          enabled: true,
+          configs: {
+            detail: Resolution.low,
+            variable_selector: ['old', 'files'],
+          },
+        }),
+        onChange,
       }),
-      onChange,
-    }))
+    )
 
     act(() => {
       result.current.handleModelChanged()

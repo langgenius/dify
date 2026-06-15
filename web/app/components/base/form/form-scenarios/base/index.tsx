@@ -5,12 +5,7 @@ import { useAppForm } from '../..'
 import BaseField from './field'
 import { generateZodSchema } from './utils'
 
-const BaseForm = ({
-  initialData,
-  configurations,
-  onSubmit,
-  CustomActions,
-}: BaseFormProps) => {
+const BaseForm = ({ initialData, configurations, onSubmit, CustomActions }: BaseFormProps) => {
   const schema = useMemo(() => {
     const schema = generateZodSchema(configurations)
     return schema
@@ -53,9 +48,7 @@ const BaseForm = ({
         })}
       </div>
       <baseForm.AppForm>
-        <baseForm.Actions
-          CustomActions={CustomActions}
-        />
+        <baseForm.Actions CustomActions={CustomActions} />
       </baseForm.AppForm>
     </form>
   )

@@ -28,9 +28,11 @@ export const notificationDismissContract = base
     path: '/notification/dismiss',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      notification_id: string
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        notification_id: string
+      }
+    }>(),
+  )
   .output(type<unknown>())

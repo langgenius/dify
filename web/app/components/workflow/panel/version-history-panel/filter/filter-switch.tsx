@@ -8,10 +8,7 @@ type FilterSwitchProps = {
   handleSwitch: (value: boolean) => void
 }
 
-const FilterSwitch: FC<FilterSwitchProps> = ({
-  enabled,
-  handleSwitch,
-}) => {
+const FilterSwitch: FC<FilterSwitchProps> = ({ enabled, handleSwitch }) => {
   const { t } = useTranslation()
 
   return (
@@ -22,7 +19,7 @@ const FilterSwitch: FC<FilterSwitchProps> = ({
         </div>
         <Switch
           checked={enabled}
-          onCheckedChange={v => handleSwitch(v)}
+          onCheckedChange={(v) => handleSwitch(v)}
           size="md"
           className="shrink-0"
         />

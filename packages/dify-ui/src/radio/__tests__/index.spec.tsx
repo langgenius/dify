@@ -3,13 +3,7 @@ import { render } from 'vitest-browser-react'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
 import { RadioGroup } from '../../radio-group'
-import {
-  Radio,
-  RadioControl,
-  RadioIndicator,
-  RadioRoot,
-  RadioSkeleton,
-} from '../index'
+import { Radio, RadioControl, RadioIndicator, RadioRoot, RadioSkeleton } from '../index'
 
 const clickElement = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
@@ -21,12 +15,7 @@ type TestRadioGroupProps = React.ComponentProps<typeof RadioGroup> & {
   name?: string
 }
 
-function TestRadioGroup({
-  children,
-  label,
-  name = 'radioField',
-  ...props
-}: TestRadioGroupProps) {
+function TestRadioGroup({ children, label, name = 'radioField', ...props }: TestRadioGroupProps) {
   return (
     <FieldRoot name={name}>
       <FieldsetRoot render={<RadioGroup {...props} />}>
@@ -41,10 +30,7 @@ type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
   children: React.ReactNode
 }
 
-function TestRadioOption({
-  children,
-  ...props
-}: TestRadioOptionProps) {
+function TestRadioOption({ children, ...props }: TestRadioOptionProps) {
   return (
     <FieldItem>
       <FieldLabel>
@@ -87,7 +73,9 @@ describe('Radio', () => {
 
     expect(onValueChange).toHaveBeenCalledTimes(1)
     expect(onValueChange.mock.calls[0]?.[0]).toBe('hdd')
-    await expect.element(screen.getByRole('radio', { name: 'HDD' })).toHaveAttribute('aria-checked', 'true')
+    await expect
+      .element(screen.getByRole('radio', { name: 'HDD' }))
+      .toHaveAttribute('aria-checked', 'true')
   })
 
   it('should ignore interaction when disabled', async () => {
@@ -95,7 +83,9 @@ describe('Radio', () => {
     const screen = await render(
       <TestRadioGroup defaultValue="ssd" label="Storage type" onValueChange={onValueChange}>
         <TestRadioOption value="ssd">SSD</TestRadioOption>
-        <TestRadioOption value="hdd" disabled>HDD</TestRadioOption>
+        <TestRadioOption value="hdd" disabled>
+          HDD
+        </TestRadioOption>
       </TestRadioGroup>,
     )
 
@@ -120,8 +110,7 @@ describe('Radio', () => {
     )
     const form = screen.container.querySelector<HTMLFormElement>('form')
     expect(form).not.toBeNull()
-    if (!form)
-      return
+    if (!form) return
 
     const data = new FormData(form)
 
@@ -161,9 +150,13 @@ describe('Radio', () => {
       </RadioGroup>,
     )
 
-    await expect.element(screen.getByRole('radio', { name: 'Card option' })).toHaveClass('custom-card')
+    await expect
+      .element(screen.getByRole('radio', { name: 'Card option' }))
+      .toHaveClass('custom-card')
     expect(screen.container.querySelector('.custom-control')).toBeInTheDocument()
-    await expect.element(screen.getByRole('radio', { name: 'Card option' })).toHaveAttribute('data-checked', '')
+    await expect
+      .element(screen.getByRole('radio', { name: 'Card option' }))
+      .toHaveAttribute('data-checked', '')
   })
 })
 

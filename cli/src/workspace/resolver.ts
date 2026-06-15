@@ -17,12 +17,18 @@ export function isValidUuid(v: string): boolean {
 export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
   if (truthy(inputs.flag)) {
     if (!isValidUuid(inputs.flag))
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `--workspace value ${JSON.stringify(inputs.flag)} is not a valid UUID` })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: `--workspace value ${JSON.stringify(inputs.flag)} is not a valid UUID`,
+      })
     return inputs.flag
   }
   if (truthy(inputs.env)) {
     if (!isValidUuid(inputs.env))
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: `DIFY_WORKSPACE_ID value ${JSON.stringify(inputs.env)} is not a valid UUID` })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: `DIFY_WORKSPACE_ID value ${JSON.stringify(inputs.env)} is not a valid UUID`,
+      })
     return inputs.env
   }
   const wsId = inputs.active?.ctx.workspace?.id
@@ -31,7 +37,7 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
       throw new BaseError({
         code: ErrorCode.UsageInvalidFlag,
         message: `stored workspace ID ${JSON.stringify(wsId)} is not a valid UUID`,
-        hint: 'run \'difyctl use workspace\' to update your active workspace',
+        hint: "run 'difyctl use workspace' to update your active workspace",
       })
     }
     return wsId
@@ -39,7 +45,7 @@ export function resolveWorkspaceId(inputs: WorkspaceResolveInputs): string {
   throw new BaseError({
     code: ErrorCode.UsageMissingArg,
     message: 'no workspace selected',
-    hint: 'pass --workspace, set DIFY_WORKSPACE_ID, or run \'difyctl use workspace <id>\'',
+    hint: "pass --workspace, set DIFY_WORKSPACE_ID, or run 'difyctl use workspace <id>'",
   })
 }
 

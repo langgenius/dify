@@ -83,23 +83,27 @@ vi.mock('foxact/use-local-storage', () => ({
 
 // ─── External component mocks ───────────────────────────────────────────────
 vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  default: ({ isShow, title, content, email, showLink }: {
+  default: ({
+    isShow,
+    title,
+    content,
+    email,
+    showLink,
+  }: {
     isShow: boolean
     title?: string
     content?: string
     email?: string
     showLink?: boolean
   }) =>
-    isShow
-      ? (
-          <div data-testid="verify-state-modal">
-            {title && <span data-testid="modal-title">{title}</span>}
-            {content && <span data-testid="modal-content">{content}</span>}
-            {email && <span data-testid="modal-email">{email}</span>}
-            {showLink && <span data-testid="modal-show-link">link</span>}
-          </div>
-        )
-      : null,
+    isShow ? (
+      <div data-testid="verify-state-modal">
+        {title && <span data-testid="modal-title">{title}</span>}
+        {content && <span data-testid="modal-content">{content}</span>}
+        {email && <span data-testid="modal-email">{email}</span>}
+        {showLink && <span data-testid="modal-show-link">link</span>}
+      </div>
+    ) : null,
 }))
 
 // ─── Test data factories ────────────────────────────────────────────────────
@@ -168,11 +172,14 @@ describe('Education Verification Flow', () => {
     })
 
     it('should not show verify button when already verified and not about to expire', () => {
-      setupContexts({}, {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-        allowRefreshEducationVerify: false,
-      })
+      setupContexts(
+        {},
+        {
+          enableEducationPlan: true,
+          isEducationAccount: true,
+          allowRefreshEducationVerify: false,
+        },
+      )
 
       render(<PlanComp loc="test" />)
 
@@ -180,11 +187,14 @@ describe('Education Verification Flow', () => {
     })
 
     it('should show verify button when about to expire (allowRefreshEducationVerify is true)', () => {
-      setupContexts({}, {
-        enableEducationPlan: true,
-        isEducationAccount: true,
-        allowRefreshEducationVerify: true,
-      })
+      setupContexts(
+        {},
+        {
+          enableEducationPlan: true,
+          isEducationAccount: true,
+          allowRefreshEducationVerify: true,
+        },
+      )
 
       render(<PlanComp loc="test" />)
 
@@ -312,10 +322,7 @@ describe('Education Verification Flow', () => {
     })
 
     it('should show team plan with plain upgrade button and education button', () => {
-      setupContexts(
-        { type: Plan.team },
-        { enableEducationPlan: true, isEducationAccount: false },
-      )
+      setupContexts({ type: Plan.team }, { enableEducationPlan: true, isEducationAccount: false })
 
       render(<PlanComp loc="test" />)
 

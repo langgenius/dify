@@ -26,7 +26,15 @@ type Props = Readonly<{
   onHide: () => void
 }>
 
-const Field = ({ title, isRequired, children }: { title: string, isRequired?: boolean, children: React.JSX.Element }) => {
+const Field = ({
+  title,
+  isRequired,
+  children,
+}: {
+  title: string
+  isRequired?: boolean
+  children: React.JSX.Element
+}) => {
   return (
     <div>
       <div className="text-[13px] leading-8 font-medium text-text-secondary">
@@ -38,13 +46,7 @@ const Field = ({ title, isRequired, children }: { title: string, isRequired?: bo
   )
 }
 
-const Authorization: FC<Props> = ({
-  nodeId,
-  payload,
-  onChange,
-  isShow,
-  onHide,
-}) => {
+const Authorization: FC<Props> = ({ nodeId, payload, onChange, isShow, onHide }) => {
   const { t } = useTranslation()
 
   const [isFocus, setIsFocus] = useState(false)
@@ -56,34 +58,24 @@ const Authorization: FC<Props> = ({
   })
 
   const [tempPayload, setTempPayload] = React.useState<AuthorizationPayloadType>(payload)
-  const handleAuthTypeChange = useCallback((type: string) => {
-    const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
-      draft.type = type as AuthorizationType
-      if (draft.type === AuthorizationType.apiKey && !draft.config) {
-        draft.config = {
-          type: APIType.basic,
-          api_key: '',
+  const handleAuthTypeChange = useCallback(
+    (type: string) => {
+      const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
+        draft.type = type as AuthorizationType
+        if (draft.type === AuthorizationType.apiKey && !draft.config) {
+          draft.config = {
+            type: APIType.basic,
+            api_key: '',
+          }
         }
-      }
-    })
-    setTempPayload(newPayload)
-  }, [tempPayload, setTempPayload])
+      })
+      setTempPayload(newPayload)
+    },
+    [tempPayload, setTempPayload],
+  )
 
-  const handleAuthAPITypeChange = useCallback((type: string) => {
-    const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
-      if (!draft.config) {
-        draft.config = {
-          type: APIType.basic,
-          api_key: '',
-        }
-      }
-      draft.config.type = type as APIType
-    })
-    setTempPayload(newPayload)
-  }, [tempPayload, setTempPayload])
-
-  const handleAPIKeyOrHeaderChange = useCallback((type: 'api_key' | 'header') => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAuthAPITypeChange = useCallback(
+    (type: string) => {
       const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
         if (!draft.config) {
           draft.config = {
@@ -91,24 +83,46 @@ const Authorization: FC<Props> = ({
             api_key: '',
           }
         }
-        draft.config[type] = e.target.value
+        draft.config.type = type as APIType
       })
       setTempPayload(newPayload)
-    }
-  }, [tempPayload, setTempPayload])
+    },
+    [tempPayload, setTempPayload],
+  )
 
-  const handleAPIKeyChange = useCallback((str: string) => {
-    const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
-      if (!draft.config) {
-        draft.config = {
-          type: APIType.basic,
-          api_key: '',
-        }
+  const handleAPIKeyOrHeaderChange = useCallback(
+    (type: 'api_key' | 'header') => {
+      return (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
+          if (!draft.config) {
+            draft.config = {
+              type: APIType.basic,
+              api_key: '',
+            }
+          }
+          draft.config[type] = e.target.value
+        })
+        setTempPayload(newPayload)
       }
-      draft.config.api_key = str
-    })
-    setTempPayload(newPayload)
-  }, [tempPayload, setTempPayload])
+    },
+    [tempPayload, setTempPayload],
+  )
+
+  const handleAPIKeyChange = useCallback(
+    (str: string) => {
+      const newPayload = produce(tempPayload, (draft: AuthorizationPayloadType) => {
+        if (!draft.config) {
+          draft.config = {
+            type: APIType.basic,
+            api_key: '',
+          }
+        }
+        draft.config.api_key = str
+      })
+      setTempPayload(newPayload)
+    },
+    [tempPayload, setTempPayload],
+  )
 
   const handleConfirm = useCallback(() => {
     onChange(tempPayload)
@@ -118,8 +132,7 @@ const Authorization: FC<Props> = ({
     <Dialog
       open={isShow}
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DialogContent className="border-none text-left align-middle">
@@ -132,8 +145,14 @@ const Authorization: FC<Props> = ({
             <Field title={t(`${i18nPrefix}.authorizationType`, { ns: 'workflow' })}>
               <RadioGroup
                 options={[
-                  { value: AuthorizationType.none, label: t(`${i18nPrefix}.no-auth`, { ns: 'workflow' }) },
-                  { value: AuthorizationType.apiKey, label: t(`${i18nPrefix}.api-key`, { ns: 'workflow' }) },
+                  {
+                    value: AuthorizationType.none,
+                    label: t(`${i18nPrefix}.no-auth`, { ns: 'workflow' }),
+                  },
+                  {
+                    value: AuthorizationType.apiKey,
+                    label: t(`${i18nPrefix}.api-key`, { ns: 'workflow' }),
+                  },
                 ]}
                 value={tempPayload.type}
                 onChange={handleAuthTypeChange}
@@ -146,8 +165,14 @@ const Authorization: FC<Props> = ({
                   <RadioGroup
                     options={[
                       { value: APIType.basic, label: t(`${i18nPrefix}.basic`, { ns: 'workflow' }) },
-                      { value: APIType.bearer, label: t(`${i18nPrefix}.bearer`, { ns: 'workflow' }) },
-                      { value: APIType.custom, label: t(`${i18nPrefix}.custom`, { ns: 'workflow' }) },
+                      {
+                        value: APIType.bearer,
+                        label: t(`${i18nPrefix}.bearer`, { ns: 'workflow' }),
+                      },
+                      {
+                        value: APIType.custom,
+                        label: t(`${i18nPrefix}.custom`, { ns: 'workflow' }),
+                      },
                     ]}
                     value={tempPayload.config?.type || APIType.basic}
                     onChange={handleAuthAPITypeChange}
@@ -166,7 +191,12 @@ const Authorization: FC<Props> = ({
                   <div className="flex">
                     <Input
                       instanceId="http-api-key"
-                      className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+                      className={cn(
+                        isFocus
+                          ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
+                          : 'border-components-input-border-hover bg-components-input-bg-normal',
+                        'w-0 grow rounded-lg border px-3 py-[6px]',
+                      )}
                       value={tempPayload.config?.api_key || ''}
                       onChange={handleAPIKeyChange}
                       nodesOutputVars={availableVars}
@@ -182,7 +212,9 @@ const Authorization: FC<Props> = ({
           </div>
           <div className="mt-6 flex justify-end space-x-2">
             <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-            <Button variant="primary" onClick={handleConfirm}>{t('operation.save', { ns: 'common' })}</Button>
+            <Button variant="primary" onClick={handleConfirm}>
+              {t('operation.save', { ns: 'common' })}
+            </Button>
           </div>
         </div>
       </DialogContent>

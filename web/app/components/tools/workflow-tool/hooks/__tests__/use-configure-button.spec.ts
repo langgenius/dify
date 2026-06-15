@@ -1,4 +1,7 @@
-import type { WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
+import type {
+  WorkflowToolProviderRequest,
+  WorkflowToolProviderResponse,
+} from '@/app/components/tools/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -39,23 +42,27 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 const createMockEmoji = () => ({ content: '🔧', background: '#ffffff' })
 
-const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar => ({
-  variable: 'test_var',
-  label: 'Test Variable',
-  type: InputVarType.textInput,
-  required: true,
-  max_length: 100,
-  options: [],
-  ...overrides,
-} as InputVar)
+const createMockInputVar = (overrides: Partial<InputVar> = {}): InputVar =>
+  ({
+    variable: 'test_var',
+    label: 'Test Variable',
+    type: InputVarType.textInput,
+    required: true,
+    max_length: 100,
+    options: [],
+    ...overrides,
+  }) as InputVar
 
-const createMockVariable = (overrides: Partial<Variable> = {}): Variable => ({
-  variable: 'output_var',
-  value_type: 'string',
-  ...overrides,
-} as Variable)
+const createMockVariable = (overrides: Partial<Variable> = {}): Variable =>
+  ({
+    variable: 'output_var',
+    value_type: 'string',
+    ...overrides,
+  }) as Variable
 
-const createMockDetail = (overrides: Partial<WorkflowToolProviderResponse> = {}): WorkflowToolProviderResponse => ({
+const createMockDetail = (
+  overrides: Partial<WorkflowToolProviderResponse> = {},
+): WorkflowToolProviderResponse => ({
   workflow_app_id: 'app-123',
   workflow_tool_id: 'tool-456',
   label: 'Test Tool',
@@ -107,7 +114,9 @@ const createDefaultOptions = (overrides = {}) => ({
   ...overrides,
 })
 
-const createMockRequest = (extra: Record<string, string> = {}): WorkflowToolProviderRequest & Record<string, unknown> => ({
+const createMockRequest = (
+  extra: Record<string, string> = {},
+): WorkflowToolProviderRequest & Record<string, unknown> => ({
   name: 'test_tool',
   description: 'desc',
   icon: createMockEmoji(),
@@ -222,7 +231,9 @@ describe('useConfigureButton', () => {
 
     it('should forward isLoading from query hook', () => {
       mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: undefined, isLoading: true })
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
       expect(result.current.isLoading).toBe(true)
     })
 
@@ -237,7 +248,9 @@ describe('useConfigureButton', () => {
     })
 
     it('should call query hook with enabled=false when controller is disabled', () => {
-      renderHook(() => useConfigureButton(createDefaultOptions({ enabled: false, published: true })))
+      renderHook(() =>
+        useConfigureButton(createDefaultOptions({ enabled: false, published: true })),
+      )
       expect(mockUseWorkflowToolDetailByAppID).toHaveBeenCalledWith('app-123', false)
     })
   })
@@ -250,21 +263,29 @@ describe('useConfigureButton', () => {
     })
 
     it('should be true when parameters differ', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        inputs: [
-          createMockInputVar({ variable: 'test_var' }),
-          createMockInputVar({ variable: 'extra_var' }),
-        ],
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            published: true,
+            inputs: [
+              createMockInputVar({ variable: 'test_var' }),
+              createMockInputVar({ variable: 'extra_var' }),
+            ],
+          }),
+        ),
+      )
       expect(result.current.outdated).toBe(true)
     })
 
     it('should be false when parameters match', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        inputs: [createMockInputVar({ variable: 'test_var', required: true })],
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            published: true,
+            inputs: [createMockInputVar({ variable: 'test_var', required: true })],
+          }),
+        ),
+      )
       expect(result.current.outdated).toBe(false)
     })
   })
@@ -289,7 +310,9 @@ describe('useConfigureButton', () => {
     })
 
     it('should use detail values when published with detail', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
 
       expect(result.current.payload).toMatchObject({
         icon: createMockEmoji(),
@@ -309,14 +332,18 @@ describe('useConfigureButton', () => {
 
     it('should return empty parameters when published without detail', () => {
       mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: undefined, isLoading: false })
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
 
       expect(result.current.payload.parameters).toHaveLength(0)
       expect(result.current.payload.outputParameters).toHaveLength(0)
     })
 
     it('should build output parameters from detail output_schema', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
 
       expect(result.current.payload.outputParameters).toHaveLength(1)
       expect(result.current.payload.outputParameters[0]).toMatchObject({
@@ -331,7 +358,9 @@ describe('useConfigureButton', () => {
       detail.tool.output_schema = undefined
       mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: detail, isLoading: false })
 
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
 
       expect(result.current.payload.outputParameters[0]).toMatchObject({
         name: 'output_var',
@@ -340,10 +369,14 @@ describe('useConfigureButton', () => {
     })
 
     it('should convert paragraph type to string in existing parameters', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        inputs: [createMockInputVar({ variable: 'test_var', type: InputVarType.paragraph })],
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            published: true,
+            inputs: [createMockInputVar({ variable: 'test_var', type: InputVarType.paragraph })],
+          }),
+        ),
+      )
 
       expect(result.current.payload.parameters[0]!.type).toBe('string')
     })
@@ -355,10 +388,16 @@ describe('useConfigureButton', () => {
       mockCreateWorkflowToolProvider.mockResolvedValue({})
       const onRefreshData = vi.fn()
       const onConfigured = vi.fn()
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ onRefreshData, onConfigured })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ onRefreshData, onConfigured })),
+      )
 
       await act(async () => {
-        await result.current.handleCreate(createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & { workflow_app_id: string })
+        await result.current.handleCreate(
+          createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & {
+            workflow_app_id: string
+          },
+        )
       })
 
       expect(mockCreateWorkflowToolProvider).toHaveBeenCalled()
@@ -374,7 +413,11 @@ describe('useConfigureButton', () => {
       const { result } = renderHook(() => useConfigureButton(createDefaultOptions()))
 
       await act(async () => {
-        await result.current.handleCreate(createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & { workflow_app_id: string })
+        await result.current.handleCreate(
+          createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & {
+            workflow_app_id: string
+          },
+        )
       })
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Create failed' })
@@ -387,15 +430,22 @@ describe('useConfigureButton', () => {
       const handlePublish = vi.fn().mockResolvedValue(undefined)
       const onRefreshData = vi.fn()
       const onConfigured = vi.fn()
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        handlePublish,
-        onRefreshData,
-        onConfigured,
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            published: true,
+            handlePublish,
+            onRefreshData,
+            onConfigured,
+          }),
+        ),
+      )
 
       await act(async () => {
-        await result.current.handleUpdate(createMockRequest({ workflow_tool_id: 'tool-456' }) as WorkflowToolProviderRequest & Partial<{ workflow_app_id: string, workflow_tool_id: string }>)
+        await result.current.handleUpdate(
+          createMockRequest({ workflow_tool_id: 'tool-456' }) as WorkflowToolProviderRequest &
+            Partial<{ workflow_app_id: string; workflow_tool_id: string }>,
+        )
       })
 
       expect(handlePublish).toHaveBeenCalled()
@@ -408,13 +458,20 @@ describe('useConfigureButton', () => {
 
     it('should show error toast when publish fails', async () => {
       const handlePublish = vi.fn().mockRejectedValue(new Error('Publish failed'))
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        handlePublish,
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            published: true,
+            handlePublish,
+          }),
+        ),
+      )
 
       await act(async () => {
-        await result.current.handleUpdate(createMockRequest() as WorkflowToolProviderRequest & Partial<{ workflow_app_id: string, workflow_tool_id: string }>)
+        await result.current.handleUpdate(
+          createMockRequest() as WorkflowToolProviderRequest &
+            Partial<{ workflow_app_id: string; workflow_tool_id: string }>,
+        )
       })
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Publish failed' })
@@ -422,10 +479,15 @@ describe('useConfigureButton', () => {
 
     it('should show error toast when save fails', async () => {
       mockSaveWorkflowToolProvider.mockRejectedValue(new Error('Save failed'))
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
 
       await act(async () => {
-        await result.current.handleUpdate(createMockRequest() as WorkflowToolProviderRequest & Partial<{ workflow_app_id: string, workflow_tool_id: string }>)
+        await result.current.handleUpdate(
+          createMockRequest() as WorkflowToolProviderRequest &
+            Partial<{ workflow_app_id: string; workflow_tool_id: string }>,
+        )
       })
 
       expect(mockToastNotify).toHaveBeenCalledWith({ type: 'error', message: 'Save failed' })
@@ -459,11 +521,15 @@ describe('useConfigureButton', () => {
     })
 
     it('should not invalidate detail while disabled', () => {
-      renderHook(() => useConfigureButton(createDefaultOptions({
-        enabled: false,
-        published: true,
-        detailNeedUpdate: true,
-      })))
+      renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            enabled: false,
+            published: true,
+            detailNeedUpdate: true,
+          }),
+        ),
+      )
 
       expect(mockInvalidateWorkflowToolDetailByAppID).not.toHaveBeenCalled()
     })
@@ -473,7 +539,9 @@ describe('useConfigureButton', () => {
   describe('Edge Cases', () => {
     it('should handle undefined detail from query gracefully', () => {
       mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: undefined, isLoading: false })
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({ published: true })))
+      const { result } = renderHook(() =>
+        useConfigureButton(createDefaultOptions({ published: true })),
+      )
 
       expect(result.current.outdated).toBe(false)
       expect(result.current.payload.parameters).toHaveLength(0)
@@ -484,19 +552,27 @@ describe('useConfigureButton', () => {
       detail.tool.parameters = []
       mockUseWorkflowToolDetailByAppID.mockReturnValue({ data: detail, isLoading: false })
 
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        published: true,
-        inputs: [],
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            published: true,
+            inputs: [],
+          }),
+        ),
+      )
 
       expect(result.current.outdated).toBe(false)
     })
 
     it('should handle undefined inputs and outputs', () => {
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        inputs: undefined,
-        outputs: undefined,
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            inputs: undefined,
+            outputs: undefined,
+          }),
+        ),
+      )
 
       expect(result.current.payload.parameters).toHaveLength(0)
       expect(result.current.payload.outputParameters).toHaveLength(0)
@@ -504,13 +580,21 @@ describe('useConfigureButton', () => {
 
     it('should handle missing onRefreshData callback in create', async () => {
       mockCreateWorkflowToolProvider.mockResolvedValue({})
-      const { result } = renderHook(() => useConfigureButton(createDefaultOptions({
-        onRefreshData: undefined,
-      })))
+      const { result } = renderHook(() =>
+        useConfigureButton(
+          createDefaultOptions({
+            onRefreshData: undefined,
+          }),
+        ),
+      )
 
       // Should not throw
       await act(async () => {
-        await result.current.handleCreate(createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & { workflow_app_id: string })
+        await result.current.handleCreate(
+          createMockRequest({ workflow_app_id: 'app-123' }) as WorkflowToolProviderRequest & {
+            workflow_app_id: string
+          },
+        )
       })
 
       expect(mockCreateWorkflowToolProvider).toHaveBeenCalled()

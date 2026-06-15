@@ -27,7 +27,11 @@ describe('Field', () => {
 
   describe('Props', () => {
     it('should apply custom className', () => {
-      const { container } = render(<Field label="Label" className="custom-class">Content</Field>)
+      const { container } = render(
+        <Field label="Label" className="custom-class">
+          Content
+        </Field>,
+      )
       expect(container.firstChild).toHaveClass('custom-class')
     })
 
@@ -85,12 +89,20 @@ describe('Field', () => {
 
   describe('Edge Cases', () => {
     it('should render with undefined className', () => {
-      render(<Field label="Label" className={undefined}>Content</Field>)
+      render(
+        <Field label="Label" className={undefined}>
+          Content
+        </Field>,
+      )
       expect(screen.getByText('Content')).toBeInTheDocument()
     })
 
     it('should render with empty className', () => {
-      render(<Field label="Label" className="">Content</Field>)
+      render(
+        <Field label="Label" className="">
+          Content
+        </Field>,
+      )
       expect(screen.getByText('Content')).toBeInTheDocument()
     })
 
@@ -100,7 +112,11 @@ describe('Field', () => {
     })
 
     it('should render with empty children', () => {
-      const { container } = render(<Field label="Label"><span></span></Field>)
+      const { container } = render(
+        <Field label="Label">
+          <span></span>
+        </Field>,
+      )
       expect(container.firstChild).toBeInTheDocument()
     })
 

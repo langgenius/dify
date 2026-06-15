@@ -40,7 +40,9 @@ const currentNode = createNode({
   },
 })
 
-const createOperation = (overrides: Partial<ComponentProps<typeof VarList>['list'][number]> = {}) => ({
+const createOperation = (
+  overrides: Partial<ComponentProps<typeof VarList>['list'][number]> = {},
+) => ({
   variable_selector: ['node-a', 'flag'],
   input_type: AssignerNodeInputType.variable,
   operation: WriteMode.overwrite,

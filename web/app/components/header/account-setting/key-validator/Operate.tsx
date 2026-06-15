@@ -12,36 +12,20 @@ type OperateProps = {
   onEdit: () => void
 }
 
-const Operate = ({
-  isOpen,
-  status,
-  disabled,
-  onCancel,
-  onSave,
-  onAdd,
-  onEdit,
-}: OperateProps) => {
+const Operate = ({ isOpen, status, disabled, onCancel, onSave, onAdd, onEdit }: OperateProps) => {
   const { t } = useTranslation()
 
   if (isOpen) {
     return (
       <div className="flex items-center">
         <div
-          className="
-          mr-[5px] flex
-          h-7 cursor-pointer items-center rounded-md px-3
-          text-xs font-medium text-gray-700
-        "
+          className="mr-[5px] flex h-7 cursor-pointer items-center rounded-md px-3 text-xs font-medium text-gray-700"
           onClick={onCancel}
         >
           {t('operation.cancel', { ns: 'common' })}
         </div>
         <div
-          className="
-          flex h-7
-          cursor-pointer items-center rounded-md bg-primary-700 px-3
-          text-xs font-medium text-white
-        "
+          className="flex h-7 cursor-pointer items-center rounded-md bg-primary-700 px-3 text-xs font-medium text-white"
           onClick={onSave}
         >
           {t('operation.save', { ns: 'common' })}
@@ -53,10 +37,7 @@ const Operate = ({
   if (status === 'add') {
     return (
       <div
-        className={
-          `flex h-[28px] cursor-pointer items-center rounded-md border border-gray-200
-        bg-white px-3 text-xs font-medium text-gray-700 ${disabled && 'cursor-default opacity-50'}}`
-        }
+        className={`flex h-[28px] cursor-pointer items-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 ${disabled && 'cursor-default opacity-50'}}`}
         onClick={() => !disabled && onAdd()}
       >
         {t('provider.addKey', { ns: 'common' })}
@@ -67,24 +48,17 @@ const Operate = ({
   if (status === 'fail' || status === 'success') {
     return (
       <div className="flex items-center">
-        {
-          status === 'fail' && (
-            <div className="mr-4 flex items-center">
-              <div className="text-xs text-[#D92D20]">{t('provider.invalidApiKey', { ns: 'common' })}</div>
-              <StatusDot status="error" className="ml-2" />
+        {status === 'fail' && (
+          <div className="mr-4 flex items-center">
+            <div className="text-xs text-[#D92D20]">
+              {t('provider.invalidApiKey', { ns: 'common' })}
             </div>
-          )
-        }
-        {
-          status === 'success' && (
-            <StatusDot status="success" className="mr-4" />
-          )
-        }
+            <StatusDot status="error" className="ml-2" />
+          </div>
+        )}
+        {status === 'success' && <StatusDot status="success" className="mr-4" />}
         <div
-          className={
-            `flex h-[28px] cursor-pointer items-center rounded-md border border-gray-200
-          bg-white px-3 text-xs font-medium text-gray-700 ${disabled && 'cursor-default opacity-50'}}`
-          }
+          className={`flex h-[28px] cursor-pointer items-center rounded-md border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 ${disabled && 'cursor-default opacity-50'}}`}
           onClick={() => !disabled && onEdit()}
         >
           {t('provider.editKey', { ns: 'common' })}

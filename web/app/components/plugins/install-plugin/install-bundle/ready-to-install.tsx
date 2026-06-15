@@ -28,12 +28,15 @@ const ReadyToInstall: FC<Props> = ({
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
   const [installStatus, setInstallStatus] = useState<InstallStatus[]>([])
-  const handleInstalled = useCallback((plugins: Plugin[], installStatus: InstallStatus[]) => {
-    setInstallStatus(installStatus)
-    setInstalledPlugins(plugins)
-    onStepChange(InstallStep.installed)
-    setIsInstalling(false)
-  }, [onStepChange, setIsInstalling])
+  const handleInstalled = useCallback(
+    (plugins: Plugin[], installStatus: InstallStatus[]) => {
+      setInstallStatus(installStatus)
+      setInstalledPlugins(plugins)
+      onStepChange(InstallStep.installed)
+      setIsInstalling(false)
+    },
+    [onStepChange, setIsInstalling],
+  )
   return (
     <>
       {step === InstallStep.readyToInstall && (
@@ -46,11 +49,7 @@ const ReadyToInstall: FC<Props> = ({
         />
       )}
       {step === InstallStep.installed && (
-        <Installed
-          list={installedPlugins}
-          installStatus={installStatus}
-          onCancel={onClose}
-        />
+        <Installed list={installedPlugins} installStatus={installStatus} onCancel={onClose} />
       )}
     </>
   )

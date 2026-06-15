@@ -14,7 +14,9 @@ describe('ProgressCircle', () => {
   })
 
   it('supports custom min and max', async () => {
-    const screen = await render(<ProgressCircle value={3} min={1} max={5} aria-label="Installing" />)
+    const screen = await render(
+      <ProgressCircle value={3} min={1} max={5} aria-label="Installing" />,
+    )
 
     const progress = screen.getByLabelText('Installing')
 
@@ -24,7 +26,9 @@ describe('ProgressCircle', () => {
   })
 
   it('renders indeterminate state when value is null', async () => {
-    const screen = await render(<ProgressCircle value={null} aria-label="Processing" data-testid="progress" />)
+    const screen = await render(
+      <ProgressCircle value={null} aria-label="Processing" data-testid="progress" />,
+    )
 
     await expect.element(screen.getByTestId('progress')).toHaveAttribute('data-indeterminate')
     await expect.element(screen.getByTestId('progress')).not.toHaveAttribute('aria-valuenow')
@@ -32,13 +36,17 @@ describe('ProgressCircle', () => {
   })
 
   it('does not render a progress sector for zero progress', async () => {
-    const screen = await render(<ProgressCircle value={0} aria-label="Uploading" data-testid="progress" />)
+    const screen = await render(
+      <ProgressCircle value={0} aria-label="Uploading" data-testid="progress" />,
+    )
 
     expect(screen.getByTestId('progress').element().querySelector('path')).toBeNull()
   })
 
   it('applies design kit size variants', async () => {
-    const screen = await render(<ProgressCircle value={50} size="large" aria-label="Uploading" data-testid="progress" />)
+    const screen = await render(
+      <ProgressCircle value={50} size="large" aria-label="Uploading" data-testid="progress" />,
+    )
 
     const root = screen.getByTestId('progress').element() as HTMLElement
     const svg = root.querySelector('svg')!
@@ -49,7 +57,9 @@ describe('ProgressCircle', () => {
   })
 
   it('applies color tokens to circle and sector', async () => {
-    const screen = await render(<ProgressCircle value={50} color="error" aria-label="Uploading" data-testid="progress" />)
+    const screen = await render(
+      <ProgressCircle value={50} color="error" aria-label="Uploading" data-testid="progress" />,
+    )
 
     const root = screen.getByTestId('progress').element() as HTMLElement
     const circle = root.querySelector('circle')!
@@ -61,7 +71,9 @@ describe('ProgressCircle', () => {
   })
 
   it('renders a deterministic progress sector', async () => {
-    const screen = await render(<ProgressCircle value={75} aria-label="Uploading" data-testid="progress" />)
+    const screen = await render(
+      <ProgressCircle value={75} aria-label="Uploading" data-testid="progress" />,
+    )
 
     const path = screen.getByTestId('progress').element().querySelector('path')!
 
@@ -69,7 +81,9 @@ describe('ProgressCircle', () => {
   })
 
   it('renders a closed circle sector for complete progress', async () => {
-    const screen = await render(<ProgressCircle value={100} aria-label="Uploading" data-testid="progress" />)
+    const screen = await render(
+      <ProgressCircle value={100} aria-label="Uploading" data-testid="progress" />,
+    )
 
     const path = screen.getByTestId('progress').element().querySelector('path')!
     const pathData = path.getAttribute('d')!

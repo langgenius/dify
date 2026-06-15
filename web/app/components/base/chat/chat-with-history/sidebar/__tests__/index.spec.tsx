@@ -10,10 +10,14 @@ import { useChatWithHistoryContext } from '../../context'
 import Sidebar from '../index'
 import RenameModal from '../rename-modal'
 
-let mockBranding: { enabled: boolean, workspace_logo: string } = { enabled: false, workspace_logo: '' }
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { branding: { ...mockBranding } },
-})
+let mockBranding: { enabled: boolean; workspace_logo: string } = {
+  enabled: false,
+  workspace_logo: '',
+}
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { branding: { ...mockBranding } },
+  })
 
 function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
   const originalUseTranslation = ReactI18next.useTranslation
@@ -25,8 +29,7 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
     return {
       ...translation,
       t: ((key: string, options?: Record<string, unknown>) => {
-        if (emptyKeys.includes(key))
-          return ''
+        if (emptyKeys.includes(key)) return ''
         const ns = (options?.ns as string | undefined) ?? defaultNs
         return ns ? `${ns}.${key}` : key
       }) as typeof translation.t,
@@ -36,16 +39,34 @@ function mockUseTranslationWithEmptyKeys(emptyKeys: string[]) {
 
 // Mock List to allow us to trigger operations
 vi.mock('../list', () => ({
-  default: ({ list, onOperate, title, isPin }: { list: Array<{ id: string, name: string }>, onOperate: (type: string, item: { id: string, name: string }) => void, title?: string, isPin?: boolean }) => (
+  default: ({
+    list,
+    onOperate,
+    title,
+    isPin,
+  }: {
+    list: Array<{ id: string; name: string }>
+    onOperate: (type: string, item: { id: string; name: string }) => void
+    title?: string
+    isPin?: boolean
+  }) => (
     <div data-testid={isPin ? 'pinned-list' : 'conversation-list'}>
       {title && <div data-testid="list-title">{title}</div>}
-      {list.map(item => (
+      {list.map((item) => (
         <div key={item.id} data-testid={`list-item-${item.id}`}>
           <div>{item.name}</div>
-          <button data-testid={`pin-${item.id}`} onClick={() => onOperate('pin', item)}>Pin</button>
-          <button data-testid={`unpin-${item.id}`} onClick={() => onOperate('unpin', item)}>Unpin</button>
-          <button data-testid={`delete-${item.id}`} onClick={() => onOperate('delete', item)}>Delete</button>
-          <button data-testid={`rename-${item.id}`} onClick={() => onOperate('rename', item)}>Rename</button>
+          <button data-testid={`pin-${item.id}`} onClick={() => onOperate('pin', item)}>
+            Pin
+          </button>
+          <button data-testid={`unpin-${item.id}`} onClick={() => onOperate('unpin', item)}>
+            Unpin
+          </button>
+          <button data-testid={`delete-${item.id}`} onClick={() => onOperate('delete', item)}>
+            Delete
+          </button>
+          <button data-testid={`rename-${item.id}`} onClick={() => onOperate('rename', item)}>
+            Rename
+          </button>
         </div>
       ))}
     </div>
@@ -64,7 +85,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open }: { children: React.ReactNode, open?: boolean }) =>
+  Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
     open === false ? null : <>{children}</>,
   DialogContent: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="modal">{children}</div>
@@ -89,9 +110,7 @@ describe('Sidebar Index', () => {
     },
     handleNewConversation: vi.fn(),
     pinnedConversationList: [],
-    conversationList: [
-      { id: '1', name: 'Conv 1', inputs: {}, introduction: '' },
-    ],
+    conversationList: [{ id: '1', name: 'Conv 1', inputs: {}, introduction: '' }],
     currentConversationId: '0',
     handleChangeConversation: vi.fn(),
     handlePinConversation: vi.fn(),
@@ -443,9 +462,12 @@ describe('Sidebar Index', () => {
       await user.click(screen.getByTestId('delete-1'))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-      expect(handleDeleteConversation).toHaveBeenCalledWith('1', expect.objectContaining({
-        onSuccess: expect.any(Function),
-      }))
+      expect(handleDeleteConversation).toHaveBeenCalledWith(
+        '1',
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      )
     })
 
     it('should close delete confirmation when cancel is clicked', async () => {
@@ -832,8 +854,7 @@ describe('Sidebar Index', () => {
         render(<Sidebar />)
         expect(screen.getByTestId('pinned-list')).toBeInTheDocument()
         expect(screen.queryByTestId('list-title')).not.toBeInTheDocument()
-      }
-      finally {
+      } finally {
         useTranslationSpy.mockRestore()
       }
     })
@@ -846,8 +867,7 @@ describe('Sidebar Index', () => {
         await user.click(screen.getByTestId('delete-1'))
         expect(screen.getByText('share.chat.deleteConversation.title')).toBeInTheDocument()
         expect(screen.queryByText('share.chat.deleteConversation.content')).not.toBeInTheDocument()
-      }
-      finally {
+      } finally {
         useTranslationSpy.mockRestore()
       }
     })
@@ -898,8 +918,7 @@ describe('RenameModal', () => {
         />,
       )
       expect(screen.getByPlaceholderText('')).toBeInTheDocument()
-    }
-    finally {
+    } finally {
       useTranslationSpy.mockRestore()
     }
   })

@@ -33,13 +33,14 @@ vi.mock('@/utils/var', () => ({
   getMarketplaceUrl: (path: string) => `https://marketplace.example${path}`,
 }))
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const renderComponent = (props?: Partial<ComponentProps<typeof OperationDropdown>>) => {
   const queryClient = createQueryClient()

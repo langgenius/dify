@@ -1,6 +1,10 @@
 import type { ZodSchema } from 'zod'
 
-type SubmitValidator<T> = ({ value }: { value: T }) => { fields: Record<string, string> } | undefined
+type SubmitValidator<T> = ({
+  value,
+}: {
+  value: T
+}) => { fields: Record<string, string> } | undefined
 
 export const zodSubmitValidator = <T>(schema: ZodSchema<T>): SubmitValidator<T> => {
   return ({ value }) => {
@@ -9,11 +13,9 @@ export const zodSubmitValidator = <T>(schema: ZodSchema<T>): SubmitValidator<T> 
       const fieldErrors: Record<string, string> = {}
       for (const issue of result.error.issues) {
         const path = issue.path[0]
-        if (path === undefined)
-          continue
+        if (path === undefined) continue
         const key = String(path)
-        if (!fieldErrors[key])
-          fieldErrors[key] = issue.message
+        if (!fieldErrors[key]) fieldErrors[key] = issue.message
       }
       return { fields: fieldErrors }
     }

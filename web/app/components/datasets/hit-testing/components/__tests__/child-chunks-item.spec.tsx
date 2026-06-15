@@ -48,9 +48,7 @@ describe('ChildChunksItem', () => {
     it('should render with besideChunkName styling on Score', () => {
       const payload = createChildChunkPayload({ score: 0.6 })
 
-      const { container } = render(
-        <ChildChunksItem payload={payload} isShowAll={false} />,
-      )
+      const { container } = render(<ChildChunksItem payload={payload} isShowAll={false} />)
 
       // Assert - Score with besideChunkName has h-[20.5px] and border-l-0
       const scoreEl = container.querySelector('[class*="h-\\[20\\.5px\\]"]')
@@ -63,9 +61,7 @@ describe('ChildChunksItem', () => {
     it('should apply line-clamp-2 when isShowAll is false', () => {
       const payload = createChildChunkPayload()
 
-      const { container } = render(
-        <ChildChunksItem payload={payload} isShowAll={false} />,
-      )
+      const { container } = render(<ChildChunksItem payload={payload} isShowAll={false} />)
 
       const root = container.firstElementChild
       expect(root?.className).toContain('line-clamp-2')
@@ -74,9 +70,7 @@ describe('ChildChunksItem', () => {
     it('should not apply line-clamp-2 when isShowAll is true', () => {
       const payload = createChildChunkPayload()
 
-      const { container } = render(
-        <ChildChunksItem payload={payload} isShowAll={true} />,
-      )
+      const { container } = render(<ChildChunksItem payload={payload} isShowAll={true} />)
 
       const root = container.firstElementChild
       expect(root?.className).not.toContain('line-clamp-2')

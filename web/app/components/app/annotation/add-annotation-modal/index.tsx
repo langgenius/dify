@@ -27,25 +27,20 @@ type Props = Readonly<{
   onAdd: (payload: AnnotationItemBasic) => void
 }>
 
-const AddAnnotationModal: FC<Props> = ({
-  isShow,
-  onHide,
-  onAdd,
-}) => {
+const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const isAnnotationFull =
+    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [isCreateNext, setIsCreateNext] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   const isValid = (payload: AnnotationItemBasic) => {
-    if (!payload.question)
-      return t('errorMessage.queryRequired', { ns: 'appAnnotation' })
+    if (!payload.question) return t('errorMessage.queryRequired', { ns: 'appAnnotation' })
 
-    if (!payload.answer)
-      return t('errorMessage.answerRequired', { ns: 'appAnnotation' })
+    if (!payload.answer) return t('errorMessage.answerRequired', { ns: 'appAnnotation' })
 
     return true
   }
@@ -63,21 +58,17 @@ const AddAnnotationModal: FC<Props> = ({
     setIsSaving(true)
     try {
       await onAdd(payload)
-    }
-    catch {
-    }
+    } catch {}
     setIsSaving(false)
 
     if (isCreateNext) {
       setQuestion('')
       setAnswer('')
-    }
-    else {
+    } else {
       onHide()
     }
   }
-  if (!isShow)
-    return null
+  if (!isShow) return null
 
   return (
     <div>
@@ -87,8 +78,7 @@ const AddAnnotationModal: FC<Props> = ({
         disablePointerDismissal
         swipeDirection="right"
         onOpenChange={(open) => {
-          if (!open)
-            onHide()
+          if (!open) onHide()
         }}
       >
         <DrawerPortal>
@@ -109,16 +99,8 @@ const AddAnnotationModal: FC<Props> = ({
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                   <div className="space-y-6 p-6 pb-4">
-                    <EditItem
-                      type={EditItemType.Query}
-                      content={question}
-                      onChange={setQuestion}
-                    />
-                    <EditItem
-                      type={EditItemType.Answer}
-                      content={answer}
-                      onChange={setAnswer}
-                    />
+                    <EditItem type={EditItemType.Query} content={question} onChange={setQuestion} />
+                    <EditItem type={EditItemType.Answer} content={answer} onChange={setAnswer} />
                   </div>
                 </div>
                 <div className="shrink-0">
@@ -133,8 +115,18 @@ const AddAnnotationModal: FC<Props> = ({
                       <span>{t('addModal.createNext', { ns: 'appAnnotation' })}</span>
                     </label>
                     <div className="mt-2 flex space-x-2">
-                      <Button className="h-7 text-xs" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                      <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('operation.add', { ns: 'common' })}</Button>
+                      <Button className="h-7 text-xs" onClick={onHide}>
+                        {t('operation.cancel', { ns: 'common' })}
+                      </Button>
+                      <Button
+                        className="h-7 text-xs"
+                        variant="primary"
+                        onClick={handleSave}
+                        loading={isSaving}
+                        disabled={isAnnotationFull}
+                      >
+                        {t('operation.add', { ns: 'common' })}
+                      </Button>
                     </div>
                   </div>
                 </div>

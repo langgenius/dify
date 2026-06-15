@@ -20,14 +20,12 @@ type DatasetCardProps = {
   onOpenTagManagement?: () => void
 }
 
-const DatasetCard = ({
-  dataset,
-  onSuccess,
-  onOpenTagManagement = () => {},
-}: DatasetCardProps) => {
+const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: DatasetCardProps) => {
   const { push } = useRouter()
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
+  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(
+    (state) => state.isCurrentWorkspaceDatasetOperator,
+  )
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -47,12 +45,9 @@ const DatasetCard = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     e.preventDefault()
-    if (isExternalProvider)
-      push(`/datasets/${dataset.id}/hitTesting`)
-    else if (isPipelineUnpublished)
-      push(`/datasets/${dataset.id}/pipeline`)
-    else
-      push(`/datasets/${dataset.id}/documents`)
+    if (isExternalProvider) push(`/datasets/${dataset.id}/hitTesting`)
+    else if (isPipelineUnpublished) push(`/datasets/${dataset.id}/pipeline`)
+    else push(`/datasets/${dataset.id}/documents`)
   }
 
   const handleTagAreaClick = (e: React.MouseEvent) => {

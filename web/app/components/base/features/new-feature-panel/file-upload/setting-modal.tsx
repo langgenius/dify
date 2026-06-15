@@ -1,10 +1,6 @@
 'use client'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
 import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
 
@@ -28,19 +24,11 @@ const FileUploadSettings = ({
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
-        if (disabled)
-          return
+        if (disabled) return
         onOpen(nextOpen)
       }}
     >
-      <PopoverTrigger
-        nativeButton={false}
-        render={(
-          <div className="flex">
-            {children}
-          </div>
-        )}
-      />
+      <PopoverTrigger nativeButton={false} render={<div className="flex">{children}</div>} />
       <PopoverContent
         placement="left"
         sideOffset={32}

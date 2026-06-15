@@ -49,8 +49,7 @@ describe('YamlStore.doGet', () => {
     let caught: unknown
     try {
       store.doGet({ key: 'name', default: '' })
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BadYamlFormatError)
@@ -126,7 +125,9 @@ describe('FileBasedStore.withLock concurrency', () => {
 
     await s1.lock()
 
-    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(ConcurrentAccessError)
+    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(
+      ConcurrentAccessError,
+    )
 
     await s1.unlock()
 

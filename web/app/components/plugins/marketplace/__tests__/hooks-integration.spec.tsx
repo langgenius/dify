@@ -11,17 +11,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 let mockPostMarketplaceShouldFail = false
 const mockPostMarketplaceResponse = {
   data: {
-    plugins: [
-      { type: 'plugin', org: 'test', name: 'plugin1', tags: [] },
-    ],
+    plugins: [{ type: 'plugin', org: 'test', name: 'plugin1', tags: [] }],
     total: 1,
   },
 }
 
 vi.mock('@/service/base', () => ({
   postMarketplace: vi.fn(async () => {
-    if (mockPostMarketplaceShouldFail)
-      throw new Error('Mock API error')
+    if (mockPostMarketplaceShouldFail) throw new Error('Mock API error')
     return mockPostMarketplaceResponse
   }),
 }))
@@ -54,9 +51,7 @@ const createWrapper = () => {
     },
   })
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
   return { Wrapper, queryClient }
 }
@@ -133,10 +128,9 @@ describe('useMarketplacePluginsByCollectionId (integration)', () => {
   it('should return empty when collectionId is undefined', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => useMarketplacePluginsByCollectionId(undefined),
-      { wrapper: Wrapper },
-    )
+    const { result } = renderHook(() => useMarketplacePluginsByCollectionId(undefined), {
+      wrapper: Wrapper,
+    })
 
     expect(result.current.plugins).toEqual([])
   })
@@ -144,10 +138,9 @@ describe('useMarketplacePluginsByCollectionId (integration)', () => {
   it('should fetch plugins when collectionId is provided', async () => {
     const { useMarketplacePluginsByCollectionId } = await import('../hooks')
     const { Wrapper } = createWrapper()
-    const { result } = renderHook(
-      () => useMarketplacePluginsByCollectionId('collection-1'),
-      { wrapper: Wrapper },
-    )
+    const { result } = renderHook(() => useMarketplacePluginsByCollectionId('collection-1'), {
+      wrapper: Wrapper,
+    })
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true)
@@ -177,11 +170,18 @@ describe('useMarketplacePlugins (integration)', () => {
   it('should show isLoading during initial fetch', async () => {
     // Delay the response so we can observe the loading state
     const { postMarketplace } = await import('@/service/base')
-    vi.mocked(postMarketplace).mockImplementationOnce(() => new Promise((resolve) => {
-      setTimeout(() => resolve({
-        data: { plugins: [], total: 0 },
-      }), 200)
-    }))
+    vi.mocked(postMarketplace).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve({
+                data: { plugins: [], total: 0 },
+              }),
+            200,
+          )
+        }),
+    )
 
     const { useMarketplacePlugins } = await import('../hooks')
     const { Wrapper } = createWrapper()
@@ -228,7 +228,9 @@ describe('useMarketplacePlugins (integration)', () => {
     const bundleResponse = {
       data: {
         plugins: [],
-        bundles: [{ type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} }],
+        bundles: [
+          { type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} },
+        ],
         total: 1,
       },
     }
@@ -312,16 +314,21 @@ describe('useMarketplacePlugins (integration)', () => {
     })
 
     // Real useDebounceFn has 500ms wait, so increase timeout
-    await waitFor(() => {
-      expect(result.current.plugins).toBeDefined()
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(result.current.plugins).toBeDefined()
+      },
+      { timeout: 3000 },
+    )
   })
 
   it('should handle response with bundles field (bundles || plugins fallback)', async () => {
     const { postMarketplace } = await import('@/service/base')
     vi.mocked(postMarketplace).mockResolvedValueOnce({
       data: {
-        bundles: [{ type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} }],
+        bundles: [
+          { type: 'bundle', org: 'test', name: 'b1', tags: [], description: 'desc', labels: {} },
+        ],
         plugins: [{ type: 'plugin', org: 'test', name: 'p1', tags: [] }],
         total: 2,
       },

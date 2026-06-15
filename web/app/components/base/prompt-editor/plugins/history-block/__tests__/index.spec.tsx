@@ -18,7 +18,6 @@ import {
   HistoryBlock,
   HistoryBlockNode,
   INSERT_HISTORY_BLOCK_COMMAND,
-
 } from '../index'
 
 const createRoleName = (overrides?: Partial<RoleName>): RoleName => ({

@@ -37,7 +37,9 @@ describe('Enterprise Icon Component', () => {
 
     it('should render elements with correct fill colors', () => {
       const { container } = render(<Enterprise />)
-      const blueElements = container.querySelectorAll('[fill="var(--color-saas-dify-blue-inverted)"]')
+      const blueElements = container.querySelectorAll(
+        '[fill="var(--color-saas-dify-blue-inverted)"]',
+      )
       const quaternaryElements = container.querySelectorAll('[fill="var(--color-text-quaternary)"]')
 
       expect(blueElements.length).toBeGreaterThan(0)
@@ -155,7 +157,7 @@ describe('Enterprise Icon Component', () => {
     it('should use CSS custom properties for colors', () => {
       const { container } = render(<Enterprise />)
       const allFillElements = container.querySelectorAll('[fill]')
-      const elementsWithCSSVars = Array.from(allFillElements).filter(el =>
+      const elementsWithCSSVars = Array.from(allFillElements).filter((el) =>
         el.getAttribute('fill')?.startsWith('var('),
       )
 
@@ -164,7 +166,9 @@ describe('Enterprise Icon Component', () => {
 
     it('should have opacity attributes on quaternary path elements', () => {
       const { container } = render(<Enterprise />)
-      const quaternaryPaths = container.querySelectorAll('path[fill="var(--color-text-quaternary)"]')
+      const quaternaryPaths = container.querySelectorAll(
+        'path[fill="var(--color-text-quaternary)"]',
+      )
 
       quaternaryPaths.forEach((path) => {
         expect(path).toHaveAttribute('opacity', '0.18')
@@ -173,7 +177,9 @@ describe('Enterprise Icon Component', () => {
 
     it('should not have opacity on blue inverted path elements', () => {
       const { container } = render(<Enterprise />)
-      const bluePaths = container.querySelectorAll('path[fill="var(--color-saas-dify-blue-inverted)"]')
+      const bluePaths = container.querySelectorAll(
+        'path[fill="var(--color-saas-dify-blue-inverted)"]',
+      )
 
       bluePaths.forEach((path) => {
         expect(path).not.toHaveAttribute('opacity')

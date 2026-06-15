@@ -31,18 +31,12 @@ const PluginSection: FC<PluginSectionProps> = ({
   renderItemAction,
   onClearSingle,
 }) => {
-  if (plugins.length === 0)
-    return null
+  if (plugins.length === 0) return null
 
   return (
     <>
       <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
-        {title}
-        {' '}
-        (
-        {count}
-        )
-        {headerAction}
+        {title} ({count}){headerAction}
       </div>
       <ScrollArea
         className="max-h-[300px] overflow-hidden"
@@ -52,7 +46,7 @@ const PluginSection: FC<PluginSectionProps> = ({
           content: 'min-w-0',
         }}
       >
-        {plugins.map(plugin => (
+        {plugins.map((plugin) => (
           <PluginItem
             key={plugin.plugin_unique_identifier}
             plugin={plugin}
@@ -62,9 +56,11 @@ const PluginSection: FC<PluginSectionProps> = ({
             statusText={plugin.message || defaultStatusText}
             statusClassName={statusClassName}
             action={renderItemAction?.(plugin)}
-            onClear={onClearSingle
-              ? () => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)
-              : undefined}
+            onClear={
+              onClearSingle
+                ? () => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)
+                : undefined
+            }
           />
         ))}
       </ScrollArea>

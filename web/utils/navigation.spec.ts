@@ -73,7 +73,9 @@ describe('navigation', () => {
 
       backNav()
 
-      expect(mockRouter.push).toHaveBeenCalledWith('/datasets/123/documents?page=3&limit=10&keyword=test')
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        '/datasets/123/documents?page=3&limit=10&keyword=test',
+      )
     })
 
     it('returns function that navigates without params when preserveParams is false', () => {
@@ -262,7 +264,9 @@ describe('navigation', () => {
 
         backNav()
 
-        expect(mockRouter.push).toHaveBeenCalledWith('/datasets/dataset-123/documents?page=3&limit=10&keyword=test')
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          '/datasets/dataset-123/documents?page=3&limit=10&keyword=test',
+        )
       })
     })
 
@@ -290,7 +294,9 @@ describe('navigation', () => {
 
         navFunc()
 
-        expect(mockRouter.push).toHaveBeenCalledWith('/datasets/dataset-123/documents/doc-456/settings')
+        expect(mockRouter.push).toHaveBeenCalledWith(
+          '/datasets/dataset-123/documents/doc-456/settings',
+        )
       })
     })
   })

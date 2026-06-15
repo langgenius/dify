@@ -57,18 +57,20 @@ describe('useLastRun', () => {
   })
 
   it('syncs the draft before opening a custom single-run form', () => {
-    const { result } = renderWorkflowHook(() => useLastRun({
-      id: 'data-source-node',
-      flowId: 'flow-id',
-      flowType: FlowType.appFlow,
-      data: {
-        type: BlockEnum.DataSource,
-        title: 'Data Source',
-        desc: '',
-      },
-      defaultRunInputData: {},
-      isPaused: false,
-    }))
+    const { result } = renderWorkflowHook(() =>
+      useLastRun({
+        id: 'data-source-node',
+        flowId: 'flow-id',
+        flowType: FlowType.appFlow,
+        data: {
+          type: BlockEnum.DataSource,
+          title: 'Data Source',
+          desc: '',
+        },
+        defaultRunInputData: {},
+        isPaused: false,
+      }),
+    )
 
     act(() => {
       result.current.handleSingleRun()

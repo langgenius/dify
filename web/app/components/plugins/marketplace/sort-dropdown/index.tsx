@@ -35,28 +35,21 @@ const SortDropdown = () => {
   ]
   const [sort, handleSortChange] = useMarketplaceSort()
   const [open, setOpen] = useState(false)
-  const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]!
+  const selectedOption =
+    options.find((option) => option.value === sort.sortBy && option.order === sort.sortOrder) ??
+    options[0]!
 
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
         <span className="mr-1 system-sm-regular text-text-secondary">
           {t('marketplace.sortBy', { ns: 'plugin' })}
         </span>
-        <span className="mr-1 system-sm-medium text-text-primary">
-          {selectedOption.text}
-        </span>
+        <span className="mr-1 system-sm-medium text-text-primary">{selectedOption.text}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-start"
-        sideOffset={4}
-        popupClassName="p-1"
-      >
-        {options.map(option => (
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="p-1">
+        {options.map((option) => (
           <DropdownMenuItem
             key={`${option.value}-${option.order}`}
             className="justify-between px-3 pr-2 system-md-regular text-text-primary"

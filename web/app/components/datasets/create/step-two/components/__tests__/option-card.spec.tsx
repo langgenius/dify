@@ -63,7 +63,7 @@ describe('OptionCardHeader', () => {
 describe('OptionCard', () => {
   const defaultProps = {
     icon: <span data-testid="icon">icon</span>,
-    title: <span>Card Title</span> as React.ReactNode,
+    title: (<span>Card Title</span>) as React.ReactNode,
     description: 'Card description',
   }
 
@@ -88,18 +88,14 @@ describe('OptionCard', () => {
 
   it('should not call onSwitched when already active', () => {
     const onSwitched = vi.fn()
-    const { container } = render(
-      <OptionCard {...defaultProps} isActive onSwitched={onSwitched} />,
-    )
+    const { container } = render(<OptionCard {...defaultProps} isActive onSwitched={onSwitched} />)
     fireEvent.click(container.firstChild!)
     expect(onSwitched).not.toHaveBeenCalled()
   })
 
   it('should not call onSwitched when disabled', () => {
     const onSwitched = vi.fn()
-    const { container } = render(
-      <OptionCard {...defaultProps} disabled onSwitched={onSwitched} />,
-    )
+    const { container } = render(<OptionCard {...defaultProps} disabled onSwitched={onSwitched} />)
     fireEvent.click(container.firstChild!)
     expect(onSwitched).not.toHaveBeenCalled()
   })
@@ -130,7 +126,9 @@ describe('OptionCard', () => {
 
   it('should not apply selected border when noHighlight is true', () => {
     const { container } = render(<OptionCard {...defaultProps} isActive noHighlight />)
-    expect(container.firstChild).not.toHaveClass('border-components-option-card-option-selected-border')
+    expect(container.firstChild).not.toHaveClass(
+      'border-components-option-card-option-selected-border',
+    )
   })
 
   it('should apply disabled opacity and pointer-events styles', () => {
@@ -145,9 +143,7 @@ describe('OptionCard', () => {
   })
 
   it('should forward custom style', () => {
-    const { container } = render(
-      <OptionCard {...defaultProps} style={{ maxWidth: '300px' }} />,
-    )
+    const { container } = render(<OptionCard {...defaultProps} style={{ maxWidth: '300px' }} />)
     expect((container.firstChild as HTMLElement).style.maxWidth).toBe('300px')
   })
 })

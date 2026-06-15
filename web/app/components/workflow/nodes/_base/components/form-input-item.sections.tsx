@@ -26,7 +26,10 @@ type MultiSelectFieldProps = {
 }
 
 const LoadingIndicator = () => (
-  <RiLoader4Line className="mr-1 size-3.5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-none" aria-hidden="true" />
+  <RiLoader4Line
+    className="mr-1 size-3.5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-none"
+    aria-hidden="true"
+  />
 )
 
 export const MultiSelectField: FC<MultiSelectFieldProps> = ({
@@ -48,8 +51,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   )
 
   const renderLabel = () => {
-    if (isLoading)
-      return 'Loading…'
+    if (isLoading) return 'Loading…'
 
     return selectedLabel || placeholder || 'Select options'
   }
@@ -67,19 +69,19 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
           popupClassName="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-xs"
           listClassName="max-h-60"
         >
-          {items.map(item => (
-            <DifySelectItem
-              key={item.value}
-              value={item.value}
-              className="h-auto py-2 pr-9 pl-3"
-            >
+          {items.map((item) => (
+            <DifySelectItem key={item.value} value={item.value} className="h-auto py-2 pr-9 pl-3">
               <div className="flex min-w-0 items-center">
                 {item.icon && (
-                  <img src={item.icon} alt="" width={16} height={16} className="mr-2 size-4 shrink-0" />
+                  <img
+                    src={item.icon}
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="mr-2 size-4 shrink-0"
+                  />
                 )}
-                <SelectItemText>
-                  {item.name}
-                </SelectItemText>
+                <SelectItemText>{item.name}</SelectItemText>
               </div>
               <SelectItemIndicator />
             </DifySelectItem>
@@ -96,11 +98,7 @@ type JsonEditorFieldProps = {
   value: string
 }
 
-export const JsonEditorField: FC<JsonEditorFieldProps> = ({
-  onChange,
-  placeholder,
-  value,
-}) => {
+export const JsonEditorField: FC<JsonEditorFieldProps> = ({ onChange, placeholder, value }) => {
   return (
     <div className="mt-1 w-full">
       <CodeEditor

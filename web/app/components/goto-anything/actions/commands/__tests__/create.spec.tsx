@@ -25,7 +25,7 @@ vi.mock('@/app/components/workflow/workflow-generator/store', () => ({
 // Controllable app-store state — the handler reads `appDetail` to decide
 // whether to thread the current Studio app through to the generator. Mutated
 // per-test; getState() reads it lazily so updates land after the mock factory.
-const mockAppStore: { appDetail: { id: string, mode: string } | undefined } = {
+const mockAppStore: { appDetail: { id: string; mode: string } | undefined } = {
   appDetail: undefined,
 }
 vi.mock('@/app/components/app/store', () => ({
@@ -54,14 +54,14 @@ describe('/create slash command', () => {
     // render its initial list when the user types just `/create`.
     it('should surface both workflow and chatflow when args is empty', async () => {
       const results = await createCommand.search('')
-      expect(results.map(r => r.id)).toEqual(['create-workflow', 'create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual(['create-workflow', 'create-chatflow'])
     })
 
     // Typing a partial keyword should narrow the list and each result should
     // carry the right command-bus payload so the navigation hook can fire it.
     it('should filter by query and attach the right command payload', async () => {
       const results = await createCommand.search('chat')
-      expect(results.map(r => r.id)).toEqual(['create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual(['create-chatflow'])
       expect(results[0]!.data.command).toBe('create.open')
       expect(results[0]!.data.args).toEqual({ mode: 'advanced-chat' })
     })
@@ -88,7 +88,7 @@ describe('/create slash command', () => {
     // the filter consults the translated label.
     it('should filter by the localised label, not just the id', async () => {
       const results = await createCommand.search('createChatflow')
-      expect(results.map(r => r.id)).toEqual(['create-chatflow'])
+      expect(results.map((r) => r.id)).toEqual(['create-chatflow'])
     })
   })
 

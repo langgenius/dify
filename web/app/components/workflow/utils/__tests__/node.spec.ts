@@ -1,7 +1,13 @@
 import type { IterationNodeType } from '../../nodes/iteration/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { CommonNodeType, Node } from '../../types'
-import { CUSTOM_NODE, ITERATION_CHILDREN_Z_INDEX, ITERATION_NODE_Z_INDEX, LOOP_CHILDREN_Z_INDEX, LOOP_NODE_Z_INDEX } from '../../constants'
+import {
+  CUSTOM_NODE,
+  ITERATION_CHILDREN_Z_INDEX,
+  ITERATION_NODE_Z_INDEX,
+  LOOP_CHILDREN_Z_INDEX,
+  LOOP_NODE_Z_INDEX,
+} from '../../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../../nodes/loop-start/constants'
 import { CUSTOM_SIMPLE_NODE } from '../../simple-node/constants'
@@ -169,10 +175,7 @@ describe('getTopLeftNodePosition', () => {
   })
 
   it('should handle negative positions', () => {
-    const nodes = [
-      { position: { x: -10, y: -20 } },
-      { position: { x: 5, y: -30 } },
-    ] as Node[]
+    const nodes = [{ position: { x: -10, y: -20 } }, { position: { x: 5, y: -30 } }] as Node[]
 
     expect(getTopLeftNodePosition(nodes)).toEqual({ x: -10, y: -30 })
   })

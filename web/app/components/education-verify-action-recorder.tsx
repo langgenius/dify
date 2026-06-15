@@ -10,7 +10,9 @@ import { useSearchParams } from '@/next/navigation'
 
 export function EducationVerifyActionRecorder() {
   const searchParams = useSearchParams()
-  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, {
+    raw: true,
+  })
 
   useEffect(() => {
     if (searchParams.get('action') === EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION)

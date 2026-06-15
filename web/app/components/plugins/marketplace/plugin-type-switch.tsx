@@ -18,9 +18,7 @@ import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './cons
 type PluginTypeSwitchProps = {
   className?: string
 }
-const PluginTypeSwitch = ({
-  className,
-}: PluginTypeSwitchProps) => {
+const PluginTypeSwitch = ({ className }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
@@ -73,31 +71,31 @@ const PluginTypeSwitch = ({
   ]
 
   return (
-    <div className={cn(
-      'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
-      className,
-    )}
+    <div
+      className={cn(
+        'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
+        className,
+      )}
     >
-      {
-        options.map(option => (
-          <div
-            key={option.value}
-            className={cn(
-              'flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 system-md-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-              activePluginType === option.value && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs',
-            )}
-            onClick={() => {
-              handleActivePluginTypeChange(option.value)
-              if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
-                setSearchMode(null)
-              }
-            }}
-          >
-            {option.icon}
-            {option.text}
-          </div>
-        ))
-      }
+      {options.map((option) => (
+        <div
+          key={option.value}
+          className={cn(
+            'flex h-8 cursor-pointer items-center rounded-xl border border-transparent px-3 system-md-medium text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+            activePluginType === option.value &&
+              'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs',
+          )}
+          onClick={() => {
+            handleActivePluginTypeChange(option.value)
+            if (PLUGIN_CATEGORY_WITH_COLLECTIONS.has(option.value)) {
+              setSearchMode(null)
+            }
+          }}
+        >
+          {option.icon}
+          {option.text}
+        </div>
+      ))}
     </div>
   )
 }

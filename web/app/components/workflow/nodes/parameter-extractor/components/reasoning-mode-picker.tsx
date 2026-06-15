@@ -14,17 +14,17 @@ type Props = Readonly<{
   onChange: (type: ReasoningModeType) => void
 }>
 
-const ReasoningModePicker: FC<Props> = ({
-  type,
-  onChange,
-}) => {
+const ReasoningModePicker: FC<Props> = ({ type, onChange }) => {
   const { t } = useTranslation()
 
-  const handleChange = useCallback((type: ReasoningModeType) => {
-    return () => {
-      onChange(type)
-    }
-  }, [onChange])
+  const handleChange = useCallback(
+    (type: ReasoningModeType) => {
+      return () => {
+        onChange(type)
+      }
+    },
+    [onChange],
+  )
 
   return (
     <Field
@@ -44,7 +44,6 @@ const ReasoningModePicker: FC<Props> = ({
         />
       </div>
     </Field>
-
   )
 }
 export default React.memo(ReasoningModePicker)

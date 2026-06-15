@@ -17,7 +17,11 @@ vi.mock('@/hooks/use-metadata', () => ({
       text: 'Origin Info',
       subFieldsMap: {
         source: { label: 'Source', inputType: 'input' },
-        hit_count: { label: 'Hit Count', inputType: 'input', render: (val: number, segCount?: number) => `${val} / ${segCount}` },
+        hit_count: {
+          label: 'Hit Count',
+          inputType: 'input',
+          render: (val: number, segCount?: number) => `${val} / ${segCount}`,
+        },
       },
     },
   }),
@@ -48,20 +52,13 @@ describe('MetadataFieldList', () => {
     })
 
     it('should return null when mainField is empty', () => {
-      const { container } = render(
-        <MetadataFieldList mainField="" metadata={{}} />,
-      )
+      const { container } = render(<MetadataFieldList mainField="" metadata={{}} />)
 
       expect(container.firstChild).toBeNull()
     })
 
     it('should display "-" for missing field values', () => {
-      render(
-        <MetadataFieldList
-          mainField="book"
-          metadata={{}}
-        />,
-      )
+      render(<MetadataFieldList mainField="book" metadata={{}} />)
 
       // All three fields should show "-"
       const dashes = screen.getAllByText('-')
@@ -69,12 +66,7 @@ describe('MetadataFieldList', () => {
     })
 
     it('should resolve select values to their display name', () => {
-      render(
-        <MetadataFieldList
-          mainField="book"
-          metadata={{ language: 'en' }}
-        />,
-      )
+      render(<MetadataFieldList mainField="book" metadata={{ language: 'en' }} />)
 
       expect(screen.getByText('English'))!.toBeInTheDocument()
     })
@@ -84,11 +76,7 @@ describe('MetadataFieldList', () => {
   describe('Edit Mode', () => {
     it('should render fields in edit mode when canEdit is true', () => {
       render(
-        <MetadataFieldList
-          mainField="book"
-          canEdit={true}
-          metadata={{ title: 'Book Title' }}
-        />,
+        <MetadataFieldList mainField="book" canEdit={true} metadata={{ title: 'Book Title' }} />,
       )
 
       // In edit mode, FieldInfo renders input elements
@@ -121,11 +109,7 @@ describe('MetadataFieldList', () => {
       const docDetail = { source: 'Web', hit_count: 42, segment_count: 10 }
 
       render(
-        <MetadataFieldList
-          mainField="originInfo"
-          docDetail={docDetail as never}
-          metadata={{}}
-        />,
+        <MetadataFieldList mainField="originInfo" docDetail={docDetail as never} metadata={{}} />,
       )
 
       expect(screen.getByText('Source'))!.toBeInTheDocument()
@@ -136,11 +120,7 @@ describe('MetadataFieldList', () => {
       const docDetail = { source: 'API', hit_count: 15, segment_count: 5 }
 
       render(
-        <MetadataFieldList
-          mainField="originInfo"
-          docDetail={docDetail as never}
-          metadata={{}}
-        />,
+        <MetadataFieldList mainField="originInfo" docDetail={docDetail as never} metadata={{}} />,
       )
 
       expect(screen.getByText('15 / 5'))!.toBeInTheDocument()

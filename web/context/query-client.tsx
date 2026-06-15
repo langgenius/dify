@@ -11,16 +11,11 @@ function getQueryClient() {
   if (isServer) {
     return makeQueryClient()
   }
-  if (!browserQueryClient)
-    browserQueryClient = makeQueryClient()
+  if (!browserQueryClient) browserQueryClient = makeQueryClient()
   return browserQueryClient
 }
 
 export const TanstackQueryInitializer = ({ children }: { children: React.ReactNode }) => {
   const queryClient = getQueryClient()
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  )
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }

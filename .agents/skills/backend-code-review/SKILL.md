@@ -28,6 +28,7 @@ Follow these steps when using this skill:
 3. Compose the final output strictly follow the **Required Output Format**.
 
 Notes when using this skill:
+
 - Always include actionable fixes or suggestions (including possible code snippets).
 - Use best-effort `File:Line` references when a file path and line numbers are available; otherwise, use the most specific identifier you can.
 
@@ -43,6 +44,7 @@ Notes when using this skill:
 ### 1. Security Review
 
 Check for:
+
 - SQL injection vulnerabilities
 - Server-Side Request Forgery (SSRF)
 - Command injection
@@ -54,6 +56,7 @@ Check for:
 ### 2. Performance Review
 
 Check for:
+
 - N+1 queries
 - Missing database indexes
 - Memory leaks
@@ -63,6 +66,7 @@ Check for:
 ### 3. Code Quality Review
 
 Check for:
+
 - Code forward compatibility
 - Code duplication (DRY violations)
 - Functions doing too much (SRP violations)
@@ -75,6 +79,7 @@ Check for:
 ### 4. Testing Review
 
 Check for:
+
 - Missing test coverage for new code
 - Tests that don't test behavior
 - Flaky test patterns
@@ -108,6 +113,7 @@ FilePath: <path> line <line>
 2. <code example> (optional, omit if not applicable)
 
 ---
+
 ... (repeat for each critical issue) ...
 
 Found <Y> suggestions for improvement:
@@ -129,11 +135,13 @@ FilePath: <path> line <line>
 2. <code example> (optional, omit if not applicable)
 
 ---
+
 ... (repeat for each suggestion) ...
 
 Found <Z> optional nits:
 
 ## 🟢 Nits (Optional)
+
 ### 1. <brief description of the nit>
 
 FilePath: <path> line <line>
@@ -148,6 +156,7 @@ FilePath: <path> line <line>
 - <minor suggestions>
 
 ---
+
 ... (repeat for each nits) ...
 
 ## ✅ What's Good
@@ -164,5 +173,6 @@ FilePath: <path> line <line>
 
 ```markdown
 ## Code Review Summary
+
 ✅ No issues found.
 ```

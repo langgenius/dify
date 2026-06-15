@@ -11,10 +11,7 @@ type Props = {
   readonly className?: string
 }
 
-const FlowAppPreview: FC<Props> = ({
-  appId,
-  className,
-}) => {
+const FlowAppPreview: FC<Props> = ({ appId, className }) => {
   const { data, isLoading } = useGetTryAppFlowPreview(appId)
 
   if (isLoading) {
@@ -24,15 +21,10 @@ const FlowAppPreview: FC<Props> = ({
       </div>
     )
   }
-  if (!data)
-    return null
+  if (!data) return null
   return (
     <div className="size-full">
-      <WorkflowPreview
-        {...data.graph}
-        className={cn(className)}
-        miniMapToRight
-      />
+      <WorkflowPreview {...data.graph} className={cn(className)} miniMapToRight />
     </div>
   )
 }

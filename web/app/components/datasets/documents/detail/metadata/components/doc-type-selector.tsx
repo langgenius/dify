@@ -13,27 +13,25 @@ import { useMetadataMap } from '@/hooks/use-metadata'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import s from '../style.module.css'
 
-const TypeIcon: FC<{ iconName: string, className?: string }> = ({ iconName, className = '' }) => {
+const TypeIcon: FC<{ iconName: string; className?: string }> = ({ iconName, className = '' }) => {
   return <div className={cn(s.commonIcon, s[`${iconName}Icon`], className)} />
 }
 
-const IconButton: FC<{ type: DocType, isChecked: boolean }> = ({ type, isChecked = false }) => {
+const IconButton: FC<{ type: DocType; isChecked: boolean }> = ({ type, isChecked = false }) => {
   const metadataMap = useMetadataMap()
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <span className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
             <TypeIcon
               iconName={metadataMap[type].iconName || ''}
               className={`group-hover:bg-primary-600 ${isChecked ? 'bg-primary-600!' : ''}`}
             />
           </span>
-        )}
+        }
       />
-      <TooltipContent>
-        {metadataMap[type].text}
-      </TooltipContent>
+      <TooltipContent>{metadataMap[type].text}</TooltipContent>
     </Tooltip>
   )
 }
@@ -68,13 +66,13 @@ const DocTypeSelector: FC<DocTypeSelectorProps> = ({
       <div className={s.operationWrapper}>
         <FieldRoot name="document_type" className="contents">
           <FieldsetRoot
-            render={(
+            render={
               <RadioGroup
                 value={currValue ?? ''}
                 onValueChange={onTempDocTypeChange}
                 className={s.radioGroup}
               />
-            )}
+            }
           >
             <FieldsetLegend className={s.title}>
               {isFirstTime
@@ -82,9 +80,11 @@ const DocTypeSelector: FC<DocTypeSelectorProps> = ({
                 : t('metadata.docTypeChangeTitle', { ns: 'datasetDocuments' })}
             </FieldsetLegend>
             {documentType && (
-              <span className={s.changeTip}>{t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}</span>
+              <span className={s.changeTip}>
+                {t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}
+              </span>
             )}
-            {CUSTOMIZABLE_DOC_TYPES.map(type => (
+            {CUSTOMIZABLE_DOC_TYPES.map((type) => (
               <FieldItem key={type}>
                 <FieldLabel
                   className={cn(
@@ -93,11 +93,7 @@ const DocTypeSelector: FC<DocTypeSelectorProps> = ({
                     currValue === type && 'shadow-none',
                   )}
                 >
-                  <Radio
-                    value={type}
-                    aria-label={metadataMap[type].text}
-                    className="sr-only"
-                  />
+                  <Radio value={type} aria-label={metadataMap[type].text} className="sr-only" />
                   <IconButton type={type} isChecked={currValue === type} />
                 </FieldLabel>
               </FieldItem>

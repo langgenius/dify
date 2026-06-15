@@ -3,8 +3,7 @@ import type {
   FormOption,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type {
-} from '@/app/components/plugins/marketplace/types'
+import type {} from '@/app/components/plugins/marketplace/types'
 import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
@@ -24,12 +23,7 @@ import type {
   VersionInfo,
   VersionListResponse,
 } from '@/app/components/plugins/types'
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useCallback, useEffect, useState } from 'react'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
@@ -52,11 +46,13 @@ export const useCheckInstalled = ({
   pluginIds: string[]
   enabled: boolean
 }) => {
-  return useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
-    input: { body: { plugin_ids: pluginIds } },
-    enabled,
-    staleTime: 0,
-  }))
+  return useQuery(
+    consoleQuery.plugins.checkInstalled.queryOptions({
+      input: { body: { plugin_ids: pluginIds } },
+      enabled,
+      staleTime: 0,
+    }),
+  )
 }
 
 export const useInvalidateCheckInstalled = () => {
@@ -89,7 +85,7 @@ const useRecommendedMarketplacePlugins = ({
           },
         },
       )
-      return response.data.plugins.map(plugin => getFormattedPlugin(plugin))
+      return response.data.plugins.map((plugin) => getFormattedPlugin(plugin))
     },
     enabled,
     staleTime: 60 * 1000,
@@ -97,10 +93,7 @@ const useRecommendedMarketplacePlugins = ({
 }
 
 export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) => {
-  const {
-    data: plugins = [],
-    isLoading,
-  } = useRecommendedMarketplacePlugins({
+  const { data: plugins = [], isLoading } = useRecommendedMarketplacePlugins({
     collection: '__recommended-plugins-tools',
     enabled,
     limit,
@@ -113,10 +106,7 @@ export const useFeaturedToolsRecommendations = (enabled: boolean, limit = 15) =>
 }
 
 export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15) => {
-  const {
-    data: plugins = [],
-    isLoading,
-  } = useRecommendedMarketplacePlugins({
+  const { data: plugins = [], isLoading } = useRecommendedMarketplacePlugins({
     collection: '__recommended-plugins-triggers',
     enabled,
     limit,
@@ -136,34 +126,26 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
     return response
   }
 
-  const {
-    data,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    isSuccess,
-  } = useInfiniteQuery({
-    enabled: !disable,
-    gcTime: 0,
-    queryKey: useInstalledPluginListKey,
-    queryFn: fetchPlugins,
-    getNextPageParam: (lastPage, pages) => {
-      const totalItems = lastPage.total
-      const currentPage = pages.length
-      const itemsLoaded = currentPage * pageSize
+  const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
+    useInfiniteQuery({
+      enabled: !disable,
+      gcTime: 0,
+      queryKey: useInstalledPluginListKey,
+      queryFn: fetchPlugins,
+      getNextPageParam: (lastPage, pages) => {
+        const totalItems = lastPage.total
+        const currentPage = pages.length
+        const itemsLoaded = currentPage * pageSize
 
-      if (itemsLoaded >= totalItems)
-        return
+        if (itemsLoaded >= totalItems) return
 
-      return currentPage + 1
-    },
-    initialPageParam: 1,
-    staleTime: 0,
-  })
+        return currentPage + 1
+      },
+      initialPageParam: 1,
+      staleTime: 0,
+    })
 
-  const plugins = data?.pages.flatMap(page => page.plugins) ?? []
+  const plugins = data?.pages.flatMap((page) => page.plugins) ?? []
   const total = data?.pages[0]!.total ?? 0
 
   return {
@@ -188,25 +170,29 @@ export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   return () => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: useInstalledPluginListKey,
-      },
-    )
+    queryClient.invalidateQueries({
+      queryKey: useInstalledPluginListKey,
+    })
     invalidateAllBuiltInTools()
   }
 }
 
-export const useInstallPackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, string>) => {
+export const useInstallPackageFromMarketPlace = (
+  options?: MutateOptions<InstallPackageResponse, Error, string>,
+) => {
   return useMutation({
     ...options,
     mutationFn: (uniqueIdentifier: string) => {
-      return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier] } })
+      return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+        body: { plugin_unique_identifiers: [uniqueIdentifier] },
+      })
     },
   })
 }
 
-export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallPackageResponse, Error, object>) => {
+export const useUpdatePackageFromMarketPlace = (
+  options?: MutateOptions<InstallPackageResponse, Error, object>,
+) => {
   return useMutation({
     ...options,
     mutationFn: (body: object) => {
@@ -220,7 +206,10 @@ export const useUpdatePackageFromMarketPlace = (options?: MutateOptions<InstallP
 export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'pluginDeclaration', pluginUniqueIdentifier],
-    queryFn: () => get<{ manifest: PluginDeclaration }>('/workspaces/current/plugin/marketplace/pkg', { params: { plugin_unique_identifier: pluginUniqueIdentifier } }),
+    queryFn: () =>
+      get<{ manifest: PluginDeclaration }>('/workspaces/current/plugin/marketplace/pkg', {
+        params: { plugin_unique_identifier: pluginUniqueIdentifier },
+      }),
     enabled: !!pluginUniqueIdentifier,
   })
 }
@@ -229,7 +218,10 @@ export const useVersionListOfPlugin = (pluginID: string) => {
   return useQuery<{ data: VersionListResponse }>({
     enabled: !!pluginID,
     queryKey: [NAME_SPACE, 'versions', pluginID],
-    queryFn: () => getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, { params: { page: 1, page_size: 100 } }),
+    queryFn: () =>
+      getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {
+        params: { page: 1, page_size: 100 },
+      }),
   })
 }
 
@@ -245,7 +237,12 @@ export const useInstallPackageFromLocal = () => {
 
 export const useInstallPackageFromGitHub = () => {
   return useMutation({
-    mutationFn: ({ repoUrl, selectedVersion, selectedPackage, uniqueIdentifier }: {
+    mutationFn: ({
+      repoUrl,
+      selectedVersion,
+      selectedPackage,
+      uniqueIdentifier,
+    }: {
       repoUrl: string
       selectedVersion: string
       selectedPackage: string
@@ -263,16 +260,13 @@ export const useInstallPackageFromGitHub = () => {
   })
 }
 
-export const useUploadGitHub = (payload: {
-  repo: string
-  version: string
-  package: string
-}) => {
+export const useUploadGitHub = (payload: { repo: string; version: string; package: string }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'uploadGitHub', payload],
-    queryFn: () => post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
-      body: payload,
-    }),
+    queryFn: () =>
+      post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+        body: payload,
+      }),
     retry: 0,
   })
 }
@@ -292,29 +286,63 @@ export const useInstallOrUpdate = ({
     }) => {
       const { payload, plugin, installedInfo } = data
 
-      return Promise.all(payload.map(async (item, i) => {
-        try {
-          const orgAndName = `${plugin[i]?.org || plugin[i]?.author}/${plugin[i]?.name}`
-          const installedPayload = installedInfo[orgAndName]
-          const isInstalled = !!installedPayload
-          let uniqueIdentifier = ''
-          let taskId = ''
-          let isFinishedInstallation = false
+      return Promise.all(
+        payload.map(async (item, i) => {
+          try {
+            const orgAndName = `${plugin[i]?.org || plugin[i]?.author}/${plugin[i]?.name}`
+            const installedPayload = installedInfo[orgAndName]
+            const isInstalled = !!installedPayload
+            let uniqueIdentifier = ''
+            let taskId = ''
+            let isFinishedInstallation = false
 
-          if (item.type === 'github') {
-            const data = item as GitHubItemAndMarketPlaceDependency
-            // From local bundle don't have data.value.github_plugin_unique_identifier
-            uniqueIdentifier = data.value.github_plugin_unique_identifier!
-            if (!uniqueIdentifier) {
-              const { unique_identifier } = await post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
-                body: {
-                  repo: data.value.repo!,
-                  version: data.value.release! || data.value.version!,
-                  package: data.value.packages! || data.value.package!,
-                },
-              })
-              uniqueIdentifier = data.value.github_plugin_unique_identifier! || unique_identifier
-              // has the same version, but not installed
+            if (item.type === 'github') {
+              const data = item as GitHubItemAndMarketPlaceDependency
+              // From local bundle don't have data.value.github_plugin_unique_identifier
+              uniqueIdentifier = data.value.github_plugin_unique_identifier!
+              if (!uniqueIdentifier) {
+                const { unique_identifier } = await post<uploadGitHubResponse>(
+                  '/workspaces/current/plugin/upload/github',
+                  {
+                    body: {
+                      repo: data.value.repo!,
+                      version: data.value.release! || data.value.version!,
+                      package: data.value.packages! || data.value.package!,
+                    },
+                  },
+                )
+                uniqueIdentifier = data.value.github_plugin_unique_identifier! || unique_identifier
+                // has the same version, but not installed
+                if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
+                  return {
+                    status: TaskStatus.success,
+                    taskId: '',
+                    uniqueIdentifier: '',
+                  }
+                }
+              }
+              if (!isInstalled) {
+                const { task_id, all_installed } = await post<InstallPackageResponse>(
+                  '/workspaces/current/plugin/install/github',
+                  {
+                    body: {
+                      repo: data.value.repo!,
+                      version: data.value.release! || data.value.version!,
+                      package: data.value.packages! || data.value.package!,
+                      plugin_unique_identifier: uniqueIdentifier,
+                    },
+                  },
+                )
+                taskId = task_id
+                isFinishedInstallation = all_installed
+              }
+            }
+            if (item.type === 'marketplace') {
+              const data = item as GitHubItemAndMarketPlaceDependency
+              uniqueIdentifier =
+                data.value.marketplace_plugin_unique_identifier! ||
+                (plugin[i]?.latest_package_identifier ?? '') ||
+                (plugin[i]?.plugin_id ?? '')
               if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
                 return {
                   status: TaskStatus.success,
@@ -322,100 +350,82 @@ export const useInstallOrUpdate = ({
                   uniqueIdentifier: '',
                 }
               }
-            }
-            if (!isInstalled) {
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
-                body: {
-                  repo: data.value.repo!,
-                  version: data.value.release! || data.value.version!,
-                  package: data.value.packages! || data.value.package!,
-                  plugin_unique_identifier: uniqueIdentifier,
-                },
-              })
-              taskId = task_id
-              isFinishedInstallation = all_installed
-            }
-          }
-          if (item.type === 'marketplace') {
-            const data = item as GitHubItemAndMarketPlaceDependency
-            uniqueIdentifier = data.value.marketplace_plugin_unique_identifier! || (plugin[i]?.latest_package_identifier ?? '') || (plugin[i]?.plugin_id ?? '')
-            if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
-              return {
-                status: TaskStatus.success,
-                taskId: '',
-                uniqueIdentifier: '',
+              if (!isInstalled) {
+                const { task_id, all_installed } = await post<InstallPackageResponse>(
+                  '/workspaces/current/plugin/install/marketplace',
+                  {
+                    body: {
+                      plugin_unique_identifiers: [uniqueIdentifier],
+                    },
+                  },
+                )
+                taskId = task_id
+                isFinishedInstallation = all_installed
               }
             }
-            if (!isInstalled) {
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
-                body: {
-                  plugin_unique_identifiers: [uniqueIdentifier],
-                },
-              })
-              taskId = task_id
-              isFinishedInstallation = all_installed
-            }
-          }
-          if (item.type === 'package') {
-            const data = item as PackageDependency
-            uniqueIdentifier = data.value.unique_identifier
-            if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
-              return {
-                status: TaskStatus.success,
-                taskId: '',
-                uniqueIdentifier: '',
-              }
-            }
-            if (!isInstalled) {
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
-                body: {
-                  plugin_unique_identifiers: [uniqueIdentifier],
-                },
-              })
-              taskId = task_id
-              isFinishedInstallation = all_installed
-            }
-          }
-          if (isInstalled) {
             if (item.type === 'package') {
-              await uninstallPlugin(installedPayload.installedId)
-              const { task_id, all_installed } = await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
-                body: {
-                  plugin_unique_identifiers: [uniqueIdentifier],
-                },
-              })
-              taskId = task_id
-              isFinishedInstallation = all_installed
+              const data = item as PackageDependency
+              uniqueIdentifier = data.value.unique_identifier
+              if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
+                return {
+                  status: TaskStatus.success,
+                  taskId: '',
+                  uniqueIdentifier: '',
+                }
+              }
+              if (!isInstalled) {
+                const { task_id, all_installed } = await post<InstallPackageResponse>(
+                  '/workspaces/current/plugin/install/pkg',
+                  {
+                    body: {
+                      plugin_unique_identifiers: [uniqueIdentifier],
+                    },
+                  },
+                )
+                taskId = task_id
+                isFinishedInstallation = all_installed
+              }
             }
-            else {
-              const { task_id, all_installed } = await updatePackageFromMarketPlace({
-                original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
-                new_plugin_unique_identifier: uniqueIdentifier,
-              })
-              taskId = task_id
-              isFinishedInstallation = all_installed
+            if (isInstalled) {
+              if (item.type === 'package') {
+                await uninstallPlugin(installedPayload.installedId)
+                const { task_id, all_installed } = await post<InstallPackageResponse>(
+                  '/workspaces/current/plugin/install/pkg',
+                  {
+                    body: {
+                      plugin_unique_identifiers: [uniqueIdentifier],
+                    },
+                  },
+                )
+                taskId = task_id
+                isFinishedInstallation = all_installed
+              } else {
+                const { task_id, all_installed } = await updatePackageFromMarketPlace({
+                  original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
+                  new_plugin_unique_identifier: uniqueIdentifier,
+                })
+                taskId = task_id
+                isFinishedInstallation = all_installed
+              }
             }
+            if (isFinishedInstallation) {
+              return {
+                status: TaskStatus.success,
+                taskId: '',
+                uniqueIdentifier: '',
+              }
+            } else {
+              return {
+                status: TaskStatus.running,
+                taskId,
+                uniqueIdentifier,
+              }
+            }
+          } catch (e) {
+            return Promise.resolve({ status: TaskStatus.failed, taskId: '', uniqueIdentifier: '' })
           }
-          if (isFinishedInstallation) {
-            return {
-              status: TaskStatus.success,
-              taskId: '',
-              uniqueIdentifier: '',
-            }
-          }
-          else {
-            return {
-              status: TaskStatus.running,
-              taskId,
-              uniqueIdentifier,
-            }
-          }
-        }
-        // eslint-disable-next-line unused-imports/no-unused-vars
-        catch (e) {
-          return Promise.resolve({ status: TaskStatus.failed, taskId: '', uniqueIdentifier: '' })
-        }
-      }))
+        }),
+      )
     },
     onSuccess,
   })
@@ -439,19 +449,13 @@ export const useReferenceSettings = () => {
 export const useInvalidateReferenceSettings = () => {
   const queryClient = useQueryClient()
   return () => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: useReferenceSettingKey,
-      },
-    )
+    queryClient.invalidateQueries({
+      queryKey: useReferenceSettingKey,
+    })
   }
 }
 
-export const useMutationReferenceSettings = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useMutationReferenceSettings = ({ onSuccess }: { onSuccess?: () => void }) => {
   return useMutation({
     mutationFn: (payload: ReferenceSetting) => {
       return post('/workspaces/current/plugin/preferences/change', { body: payload })
@@ -468,16 +472,20 @@ export const useRemoveAutoUpgrade = () => {
   })
 }
 
-export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>) => {
+export const useFetchPluginsInMarketPlaceByIds = (
+  unique_identifiers: string[],
+  options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>,
+) => {
   return useQuery({
     ...options,
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByIds', unique_identifiers],
-    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
-      body: {
-        unique_identifiers,
-      },
-    }),
-    enabled: unique_identifiers?.filter(i => !!i).length > 0,
+    queryFn: () =>
+      postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
+        body: {
+          unique_identifiers,
+        },
+      }),
+    enabled: unique_identifiers?.filter((i) => !!i).length > 0,
     retry: 0,
   })
 }
@@ -485,16 +493,17 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
 export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
-    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
-      body: {
-        plugin_tuples: infos.map(info => ({
-          org: info.organization,
-          name: info.plugin,
-          version: info.version,
-        })),
-      },
-    }),
-    enabled: infos?.filter(i => !!i).length > 0,
+    queryFn: () =>
+      postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
+        body: {
+          plugin_tuples: infos.map((info) => ({
+            org: info.organization,
+            name: info.plugin,
+            version: info.version,
+          })),
+        },
+      }),
+    enabled: infos?.filter((i) => !!i).length > 0,
     retry: 0,
   })
 }
@@ -502,23 +511,18 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   const [initialized, setInitialized] = useState(false)
-  const {
-    canManagement,
-  } = useReferenceSetting()
+  const { canManagement } = useReferenceSetting()
   const { refreshPluginList } = useRefreshPluginList()
-  const {
-    data,
-    isFetched,
-    isRefetching,
-    refetch,
-    ...rest
-  } = useQuery({
+  const { data, isFetched, isRefetching, refetch, ...rest } = useQuery({
     enabled: canManagement,
     queryKey: usePluginTaskListKey,
-    queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
+    queryFn: () =>
+      get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
     refetchInterval: (lastQuery) => {
       const lastData = lastQuery.state.data
-      const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
+      const taskDone = lastData?.tasks.every(
+        (task) => task.status === TaskStatus.success || task.status === TaskStatus.failed,
+      )
       return taskDone ? false : 5000
     },
   })
@@ -526,14 +530,15 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
     // Skip initialization period, because the query cache is not updated yet
-    if (!initialized || isRefetching)
-      return
+    if (!initialized || isRefetching) return
 
     const lastData = cloneDeep(data)
-    const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-    const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
+    const taskDone = lastData?.tasks.every(
+      (task) => task.status === TaskStatus.success || task.status === TaskStatus.failed,
+    )
+    const taskAllFailed = lastData?.tasks.every((task) => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
-      refreshPluginList(category ? { category } as any : undefined, !category)
+      refreshPluginList(category ? ({ category } as any) : undefined, !category)
   }, [isRefetching])
 
   useEffect(() => {
@@ -555,9 +560,11 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
-    mutationFn: ({ taskId, pluginId }: { taskId: string, pluginId: string }) => {
+    mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
       const encodedPluginId = encodeURIComponent(pluginId)
-      return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
+      return post<{ success: boolean }>(
+        `/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`,
+      )
     },
   })
 }
@@ -566,7 +573,10 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   return useQuery({
     enabled: !!pluginUID,
     queryKey: [NAME_SPACE, 'manifest', pluginUID],
-    queryFn: () => getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${pluginUID}`),
+    queryFn: () =>
+      getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace; version: { version: string } } }>(
+        `/plugins/${pluginUID}`,
+      ),
     retry: 0,
   })
 }
@@ -584,13 +594,13 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
   return useQuery({
     queryKey: ['modelInList', provider, modelId],
     queryFn: async () => {
-      if (!modelId || !provider)
-        return false
+      if (!modelId || !provider) return false
       try {
-        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
-        return !!modelId && modelsData.data.some(item => item.model === modelId)
-      }
-      catch {
+        const modelsData = await fetchModelProviderModelList(
+          `/workspaces/current/model-providers/${provider}/models`,
+        )
+        return !!modelId && modelsData.data.some((item) => item.model === modelId)
+      } catch {
         return false
       }
     },
@@ -602,16 +612,16 @@ export const usePluginInfo = (providerName?: string) => {
   return useQuery({
     queryKey: ['pluginInfo', providerName],
     queryFn: async () => {
-      if (!providerName)
-        return null
+      if (!providerName) return null
       const parts = providerName.split('/')
       const org = parts[0]
       const name = parts[1]
       try {
         const response = await fetchPluginInfoFromMarketPlace({ org: org!, name: name! })
-        return response.data.plugin.category === PluginCategoryEnum.model ? response.data.plugin : null
-      }
-      catch {
+        return response.data.plugin.category === PluginCategoryEnum.model
+          ? response.data.plugin
+          : null
+      } catch {
         return null
       }
     },
@@ -619,35 +629,65 @@ export const usePluginInfo = (providerName?: string) => {
   })
 }
 
-export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string, provider_type?: string, extra?: Record<string, any>) => {
+export const useFetchDynamicOptions = (
+  plugin_id: string,
+  provider: string,
+  action: string,
+  parameter: string,
+  provider_type?: string,
+  extra?: Record<string, any>,
+) => {
   return useMutation({
-    mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
-      params: {
-        plugin_id,
-        provider,
-        action,
-        parameter,
-        provider_type,
-        ...extra,
-      },
-    }),
+    mutationFn: () =>
+      get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
+        params: {
+          plugin_id,
+          provider,
+          action,
+          parameter,
+          provider_type,
+          ...extra,
+        },
+      }),
   })
 }
 
-export const usePluginReadme = ({ plugin_unique_identifier, language }: { plugin_unique_identifier: string, language?: string }) => {
+export const usePluginReadme = ({
+  plugin_unique_identifier,
+  language,
+}: {
+  plugin_unique_identifier: string
+  language?: string
+}) => {
   return useQuery({
     queryKey: ['pluginReadme', plugin_unique_identifier, language],
-    queryFn: () => get<{ readme: string }>('/workspaces/current/plugin/readme', { params: { plugin_unique_identifier, language } }, { silent: true }),
+    queryFn: () =>
+      get<{ readme: string }>(
+        '/workspaces/current/plugin/readme',
+        { params: { plugin_unique_identifier, language } },
+        { silent: true },
+      ),
     enabled: !!plugin_unique_identifier,
     retry: 0,
   })
 }
 
-export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { file_name?: string, plugin_unique_identifier?: string }) => {
+export const usePluginReadmeAsset = ({
+  file_name,
+  plugin_unique_identifier,
+}: {
+  file_name?: string
+  plugin_unique_identifier?: string
+}) => {
   const normalizedFileName = file_name?.replace(/(^\.\/_assets\/|^_assets\/)/, '')
   return useQuery({
     queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
-    queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name: normalizedFileName } }, { silent: true }),
+    queryFn: () =>
+      get<Blob>(
+        '/workspaces/current/plugin/asset',
+        { params: { plugin_unique_identifier, file_name: normalizedFileName } },
+        { silent: true },
+      ),
     enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
   })
 }

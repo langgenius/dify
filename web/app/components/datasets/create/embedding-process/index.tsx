@@ -2,11 +2,7 @@ import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  RiArrowRightLine,
-  RiLoader2Fill,
-  RiTerminalBoxLine,
-} from '@remixicon/react'
+import { RiArrowRightLine, RiLoader2Fill, RiTerminalBoxLine } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -32,7 +28,7 @@ type EmbeddingProcessProps = {
 }
 
 // Status header component
-const StatusHeader: FC<{ isEmbedding: boolean, isCompleted: boolean }> = ({
+const StatusHeader: FC<{ isEmbedding: boolean; isCompleted: boolean }> = ({
   isEmbedding,
   isCompleted,
 }) => {
@@ -66,11 +62,7 @@ const ActionButtons: FC<{
           <span className="px-0.5">Access the API</span>
         </Button>
       </Link>
-      <Button
-        className="w-fit gap-x-0.5 px-3"
-        variant="primary"
-        onClick={onNavToDocuments}
-      >
+      <Button className="w-fit gap-x-0.5 px-3" variant="primary" onClick={onNavToDocuments}>
         <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
         <RiArrowRightLine className="size-4 stroke-current stroke-1" />
       </Button>
@@ -101,10 +93,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
   const { data: ruleDetail } = useProcessRule(firstDocumentId)
 
   // Document lookup utilities - memoized for performance
-  const documentLookup = useMemo(
-    () => createDocumentLookup(documents),
-    [documents],
-  )
+  const documentLookup = useMemo(() => createDocumentLookup(documents), [documents])
 
   const handleNavToDocuments = () => {
     invalidDocumentList()
@@ -121,7 +110,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
         {showUpgradeBanner && <UpgradeBanner />}
 
         <div className="flex flex-col gap-0.5 pb-2">
-          {statusList.map(detail => (
+          {statusList.map((detail) => (
             <IndexingProgressItem
               key={detail.id}
               detail={detail}
@@ -142,10 +131,7 @@ const EmbeddingProcess: FC<EmbeddingProcessProps> = ({
         />
       </div>
 
-      <ActionButtons
-        apiReferenceUrl={apiReferenceUrl}
-        onNavToDocuments={handleNavToDocuments}
-      />
+      <ActionButtons apiReferenceUrl={apiReferenceUrl} onNavToDocuments={handleNavToDocuments} />
     </>
   )
 }

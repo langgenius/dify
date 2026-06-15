@@ -17,12 +17,7 @@ const createData = (overrides: Partial<CodeNodeType> = {}): CodeNodeType => ({
 
 describe('code/node', () => {
   it('renders an empty summary container', () => {
-    const { container } = render(
-      <Node
-        id="code-node"
-        data={createData()}
-      />,
-    )
+    const { container } = render(<Node id="code-node" data={createData()} />)
 
     expect(container.firstChild).toBeEmptyDOMElement()
   })

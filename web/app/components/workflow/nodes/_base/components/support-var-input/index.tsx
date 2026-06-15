@@ -29,39 +29,26 @@ const SupportVarInput: FC<Props> = ({
       const variableRegex = /^\{\{([^}]+)\}\}$/
       const variableMatch = variableRegex.exec(part)
       if (variableMatch) {
-        return (
-          <VarHighlight
-            key={`var-${index}`}
-            name={variableMatch[1]!}
-          />
-        )
+        return <VarHighlight key={`var-${index}`} name={variableMatch[1]!} />
       }
-      if (part === '\n')
-        return <br key={`br-${index}`} />
+      if (part === '\n') return <br key={`br-${index}`} />
 
       return <span key={`text-${index}`}>{part}</span>
     })
   }
 
   return (
-    <div
-      className={
-        cn(wrapClassName, 'flex size-full')
-      }
-      onClick={onFocus}
-    >
-      {(isFocus && !readonly && children)
-        ? (
-            children
-          )
-        : (
-            <div
-              className={cn(textClassName, 'h-full w-0 grow truncate whitespace-nowrap')}
-              title={value}
-            >
-              {renderSafeContent(value || '')}
-            </div>
-          )}
+    <div className={cn(wrapClassName, 'flex size-full')} onClick={onFocus}>
+      {isFocus && !readonly && children ? (
+        children
+      ) : (
+        <div
+          className={cn(textClassName, 'h-full w-0 grow truncate whitespace-nowrap')}
+          title={value}
+        >
+          {renderSafeContent(value || '')}
+        </div>
+      )}
     </div>
   )
 }

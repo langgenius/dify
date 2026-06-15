@@ -7,18 +7,10 @@ export type GroupProps = {
   children?: ReactNode
   withBorderBottom?: boolean
 }
-export const Group = memo(({
-  className,
-  children,
-  withBorderBottom,
-}: GroupProps) => {
+export const Group = memo(({ className, children, withBorderBottom }: GroupProps) => {
   return (
     <div
-      className={cn(
-        'px-4 py-2',
-        withBorderBottom && 'border-b border-divider-subtle',
-        className,
-      )}
+      className={cn('px-4 py-2', withBorderBottom && 'border-b border-divider-subtle', className)}
     >
       {children}
     </div>

@@ -4,10 +4,9 @@ import { headers } from '@/next/headers'
 import Script from '@/next/script'
 
 const Zendesk = async () => {
-  if (IS_CE_EDITION || !ZENDESK_WIDGET_KEY)
-    return null
+  if (IS_CE_EDITION || !ZENDESK_WIDGET_KEY) return null
 
-  const nonce = IS_PROD ? (await headers()).get('x-nonce') ?? '' : ''
+  const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? '') : ''
   /* v8 ignore next -- `nonce` is always a string (`''` or header value), so nullish fallback is unreachable in runtime. @preserve */
   const scriptNonce = nonce ?? undefined
 

@@ -1,9 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
@@ -28,10 +24,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const [open, setOpen] = React.useState(false)
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         data-testid="role-selector-trigger"
         className={cn(
@@ -39,7 +32,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           open && 'bg-state-base-hover',
         )}
       >
-        <div className="mr-2 grow text-sm/5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(roleI18nKeyMap[value], { ns: 'common' }) })}</div>
+        <div className="mr-2 grow text-sm/5 text-text-primary">
+          {t('members.invitedAsRole', {
+            ns: 'common',
+            role: t(roleI18nKeyMap[value], { ns: 'common' }),
+          })}
+        </div>
         <div className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-secondary" />
       </PopoverTrigger>
       <PopoverContent
@@ -58,8 +56,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             }}
           >
             <div className="relative pl-5">
-              <div className="text-sm/5 text-text-secondary">{t('members.normal', { ns: 'common' })}</div>
-              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.normalTip', { ns: 'common' })}</div>
+              <div className="text-sm/5 text-text-secondary">
+                {t('members.normal', { ns: 'common' })}
+              </div>
+              <div className="text-xs leading-[18px] text-text-tertiary">
+                {t('members.normalTip', { ns: 'common' })}
+              </div>
               {value === 'normal' && (
                 <div
                   aria-hidden="true"
@@ -78,8 +80,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             }}
           >
             <div className="relative pl-5">
-              <div className="text-sm/5 text-text-secondary">{t('members.editor', { ns: 'common' })}</div>
-              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.editorTip', { ns: 'common' })}</div>
+              <div className="text-sm/5 text-text-secondary">
+                {t('members.editor', { ns: 'common' })}
+              </div>
+              <div className="text-xs leading-[18px] text-text-tertiary">
+                {t('members.editorTip', { ns: 'common' })}
+              </div>
               {value === 'editor' && (
                 <div
                   aria-hidden="true"
@@ -98,8 +104,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             }}
           >
             <div className="relative pl-5">
-              <div className="text-sm/5 text-text-secondary">{t('members.admin', { ns: 'common' })}</div>
-              <div className="text-xs leading-[18px] text-text-tertiary">{t('members.adminTip', { ns: 'common' })}</div>
+              <div className="text-sm/5 text-text-secondary">
+                {t('members.admin', { ns: 'common' })}
+              </div>
+              <div className="text-xs leading-[18px] text-text-tertiary">
+                {t('members.adminTip', { ns: 'common' })}
+              </div>
               {value === 'admin' && (
                 <div
                   aria-hidden="true"
@@ -119,8 +129,12 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
               }}
             >
               <div className="relative pl-5">
-                <div className="text-sm/5 text-text-secondary">{t('members.datasetOperator', { ns: 'common' })}</div>
-                <div className="text-xs leading-[18px] text-text-tertiary">{t('members.datasetOperatorTip', { ns: 'common' })}</div>
+                <div className="text-sm/5 text-text-secondary">
+                  {t('members.datasetOperator', { ns: 'common' })}
+                </div>
+                <div className="text-xs leading-[18px] text-text-tertiary">
+                  {t('members.datasetOperatorTip', { ns: 'common' })}
+                </div>
                 {value === 'dataset_operator' && (
                   <div
                     aria-hidden="true"

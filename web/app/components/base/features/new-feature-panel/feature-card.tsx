@@ -46,10 +46,17 @@ const FeatureCard = ({
             </Infotip>
           )}
         </div>
-        <Switch disabled={disabled} className="shrink-0" onCheckedChange={state => onChange?.(state)} checked={value} />
+        <Switch
+          disabled={disabled}
+          className="shrink-0"
+          onCheckedChange={(state) => onChange?.(state)}
+          checked={value}
+        />
       </div>
       {description && (
-        <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{description}</div>
+        <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+          {description}
+        </div>
       )}
       {children}
     </div>

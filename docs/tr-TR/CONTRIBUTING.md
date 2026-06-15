@@ -34,11 +34,11 @@ PR açıklamasında mevcut bir sorunu bağlamayı veya yeni bir sorun açmayı u
 
 Nasıl önceliklendiriyoruz:
 
-| Sorun Türü | Öncelik |
-| ------------------------------------------------------------ | --------------- |
-| Temel işlevlerdeki hatalar (bulut hizmeti, giriş yapamama, çalışmayan uygulamalar, güvenlik açıkları) | Kritik |
-| Kritik olmayan hatalar, performans artışları | Orta Öncelik |
-| Küçük düzeltmeler (yazım hataları, kafa karıştırıcı ama çalışan UI) | Düşük Öncelik |
+| Sorun Türü                                                                                            | Öncelik       |
+| ----------------------------------------------------------------------------------------------------- | ------------- |
+| Temel işlevlerdeki hatalar (bulut hizmeti, giriş yapamama, çalışmayan uygulamalar, güvenlik açıkları) | Kritik        |
+| Kritik olmayan hatalar, performans artışları                                                          | Orta Öncelik  |
+| Küçük düzeltmeler (yazım hataları, kafa karıştırıcı ama çalışan UI)                                   | Düşük Öncelik |
 
 ### Özellik İstekleri
 
@@ -52,12 +52,12 @@ Nasıl önceliklendiriyoruz:
 
 Nasıl önceliklendiriyoruz:
 
-| Özellik Türü | Öncelik |
-| ------------------------------------------------------------ | --------------- |
-| Bir ekip üyesi tarafından etiketlenen Yüksek Öncelikli Özellikler | Yüksek Öncelik |
-| [Topluluk geri bildirim panosundan](https://github.com/langgenius/dify/discussions/categories/feedbacks) popüler özellik istekleri | Orta Öncelik |
-| Temel olmayan özellikler ve küçük geliştirmeler | Düşük Öncelik |
-| Değerli ama acil olmayan | Gelecek-Özellik |
+| Özellik Türü                                                                                                                       | Öncelik         |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Bir ekip üyesi tarafından etiketlenen Yüksek Öncelikli Özellikler                                                                  | Yüksek Öncelik  |
+| [Topluluk geri bildirim panosundan](https://github.com/langgenius/dify/discussions/categories/feedbacks) popüler özellik istekleri | Orta Öncelik    |
+| Temel olmayan özellikler ve küçük geliştirmeler                                                                                    | Düşük Öncelik   |
+| Değerli ama acil olmayan                                                                                                           | Gelecek-Özellik |
 
 ## PR'nizi Göndermek
 

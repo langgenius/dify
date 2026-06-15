@@ -81,9 +81,9 @@ export const useModelConfig = ({
     // ... default values
     ...initialConfig,
   })
-  
+
   const [completionParams, setCompletionParams] = useState<FormValue>({})
-  
+
   const modelModeType = modelConfig.mode
 
   // Fill old app data missing model mode
@@ -91,9 +91,11 @@ export const useModelConfig = ({
     if (hasFetchedDetail && !modelModeType) {
       const mode = currModel?.model_properties?.mode
       if (mode) {
-        setModelConfig(produce(modelConfig, (draft) => {
-          draft.mode = mode
-        }))
+        setModelConfig(
+          produce(modelConfig, (draft) => {
+            draft.mode = mode
+          }),
+        )
       }
     }
   }, [hasFetchedDetail, modelModeType, currModel])
@@ -129,7 +131,7 @@ function Configuration() {
     currModel,
     hasFetchedDetail,
   })
-  
+
   // Component now focuses on UI
 }
 ```
@@ -179,18 +181,21 @@ export const useConfigForm = (initialValues: ConfigFormValues) => {
   }, [values])
 
   const handleChange = useCallback((field: string, value: any) => {
-    setValues(prev => ({ ...prev, [field]: value }))
+    setValues((prev) => ({ ...prev, [field]: value }))
   }, [])
 
-  const handleSubmit = useCallback(async (onSubmit: (values: ConfigFormValues) => Promise<void>) => {
-    if (!validate()) return
-    setIsSubmitting(true)
-    try {
-      await onSubmit(values)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [values, validate])
+  const handleSubmit = useCallback(
+    async (onSubmit: (values: ConfigFormValues) => Promise<void>) => {
+      if (!validate()) return
+      setIsSubmitting(true)
+      try {
+        await onSubmit(values)
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [values, validate],
+  )
 
   return { values, errors, isSubmitting, handleChange, handleSubmit }
 }
@@ -233,7 +238,7 @@ export const useModalState = () => {
 export const useToggle = (initialValue = false) => {
   const [value, setValue] = useState(initialValue)
 
-  const toggle = useCallback(() => setValue(v => !v), [])
+  const toggle = useCallback(() => setValue((v) => !v), [])
   const setTrue = useCallback(() => setValue(true), [])
   const setFalse = useCallback(() => setValue(false), [])
 
@@ -255,18 +260,22 @@ import { useModelConfig } from './use-model-config'
 
 describe('useModelConfig', () => {
   it('should initialize with default values', () => {
-    const { result } = renderHook(() => useModelConfig({
-      hasFetchedDetail: false,
-    }))
+    const { result } = renderHook(() =>
+      useModelConfig({
+        hasFetchedDetail: false,
+      }),
+    )
 
     expect(result.current.modelConfig.provider).toBe('langgenius/openai/openai')
     expect(result.current.modelModeType).toBe(ModelModeType.unset)
   })
 
   it('should update model config', () => {
-    const { result } = renderHook(() => useModelConfig({
-      hasFetchedDetail: true,
-    }))
+    const { result } = renderHook(() =>
+      useModelConfig({
+        hasFetchedDetail: true,
+      }),
+    )
 
     act(() => {
       result.current.setModelConfig({

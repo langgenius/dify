@@ -8,23 +8,29 @@ vi.mock('@/app/components/base/tab-slider-plain', () => ({
     options,
     onChange,
   }: {
-    options: Array<{ value: string, text: string }>
+    options: Array<{ value: string; text: string }>
     onChange: (value: string) => void
   }) => (
     <div data-testid="tab-slider">
-      {options.map(option => (
-        <button key={option.value} onClick={() => onChange(option.value)}>{option.text}</button>
+      {options.map((option) => (
+        <button key={option.value} onClick={() => onChange(option.value)}>
+          {option.text}
+        </button>
       ))}
     </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/tool/components/tool-form', () => ({
-  default: ({ schema }: { schema: Array<{ name: string }> }) => <div data-testid="tool-form">{schema.map(item => item.name).join(',')}</div>,
+  default: ({ schema }: { schema: Array<{ name: string }> }) => (
+    <div data-testid="tool-form">{schema.map((item) => item.name).join(',')}</div>
+  ),
 }))
 
 vi.mock('../reasoning-config-form', () => ({
-  default: ({ schemas }: { schemas: Array<{ name: string }> }) => <div data-testid="reasoning-config-form">{schemas.map(item => item.name).join(',')}</div>,
+  default: ({ schemas }: { schemas: Array<{ name: string }> }) => (
+    <div data-testid="reasoning-config-form">{schemas.map((item) => item.name).join(',')}</div>
+  ),
 }))
 
 const baseProps = {
@@ -57,25 +63,14 @@ describe('ToolSettingsPanel', () => {
 
     expect(container).toBeEmptyDOMElement()
 
-    rerender(
-      <ToolSettingsPanel
-        {...baseProps}
-        settingsFormSchemas={[]}
-        paramsFormSchemas={[]}
-      />,
-    )
+    rerender(<ToolSettingsPanel {...baseProps} settingsFormSchemas={[]} paramsFormSchemas={[]} />)
 
     expect(container).toBeEmptyDOMElement()
   })
 
   it('renders the settings form and lets the tab slider switch to params', () => {
     const onCurrTypeChange = vi.fn()
-    render(
-      <ToolSettingsPanel
-        {...baseProps}
-        onCurrTypeChange={onCurrTypeChange}
-      />,
-    )
+    render(<ToolSettingsPanel {...baseProps} onCurrTypeChange={onCurrTypeChange} />)
 
     expect(screen.getByTestId('tool-form')).toHaveTextContent('api_key')
     fireEvent.click(screen.getByText('plugin.detailPanel.toolSelector.params'))

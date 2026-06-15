@@ -8,10 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
-import {
-  ACCOUNT_SETTING_TAB,
-
-} from '@/app/components/header/account-setting/constants'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -53,8 +50,7 @@ export default function AccountSetting({
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const workplaceGroupItems: GroupItem[] = (() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return []
+    if (isCurrentWorkspaceDatasetOperator) return []
 
     const items: GroupItem[] = [
       {
@@ -130,16 +126,20 @@ export default function AccountSetting({
       ],
     },
   ]
-  const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
+  const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(
+    (item) => item.key === activeMenu,
+  )
 
   const [searchValue, setSearchValue] = useState<string>('')
 
-  const handleTabChange = useCallback((tab: AccountSettingTab) => {
-    if (tab === ACCOUNT_SETTING_TAB.PROVIDER)
-      resetModelProviderListExpanded()
+  const handleTabChange = useCallback(
+    (tab: AccountSettingTab) => {
+      if (tab === ACCOUNT_SETTING_TAB.PROVIDER) resetModelProviderListExpanded()
 
-    onTabChangeAction(tab)
-  }, [onTabChangeAction, resetModelProviderListExpanded])
+      onTabChangeAction(tab)
+    },
+    [onTabChangeAction, resetModelProviderListExpanded],
+  )
 
   const handleClose = useCallback(() => {
     resetModelProviderListExpanded()
@@ -147,45 +147,44 @@ export default function AccountSetting({
   }, [onCancelAction, resetModelProviderListExpanded])
 
   return (
-    <MenuDialog
-      show
-      onClose={handleClose}
-    >
+    <MenuDialog show onClose={handleClose}>
       <div className="mx-auto flex h-screen max-w-[1048px]">
         <div className="flex w-[44px] flex-col border-r border-divider-burn pr-6 pl-4 sm:w-[224px]">
-          <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">{t('userProfile.settings', { ns: 'common' })}</div>
+          <div className="mt-6 mb-8 px-3 py-2 title-2xl-semi-bold text-text-primary">
+            {t('userProfile.settings', { ns: 'common' })}
+          </div>
           <div className="w-full">
-            {
-              menuItems.map(menuItem => (
-                <div key={menuItem.key} className="mb-2">
-                  {!isCurrentWorkspaceDatasetOperator && (
-                    <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">{menuItem.name}</div>
-                  )}
-                  <div>
-                    {
-                      menuItem.items.map(item => (
-                        <button
-                          type="button"
-                          key={item.key}
-                          className={cn(
-                            'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
-                            activeMenu === item.key ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
-                          )}
-                          aria-label={item.name}
-                          title={item.name}
-                          onClick={() => {
-                            handleTabChange(item.key)
-                          }}
-                        >
-                          {activeMenu === item.key ? item.activeIcon : item.icon}
-                          {!isMobile && <div className="truncate">{item.name}</div>}
-                        </button>
-                      ))
-                    }
+            {menuItems.map((menuItem) => (
+              <div key={menuItem.key} className="mb-2">
+                {!isCurrentWorkspaceDatasetOperator && (
+                  <div className="mb-0.5 py-2 pb-1 pl-3 system-xs-medium-uppercase text-text-tertiary">
+                    {menuItem.name}
                   </div>
+                )}
+                <div>
+                  {menuItem.items.map((item) => (
+                    <button
+                      type="button"
+                      key={item.key}
+                      className={cn(
+                        'mb-0.5 flex h-[37px] w-full items-center rounded-lg p-1 pl-3 text-left text-sm',
+                        activeMenu === item.key
+                          ? 'bg-state-base-active system-sm-semibold text-components-menu-item-text-active'
+                          : 'system-sm-medium text-components-menu-item-text',
+                      )}
+                      aria-label={item.name}
+                      title={item.name}
+                      onClick={() => {
+                        handleTabChange(item.key)
+                      }}
+                    >
+                      {activeMenu === item.key ? item.activeIcon : item.icon}
+                      {!isMobile && <div className="truncate">{item.name}</div>}
+                    </button>
+                  ))}
                 </div>
-              ))
-            }
+              </div>
+            ))}
           </div>
         </div>
         <div className="relative flex min-h-0 w-[824px]">
@@ -212,7 +211,9 @@ export default function AccountSetting({
               <div className="shrink-0 title-2xl-semi-bold text-text-primary">
                 {activeItem?.name}
                 {activeItem?.description && (
-                  <div className="mt-1 system-sm-regular text-text-tertiary">{activeItem?.description}</div>
+                  <div className="mt-1 system-sm-regular text-text-tertiary">
+                    {activeItem?.description}
+                  </div>
                 )}
               </div>
               {activeItem?.key === ACCOUNT_SETTING_TAB.PROVIDER && (
@@ -226,7 +227,9 @@ export default function AccountSetting({
               )}
             </div>
             <div className="px-4 pt-2 sm:px-8">
-              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
+                <ModelProviderPage searchText={searchValue} />
+              )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}

@@ -39,12 +39,7 @@ type CloudPlanItemProps = {
   canPay: boolean
 }
 
-const CloudPlanItem: FC<CloudPlanItemProps> = ({
-  plan,
-  currentPlan,
-  planRange,
-  canPay,
-}) => {
+const CloudPlanItem: FC<CloudPlanItemProps> = ({ plan, currentPlan, planRange, canPay }) => {
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `plans.${plan}` as const
@@ -59,9 +54,10 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const { enableEducationPlan, isEducationAccount } = useProviderContext()
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
-  const educationDiscountWarningText = canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
-    ? t('planNotSupportEducationDiscount', { ns: 'education' })
-    : undefined
+  const educationDiscountWarningText =
+    canPay && isEducationDiscountMode && !isFreePlan && !isEducationDiscountSupportedPlan
+      ? t('planNotSupportEducationDiscount', { ns: 'education' })
+      : undefined
   const openAsyncWindow = useAsyncWindowOpen()
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
   const [showEducationPricingConfirm, setShowEducationPricingConfirm] = React.useState(false)
@@ -70,22 +66,19 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     if (canPay && isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrent)
       return t('useEducationDiscount', { ns: 'education' })
 
-    if (isCurrent)
-      return t('plansCommon.currentPlan', { ns: 'billing' })
+    if (isCurrent) return t('plansCommon.currentPlan', { ns: 'billing' })
 
-    return ({
+    return {
       [Plan.sandbox]: t('plansCommon.startForFree', { ns: 'billing' }),
       [Plan.professional]: t('plansCommon.startBuilding', { ns: 'billing' }),
       [Plan.team]: t('plansCommon.getStarted', { ns: 'billing' }),
-    })[plan]
+    }[plan]
   }, [canPay, isCurrent, isEducationDiscountMode, isEducationDiscountSupportedPlan, plan, t])
 
   const handlePayCurrentPlan = async () => {
-    if (loading || isEducationDiscountLoading)
-      return
+    if (loading || isEducationDiscountLoading) return
 
-    if (isPlanDisabled)
-      return
+    if (isPlanDisabled) return
 
     if (isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrentPaidPlan) {
       await handleEducationDiscount()
@@ -99,27 +92,27 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        await openAsyncWindow(async () => {
-          const res = await consoleClient.billing.invoices()
-          if (res.url)
-            return res.url
-          throw new Error('Failed to open billing page')
-        }, {
-          onError: (err) => {
-            toast.error(err.message || String(err))
+        await openAsyncWindow(
+          async () => {
+            const res = await consoleClient.billing.invoices()
+            if (res.url) return res.url
+            throw new Error('Failed to open billing page')
           },
-        })
+          {
+            onError: (err) => {
+              toast.error(err.message || String(err))
+            },
+          },
+        )
         return
       }
 
-      if (isFreePlan)
-        return
+      if (isFreePlan) return
 
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = res.url
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -145,36 +138,38 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           {ICON_MAP[plan]}
           <div className="flex min-h-26 flex-col gap-y-2">
             <div className="flex items-center gap-x-2.5">
-              <div className="text-[30px] leading-[1.2] font-medium text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
-              {
-                isMostPopularPlan && (
-                  <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
-                    <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
-                      {t('plansCommon.mostPopular', { ns: 'billing' })}
-                    </span>
-                  </div>
-                )
-              }
+              <div className="text-[30px] leading-[1.2] font-medium text-text-primary">
+                {t(`${i18nPrefix}.name`, { ns: 'billing' })}
+              </div>
+              {isMostPopularPlan && (
+                <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
+                  <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
+                    {t('plansCommon.mostPopular', { ns: 'billing' })}
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
+            <div className="system-sm-regular text-text-secondary">
+              {t(`${i18nPrefix}.description`, { ns: 'billing' })}
+            </div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pt-4 pb-8">
           {isFreePlan && (
-            <span className="title-4xl-semi-bold text-text-primary">{t('plansCommon.free', { ns: 'billing' })}</span>
+            <span className="title-4xl-semi-bold text-text-primary">
+              {t('plansCommon.free', { ns: 'billing' })}
+            </span>
           )}
           {!isFreePlan && (
             <>
               {isYear && (
                 <span className="title-4xl-semi-bold text-text-quaternary line-through">
-                  $
-                  {planInfo.price * 12}
+                  ${planInfo.price * 12}
                 </span>
               )}
               <span className="title-4xl-semi-bold text-text-primary">
-                $
-                {isYear ? planInfo.price * 10 : planInfo.price}
+                ${isYear ? planInfo.price * 10 : planInfo.price}
               </span>
               <span className="pb-0.5 system-md-regular text-text-tertiary">
                 {t('plansCommon.priceTip', { ns: 'billing' })}
@@ -192,14 +187,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
         />
       </div>
       <List plan={plan} />
-      <Dialog
-        open={showEducationPricingConfirm}
-        onOpenChange={setShowEducationPricingConfirm}
-      >
-        <DialogContent
-          backdropProps={{ forceRender: true }}
-          className="w-[520px]"
-        >
+      <Dialog open={showEducationPricingConfirm} onOpenChange={setShowEducationPricingConfirm}>
+        <DialogContent backdropProps={{ forceRender: true }} className="w-[520px]">
           <DialogCloseButton
             aria-label={t('operation.close', { ns: 'common' })}
             className="top-6 right-6"

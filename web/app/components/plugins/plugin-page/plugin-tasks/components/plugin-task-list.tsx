@@ -54,21 +54,14 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
           plugins={successPlugins}
           getIconUrl={getIconUrl}
           language={language}
-          statusIcon={
-            <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
-          }
+          statusIcon={<span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />}
           defaultStatusText={t('task.installed', { ns: 'plugin' })}
           statusClassName="text-text-success"
-          headerAction={(
-            <Button
-              className="shrink-0"
-              size="small"
-              variant="ghost"
-              onClick={onClearAll}
-            >
+          headerAction={
+            <Button className="shrink-0" size="small" variant="ghost" onClick={onClearAll}>
               {t('task.clearAll', { ns: 'plugin' })}
             </Button>
-          )}
+          }
           onClearSingle={onClearSingle}
         />
       )}
@@ -78,12 +71,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
         <>
           <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
             {t('task.installedError', { ns: 'plugin', errorLength: errorPlugins.length })}
-            <Button
-              className="shrink-0"
-              size="small"
-              variant="ghost"
-              onClick={onClearErrors}
-            >
+            <Button className="shrink-0" size="small" variant="ghost" onClick={onClearErrors}>
               {t('task.clearAll', { ns: 'plugin' })}
             </Button>
           </div>
@@ -95,7 +83,7 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
               content: 'min-w-0',
             }}
           >
-            {errorPlugins.map(plugin => (
+            {errorPlugins.map((plugin) => (
               <ErrorPluginItem
                 key={plugin.plugin_unique_identifier}
                 plugin={plugin}

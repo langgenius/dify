@@ -3,14 +3,16 @@ import { generateZodSchema } from '../utils'
 
 describe('input-field scenario schema generator', () => {
   it('should validate required text input with max length', () => {
-    const schema = generateZodSchema([{
-      type: InputFieldType.textInput,
-      variable: 'prompt',
-      label: 'Prompt',
-      required: true,
-      maxLength: 5,
-      showConditions: [],
-    }])
+    const schema = generateZodSchema([
+      {
+        type: InputFieldType.textInput,
+        variable: 'prompt',
+        label: 'Prompt',
+        required: true,
+        maxLength: 5,
+        showConditions: [],
+      },
+    ])
 
     expect(schema.safeParse({ prompt: 'hello' }).success).toBe(true)
     expect(schema.safeParse({ prompt: '' }).success).toBe(false)
@@ -18,36 +20,44 @@ describe('input-field scenario schema generator', () => {
   })
 
   it('should validate file types payload shape', () => {
-    const schema = generateZodSchema([{
-      type: InputFieldType.fileTypes,
-      variable: 'files',
-      label: 'Files',
-      required: true,
-      showConditions: [],
-    }])
-
-    expect(schema.safeParse({
-      files: {
-        allowedFileExtensions: 'txt,pdf',
-        allowedFileTypes: ['document'],
+    const schema = generateZodSchema([
+      {
+        type: InputFieldType.fileTypes,
+        variable: 'files',
+        label: 'Files',
+        required: true,
+        showConditions: [],
       },
-    }).success).toBe(true)
+    ])
 
-    expect(schema.safeParse({
-      files: {
-        allowedFileTypes: ['invalid-type'],
-      },
-    }).success).toBe(false)
+    expect(
+      schema.safeParse({
+        files: {
+          allowedFileExtensions: 'txt,pdf',
+          allowedFileTypes: ['document'],
+        },
+      }).success,
+    ).toBe(true)
+
+    expect(
+      schema.safeParse({
+        files: {
+          allowedFileTypes: ['invalid-type'],
+        },
+      }).success,
+    ).toBe(false)
   })
 
   it('should allow optional upload method fields to be omitted', () => {
-    const schema = generateZodSchema([{
-      type: InputFieldType.uploadMethod,
-      variable: 'methods',
-      label: 'Methods',
-      required: false,
-      showConditions: [],
-    }])
+    const schema = generateZodSchema([
+      {
+        type: InputFieldType.uploadMethod,
+        variable: 'methods',
+        label: 'Methods',
+        required: false,
+        showConditions: [],
+      },
+    ])
 
     expect(schema.safeParse({}).success).toBe(true)
   })
@@ -114,38 +124,44 @@ describe('input-field scenario schema generator', () => {
       },
     ])
 
-    expect(schema.safeParse({
-      count: 2,
-      temperature: 0.5,
-      enabled: true,
-      choices: ['a'],
-      mode: 'safe',
-      inputType: 'text',
-      methods: ['local_file'],
-      other: { key: 'value' },
-    }).success).toBe(true)
+    expect(
+      schema.safeParse({
+        count: 2,
+        temperature: 0.5,
+        enabled: true,
+        choices: ['a'],
+        mode: 'safe',
+        inputType: 'text',
+        methods: ['local_file'],
+        other: { key: 'value' },
+      }).success,
+    ).toBe(true)
 
-    expect(schema.safeParse({
-      count: 0,
-      temperature: 0.5,
-      enabled: true,
-      choices: ['a'],
-      mode: 'safe',
-      inputType: 'text',
-      methods: ['local_file'],
-      other: { key: 'value' },
-    }).success).toBe(false)
+    expect(
+      schema.safeParse({
+        count: 0,
+        temperature: 0.5,
+        enabled: true,
+        choices: ['a'],
+        mode: 'safe',
+        inputType: 'text',
+        methods: ['local_file'],
+        other: { key: 'value' },
+      }).success,
+    ).toBe(false)
 
-    expect(schema.safeParse({
-      count: 4,
-      temperature: 0.5,
-      enabled: true,
-      choices: ['a'],
-      mode: 'safe',
-      inputType: 'text',
-      methods: ['local_file'],
-      other: { key: 'value' },
-    }).success).toBe(false)
+    expect(
+      schema.safeParse({
+        count: 4,
+        temperature: 0.5,
+        enabled: true,
+        choices: ['a'],
+        mode: 'safe',
+        inputType: 'text',
+        methods: ['local_file'],
+        other: { key: 'value' },
+      }).success,
+    ).toBe(false)
   })
 
   it('should ignore constraints for irrelevant field types', () => {

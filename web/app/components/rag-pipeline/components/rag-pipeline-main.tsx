@@ -1,8 +1,5 @@
 import type { WorkflowProps } from '@/app/components/workflow'
-import {
-  useCallback,
-  useMemo,
-} from 'react'
+import { useCallback, useMemo } from 'react'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -20,32 +17,25 @@ import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
 import RagPipelineChildren from './rag-pipeline-children'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
-const RagPipelineMain = ({
-  nodes,
-  edges,
-  viewport,
-}: RagPipelineMainProps) => {
+const RagPipelineMain = ({ nodes, edges, viewport }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
 
-  const handleWorkflowDataUpdate = useCallback((payload: any) => {
-    const {
-      rag_pipeline_variables,
-      environment_variables,
-    } = payload
-    if (rag_pipeline_variables) {
-      const { setRagPipelineVariables } = workflowStore.getState()
-      setRagPipelineVariables?.(rag_pipeline_variables)
-    }
-    if (environment_variables) {
-      const { setEnvironmentVariables } = workflowStore.getState()
-      setEnvironmentVariables(environment_variables)
-    }
-  }, [workflowStore])
+  const handleWorkflowDataUpdate = useCallback(
+    (payload: any) => {
+      const { rag_pipeline_variables, environment_variables } = payload
+      if (rag_pipeline_variables) {
+        const { setRagPipelineVariables } = workflowStore.getState()
+        setRagPipelineVariables?.(rag_pipeline_variables)
+      }
+      if (environment_variables) {
+        const { setEnvironmentVariables } = workflowStore.getState()
+        setEnvironmentVariables(environment_variables)
+      }
+    },
+    [workflowStore],
+  )
 
-  const {
-    doSyncWorkflowDraft,
-    syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
+  const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraft()
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
   const {
     handleBackupDraft,
@@ -54,16 +44,10 @@ const RagPipelineMain = ({
     handleRun,
     handleStopRun,
   } = usePipelineRun()
-  const {
-    handleStartWorkflowRun,
-    handleWorkflowStartRunInWorkflow,
-  } = usePipelineStartRun()
+  const { handleStartWorkflowRun, handleWorkflowStartRunInWorkflow } = usePipelineStartRun()
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
-  const {
-    exportCheck,
-    handleExportDSL,
-  } = useDSL()
+  const { exportCheck, handleExportDSL } = useDSL()
 
   const configsMap = useConfigsMap()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({

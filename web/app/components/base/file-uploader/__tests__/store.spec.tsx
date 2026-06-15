@@ -69,7 +69,7 @@ describe('useStore', () => {
     const files = [createMockFile()]
     const store = createFileStore(files)
 
-    const { result } = renderHook(() => useStore(s => s.files), {
+    const { result } = renderHook(() => useStore((s) => s.files), {
       wrapper: ({ children }) => (
         <FileContext.Provider value={store}>{children}</FileContext.Provider>
       ),
@@ -82,7 +82,7 @@ describe('useStore', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     expect(() => {
-      renderHook(() => useStore(s => s.files))
+      renderHook(() => useStore((s) => s.files))
     }).toThrow('Missing FileContext.Provider in the tree')
 
     consoleError.mockRestore()
@@ -121,7 +121,7 @@ describe('FileContextProvider', () => {
 
   it('should provide a store to children', () => {
     const TestChild = () => {
-      const files = useStore(s => s.files)
+      const files = useStore((s) => s.files)
       return <div data-testid="files">{files.length}</div>
     }
 
@@ -137,7 +137,7 @@ describe('FileContextProvider', () => {
   it('should initialize store with value prop', () => {
     const files = [createMockFile()]
     const TestChild = () => {
-      const storeFiles = useStore(s => s.files)
+      const storeFiles = useStore((s) => s.files)
       return <div data-testid="files">{storeFiles.length}</div>
     }
 
@@ -152,7 +152,7 @@ describe('FileContextProvider', () => {
 
   it('should reuse store on re-render instead of creating a new one', () => {
     const TestChild = () => {
-      const storeFiles = useStore(s => s.files)
+      const storeFiles = useStore((s) => s.files)
       return <div data-testid="files">{storeFiles.length}</div>
     }
 

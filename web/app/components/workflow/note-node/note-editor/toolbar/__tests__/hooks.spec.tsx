@@ -47,19 +47,22 @@ const {
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext', () => ({
-  useLexicalComposerContext: () => ([{
-    dispatchCommand: mockDispatchCommand,
-    update: mockEditorUpdate,
-    registerUpdateListener: mockRegisterUpdateListener,
-    registerCommand: mockRegisterCommand,
-    getEditorState: () => ({
-      read: mockRead,
-    }),
-  }]),
+  useLexicalComposerContext: () => [
+    {
+      dispatchCommand: mockDispatchCommand,
+      update: mockEditorUpdate,
+      registerUpdateListener: mockRegisterUpdateListener,
+      registerCommand: mockRegisterCommand,
+      getEditorState: () => ({
+        read: mockRead,
+      }),
+    },
+  ],
 }))
 
 vi.mock('@lexical/link', () => ({
-  $isLinkNode: (node: unknown) => Boolean(node && typeof node === 'object' && 'isLink' in (node as object)),
+  $isLinkNode: (node: unknown) =>
+    Boolean(node && typeof node === 'object' && 'isLink' in (node as object)),
   TOGGLE_LINK_COMMAND: 'toggle-link-command',
 }))
 
@@ -75,7 +78,10 @@ vi.mock('@lexical/selection', () => ({
 }))
 
 vi.mock('@lexical/utils', () => ({
-  mergeRegister: (...cleanups: Array<() => void>) => () => cleanups.forEach(cleanup => cleanup()),
+  mergeRegister:
+    (...cleanups: Array<() => void>) =>
+    () =>
+      cleanups.forEach((cleanup) => cleanup()),
 }))
 
 vi.mock('lexical', () => ({

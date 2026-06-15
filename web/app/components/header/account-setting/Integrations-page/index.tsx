@@ -31,34 +31,39 @@ export default function IntegrationsPage() {
     <>
       <div className="mb-8">
         <div className={titleClassName}>{t('integrations.connected', { ns: 'common' })}</div>
-        {
-          integrates.map((integrate) => {
-            const info = integrateMap[integrate.provider]
-            if (!info)
-              return null
-            return (
-              <div key={integrate.provider} className="mb-2 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-gray-50 px-3 py-2">
-                <div className={cn('mr-3 size-8 rounded-lg border border-gray-100 bg-white', s[`${integrate.provider}-icon`])} />
-                <div className="grow">
-                  <div className="text-sm leading-[21px] font-medium text-gray-800">{info.name}</div>
-                  <div className="text-xs leading-[18px] font-normal text-gray-500">{info.description}</div>
+        {integrates.map((integrate) => {
+          const info = integrateMap[integrate.provider]
+          if (!info) return null
+          return (
+            <div
+              key={integrate.provider}
+              className="mb-2 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-gray-50 px-3 py-2"
+            >
+              <div
+                className={cn(
+                  'mr-3 size-8 rounded-lg border border-gray-100 bg-white',
+                  s[`${integrate.provider}-icon`],
+                )}
+              />
+              <div className="grow">
+                <div className="text-sm leading-[21px] font-medium text-gray-800">{info.name}</div>
+                <div className="text-xs leading-[18px] font-normal text-gray-500">
+                  {info.description}
                 </div>
-                {
-                  !integrate.is_bound && (
-                    <Link
-                      className="flex h-8 cursor-pointer items-center rounded-lg border border-gray-200 bg-white px-[7px] text-xs font-medium text-gray-700"
-                      href={integrate.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {t('integrations.connect', { ns: 'common' })}
-                    </Link>
-                  )
-                }
               </div>
-            )
-          })
-        }
+              {!integrate.is_bound && (
+                <Link
+                  className="flex h-8 cursor-pointer items-center rounded-lg border border-gray-200 bg-white px-[7px] text-xs font-medium text-gray-700"
+                  href={integrate.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t('integrations.connect', { ns: 'common' })}
+                </Link>
+              )}
+            </div>
+          )
+        })}
       </div>
       {/* <div className='mb-8'>
         <div className={titleClassName}>Add a service </div>

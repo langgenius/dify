@@ -11,7 +11,7 @@ type CreditsExhaustedAlertProps = {
 
 export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExhaustedAlertProps) {
   const { t } = useTranslation()
-  const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
+  const setShowPricingModal = useModalContextSelector((s) => s.setShowPricingModal)
   const { credits, totalCredits } = useTrialCredits()
 
   const titleKey = hasApiKeyFallback
@@ -29,9 +29,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
   return (
     <div className="mx-2 mt-0.5 mb-1 rounded-lg bg-background-section-burn p-3">
       <div className="flex flex-col gap-1">
-        <div className="system-sm-medium text-text-primary">
-          {t(titleKey, { ns: 'common' })}
-        </div>
+        <div className="system-sm-medium text-text-primary">{t(titleKey, { ns: 'common' })}</div>
         <div className="system-xs-regular text-text-tertiary">
           <Trans
             i18nKey={descriptionKey}
@@ -56,9 +54,7 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
             <CreditsCoin className="size-3" />
             <span>
-              {formatNumber(usedCredits)}
-              /
-              {formatNumber(totalCredits)}
+              {formatNumber(usedCredits)}/{formatNumber(totalCredits)}
             </span>
           </div>
         </div>

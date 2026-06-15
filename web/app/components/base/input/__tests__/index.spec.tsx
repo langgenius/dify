@@ -4,10 +4,12 @@ import { createReactI18nextMock } from '@/test/i18n-mock'
 import Input, { inputVariants } from '../index'
 
 // Mock the i18n hook with custom translations for test assertions
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'operation.search': 'Search',
-  'placeholder.input': 'Please input',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    'operation.search': 'Search',
+    'placeholder.input': 'Please input',
+  }),
+)
 
 describe('Input component', () => {
   describe('Variants', () => {

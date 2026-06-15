@@ -13,10 +13,7 @@ import { useProviderContext } from '@/context/provider-context'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
-const AppsFull: FC<{ loc: string, className?: string }> = ({
-  loc,
-  className,
-}) => {
+const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const { userProfile, langGeniusVersionInfo } = useAppContext()
@@ -27,10 +24,11 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
   const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
   const buildAppsLabel = t('usagePage.buildApps', { ns: 'billing' })
   return (
-    <div className={cn(
-      'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
-      className,
-    )}
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-xs',
+        className,
+      )}
     >
       <div className="flex justify-between">
         {!isTeam && (
@@ -38,7 +36,9 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
               {t('apps.fullTip1', { ns: 'billing' })}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip1des', { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t('apps.fullTip1des', { ns: 'billing' })}
+            </div>
           </div>
         )}
         {isTeam && (
@@ -46,7 +46,9 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
             <div className={cn('mb-1 title-xl-semi-bold', s.textGradient)}>
               {t('apps.fullTip2', { ns: 'billing' })}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip2des', { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-text-tertiary">
+              {t('apps.fullTip2des', { ns: 'billing' })}
+            </div>
           </div>
         )}
         {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
@@ -54,7 +56,15 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         )}
         {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
           <Button variant="secondary-accent">
-            <a target="_blank" rel="noopener noreferrer" href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo.current_version)}>
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href={mailToSupport(
+                userProfile.email,
+                plan.type,
+                langGeniusVersionInfo.current_version,
+              )}
+            >
               {t('apps.contactUs', { ns: 'billing' })}
             </a>
           </Button>
@@ -64,9 +74,7 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         <div className="flex items-center justify-between system-xs-medium text-text-secondary">
           <div>{buildAppsLabel}</div>
           <div>
-            {usage}
-            /
-            {total}
+            {usage}/{total}
           </div>
         </div>
         <MeterRoot value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>

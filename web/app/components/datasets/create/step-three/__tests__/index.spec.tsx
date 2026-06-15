@@ -1,4 +1,9 @@
-import type { createDocumentResponse, DataSet, FullDocumentDetail, IconInfo } from '@/models/datasets'
+import type {
+  createDocumentResponse,
+  DataSet,
+  FullDocumentDetail,
+  IconInfo,
+} from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import { RETRIEVE_METHOD } from '@/types/app'
 import StepThree from '../index'
@@ -42,40 +47,43 @@ const createMockIconInfo = (overrides: Partial<IconInfo> = {}): IconInfo => ({
 })
 
 // Factory function to create mock FullDocumentDetail
-const createMockDocument = (overrides: Partial<FullDocumentDetail> = {}): FullDocumentDetail => ({
-  id: 'doc-123',
-  name: 'test-document.txt',
-  data_source_type: 'upload_file',
-  data_source_info: {
-    upload_file: {
-      id: 'file-123',
-      name: 'test-document.txt',
-      extension: 'txt',
-      mime_type: 'text/plain',
-      size: 1024,
-      created_by: 'user-1',
-      created_at: Date.now(),
+const createMockDocument = (overrides: Partial<FullDocumentDetail> = {}): FullDocumentDetail =>
+  ({
+    id: 'doc-123',
+    name: 'test-document.txt',
+    data_source_type: 'upload_file',
+    data_source_info: {
+      upload_file: {
+        id: 'file-123',
+        name: 'test-document.txt',
+        extension: 'txt',
+        mime_type: 'text/plain',
+        size: 1024,
+        created_by: 'user-1',
+        created_at: Date.now(),
+      },
     },
-  },
-  batch: 'batch-123',
-  created_api_request_id: 'request-123',
-  processing_started_at: Date.now(),
-  parsing_completed_at: Date.now(),
-  cleaning_completed_at: Date.now(),
-  splitting_completed_at: Date.now(),
-  tokens: 100,
-  indexing_latency: 5000,
-  completed_at: Date.now(),
-  paused_by: '',
-  paused_at: 0,
-  stopped_at: 0,
-  indexing_status: 'completed',
-  disabled_at: 0,
-  ...overrides,
-} as FullDocumentDetail)
+    batch: 'batch-123',
+    created_api_request_id: 'request-123',
+    processing_started_at: Date.now(),
+    parsing_completed_at: Date.now(),
+    cleaning_completed_at: Date.now(),
+    splitting_completed_at: Date.now(),
+    tokens: 100,
+    indexing_latency: 5000,
+    completed_at: Date.now(),
+    paused_by: '',
+    paused_at: 0,
+    stopped_at: 0,
+    indexing_status: 'completed',
+    disabled_at: 0,
+    ...overrides,
+  }) as FullDocumentDetail
 
 // Factory function to create mock createDocumentResponse
-const createMockCreationCache = (overrides: Partial<createDocumentResponse> = {}): createDocumentResponse => ({
+const createMockCreationCache = (
+  overrides: Partial<createDocumentResponse> = {},
+): createDocumentResponse => ({
   dataset: {
     id: 'dataset-123',
     name: 'Test Dataset',
@@ -143,7 +151,9 @@ describe('StepThree', () => {
 
       expect(screen.getByText('datasetCreation.stepThree.sideTipTitle')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepThree.sideTipContent')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.addDocuments.stepThree.learnMore')).toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.addDocuments.stepThree.learnMore'),
+      ).toBeInTheDocument()
     })
 
     it('should not render side tip panel on mobile', () => {
@@ -167,7 +177,10 @@ describe('StepThree', () => {
       renderStepThree()
 
       const link = screen.getByText('datasetPipeline.addDocuments.stepThree.learnMore')
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/use-dify/knowledge/integrate-knowledge-within-application')
+      expect(link).toHaveAttribute(
+        'href',
+        'https://docs.dify.ai/en-US/use-dify/knowledge/integrate-knowledge-within-application',
+      )
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     })
@@ -176,7 +189,13 @@ describe('StepThree', () => {
       const { container } = renderStepThree()
 
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv).toHaveClass('flex', 'size-full', 'max-h-full', 'justify-center', 'overflow-y-auto')
+      expect(outerDiv).toHaveClass(
+        'flex',
+        'size-full',
+        'max-h-full',
+        'justify-center',
+        'overflow-y-auto',
+      )
     })
   })
 
@@ -226,7 +245,9 @@ describe('StepThree', () => {
         })
 
         // Assert - Check the text contains the dataset name (in the description)
-        const description = screen.getByText(/datasetCreation.stepThree.additionP1.*Existing Dataset Name.*datasetCreation.stepThree.additionP2/i)
+        const description = screen.getByText(
+          /datasetCreation.stepThree.additionP1.*Existing Dataset Name.*datasetCreation.stepThree.additionP2/i,
+        )
         expect(description).toBeInTheDocument()
       })
 
@@ -249,7 +270,8 @@ describe('StepThree', () => {
 
       it('should use creationCache indexing_technique when indexingType is not provided', () => {
         const creationCache = createMockCreationCache()
-        creationCache.dataset!.indexing_technique = 'economy' as unknown as DataSet['indexing_technique']
+        creationCache.dataset!.indexing_technique =
+          'economy' as unknown as DataSet['indexing_technique']
 
         renderStepThree({ creationCache })
 
@@ -258,7 +280,8 @@ describe('StepThree', () => {
 
       it('should prefer creationCache indexing_technique over indexingType prop', () => {
         const creationCache = createMockCreationCache()
-        creationCache.dataset!.indexing_technique = 'cache_technique' as unknown as DataSet['indexing_technique']
+        creationCache.dataset!.indexing_technique =
+          'cache_technique' as unknown as DataSet['indexing_technique']
 
         renderStepThree({ creationCache, indexingType: 'prop_technique' })
 
@@ -276,7 +299,9 @@ describe('StepThree', () => {
 
       it('should use creationCache retrieval method when retrievalMethod is not provided', () => {
         const creationCache = createMockCreationCache()
-        creationCache.dataset!.retrieval_model_dict = { search_method: 'full_text_search' } as unknown as DataSet['retrieval_model_dict']
+        creationCache.dataset!.retrieval_model_dict = {
+          search_method: 'full_text_search',
+        } as unknown as DataSet['retrieval_model_dict']
 
         renderStepThree({ creationCache })
 
@@ -296,7 +321,11 @@ describe('StepThree', () => {
 
       it('should pass documents from creationCache to EmbeddingProcess', () => {
         const creationCache = createMockCreationCache()
-        creationCache.documents = [createMockDocument(), createMockDocument(), createMockDocument()] as unknown as createDocumentResponse['documents']
+        creationCache.documents = [
+          createMockDocument(),
+          createMockDocument(),
+          createMockDocument(),
+        ] as unknown as createDocumentResponse['documents']
 
         renderStepThree({ creationCache })
 
@@ -558,8 +587,7 @@ describe('StepThree', () => {
 
       // Assert - Default background color should be applied
       const appIcon = container.querySelector('span[style*="background"]')
-      if (appIcon)
-        expect(appIcon).toHaveStyle({ background: '#FFF4ED' })
+      if (appIcon) expect(appIcon).toHaveStyle({ background: '#FFF4ED' })
     })
 
     it('should use icon_info from creationCache when available', () => {
@@ -575,8 +603,7 @@ describe('StepThree', () => {
 
       // Assert - Custom background color should be applied
       const appIcon = container.querySelector('span[style*="background"]')
-      if (appIcon)
-        expect(appIcon).toHaveStyle({ background: '#00FF00' })
+      if (appIcon) expect(appIcon).toHaveStyle({ background: '#00FF00' })
     })
 
     it('should use default icon when creationCache dataset icon_info is undefined', () => {

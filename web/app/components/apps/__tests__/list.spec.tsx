@@ -7,9 +7,11 @@ import { AppModeEnum } from '@/types/app'
 import List from '../list'
 
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
-  onlineUsersMap: {},
-})))
+const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
+  vi.fn((_options: unknown) => ({
+    onlineUsersMap: {},
+  })),
+)
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
@@ -64,7 +66,8 @@ const mockQueryState = {
   creatorIDs: [] as string[],
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
-  isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
+  isAppListCategory: (value: string) =>
+    value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
   useAppsQueryState: () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
@@ -86,11 +89,23 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({ value, onChange, onOpenTagManagement }: { value: string[], onChange: (value: string[]) => void, onOpenTagManagement: () => void }) => (
+  TagFilter: ({
+    value,
+    onChange,
+    onOpenTagManagement,
+  }: {
+    value: string[]
+    onChange: (value: string[]) => void
+    onOpenTagManagement: () => void
+  }) => (
     <div>
-      <button type="button" onClick={() => onChange(['tag-1'])}>common.tag.placeholder</button>
+      <button type="button" onClick={() => onChange(['tag-1'])}>
+        common.tag.placeholder
+      </button>
       <span data-testid="tag-filter-value">{value.join(',')}</span>
-      <button type="button" onClick={onOpenTagManagement}>Manage tags</button>
+      <button type="button" onClick={onOpenTagManagement}>
+        Manage tags
+      </button>
     </div>
   ),
 }))
@@ -120,37 +135,39 @@ const mockServiceState = {
 }
 
 const defaultAppData = {
-  pages: [{
-    data: [
-      {
-        id: 'app-1',
-        name: 'Test App 1',
-        description: 'Description 1',
-        mode: AppModeEnum.CHAT,
-        icon: '🤖',
-        icon_type: 'emoji',
-        icon_background: '#FFEAD5',
-        tags: [],
-        author_name: 'Author 1',
-        created_at: 1704067200,
-        updated_at: 1704153600,
-      },
-      {
-        id: 'app-2',
-        name: 'Test App 2',
-        description: 'Description 2',
-        mode: AppModeEnum.WORKFLOW,
-        icon: '⚙️',
-        icon_type: 'emoji',
-        icon_background: '#E4FBCC',
-        tags: [],
-        author_name: 'Author 2',
-        created_at: 1704067200,
-        updated_at: 1704153600,
-      },
-    ],
-    total: 2,
-  }],
+  pages: [
+    {
+      data: [
+        {
+          id: 'app-1',
+          name: 'Test App 1',
+          description: 'Description 1',
+          mode: AppModeEnum.CHAT,
+          icon: '🤖',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        },
+        {
+          id: 'app-2',
+          name: 'Test App 2',
+          description: 'Description 2',
+          mode: AppModeEnum.WORKFLOW,
+          icon: '⚙️',
+          icon_type: 'emoji',
+          icon_background: '#E4FBCC',
+          tags: [],
+          author_name: 'Author 2',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        },
+      ],
+      total: 2,
+    },
+  ],
 }
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -199,10 +216,30 @@ vi.mock('@/next/dynamic', () => ({
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
+      return function MockCreateFromDSLModal({
+        show,
+        onClose,
+        onSuccess,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-dsl-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-dsl-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-dsl-modal' },
+            'Success',
+          ),
+        )
       }
     }
     return () => null
@@ -210,26 +247,38 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
-  default: ({ app }: { app: { id: string, name: string } }) => {
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  default: ({ app }: { app: { id: string; name: string } }) => {
+    return React.createElement(
+      'div',
+      { 'data-testid': `app-card-${app.id}`, role: 'article' },
+      app.name,
+    )
   },
 }))
 
 vi.mock('../new-app-card', () => ({
   default: (_props: { ref?: React.Ref<unknown> }) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
+    return React.createElement(
+      'div',
+      { 'data-testid': 'new-app-card', role: 'button' },
+      'New App Card',
+    )
   },
 }))
 
 vi.mock('../empty', () => ({
   default: () => {
-    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
+    return React.createElement(
+      'div',
+      { 'data-testid': 'empty-state', role: 'status' },
+      'No apps found',
+    )
   },
 }))
 
 vi.mock('../footer', () => ({
   default: () => {
-    return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
+    return React.createElement('footer', { 'data-testid': 'footer', role: 'contentinfo' }, 'Footer')
   },
 }))
 
@@ -260,7 +309,12 @@ const renderList = (searchParams = '') => {
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
     systemFeatures: { branding: { enabled: false } },
   })
-  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
+  return renderWithNuqs(
+    <SystemFeaturesWrapper>
+      <List />
+    </SystemFeaturesWrapper>,
+    { searchParams },
+  )
 }
 
 const openTypeFilter = () => {
@@ -269,7 +323,7 @@ const openTypeFilter = () => {
 
 type AppListInfiniteOptions = {
   input: (pageParam: number) => { query: Record<string, unknown> }
-  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
 }
 
 describe('List', () => {
@@ -311,7 +365,9 @@ describe('List', () => {
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -327,7 +383,10 @@ describe('List', () => {
     it('should render link to snippets on apps page', () => {
       renderList()
 
-      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute('href', '/snippets')
+      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute(
+        'href',
+        '/snippets',
+      )
     })
 
     it('should render app cards when apps exist', () => {
@@ -386,13 +445,17 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.gotoAnything.actions.searchApplications',
+      })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -530,7 +593,9 @@ describe('List', () => {
 
       expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
       expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
     })
   })
@@ -610,8 +675,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -622,8 +686,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -638,8 +701,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -660,10 +722,12 @@ describe('List', () => {
 
       if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallbacks.forEach(callback => callback(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          ))
+          intersectionCallbacks.forEach((callback) =>
+            callback(
+              [{ isIntersecting: true } as IntersectionObserverEntry],
+              {} as IntersectionObserver,
+            ),
+          )
         })
       }
 
@@ -676,10 +740,12 @@ describe('List', () => {
 
       if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallbacks.forEach(callback => callback(
-            [{ isIntersecting: false } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          ))
+          intersectionCallbacks.forEach((callback) =>
+            callback(
+              [{ isIntersecting: false } as IntersectionObserverEntry],
+              {} as IntersectionObserver,
+            ),
+          )
         })
       }
 
@@ -693,10 +759,12 @@ describe('List', () => {
 
       if (intersectionCallbacks.length) {
         act(() => {
-          intersectionCallbacks.forEach(callback => callback(
-            [{ isIntersecting: true } as IntersectionObserverEntry],
-            {} as IntersectionObserver,
-          ))
+          intersectionCallbacks.forEach((callback) =>
+            callback(
+              [{ isIntersecting: true } as IntersectionObserverEntry],
+              {} as IntersectionObserver,
+            ),
+          )
         })
       }
 

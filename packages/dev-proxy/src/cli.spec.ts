@@ -35,59 +35,56 @@ const getFreePort = async () => {
   })
 
   const address = server.address()
-  if (!address || typeof address === 'string')
-    throw new Error('Failed to allocate a test port.')
+  if (!address || typeof address === 'string') throw new Error('Failed to allocate a test port.')
 
   const { port } = address
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
-      if (error)
-        reject(error)
-      else
-        resolve()
+      if (error) reject(error)
+      else resolve()
     })
   })
 
   return port
 }
 
-const waitForOutput = (
-  child: DevProxyCliProcess,
-  output: () => string,
-  expectedOutput: string,
-) => new Promise<void>((resolve, reject) => {
-  let timeout: ReturnType<typeof setTimeout>
+const waitForOutput = (child: DevProxyCliProcess, output: () => string, expectedOutput: string) =>
+  new Promise<void>((resolve, reject) => {
+    let timeout: ReturnType<typeof setTimeout>
 
-  function cleanup() {
-    clearTimeout(timeout)
-    child.stdout.off('data', onData)
-    child.stderr.off('data', onData)
-    child.off('exit', onExit)
-  }
+    function cleanup() {
+      clearTimeout(timeout)
+      child.stdout.off('data', onData)
+      child.stderr.off('data', onData)
+      child.off('exit', onExit)
+    }
 
-  function onData() {
-    if (!output().includes(expectedOutput))
-      return
+    function onData() {
+      if (!output().includes(expectedOutput)) return
 
-    cleanup()
-    resolve()
-  }
+      cleanup()
+      resolve()
+    }
 
-  function onExit(code: number | null, signal: NodeJS.Signals | null) {
-    cleanup()
-    reject(new Error(`dev-proxy exited before writing "${expectedOutput}" with code ${code} and signal ${signal}. Output:\n${output()}`))
-  }
+    function onExit(code: number | null, signal: NodeJS.Signals | null) {
+      cleanup()
+      reject(
+        new Error(
+          `dev-proxy exited before writing "${expectedOutput}" with code ${code} and signal ${signal}. Output:\n${output()}`,
+        ),
+      )
+    }
 
-  timeout = setTimeout(() => {
-    cleanup()
-    reject(new Error(`Timed out waiting for "${expectedOutput}". Output:\n${output()}`))
-  }, 3000)
+    timeout = setTimeout(() => {
+      cleanup()
+      reject(new Error(`Timed out waiting for "${expectedOutput}". Output:\n${output()}`))
+    }, 3000)
 
-  child.stdout.on('data', onData)
-  child.stderr.on('data', onData)
-  child.once('exit', onExit)
-  onData()
-})
+    child.stdout.on('data', onData)
+    child.stderr.on('data', onData)
+    child.once('exit', onExit)
+    onData()
+  })
 
 const fetchTextWithRetry = async (url: string) => {
   let lastError: unknown
@@ -96,10 +93,9 @@ const fetchTextWithRetry = async (url: string) => {
     try {
       const response = await fetch(url)
       return response.text()
-    }
-    catch (error) {
+    } catch (error) {
       lastError = error
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
     }
   }
 
@@ -120,23 +116,19 @@ const spawnCli = (args: readonly string[], cwd: string) => {
 }
 
 const stopChildProcess = async (child: DevProxyCliProcess) => {
-  if (child.exitCode !== null || child.signalCode !== null)
-    return
+  if (child.exitCode !== null || child.signalCode !== null) return
 
   child.kill('SIGTERM')
   await once(child, 'exit')
 }
 
 const closeHttpServer = async (server: Server) => {
-  if (!server.listening)
-    return
+  if (!server.listening) return
 
   await new Promise<void>((resolve, reject) => {
     server.close((error) => {
-      if (error)
-        reject(error)
-      else
-        resolve()
+      if (error) reject(error)
+      else resolve()
     })
   })
 }
@@ -153,8 +145,7 @@ const startTextServer = async (body: string) => {
   })
 
   const address = server.address()
-  if (!address || typeof address === 'string')
-    throw new Error('Failed to start test server.')
+  if (!address || typeof address === 'string') throw new Error('Failed to start test server.')
 
   httpServers.push(server)
   return {
@@ -166,10 +157,14 @@ describe('dev proxy CLI', () => {
   afterEach(async () => {
     await Promise.all(childProcesses.splice(0).map(stopChildProcess))
     await Promise.all(httpServers.splice(0).map(closeHttpServer))
-    await Promise.all(tempDirs.splice(0).map(tempDir => fs.rm(tempDir, {
-      force: true,
-      recursive: true,
-    })))
+    await Promise.all(
+      tempDirs.splice(0).map((tempDir) =>
+        fs.rm(tempDir, {
+          force: true,
+          recursive: true,
+        }),
+      ),
+    )
   })
 
   // Scenario: help output should still be a normal short-lived command.
@@ -190,20 +185,26 @@ describe('dev proxy CLI', () => {
     // Arrange
     const tempDir = await createTempDir()
     const port = await getFreePort()
-    await fs.writeFile(path.join(tempDir, 'dev-proxy.config.ts'), `
+    await fs.writeFile(
+      path.join(tempDir, 'dev-proxy.config.ts'),
+      `
       export default {
         routes: [{ paths: '/api', target: 'https://api.example.com' }],
       }
-    `)
+    `,
+    )
 
     let output = ''
-    const child = spawnCli(['--config', './dev-proxy.config.ts', '--host', '127.0.0.1', '--port', String(port)], tempDir)
-    child.stdout.on('data', chunk => output += chunk.toString())
-    child.stderr.on('data', chunk => output += chunk.toString())
+    const child = spawnCli(
+      ['--config', './dev-proxy.config.ts', '--host', '127.0.0.1', '--port', String(port)],
+      tempDir,
+    )
+    child.stdout.on('data', (chunk) => (output += chunk.toString()))
+    child.stderr.on('data', (chunk) => (output += chunk.toString()))
 
     // Act
     await waitForOutput(child, () => output, `[dev-proxy] listening on http://127.0.0.1:${port}`)
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 100))
     const response = await fetch(`http://127.0.0.1:${port}/not-proxied`)
 
     // Assert
@@ -220,33 +221,45 @@ describe('dev proxy CLI', () => {
     const firstTarget = await startTextServer('first target')
     const secondTarget = await startTextServer('second target')
 
-    await fs.writeFile(path.join(tempDir, '.env.proxy'), `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${firstTarget.port}\n`)
-    await fs.writeFile(path.join(tempDir, 'dev-proxy.config.ts'), `
+    await fs.writeFile(
+      path.join(tempDir, '.env.proxy'),
+      `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${firstTarget.port}\n`,
+    )
+    await fs.writeFile(
+      path.join(tempDir, 'dev-proxy.config.ts'),
+      `
       export default {
         routes: [{ paths: '/api', target: process.env.DEV_PROXY_TEST_TARGET }],
       }
-    `)
+    `,
+    )
 
     let output = ''
-    const child = spawnCli([
-      '--config',
-      './dev-proxy.config.ts',
-      '--env-file',
-      './.env.proxy',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(port),
-    ], tempDir)
-    child.stdout.on('data', chunk => output += chunk.toString())
-    child.stderr.on('data', chunk => output += chunk.toString())
+    const child = spawnCli(
+      [
+        '--config',
+        './dev-proxy.config.ts',
+        '--env-file',
+        './.env.proxy',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        String(port),
+      ],
+      tempDir,
+    )
+    child.stdout.on('data', (chunk) => (output += chunk.toString()))
+    child.stderr.on('data', (chunk) => (output += chunk.toString()))
     const proxyUrl = `http://127.0.0.1:${port}/api/ping`
 
     // Act
     await waitForOutput(child, () => output, `[dev-proxy] listening on http://127.0.0.1:${port}`)
     const firstResponse = await fetchTextWithRetry(proxyUrl)
 
-    await fs.writeFile(path.join(tempDir, '.env.proxy'), `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${secondTarget.port}\n`)
+    await fs.writeFile(
+      path.join(tempDir, '.env.proxy'),
+      `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${secondTarget.port}\n`,
+    )
     await waitForOutput(child, () => output, '[dev-proxy] reloaded env file changes')
     const secondResponse = await fetchTextWithRetry(proxyUrl)
 

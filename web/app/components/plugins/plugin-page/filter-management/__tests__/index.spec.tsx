@@ -35,7 +35,7 @@ const mockCategories = [
   { name: 'agent', label: 'Agents' },
 ]
 
-const mockCategoriesMap: Record<string, { name: string, label: string }> = {
+const mockCategoriesMap: Record<string, { name: string; label: string }> = {
   model: { name: 'model', label: 'Models' },
   tool: { name: 'tool', label: 'Tools' },
   extension: { name: 'extension', label: 'Extensions' },
@@ -50,7 +50,7 @@ const mockTags = [
   { name: 'image', label: 'Image' },
 ]
 
-const mockTagsMap: Record<string, { name: string, label: string }> = {
+const mockTagsMap: Record<string, { name: string; label: string }> = {
   agent: { name: 'agent', label: 'Agent' },
   rag: { name: 'rag', label: 'RAG' },
   search: { name: 'search', label: 'Search' },
@@ -79,39 +79,45 @@ const MockPopoverContext = createContext<MockPopoverContextValue>({
 })
 
 vi.mock('@langgenius/dify-ui/popover', () => ({
-  Popover: ({ children, open, onOpenChange }: {
+  Popover: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode
     open: boolean
     onOpenChange?: (open: boolean) => void
   }) => (
     <MockPopoverContext.Provider value={{ open, onOpenChange }}>
-      <div data-testid="portal-container" data-open={open}>{children}</div>
+      <div data-testid="portal-container" data-open={open}>
+        {children}
+      </div>
     </MockPopoverContext.Provider>
   ),
-  PopoverTrigger: ({ children, render, className }: {
+  PopoverTrigger: ({
+    children,
+    render,
+    className,
+  }: {
     children?: React.ReactNode
     render?: React.ReactNode
     className?: string
   }) => {
     const { open, onOpenChange } = useContext(MockPopoverContext)
     return (
-      <div
-        data-testid="portal-trigger"
-        onClick={() => onOpenChange?.(!open)}
-        className={className}
-      >
+      <div data-testid="portal-trigger" onClick={() => onOpenChange?.(!open)} className={className}>
         {render ?? children}
       </div>
     )
   },
-  PopoverContent: ({ children, className }: {
-    children: React.ReactNode
-    className?: string
-  }) => {
+  PopoverContent: ({ children, className }: { children: React.ReactNode; className?: string }) => {
     const { open } = useContext(MockPopoverContext)
-    if (!open)
-      return null
-    return <div data-testid="portal-content" className={className}>{children}</div>
+    if (!open) return null
+    return (
+      <div data-testid="portal-content" className={className}>
+        {children}
+      </div>
+    )
   },
 }))
 
@@ -175,22 +181,22 @@ describe('constant.ts - Type Definitions', () => {
 describe('store.ts - Zustand Store', () => {
   describe('Initial State', () => {
     it('should have empty tagList initially', () => {
-      const { result } = renderHook(() => useStore(state => state.tagList))
+      const { result } = renderHook(() => useStore((state) => state.tagList))
       expect(result.current).toEqual([])
     })
 
     it('should have empty categoryList initially', () => {
-      const { result } = renderHook(() => useStore(state => state.categoryList))
+      const { result } = renderHook(() => useStore((state) => state.categoryList))
       expect(result.current).toEqual([])
     })
 
     it('should have showTagManagementModal false initially', () => {
-      const { result } = renderHook(() => useStore(state => state.showTagManagementModal))
+      const { result } = renderHook(() => useStore((state) => state.showTagManagementModal))
       expect(result.current).toBe(false)
     })
 
     it('should have showCategoryManagementModal false initially', () => {
-      const { result } = renderHook(() => useStore(state => state.showCategoryManagementModal))
+      const { result } = renderHook(() => useStore((state) => state.showCategoryManagementModal))
       expect(result.current).toBe(false)
     })
   })
@@ -636,7 +642,9 @@ describe('CategoriesFilter Component', () => {
     it('should clear all selections when clear button is clicked', () => {
       // Arrange
       const handleChange = vi.fn()
-      const { container } = render(<CategoriesFilter value={['model', 'tool']} onChange={handleChange} />)
+      const { container } = render(
+        <CategoriesFilter value={['model', 'tool']} onChange={handleChange} />,
+      )
 
       // Act - Find and click the close icon
       const closeIcon = container.querySelector('.text-text-quaternary')
@@ -696,7 +704,10 @@ describe('CategoriesFilter Component', () => {
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute('aria-checked', 'true')
+        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        )
       })
     })
 
@@ -708,7 +719,10 @@ describe('CategoriesFilter Component', () => {
       fireEvent.click(screen.getByTestId('portal-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute('aria-checked', 'false')
+        expect(screen.getByRole('checkbox', { name: 'Models' })).toHaveAttribute(
+          'aria-checked',
+          'false',
+        )
       })
     })
   })

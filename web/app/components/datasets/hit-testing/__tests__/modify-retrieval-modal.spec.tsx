@@ -22,11 +22,14 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
-    <button onClick={onClick}>
-      {children}
-    </button>
-  ),
+  Button: ({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode
+    onClick: () => void
+    variant?: string
+  }) => <button onClick={onClick}>{children}</button>,
 }))
 
 vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
@@ -34,10 +37,21 @@ vi.mock('@/app/components/datasets/common/check-rerank-model', () => ({
 }))
 
 vi.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  default: ({ value, onChange }: { value: RetrievalConfig, onChange: (v: RetrievalConfig) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: RetrievalConfig
+    onChange: (v: RetrievalConfig) => void
+  }) => (
     <div data-testid="retrieval-method-config">
       <span>{value.search_method}</span>
-      <button data-testid="change-config" onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}>change</button>
+      <button
+        data-testid="change-config"
+        onClick={() => onChange({ ...value, search_method: RETRIEVE_METHOD.hybrid })}
+      >
+        change
+      </button>
     </div>
   ),
 }))

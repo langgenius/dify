@@ -11,7 +11,11 @@ import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '@/app/components/billing/config'
+import {
+  contactSalesUrl,
+  getStartedWithCommunityUrl,
+  getWithPremiumUrl,
+} from '@/app/components/billing/config'
 import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-hosted-plan-item'
 import { SelfHostedPlan } from '@/app/components/billing/type'
 
@@ -74,8 +78,12 @@ describe('Self-Hosted Plan Flow', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
-        get href() { return assignedHref },
-        set href(value: string) { assignedHref = value },
+        get href() {
+          return assignedHref
+        },
+        set href(value: string) {
+          assignedHref = value
+        },
       },
     })
   })

@@ -4,7 +4,7 @@ import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import PluginTaskList from '../plugin-task-list'
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ src, size }: { src: string, size: string }) => (
+  default: ({ src, size }: { src: string; size: string }) => (
     <div data-testid="card-icon" data-src={src} data-size={size} />
   ),
 }))
@@ -23,7 +23,11 @@ vi.mock('@/context/i18n', () => ({
 
 const mockGetIconUrl = vi.fn((icon: string) => `https://icons/${icon}`)
 
-const createPlugin = (id: string, name: string, overrides: Partial<PluginStatus> = {}): PluginStatus => ({
+const createPlugin = (
+  id: string,
+  name: string,
+  overrides: Partial<PluginStatus> = {},
+): PluginStatus => ({
   plugin_unique_identifier: id,
   plugin_id: `org/${name.toLowerCase()}`,
   source: PluginSource.marketplace,
@@ -40,9 +44,7 @@ const runningPlugins = [
   createPlugin('r2', 'Anthropic', { status: TaskStatus.running }),
 ]
 
-const successPlugins = [
-  createPlugin('s1', 'Google', { status: TaskStatus.success }),
-]
+const successPlugins = [createPlugin('s1', 'Google', { status: TaskStatus.success })]
 
 const errorPlugins = [
   createPlugin('e1', 'DALLE', { status: TaskStatus.failed, plugin_id: 'org/dalle' }),
@@ -72,7 +74,9 @@ describe('PluginTaskList', () => {
     })
 
     it('should render running section when running plugins exist', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
+      const { container } = render(
+        <PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />,
+      )
 
       // Header contains the title text
       const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
@@ -83,7 +87,9 @@ describe('PluginTaskList', () => {
     })
 
     it('should render success section when success plugins exist', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
+      const { container } = render(
+        <PluginTaskList {...defaultProps} successPlugins={successPlugins} />,
+      )
 
       const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
       expect(headers).toHaveLength(1)
@@ -171,9 +177,8 @@ describe('PluginTaskList', () => {
 
       // The × close button from PluginItem (rendered inside PluginSection)
       const closeButtons = screen.getAllByRole('button')
-      const clearItemBtn = closeButtons.find(btn => !btn.textContent?.includes('plugin.task'))
-      if (clearItemBtn)
-        fireEvent.click(clearItemBtn)
+      const clearItemBtn = closeButtons.find((btn) => !btn.textContent?.includes('plugin.task'))
+      if (clearItemBtn) fireEvent.click(clearItemBtn)
 
       expect(onClearSingle).toHaveBeenCalledWith('task-1', 's1')
     })
@@ -240,12 +245,11 @@ describe('PluginTaskList', () => {
 
       // Find the × close button inside error items (not the "Clear all" button)
       const allButtons = screen.getAllByRole('button')
-      const clearItemBtn = allButtons.find(btn =>
-        !btn.textContent?.includes('plugin.task')
-        && !btn.textContent?.includes('installFrom'),
+      const clearItemBtn = allButtons.find(
+        (btn) =>
+          !btn.textContent?.includes('plugin.task') && !btn.textContent?.includes('installFrom'),
       )
-      if (clearItemBtn)
-        fireEvent.click(clearItemBtn)
+      if (clearItemBtn) fireEvent.click(clearItemBtn)
 
       expect(onClearSingle).toHaveBeenCalledWith('task-1', 'e1')
     })
@@ -268,7 +272,10 @@ describe('PluginTaskList', () => {
     it('should render error section with multiple error plugins', () => {
       const multipleErrors = [
         createPlugin('e1', 'PluginA', { status: TaskStatus.failed, plugin_id: 'org/a' }),
-        createPlugin('e2', 'PluginB', { status: TaskStatus.failed, plugin_id: 'https://github.com/b' }),
+        createPlugin('e2', 'PluginB', {
+          status: TaskStatus.failed,
+          plugin_id: 'https://github.com/b',
+        }),
         createPlugin('e3', 'PluginC', { status: TaskStatus.failed, plugin_id: 'local-only' }),
       ]
 

@@ -25,10 +25,12 @@ vi.mock('../var-reference-vars', () => ({
 const createOutputVar = (overrides: Partial<NodeOutPutVar> = {}): NodeOutPutVar => ({
   nodeId: 'node-1',
   title: 'Node One',
-  vars: [{
-    variable: 'answer',
-    type: VarType.string,
-  }],
+  vars: [
+    {
+      variable: 'answer',
+      type: VarType.string,
+    },
+  ],
   ...overrides,
 })
 
@@ -38,12 +40,7 @@ describe('AssignedVarReferencePopup', () => {
   })
 
   it('should render the empty state when there are no assigned variables', () => {
-    render(
-      <AssignedVarReferencePopup
-        vars={[]}
-        onChange={vi.fn()}
-      />,
-    )
+    render(<AssignedVarReferencePopup vars={[]} onChange={vi.fn()} />)
 
     expect(screen.getByText('workflow.nodes.assigner.noAssignedVars')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.assigner.assignedVarsDescription')).toBeInTheDocument()
@@ -54,11 +51,7 @@ describe('AssignedVarReferencePopup', () => {
     const onChange = vi.fn()
 
     render(
-      <AssignedVarReferencePopup
-        vars={[createOutputVar()]}
-        itemWidth={280}
-        onChange={onChange}
-      />,
+      <AssignedVarReferencePopup vars={[createOutputVar()]} itemWidth={280} onChange={onChange} />,
     )
 
     expect(screen.getByTestId('var-reference-vars')).toHaveTextContent('1')

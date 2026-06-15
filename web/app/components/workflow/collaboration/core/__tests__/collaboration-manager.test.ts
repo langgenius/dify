@@ -102,7 +102,10 @@ type CollaborationManagerInternals = {
   isUndoRedoInProgress: boolean
 }
 
-const createVariable = (name: string, overrides: Partial<WorkflowVariable> = {}): WorkflowVariable => ({
+const createVariable = (
+  name: string,
+  overrides: Partial<WorkflowVariable> = {},
+): WorkflowVariable => ({
   default: '',
   hint: '',
   label: name,
@@ -134,7 +137,7 @@ const createNodeSnapshot = (variableNames: string[]): Node<StartNodeData> => ({
     title: '开始',
     desc: '',
     type: BlockEnum.Start,
-    variables: variableNames.map(name => createVariable(name)),
+    variables: variableNames.map((name) => createVariable(name)),
   },
 })
 
@@ -177,7 +180,9 @@ const createLLMNodeSnapshot = (promptTemplates: PromptTemplateItem[]): Node<LLMN
   },
 })
 
-const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node<ParameterExtractorNodeData> => ({
+const createParameterExtractorNodeSnapshot = (
+  parameters: ParameterItem[],
+): Node<ParameterExtractorNodeData> => ({
   id: PARAM_NODE_ID,
   type: 'custom',
   position: { x: 420, y: 220 },
@@ -214,13 +219,13 @@ const createParameterExtractorNodeSnapshot = (parameters: ParameterItem[]): Node
 const getVariables = (node: Node): string[] => {
   const data = node.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
   const variables = data.variables ?? []
-  return variables.map(item => item.variable)
+  return variables.map((item) => item.variable)
 }
 
 const getVariableObject = (node: Node, name: string): WorkflowVariable | undefined => {
   const data = node.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
   const variables = data.variables ?? []
-  return variables.find(item => item.variable === name)
+  return variables.find((item) => item.variable === name)
 }
 
 const getPromptTemplates = (node: Node): PromptTemplateItem[] => {
@@ -236,7 +241,10 @@ const getParameters = (node: Node): ParameterItem[] => {
 const getManagerInternals = (manager: CollaborationManager): CollaborationManagerInternals =>
   manager as unknown as CollaborationManagerInternals
 
-const setupManager = (): { manager: CollaborationManager, internals: CollaborationManagerInternals } => {
+const setupManager = (): {
+  manager: CollaborationManager
+  internals: CollaborationManagerInternals
+} => {
   const manager = new CollaborationManager()
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
@@ -265,7 +273,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes(base, next)
 
-    const stored = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
+    const stored = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
     expect(stored).toBeDefined()
     expect(getVariables(stored!)).toEqual(['a', 'b'])
   })
@@ -277,12 +285,12 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes(base, userA)
 
-    const afterUserA = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
+    const afterUserA = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
     expect(getVariables(afterUserA!)).toEqual(['a', 'b'])
 
     internals.syncNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
+    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
 
     expect(finalVariables).toEqual(['a', 'c'])
@@ -295,9 +303,7 @@ describe('CollaborationManager syncNodes', () => {
         ...createNodeSnapshot(['a']),
         data: {
           ...createNodeSnapshot(['a']).data,
-          variables: [
-            createVariable('a', { label: 'A from userA', hint: 'hintA' }),
-          ],
+          variables: [createVariable('a', { label: 'A from userA', hint: 'hintA' })],
         },
       },
     ]
@@ -306,9 +312,7 @@ describe('CollaborationManager syncNodes', () => {
         ...createNodeSnapshot(['a']),
         data: {
           ...createNodeSnapshot(['a']).data,
-          variables: [
-            createVariable('a', { label: 'A from userB', hint: 'hintB' }),
-          ],
+          variables: [createVariable('a', { label: 'A from userB', hint: 'hintB' })],
         },
       },
     ]
@@ -316,7 +320,7 @@ describe('CollaborationManager syncNodes', () => {
     internals.syncNodes(base, userA)
     internals.syncNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
+    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
     const finalVariable = getVariableObject(finalNode!, 'a')
 
     expect(finalVariable?.label).toBe('A from userB')
@@ -331,9 +335,7 @@ describe('CollaborationManager syncNodes', () => {
         ...createNodeSnapshot(['a']),
         data: {
           ...createNodeSnapshot(['a']).data,
-          variables: [
-            createVariable('a', { label: 'A after deletion' }),
-          ],
+          variables: [createVariable('a', { label: 'A after deletion' })],
         },
       },
     ]
@@ -353,7 +355,7 @@ describe('CollaborationManager syncNodes', () => {
     internals.syncNodes(base, userA)
     internals.syncNodes(base, userB)
 
-    const finalNode = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)
+    const finalNode = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)
     const finalVariables = getVariables(finalNode!)
     expect(finalVariables).toEqual(['a', 'b'])
     expect(getVariableObject(finalNode!, 'b')).toBeDefined()
@@ -385,7 +387,7 @@ describe('CollaborationManager syncNodes', () => {
     const updatedNode = createLLMNodeSnapshot(updatedTemplates)
     promptInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
-    const stored = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
+    const stored = (promptManager.getNodes() as Node[]).find((node) => node.id === LLM_NODE_ID)
     expect(stored).toBeDefined()
 
     const storedTemplates = getPromptTemplates(stored!)
@@ -404,7 +406,7 @@ describe('CollaborationManager syncNodes', () => {
 
     promptInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
-    const final = (promptManager.getNodes() as Node[]).find(node => node.id === LLM_NODE_ID)
+    const final = (promptManager.getNodes() as Node[]).find((node) => node.id === LLM_NODE_ID)
     const finalTemplates = getPromptTemplates(final!)
     expect(finalTemplates).toHaveLength(1)
     expect(finalTemplates[0]!.text).toBe('updated system prompt')
@@ -429,7 +431,7 @@ describe('CollaborationManager syncNodes', () => {
     const updatedNode = createParameterExtractorNodeSnapshot(updatedParameters)
     parameterInternals.syncNodes([deepClone(baseNode)], [deepClone(updatedNode)])
 
-    const stored = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
+    const stored = (parameterManager.getNodes() as Node[]).find((node) => node.id === PARAM_NODE_ID)
     expect(stored).toBeDefined()
     expect(getParameters(stored!)).toEqual(updatedParameters)
 
@@ -440,7 +442,7 @@ describe('CollaborationManager syncNodes', () => {
 
     parameterInternals.syncNodes([deepClone(updatedNode)], [deepClone(editedNode)])
 
-    const final = (parameterManager.getNodes() as Node[]).find(node => node.id === PARAM_NODE_ID)
+    const final = (parameterManager.getNodes() as Node[]).find((node) => node.id === PARAM_NODE_ID)
     expect(getParameters(final!)).toEqual(editedParameters)
   })
 
@@ -454,7 +456,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes([], [deepClone(emptyNode)])
 
-    const stored = (manager.getNodes() as Node[]).find(node => node.id === 'empty-node')
+    const stored = (manager.getNodes() as Node[]).find((node) => node.id === 'empty-node')
     expect(stored).toBeDefined()
     expect(stored?.data).toEqual({})
   })
@@ -462,12 +464,12 @@ describe('CollaborationManager syncNodes', () => {
   it('preserves CRDT list instances when synchronizing parsed state back into the manager', () => {
     const { manager: promptManager, internals: promptInternals } = setupManager()
 
-    const base = createLLMNodeSnapshot([
-      { id: 'system', role: 'system', text: 'base' },
-    ])
+    const base = createLLMNodeSnapshot([{ id: 'system', role: 'system', text: 'base' }])
     promptInternals.syncNodes([], [deepClone(base)])
 
-    const storedBefore = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
+    const storedBefore = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID) as
+      | Node<LLMNodeData>
+      | undefined
     expect(storedBefore).toBeDefined()
     const firstTemplate = storedBefore?.data.prompt_template?.[0]
     expect(firstTemplate?.text).toBe('base')
@@ -483,7 +485,9 @@ describe('CollaborationManager syncNodes', () => {
 
     promptInternals.syncNodes([baseNode], [mutatedNode])
 
-    const storedAfter = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData> | undefined
+    const storedAfter = promptManager.getNodes().find((node) => node.id === LLM_NODE_ID) as
+      | Node<LLMNodeData>
+      | undefined
     const templatesAfter = storedAfter?.data.prompt_template
     expect(Array.isArray(templatesAfter)).toBe(true)
     expect(templatesAfter).toHaveLength(2)
@@ -498,13 +502,15 @@ describe('CollaborationManager syncNodes', () => {
     const node = createParameterExtractorNodeSnapshot(initialParameters)
     parameterInternals.syncNodes([], [deepClone(node)])
 
-    const stored = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as Node<ParameterExtractorNodeData>
+    const stored = parameterManager
+      .getNodes()
+      .find((n) => n.id === PARAM_NODE_ID) as Node<ParameterExtractorNodeData>
     const mutatedNode = deepClone(stored)
     mutatedNode.data.parameters[0]!.description = 'updated'
 
     parameterInternals.syncNodes([stored], [mutatedNode])
 
-    const storedAfter = parameterManager.getNodes().find(n => n.id === PARAM_NODE_ID) as
+    const storedAfter = parameterManager.getNodes().find((n) => n.id === PARAM_NODE_ID) as
       | Node<ParameterExtractorNodeData>
       | undefined
     const params = storedAfter?.data.parameters ?? []
@@ -513,7 +519,7 @@ describe('CollaborationManager syncNodes', () => {
   })
 
   it('filters out transient/private data keys while keeping allowlisted ones', () => {
-    const nodeWithPrivate: Node<{ _foo: string, variables: WorkflowVariable[] }> = {
+    const nodeWithPrivate: Node<{ _foo: string; variables: WorkflowVariable[] }> = {
       id: 'private-node',
       type: 'custom',
       position: { x: 0, y: 0 },
@@ -530,7 +536,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes([], [deepClone(nodeWithPrivate)])
 
-    const stored = (manager.getNodes() as Node[]).find(node => node.id === 'private-node')!
+    const stored = (manager.getNodes() as Node[]).find((node) => node.id === 'private-node')!
     const storedData = stored.data as CommonNodeType<{ _foo?: string }>
     expect(storedData._foo).toBeUndefined()
     expect(storedData._children).toEqual([{ nodeId: 'child-a', nodeType: BlockEnum.Start }])
@@ -551,7 +557,7 @@ describe('CollaborationManager syncNodes', () => {
 
     internals.syncNodes([deepClone(baseNode)], [withoutVariables])
 
-    const stored = (manager.getNodes() as Node[]).find(node => node.id === NODE_ID)!
+    const stored = (manager.getNodes() as Node[]).find((node) => node.id === NODE_ID)!
     const storedData = stored.data as CommonNodeType<{ variables?: WorkflowVariable[] }>
     expect(storedData.variables).toBeUndefined()
   })
@@ -567,7 +573,9 @@ describe('CollaborationManager syncNodes', () => {
 
     promptInternals.syncNodes([deepClone(nodeWithInvalidTemplate)], [mutated])
 
-    const stored = promptManager.getNodes().find(node => node.id === LLM_NODE_ID) as Node<LLMNodeData>
+    const stored = promptManager
+      .getNodes()
+      .find((node) => node.id === LLM_NODE_ID) as Node<LLMNodeData>
     expect(Array.isArray(stored.data.prompt_template)).toBe(true)
     expect(stored.data.prompt_template).toHaveLength(0)
   })

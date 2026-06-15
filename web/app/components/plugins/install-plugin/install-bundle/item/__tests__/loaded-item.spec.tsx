@@ -16,11 +16,7 @@ vi.mock('@/config', () => ({
 vi.mock('../../../../card', () => ({
   default: (props: { titleLeft?: React.ReactNode }) => {
     mockCard(props)
-    return (
-      <div data-testid="card">
-        {props.titleLeft}
-      </div>
-    )
+    return <div data-testid="card">{props.titleLeft}</div>
   },
 }))
 
@@ -63,29 +59,28 @@ describe('LoadedItem', () => {
 
   it('uses local icon url and forwards version title for non-marketplace plugins', () => {
     render(
-      <LoadedItem
-        checked
-        onCheckedChange={vi.fn()}
-        payload={payload}
-        versionInfo={versionInfo}
-      />,
+      <LoadedItem checked onCheckedChange={vi.fn()} payload={payload} versionInfo={versionInfo} />,
     )
 
     expect(screen.getByTestId('card')).toBeInTheDocument()
     expect(mockUsePluginInstallLimit).toHaveBeenCalledWith(payload)
-    expect(mockCard).toHaveBeenCalledWith(expect.objectContaining({
-      limitedInstall: false,
-      payload: expect.objectContaining({
-        ...payload,
-        icon: 'https://api.example.com/icon.png',
+    expect(mockCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limitedInstall: false,
+        payload: expect.objectContaining({
+          ...payload,
+          icon: 'https://api.example.com/icon.png',
+        }),
+        titleLeft: expect.anything(),
       }),
-      titleLeft: expect.anything(),
-    }))
-    expect(mockVersion).toHaveBeenCalledWith(expect.objectContaining({
-      hasInstalled: false,
-      installedVersion: '',
-      toInstallVersion: '1.0.0',
-    }))
+    )
+    expect(mockVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hasInstalled: false,
+        installedVersion: '',
+        toInstallVersion: '1.0.0',
+      }),
+    )
   })
 
   it('uses marketplace icon url and disables checkbox when install limit is reached', () => {
@@ -101,13 +96,18 @@ describe('LoadedItem', () => {
       />,
     )
 
-    expect(screen.getByRole('checkbox', { name: 'Loaded Plugin' })).toHaveAttribute('aria-disabled', 'true')
-    expect(mockCard).toHaveBeenCalledWith(expect.objectContaining({
-      limitedInstall: true,
-      payload: expect.objectContaining({
-        icon: 'https://marketplace.example.com/plugins/dify/Loaded Plugin/icon',
+    expect(screen.getByRole('checkbox', { name: 'Loaded Plugin' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    expect(mockCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        limitedInstall: true,
+        payload: expect.objectContaining({
+          icon: 'https://marketplace.example.com/plugins/dify/Loaded Plugin/icon',
+        }),
       }),
-    }))
+    )
   })
 
   it('calls onCheckedChange with payload when checkbox is toggled', () => {
@@ -137,8 +137,10 @@ describe('LoadedItem', () => {
       />,
     )
 
-    expect(mockCard).toHaveBeenCalledWith(expect.objectContaining({
-      titleLeft: null,
-    }))
+    expect(mockCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        titleLeft: null,
+      }),
+    )
   })
 })

@@ -11,21 +11,14 @@ type ConnectProps = {
   onSetting: () => void
 }
 
-const Connect = ({
-  nodeData,
-  onSetting,
-}: ConnectProps) => {
+const Connect = ({ nodeData, onSetting }: ConnectProps) => {
   const { t } = useTranslation()
   const toolIcon = useToolIcon(nodeData)
 
   return (
     <div className="flex flex-col items-start gap-y-2 rounded-xl bg-workflow-process-bg p-6">
       <div className="flex size-12 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg shadow-shadow-shadow-5">
-        <BlockIcon
-          type={BlockEnum.DataSource}
-          toolIcon={toolIcon}
-          size="md"
-        />
+        <BlockIcon type={BlockEnum.DataSource} toolIcon={toolIcon} size="md" />
       </div>
       <div className="flex flex-col gap-y-1">
         <div className="flex flex-col gap-y-1 pt-1 pb-3">

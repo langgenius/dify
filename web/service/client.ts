@@ -5,43 +5,40 @@ import type { Tag } from '@/contract/console/tags'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import {
-  API_PREFIX,
-  APP_VERSION,
-  IS_MARKETPLACE,
-  MARKETPLACE_API_PREFIX,
-} from '@/config'
-import {
-  consoleRouterContract,
-  marketplaceRouterContract,
-} from '@/contract/router'
+import { API_PREFIX, APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
+import { consoleRouterContract, marketplaceRouterContract } from '@/contract/router'
 import { isClient } from '@/utils/client'
 import { request } from './base'
 
-const getMarketplaceHeaders = () => new Headers({
-  'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
-})
+const getMarketplaceHeaders = () =>
+  new Headers({
+    'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
+  })
 
 function isURL(path: string) {
   try {
     // eslint-disable-next-line no-new
     new URL(path)
     return true
-  }
-  catch {
+  } catch {
     return false
   }
 }
 
 export function getBaseURL(path: string) {
-  const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost')
+  const url = new URL(
+    path,
+    isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost',
+  )
 
   if (!isClient && !isURL(path)) {
     console.warn('Using localhost as base URL in server environment, please configure accordingly.')
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    console.warn(`Unexpected protocol for API requests, expected http or https. Current protocol: ${url.protocol}. Please configure accordingly.`)
+    console.warn(
+      `Unexpected protocol for API requests, expected http or https. Current protocol: ${url.protocol}. Please configure accordingly.`,
+    )
   }
 
   return url
@@ -49,7 +46,7 @@ export function getBaseURL(path: string) {
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   url: MARKETPLACE_API_PREFIX,
-  headers: () => (getMarketplaceHeaders()),
+  headers: () => getMarketplaceHeaders(),
   fetch: (request, init) => {
     return globalThis.fetch(request, {
       ...init,
@@ -63,20 +60,20 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   ],
 })
 
-export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(marketplaceLink)
-export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
+export const marketplaceClient: JsonifiedClient<
+  ContractRouterClient<typeof marketplaceRouterContract>
+> = createORPCClient(marketplaceLink)
+export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, {
+  path: ['marketplace'],
+})
 
 const consoleLink = new OpenAPILink(consoleRouterContract, {
   url: getBaseURL(API_PREFIX),
   fetch: (input, init) => {
-    return request(
-      input.url,
-      init,
-      {
-        fetchCompat: true,
-        request: input,
-      },
-    )
+    return request(input.url, init, {
+      fetchCompat: true,
+      request: input,
+    })
   },
   interceptors: [
     onError((error) => {
@@ -85,7 +82,8 @@ const consoleLink = new OpenAPILink(consoleRouterContract, {
   ],
 })
 
-export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> = createORPCClient(consoleLink)
+export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> =
+  createORPCClient(consoleLink)
 
 export const consoleQuery = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
@@ -109,9 +107,9 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
               context.client.setQueryData(
                 consoleQuery.apiBasedExtension.get.queryKey(),
                 (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
-                  oldExtensions?.map(extension => extension.id === variables.params.id
-                    ? updatedExtension
-                    : extension),
+                  oldExtensions?.map((extension) =>
+                    extension.id === variables.params.id ? updatedExtension : extension,
+                  ),
               )
             },
           },
@@ -122,7 +120,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
               context.client.setQueryData(
                 consoleQuery.apiBasedExtension.get.queryKey(),
                 (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
-                  oldExtensions?.filter(extension => extension.id !== variables.params.id),
+                  oldExtensions?.filter((extension) => extension.id !== variables.params.id),
               )
             },
           },
@@ -141,7 +139,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                   },
                 },
               }),
-              (oldTags: Tag[] | undefined) => oldTags ? [tag, ...oldTags] : oldTags,
+              (oldTags: Tag[] | undefined) => (oldTags ? [tag, ...oldTags] : oldTags),
             )
           },
         },
@@ -153,9 +151,8 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
               {
                 queryKey: consoleQuery.tags.list.key({ type: 'query' }),
               },
-              (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tagId
-                ? updatedTag
-                : tag),
+              (oldTags: Tag[] | undefined) =>
+                oldTags?.map((tag) => (tag.id === variables.params.tagId ? updatedTag : tag)),
             )
           },
         },
@@ -167,7 +164,8 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
               {
                 queryKey: consoleQuery.tags.list.key({ type: 'query' }),
               },
-              (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tagId),
+              (oldTags: Tag[] | undefined) =>
+                oldTags?.filter((tag) => tag.id !== variables.params.tagId),
             )
           },
         },

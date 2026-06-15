@@ -2,11 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { useState } from 'react'
 import Spinner from '.'
 
-const SpinnerPlayground = ({
-  loading = true,
-}: {
-  loading?: boolean
-}) => {
+const SpinnerPlayground = ({ loading = true }: { loading?: boolean }) => {
   const [isLoading, setIsLoading] = useState(loading)
 
   return (
@@ -16,11 +12,9 @@ const SpinnerPlayground = ({
       <button
         type="button"
         className="rounded-md border border-divider-subtle bg-background-default px-3 py-1 text-xs font-medium text-text-secondary hover:bg-state-base-hover"
-        onClick={() => setIsLoading(prev => !prev)}
+        onClick={() => setIsLoading((prev) => !prev)}
       >
-        {isLoading ? 'Stop' : 'Start'}
-        {' '}
-        loading
+        {isLoading ? 'Stop' : 'Start'} loading
       </button>
     </div>
   )
@@ -33,7 +27,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Minimal spinner powered by Tailwind utilities. Toggle the state to inspect motion-reduced behaviour.',
+        component:
+          'Minimal spinner powered by Tailwind utilities. Toggle the state to inspect motion-reduced behaviour.',
       },
     },
   },

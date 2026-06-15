@@ -12,8 +12,7 @@ export const useEducationDiscount = () => {
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
 
   const handleEducationDiscount = useCallback(async () => {
-    if (isEducationDiscountLoading)
-      return
+    if (isEducationDiscountLoading) return
 
     if (!isCurrentWorkspaceManager) {
       toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
@@ -24,8 +23,7 @@ export const useEducationDiscount = () => {
     try {
       const res = await fetchSubscriptionUrls(Plan.professional, 'year')
       window.location.href = res.url
-    }
-    finally {
+    } finally {
       setIsEducationDiscountLoading(false)
     }
   }, [isCurrentWorkspaceManager, isEducationDiscountLoading, t])

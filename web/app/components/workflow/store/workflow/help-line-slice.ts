@@ -11,9 +11,9 @@ export type HelpLineSliceShape = {
   setHelpLineVertical: (helpLineVertical?: HelpLineVerticalPosition) => void
 }
 
-export const createHelpLineSlice: StateCreator<HelpLineSliceShape> = set => ({
+export const createHelpLineSlice: StateCreator<HelpLineSliceShape> = (set) => ({
   helpLineHorizontal: undefined,
-  setHelpLineHorizontal: helpLineHorizontal => set(() => ({ helpLineHorizontal })),
+  setHelpLineHorizontal: (helpLineHorizontal) => set(() => ({ helpLineHorizontal })),
   helpLineVertical: undefined,
-  setHelpLineVertical: helpLineVertical => set(() => ({ helpLineVertical })),
+  setHelpLineVertical: (helpLineVertical) => set(() => ({ helpLineVertical })),
 })

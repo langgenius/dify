@@ -10,13 +10,11 @@ export const workflowNodesAction: ActionItem = {
   search: async (_, searchTerm = '', _locale) => {
     try {
       // Use the searchFn if available (set by useWorkflowSearch hook)
-      if (workflowNodesAction.searchFn)
-        return workflowNodesAction.searchFn(searchTerm)
+      if (workflowNodesAction.searchFn) return workflowNodesAction.searchFn(searchTerm)
 
       // If not in workflow context, return empty array
       return []
-    }
-    catch (error) {
+    } catch (error) {
       console.warn('Workflow nodes search failed:', error)
       return []
     }

@@ -250,7 +250,10 @@ describe('useGotoAnythingNavigation', () => {
 
     it('should set activePlugin for plugin type', () => {
       const options = createMockOptions()
-      const pluginData = { name: 'My Plugin', latest_package_identifier: 'pkg' } as unknown as Plugin
+      const pluginData = {
+        name: 'My Plugin',
+        latest_package_identifier: 'pkg',
+      } as unknown as Plugin
 
       const { result } = renderHook(() => useGotoAnythingNavigation(options))
 
@@ -426,7 +429,10 @@ describe('useGotoAnythingNavigation', () => {
     it('should update activePlugin state', () => {
       const { result } = renderHook(() => useGotoAnythingNavigation(createMockOptions()))
 
-      const plugin = { name: 'Test Plugin', latest_package_identifier: 'test-pkg' } as unknown as Plugin
+      const plugin = {
+        name: 'Test Plugin',
+        latest_package_identifier: 'test-pkg',
+      } as unknown as Plugin
       act(() => {
         result.current.setActivePlugin(plugin)
       })
@@ -438,7 +444,10 @@ describe('useGotoAnythingNavigation', () => {
       const { result } = renderHook(() => useGotoAnythingNavigation(createMockOptions()))
 
       act(() => {
-        result.current.setActivePlugin({ name: 'Plugin', latest_package_identifier: 'pkg' } as unknown as Plugin)
+        result.current.setActivePlugin({
+          name: 'Plugin',
+          latest_package_identifier: 'pkg',
+        } as unknown as Plugin)
       })
       expect(result.current.activePlugin).toBeDefined()
 

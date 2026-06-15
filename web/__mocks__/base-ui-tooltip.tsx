@@ -15,10 +15,13 @@ type TooltipProps = {
 export const Tooltip = ({ children, open, onOpenChange }: TooltipProps) => {
   const [localOpen, setLocalOpen] = React.useState(false)
   const resolvedOpen = open ?? localOpen
-  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
-    setLocalOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }, [onOpenChange])
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      setLocalOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    },
+    [onOpenChange],
+  )
 
   return (
     <TooltipContext.Provider value={{ open: resolvedOpen, onOpenChange: handleOpenChange }}>
@@ -32,7 +35,11 @@ export const TooltipTrigger = ({
   render,
   nativeButton: _nativeButton,
   ...props
-}: React.HTMLAttributes<HTMLElement> & { children?: ReactNode, render?: React.ReactElement, nativeButton?: boolean }) => {
+}: React.HTMLAttributes<HTMLElement> & {
+  children?: ReactNode
+  render?: React.ReactElement
+  nativeButton?: boolean
+}) => {
   const { open, onOpenChange } = React.useContext(TooltipContext)
   const node = render ?? children
 
@@ -87,8 +94,7 @@ export const TooltipContent = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode }) => {
   const { open } = React.useContext(TooltipContext)
-  if (!open)
-    return null
+  if (!open) return null
   return <div {...props}>{children}</div>
 }
 

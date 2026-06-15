@@ -4,12 +4,12 @@ import { authStatePath } from '../fixtures/auth'
 import { apiURL } from '../test-env'
 
 type StorageState = {
-  cookies: Array<{ name: string, value: string }>
+  cookies: Array<{ name: string; value: string }>
 }
 
 async function createApiContext() {
   const state = JSON.parse(await readFile(authStatePath, 'utf8')) as StorageState
-  const csrfToken = state.cookies.find(c => c.name.endsWith('csrf_token'))?.value ?? ''
+  const csrfToken = state.cookies.find((c) => c.name.endsWith('csrf_token'))?.value ?? ''
 
   return request.newContext({
     baseURL: apiURL,
@@ -37,8 +37,7 @@ export async function createTestApp(name: string, mode = 'workflow'): Promise<Ap
     })
     const body = (await response.json()) as AppSeed
     return body
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -65,8 +64,7 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -75,8 +73,7 @@ export async function deleteTestApp(id: string): Promise<void> {
   const ctx = await createApiContext()
   try {
     await ctx.delete(`/console/api/apps/${id}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -123,8 +120,7 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -135,14 +131,13 @@ export async function publishWorkflowApp(appId: string): Promise<void> {
     await ctx.post(`/console/api/apps/${appId}/workflows/publish`, {
       data: { marked_name: '', marked_comment: '' },
     })
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
 
 type AppDetailWithSite = {
-  site: { access_token: string, app_base_url: string, enable_site: boolean }
+  site: { access_token: string; app_base_url: string; enable_site: boolean }
 }
 
 export async function enableAppSiteAndGetURL(appId: string): Promise<string> {
@@ -155,8 +150,7 @@ export async function enableAppSiteAndGetURL(appId: string): Promise<string> {
     const body = (await res.json()) as AppDetailWithSite
     const { app_base_url, access_token } = body.site
     return `${app_base_url}/workflow/${access_token}`
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

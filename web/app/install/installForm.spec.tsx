@@ -30,7 +30,9 @@ const mockLogin = vi.mocked(login)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
-  mockFetchInitValidateStatus.mockResolvedValue({ status: 'finished' } as InitValidateStatusResponse)
+  mockFetchInitValidateStatus.mockResolvedValue({
+    status: 'finished',
+  } as InitValidateStatusResponse)
 }
 
 describe('InstallForm', () => {
@@ -66,7 +68,9 @@ describe('InstallForm', () => {
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -103,11 +107,18 @@ describe('InstallForm', () => {
 
   it('should redirect to sign in when login fails', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
-    mockLogin.mockResolvedValue({ result: 'fail', data: 'error', code: 'login_failed', message: 'login failed' } as any)
+    mockLogin.mockResolvedValue({
+      result: 'fail',
+      data: 'error',
+      code: 'login_failed',
+      message: 'login failed',
+    } as any)
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 
@@ -128,7 +139,9 @@ describe('InstallForm', () => {
 
     render(<InstallForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'admin@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'admin@example.com' },
+    })
     fireEvent.change(screen.getByLabelText('login.name'), { target: { value: 'Admin' } })
     fireEvent.change(screen.getByLabelText('login.password'), { target: { value: 'Password123' } })
 

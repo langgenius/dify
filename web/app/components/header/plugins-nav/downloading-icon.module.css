@@ -1,15 +1,48 @@
 @keyframes realistic-blink {
-  0% { fill: #37ff37; opacity: 0.4; }
-  15% { fill: #37ff37; opacity: 0.9; }
-  25% { fill: #37ff37; opacity: 0.3; }
-  38% { fill: #ff4444; opacity: 0.8; }
-  42% { fill: #ff4444; opacity: 0.3; }
-  58% { fill: #37ff37; opacity: 0.9; }
-  65% { fill: #37ff37; opacity: 0.4; }
-  79% { fill: #ff4444; opacity: 0.8; }
-  84% { fill: #ff4444; opacity: 0.3; }
-  92% { fill: #37ff37; opacity: 0.8; }
-  100% { fill: #37ff37; opacity: 0.4; }
+  0% {
+    fill: #37ff37;
+    opacity: 0.4;
+  }
+  15% {
+    fill: #37ff37;
+    opacity: 0.9;
+  }
+  25% {
+    fill: #37ff37;
+    opacity: 0.3;
+  }
+  38% {
+    fill: #ff4444;
+    opacity: 0.8;
+  }
+  42% {
+    fill: #ff4444;
+    opacity: 0.3;
+  }
+  58% {
+    fill: #37ff37;
+    opacity: 0.9;
+  }
+  65% {
+    fill: #37ff37;
+    opacity: 0.4;
+  }
+  79% {
+    fill: #ff4444;
+    opacity: 0.8;
+  }
+  84% {
+    fill: #ff4444;
+    opacity: 0.3;
+  }
+  92% {
+    fill: #37ff37;
+    opacity: 0.8;
+  }
+  100% {
+    fill: #37ff37;
+    opacity: 0.4;
+  }
 }
 
 @keyframes drop {

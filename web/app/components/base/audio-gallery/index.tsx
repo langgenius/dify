@@ -6,9 +6,8 @@ type Props = Readonly<{
 }>
 
 const AudioGallery: React.FC<Props> = ({ srcs }) => {
-  const validSrcs = srcs.filter(src => src)
-  if (validSrcs.length === 0)
-    return null
+  const validSrcs = srcs.filter((src) => src)
+  if (validSrcs.length === 0) return null
 
   return (
     <div className="my-3">

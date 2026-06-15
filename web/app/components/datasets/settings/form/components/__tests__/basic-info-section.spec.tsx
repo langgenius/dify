@@ -105,8 +105,28 @@ describe('BasicInfoSection', () => {
   }
 
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+    {
+      id: 'user-1',
+      name: 'User 1',
+      email: 'user1@example.com',
+      role: 'owner',
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
+    {
+      id: 'user-2',
+      name: 'User 2',
+      email: 'user2@example.com',
+      role: 'admin',
+      avatar: '',
+      avatar_url: '',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    },
   ]
 
   const mockIconInfo: IconInfo = {
@@ -247,7 +267,9 @@ describe('BasicInfoSection', () => {
   describe('App Icon', () => {
     it('should call handleOpenAppIconPicker when icon is clicked', () => {
       const handleOpenAppIconPicker = vi.fn()
-      const { container } = render(<BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />)
+      const { container } = render(
+        <BasicInfoSection {...defaultProps} handleOpenAppIconPicker={handleOpenAppIconPicker} />,
+      )
 
       // Find the clickable icon element - it's inside a wrapper that handles the click
       const iconWrapper = container.querySelector('[class*="cursor-pointer"]')
@@ -258,7 +280,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should render AppIconPicker when showAppIconPicker is true', () => {
-      const { baseElement } = render(<BasicInfoSection {...defaultProps} showAppIconPicker={true} />)
+      const { baseElement } = render(
+        <BasicInfoSection {...defaultProps} showAppIconPicker={true} />,
+      )
 
       // AppIconPicker renders a modal with emoji tabs and options via portal
       // We just verify the component renders without crashing when picker is shown
@@ -412,7 +436,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when description prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} description="Initial Description" />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} description="Initial Description" />,
+      )
 
       expect(screen.getByDisplayValue('Initial Description'))!.toBeInTheDocument()
 
@@ -422,7 +448,9 @@ describe('BasicInfoSection', () => {
     })
 
     it('should update when permission prop changes', () => {
-      const { rerender } = render(<BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      const { rerender } = render(
+        <BasicInfoSection {...defaultProps} permission={DatasetPermission.onlyMe} />,
+      )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
 
@@ -450,12 +478,7 @@ describe('BasicInfoSection', () => {
     })
 
     it('should handle empty member list', () => {
-      render(
-        <BasicInfoSection
-          {...defaultProps}
-          memberList={[]}
-        />,
-      )
+      render(<BasicInfoSection {...defaultProps} memberList={[]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/i))!.toBeInTheDocument()
     })

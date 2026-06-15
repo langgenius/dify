@@ -35,6 +35,7 @@ export type InputFieldConfiguration = {
   type: InputFieldType
   tooltip?: string // Tooltip for this field
   listeners?: FieldListeners<Record<string, any>, DeepKeys<Record<string, any>>> // Listener for this field
-} & NumberConfiguration & Partial<InputTypeSelectConfiguration>
-& Partial<NumberSliderConfiguration>
-& Partial<SelectConfiguration>
+} & NumberConfiguration &
+  Partial<InputTypeSelectConfiguration> &
+  Partial<NumberSliderConfiguration> &
+  Partial<SelectConfiguration>

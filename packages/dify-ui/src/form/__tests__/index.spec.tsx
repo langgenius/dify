@@ -15,7 +15,9 @@ describe('Form primitive', () => {
       </Form>,
     )
 
-    await expect.element(screen.getByRole('form', { name: 'profile form' })).toHaveClass('custom-form')
+    await expect
+      .element(screen.getByRole('form', { name: 'profile form' }))
+      .toHaveClass('custom-form')
   })
 
   it('should call onFormSubmit with submitted values', async () => {
@@ -48,6 +50,8 @@ describe('Form primitive', () => {
       </Form>,
     )
 
-    await expect.element(screen.getByRole('textbox', { name: 'Token' })).toHaveAttribute('aria-invalid', 'true')
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Token' }))
+      .toHaveAttribute('aria-invalid', 'true')
   })
 })

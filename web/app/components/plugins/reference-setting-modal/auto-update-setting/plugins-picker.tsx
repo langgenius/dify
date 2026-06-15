@@ -18,11 +18,7 @@ type Props = Readonly<{
   onChange: (value: string[]) => void
 }>
 
-const PluginsPicker: FC<Props> = ({
-  updateMode,
-  value,
-  onChange,
-}) => {
+const PluginsPicker: FC<Props> = ({ updateMode, value, onChange }) => {
   const { t } = useTranslation()
   const hasSelected = value.length > 0
   const isExcludeMode = updateMode === AUTO_UPDATE_MODE.exclude
@@ -30,42 +26,38 @@ const PluginsPicker: FC<Props> = ({
     onChange([])
   }
 
-  const [isShowToolPicker, {
-    set: setToolPicker,
-  }] = useBoolean(false)
+  const [isShowToolPicker, { set: setToolPicker }] = useBoolean(false)
   return (
     <div className="mt-2 rounded-[10px] bg-background-section-burn p-2.5">
-      {hasSelected
-        ? (
-            <div className="flex justify-between text-text-tertiary">
-              <div className="system-xs-medium">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { ns: 'plugin', num: value.length })}</div>
-              <button
-                type="button"
-                className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                onClick={handleClear}
-              >
-                {t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}
-              </button>
-            </div>
-          )
-        : (
-            <NoPluginSelected updateMode={updateMode} />
-          )}
-
-      {hasSelected && (
-        <PluginsSelected
-          className="mt-2"
-          plugins={value}
-        />
+      {hasSelected ? (
+        <div className="flex justify-between text-text-tertiary">
+          <div className="system-xs-medium">
+            {t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, {
+              ns: 'plugin',
+              num: value.length,
+            })}
+          </div>
+          <button
+            type="button"
+            className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={handleClear}
+          >
+            {t(`${i18nPrefix}.operation.clearAll`, { ns: 'plugin' })}
+          </button>
+        </div>
+      ) : (
+        <NoPluginSelected updateMode={updateMode} />
       )}
 
+      {hasSelected && <PluginsSelected className="mt-2" plugins={value} />}
+
       <ToolPicker
-        trigger={(
+        trigger={
           <Button className="mt-2 w-full" size="small" variant="secondary-accent">
             <RiAddLine className="size-3.5" />
             {t(`${i18nPrefix}.operation.select`, { ns: 'plugin' })}
           </Button>
-        )}
+        }
         value={value}
         onChange={onChange}
         isShow={isShowToolPicker}

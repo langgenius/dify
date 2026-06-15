@@ -24,22 +24,14 @@ describe('PremiumBadge', () => {
   })
 
   it('applies allowHover class when allowHover is true', () => {
-    render(
-      <PremiumBadgeButton>
-        Premium
-      </PremiumBadgeButton>,
-    )
+    render(<PremiumBadgeButton>Premium</PremiumBadgeButton>)
     const badge = screen.getByText('Premium')
     expect(badge).toBeInTheDocument()
     expect(badge).toHaveClass('pb-allow-hover')
   })
 
   it('applies custom styles', () => {
-    render(
-      <PremiumBadge styleCss={{ backgroundColor: 'red' }}>
-        Premium
-      </PremiumBadge>,
-    )
+    render(<PremiumBadge styleCss={{ backgroundColor: 'red' }}>Premium</PremiumBadge>)
     const badge = screen.getByText('Premium')
     expect(badge).toBeInTheDocument()
     expect(badge).toHaveStyle('background-color: red')

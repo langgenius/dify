@@ -4,11 +4,14 @@ import type { Tag } from '@/contract/console/tags'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import type { AccessMode } from '@/models/access-control'
 import type { ExternalDataTool } from '@/models/common'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type {
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
+  AnnotationReplyConfig,
+  ChatPromptConfig,
+  CompletionPromptConfig,
+  DatasetConfigs,
+  PromptMode,
+} from '@/models/debug'
 import type { WorkflowKind } from '@/types/workflow'
 
 export type Theme = 'light' | 'dark' | 'system'
@@ -31,12 +34,12 @@ export const RETRIEVE_TYPE = {
   multiWay: 'multiple' as RETRIEVE_TYPE,
 } as const
 
-export type RETRIEVE_METHOD
-  = | 'semantic_search'
-    | 'full_text_search'
-    | 'hybrid_search'
-    | 'invertedIndex'
-    | 'keyword_search'
+export type RETRIEVE_METHOD =
+  | 'semantic_search'
+  | 'full_text_search'
+  | 'hybrid_search'
+  | 'invertedIndex'
+  | 'keyword_search'
 export const RETRIEVE_METHOD = {
   semantic: 'semantic_search' as RETRIEVE_METHOD,
   fullText: 'full_text_search' as RETRIEVE_METHOD,
@@ -48,12 +51,7 @@ export const RETRIEVE_METHOD = {
 /**
  * App modes
  */
-export type AppModeEnum
-  = | 'completion'
-    | 'workflow'
-    | 'chat'
-    | 'advanced-chat'
-    | 'agent-chat'
+export type AppModeEnum = 'completion' | 'workflow' | 'chat' | 'advanced-chat' | 'agent-chat'
 export const AppModeEnum = {
   COMPLETION: 'completion' as AppModeEnum,
   WORKFLOW: 'workflow' as AppModeEnum,
@@ -61,7 +59,13 @@ export const AppModeEnum = {
   ADVANCED_CHAT: 'advanced-chat' as AppModeEnum,
   AGENT_CHAT: 'agent-chat' as AppModeEnum,
 } as const
-export const AppModes = [AppModeEnum.COMPLETION, AppModeEnum.WORKFLOW, AppModeEnum.CHAT, AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT] as const
+export const AppModes = [
+  AppModeEnum.COMPLETION,
+  AppModeEnum.WORKFLOW,
+  AppModeEnum.CHAT,
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.AGENT_CHAT,
+] as const
 
 /**
  * Variable type
@@ -104,13 +108,16 @@ type SelectTypeFormItem = {
 /**
  * User Input Form Item
  */
-export type UserInputFormItem = {
-  'text-input': TextTypeFormItem
-} | {
-  select: SelectTypeFormItem
-} | {
-  paragraph: TextTypeFormItem
-}
+export type UserInputFormItem =
+  | {
+      'text-input': TextTypeFormItem
+    }
+  | {
+      select: SelectTypeFormItem
+    }
+  | {
+      paragraph: TextTypeFormItem
+    }
 
 export type AgentTool = {
   provider_id: string
@@ -125,18 +132,21 @@ export type AgentTool = {
   credential_id?: string
 }
 
-export type ToolItem = {
-  dataset: {
-    enabled: boolean
-    id: string
-  }
-} | {
-  'sensitive-word-avoidance': {
-    enabled: boolean
-    words: string[]
-    canned_response: string
-  }
-} | AgentTool
+export type ToolItem =
+  | {
+      dataset: {
+        enabled: boolean
+        id: string
+      }
+    }
+  | {
+      'sensitive-word-avoidance': {
+        enabled: boolean
+        words: string[]
+        canned_response: string
+      }
+    }
+  | AgentTool
 
 export type AgentStrategy = 'function_call' | 'react'
 export const AgentStrategy = {
@@ -258,7 +268,7 @@ export type ModelConfig = {
   updated_at?: number
 }
 
-export type Language = typeof LanguagesSupported[number]
+export type Language = (typeof LanguagesSupported)[number]
 
 /**
  * Web Application Configuration
@@ -372,7 +382,7 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string, tool_name: string }>
+  deleted_tools?: Array<{ id: string; tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null

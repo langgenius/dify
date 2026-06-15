@@ -58,7 +58,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
 // Mock downloadUrl utility
 const mockDownloadUrl = vi.fn()
 vi.mock('@/utils/download', () => ({
-  downloadUrl: (params: { url: string, fileName: string }) => mockDownloadUrl(params),
+  downloadUrl: (params: { url: string; fileName: string }) => mockDownloadUrl(params),
 }))
 
 afterEach(() => {
@@ -135,11 +135,7 @@ describe('Operations', () => {
 
     it('should render disabled switch when archived', () => {
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, archived: true }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, archived: true }} />,
       )
       const disabledSwitch = document.querySelector('[disabled]')
       expect(disabledSwitch).toBeDefined()
@@ -148,11 +144,7 @@ describe('Operations', () => {
     it('should call enable when switch is toggled on', async () => {
       vi.useFakeTimers()
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, enabled: false }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: false }} />,
       )
       const switchElement = document.querySelector('[role="switch"]')
       await act(async () => {
@@ -169,11 +161,7 @@ describe('Operations', () => {
     it('should call disable when switch is toggled off', async () => {
       vi.useFakeTimers()
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, enabled: true }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
       )
       const switchElement = document.querySelector('[role="switch"]')
       await act(async () => {
@@ -190,11 +178,7 @@ describe('Operations', () => {
     it('should not call enable if already enabled', async () => {
       vi.useFakeTimers()
       render(
-        <Operations
-          {...defaultProps}
-          scene="list"
-          detail={{ ...defaultDetail, enabled: true }}
-        />,
+        <Operations {...defaultProps} scene="list" detail={{ ...defaultDetail, enabled: true }} />,
       )
       // Simulate trying to enable when already enabled - this won't happen via switch click
       // because the switch would toggle to disable. But handleSwitch has early returns
@@ -274,12 +258,7 @@ describe('Operations', () => {
     })
 
     it('should call un_archive when unarchive action is clicked', async () => {
-      render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, archived: true }}
-        />,
-      )
+      render(<Operations {...defaultProps} detail={{ ...defaultDetail, archived: true }} />)
       await openPopover()
       const unarchiveButton = screen.getByText('datasetDocuments.list.action.unarchive')
       await act(async () => {
@@ -365,7 +344,8 @@ describe('Operations', () => {
       const user = userEvent.setup()
       render(<Operations {...defaultProps} />)
       await openPopover()
-      const renameAction = screen.getByText('datasetDocuments.list.table.rename').parentElement as HTMLElement
+      const renameAction = screen.getByText('datasetDocuments.list.table.rename')
+        .parentElement as HTMLElement
       await user.click(renameAction)
 
       const renameInput = await screen.findByRole('textbox')
@@ -402,16 +382,16 @@ describe('Operations', () => {
         fireEvent.click(syncButton)
       })
       await waitFor(() => {
-        expect(mockSyncWebsite).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
+        expect(mockSyncWebsite).toHaveBeenCalledWith({
+          datasetId: 'dataset-1',
+          documentId: 'doc-1',
+        })
       })
     })
 
     it('should call pause when pause action is clicked', async () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'indexing' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'indexing' }} />,
       )
       await openPopover()
       const pauseButton = screen.getByText('datasetDocuments.list.action.pause')
@@ -425,10 +405,7 @@ describe('Operations', () => {
 
     it('should call resume when resume action is clicked', async () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'paused' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'paused' }} />,
       )
       await openPopover()
       const resumeButton = screen.getByText('datasetDocuments.list.action.resume')
@@ -449,7 +426,10 @@ describe('Operations', () => {
       })
       await waitFor(() => {
         expect(mockDownload).toHaveBeenCalledWith({ datasetId: 'dataset-1', documentId: 'doc-1' })
-        expect(mockDownloadUrl).toHaveBeenCalledWith({ url: 'https://example.com/download', fileName: 'Test Document' })
+        expect(mockDownloadUrl).toHaveBeenCalledWith({
+          url: 'https://example.com/download',
+          fileName: 'Test Document',
+        })
       })
     })
 
@@ -541,30 +521,21 @@ describe('Operations', () => {
   describe('display status', () => {
     it('should render pause action when status is indexing', () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'indexing' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'indexing' }} />,
       )
       expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
     })
 
     it('should render resume action when status is paused', () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'paused' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'paused' }} />,
       )
       expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
     })
 
     it('should not show pause/resume for available status', async () => {
       render(
-        <Operations
-          {...defaultProps}
-          detail={{ ...defaultDetail, display_status: 'available' }}
-        />,
+        <Operations {...defaultProps} detail={{ ...defaultDetail, display_status: 'available' }} />,
       )
       const moreButton = document.querySelector('[class*="commonIcon"]')?.parentElement
       if (moreButton) {
@@ -617,7 +588,9 @@ describe('Operations', () => {
 
   describe('memoization', () => {
     it('should be wrapped with React.memo', () => {
-      expect((Operations as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+      expect((Operations as unknown as { $$typeof: symbol }).$$typeof).toBe(
+        Symbol.for('react.memo'),
+      )
     })
   })
 

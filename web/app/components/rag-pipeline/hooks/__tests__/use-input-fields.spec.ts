@@ -7,11 +7,11 @@ import { useConfigurations, useInitialData } from '../use-input-fields'
 vi.mock('@/models/pipeline', () => ({
   VAR_TYPE_MAP: {
     'text-input': BaseFieldType.textInput,
-    'paragraph': BaseFieldType.paragraph,
-    'select': BaseFieldType.select,
-    'number': BaseFieldType.numberInput,
-    'checkbox': BaseFieldType.checkbox,
-    'file': BaseFieldType.file,
+    paragraph: BaseFieldType.paragraph,
+    select: BaseFieldType.select,
+    number: BaseFieldType.numberInput,
+    checkbox: BaseFieldType.checkbox,
+    file: BaseFieldType.file,
     'file-list': BaseFieldType.fileList,
   },
 }))
@@ -42,42 +42,54 @@ describe('useInitialData', () => {
   })
 
   it('should initialize paragraph with empty string by default', () => {
-    const variables = [makeVariable({ type: 'paragraph', variable: 'para' })] as unknown as RAGPipelineVariables
+    const variables = [
+      makeVariable({ type: 'paragraph', variable: 'para' }),
+    ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useInitialData(variables))
 
     expect(result.current.para).toBe('')
   })
 
   it('should initialize select with empty string by default', () => {
-    const variables = [makeVariable({ type: 'select', variable: 'sel' })] as unknown as RAGPipelineVariables
+    const variables = [
+      makeVariable({ type: 'select', variable: 'sel' }),
+    ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useInitialData(variables))
 
     expect(result.current.sel).toBe('')
   })
 
   it('should initialize number with 0 by default', () => {
-    const variables = [makeVariable({ type: 'number', variable: 'num' })] as unknown as RAGPipelineVariables
+    const variables = [
+      makeVariable({ type: 'number', variable: 'num' }),
+    ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useInitialData(variables))
 
     expect(result.current.num).toBe(0)
   })
 
   it('should initialize checkbox with false by default', () => {
-    const variables = [makeVariable({ type: 'checkbox', variable: 'cb' })] as unknown as RAGPipelineVariables
+    const variables = [
+      makeVariable({ type: 'checkbox', variable: 'cb' }),
+    ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useInitialData(variables))
 
     expect(result.current.cb).toBe(false)
   })
 
   it('should initialize file with empty array by default', () => {
-    const variables = [makeVariable({ type: 'file', variable: 'f' })] as unknown as RAGPipelineVariables
+    const variables = [
+      makeVariable({ type: 'file', variable: 'f' }),
+    ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useInitialData(variables))
 
     expect(result.current.f).toEqual([])
   })
 
   it('should initialize file-list with empty array by default', () => {
-    const variables = [makeVariable({ type: 'file-list', variable: 'fl' })] as unknown as RAGPipelineVariables
+    const variables = [
+      makeVariable({ type: 'file-list', variable: 'fl' }),
+    ] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useInitialData(variables))
 
     expect(result.current.fl).toEqual([])
@@ -162,9 +174,7 @@ describe('useConfigurations', () => {
   })
 
   it('should handle undefined options', () => {
-    const variables = [
-      makeVariable({ type: 'text-input' }),
-    ] as unknown as RAGPipelineVariables
+    const variables = [makeVariable({ type: 'text-input' })] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
     expect(result.current[0]!.options).toBeUndefined()
@@ -188,9 +198,7 @@ describe('useConfigurations', () => {
   })
 
   it('should include showConditions as empty array', () => {
-    const variables = [
-      makeVariable(),
-    ] as unknown as RAGPipelineVariables
+    const variables = [makeVariable()] as unknown as RAGPipelineVariables
     const { result } = renderHook(() => useConfigurations(variables))
 
     expect(result.current[0]!.showConditions).toEqual([])

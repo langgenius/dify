@@ -30,7 +30,10 @@ type SnippetListParams = {
   is_published?: boolean
 }
 
-type SnippetSummary = Pick<SnippetContract, 'id' | 'name' | 'description' | 'use_count' | 'tags' | 'updated_at' | 'is_published'>
+type SnippetSummary = Pick<
+  SnippetContract,
+  'id' | 'name' | 'description' | 'use_count' | 'tags' | 'updated_at' | 'is_published'
+>
 
 const DEFAULT_SNIPPET_LIST_PARAMS = {
   page: 1,
@@ -44,16 +47,14 @@ const DEFAULT_GRAPH: SnippetCanvasData = {
 }
 
 const toMilliseconds = (timestamp?: number) => {
-  if (!timestamp)
-    return undefined
+  if (!timestamp) return undefined
 
   return timestamp > 1_000_000_000_000 ? timestamp : timestamp * 1000
 }
 
 const formatTimestamp = (timestamp?: number) => {
   const milliseconds = toMilliseconds(timestamp)
-  if (!milliseconds)
-    return ''
+  if (!milliseconds) return ''
 
   return dayjs(milliseconds).format('YYYY-MM-DD HH:mm')
 }
@@ -80,23 +81,30 @@ const toSnippetDetail = (snippet: SnippetContract): SnippetDetailUIModel => {
 const toSnippetCanvasData = (workflow?: SnippetWorkflow | null): SnippetCanvasData => {
   const graph = workflow?.graph
 
-  if (!graph || typeof graph !== 'object')
-    return DEFAULT_GRAPH
+  if (!graph || typeof graph !== 'object') return DEFAULT_GRAPH
 
   const graphRecord = graph as Record<string, unknown>
 
   return {
-    nodes: Array.isArray(graphRecord.nodes) ? graphRecord.nodes as SnippetCanvasData['nodes'] : DEFAULT_GRAPH.nodes,
-    edges: Array.isArray(graphRecord.edges) ? graphRecord.edges as SnippetCanvasData['edges'] : DEFAULT_GRAPH.edges,
-    viewport: graphRecord.viewport && typeof graphRecord.viewport === 'object'
-      ? graphRecord.viewport as SnippetCanvasData['viewport']
-      : DEFAULT_GRAPH.viewport,
+    nodes: Array.isArray(graphRecord.nodes)
+      ? (graphRecord.nodes as SnippetCanvasData['nodes'])
+      : DEFAULT_GRAPH.nodes,
+    edges: Array.isArray(graphRecord.edges)
+      ? (graphRecord.edges as SnippetCanvasData['edges'])
+      : DEFAULT_GRAPH.edges,
+    viewport:
+      graphRecord.viewport && typeof graphRecord.viewport === 'object'
+        ? (graphRecord.viewport as SnippetCanvasData['viewport'])
+        : DEFAULT_GRAPH.viewport,
   }
 }
 
-export const buildSnippetDetailPayload = (snippet: SnippetContract, workflow?: SnippetWorkflow | null): SnippetDetailPayload => {
+export const buildSnippetDetailPayload = (
+  snippet: SnippetContract,
+  workflow?: SnippetWorkflow | null,
+): SnippetDetailPayload => {
   const inputFields = Array.isArray(workflow?.input_fields)
-    ? workflow.input_fields as SnippetInputFieldUIModel[]
+    ? (workflow.input_fields as SnippetInputFieldUIModel[])
     : []
 
   return {
@@ -134,7 +142,10 @@ const invalidateSnippetQueries = (queryClient: ReturnType<typeof useQueryClient>
   })
 }
 
-export const useInfiniteSnippetList = (params: SnippetListParams = {}, options?: { enabled?: boolean }) => {
+export const useInfiniteSnippetList = (
+  params: SnippetListParams = {},
+  options?: { enabled?: boolean },
+) => {
   const normalizedParams = normalizeSnippetListParams(params)
 
   return useInfiniteQuery<SnippetListResponse>({
@@ -147,7 +158,7 @@ export const useInfiniteSnippetList = (params: SnippetListParams = {}, options?:
         },
       })
     },
-    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: normalizedParams.page,
     placeholderData: keepPreviousData,
     ...options,
@@ -155,22 +166,26 @@ export const useInfiniteSnippetList = (params: SnippetListParams = {}, options?:
 }
 
 export const useSnippetApiDetail = (snippetId: string) => {
-  return useQuery(consoleQuery.snippets.detail.queryOptions({
-    input: {
-      params: { snippetId },
-    },
-    enabled: !!snippetId,
-  }))
+  return useQuery(
+    consoleQuery.snippets.detail.queryOptions({
+      input: {
+        params: { snippetId },
+      },
+      enabled: !!snippetId,
+    }),
+  )
 }
 
 export const useCreateSnippetMutation = () => {
   const queryClient = useQueryClient()
 
-  return useMutation(consoleQuery.snippets.create.mutationOptions({
-    onSuccess: () => {
-      invalidateSnippetQueries(queryClient)
-    },
-  }))
+  return useMutation(
+    consoleQuery.snippets.create.mutationOptions({
+      onSuccess: () => {
+        invalidateSnippetQueries(queryClient)
+      },
+    }),
+  )
 }
 
 export const useUpdateSnippetMutation = () => {
@@ -210,7 +225,7 @@ export const useIncrementSnippetUseCountMutation = () => {
 }
 
 export const useExportSnippetMutation = () => {
-  return useMutation<string, Error, { snippetId: string, include?: boolean }>({
+  return useMutation<string, Error, { snippetId: string; include?: boolean }>({
     mutationFn: ({ snippetId, include = false }) => {
       return consoleClient.snippets.export({
         params: { snippetId },
@@ -223,7 +238,11 @@ export const useExportSnippetMutation = () => {
 export const useImportSnippetDSLMutation = () => {
   const queryClient = useQueryClient()
 
-  return useMutation<SnippetDSLImportResponse, Error, { mode: 'yaml-content' | 'yaml-url', yamlContent?: string, yamlUrl?: string }>({
+  return useMutation<
+    SnippetDSLImportResponse,
+    Error,
+    { mode: 'yaml-content' | 'yaml-url'; yamlContent?: string; yamlUrl?: string }
+  >({
     mutationFn: ({ mode, yamlContent, yamlUrl }) => {
       return consoleClient.snippets.import({
         body: {

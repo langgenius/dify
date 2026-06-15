@@ -31,16 +31,10 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
             >
               Select Schedule
             </button>
-            <button
-              data-testid="select-webhook"
-              onClick={() => onSelect(BlockEnum.TriggerWebhook)}
-            >
+            <button data-testid="select-webhook" onClick={() => onSelect(BlockEnum.TriggerWebhook)}>
               Select Webhook
             </button>
-            <button
-              data-testid="close-selector"
-              onClick={() => onOpenChange(false)}
-            >
+            <button data-testid="close-selector" onClick={() => onOpenChange(false)}>
               Close
             </button>
           </div>

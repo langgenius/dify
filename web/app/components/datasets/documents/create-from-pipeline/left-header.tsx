@@ -13,11 +13,7 @@ type LeftHeaderProps = {
   currentStep: number
 }
 
-const LeftHeader = ({
-  steps,
-  title,
-  currentStep,
-}: LeftHeaderProps) => {
+const LeftHeader = ({ steps, title, currentStep }: LeftHeaderProps) => {
   const { datasetId } = useParams()
 
   return (
@@ -29,14 +25,9 @@ const LeftHeader = ({
         <span className="system-2xs-regular text-divider-regular">/</span>
         <StepIndicator steps={steps} currentStep={currentStep} />
       </div>
-      <div className="system-md-semibold text-text-primary">
-        {steps[currentStep - 1]?.label}
-      </div>
+      <div className="system-md-semibold text-text-primary">{steps[currentStep - 1]?.label}</div>
       {currentStep !== steps.length && (
-        <Link
-          href={`/datasets/${datasetId}/documents`}
-          replace
-        >
+        <Link href={`/datasets/${datasetId}/documents`} replace>
           <Button
             variant="secondary-accent"
             className="absolute top-3.5 -left-11 size-9 rounded-full p-0"

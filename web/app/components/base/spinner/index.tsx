@@ -13,9 +13,7 @@ const Spinner: FC<Props> = ({ loading = false, children, className }) => {
       className={`inline-block h-4 w-4 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-gray-200 ${loading ? 'motion-reduce:animate-[spin_1.5s_linear_infinite]' : 'hidden'} ${className ?? ''}`}
       role="status"
     >
-      <span
-        className="absolute! -m-px! size-px! overflow-hidden! border-0! p-0! whitespace-nowrap! [clip:rect(0,0,0,0)]!"
-      >
+      <span className="absolute! -m-px! size-px! overflow-hidden! border-0! p-0! whitespace-nowrap! [clip:rect(0,0,0,0)]!">
         Loading...
       </span>
       {children}

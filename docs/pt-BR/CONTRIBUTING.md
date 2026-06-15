@@ -34,11 +34,11 @@ Não se esqueça de vincular um problema existente ou abrir um novo problema na 
 
 Como priorizamos:
 
-| Tipo de Problema | Prioridade |
-| ------------------------------------------------------------ | --------------- |
-| Bugs em funções centrais (serviço em nuvem, não conseguir fazer login, aplicações não funcionando, falhas de segurança) | Crítica |
-| Bugs não críticos, melhorias de desempenho | Prioridade Média |
-| Correções menores (erros de digitação, interface confusa mas funcional) | Prioridade Baixa |
+| Tipo de Problema                                                                                                        | Prioridade       |
+| ----------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Bugs em funções centrais (serviço em nuvem, não conseguir fazer login, aplicações não funcionando, falhas de segurança) | Crítica          |
+| Bugs não críticos, melhorias de desempenho                                                                              | Prioridade Média |
+| Correções menores (erros de digitação, interface confusa mas funcional)                                                 | Prioridade Baixa |
 
 ### Solicitações de recursos
 
@@ -52,12 +52,12 @@ Como priorizamos:
 
 Como priorizamos:
 
-| Tipo de Recurso | Prioridade |
-| ------------------------------------------------------------ | --------------- |
-| Recursos de alta prioridade conforme rotulado por um membro da equipe | Prioridade Alta |
+| Tipo de Recurso                                                                                                                                     | Prioridade       |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Recursos de alta prioridade conforme rotulado por um membro da equipe                                                                               | Prioridade Alta  |
 | Solicitações populares de recursos do nosso [quadro de feedback da comunidade](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridade Média |
-| Recursos não essenciais e melhorias menores | Prioridade Baixa |
-| Valiosos mas não imediatos | Recurso Futuro |
+| Recursos não essenciais e melhorias menores                                                                                                         | Prioridade Baixa |
+| Valiosos mas não imediatos                                                                                                                          | Recurso Futuro   |
 
 ## Enviando seu PR
 

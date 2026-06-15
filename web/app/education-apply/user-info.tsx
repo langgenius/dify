@@ -36,18 +36,11 @@ const UserInfo = () => {
           size="2xl"
         />
         <div className="pt-1.5">
-          <div className="system-md-semibold text-text-primary">
-            {userProfile.name}
-          </div>
-          <div className="system-sm-regular text-text-secondary">
-            {userProfile.email}
-          </div>
+          <div className="system-md-semibold text-text-primary">{userProfile.name}</div>
+          <div className="system-sm-regular text-text-secondary">{userProfile.email}</div>
         </div>
       </div>
-      <Button
-        variant="secondary"
-        onClick={handleLogout}
-      >
+      <Button variant="secondary" onClick={handleLogout}>
         {t('userProfile.logout', { ns: 'common' })}
       </Button>
     </div>

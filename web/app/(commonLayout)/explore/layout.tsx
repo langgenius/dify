@@ -8,11 +8,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 const ExploreLayout: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
   useDocumentTitle(t('menus.explore', { ns: 'common' }))
-  return (
-    <ExploreClient>
-      {children}
-    </ExploreClient>
-  )
+  return <ExploreClient>{children}</ExploreClient>
 }
 
 export default React.memo(ExploreLayout)

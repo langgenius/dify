@@ -14,27 +14,18 @@ type Props = Readonly<{
   onRun: (url: string) => void
 }>
 
-const UrlInput: FC<Props> = ({
-  isRunning,
-  onRun,
-}) => {
+const UrlInput: FC<Props> = ({ isRunning, onRun }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const [url, setUrl] = useState('')
   const handleOnRun = useCallback(() => {
-    if (isRunning)
-      return
+    if (isRunning) return
     onRun(url)
   }, [isRunning, onRun, url])
 
   return (
     <div className="flex items-center justify-between">
-      <Input
-        value={url}
-        onValueChange={setUrl}
-        placeholder={docLink()}
-        size="small"
-      />
+      <Input value={url} onValueChange={setUrl} placeholder={docLink()} size="small" />
       <Button
         variant="primary"
         onClick={handleOnRun}

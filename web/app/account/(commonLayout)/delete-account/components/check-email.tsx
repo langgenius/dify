@@ -17,15 +17,16 @@ export default function CheckEmail(props: DeleteAccountProps) {
   const { userProfile } = useAppContext()
   const [userInputEmail, setUserInputEmail] = useState('')
 
-  const { isPending: isSendingEmail, mutateAsync: getDeleteEmailVerifyCode } = useSendDeleteAccountEmail()
+  const { isPending: isSendingEmail, mutateAsync: getDeleteEmailVerifyCode } =
+    useSendDeleteAccountEmail()
 
   const handleConfirm = useCallback(async () => {
     try {
       const ret = await getDeleteEmailVerifyCode()
-      if (ret.result === 'success')
-        props.onConfirm()
+      if (ret.result === 'success') props.onConfirm()
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
   }, [getDeleteEmailVerifyCode, props])
 
   return (
@@ -35,9 +36,13 @@ export default function CheckEmail(props: DeleteAccountProps) {
       </div>
       <div className="pt-1 pb-2 body-md-regular text-text-secondary">
         {t('account.deletePrivacyLinkTip', { ns: 'common' })}
-        <Link href="https://dify.ai/privacy" className="text-text-accent">{t('account.deletePrivacyLink', { ns: 'common' })}</Link>
+        <Link href="https://dify.ai/privacy" className="text-text-accent">
+          {t('account.deletePrivacyLink', { ns: 'common' })}
+        </Link>
       </div>
-      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">{t('account.deleteLabel', { ns: 'common' })}</label>
+      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+        {t('account.deleteLabel', { ns: 'common' })}
+      </label>
       <Input
         placeholder={t('account.deletePlaceholder', { ns: 'common' }) as string}
         onChange={(e) => {
@@ -45,8 +50,18 @@ export default function CheckEmail(props: DeleteAccountProps) {
         }}
       />
       <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" disabled={userInputEmail !== userProfile.email || isSendingEmail} loading={isSendingEmail} variant="primary" onClick={handleConfirm}>{t('account.sendVerificationButton', { ns: 'common' })}</Button>
-        <Button className="w-full" onClick={props.onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button
+          className="w-full"
+          disabled={userInputEmail !== userProfile.email || isSendingEmail}
+          loading={isSendingEmail}
+          variant="primary"
+          onClick={handleConfirm}
+        >
+          {t('account.sendVerificationButton', { ns: 'common' })}
+        </Button>
+        <Button className="w-full" onClick={props.onCancel}>
+          {t('operation.cancel', { ns: 'common' })}
+        </Button>
       </div>
     </>
   )

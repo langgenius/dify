@@ -1,11 +1,7 @@
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
-import type {
-  Node,
-} from '../types'
-import {
-  Position,
-} from 'reactflow'
+import type { Node } from '../types'
+import { Position } from 'reactflow'
 import { CUSTOM_SIMPLE_NODE } from '@/app/components/workflow/simple-node/constants'
 import {
   CUSTOM_NODE,
@@ -16,11 +12,16 @@ import {
 } from '../constants'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import {
-  BlockEnum,
-} from '../types'
+import { BlockEnum } from '../types'
 
-export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
+export function generateNewNode({
+  data,
+  position,
+  id,
+  zIndex,
+  type,
+  ...rest
+}: Omit<Node, 'id'> & { id?: string }): {
   newNode: Node
   newIterationStartNode?: Node
   newLoopStartNode?: Node
@@ -32,14 +33,21 @@ export function generateNewNode({ data, position, id, zIndex, type, ...rest }: O
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
-    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : (data.type === BlockEnum.Loop ? LOOP_NODE_Z_INDEX : zIndex),
+    zIndex:
+      data.type === BlockEnum.Iteration
+        ? ITERATION_NODE_Z_INDEX
+        : data.type === BlockEnum.Loop
+          ? LOOP_NODE_Z_INDEX
+          : zIndex,
     ...rest,
   } as Node
 
   if (data.type === BlockEnum.Iteration) {
-    const newIterationStartNode = getIterationStartNode(newNode.id);
-    (newNode.data as IterationNodeType).start_node_id = newIterationStartNode.id;
-    (newNode.data as IterationNodeType)._children = [{ nodeId: newIterationStartNode.id, nodeType: BlockEnum.IterationStart }]
+    const newIterationStartNode = getIterationStartNode(newNode.id)
+    ;(newNode.data as IterationNodeType).start_node_id = newIterationStartNode.id
+    ;(newNode.data as IterationNodeType)._children = [
+      { nodeId: newIterationStartNode.id, nodeType: BlockEnum.IterationStart },
+    ]
     return {
       newNode,
       newIterationStartNode,
@@ -47,9 +55,11 @@ export function generateNewNode({ data, position, id, zIndex, type, ...rest }: O
   }
 
   if (data.type === BlockEnum.Loop) {
-    const newLoopStartNode = getLoopStartNode(newNode.id);
-    (newNode.data as LoopNodeType).start_node_id = newLoopStartNode.id;
-    (newNode.data as LoopNodeType)._children = [{ nodeId: newLoopStartNode.id, nodeType: BlockEnum.LoopStart }]
+    const newLoopStartNode = getLoopStartNode(newNode.id)
+    ;(newNode.data as LoopNodeType).start_node_id = newLoopStartNode.id
+    ;(newNode.data as LoopNodeType)._children = [
+      { nodeId: newLoopStartNode.id, nodeType: BlockEnum.LoopStart },
+    ]
     return {
       newNode,
       newLoopStartNode,
@@ -111,8 +121,7 @@ export const genNewNodeTitleFromOld = (oldTitle: string) => {
     const title = match[1]
     const num = Number.parseInt(match[2]!, 10)
     return `${title} (${num + 1})`
-  }
-  else {
+  } else {
     return `${oldTitle} (1)`
   }
 }
@@ -122,11 +131,9 @@ export const getTopLeftNodePosition = (nodes: Node[]) => {
   let minY = Infinity
 
   nodes.forEach((node) => {
-    if (node.position.x < minX)
-      minX = node.position.x
+    if (node.position.x < minX) minX = node.position.x
 
-    if (node.position.y < minY)
-      minY = node.position.y
+    if (node.position.y < minY) minY = node.position.y
   })
 
   return {
@@ -143,10 +150,14 @@ export const getNestedNodePosition = (node: Node, parentNode: Node) => {
 }
 
 export const hasRetryNode = (nodeType?: BlockEnum) => {
-  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+  return (
+    nodeType === BlockEnum.LLM ||
+    nodeType === BlockEnum.Tool ||
+    nodeType === BlockEnum.HttpRequest ||
+    nodeType === BlockEnum.Code
+  )
 }
 
 export const getNodeCustomTypeByNodeDataType = (nodeType: BlockEnum) => {
-  if (nodeType === BlockEnum.LoopEnd)
-    return CUSTOM_SIMPLE_NODE
+  if (nodeType === BlockEnum.LoopEnd) return CUSTOM_SIMPLE_NODE
 }

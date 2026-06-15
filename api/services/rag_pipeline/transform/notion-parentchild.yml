@@ -1,12 +1,12 @@
 dependencies:
-- current_identifier: null
-  type: marketplace
-  value:
-    plugin_unique_identifier: langgenius/parentchild_chunker:0.0.1@b1a28a27e33fec442ce494da2a7814edd7eb9d646c81f38bccfcf1133d486e40
-- current_identifier: null
-  type: marketplace
-  value:
-    plugin_unique_identifier: langgenius/notion_datasource:0.0.1@2dd49c2c3ffff976be8d22efb1ac0f63522a8d0f24ef8c44729d0a50a94ec039
+  - current_identifier: null
+    type: marketplace
+    value:
+      plugin_unique_identifier: langgenius/parentchild_chunker:0.0.1@b1a28a27e33fec442ce494da2a7814edd7eb9d646c81f38bccfcf1133d486e40
+  - current_identifier: null
+    type: marketplace
+    value:
+      plugin_unique_identifier: langgenius/notion_datasource:0.0.1@2dd49c2c3ffff976be8d22efb1ac0f63522a8d0f24ef8c44729d0a50a94ec039
 kind: rag_pipeline
 rag_pipeline:
   description: ''
@@ -21,486 +21,487 @@ workflow:
   features: {}
   graph:
     edges:
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: datasource
-        targetType: tool
-      id: 1752489759475-source-1752490343805-target
-      source: '1752489759475'
-      sourceHandle: source
-      target: '1752490343805'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInLoop: false
-        sourceType: tool
-        targetType: knowledge-index
-      id: 1752490343805-source-1752477924228-target
-      source: '1752490343805'
-      sourceHandle: source
-      target: '1752477924228'
-      targetHandle: target
-      type: custom
-      zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: datasource
+          targetType: tool
+        id: 1752489759475-source-1752490343805-target
+        source: '1752489759475'
+        sourceHandle: source
+        target: '1752490343805'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInLoop: false
+          sourceType: tool
+          targetType: knowledge-index
+        id: 1752490343805-source-1752477924228-target
+        source: '1752490343805'
+        sourceHandle: source
+        target: '1752477924228'
+        targetHandle: target
+        type: custom
+        zIndex: 0
     nodes:
-    - data:
-        chunk_structure: hierarchical_model
-        embedding_model: text-embedding-ada-002
-        embedding_model_provider: langgenius/openai/openai
-        index_chunk_variable_selector:
-        - '1752490343805'
-        - result
-        indexing_technique: high_quality
-        keyword_number: 10
-        retrieval_model:
-          score_threshold: 0.5
-          score_threshold_enabled: false
-          search_method: semantic_search
-          top_k: 3
-          vector_setting:
-            embedding_model_name: text-embedding-ada-002
-            embedding_provider_name: langgenius/openai/openai
+      - data:
+          chunk_structure: hierarchical_model
+          embedding_model: text-embedding-ada-002
+          embedding_model_provider: langgenius/openai/openai
+          index_chunk_variable_selector:
+            - '1752490343805'
+            - result
+          indexing_technique: high_quality
+          keyword_number: 10
+          retrieval_model:
+            score_threshold: 0.5
+            score_threshold_enabled: false
+            search_method: semantic_search
+            top_k: 3
+            vector_setting:
+              embedding_model_name: text-embedding-ada-002
+              embedding_provider_name: langgenius/openai/openai
+          selected: false
+          title: Knowledge Base
+          type: knowledge-index
+        height: 114
+        id: '1752477924228'
+        position:
+          x: 1486.2052698032674
+          y: 281.3910724383104
+        positionAbsolute:
+          x: 1486.2052698032674
+          y: 281.3910724383104
         selected: false
-        title: Knowledge Base
-        type: knowledge-index
-      height: 114
-      id: '1752477924228'
-      position:
-        x: 1486.2052698032674
-        y: 281.3910724383104
-      positionAbsolute:
-        x: 1486.2052698032674
-        y: 281.3910724383104
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-    - data:
-        datasource_configurations: {}
-        datasource_label: Notion数据源
-        datasource_name: notion_datasource
-        datasource_parameters: {}
-        plugin_id: langgenius/notion_datasource
-        provider_name: notion_datasource
-        provider_type: online_document
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          datasource_configurations: {}
+          datasource_label: Notion数据源
+          datasource_name: notion_datasource
+          datasource_parameters: {}
+          plugin_id: langgenius/notion_datasource
+          provider_name: notion_datasource
+          provider_type: online_document
+          selected: false
+          title: Notion数据源
+          type: datasource
+        height: 52
+        id: '1752489759475'
+        position:
+          x: 736.9082104000458
+          y: 281.3910724383104
+        positionAbsolute:
+          x: 736.9082104000458
+          y: 281.3910724383104
         selected: false
-        title: Notion数据源
-        type: datasource
-      height: 52
-      id: '1752489759475'
-      position:
-        x: 736.9082104000458
-        y: 281.3910724383104
-      positionAbsolute:
-        x: 736.9082104000458
-        y: 281.3910724383104
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-    - data:
-        is_team_authorization: true
-        output_schema:
-          properties:
-            result:
-              description: Parent child chunks result
-              items:
-                type: object
-              type: array
-          type: object
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: The text you want to chunk.
-            ja_JP: チャンク化したいテキスト。
-            pt_BR: O texto que você deseja dividir.
-            zh_Hans: 你想要分块的文本。
-          label:
-            en_US: Input text
-            ja_JP: 入力テキスト
-            pt_BR: Texto de entrada
-            zh_Hans: 输入文本
-          llm_description: The text you want to chunk.
-          max: null
-          min: null
-          name: input_text
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: 1024
-          form: llm
-          human_description:
-            en_US: Maximum length for chunking
-            ja_JP: チャンク分割の最大長
-            pt_BR: Comprimento máximo para divisão
-            zh_Hans: 用于分块的最大长度
-          label:
-            en_US: Maximum Length
-            ja_JP: 最大長
-            pt_BR: Comprimento Máximo
-            zh_Hans: 最大长度
-          llm_description: Maximum length allowed per chunk
-          max: null
-          min: null
-          name: max_length
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: '
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          is_team_authorization: true
+          output_schema:
+            properties:
+              result:
+                description: Parent child chunks result
+                items:
+                  type: object
+                type: array
+            type: object
+          paramSchemas:
+            - auto_generate: null
+              default: null
+              form: llm
+              human_description:
+                en_US: The text you want to chunk.
+                ja_JP: チャンク化したいテキスト。
+                pt_BR: O texto que você deseja dividir.
+                zh_Hans: 你想要分块的文本。
+              label:
+                en_US: Input text
+                ja_JP: 入力テキスト
+                pt_BR: Texto de entrada
+                zh_Hans: 输入文本
+              llm_description: The text you want to chunk.
+              max: null
+              min: null
+              name: input_text
+              options: []
+              placeholder: null
+              precision: null
+              required: true
+              scope: null
+              template: null
+              type: string
+            - auto_generate: null
+              default: 1024
+              form: llm
+              human_description:
+                en_US: Maximum length for chunking
+                ja_JP: チャンク分割の最大長
+                pt_BR: Comprimento máximo para divisão
+                zh_Hans: 用于分块的最大长度
+              label:
+                en_US: Maximum Length
+                ja_JP: 最大長
+                pt_BR: Comprimento Máximo
+                zh_Hans: 最大长度
+              llm_description: Maximum length allowed per chunk
+              max: null
+              min: null
+              name: max_length
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: number
+            - auto_generate: null
+              default: '
 
 
-            '
-          form: llm
-          human_description:
-            en_US: Separator used for chunking
-            ja_JP: チャンク分割に使用する区切り文字
-            pt_BR: Separador usado para divisão
-            zh_Hans: 用于分块的分隔符
-          label:
-            en_US: Chunk Separator
-            ja_JP: チャンク区切り文字
-            pt_BR: Separador de Divisão
-            zh_Hans: 分块分隔符
-          llm_description: The separator used to split chunks
-          max: null
-          min: null
-          name: separator
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: 512
-          form: llm
-          human_description:
-            en_US: Maximum length for subchunking
-            ja_JP: サブチャンク分割の最大長
-            pt_BR: Comprimento máximo para subdivisão
-            zh_Hans: 用于子分块的最大长度
-          label:
-            en_US: Subchunk Maximum Length
-            ja_JP: サブチャンク最大長
-            pt_BR: Comprimento Máximo de Subdivisão
-            zh_Hans: 子分块最大长度
-          llm_description: Maximum length allowed per subchunk
-          max: null
-          min: null
-          name: subchunk_max_length
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: '. '
-          form: llm
-          human_description:
-            en_US: Separator used for subchunking
-            ja_JP: サブチャンク分割に使用する区切り文字
-            pt_BR: Separador usado para subdivisão
-            zh_Hans: 用于子分块的分隔符
-          label:
-            en_US: Subchunk Separator
-            ja_JP: サブチャンキング用セパレーター
-            pt_BR: Separador de Subdivisão
-            zh_Hans: 子分块分隔符
-          llm_description: The separator used to split subchunks
-          max: null
-          min: null
-          name: subchunk_separator
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: paragraph
-          form: llm
-          human_description:
-            en_US: Split text into paragraphs based on separator and maximum chunk
-              length, using split text as parent block or entire document as parent
-              block and directly retrieve.
-            ja_JP: セパレーターと最大チャンク長に基づいてテキストを段落に分割し、分割されたテキスト
-              を親ブロックとして使用するか、文書全体を親ブロックとして使用して直接取得します。
-            pt_BR: Dividir texto em parágrafos com base no separador e no comprimento
-              máximo do bloco, usando o texto dividido como bloco pai ou documento
-              completo como bloco pai e diretamente recuperá-lo.
-            zh_Hans: 根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的父块或整个文档用作父块并直接检索。
-          label:
-            en_US: Parent Mode
-            ja_JP: 親子モード
-            pt_BR: Modo Pai
-            zh_Hans: 父块模式
-          llm_description: Split text into paragraphs based on separator and maximum
-            chunk length, using split text as parent block or entire document as parent
-            block and directly retrieve.
-          max: null
-          min: null
-          name: parent_mode
-          options:
-          - icon: ''
-            label:
-              en_US: Paragraph
-              ja_JP: 段落
-              pt_BR: Parágrafo
-              zh_Hans: 段落
-            value: paragraph
-          - icon: ''
-            label:
-              en_US: Full Document
-              ja_JP: 全文
-              pt_BR: Documento Completo
-              zh_Hans: 全文
-            value: full_doc
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: select
-        - auto_generate: null
-          default: 0
-          form: llm
-          human_description:
-            en_US: Whether to remove extra spaces in the text
-            ja_JP: テキスト内の余分なスペースを削除するかどうか
-            pt_BR: Se deve remover espaços extras no texto
-            zh_Hans: 是否移除文本中的多余空格
-          label:
-            en_US: Remove Extra Spaces
-            ja_JP: 余分なスペースを削除
-            pt_BR: Remover Espaços Extras
-            zh_Hans: 移除多余空格
-          llm_description: Whether to remove extra spaces in the text
-          max: null
-          min: null
-          name: remove_extra_spaces
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: boolean
-        - auto_generate: null
-          default: 0
-          form: llm
-          human_description:
-            en_US: Whether to remove URLs and emails in the text
-            ja_JP: テキスト内のURLやメールアドレスを削除するかどうか
-            pt_BR: Se deve remover URLs e e-mails no texto
-            zh_Hans: 是否移除文本中的URL和电子邮件地址
-          label:
-            en_US: Remove URLs and Emails
-            ja_JP: URLとメールアドレスを削除
-            pt_BR: Remover URLs e E-mails
-            zh_Hans: 移除URL和电子邮件地址
-          llm_description: Whether to remove URLs and emails in the text
-          max: null
-          min: null
-          name: remove_urls_emails
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: boolean
-        params:
-          input_text: ''
-          max_length: ''
-          parent_mode: ''
-          remove_extra_spaces: ''
-          remove_urls_emails: ''
-          separator: ''
-          subchunk_max_length: ''
-          subchunk_separator: ''
-        provider_id: langgenius/parentchild_chunker/parentchild_chunker
-        provider_name: langgenius/parentchild_chunker/parentchild_chunker
-        provider_type: builtin
+                '
+              form: llm
+              human_description:
+                en_US: Separator used for chunking
+                ja_JP: チャンク分割に使用する区切り文字
+                pt_BR: Separador usado para divisão
+                zh_Hans: 用于分块的分隔符
+              label:
+                en_US: Chunk Separator
+                ja_JP: チャンク区切り文字
+                pt_BR: Separador de Divisão
+                zh_Hans: 分块分隔符
+              llm_description: The separator used to split chunks
+              max: null
+              min: null
+              name: separator
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: string
+            - auto_generate: null
+              default: 512
+              form: llm
+              human_description:
+                en_US: Maximum length for subchunking
+                ja_JP: サブチャンク分割の最大長
+                pt_BR: Comprimento máximo para subdivisão
+                zh_Hans: 用于子分块的最大长度
+              label:
+                en_US: Subchunk Maximum Length
+                ja_JP: サブチャンク最大長
+                pt_BR: Comprimento Máximo de Subdivisão
+                zh_Hans: 子分块最大长度
+              llm_description: Maximum length allowed per subchunk
+              max: null
+              min: null
+              name: subchunk_max_length
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: number
+            - auto_generate: null
+              default: '. '
+              form: llm
+              human_description:
+                en_US: Separator used for subchunking
+                ja_JP: サブチャンク分割に使用する区切り文字
+                pt_BR: Separador usado para subdivisão
+                zh_Hans: 用于子分块的分隔符
+              label:
+                en_US: Subchunk Separator
+                ja_JP: サブチャンキング用セパレーター
+                pt_BR: Separador de Subdivisão
+                zh_Hans: 子分块分隔符
+              llm_description: The separator used to split subchunks
+              max: null
+              min: null
+              name: subchunk_separator
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: string
+            - auto_generate: null
+              default: paragraph
+              form: llm
+              human_description:
+                en_US: Split text into paragraphs based on separator and maximum chunk
+                  length, using split text as parent block or entire document as parent
+                  block and directly retrieve.
+                ja_JP:
+                  セパレーターと最大チャンク長に基づいてテキストを段落に分割し、分割されたテキスト
+                  を親ブロックとして使用するか、文書全体を親ブロックとして使用して直接取得します。
+                pt_BR: Dividir texto em parágrafos com base no separador e no comprimento
+                  máximo do bloco, usando o texto dividido como bloco pai ou documento
+                  completo como bloco pai e diretamente recuperá-lo.
+                zh_Hans: 根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的父块或整个文档用作父块并直接检索。
+              label:
+                en_US: Parent Mode
+                ja_JP: 親子モード
+                pt_BR: Modo Pai
+                zh_Hans: 父块模式
+              llm_description: Split text into paragraphs based on separator and maximum
+                chunk length, using split text as parent block or entire document as parent
+                block and directly retrieve.
+              max: null
+              min: null
+              name: parent_mode
+              options:
+                - icon: ''
+                  label:
+                    en_US: Paragraph
+                    ja_JP: 段落
+                    pt_BR: Parágrafo
+                    zh_Hans: 段落
+                  value: paragraph
+                - icon: ''
+                  label:
+                    en_US: Full Document
+                    ja_JP: 全文
+                    pt_BR: Documento Completo
+                    zh_Hans: 全文
+                  value: full_doc
+              placeholder: null
+              precision: null
+              required: true
+              scope: null
+              template: null
+              type: select
+            - auto_generate: null
+              default: 0
+              form: llm
+              human_description:
+                en_US: Whether to remove extra spaces in the text
+                ja_JP: テキスト内の余分なスペースを削除するかどうか
+                pt_BR: Se deve remover espaços extras no texto
+                zh_Hans: 是否移除文本中的多余空格
+              label:
+                en_US: Remove Extra Spaces
+                ja_JP: 余分なスペースを削除
+                pt_BR: Remover Espaços Extras
+                zh_Hans: 移除多余空格
+              llm_description: Whether to remove extra spaces in the text
+              max: null
+              min: null
+              name: remove_extra_spaces
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: boolean
+            - auto_generate: null
+              default: 0
+              form: llm
+              human_description:
+                en_US: Whether to remove URLs and emails in the text
+                ja_JP: テキスト内のURLやメールアドレスを削除するかどうか
+                pt_BR: Se deve remover URLs e e-mails no texto
+                zh_Hans: 是否移除文本中的URL和电子邮件地址
+              label:
+                en_US: Remove URLs and Emails
+                ja_JP: URLとメールアドレスを削除
+                pt_BR: Remover URLs e E-mails
+                zh_Hans: 移除URL和电子邮件地址
+              llm_description: Whether to remove URLs and emails in the text
+              max: null
+              min: null
+              name: remove_urls_emails
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: boolean
+          params:
+            input_text: ''
+            max_length: ''
+            parent_mode: ''
+            remove_extra_spaces: ''
+            remove_urls_emails: ''
+            separator: ''
+            subchunk_max_length: ''
+            subchunk_separator: ''
+          provider_id: langgenius/parentchild_chunker/parentchild_chunker
+          provider_name: langgenius/parentchild_chunker/parentchild_chunker
+          provider_type: builtin
+          selected: true
+          title: Parent-child Chunker
+          tool_configurations: {}
+          tool_description: Parent-child Chunk Structure
+          tool_label: Parent-child Chunker
+          tool_name: parentchild_chunker
+          tool_parameters:
+            input_text:
+              type: mixed
+              value: '{{#1752489759475.content#}}'
+            max_length:
+              type: variable
+              value:
+                - rag
+                - shared
+                - max_chunk_length
+            parent_mode:
+              type: variable
+              value:
+                - rag
+                - shared
+                - parent_mode
+            remove_extra_spaces:
+              type: mixed
+              value: '{{#rag.shared.replace_consecutive_spaces#}}'
+            remove_urls_emails:
+              type: mixed
+              value: '{{#rag.shared.delete_urls_email#}}'
+            separator:
+              type: mixed
+              value: '{{#rag.shared.delimiter#}}'
+            subchunk_max_length:
+              type: variable
+              value:
+                - rag
+                - shared
+                - child_max_chunk_length
+            subchunk_separator:
+              type: mixed
+              value: '{{#rag.shared.child_delimiter#}}'
+          type: tool
+        height: 52
+        id: '1752490343805'
+        position:
+          x: 1077.0240183162543
+          y: 281.3910724383104
+        positionAbsolute:
+          x: 1077.0240183162543
+          y: 281.3910724383104
         selected: true
-        title: Parent-child Chunker
-        tool_configurations: {}
-        tool_description: Parent-child Chunk Structure
-        tool_label: Parent-child Chunker
-        tool_name: parentchild_chunker
-        tool_parameters:
-          input_text:
-            type: mixed
-            value: '{{#1752489759475.content#}}'
-          max_length:
-            type: variable
-            value:
-            - rag
-            - shared
-            - max_chunk_length
-          parent_mode:
-            type: variable
-            value:
-            - rag
-            - shared
-            - parent_mode
-          remove_extra_spaces:
-            type: mixed
-            value: '{{#rag.shared.replace_consecutive_spaces#}}'
-          remove_urls_emails:
-            type: mixed
-            value: '{{#rag.shared.delete_urls_email#}}'
-          separator:
-            type: mixed
-            value: '{{#rag.shared.delimiter#}}'
-          subchunk_max_length:
-            type: variable
-            value:
-            - rag
-            - shared
-            - child_max_chunk_length
-          subchunk_separator:
-            type: mixed
-            value: '{{#rag.shared.child_delimiter#}}'
-        type: tool
-      height: 52
-      id: '1752490343805'
-      position:
-        x: 1077.0240183162543
-        y: 281.3910724383104
-      positionAbsolute:
-        x: 1077.0240183162543
-        y: 281.3910724383104
-      selected: true
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
     viewport:
       x: -487.2912544090391
       y: -54.7029301848807
       zoom: 0.9994011715768695
   rag_pipeline_variables:
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: \n\n
-    label: Delimiter
-    max_length: 100
-    options: []
-    placeholder: null
-    required: true
-    tooltips: A delimiter is the character used to separate text. \n\n is recommended
-      for splitting the original document into large parent chunks. You can also use
-      special delimiters defined by yourself.
-    type: text-input
-    unit: null
-    variable: delimiter
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: 1024
-    label: Maximum chunk length
-    max_length: 48
-    options: []
-    placeholder: null
-    required: true
-    tooltips: null
-    type: number
-    unit: characters
-    variable: max_chunk_length
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: \n
-    label: Child delimiter
-    max_length: 199
-    options: []
-    placeholder: null
-    required: true
-    tooltips: A delimiter is the character used to separate text. \n\n is recommended
-      for splitting the original document into large parent chunks. You can also use
-      special delimiters defined by yourself.
-    type: text-input
-    unit: null
-    variable: child_delimiter
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: 512
-    label: Child max chunk length
-    max_length: 48
-    options: []
-    placeholder: null
-    required: true
-    tooltips: null
-    type: number
-    unit: characters
-    variable: child_max_chunk_length
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: paragraph
-    label: Parent mode
-    max_length: 48
-    options:
-    - full_doc
-    - paragraph
-    placeholder: null
-    required: true
-    tooltips: null
-    type: select
-    unit: null
-    variable: parent_mode
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: null
-    label: Replace consecutive spaces, newlines and tabs
-    max_length: 48
-    options: []
-    placeholder: null
-    required: false
-    tooltips: null
-    type: checkbox
-    unit: null
-    variable: replace_consecutive_spaces
-  - allow_file_extension: null
-    allow_file_upload_methods: null
-    allowed_file_types: null
-    belong_to_node_id: shared
-    default_value: null
-    label: Delete all URLs and email addresses
-    max_length: 48
-    options: []
-    placeholder: null
-    required: false
-    tooltips: null
-    type: checkbox
-    unit: null
-    variable: delete_urls_email
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: \n\n
+      label: Delimiter
+      max_length: 100
+      options: []
+      placeholder: null
+      required: true
+      tooltips: A delimiter is the character used to separate text. \n\n is recommended
+        for splitting the original document into large parent chunks. You can also use
+        special delimiters defined by yourself.
+      type: text-input
+      unit: null
+      variable: delimiter
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: 1024
+      label: Maximum chunk length
+      max_length: 48
+      options: []
+      placeholder: null
+      required: true
+      tooltips: null
+      type: number
+      unit: characters
+      variable: max_chunk_length
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: \n
+      label: Child delimiter
+      max_length: 199
+      options: []
+      placeholder: null
+      required: true
+      tooltips: A delimiter is the character used to separate text. \n\n is recommended
+        for splitting the original document into large parent chunks. You can also use
+        special delimiters defined by yourself.
+      type: text-input
+      unit: null
+      variable: child_delimiter
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: 512
+      label: Child max chunk length
+      max_length: 48
+      options: []
+      placeholder: null
+      required: true
+      tooltips: null
+      type: number
+      unit: characters
+      variable: child_max_chunk_length
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: paragraph
+      label: Parent mode
+      max_length: 48
+      options:
+        - full_doc
+        - paragraph
+      placeholder: null
+      required: true
+      tooltips: null
+      type: select
+      unit: null
+      variable: parent_mode
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: null
+      label: Replace consecutive spaces, newlines and tabs
+      max_length: 48
+      options: []
+      placeholder: null
+      required: false
+      tooltips: null
+      type: checkbox
+      unit: null
+      variable: replace_consecutive_spaces
+    - allow_file_extension: null
+      allow_file_upload_methods: null
+      allowed_file_types: null
+      belong_to_node_id: shared
+      default_value: null
+      label: Delete all URLs and email addresses
+      max_length: 48
+      options: []
+      placeholder: null
+      required: false
+      tooltips: null
+      type: checkbox
+      unit: null
+      variable: delete_urls_email

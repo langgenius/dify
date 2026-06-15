@@ -9,34 +9,37 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from '@/next/link'
-import { useDisableDatasetServiceApi, useEnableDatasetServiceApi } from '@/service/knowledge/use-dataset'
+import {
+  useDisableDatasetServiceApi,
+  useEnableDatasetServiceApi,
+} from '@/service/knowledge/use-dataset'
 
 type CardProps = {
   apiEnabled: boolean
 }
 
-const Card = ({
-  apiEnabled,
-}: CardProps) => {
+const Card = ({ apiEnabled }: CardProps) => {
   const { t } = useTranslation()
-  const datasetId = useDatasetDetailContextWithSelector(state => state.dataset?.id)
-  const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
+  const datasetId = useDatasetDetailContextWithSelector((state) => state.dataset?.id)
+  const mutateDatasetRes = useDatasetDetailContextWithSelector((state) => state.mutateDatasetRes)
   const { mutateAsync: enableDatasetServiceApi } = useEnableDatasetServiceApi()
   const { mutateAsync: disableDatasetServiceApi } = useDisableDatasetServiceApi()
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const isCurrentWorkspaceManager = useAppContextSelector(
+    (state) => state.isCurrentWorkspaceManager,
+  )
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
-  const onToggle = useCallback(async (state: boolean) => {
-    let result: 'success' | 'fail'
-    if (state)
-      result = (await enableDatasetServiceApi(datasetId ?? '')).result
-    else
-      result = (await disableDatasetServiceApi(datasetId ?? '')).result
-    if (result === 'success')
-      mutateDatasetRes?.()
-  }, [datasetId, enableDatasetServiceApi, mutateDatasetRes, disableDatasetServiceApi])
+  const onToggle = useCallback(
+    async (state: boolean) => {
+      let result: 'success' | 'fail'
+      if (state) result = (await enableDatasetServiceApi(datasetId ?? '')).result
+      else result = (await disableDatasetServiceApi(datasetId ?? '')).result
+      if (result === 'success') mutateDatasetRes?.()
+    },
+    [datasetId, enableDatasetServiceApi, mutateDatasetRes, disableDatasetServiceApi],
+  )
 
   return (
     <div className="w-[208px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
@@ -44,10 +47,7 @@ const Card = ({
         <div className="p-2">
           <div className="mb-1.5 flex justify-between">
             <div className="flex items-center gap-1">
-              <StatusDot
-                className="shrink-0"
-                status={apiEnabled ? 'success' : 'warning'}
-              />
+              <StatusDot className="shrink-0" status={apiEnabled ? 'success' : 'warning'} />
               <div
                 className={cn(
                   'system-xs-semibold-uppercase',

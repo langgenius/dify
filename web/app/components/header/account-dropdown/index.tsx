@@ -2,7 +2,15 @@
 
 import type { MouseEventHandler, ReactNode } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useSetLocalStorage } from 'foxact/use-local-storage'
@@ -39,17 +47,9 @@ type AccountMenuRouteItemProps = {
   trailing?: ReactNode
 }
 
-function AccountMenuRouteItem({
-  href,
-  iconClassName,
-  label,
-  trailing,
-}: AccountMenuRouteItemProps) {
+function AccountMenuRouteItem({ href, iconClassName, label, trailing }: AccountMenuRouteItemProps) {
   return (
-    <DropdownMenuLinkItem
-      className="justify-between"
-      render={<Link href={href} />}
-    >
+    <DropdownMenuLinkItem className="justify-between" render={<Link href={href} />}>
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuLinkItem>
   )
@@ -94,10 +94,7 @@ function AccountMenuActionItem({
   trailing,
 }: AccountMenuActionItemProps) {
   return (
-    <DropdownMenuItem
-      className="justify-between"
-      onClick={onClick}
-    >
+    <DropdownMenuItem className="justify-between" onClick={onClick}>
       <MenuItemContent iconClassName={iconClassName} label={label} trailing={trailing} />
     </DropdownMenuItem>
   )
@@ -121,9 +118,15 @@ export default function AppSelector() {
   const { userProfile, langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY)
-  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(EDUCATION_REVERIFY_HAS_NOTICED_KEY)
-  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(EDUCATION_EXPIRED_HAS_NOTICED_KEY)
+  const clearEducationReverifyPrevExpireAt = useSetLocalStorage<number>(
+    EDUCATION_REVERIFY_PREV_EXPIRE_AT_KEY,
+  )
+  const clearEducationReverifyHasNoticed = useSetLocalStorage<boolean>(
+    EDUCATION_REVERIFY_HAS_NOTICED_KEY,
+  )
+  const clearEducationExpiredHasNoticed = useSetLocalStorage<boolean>(
+    EDUCATION_EXPIRED_HAS_NOTICED_KEY,
+  )
 
   const { mutateAsync: logout } = useLogout()
   const handleLogout = async () => {
@@ -164,7 +167,9 @@ export default function AppSelector() {
                     </PremiumBadge>
                   )}
                 </div>
-                <div className="system-xs-regular break-all text-text-tertiary">{userProfile.email}</div>
+                <div className="system-xs-regular break-all text-text-tertiary">
+                  {userProfile.email}
+                </div>
               </div>
               <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
             </div>
@@ -205,30 +210,40 @@ export default function AppSelector() {
                   href="https://github.com/langgenius/dify"
                   iconClassName="i-ri-github-line"
                   label={t('userProfile.github', { ns: 'common' })}
-                  trailing={(
+                  trailing={
                     <div className="flex items-center gap-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
-                      <span aria-hidden className="i-ri-star-line size-3 shrink-0 text-text-tertiary" />
+                      <span
+                        aria-hidden
+                        className="i-ri-star-line size-3 shrink-0 text-text-tertiary"
+                      />
                       <GithubStar className="system-2xs-medium-uppercase text-text-tertiary" />
                     </div>
-                  )}
+                  }
                 />
-                {
-                  env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
-                    <AccountMenuActionItem
-                      iconClassName="i-ri-information-2-line"
-                      label={t('userProfile.about', { ns: 'common' })}
-                      onClick={() => {
-                        setAboutVisible(true)
-                      }}
-                      trailing={(
-                        <div className="flex shrink-0 items-center">
-                          <div className="mr-2 system-xs-regular text-text-tertiary">{langGeniusVersionInfo.current_version}</div>
-                          <StatusDot status={langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version ? 'success' : 'warning'} />
+                {env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
+                  <AccountMenuActionItem
+                    iconClassName="i-ri-information-2-line"
+                    label={t('userProfile.about', { ns: 'common' })}
+                    onClick={() => {
+                      setAboutVisible(true)
+                    }}
+                    trailing={
+                      <div className="flex shrink-0 items-center">
+                        <div className="mr-2 system-xs-regular text-text-tertiary">
+                          {langGeniusVersionInfo.current_version}
                         </div>
-                      )}
-                    />
-                  )
-                }
+                        <StatusDot
+                          status={
+                            langGeniusVersionInfo.current_version ===
+                            langGeniusVersionInfo.latest_version
+                              ? 'success'
+                              : 'warning'
+                          }
+                        />
+                      </div>
+                    }
+                  />
+                )}
               </AccountMenuSection>
               <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
             </>
@@ -257,9 +272,12 @@ export default function AppSelector() {
           </AccountMenuSection>
         </DropdownMenuContent>
       </DropdownMenu>
-      {
-        aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langGeniusVersionInfo={langGeniusVersionInfo} />
-      }
+      {aboutVisible && (
+        <AccountAbout
+          onCancel={() => setAboutVisible(false)}
+          langGeniusVersionInfo={langGeniusVersionInfo}
+        />
+      )}
     </div>
   )
 }

@@ -7,12 +7,7 @@ describe('trigger-schedule/frequency-selector', () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
-    render(
-      <FrequencySelector
-        frequency="daily"
-        onChange={onChange}
-      />,
-    )
+    render(<FrequencySelector frequency="daily" onChange={onChange} />)
 
     const trigger = screen.getByRole('combobox')
     await user.click(trigger)

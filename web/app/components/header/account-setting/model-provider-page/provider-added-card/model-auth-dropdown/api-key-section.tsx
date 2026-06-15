@@ -42,10 +42,7 @@ function ApiKeySection({
           </div>
         </div>
         {!notAllowCustomCredential && (
-          <Button
-            onClick={onAdd}
-            className="w-full"
-          >
+          <Button onClick={onAdd} className="w-full">
             {t('modelProvider.auth.addApiKey', { ns: 'common' })}
           </Button>
         )}
@@ -60,7 +57,7 @@ function ApiKeySection({
           {t('modelProvider.auth.apiKeys', { ns: 'common' })}
         </div>
         <div className="max-h-[200px] overflow-y-auto">
-          {credentials.map(credential => (
+          {credentials.map((credential) => (
             <CredentialItem
               key={credential.credential_id}
               credential={credential}
@@ -76,10 +73,7 @@ function ApiKeySection({
       </div>
       {!notAllowCustomCredential && (
         <div className="p-2">
-          <Button
-            onClick={onAdd}
-            className="w-full"
-          >
+          <Button onClick={onAdd} className="w-full">
             {t('modelProvider.auth.addApiKey', { ns: 'common' })}
           </Button>
         </div>

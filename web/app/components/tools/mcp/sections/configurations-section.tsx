@@ -22,23 +22,27 @@ const ConfigurationsSection: FC<ConfigurationsSectionProps> = ({
     <>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.timeout', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">
+            {t('mcp.modal.timeout', { ns: 'tools' })}
+          </span>
         </div>
         <Input
           type="number"
           value={timeout}
-          onChange={e => onTimeoutChange(Number(e.target.value))}
+          onChange={(e) => onTimeoutChange(Number(e.target.value))}
           placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
         />
       </div>
       <div>
         <div className="mb-1 flex h-6 items-center">
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.sseReadTimeout', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">
+            {t('mcp.modal.sseReadTimeout', { ns: 'tools' })}
+          </span>
         </div>
         <Input
           type="number"
           value={sseReadTimeout}
-          onChange={e => onSseReadTimeoutChange(Number(e.target.value))}
+          onChange={(e) => onSseReadTimeoutChange(Number(e.target.value))}
           placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
         />
       </div>

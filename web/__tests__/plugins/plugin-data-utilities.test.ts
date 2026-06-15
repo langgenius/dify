@@ -140,7 +140,7 @@ describe('Plugin Data Utilities Integration', () => {
         { tags: ['invalid'], category: 'extension' },
       ]
 
-      const results = plugins.map(p => ({
+      const results = plugins.map((p) => ({
         validTags: getValidTagKeys(p.tags as TagInput),
         validCategory: getValidCategoryKeys(p.category),
       }))

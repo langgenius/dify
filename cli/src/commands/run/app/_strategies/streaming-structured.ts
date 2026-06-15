@@ -10,7 +10,11 @@ import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { startSpinner } from '@/sys/io/spinner'
 import { extractThinkBlocks, stripThinkBlocks } from '@/sys/io/think-filter'
 
-const CHAT_MODES: ReadonlySet<string> = new Set([RUN_MODES.Chat, RUN_MODES.AgentChat, RUN_MODES.AdvancedChat])
+const CHAT_MODES: ReadonlySet<string> = new Set([
+  RUN_MODES.Chat,
+  RUN_MODES.AgentChat,
+  RUN_MODES.AdvancedChat,
+])
 
 async function* captureTaskId(
   iter: AsyncIterable<SseEvent>,
@@ -21,10 +25,10 @@ async function* captureTaskId(
     if (ev.data.byteLength > 0) {
       try {
         const parsed = JSON.parse(dec.decode(ev.data)) as Record<string, unknown>
-        if (typeof parsed.task_id === 'string' && parsed.task_id !== '')
-          onCapture(parsed.task_id)
+        if (typeof parsed.task_id === 'string' && parsed.task_id !== '') onCapture(parsed.task_id)
+      } catch {
+        /* ignore parse errors */
       }
-      catch { /* ignore parse errors */ }
     }
     yield ev
   }
@@ -42,13 +46,16 @@ export class StreamingStructuredStrategy implements RunStrategy {
       workflowId: opts.workflowId,
     })
 
-    const spinner = startSpinner({ io: deps.io, label: 'running', enabled: ctx.isText && !ctx.livePrint })
+    const spinner = startSpinner({
+      io: deps.io,
+      label: 'running',
+      enabled: ctx.isText && !ctx.livePrint,
+    })
 
     let taskId: string | undefined
     const cleanup = () => {
       spinner.stop()
-      if (taskId !== undefined)
-        void ctx.runClient.stopTask(opts.appId, taskId).catch(() => {})
+      if (taskId !== undefined) void ctx.runClient.stopTask(opts.appId, taskId).catch(() => {})
       ctrl.abort()
       exit(1)
     }
@@ -56,13 +63,15 @@ export class StreamingStructuredStrategy implements RunStrategy {
 
     let resp: Record<string, unknown>
     try {
-      const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal, retryOnRateLimit: opts.retryOnRateLimit })
+      const events = await ctx.runClient.runStream(opts.appId, body, {
+        signal: ctrl.signal,
+        retryOnRateLimit: opts.retryOnRateLimit,
+      })
       const wrappedEvents = captureTaskId(events, (id) => {
         taskId = id
       })
       resp = await collect(wrappedEvents, mode)
-    }
-    catch (err) {
+    } catch (err) {
       ctrl.abort()
       if (err instanceof HitlPauseError) {
         spinner.stop()
@@ -71,8 +80,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
         exit(0)
       }
       throw err
-    }
-    finally {
+    } finally {
       spinner.stop()
       unhandle('SIGINT', cleanup)
     }
@@ -80,22 +88,24 @@ export class StreamingStructuredStrategy implements RunStrategy {
     if (typeof processedResp.answer === 'string') {
       if (ctx.think) {
         const { clean, thinking } = extractThinkBlocks(processedResp.answer)
-        if (thinking !== '')
-          deps.io.err.write(`${thinking}\n`)
+        if (thinking !== '') deps.io.err.write(`${thinking}\n`)
         processedResp = { ...processedResp, answer: clean }
-      }
-      else {
+      } else {
         processedResp = { ...processedResp, answer: stripThinkBlocks(processedResp.answer) }
       }
     }
 
-    const respMode = typeof processedResp.mode === 'string' && processedResp.mode !== '' ? processedResp.mode : mode
-    deps.io.out.write(stringifyOutput(formatted({ format, data: newAppRunObject(respMode, processedResp) })))
+    const respMode =
+      typeof processedResp.mode === 'string' && processedResp.mode !== ''
+        ? processedResp.mode
+        : mode
+    deps.io.out.write(
+      stringifyOutput(formatted({ format, data: newAppRunObject(respMode, processedResp) })),
+    )
     if (isText && CHAT_MODES.has(respMode)) {
       const cs = colorScheme(colorEnabled(deps.io.isErrTTY))
       const hint = chatConversationHint(processedResp, cs)
-      if (hint !== undefined)
-        deps.io.err.write(hint)
+      if (hint !== undefined) deps.io.err.write(hint)
     }
   }
 }

@@ -10,15 +10,13 @@ type TranslationMap = Record<string, string | string[]>
 function createTFunction(translations: TranslationMap, defaultNs?: string) {
   return (key: string, options?: Record<string, unknown>) => {
     // Check custom translations first (without namespace)
-    if (translations[key] !== undefined)
-      return translations[key]
+    if (translations[key] !== undefined) return translations[key]
 
     const ns = (options?.ns as string | undefined) ?? defaultNs
     const fullKey = ns ? `${ns}.${key}` : key
 
     // Check custom translations with namespace
-    if (translations[fullKey] !== undefined)
-      return translations[fullKey]
+    if (translations[fullKey] !== undefined) return translations[fullKey]
 
     // Serialize params (excluding ns) for test assertions
     const params = { ...options }
@@ -49,8 +47,7 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
   return {
     useTranslation: (defaultNs?: string) => {
       const cacheKey = defaultNs ?? ''
-      if (!tCache.has(cacheKey))
-        tCache.set(cacheKey, createTFunction(translations, defaultNs))
+      if (!tCache.has(cacheKey)) tCache.set(cacheKey, createTFunction(translations, defaultNs))
       return {
         t: tCache.get(cacheKey)!,
         i18n,
@@ -64,10 +61,7 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
  */
 function createTransMock(translations: TranslationMap = {}) {
   return {
-    Trans: ({ i18nKey, children }: {
-      i18nKey: string
-      children?: React.ReactNode
-    }) => {
+    Trans: ({ i18nKey, children }: { i18nKey: string; children?: React.ReactNode }) => {
       const text = translations[i18nKey] ?? i18nKey
       return React.createElement('span', { 'data-i18n-key': i18nKey }, children ?? text)
     },

@@ -19,7 +19,8 @@ const mockDataSourceStore = { getState: mockGetState }
 
 vi.mock('../../../../store', () => ({
   useDataSourceStore: () => mockDataSourceStore,
-  useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState),
+  useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) =>
+    selector(mockStoreState),
 }))
 
 type HeaderProps = React.ComponentProps<typeof Header>
@@ -61,7 +62,9 @@ describe('Header', () => {
 
       // Assert - search input should be visible
       // Assert - search input should be visible
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should render with correct container styles', () => {
@@ -84,7 +87,9 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
       expect(input)!.toBeInTheDocument()
       expect(input)!.toHaveValue('test-value')
     })
@@ -117,7 +122,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
         expect(input)!.toHaveValue('')
       })
 
@@ -126,7 +133,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
         expect(input)!.toHaveValue('search-query')
       })
 
@@ -136,7 +145,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
         expect(input)!.toHaveValue(specialChars)
       })
 
@@ -146,7 +157,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
         expect(input)!.toHaveValue(unicodeValue)
       })
     })
@@ -159,7 +172,9 @@ describe('Header', () => {
 
         // Assert - Component should render without errors
         // Assert - Component should render without errors
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
 
       it('should render with single breadcrumb', () => {
@@ -167,7 +182,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
 
       it('should render with multiple breadcrumbs', () => {
@@ -175,7 +192,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -187,7 +206,9 @@ describe('Header', () => {
 
         // Assert - keywords are passed through, component renders
         // Assert - keywords are passed through, component renders
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -197,7 +218,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
 
       it('should render with bucket value', () => {
@@ -205,7 +228,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -215,7 +240,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
 
       it('should handle positive search results', () => {
@@ -225,7 +252,9 @@ describe('Header', () => {
 
         // Assert - Breadcrumbs will show search results text when keywords exist and results > 0
         // Assert - Breadcrumbs will show search results text when keywords exist and results > 0
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
 
       it('should handle large search results count', () => {
@@ -233,7 +262,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
     })
 
@@ -243,7 +274,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
 
       it('should render correctly when isInPipeline is true', () => {
@@ -251,7 +284,9 @@ describe('Header', () => {
 
         render(<Header {...props} />)
 
-        expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
       })
     })
   })
@@ -263,7 +298,9 @@ describe('Header', () => {
         const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
 
         fireEvent.change(input, { target: { value: 'new-value' } })
 
@@ -276,7 +313,9 @@ describe('Header', () => {
         const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
 
         fireEvent.change(input, { target: { value: 'a' } })
         fireEvent.change(input, { target: { value: 'ab' } })
@@ -287,9 +326,14 @@ describe('Header', () => {
 
       it('should handle empty string input', () => {
         const mockHandleInputChange = vi.fn()
-        const props = createDefaultProps({ inputValue: 'existing', handleInputChange: mockHandleInputChange })
+        const props = createDefaultProps({
+          inputValue: 'existing',
+          handleInputChange: mockHandleInputChange,
+        })
         render(<Header {...props} />)
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
 
         fireEvent.change(input, { target: { value: '' } })
 
@@ -301,7 +345,9 @@ describe('Header', () => {
         const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
-        const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+        const input = screen.getByPlaceholderText(
+          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        )
 
         fireEvent.change(input, { target: { value: '   ' } })
 
@@ -370,13 +416,17 @@ describe('Header', () => {
 
       // Assert - Component renders without errors
       // Assert - Component renders without errors
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should re-render when inputValue changes', () => {
       const props = createDefaultProps({ inputValue: 'initial' })
       const { rerender } = render(<Header {...props} />)
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
       expect(input)!.toHaveValue('initial')
 
       // Act - Rerender with different inputValue
@@ -398,7 +448,9 @@ describe('Header', () => {
 
       // Assert - Component renders without errors
       // Assert - Component renders without errors
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should re-render when keywords change', () => {
@@ -411,7 +463,9 @@ describe('Header', () => {
 
       // Assert - Component renders without errors
       // Assert - Component renders without errors
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -422,7 +476,9 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
       expect(input)!.toHaveValue(longValue)
     })
 
@@ -432,7 +488,9 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle breadcrumbs with special characters', () => {
@@ -441,7 +499,9 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle breadcrumbs with unicode names', () => {
@@ -450,7 +510,9 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle bucket with special characters', () => {
@@ -458,14 +520,18 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should pass the event object to handleInputChange callback', () => {
       const mockHandleInputChange = vi.fn()
       const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
       render(<Header {...props} />)
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
 
       fireEvent.change(input, { target: { value: 'test-value' } })
 
@@ -483,13 +549,18 @@ describe('Header', () => {
       { isInPipeline: true, bucket: 'my-bucket' },
       { isInPipeline: false, bucket: '' },
       { isInPipeline: false, bucket: 'my-bucket' },
-    ])('should render correctly with isInPipeline=$isInPipeline and bucket=$bucket', (propVariation) => {
-      const props = createDefaultProps(propVariation)
+    ])(
+      'should render correctly with isInPipeline=$isInPipeline and bucket=$bucket',
+      (propVariation) => {
+        const props = createDefaultProps(propVariation)
 
-      render(<Header {...props} />)
+        render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
-    })
+        expect(
+          screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+        )!.toBeInTheDocument()
+      },
+    )
 
     it.each([
       { keywords: '', searchResultsLength: 0, description: 'no search' },
@@ -501,20 +572,28 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it.each([
       { breadcrumbs: [], inputValue: '', expected: 'empty state' },
       { breadcrumbs: ['root'], inputValue: 'search', expected: 'single breadcrumb with search' },
       { breadcrumbs: ['a', 'b', 'c'], inputValue: '', expected: 'multiple breadcrumbs no search' },
-      { breadcrumbs: ['a', 'b', 'c', 'd', 'e'], inputValue: 'query', expected: 'many breadcrumbs with search' },
+      {
+        breadcrumbs: ['a', 'b', 'c', 'd', 'e'],
+        inputValue: 'query',
+        expected: 'many breadcrumbs with search',
+      },
     ])('should handle $expected correctly', ({ breadcrumbs, inputValue }) => {
       const props = createDefaultProps({ breadcrumbs, inputValue })
 
       render(<Header {...props} />)
 
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
       expect(input)!.toHaveValue(inputValue)
     })
   })
@@ -534,7 +613,9 @@ describe('Header', () => {
 
       // Assert - Component should render successfully, meaning props are passed correctly
       // Assert - Component should render successfully, meaning props are passed correctly
-      expect(screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should pass correct props to Input component', () => {
@@ -548,7 +629,9 @@ describe('Header', () => {
 
       render(<Header {...props} />)
 
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
       expect(input)!.toHaveValue('test-input')
 
       // Test onChange handler
@@ -563,7 +646,9 @@ describe('Header', () => {
       const mockHandleInputChange = vi.fn()
       const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
       const { rerender } = render(<Header {...props} />)
-      const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+      )
 
       // Act - Fire change event, rerender, fire again
       fireEvent.change(input, { target: { value: 'first' } })

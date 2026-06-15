@@ -72,7 +72,11 @@ describe('useSnippetDraftWorkflow', () => {
       },
       enabled: true,
     })
-    expect(mockGet).toHaveBeenCalledWith('/snippets/snippet-1/workflows/draft', {}, { silent: true })
+    expect(mockGet).toHaveBeenCalledWith(
+      '/snippets/snippet-1/workflows/draft',
+      {},
+      { silent: true },
+    )
     expect(onSuccess).toHaveBeenCalledWith(draftWorkflow)
   })
 })

@@ -5,9 +5,9 @@ import MPEGMode from 'lamejs/src/js/MPEGMode'
 
 /* v8 ignore next - @preserve */
 if (globalThis) {
-  (globalThis as any).MPEGMode = MPEGMode
-  ; (globalThis as any).Lame = Lame
-  ; (globalThis as any).BitStream = BitStream
+  ;(globalThis as any).MPEGMode = MPEGMode
+  ;(globalThis as any).Lame = Lame
+  ;(globalThis as any).BitStream = BitStream
 }
 
 export const convertToMp3 = (recorder: any) => {
@@ -18,7 +18,8 @@ export const convertToMp3 = (recorder: any) => {
   const buffer: BlobPart[] = []
 
   const leftData = result.left && new Int16Array(result.left.buffer, 0, result.left.byteLength / 2)
-  const rightData = result.right && new Int16Array(result.right.buffer, 0, result.right.byteLength / 2)
+  const rightData =
+    result.right && new Int16Array(result.right.buffer, 0, result.right.byteLength / 2)
   const remaining = leftData.length + (rightData ? rightData.length : 0)
 
   const maxSamples = 1152
@@ -36,19 +37,16 @@ export const convertToMp3 = (recorder: any) => {
     if (channels === 2) {
       right = rightData.subarray(i, i + maxSamples)
       mp3buf = mp3enc.encodeBuffer(left, right)
-    }
-    else {
+    } else {
       mp3buf = mp3enc.encodeBuffer(left)
     }
 
-    if (mp3buf.length > 0)
-      buffer.push(toArrayBuffer(mp3buf))
+    if (mp3buf.length > 0) buffer.push(toArrayBuffer(mp3buf))
   }
 
   const enc = mp3enc.flush()
 
-  if (enc.length > 0)
-    buffer.push(toArrayBuffer(enc))
+  if (enc.length > 0) buffer.push(toArrayBuffer(enc))
 
   return new Blob(buffer, { type: 'audio/mp3' })
 }

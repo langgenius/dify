@@ -440,7 +440,7 @@ export const nodes3 = {
 export const post5 = oc
   .route({
     description:
-      'Executes the snippet\'s draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.',
+      "Executes the snippet's draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftRun',

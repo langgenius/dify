@@ -23,13 +23,7 @@ describe('trigger-webhook/paragraph-input', () => {
   })
 
   it('keeps the textarea disabled when requested', () => {
-    render(
-      <ParagraphInput
-        value=""
-        onChange={vi.fn()}
-        disabled
-      />,
-    )
+    render(<ParagraphInput value="" onChange={vi.fn()} disabled />)
 
     expect(screen.getByRole('textbox')).toBeDisabled()
     expect(screen.getByText('03')).toBeInTheDocument()

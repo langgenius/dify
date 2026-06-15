@@ -49,8 +49,7 @@ export class ThemeBuilder {
     if (this._theme === undefined) {
       this._theme = new Theme()
       return this._theme
-    }
-    else {
+    } else {
       return this._theme
     }
   }
@@ -59,9 +58,11 @@ export class ThemeBuilder {
     if (!this.buildChecker) {
       this._theme = new Theme(chatColorTheme, chatColorThemeInverted)
       this.buildChecker = true
-    }
-    else {
-      if (this.theme?.chatColorTheme !== chatColorTheme || this.theme?.chatColorThemeInverted !== chatColorThemeInverted) {
+    } else {
+      if (
+        this.theme?.chatColorTheme !== chatColorTheme ||
+        this.theme?.chatColorThemeInverted !== chatColorThemeInverted
+      ) {
         this._theme = new Theme(chatColorTheme, chatColorThemeInverted)
         this.buildChecker = true
       }

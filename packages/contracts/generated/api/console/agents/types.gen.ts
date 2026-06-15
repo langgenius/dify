@@ -219,12 +219,12 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
-export type AgentConfigRevisionOperation
-  = | 'create_version'
-    | 'save_current_version'
-    | 'save_new_agent'
-    | 'save_new_version'
-    | 'save_to_roster'
+export type AgentConfigRevisionOperation =
+  | 'create_version'
+  | 'save_current_version'
+  | 'save_new_agent'
+  | 'save_new_version'
+  | 'save_to_roster'
 
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
@@ -472,15 +472,15 @@ export type AgentModelResponseFormatConfig = {
   [key: string]: unknown
 }
 
-export type AgentCliToolAuthorizationStatus
-  = | 'allowed'
-    | 'authorized'
-    | 'denied'
-    | 'forbidden'
-    | 'not_required'
-    | 'pending'
-    | 'pre_authorized'
-    | 'unauthorized'
+export type AgentCliToolAuthorizationStatus =
+  | 'allowed'
+  | 'authorized'
+  | 'denied'
+  | 'forbidden'
+  | 'not_required'
+  | 'pending'
+  | 'pre_authorized'
+  | 'unauthorized'
 
 export type AgentCliToolEnvConfig = {
   secret_refs?: Array<AgentSecretRefConfig>
@@ -534,8 +534,8 @@ export type GetAgentsInviteOptionsResponses = {
   200: AgentInviteOptionsResponse
 }
 
-export type GetAgentsInviteOptionsResponse
-  = GetAgentsInviteOptionsResponses[keyof GetAgentsInviteOptionsResponses]
+export type GetAgentsInviteOptionsResponse =
+  GetAgentsInviteOptionsResponses[keyof GetAgentsInviteOptionsResponses]
 
 export type GetAgentsByAgentIdData = {
   body?: never
@@ -550,8 +550,8 @@ export type GetAgentsByAgentIdResponses = {
   200: AgentRosterResponse
 }
 
-export type GetAgentsByAgentIdResponse
-  = GetAgentsByAgentIdResponses[keyof GetAgentsByAgentIdResponses]
+export type GetAgentsByAgentIdResponse =
+  GetAgentsByAgentIdResponses[keyof GetAgentsByAgentIdResponses]
 
 export type GetAgentsByAgentIdVersionsData = {
   body?: never
@@ -566,8 +566,8 @@ export type GetAgentsByAgentIdVersionsResponses = {
   200: AgentConfigSnapshotListResponse
 }
 
-export type GetAgentsByAgentIdVersionsResponse
-  = GetAgentsByAgentIdVersionsResponses[keyof GetAgentsByAgentIdVersionsResponses]
+export type GetAgentsByAgentIdVersionsResponse =
+  GetAgentsByAgentIdVersionsResponses[keyof GetAgentsByAgentIdVersionsResponses]
 
 export type GetAgentsByAgentIdVersionsByVersionIdData = {
   body?: never
@@ -583,5 +583,5 @@ export type GetAgentsByAgentIdVersionsByVersionIdResponses = {
   200: AgentConfigSnapshotDetailResponse
 }
 
-export type GetAgentsByAgentIdVersionsByVersionIdResponse
-  = GetAgentsByAgentIdVersionsByVersionIdResponses[keyof GetAgentsByAgentIdVersionsByVersionIdResponses]
+export type GetAgentsByAgentIdVersionsByVersionIdResponse =
+  GetAgentsByAgentIdVersionsByVersionIdResponses[keyof GetAgentsByAgentIdVersionsByVersionIdResponses]

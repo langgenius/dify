@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DeprecationNotice from '../deprecation-notice'
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a data-testid="link" href={href}>{children}</a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a data-testid="link" href={href}>
+      {children}
+    </a>
   ),
 }))
 

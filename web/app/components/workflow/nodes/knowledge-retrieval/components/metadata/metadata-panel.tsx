@@ -38,10 +38,7 @@ const MetadataPanel = ({
               {...restProps}
             />
           </div>
-          <AddCondition
-            metadataList={metadataList}
-            handleAddCondition={handleAddCondition}
-          />
+          <AddCondition metadataList={metadataList} handleAddCondition={handleAddCondition} />
         </div>
       </div>
     </div>

@@ -88,14 +88,16 @@ describe('useDocumentCreation', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
       const invalid = { ...defaultValidationParams, overlap: 2000, maxChunkLength: 1000 }
       expect(result.current.validateParams(invalid)).toBe(false)
-      expect(mocks.toastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(mocks.toastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
 
     it('should return false when maxChunkLength > limitMaxChunkLength', () => {
       const { result } = renderHook(() => useDocumentCreation(defaultOptions))
-      const invalid = { ...defaultValidationParams, maxChunkLength: 5000, limitMaxChunkLength: 4000 }
+      const invalid = {
+        ...defaultValidationParams,
+        maxChunkLength: 5000,
+        limitMaxChunkLength: 4000,
+      }
       expect(result.current.validateParams(invalid)).toBe(false)
     })
 

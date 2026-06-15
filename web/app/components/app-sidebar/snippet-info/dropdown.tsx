@@ -23,7 +23,11 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
 import { useRouter } from '@/next/navigation'
-import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
+import {
+  useDeleteSnippetMutation,
+  useExportSnippetMutation,
+  useUpdateSnippetMutation,
+} from '@/service/use-snippets'
 
 import { downloadBlob } from '@/utils/download'
 
@@ -41,10 +45,13 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const exportSnippetMutation = useExportSnippetMutation()
   const deleteSnippetMutation = useDeleteSnippetMutation()
 
-  const initialValue = React.useMemo(() => ({
-    name: snippet.name,
-    description: snippet.description,
-  }), [snippet.description, snippet.name])
+  const initialValue = React.useMemo(
+    () => ({
+      name: snippet.name,
+      description: snippet.description,
+    }),
+    [snippet.description, snippet.name],
+  )
 
   const handleOpenEditDialog = React.useCallback(() => {
     setOpen(false)
@@ -57,61 +64,65 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
-    }
-    catch {
+    } catch {
       toast.error(t('exportFailed'))
     }
   }, [exportSnippetMutation, snippet.id, snippet.name, t])
 
-  const handleEditSnippet = React.useCallback(async ({ name, description }: {
-    name: string
-    description: string
-  }) => {
-    updateSnippetMutation.mutate({
-      params: { snippetId: snippet.id },
-      body: {
-        name,
-        description: description || undefined,
-      },
-    }, {
-      onSuccess: () => {
-        toast.success(t('editDone'))
-        setIsEditDialogOpen(false)
-      },
-      onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('editFailed'))
-      },
-    })
-  }, [snippet.id, t, updateSnippetMutation])
+  const handleEditSnippet = React.useCallback(
+    async ({ name, description }: { name: string; description: string }) => {
+      updateSnippetMutation.mutate(
+        {
+          params: { snippetId: snippet.id },
+          body: {
+            name,
+            description: description || undefined,
+          },
+        },
+        {
+          onSuccess: () => {
+            toast.success(t('editDone'))
+            setIsEditDialogOpen(false)
+          },
+          onError: (error) => {
+            toast.error(error instanceof Error ? error.message : t('editFailed'))
+          },
+        },
+      )
+    },
+    [snippet.id, t, updateSnippetMutation],
+  )
 
   const handleDeleteSnippet = React.useCallback(() => {
-    deleteSnippetMutation.mutate({
-      params: { snippetId: snippet.id },
-    }, {
-      onSuccess: () => {
-        toast.success(t('deleted'))
-        setIsDeleteDialogOpen(false)
-        replace('/snippets')
+    deleteSnippetMutation.mutate(
+      {
+        params: { snippetId: snippet.id },
       },
-      onError: (error) => {
-        toast.error(error instanceof Error ? error.message : t('deleteFailed'))
+      {
+        onSuccess: () => {
+          toast.success(t('deleted'))
+          setIsDeleteDialogOpen(false)
+          replace('/snippets')
+        },
+        onError: (error) => {
+          toast.error(error instanceof Error ? error.message : t('deleteFailed'))
+        },
       },
-    })
+    )
   }, [deleteSnippetMutation, replace, snippet.id, t])
 
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          className={cn('action-btn action-btn-m size-6 rounded-md text-text-tertiary', open && 'bg-state-base-hover text-text-secondary')}
+          className={cn(
+            'action-btn action-btn-m size-6 rounded-md text-text-tertiary',
+            open && 'bg-state-base-hover text-text-secondary',
+          )}
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={4}
-          popupClassName="w-[180px] p-1"
-        >
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[180px] p-1">
           <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
             <span className="grow">{t('menu.editInfo')}</span>

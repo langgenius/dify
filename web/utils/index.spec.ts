@@ -90,8 +90,7 @@ describe('randomString', () => {
   it('should only contain valid characters', () => {
     const result = randomString(100)
     const validChars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_'
-    for (const char of result)
-      expect(validChars).toContain(char)
+    for (const char of result) expect(validChars).toContain(char)
   })
 
   it('should generate different strings on consecutive calls', () => {
@@ -403,10 +402,8 @@ describe('fetchWithRetry extended', () => {
     let attempts = 0
     const eventuallySucceed = new Promise((resolve, reject) => {
       attempts++
-      if (attempts < 2)
-        reject(new Error('not yet'))
-      else
-        resolve('success')
+      if (attempts < 2) reject(new Error('not yet'))
+      else resolve('success')
     })
 
     const [error] = await fetchWithRetry(eventuallySucceed, 3)
@@ -462,7 +459,9 @@ describe('correctToolProvider extended', () => {
   it('should handle special tool providers', () => {
     expect(correctToolProvider('stepfun', false)).toBe('langgenius/stepfun_tool/stepfun')
     expect(correctToolProvider('jina', false)).toBe('langgenius/jina_tool/jina')
-    expect(correctToolProvider('siliconflow', false)).toBe('langgenius/siliconflow_tool/siliconflow')
+    expect(correctToolProvider('siliconflow', false)).toBe(
+      'langgenius/siliconflow_tool/siliconflow',
+    )
     expect(correctToolProvider('gitee_ai', false)).toBe('langgenius/gitee_ai_tool/gitee_ai')
   })
 

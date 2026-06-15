@@ -15,7 +15,14 @@ type Props = Readonly<{
   originalQuery?: string
 }>
 
-const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
+const CommandSelector: FC<Props> = ({
+  actions,
+  onCommandSelect,
+  searchFilter,
+  commandValue,
+  onCommandValueChange,
+  originalQuery,
+}) => {
   const { t } = useTranslation()
   const pathname = usePathname()
 
@@ -25,34 +32,31 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   // Get slash commands from registry
   // Note: pathname is included in deps because some commands (like /zen) check isAvailable based on current route
   const slashCommands = useMemo(() => {
-    if (!isSlashMode)
-      return []
+    if (!isSlashMode) return []
 
     const availableCommands = slashCommandRegistry.getAvailableCommands()
     const filter = searchFilter?.toLowerCase() || '' // searchFilter already has '/' removed
 
-    return availableCommands.filter((cmd) => {
-      if (!filter)
-        return true
-      return cmd.name.toLowerCase().includes(filter)
-    }).map(cmd => ({
-      key: `/${cmd.name}`,
-      shortcut: `/${cmd.name}`,
-      title: cmd.name,
-      description: cmd.description,
-    }))
+    return availableCommands
+      .filter((cmd) => {
+        if (!filter) return true
+        return cmd.name.toLowerCase().includes(filter)
+      })
+      .map((cmd) => ({
+        key: `/${cmd.name}`,
+        shortcut: `/${cmd.name}`,
+        title: cmd.name,
+        description: cmd.description,
+      }))
   }, [isSlashMode, searchFilter, pathname])
 
   const filteredActions = useMemo(() => {
-    if (isSlashMode)
-      return []
+    if (isSlashMode) return []
 
     return Object.values(actions).filter((action) => {
       // Exclude slash action when in @ mode
-      if (action.key === '/')
-        return false
-      if (!searchFilter)
-        return true
+      if (action.key === '/') return false
+      if (!searchFilter) return true
       const filterLower = searchFilter.toLowerCase()
       return action.shortcut.toLowerCase().includes(filterLower)
     })
@@ -62,9 +66,8 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
 
   useEffect(() => {
     if (allItems.length > 0 && onCommandValueChange) {
-      const currentValueExists = allItems.some(item => item.shortcut === commandValue)
-      if (!currentValueExists)
-        onCommandValueChange(allItems[0]!.shortcut)
+      const currentValueExists = allItems.some((item) => item.shortcut === commandValue)
+      if (!currentValueExists) onCommandValueChange(allItems[0]!.shortcut)
     }
   }, [searchFilter, allItems.length])
 
@@ -88,17 +91,16 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   return (
     <div className="px-4 py-3">
       <div className="mb-2 text-left text-sm font-medium text-text-secondary">
-        {isSlashMode ? t('gotoAnything.groups.commands', { ns: 'app' }) : t('gotoAnything.selectSearchType', { ns: 'app' })}
+        {isSlashMode
+          ? t('gotoAnything.groups.commands', { ns: 'app' })
+          : t('gotoAnything.selectSearchType', { ns: 'app' })}
       </div>
       <Command.Group className="space-y-1">
-        {allItems.map(item => (
+        {allItems.map((item) => (
           <Command.Item
             key={item.key}
             value={item.shortcut}
-            className="flex cursor-pointer items-center rounded-md
-                     p-2
-                     transition-all
-                     duration-150 hover:bg-state-base-hover aria-selected:bg-state-base-hover-alt"
+            className="flex cursor-pointer items-center rounded-md p-2 transition-all duration-150 hover:bg-state-base-hover aria-selected:bg-state-base-hover-alt"
             onSelect={() => onCommandSelect(item.shortcut)}
           >
             <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
@@ -106,33 +108,32 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             </span>
             <span className="ml-3 text-sm text-text-secondary">
               {isSlashMode
-                ? (
-                    (() => {
-                      const slashKeyMap = {
-                        '/create': 'gotoAnything.actions.createCategoryDesc',
-                        '/refine': 'gotoAnything.actions.refineCategoryDesc',
-                        '/theme': 'gotoAnything.actions.themeCategoryDesc',
-                        '/language': 'gotoAnything.actions.languageChangeDesc',
-                        '/account': 'gotoAnything.actions.accountDesc',
-                        '/feedback': 'gotoAnything.actions.feedbackDesc',
-                        '/docs': 'gotoAnything.actions.docDesc',
-                        '/community': 'gotoAnything.actions.communityDesc',
-                        '/zen': 'gotoAnything.actions.zenDesc',
-                      } as const
-                      return t(slashKeyMap[item.key as keyof typeof slashKeyMap] || item.description, { ns: 'app' })
-                    })()
-                  )
-                : (
-                    (() => {
-                      const keyMap = {
-                        '@app': 'gotoAnything.actions.searchApplicationsDesc',
-                        '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-                        '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
-                        '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
-                      } as const
-                      return t(keyMap[item.key as keyof typeof keyMap], { ns: 'app' })
-                    })()
-                  )}
+                ? (() => {
+                    const slashKeyMap = {
+                      '/create': 'gotoAnything.actions.createCategoryDesc',
+                      '/refine': 'gotoAnything.actions.refineCategoryDesc',
+                      '/theme': 'gotoAnything.actions.themeCategoryDesc',
+                      '/language': 'gotoAnything.actions.languageChangeDesc',
+                      '/account': 'gotoAnything.actions.accountDesc',
+                      '/feedback': 'gotoAnything.actions.feedbackDesc',
+                      '/docs': 'gotoAnything.actions.docDesc',
+                      '/community': 'gotoAnything.actions.communityDesc',
+                      '/zen': 'gotoAnything.actions.zenDesc',
+                    } as const
+                    return t(
+                      slashKeyMap[item.key as keyof typeof slashKeyMap] || item.description,
+                      { ns: 'app' },
+                    )
+                  })()
+                : (() => {
+                    const keyMap = {
+                      '@app': 'gotoAnything.actions.searchApplicationsDesc',
+                      '@plugin': 'gotoAnything.actions.searchPluginsDesc',
+                      '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+                      '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
+                    } as const
+                    return t(keyMap[item.key as keyof typeof keyMap], { ns: 'app' })
+                  })()}
             </span>
           </Command.Item>
         ))}

@@ -11,10 +11,14 @@ const mockDoSyncWorkflowDraft = vi.fn().mockResolvedValue(undefined)
 const mockExportPipelineConfig = vi.fn().mockResolvedValue({ data: 'yaml-content' })
 const mockNotify = vi.fn()
 const mockToast = {
-  success: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'success', message, ...options }),
-  error: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'error', message, ...options }),
-  warning: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'warning', message, ...options }),
-  info: (message: string, options?: Record<string, unknown>) => mockNotify({ type: 'info', message, ...options }),
+  success: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'success', message, ...options }),
+  error: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'error', message, ...options }),
+  warning: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'warning', message, ...options }),
+  info: (message: string, options?: Record<string, unknown>) =>
+    mockNotify({ type: 'info', message, ...options }),
   dismiss: vi.fn(),
   update: vi.fn(),
   promise: vi.fn(),
@@ -90,9 +94,11 @@ describe('DSL Export/Import Flow', () => {
         pipelineId: 'pipeline-abc',
         include: false,
       })
-      expect(mockDownloadBlob).toHaveBeenCalledWith(expect.objectContaining({
-        fileName: 'My Pipeline.pipeline',
-      }))
+      expect(mockDownloadBlob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileName: 'My Pipeline.pipeline',
+        }),
+      )
     })
 
     it('should export with include flag when specified', async () => {
@@ -118,9 +124,11 @@ describe('DSL Export/Import Flow', () => {
         await result.current.handleExportDSL()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
     })
   })
 
@@ -147,9 +155,7 @@ describe('DSL Export/Import Flow', () => {
     it('should emit DSL_EXPORT_CHECK event when secret variables exist', async () => {
       const { fetchWorkflowDraft } = await import('@/service/workflow')
       vi.mocked(fetchWorkflowDraft).mockResolvedValueOnce({
-        environment_variables: [
-          { value_type: 'secret', key: 'API_KEY', value: '***' },
-        ],
+        environment_variables: [{ value_type: 'secret', key: 'API_KEY', value: '***' }],
       } as unknown as Awaited<ReturnType<typeof fetchWorkflowDraft>>)
 
       const { useDSL } = await import('@/app/components/rag-pipeline/hooks/use-DSL')
@@ -159,14 +165,14 @@ describe('DSL Export/Import Flow', () => {
         await result.current.exportCheck()
       })
 
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'DSL_EXPORT_CHECK',
-        payload: expect.objectContaining({
-          data: expect.arrayContaining([
-            expect.objectContaining({ value_type: 'secret' }),
-          ]),
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'DSL_EXPORT_CHECK',
+          payload: expect.objectContaining({
+            data: expect.arrayContaining([expect.objectContaining({ value_type: 'secret' })]),
+          }),
         }),
-      }))
+      )
     })
 
     it('should notify on export check error', async () => {
@@ -180,9 +186,11 @@ describe('DSL Export/Import Flow', () => {
         await result.current.exportCheck()
       })
 
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'error',
-      }))
+      expect(mockNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+        }),
+      )
     })
   })
 })

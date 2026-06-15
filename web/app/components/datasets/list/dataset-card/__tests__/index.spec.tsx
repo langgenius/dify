@@ -25,7 +25,8 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) => selector({ isCurrentWorkspaceDatasetOperator: false }),
+  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => boolean) =>
+    selector({ isCurrentWorkspaceDatasetOperator: false }),
 }))
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -48,7 +49,9 @@ vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,
 }))
 vi.mock('../components/dataset-card-header', () => ({
-  default: ({ dataset }: { dataset: DataSet }) => <div data-testid="card-header">{dataset.name}</div>,
+  default: ({ dataset }: { dataset: DataSet }) => (
+    <div data-testid="card-header">{dataset.name}</div>
+  ),
 }))
 vi.mock('../components/dataset-card-modals', () => ({
   default: () => <div data-testid="card-modals" />,
@@ -63,29 +66,30 @@ vi.mock('../components/operations-dropdown', () => ({
 }))
 
 // Factory function for DataSet mock data
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  description: 'Test description',
-  provider: 'vendor',
-  permission: DatasetPermission.allTeamMembers,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: IndexingType.QUALIFIED,
-  embedding_available: true,
-  app_count: 5,
-  document_count: 10,
-  word_count: 1000,
-  created_at: 1609459200,
-  updated_at: 1609545600,
-  tags: [],
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  created_by: 'user-1',
-  doc_form: ChunkingMode.text,
-  total_available_documents: 10,
-  runtime_mode: 'general',
-  ...overrides,
-} as DataSet)
+const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+  ({
+    id: 'dataset-1',
+    name: 'Test Dataset',
+    description: 'Test description',
+    provider: 'vendor',
+    permission: DatasetPermission.allTeamMembers,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: IndexingType.QUALIFIED,
+    embedding_available: true,
+    app_count: 5,
+    document_count: 10,
+    word_count: 1000,
+    created_at: 1609459200,
+    updated_at: 1609545600,
+    tags: [],
+    embedding_model: 'text-embedding-ada-002',
+    embedding_model_provider: 'openai',
+    created_by: 'user-1',
+    doc_form: ChunkingMode.text,
+    total_available_documents: 10,
+    runtime_mode: 'general',
+    ...overrides,
+  }) as DataSet
 
 describe('DatasetCard Integration', () => {
   beforeEach(() => {

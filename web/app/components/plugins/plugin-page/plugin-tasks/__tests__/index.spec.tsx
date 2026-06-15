@@ -48,9 +48,20 @@ const setupMocks = (plugins: PluginStatus[] = []) => {
   const mockHandleRefetch = vi.fn()
 
   vi.mocked(usePluginTaskList).mockReturnValue({
-    pluginTasks: plugins.length > 0
-      ? [{ id: 'task-1', plugins, created_at: '', updated_at: '', status: 'running', total_plugins: plugins.length, completed_plugins: 0 }]
-      : [],
+    pluginTasks:
+      plugins.length > 0
+        ? [
+            {
+              id: 'task-1',
+              plugins,
+              created_at: '',
+              updated_at: '',
+              status: 'running',
+              total_plugins: plugins.length,
+              completed_plugins: 0,
+            },
+          ]
+        : [],
     handleRefetch: mockHandleRefetch,
   } as unknown as ReturnType<typeof usePluginTaskList>)
 
@@ -87,7 +98,9 @@ describe('usePluginTaskStatus Hook', () => {
       render(<TestComponent />)
 
       expect(screen.getByTestId('running-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('running-id'))!.toHaveTextContent(runningPlugin.plugin_unique_identifier)
+      expect(screen.getByTestId('running-id'))!.toHaveTextContent(
+        runningPlugin.plugin_unique_identifier,
+      )
     })
 
     it('should categorize success plugins correctly', () => {
@@ -107,7 +120,9 @@ describe('usePluginTaskStatus Hook', () => {
       render(<TestComponent />)
 
       expect(screen.getByTestId('success-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('success-id'))!.toHaveTextContent(successPlugin.plugin_unique_identifier)
+      expect(screen.getByTestId('success-id'))!.toHaveTextContent(
+        successPlugin.plugin_unique_identifier,
+      )
     })
 
     it('should categorize error plugins correctly', () => {
@@ -127,7 +142,9 @@ describe('usePluginTaskStatus Hook', () => {
       render(<TestComponent />)
 
       expect(screen.getByTestId('error-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('error-id'))!.toHaveTextContent(errorPlugin.plugin_unique_identifier)
+      expect(screen.getByTestId('error-id'))!.toHaveTextContent(
+        errorPlugin.plugin_unique_identifier,
+      )
     })
 
     it('should categorize mixed plugins correctly', () => {
@@ -139,7 +156,12 @@ describe('usePluginTaskStatus Hook', () => {
       setupMocks(plugins)
 
       const TestComponent = () => {
-        const { runningPluginsLength, successPluginsLength, errorPluginsLength, totalPluginsLength } = usePluginTaskStatus()
+        const {
+          runningPluginsLength,
+          successPluginsLength,
+          errorPluginsLength,
+          totalPluginsLength,
+        } = usePluginTaskStatus()
         return (
           <div>
             <span data-testid="running">{runningPluginsLength}</span>
@@ -164,7 +186,13 @@ describe('usePluginTaskStatus Hook', () => {
       setupMocks([createMockPlugin({ status: TaskStatus.running })])
 
       const TestComponent = () => {
-        const { isInstalling, isInstallingWithSuccess, isInstallingWithError, isSuccess, isFailed } = usePluginTaskStatus()
+        const {
+          isInstalling,
+          isInstallingWithSuccess,
+          isInstallingWithError,
+          isSuccess,
+          isFailed,
+        } = usePluginTaskStatus()
         return (
           <div>
             <span data-testid="isInstalling">{String(isInstalling)}</span>
@@ -254,11 +282,7 @@ describe('usePluginTaskStatus Hook', () => {
 
       const TestComponent = () => {
         const { handleClearErrorPlugin } = usePluginTaskStatus()
-        return (
-          <button onClick={() => handleClearErrorPlugin('task-1', 'plugin-1')}>
-            Clear
-          </button>
-        )
+        return <button onClick={() => handleClearErrorPlugin('task-1', 'plugin-1')}>Clear</button>
       }
 
       render(<TestComponent />)
@@ -456,7 +480,9 @@ describe('PluginTaskList Component', () => {
     })
 
     it('should render error plugins section when plugins exist', () => {
-      const errorPlugins = [createMockPlugin({ status: TaskStatus.failed, message: 'Error occurred' })]
+      const errorPlugins = [
+        createMockPlugin({ status: TaskStatus.failed, message: 'Error occurred' }),
+      ]
       render(<PluginTaskList {...defaultProps} errorPlugins={errorPlugins} />)
 
       expect(screen.getByText('Error occurred'))!.toBeInTheDocument()
@@ -508,7 +534,7 @@ describe('PluginTaskList Component', () => {
       )
 
       const clearButtons = screen.getAllByRole('button')
-      fireEvent.click(clearButtons.find(btn => btn.textContent?.includes('task.clearAll'))!)
+      fireEvent.click(clearButtons.find((btn) => btn.textContent?.includes('task.clearAll'))!)
 
       expect(handleClearErrors).toHaveBeenCalledTimes(1)
     })
@@ -529,8 +555,9 @@ describe('PluginTaskList Component', () => {
         />,
       )
 
-      const closeButton = screen.getAllByRole('button')
-        .find(btn => btn.querySelector('.i-ri-close-line'))!
+      const closeButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.querySelector('.i-ri-close-line'))!
       fireEvent.click(closeButton)
 
       expect(handleClearSingle).toHaveBeenCalledWith('task-123', 'error-plugin-1')
@@ -562,8 +589,14 @@ describe('PluginTaskList Component', () => {
 
     it('should display multiple plugins in each section', () => {
       const runningPlugins = [
-        createMockPlugin({ status: TaskStatus.running, labels: { en_US: 'Plugin A' } as Record<string, string> }),
-        createMockPlugin({ status: TaskStatus.running, labels: { en_US: 'Plugin B' } as Record<string, string> }),
+        createMockPlugin({
+          status: TaskStatus.running,
+          labels: { en_US: 'Plugin A' } as Record<string, string>,
+        }),
+        createMockPlugin({
+          status: TaskStatus.running,
+          labels: { en_US: 'Plugin B' } as Record<string, string>,
+        }),
       ]
 
       render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
@@ -678,9 +711,8 @@ describe('PluginTasks Component', () => {
 
       // Find and click clear all button
       const clearButtons = screen.getAllByRole('button')
-      const clearAllButton = clearButtons.find(btn => btn.textContent?.includes('clearAll'))
-      if (clearAllButton)
-        fireEvent.click(clearAllButton)
+      const clearAllButton = clearButtons.find((btn) => btn.textContent?.includes('clearAll'))
+      if (clearAllButton) fireEvent.click(clearAllButton)
 
       // Verify mutateAsync was called for each completed plugin
       await waitFor(() => {
@@ -782,9 +814,11 @@ describe('PluginTasks Component', () => {
     it('should handle many plugins', () => {
       const manyPlugins = Array.from({ length: 10 }, (_, i) =>
         createMockPlugin({
-          status: i % 3 === 0 ? TaskStatus.running : i % 3 === 1 ? TaskStatus.success : TaskStatus.failed,
+          status:
+            i % 3 === 0 ? TaskStatus.running : i % 3 === 1 ? TaskStatus.success : TaskStatus.failed,
           plugin_unique_identifier: `plugin-${i}`,
-        }))
+        }),
+      )
       setupMocks(manyPlugins)
 
       render(<PluginTasks />)

@@ -19,7 +19,13 @@ type StepThreeProps = {
   creationCache?: createDocumentResponse
 }
 
-const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrievalMethod }: StepThreeProps) => {
+const StepThree = ({
+  datasetId,
+  datasetName,
+  indexingType,
+  creationCache,
+  retrievalMethod,
+}: StepThreeProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
 
@@ -39,8 +45,12 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
           {!datasetId && (
             <>
               <div className="flex flex-col gap-y-1 pb-3">
-                <div className="title-2xl-semi-bold text-text-primary">{t('stepThree.creationTitle', { ns: 'datasetCreation' })}</div>
-                <div className="system-sm-regular text-text-tertiary">{t('stepThree.creationContent', { ns: 'datasetCreation' })}</div>
+                <div className="title-2xl-semi-bold text-text-primary">
+                  {t('stepThree.creationTitle', { ns: 'datasetCreation' })}
+                </div>
+                <div className="system-sm-regular text-text-tertiary">
+                  {t('stepThree.creationContent', { ns: 'datasetCreation' })}
+                </div>
               </div>
               <div className="flex items-center gap-x-4">
                 <AppIcon
@@ -65,7 +75,9 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
           )}
           {datasetId && (
             <div className="flex flex-col gap-y-1 pb-3">
-              <div className="title-2xl-semi-bold text-text-primary">{t('stepThree.additionTitle', { ns: 'datasetCreation' })}</div>
+              <div className="title-2xl-semi-bold text-text-primary">
+                {t('stepThree.additionTitle', { ns: 'datasetCreation' })}
+              </div>
               <div className="system-sm-regular text-text-tertiary">{`${t('stepThree.additionP1', { ns: 'datasetCreation' })} ${datasetName || creationCache?.dataset?.name} ${t('stepThree.additionP2', { ns: 'datasetCreation' })}`}</div>
             </div>
           )}
@@ -74,7 +86,9 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
             batchId={creationCache?.batch || ''}
             documents={creationCache?.documents as FullDocumentDetail[]}
             indexingType={creationCache?.dataset?.indexing_technique || indexingType}
-            retrievalMethod={creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod}
+            retrievalMethod={
+              creationCache?.dataset?.retrieval_model_dict?.search_method || retrievalMethod
+            }
           />
         </div>
       </div>
@@ -84,8 +98,12 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
             <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
               <RiBookOpenLine className="size-5 text-text-accent" />
             </div>
-            <div className="text-base font-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
-            <div className="text-text-tertiary">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
+            <div className="text-base font-semibold text-text-secondary">
+              {t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}
+            </div>
+            <div className="text-text-tertiary">
+              {t('stepThree.sideTipContent', { ns: 'datasetCreation' })}
+            </div>
             <a
               href={docLink('/use-dify/knowledge/integrate-knowledge-within-application')}
               target="_blank"

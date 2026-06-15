@@ -101,7 +101,10 @@ const defaultPlanData = {
   },
 }
 
-const setupContexts = (planOverrides: Record<string, unknown> = {}, appOverrides: Record<string, unknown> = {}) => {
+const setupContexts = (
+  planOverrides: Record<string, unknown> = {},
+  appOverrides: Record<string, unknown> = {},
+) => {
   mockProviderCtx = {
     plan: { ...defaultPlanData, ...planOverrides },
     enableBilling: true,

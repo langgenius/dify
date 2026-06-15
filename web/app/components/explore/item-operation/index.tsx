@@ -52,11 +52,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
       >
         <span className="sr-only">{tCommon('operation.more')}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[120px]"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[120px]">
         <DropdownMenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
           onClick={(e) => {
@@ -65,7 +61,9 @@ const ItemOperation: FC<IItemOperationProps> = ({
           }}
         >
           <Pin02 className="size-4 shrink-0 text-text-secondary" />
-          <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}</span>
+          <span className={s.actionName}>
+            {isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}
+          </span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem
@@ -81,14 +79,26 @@ const ItemOperation: FC<IItemOperationProps> = ({
         )}
         {isShowDelete && (
           <DropdownMenuItem
-            className={cn(s.actionItem, s.deleteActionItem, 'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive')}
+            className={cn(
+              s.actionItem,
+              s.deleteActionItem,
+              'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+            )}
             onClick={(e) => {
               e.stopPropagation()
               onDelete()
             }}
           >
-            <span aria-hidden className={cn(s.deleteActionItemChild, 'i-ri-delete-bin-line size-4 shrink-0 text-inherit')} />
-            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t('sidebar.action.delete')}</span>
+            <span
+              aria-hidden
+              className={cn(
+                s.deleteActionItemChild,
+                'i-ri-delete-bin-line size-4 shrink-0 text-inherit',
+              )}
+            />
+            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>
+              {t('sidebar.action.delete')}
+            </span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

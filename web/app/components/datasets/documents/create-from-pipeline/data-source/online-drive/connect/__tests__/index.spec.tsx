@@ -8,17 +8,18 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useToolIcon: (data: DataSourceNodeType) => mockUseToolIcon(data),
 }))
 
-const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType => ({
-  title: 'Test Node',
-  plugin_id: 'plugin-123',
-  provider_type: 'online_drive',
-  provider_name: 'online-drive-provider',
-  datasource_name: 'online-drive-ds',
-  datasource_label: 'Online Drive',
-  datasource_parameters: {},
-  datasource_configurations: {},
-  ...overrides,
-} as DataSourceNodeType)
+const createMockNodeData = (overrides?: Partial<DataSourceNodeType>): DataSourceNodeType =>
+  ({
+    title: 'Test Node',
+    plugin_id: 'plugin-123',
+    provider_type: 'online_drive',
+    provider_name: 'online-drive-provider',
+    datasource_name: 'online-drive-ds',
+    datasource_label: 'Online Drive',
+    datasource_parameters: {},
+    datasource_configurations: {},
+    ...overrides,
+  }) as DataSourceNodeType
 
 type ConnectProps = React.ComponentProps<typeof Connect>
 
@@ -114,7 +115,14 @@ describe('Connect', () => {
 
       // Assert - Container should have expected classes
       const mainContainer = container.firstChild
-      expect(mainContainer).toHaveClass('flex', 'flex-col', 'items-start', 'gap-y-2', 'rounded-xl', 'p-6')
+      expect(mainContainer).toHaveClass(
+        'flex',
+        'flex-col',
+        'items-start',
+        'gap-y-2',
+        'rounded-xl',
+        'p-6',
+      )
     })
   })
 
@@ -149,7 +157,9 @@ describe('Connect', () => {
         render(<Connect {...props} />)
 
         // Assert - Translation key should be in document
-        expect(screen.getByText(/datasetPipeline\.onlineDrive\.notConnectedTip/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/datasetPipeline\.onlineDrive\.notConnectedTip/),
+        ).toBeInTheDocument()
       })
 
       it.each([
@@ -303,7 +313,9 @@ describe('Connect', () => {
 
         render(<Connect {...props} />)
 
-        expect(screen.getByText(/datasetPipeline\.onlineDrive\.notConnectedTip/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/datasetPipeline\.onlineDrive\.notConnectedTip/),
+        ).toBeInTheDocument()
       })
 
       it('should use correct translation key for connect button', () => {
@@ -428,18 +440,19 @@ describe('Connect', () => {
       { title: 'OneDrive', plugin_id: 'onedrive' },
       { title: 'Amazon S3', plugin_id: 's3' },
       { title: 'Box', plugin_id: 'box' },
-    ])('should render correctly with title=$title and plugin_id=$plugin_id', ({ title, plugin_id }) => {
-      const props = createDefaultProps({
-        nodeData: createMockNodeData({ title, plugin_id }),
-      })
+    ])(
+      'should render correctly with title=$title and plugin_id=$plugin_id',
+      ({ title, plugin_id }) => {
+        const props = createDefaultProps({
+          nodeData: createMockNodeData({ title, plugin_id }),
+        })
 
-      render(<Connect {...props} />)
+        render(<Connect {...props} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
-      expect(mockUseToolIcon).toHaveBeenCalledWith(
-        expect.objectContaining({ title, plugin_id }),
-      )
-    })
+        expect(screen.getByRole('button')).toBeInTheDocument()
+        expect(mockUseToolIcon).toHaveBeenCalledWith(expect.objectContaining({ title, plugin_id }))
+      },
+    )
 
     it.each([
       { provider_type: 'online_drive' },
@@ -460,15 +473,18 @@ describe('Connect', () => {
       { datasource_label: 'Dropbox Files' },
       { datasource_label: '' },
       { datasource_label: 'S3 Bucket' },
-    ])('should render correctly with datasource_label=$datasource_label', ({ datasource_label }) => {
-      const props = createDefaultProps({
-        nodeData: createMockNodeData({ datasource_label }),
-      })
+    ])(
+      'should render correctly with datasource_label=$datasource_label',
+      ({ datasource_label }) => {
+        const props = createDefaultProps({
+          nodeData: createMockNodeData({ datasource_label }),
+        })
 
-      render(<Connect {...props} />)
+        render(<Connect {...props} />)
 
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
+        expect(screen.getByRole('button')).toBeInTheDocument()
+      },
+    )
   })
 
   describe('Accessibility', () => {

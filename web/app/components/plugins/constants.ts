@@ -21,7 +21,7 @@ export const tagKeys = [
   'other',
 ] as const
 
-export type TagKey = typeof tagKeys[number]
+export type TagKey = (typeof tagKeys)[number]
 
 export const categoryKeys = [
   PluginCategoryEnum.model,
@@ -33,4 +33,4 @@ export const categoryKeys = [
   PluginCategoryEnum.trigger,
 ] as const
 
-export type CategoryKey = typeof categoryKeys[number]
+export type CategoryKey = (typeof categoryKeys)[number]

@@ -32,13 +32,13 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
         disabled={!moreThanOneVersion}
         className={cn(
           'flex items-center border-none bg-transparent p-0 system-xs-medium text-text-tertiary',
-          moreThanOneVersion ? 'cursor-pointer data-popup-open:text-text-secondary' : 'cursor-default',
+          moreThanOneVersion
+            ? 'cursor-pointer data-popup-open:text-text-secondary'
+            : 'cursor-default',
         )}
       >
         <div>
-          {t('generate.version', { ns: 'appDebug' })}
-          {' '}
-          {value + 1}
+          {t('generate.version', { ns: 'appDebug' })} {value + 1}
           {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
         </div>
         {moreThanOneVersion && <RiArrowDownSLine className="size-3" />}
@@ -58,7 +58,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
             onChange(nextValue)
           }}
         >
-          {versions.map(option => (
+          {versions.map((option) => (
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
@@ -66,12 +66,10 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
               className="h-7 rounded-lg px-2 system-sm-medium text-text-secondary"
               title={option.label}
             >
-              <div className="mr-1 grow truncate px-1 pl-1">
-                {option.label}
-              </div>
-              {
-                value === option.value && <RiCheckLine className="size-4 shrink-0 text-text-accent" />
-              }
+              <div className="mr-1 grow truncate px-1 pl-1">{option.label}</div>
+              {value === option.value && (
+                <RiCheckLine className="size-4 shrink-0 text-text-accent" />
+              )}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

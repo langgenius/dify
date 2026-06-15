@@ -12,7 +12,12 @@ const mockHandleConfirmDelete = vi.fn()
 let mockDeleteCredentialId: string | null = null
 
 vi.mock('../../use-trial-credits', () => ({
-  useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
+  useTrialCredits: () => ({
+    credits: 0,
+    totalCredits: 10_000,
+    isExhausted: true,
+    isLoading: false,
+  }),
 }))
 
 vi.mock('../use-activate-credential', () => ({
@@ -35,38 +40,56 @@ vi.mock('../../../model-auth/hooks', () => ({
 }))
 
 vi.mock('../../../model-auth/authorized/credential-item', () => ({
-  default: ({ credential, onItemClick, onEdit, onDelete }: {
-    credential: { credential_id: string, credential_name: string }
+  default: ({
+    credential,
+    onItemClick,
+    onEdit,
+    onDelete,
+  }: {
+    credential: { credential_id: string; credential_name: string }
     onItemClick?: (c: unknown) => void
     onEdit?: (c: unknown) => void
     onDelete?: (c: unknown) => void
   }) => (
     <div data-testid={`credential-${credential.credential_id}`}>
       <span>{credential.credential_name}</span>
-      <button data-testid={`click-${credential.credential_id}`} onClick={() => onItemClick?.(credential)}>select</button>
-      <button data-testid={`edit-${credential.credential_id}`} onClick={() => onEdit?.(credential)}>edit</button>
-      <button data-testid={`delete-${credential.credential_id}`} onClick={() => onDelete?.(credential)}>delete</button>
+      <button
+        data-testid={`click-${credential.credential_id}`}
+        onClick={() => onItemClick?.(credential)}
+      >
+        select
+      </button>
+      <button data-testid={`edit-${credential.credential_id}`} onClick={() => onEdit?.(credential)}>
+        edit
+      </button>
+      <button
+        data-testid={`delete-${credential.credential_id}`}
+        onClick={() => onDelete?.(credential)}
+      >
+        delete
+      </button>
     </div>
   ),
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test',
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-    current_credential_id: 'cred-1',
-    current_credential_name: 'My Key',
-    available_credentials: [
-      { credential_id: 'cred-1', credential_name: 'My Key' },
-      { credential_id: 'cred-2', credential_name: 'Other Key' },
-    ],
-  },
-  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  configurate_methods: ['predefined-model'],
-  supported_model_types: ['llm'],
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'test',
+    custom_configuration: {
+      status: CustomConfigurationStatusEnum.active,
+      current_credential_id: 'cred-1',
+      current_credential_name: 'My Key',
+      available_credentials: [
+        { credential_id: 'cred-1', credential_name: 'My Key' },
+        { credential_id: 'cred-2', credential_name: 'Other Key' },
+      ],
+    },
+    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+    preferred_provider_type: PreferredProviderTypeEnum.system,
+    configurate_methods: ['predefined-model'],
+    supported_model_types: ['llm'],
+    ...overrides,
+  }) as unknown as ModelProvider
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'api-active',

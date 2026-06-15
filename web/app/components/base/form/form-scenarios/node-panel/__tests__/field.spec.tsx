@@ -12,7 +12,9 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
   default: () => <div>Variable Picker</div>,
 }))
 
-const createConfig = (overrides: Partial<InputFieldConfiguration> = {}): InputFieldConfiguration => ({
+const createConfig = (
+  overrides: Partial<InputFieldConfiguration> = {},
+): InputFieldConfiguration => ({
   type: InputFieldType.textInput,
   variable: 'fieldA',
   label: 'Field A',
@@ -47,22 +49,24 @@ const NodePanelWrapper = ({ children }: { children: ReactNode }) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ReactFlowProvider>
-        {children}
-      </ReactFlowProvider>
+      <ReactFlowProvider>{children}</ReactFlowProvider>
     </QueryClientProvider>
   )
 }
 
 const getVisibleText = (text: string) => {
-  const element = screen.getAllByText(text).find(element => !element.classList.contains('sr-only'))
+  const element = screen
+    .getAllByText(text)
+    .find((element) => !element.classList.contains('sr-only'))
   expect(element).toBeDefined()
   return element!
 }
 
 describe('NodePanelField', () => {
   it('should render text input field', () => {
-    render(<FieldHarness config={createConfig({ label: 'Node Name' })} initialData={{ fieldA: '' }} />)
+    render(
+      <FieldHarness config={createConfig({ label: 'Node Name' })} initialData={{ fieldA: '' }} />,
+    )
 
     expect(screen.getByRole('textbox')).toBeInTheDocument()
     expect(screen.getByText('Node Name')).toBeInTheDocument()
@@ -99,13 +103,20 @@ describe('NodePanelField', () => {
   })
 
   it('should render other configured field types and hide unsupported type', () => {
-    const scenarios: Array<{ config: InputFieldConfiguration, initialData: Record<string, unknown> }> = [
+    const scenarios: Array<{
+      config: InputFieldConfiguration
+      initialData: Record<string, unknown>
+    }> = [
       {
         config: createConfig({ type: InputFieldType.numberInput, label: 'Count', min: 1, max: 3 }),
         initialData: { fieldA: 2 },
       },
       {
-        config: createConfig({ type: InputFieldType.numberSlider, label: 'Temperature', description: 'Adjust' }),
+        config: createConfig({
+          type: InputFieldType.numberSlider,
+          label: 'Temperature',
+          description: 'Adjust',
+        }),
         initialData: { fieldA: 0.4 },
       },
       {
@@ -113,11 +124,19 @@ describe('NodePanelField', () => {
         initialData: { fieldA: true },
       },
       {
-        config: createConfig({ type: InputFieldType.select, label: 'Mode', options: [{ value: 'safe', label: 'Safe' }] }),
+        config: createConfig({
+          type: InputFieldType.select,
+          label: 'Mode',
+          options: [{ value: 'safe', label: 'Safe' }],
+        }),
         initialData: { fieldA: 'safe' },
       },
       {
-        config: createConfig({ type: InputFieldType.inputTypeSelect, label: 'Input Type', supportFile: true }),
+        config: createConfig({
+          type: InputFieldType.inputTypeSelect,
+          label: 'Input Type',
+          supportFile: true,
+        }),
         initialData: { fieldA: 'text' },
       },
       {
@@ -135,7 +154,9 @@ describe('NodePanelField', () => {
     ]
 
     for (const scenario of scenarios) {
-      const { unmount } = render(<FieldHarness config={scenario.config} initialData={scenario.initialData} />)
+      const { unmount } = render(
+        <FieldHarness config={scenario.config} initialData={scenario.initialData} />,
+      )
       expect(getVisibleText(scenario.config.label)).toBeInTheDocument()
       unmount()
     }

@@ -23,59 +23,68 @@ describe('var-reference-vars helpers', () => {
 
   it('should build selectors by variable scope and file support', () => {
     const itemData: Var = { variable: 'output', type: VarType.string }
-    expect(getValueSelector({
-      itemData,
-      isFlat: true,
-      isSupportFileVar: true,
-      isFile: false,
-      isSys: false,
-      isEnv: false,
-      isChatVar: false,
-      nodeId: 'node-1',
-      objPath: [],
-    })).toEqual(['output'])
+    expect(
+      getValueSelector({
+        itemData,
+        isFlat: true,
+        isSupportFileVar: true,
+        isFile: false,
+        isSys: false,
+        isEnv: false,
+        isChatVar: false,
+        nodeId: 'node-1',
+        objPath: [],
+      }),
+    ).toEqual(['output'])
 
-    expect(getValueSelector({
-      itemData: { variable: 'env.apiKey', type: VarType.string },
-      isFlat: false,
-      isSupportFileVar: true,
-      isFile: false,
-      isSys: false,
-      isEnv: true,
-      isChatVar: false,
-      nodeId: 'node-1',
-      objPath: ['parent'],
-    })).toEqual(['parent', 'env', 'apiKey'])
+    expect(
+      getValueSelector({
+        itemData: { variable: 'env.apiKey', type: VarType.string },
+        isFlat: false,
+        isSupportFileVar: true,
+        isFile: false,
+        isSys: false,
+        isEnv: true,
+        isChatVar: false,
+        nodeId: 'node-1',
+        objPath: ['parent'],
+      }),
+    ).toEqual(['parent', 'env', 'apiKey'])
 
-    expect(getValueSelector({
-      itemData: { variable: 'file', type: VarType.file },
-      isFlat: false,
-      isSupportFileVar: false,
-      isFile: true,
-      isSys: false,
-      isEnv: false,
-      isChatVar: false,
-      nodeId: 'node-1',
-      objPath: [],
-    })).toBeUndefined()
+    expect(
+      getValueSelector({
+        itemData: { variable: 'file', type: VarType.file },
+        isFlat: false,
+        isSupportFileVar: false,
+        isFile: true,
+        isSys: false,
+        isEnv: false,
+        isChatVar: false,
+        nodeId: 'node-1',
+        objPath: [],
+      }),
+    ).toBeUndefined()
   })
 
   it('should filter out invalid vars and apply search text', () => {
-    const vars = filterReferenceVars([
-      {
-        title: 'Node A',
-        nodeId: 'node-a',
-        vars: [
-          { variable: 'valid_name', type: VarType.string },
-          { variable: 'invalid-key', type: VarType.string },
-        ],
-      },
-      {
-        title: 'Node B',
-        nodeId: 'node-b',
-        vars: [{ variable: 'another_value', type: VarType.string }],
-      },
-    ] as NodeOutPutVar[], 'another')
+    const vars = filterReferenceVars(
+      [
+        {
+          title: 'Node A',
+          nodeId: 'node-a',
+          vars: [
+            { variable: 'valid_name', type: VarType.string },
+            { variable: 'invalid-key', type: VarType.string },
+          ],
+        },
+        {
+          title: 'Node B',
+          nodeId: 'node-b',
+          vars: [{ variable: 'another_value', type: VarType.string }],
+        },
+      ] as NodeOutPutVar[],
+      'another',
+    )
 
     expect(vars).toHaveLength(1)
     expect(vars[0]!.title).toBe('Node B')
@@ -83,22 +92,27 @@ describe('var-reference-vars helpers', () => {
   })
 
   it('should keep parent vars when search text matches a child variable', () => {
-    const vars = filterReferenceVars([
-      {
-        title: 'Node A',
-        nodeId: 'node-a',
-        vars: [{
-          variable: 'payload',
-          type: VarType.object,
-          children: [{ variable: 'child_name', type: VarType.string }],
-        }],
-      },
-      {
-        title: 'Node B',
-        nodeId: 'node-b',
-        vars: [{ variable: 'other_value', type: VarType.string }],
-      },
-    ] as NodeOutPutVar[], 'child')
+    const vars = filterReferenceVars(
+      [
+        {
+          title: 'Node A',
+          nodeId: 'node-a',
+          vars: [
+            {
+              variable: 'payload',
+              type: VarType.object,
+              children: [{ variable: 'child_name', type: VarType.string }],
+            },
+          ],
+        },
+        {
+          title: 'Node B',
+          nodeId: 'node-b',
+          vars: [{ variable: 'other_value', type: VarType.string }],
+        },
+      ] as NodeOutPutVar[],
+      'child',
+    )
 
     expect(vars).toHaveLength(1)
     expect(vars[0]!.title).toBe('Node A')

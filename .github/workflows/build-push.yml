@@ -3,14 +3,14 @@ name: Build and Push API & Web
 on:
   push:
     branches:
-      - "main"
-      - "deploy/**"
-      - "build/**"
-      - "release/e-*"
-      - "hotfix/**"
-      - "feat/hitl-backend"
+      - 'main'
+      - 'deploy/**'
+      - 'build/**'
+      - 'release/e-*'
+      - 'hotfix/**'
+      - 'feat/hitl-backend'
     tags:
-      - "*"
+      - '*'
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}
@@ -32,32 +32,32 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "build-api-amd64"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            artifact_context: "api"
-            build_context: "{{defaultContext}}"
-            file: "api/Dockerfile"
+          - service_name: 'build-api-amd64'
+            image_name_env: 'DIFY_API_IMAGE_NAME'
+            artifact_context: 'api'
+            build_context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-api-arm64"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            artifact_context: "api"
-            build_context: "{{defaultContext}}"
-            file: "api/Dockerfile"
+          - service_name: 'build-api-arm64'
+            image_name_env: 'DIFY_API_IMAGE_NAME'
+            artifact_context: 'api'
+            build_context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-web-amd64"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            artifact_context: "web"
-            build_context: "{{defaultContext}}"
-            file: "web/Dockerfile"
+          - service_name: 'build-web-amd64'
+            image_name_env: 'DIFY_WEB_IMAGE_NAME'
+            artifact_context: 'web'
+            build_context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-web-arm64"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            artifact_context: "web"
-            build_context: "{{defaultContext}}"
-            file: "web/Dockerfile"
+          - service_name: 'build-web-arm64'
+            image_name_env: 'DIFY_WEB_IMAGE_NAME'
+            artifact_context: 'web'
+            build_context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
 
@@ -116,12 +116,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "validate-api-amd64"
-            build_context: "{{defaultContext}}"
-            file: "api/Dockerfile"
-          - service_name: "validate-web-amd64"
-            build_context: "{{defaultContext}}"
-            file: "web/Dockerfile"
+          - service_name: 'validate-api-amd64'
+            build_context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
+          - service_name: 'validate-web-amd64'
+            build_context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
@@ -141,12 +141,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "merge-api-images"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            context: "api"
-          - service_name: "merge-web-images"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            context: "web"
+          - service_name: 'merge-api-images'
+            image_name_env: 'DIFY_API_IMAGE_NAME'
+            context: 'api'
+          - service_name: 'merge-web-images'
+            image_name_env: 'DIFY_WEB_IMAGE_NAME'
+            context: 'web'
     steps:
       - name: Download digests
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1

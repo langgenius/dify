@@ -22,9 +22,7 @@ const createWrapper = () => {
   })
 
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
 }
 
@@ -42,10 +40,7 @@ describe('use-pipeline imports', () => {
   })
 
   it('should import pipeline DSL silently so callers can own error toasts', async () => {
-    const { result } = renderHook(
-      () => useImportPipelineDSL(),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useImportPipelineDSL(), { wrapper: createWrapper() })
     const request = {
       mode: DSLImportMode.YAML_CONTENT,
       yaml_content: 'rag_pipeline: {}',
@@ -55,18 +50,11 @@ describe('use-pipeline imports', () => {
       await result.current.mutateAsync(request)
     })
 
-    expect(post).toHaveBeenCalledWith(
-      '/rag/pipelines/imports',
-      { body: request },
-      { silent: true },
-    )
+    expect(post).toHaveBeenCalledWith('/rag/pipelines/imports', { body: request }, { silent: true })
   })
 
   it('should confirm pipeline DSL import silently so callers can own error toasts', async () => {
-    const { result } = renderHook(
-      () => useImportPipelineDSLConfirm(),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useImportPipelineDSLConfirm(), { wrapper: createWrapper() })
 
     await act(async () => {
       await result.current.mutateAsync('import-id')

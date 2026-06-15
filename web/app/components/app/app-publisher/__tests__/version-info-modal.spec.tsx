@@ -24,11 +24,13 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={{
-          id: 'version-1',
-          marked_name: 'Release 1',
-          marked_comment: 'Initial release',
-        } as any}
+        versionInfo={
+          {
+            id: 'version-1',
+            marked_name: 'Release 1',
+            marked_comment: 'Initial release',
+          } as any
+        }
         onClose={vi.fn()}
         onPublish={vi.fn()}
       />,
@@ -41,13 +43,7 @@ describe('VersionInfoModal', () => {
   it('should reject overlong titles', () => {
     const handlePublish = vi.fn()
 
-    render(
-      <VersionInfoModal
-        isOpen
-        onClose={vi.fn()}
-        onPublish={handlePublish}
-      />,
-    )
+    render(<VersionInfoModal isOpen onClose={vi.fn()} onPublish={handlePublish} />)
 
     const [titleInput] = screen.getAllByRole('textbox')
     fireEvent.change(titleInput!, { target: { value: 'a'.repeat(16) } })
@@ -64,11 +60,13 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={{
-          id: 'version-2',
-          marked_name: 'Old title',
-          marked_comment: 'Old notes',
-        } as any}
+        versionInfo={
+          {
+            id: 'version-2',
+            marked_name: 'Old title',
+            marked_comment: 'Old notes',
+          } as any
+        }
         onClose={handleClose}
         onPublish={handlePublish}
       />,
@@ -90,13 +88,7 @@ describe('VersionInfoModal', () => {
   it('should close when the dialog requests close', () => {
     const handleClose = vi.fn()
 
-    render(
-      <VersionInfoModal
-        isOpen
-        onClose={handleClose}
-        onPublish={vi.fn()}
-      />,
-    )
+    render(<VersionInfoModal isOpen onClose={handleClose} onPublish={vi.fn()} />)
 
     fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
@@ -106,13 +98,7 @@ describe('VersionInfoModal', () => {
   it('should close when the close button is clicked', () => {
     const handleClose = vi.fn()
 
-    render(
-      <VersionInfoModal
-        isOpen
-        onClose={handleClose}
-        onPublish={vi.fn()}
-      />,
-    )
+    render(<VersionInfoModal isOpen onClose={handleClose} onPublish={vi.fn()} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'operation.close' }))
 
@@ -126,11 +112,13 @@ describe('VersionInfoModal', () => {
     render(
       <VersionInfoModal
         isOpen
-        versionInfo={{
-          id: 'version-3',
-          marked_name: 'Old title',
-          marked_comment: 'Old notes',
-        } as any}
+        versionInfo={
+          {
+            id: 'version-3',
+            marked_name: 'Old title',
+            marked_comment: 'Old notes',
+          } as any
+        }
         onClose={handleClose}
         onPublish={handlePublish}
       />,

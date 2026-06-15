@@ -19,26 +19,26 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../../store', () => ({
-  useStore: <T,>(selector: (state: { maximizeCanvas: boolean }) => T) => selector({
-    maximizeCanvas: mockMaximizeCanvas,
-  }),
+  useStore: <T,>(selector: (state: { maximizeCanvas: boolean }) => T) =>
+    selector({
+      maximizeCanvas: mockMaximizeCanvas,
+    }),
 }))
 
 vi.mock('@/next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {
-    default: (
-      loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>,
-    ) => {
+    default: (loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>) => {
       const DynamicComponent = (props: Record<string, unknown>) => {
-        const [Loaded, setLoaded] = ReactModule.useState<React.ComponentType<Record<string, unknown>> | null>(null)
+        const [Loaded, setLoaded] = ReactModule.useState<React.ComponentType<
+          Record<string, unknown>
+        > | null>(null)
 
         ReactModule.useEffect(() => {
           let mounted = true
           loader().then((mod) => {
-            if (mounted)
-              setLoaded(() => mod.default)
+            if (mounted) setLoaded(() => mod.default)
           })
           return () => {
             mounted = false

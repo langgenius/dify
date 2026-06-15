@@ -45,11 +45,9 @@ const Footer: FC<FooterProps> = ({
     return (
       <span className="opacity-60">
         {(() => {
-          if (isCommandsMode)
-            return t('gotoAnything.selectToNavigate', { ns: 'app' })
+          if (isCommandsMode) return t('gotoAnything.selectToNavigate', { ns: 'app' })
 
-          if (hasQuery)
-            return t('gotoAnything.searching', { ns: 'app' })
+          if (hasQuery) return t('gotoAnything.searching', { ns: 'app' })
 
           return t('gotoAnything.startTyping', { ns: 'app' })
         })()}

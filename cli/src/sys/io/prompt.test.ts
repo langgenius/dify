@@ -56,9 +56,9 @@ describe('promptText (non-TTY)', () => {
 
   it('throws on invalid input (no retry in non-TTY)', async () => {
     const io = bufferStreams('bad\n')
-    await expect(
-      promptText({ io, label: 'Enter name', parse: parseString }),
-    ).rejects.toThrow(/expected "hello"/)
+    await expect(promptText({ io, label: 'Enter name', parse: parseString })).rejects.toThrow(
+      /expected "hello"/,
+    )
   })
 
   it('throws UsageMissingArg on EOF before reading input', async () => {
@@ -66,9 +66,9 @@ describe('promptText (non-TTY)', () => {
     const ended = new PassThrough()
     ended.end()
     ;(io as { in: NodeJS.ReadableStream }).in = ended
-    await expect(
-      promptText({ io, label: 'Enter name', parse: parseString }),
-    ).rejects.toThrow(/input closed/)
+    await expect(promptText({ io, label: 'Enter name', parse: parseString })).rejects.toThrow(
+      /input closed/,
+    )
   })
 
   it('acceptAsDefault: treats matching input as default', async () => {
@@ -77,8 +77,8 @@ describe('promptText (non-TTY)', () => {
       io,
       label: 'Enter URL',
       default: 'https://example.com',
-      acceptAsDefault: raw => /^y(?:es)?$/i.test(raw),
-      parse: raw => ({ ok: true, value: raw }),
+      acceptAsDefault: (raw) => /^y(?:es)?$/i.test(raw),
+      parse: (raw) => ({ ok: true, value: raw }),
     })
     expect(result).toBe('https://example.com')
   })
@@ -118,8 +118,8 @@ describe('promptText (TTY)', () => {
       io,
       label: 'Enter URL',
       default: 'https://example.com',
-      acceptAsDefault: raw => /^y(?:es)?$/i.test(raw),
-      parse: raw => ({ ok: true, value: raw }),
+      acceptAsDefault: (raw) => /^y(?:es)?$/i.test(raw),
+      parse: (raw) => ({ ok: true, value: raw }),
     })
     expect(result).toBe('https://example.com')
   })
@@ -131,8 +131,8 @@ describe('promptText (TTY)', () => {
         io,
         label: 'Enter URL',
         default: 'https://example.com',
-        acceptAsDefault: raw => /^y(?:es)?$/i.test(raw),
-        parse: raw => ({ ok: true, value: raw }),
+        acceptAsDefault: (raw) => /^y(?:es)?$/i.test(raw),
+        parse: (raw) => ({ ok: true, value: raw }),
       })
       expect(result).toBe('https://example.com')
     }
@@ -140,8 +140,8 @@ describe('promptText (TTY)', () => {
 
   it('throws UsageMissingArg on EOF before valid input is given', async () => {
     const io = eofStreams()
-    await expect(
-      promptText({ io, label: 'Enter name', parse: parseString }),
-    ).rejects.toThrow(/input closed/)
+    await expect(promptText({ io, label: 'Enter name', parse: parseString })).rejects.toThrow(
+      /input closed/,
+    )
   })
 })

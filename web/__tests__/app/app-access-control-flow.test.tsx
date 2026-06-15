@@ -35,15 +35,16 @@ const renderWithQueryClient = (ui: React.ReactElement) =>
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: mockAppDetail,
-    setAppDetail: mockSetAppDetail,
-  }),
+  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      appDetail: mockAppDetail,
+      setAppDetail: mockSetAppDetail,
+    }),
 }))
 
 vi.mock('@/hooks/use-format-time-from-now', () => ({
@@ -89,16 +90,14 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({
-    onConfirm,
-    onClose,
-  }: {
-    onConfirm: () => Promise<void>
-    onClose: () => void
-  }) => (
+  default: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>; onClose: () => void }) => (
     <div data-testid="access-control-modal">
-      <button type="button" onClick={() => void onConfirm()}>confirm-access-control</button>
-      <button type="button" onClick={onClose}>close-access-control</button>
+      <button type="button" onClick={() => void onConfirm()}>
+        confirm-access-control
+      </button>
+      <button type="button" onClick={onClose}>
+        close-access-control
+      </button>
     </div>
   ),
 }))
@@ -138,10 +137,12 @@ describe('App Access Control Flow', () => {
 
     await waitFor(() => {
       expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      }))
+      expect(mockSetAppDetail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'app-1',
+          access_mode: AccessMode.PUBLIC,
+        }),
+      )
     })
 
     await waitFor(() => {

@@ -22,29 +22,35 @@ const getLink = (type?: ToolTypeEnum) => {
       return '/tools?category=api'
   }
 }
-const Empty = ({
-  type,
-  isAgent,
-}: Props) => {
+const Empty = ({ type, isAgent }: Props) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
 
   const hasLink = type && [ToolTypeEnum.Custom, ToolTypeEnum.MCP].includes(type)
   const Comp = (hasLink ? Link : 'div') as any
   const linkProps = hasLink ? { href: getLink(type), target: '_blank' } : {}
-  const renderType = isAgent ? 'agent' as const : type
-  const hasTitle = renderType && t(`addToolModal.${renderType}.title`, { ns: 'tools' }) !== `addToolModal.${renderType}.title`
+  const renderType = isAgent ? ('agent' as const) : type
+  const hasTitle =
+    renderType &&
+    t(`addToolModal.${renderType}.title`, { ns: 'tools' }) !== `addToolModal.${renderType}.title`
 
   return (
     <div className="flex flex-col items-center justify-center">
       <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
       <div className="mt-2 mb-1 text-[13px] leading-[18px] font-medium text-text-primary">
-        {(hasTitle && renderType) ? t(`addToolModal.${renderType}.title`, { ns: 'tools' }) : 'No tools available'}
+        {hasTitle && renderType
+          ? t(`addToolModal.${renderType}.title`, { ns: 'tools' })
+          : 'No tools available'}
       </div>
       {!!(!isAgent && hasTitle && renderType) && (
-        <Comp className={cn('flex items-center text-[13px] leading-[18px] text-text-tertiary', hasLink && 'cursor-pointer hover:text-text-accent')} {...linkProps}>
-          {t(`addToolModal.${renderType}.tip`, { ns: 'tools' })}
-          {' '}
+        <Comp
+          className={cn(
+            'flex items-center text-[13px] leading-[18px] text-text-tertiary',
+            hasLink && 'cursor-pointer hover:text-text-accent',
+          )}
+          {...linkProps}
+        >
+          {t(`addToolModal.${renderType}.tip`, { ns: 'tools' })}{' '}
           {hasLink && <RiArrowRightUpLine className="ml-0.5 size-3" />}
         </Comp>
       )}

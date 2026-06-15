@@ -22,7 +22,9 @@
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
   text-decoration-color: color-mix(in srgb, var(--color-text-accent) 60%, transparent);
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
 }
 
 .note-editor-theme_link:hover {

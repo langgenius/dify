@@ -6,8 +6,7 @@ vi.mock('@/service/base', () => ({
 
 vi.mock('@/i18n-config', () => ({
   renderI18nObject: vi.fn((obj: Record<string, string> | string, locale: string) => {
-    if (typeof obj === 'string')
-      return obj
+    if (typeof obj === 'string') return obj
     return obj[locale] || obj.en_US || ''
   }),
 }))
@@ -35,7 +34,12 @@ describe('pluginAction', () => {
     vi.mocked(postMarketplace).mockResolvedValue({
       data: {
         plugins: [
-          { name: 'plugin-1', label: { en_US: 'My Plugin' }, brief: { en_US: 'A plugin' }, icon: 'icon.png' },
+          {
+            name: 'plugin-1',
+            label: { en_US: 'My Plugin' },
+            brief: { en_US: 'A plugin' },
+            icon: 'icon.png',
+          },
         ],
         total: 1,
       },

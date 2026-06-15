@@ -15,7 +15,7 @@ import * as React from 'react'
 
 type MockNode = {
   id: string
-  position: { x: number, y: number }
+  position: { x: number; y: number }
   width?: number | null
   height?: number | null
   parentId?: string
@@ -90,13 +90,15 @@ export function createReactFlowModuleMock() {
       setNodes: rfState.setNodes,
       setEdges: rfState.setEdges,
       getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
-      screenToFlowPosition: (pos: { x: number, y: number }) => pos,
-      flowToScreenPosition: (pos: { x: number, y: number }) => pos,
+      screenToFlowPosition: (pos: { x: number; y: number }) => pos,
+      flowToScreenPosition: (pos: { x: number; y: number }) => pos,
       deleteElements: vi.fn(),
       addNodes: vi.fn(),
       addEdges: vi.fn(),
       getNode: vi.fn(),
-      toObject: vi.fn().mockReturnValue({ nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }),
+      toObject: vi
+        .fn()
+        .mockReturnValue({ nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }),
       viewportInitialized: true,
     })),
 

@@ -8,15 +8,16 @@ type ProcessDocumentsProps = {
   dataSourceNodeId: string
 }
 
-const ProcessDocuments = ({
-  dataSourceNodeId,
-}: ProcessDocumentsProps) => {
+const ProcessDocuments = ({ dataSourceNodeId }: ProcessDocumentsProps) => {
   const { t } = useTranslation()
-  const pipelineId = useStore(state => state.pipelineId)
-  const { data: paramsConfig } = useDraftPipelineProcessingParams({
-    pipeline_id: pipelineId!,
-    node_id: dataSourceNodeId,
-  }, !!pipelineId && !!dataSourceNodeId)
+  const pipelineId = useStore((state) => state.pipelineId)
+  const { data: paramsConfig } = useDraftPipelineProcessingParams(
+    {
+      pipeline_id: pipelineId!,
+      node_id: dataSourceNodeId,
+    },
+    !!pipelineId && !!dataSourceNodeId,
+  )
 
   return (
     <div className="flex flex-col">

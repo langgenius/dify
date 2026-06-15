@@ -3,7 +3,7 @@ import AudioGallery from '../index'
 
 describe('AudioGallery', () => {
   beforeEach(() => {
-    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => { })
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
   })
 
   it('returns null when srcs array is empty', () => {

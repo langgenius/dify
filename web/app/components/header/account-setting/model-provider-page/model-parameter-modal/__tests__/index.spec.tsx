@@ -14,7 +14,10 @@ let parameterRules: Array<Record<string, unknown>> | undefined = [
 ]
 let isRulesLoading = false
 let isRulesPending = false
-let currentProvider: Record<string, unknown> | undefined = { provider: 'openai', label: { en_US: 'OpenAI' } }
+let currentProvider: Record<string, unknown> | undefined = {
+  provider: 'openai',
+  label: { en_US: 'OpenAI' },
+}
 let currentModel: Record<string, unknown> | undefined = {
   model: 'gpt-3.5-turbo',
   status: 'active',
@@ -63,8 +66,14 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../parameter-item', () => ({
-  default: ({ parameterRule, onChange, onSwitch, nodesOutputVars, availableNodes }: {
-    parameterRule: { name: string, label: { en_US: string } }
+  default: ({
+    parameterRule,
+    onChange,
+    onSwitch,
+    nodesOutputVars,
+    availableNodes,
+  }: {
+    parameterRule: { name: string; label: { en_US: string } }
     onChange: (v: number) => void
     onSwitch: (checked: boolean, val: unknown) => void
     nodesOutputVars?: unknown[]
@@ -84,18 +93,31 @@ vi.mock('../parameter-item', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: ({ onHide, onSelect }: { onHide: () => void, onSelect: (value: { provider: string, model: string }) => void }) => (
+  default: ({
+    onHide,
+    onSelect,
+  }: {
+    onHide: () => void
+    onSelect: (value: { provider: string; model: string }) => void
+  }) => (
     <div data-testid="model-selector">
-      <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>Select GPT-4.1</button>
+      <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>
+        Select GPT-4.1
+      </button>
       <button onClick={onHide}>hide</button>
     </div>
   ),
 }))
 
 vi.mock('../presets-parameter', () => ({
-  default: ({ onSelect, supportedParameterNames }: { onSelect: (id: number) => void, supportedParameterNames?: string[] }) => {
-    if (supportedParameterNames && !supportedParameterNames.includes('temperature'))
-      return null
+  default: ({
+    onSelect,
+    supportedParameterNames,
+  }: {
+    onSelect: (id: number) => void
+    supportedParameterNames?: string[]
+  }) => {
+    if (supportedParameterNames && !supportedParameterNames.includes('temperature')) return null
 
     return <button onClick={() => onSelect(1)}>Preset 1</button>
   },
@@ -103,8 +125,7 @@ vi.mock('../presets-parameter', () => ({
 
 vi.mock('../presets-parameter-utils', () => ({
   getSupportedPresetConfig: (_toneId: number, supportedParameterNames?: string[]) => {
-    if (supportedParameterNames && !supportedParameterNames.includes('temperature'))
-      return {}
+    if (supportedParameterNames && !supportedParameterNames.includes('temperature')) return {}
 
     return { temperature: 0.8 }
   },
@@ -264,13 +285,7 @@ describe('ModelParameterModal', () => {
     isRulesPending = true
     parameterRules = []
 
-    render(
-      <ModelParameterModal
-        {...defaultProps}
-        provider=""
-        modelId=""
-      />,
-    )
+    render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
     fireEvent.click(screen.getByText('Open Settings'))
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -335,13 +350,7 @@ describe('ModelParameterModal', () => {
   })
 
   it('should append the stop parameter in advanced mode and show the single-model debug label', () => {
-    render(
-      <ModelParameterModal
-        {...defaultProps}
-        isAdvancedMode
-        debugWithMultipleModel
-      />,
-    )
+    render(<ModelParameterModal {...defaultProps} isAdvancedMode debugWithMultipleModel />)
 
     fireEvent.click(screen.getByText('Open Settings'))
 

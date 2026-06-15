@@ -32,9 +32,12 @@ describe('Prompt Editor Test Utils', () => {
       const editor = createTestEditor(nodes)
 
       expect(() => {
-        editor.update(() => {
-          throw new Error('Test error')
-        }, { discrete: true })
+        editor.update(
+          () => {
+            throw new Error('Test error')
+          },
+          { discrete: true },
+        )
       }).toThrow('Test error')
     })
 
@@ -50,15 +53,18 @@ describe('Prompt Editor Test Utils', () => {
       const editor = createTestEditor(nodes)
 
       let content: string = ''
-      editor.update(() => {
-        const root = $getRoot()
-        const paragraph = $createParagraphNode()
-        const text = $createTextNode('Hello World')
-        paragraph.append(text)
-        root.append(paragraph)
+      editor.update(
+        () => {
+          const root = $getRoot()
+          const paragraph = $createParagraphNode()
+          const text = $createTextNode('Hello World')
+          paragraph.append(text)
+          root.append(paragraph)
 
-        content = root.getTextContent()
-      }, { discrete: true })
+          content = root.getTextContent()
+        },
+        { discrete: true },
+      )
 
       expect(content).toBe('Hello World')
     })

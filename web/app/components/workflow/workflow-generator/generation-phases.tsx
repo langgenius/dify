@@ -54,10 +54,8 @@ const GenerationPhases = ({ startedAt }: Props) => {
   }, [phaseIndex])
 
   const label = (() => {
-    if (phaseIndex === 0)
-      return t('workflowGenerator.phases.planning')
-    if (phaseIndex === 1)
-      return t('workflowGenerator.phases.building')
+    if (phaseIndex === 0) return t('workflowGenerator.phases.planning')
+    if (phaseIndex === 1) return t('workflowGenerator.phases.building')
     return t('workflowGenerator.phases.validating')
   })()
 

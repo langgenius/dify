@@ -41,13 +41,15 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
           </div>
         )}
         <CreateSubscriptionButton
-          buttonType={subscriptionCount > 0 ? CreateButtonType.ICON_BUTTON : CreateButtonType.FULL_BUTTON}
+          buttonType={
+            subscriptionCount > 0 ? CreateButtonType.ICON_BUTTON : CreateButtonType.FULL_BUTTON
+          }
         />
       </div>
 
       {subscriptionCount > 0 && (
         <div className="flex flex-col gap-1">
-          {subscriptions?.map(subscription => (
+          {subscriptions?.map((subscription) => (
             <SubscriptionCard
               key={subscription.id}
               data={subscription}

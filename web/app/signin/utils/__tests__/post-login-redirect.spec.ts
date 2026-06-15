@@ -10,10 +10,18 @@ describe('post-login redirect utilities', () => {
 
   it('should use the redirect_url query param first', () => {
     const searchParams = new URLSearchParams({
-      redirect_url: encodeURIComponent('/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback'),
+      redirect_url: encodeURIComponent(
+        '/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
+      ),
     })
 
-    expect(resolvePostLoginRedirect(searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0])).toBe('/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback')
+    expect(
+      resolvePostLoginRedirect(
+        searchParams as unknown as Parameters<typeof resolvePostLoginRedirect>[0],
+      ),
+    ).toBe(
+      '/account/oauth/authorize?client_id=app&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
+    )
   })
 
   it('should recover a valid device redirect from sessionStorage once', () => {

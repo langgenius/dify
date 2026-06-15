@@ -8,13 +8,15 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href} data-testid="back-link">{children}</a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href} data-testid="back-link">
+      {children}
+    </a>
   ),
 }))
 
 vi.mock('../step-indicator', () => ({
-  default: ({ steps, currentStep }: { steps: Step[], currentStep: number }) => (
+  default: ({ steps, currentStep }: { steps: Step[]; currentStep: number }) => (
     <div data-testid="step-indicator" data-steps={steps.length} data-current={currentStep} />
   ),
 }))

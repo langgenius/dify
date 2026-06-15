@@ -15,17 +15,17 @@ workflow:
   features:
     file_upload:
       allowed_file_extensions:
-      - .JPG
-      - .JPEG
-      - .PNG
-      - .GIF
-      - .WEBP
-      - .SVG
+        - .JPG
+        - .JPEG
+        - .PNG
+        - .GIF
+        - .WEBP
+        - .SVG
       allowed_file_types:
-      - image
+        - image
       allowed_file_upload_methods:
-      - local_file
-      - remote_url
+        - local_file
+        - remote_url
       enabled: false
       fileUploadConfig:
         audio_file_size_limit: 50
@@ -38,8 +38,8 @@ workflow:
         enabled: false
         number_limits: 3
         transfer_methods:
-        - local_file
-        - remote_url
+          - local_file
+          - remote_url
       number_limits: 3
     opening_statement: ''
     retriever_resource:
@@ -57,312 +57,312 @@ workflow:
       voice: ''
   graph:
     edges:
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: start
-        targetType: tool
-      id: 1754336720803-source-1754336729904-target
-      source: '1754336720803'
-      sourceHandle: source
-      target: '1754336729904'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: tool
-        targetType: template-transform
-      id: 1754336729904-source-1754336733947-target
-      source: '1754336729904'
-      sourceHandle: source
-      target: '1754336733947'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInLoop: false
-        sourceType: template-transform
-        targetType: answer
-      id: 1754336733947-source-answer-target
-      source: '1754336733947'
-      sourceHandle: source
-      target: answer
-      targetHandle: target
-      type: custom
-      zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: tool
+        id: 1754336720803-source-1754336729904-target
+        source: '1754336720803'
+        sourceHandle: source
+        target: '1754336729904'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: tool
+          targetType: template-transform
+        id: 1754336729904-source-1754336733947-target
+        source: '1754336729904'
+        sourceHandle: source
+        target: '1754336733947'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInLoop: false
+          sourceType: template-transform
+          targetType: answer
+        id: 1754336733947-source-answer-target
+        source: '1754336733947'
+        sourceHandle: source
+        target: answer
+        targetHandle: target
+        type: custom
+        zIndex: 0
     nodes:
-    - data:
-        desc: ''
+      - data:
+          desc: ''
+          selected: false
+          title: Start
+          type: start
+          variables: []
+        height: 54
+        id: '1754336720803'
+        position:
+          x: 30
+          y: 258
+        positionAbsolute:
+          x: 30
+          y: 258
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          answer: '{{#1754336733947.output#}}'
+          desc: ''
+          selected: false
+          title: Answer
+          type: answer
+          variables: []
+        height: 105
+        id: answer
+        position:
+          x: 942
+          y: 258
+        positionAbsolute:
+          x: 942
+          y: 258
         selected: false
-        title: Start
-        type: start
-        variables: []
-      height: 54
-      id: '1754336720803'
-      position:
-        x: 30
-        y: 258
-      positionAbsolute:
-        x: 30
-        y: 258
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
-    - data:
-        answer: '{{#1754336733947.output#}}'
-        desc: ''
-        selected: false
-        title: Answer
-        type: answer
-        variables: []
-      height: 105
-      id: answer
-      position:
-        x: 942
-        y: 258
-      positionAbsolute:
-        x: 942
-        y: 258
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: '%Y-%m-%d %H:%M:%S'
-          form: form
-          human_description:
-            en_US: Time format in strftime standard.
-            ja_JP: Time format in strftime standard.
-            pt_BR: Time format in strftime standard.
-            zh_Hans: strftime 标准的时间格式。
-          label:
-            en_US: Format
-            ja_JP: Format
-            pt_BR: Format
-            zh_Hans: 格式
-          llm_description: null
-          max: null
-          min: null
-          name: format
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: UTC
-          form: form
-          human_description:
-            en_US: Timezone
-            ja_JP: Timezone
-            pt_BR: Timezone
-            zh_Hans: 时区
-          label:
-            en_US: Timezone
-            ja_JP: Timezone
-            pt_BR: Timezone
-            zh_Hans: 时区
-          llm_description: null
-          max: null
-          min: null
-          name: timezone
-          options:
-          - icon: null
-            label:
-              en_US: UTC
-              ja_JP: UTC
-              pt_BR: UTC
-              zh_Hans: UTC
-            value: UTC
-          - icon: null
-            label:
-              en_US: America/New_York
-              ja_JP: America/New_York
-              pt_BR: America/New_York
-              zh_Hans: 美洲/纽约
-            value: America/New_York
-          - icon: null
-            label:
-              en_US: America/Los_Angeles
-              ja_JP: America/Los_Angeles
-              pt_BR: America/Los_Angeles
-              zh_Hans: 美洲/洛杉矶
-            value: America/Los_Angeles
-          - icon: null
-            label:
-              en_US: America/Chicago
-              ja_JP: America/Chicago
-              pt_BR: America/Chicago
-              zh_Hans: 美洲/芝加哥
-            value: America/Chicago
-          - icon: null
-            label:
-              en_US: America/Sao_Paulo
-              ja_JP: America/Sao_Paulo
-              pt_BR: América/São Paulo
-              zh_Hans: 美洲/圣保罗
-            value: America/Sao_Paulo
-          - icon: null
-            label:
-              en_US: Asia/Shanghai
-              ja_JP: Asia/Shanghai
-              pt_BR: Asia/Shanghai
-              zh_Hans: 亚洲/上海
-            value: Asia/Shanghai
-          - icon: null
-            label:
-              en_US: Asia/Ho_Chi_Minh
-              ja_JP: Asia/Ho_Chi_Minh
-              pt_BR: Ásia/Ho Chi Minh
-              zh_Hans: 亚洲/胡志明市
-            value: Asia/Ho_Chi_Minh
-          - icon: null
-            label:
-              en_US: Asia/Tokyo
-              ja_JP: Asia/Tokyo
-              pt_BR: Asia/Tokyo
-              zh_Hans: 亚洲/东京
-            value: Asia/Tokyo
-          - icon: null
-            label:
-              en_US: Asia/Dubai
-              ja_JP: Asia/Dubai
-              pt_BR: Asia/Dubai
-              zh_Hans: 亚洲/迪拜
-            value: Asia/Dubai
-          - icon: null
-            label:
-              en_US: Asia/Kolkata
-              ja_JP: Asia/Kolkata
-              pt_BR: Asia/Kolkata
-              zh_Hans: 亚洲/加尔各答
-            value: Asia/Kolkata
-          - icon: null
-            label:
-              en_US: Asia/Seoul
-              ja_JP: Asia/Seoul
-              pt_BR: Asia/Seoul
-              zh_Hans: 亚洲/首尔
-            value: Asia/Seoul
-          - icon: null
-            label:
-              en_US: Asia/Singapore
-              ja_JP: Asia/Singapore
-              pt_BR: Asia/Singapore
-              zh_Hans: 亚洲/新加坡
-            value: Asia/Singapore
-          - icon: null
-            label:
-              en_US: Europe/London
-              ja_JP: Europe/London
-              pt_BR: Europe/London
-              zh_Hans: 欧洲/伦敦
-            value: Europe/London
-          - icon: null
-            label:
-              en_US: Europe/Berlin
-              ja_JP: Europe/Berlin
-              pt_BR: Europe/Berlin
-              zh_Hans: 欧洲/柏林
-            value: Europe/Berlin
-          - icon: null
-            label:
-              en_US: Europe/Moscow
-              ja_JP: Europe/Moscow
-              pt_BR: Europe/Moscow
-              zh_Hans: 欧洲/莫斯科
-            value: Europe/Moscow
-          - icon: null
-            label:
-              en_US: Australia/Sydney
-              ja_JP: Australia/Sydney
-              pt_BR: Australia/Sydney
-              zh_Hans: 澳大利亚/悉尼
-            value: Australia/Sydney
-          - icon: null
-            label:
-              en_US: Pacific/Auckland
-              ja_JP: Pacific/Auckland
-              pt_BR: Pacific/Auckland
-              zh_Hans: 太平洋/奥克兰
-            value: Pacific/Auckland
-          - icon: null
-            label:
-              en_US: Africa/Cairo
-              ja_JP: Africa/Cairo
-              pt_BR: Africa/Cairo
-              zh_Hans: 非洲/开罗
-            value: Africa/Cairo
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: select
-        params:
-          format: ''
-          timezone: ''
-        provider_id: time
-        provider_name: time
-        provider_type: builtin
-        selected: false
-        title: Current Time
-        tool_configurations:
-          format:
-            type: mixed
-            value: '%Y-%m-%d %H:%M:%S'
-          timezone:
-            type: constant
-            value: UTC
-        tool_description: A tool for getting the current time.
-        tool_label: Current Time
-        tool_name: current_time
-        tool_node_version: '2'
-        tool_parameters: {}
-        type: tool
-      height: 116
-      id: '1754336729904'
-      position:
-        x: 334
-        y: 258
-      positionAbsolute:
-        x: 334
-        y: 258
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
-    - data:
-        desc: ''
-        selected: false
-        template: hello, dify!
-        title: Template
-        type: template-transform
-        variables: []
-      height: 54
-      id: '1754336733947'
-      position:
-        x: 638
-        y: 258
-      positionAbsolute:
-        x: 638
-        y: 258
-      selected: true
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          desc: ''
+          is_team_authorization: true
+          output_schema: null
+          paramSchemas:
+            - auto_generate: null
+              default: '%Y-%m-%d %H:%M:%S'
+              form: form
+              human_description:
+                en_US: Time format in strftime standard.
+                ja_JP: Time format in strftime standard.
+                pt_BR: Time format in strftime standard.
+                zh_Hans: strftime 标准的时间格式。
+              label:
+                en_US: Format
+                ja_JP: Format
+                pt_BR: Format
+                zh_Hans: 格式
+              llm_description: null
+              max: null
+              min: null
+              name: format
+              options: []
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: string
+            - auto_generate: null
+              default: UTC
+              form: form
+              human_description:
+                en_US: Timezone
+                ja_JP: Timezone
+                pt_BR: Timezone
+                zh_Hans: 时区
+              label:
+                en_US: Timezone
+                ja_JP: Timezone
+                pt_BR: Timezone
+                zh_Hans: 时区
+              llm_description: null
+              max: null
+              min: null
+              name: timezone
+              options:
+                - icon: null
+                  label:
+                    en_US: UTC
+                    ja_JP: UTC
+                    pt_BR: UTC
+                    zh_Hans: UTC
+                  value: UTC
+                - icon: null
+                  label:
+                    en_US: America/New_York
+                    ja_JP: America/New_York
+                    pt_BR: America/New_York
+                    zh_Hans: 美洲/纽约
+                  value: America/New_York
+                - icon: null
+                  label:
+                    en_US: America/Los_Angeles
+                    ja_JP: America/Los_Angeles
+                    pt_BR: America/Los_Angeles
+                    zh_Hans: 美洲/洛杉矶
+                  value: America/Los_Angeles
+                - icon: null
+                  label:
+                    en_US: America/Chicago
+                    ja_JP: America/Chicago
+                    pt_BR: America/Chicago
+                    zh_Hans: 美洲/芝加哥
+                  value: America/Chicago
+                - icon: null
+                  label:
+                    en_US: America/Sao_Paulo
+                    ja_JP: America/Sao_Paulo
+                    pt_BR: América/São Paulo
+                    zh_Hans: 美洲/圣保罗
+                  value: America/Sao_Paulo
+                - icon: null
+                  label:
+                    en_US: Asia/Shanghai
+                    ja_JP: Asia/Shanghai
+                    pt_BR: Asia/Shanghai
+                    zh_Hans: 亚洲/上海
+                  value: Asia/Shanghai
+                - icon: null
+                  label:
+                    en_US: Asia/Ho_Chi_Minh
+                    ja_JP: Asia/Ho_Chi_Minh
+                    pt_BR: Ásia/Ho Chi Minh
+                    zh_Hans: 亚洲/胡志明市
+                  value: Asia/Ho_Chi_Minh
+                - icon: null
+                  label:
+                    en_US: Asia/Tokyo
+                    ja_JP: Asia/Tokyo
+                    pt_BR: Asia/Tokyo
+                    zh_Hans: 亚洲/东京
+                  value: Asia/Tokyo
+                - icon: null
+                  label:
+                    en_US: Asia/Dubai
+                    ja_JP: Asia/Dubai
+                    pt_BR: Asia/Dubai
+                    zh_Hans: 亚洲/迪拜
+                  value: Asia/Dubai
+                - icon: null
+                  label:
+                    en_US: Asia/Kolkata
+                    ja_JP: Asia/Kolkata
+                    pt_BR: Asia/Kolkata
+                    zh_Hans: 亚洲/加尔各答
+                  value: Asia/Kolkata
+                - icon: null
+                  label:
+                    en_US: Asia/Seoul
+                    ja_JP: Asia/Seoul
+                    pt_BR: Asia/Seoul
+                    zh_Hans: 亚洲/首尔
+                  value: Asia/Seoul
+                - icon: null
+                  label:
+                    en_US: Asia/Singapore
+                    ja_JP: Asia/Singapore
+                    pt_BR: Asia/Singapore
+                    zh_Hans: 亚洲/新加坡
+                  value: Asia/Singapore
+                - icon: null
+                  label:
+                    en_US: Europe/London
+                    ja_JP: Europe/London
+                    pt_BR: Europe/London
+                    zh_Hans: 欧洲/伦敦
+                  value: Europe/London
+                - icon: null
+                  label:
+                    en_US: Europe/Berlin
+                    ja_JP: Europe/Berlin
+                    pt_BR: Europe/Berlin
+                    zh_Hans: 欧洲/柏林
+                  value: Europe/Berlin
+                - icon: null
+                  label:
+                    en_US: Europe/Moscow
+                    ja_JP: Europe/Moscow
+                    pt_BR: Europe/Moscow
+                    zh_Hans: 欧洲/莫斯科
+                  value: Europe/Moscow
+                - icon: null
+                  label:
+                    en_US: Australia/Sydney
+                    ja_JP: Australia/Sydney
+                    pt_BR: Australia/Sydney
+                    zh_Hans: 澳大利亚/悉尼
+                  value: Australia/Sydney
+                - icon: null
+                  label:
+                    en_US: Pacific/Auckland
+                    ja_JP: Pacific/Auckland
+                    pt_BR: Pacific/Auckland
+                    zh_Hans: 太平洋/奥克兰
+                  value: Pacific/Auckland
+                - icon: null
+                  label:
+                    en_US: Africa/Cairo
+                    ja_JP: Africa/Cairo
+                    pt_BR: Africa/Cairo
+                    zh_Hans: 非洲/开罗
+                  value: Africa/Cairo
+              placeholder: null
+              precision: null
+              required: false
+              scope: null
+              template: null
+              type: select
+          params:
+            format: ''
+            timezone: ''
+          provider_id: time
+          provider_name: time
+          provider_type: builtin
+          selected: false
+          title: Current Time
+          tool_configurations:
+            format:
+              type: mixed
+              value: '%Y-%m-%d %H:%M:%S'
+            timezone:
+              type: constant
+              value: UTC
+          tool_description: A tool for getting the current time.
+          tool_label: Current Time
+          tool_name: current_time
+          tool_node_version: '2'
+          tool_parameters: {}
+          type: tool
+        height: 116
+        id: '1754336729904'
+        position:
+          x: 334
+          y: 258
+        positionAbsolute:
+          x: 334
+          y: 258
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          desc: ''
+          selected: false
+          template: hello, dify!
+          title: Template
+          type: template-transform
+          variables: []
+        height: 54
+        id: '1754336733947'
+        position:
+          x: 638
+          y: 258
+        positionAbsolute:
+          x: 638
+          y: 258
+        selected: true
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
     viewport:
       x: -321.29999999999995
       y: 225.65

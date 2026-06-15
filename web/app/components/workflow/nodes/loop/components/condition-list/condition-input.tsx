@@ -1,6 +1,4 @@
-import type {
-  Node,
-} from '@/app/components/workflow/types'
+import type { Node } from '@/app/components/workflow/types'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { useStore } from '@/app/components/workflow/store'
@@ -12,16 +10,11 @@ type ConditionInputProps = {
   onChange: (value: string) => void
   availableNodes: Node[]
 }
-const ConditionInput = ({
-  value,
-  onChange,
-  disabled,
-  availableNodes,
-}: ConditionInputProps) => {
+const ConditionInput = ({ value, onChange, disabled, availableNodes }: ConditionInputProps) => {
   const { t } = useTranslation()
-  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
-  const pipelineId = useStore(s => s.pipelineId)
-  const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
+  const controlPromptEditorRerenderKey = useStore((s) => s.controlPromptEditorRerenderKey)
+  const pipelineId = useStore((s) => s.pipelineId)
+  const setShowInputFieldPanel = useStore((s) => s.setShowInputFieldPanel)
 
   return (
     <PromptEditor

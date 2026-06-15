@@ -17,9 +17,10 @@ vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
 vi.mock('@/service/use-common')
 
-const renderMembersPage = () => renderWithSystemFeatures(<MembersPage />, {
-  systemFeatures: { is_email_setup: true },
-})
+const renderMembersPage = () =>
+  renderWithSystemFeatures(<MembersPage />, {
+    systemFeatures: { is_email_setup: true },
+  })
 
 vi.mock('../edit-workspace-modal', () => ({
   default: ({ onCancel }: { onCancel: () => void }) => (
@@ -30,16 +31,30 @@ vi.mock('../edit-workspace-modal', () => ({
   ),
 }))
 vi.mock('../invite-button', () => ({
-  default: ({ onClick, disabled }: { onClick: () => void, disabled: boolean }) => (
-    <button onClick={onClick} disabled={disabled}>Invite</button>
+  default: ({ onClick, disabled }: { onClick: () => void; disabled: boolean }) => (
+    <button onClick={onClick} disabled={disabled}>
+      Invite
+    </button>
   ),
 }))
 vi.mock('../invite-modal', () => ({
-  default: ({ onCancel, onSend }: { onCancel: () => void, onSend: (results: Array<{ email: string, status: 'success', url: string }>) => void }) => (
+  default: ({
+    onCancel,
+    onSend,
+  }: {
+    onCancel: () => void
+    onSend: (results: Array<{ email: string; status: 'success'; url: string }>) => void
+  }) => (
     <div>
       <div>Invite Modal</div>
       <button onClick={onCancel}>Close Invite Modal</button>
-      <button onClick={() => onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])}>Send Invite Results</button>
+      <button
+        onClick={() =>
+          onSend([{ email: 'sent@example.com', status: 'success', url: 'http://invite/link' }])
+        }
+      >
+        Send Invite Results
+      </button>
     </div>
   ),
 }))
@@ -52,16 +67,12 @@ vi.mock('../invited-modal', () => ({
   ),
 }))
 vi.mock('../operation', () => ({
-  default: ({ member }: { member: Member }) => (
-    <div>
-      Member Operation
-      {' '}
-      {member.role}
-    </div>
-  ),
+  default: ({ member }: { member: Member }) => <div>Member Operation {member.role}</div>,
 }))
 vi.mock('../operation/transfer-ownership', () => ({
-  default: ({ onOperate }: { onOperate: () => void }) => <button onClick={onOperate}>Transfer ownership</button>,
+  default: ({ onOperate }: { onOperate: () => void }) => (
+    <button onClick={onOperate}>Transfer ownership</button>
+  ),
 }))
 vi.mock('../transfer-ownership-modal', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
@@ -121,10 +132,12 @@ describe('MembersPage', () => {
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
 
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: false,
-      isAllowTransferWorkspace: true,
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: false,
+        isAllowTransferWorkspace: true,
+      }),
+    )
 
     vi.mocked(useFormatTimeFromNow).mockReturnValue({
       formatTimeFromNow: mockFormatTimeFromNow,
@@ -176,10 +189,12 @@ describe('MembersPage', () => {
   })
 
   it('should show non-interactive owner role when transfer ownership is not allowed', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: false,
-      isAllowTransferWorkspace: false,
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: false,
+        isAllowTransferWorkspace: false,
+      }),
+    )
 
     renderMembersPage()
 
@@ -242,13 +257,17 @@ describe('MembersPage', () => {
   })
 
   it('should show billing information for limited plan', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: true,
+        plan: {
+          type: Plan.sandbox,
+          total: { teamMembers: 5 } as unknown as ReturnType<
+            typeof useProviderContext
+          >['plan']['total'],
+        } as unknown as ReturnType<typeof useProviderContext>['plan'],
+      }),
+    )
 
     renderMembersPage()
 
@@ -259,13 +278,17 @@ describe('MembersPage', () => {
   })
 
   it('should show unlimited billing information', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: -1 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: true,
+        plan: {
+          type: Plan.sandbox,
+          total: { teamMembers: -1 } as unknown as ReturnType<
+            typeof useProviderContext
+          >['plan']['total'],
+        } as unknown as ReturnType<typeof useProviderContext>['plan'],
+      }),
+    )
 
     renderMembersPage()
 
@@ -273,13 +296,17 @@ describe('MembersPage', () => {
   })
 
   it('should show non-billing member format for team plan even when billing is enabled', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.team,
-        total: { teamMembers: 50 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: true,
+        plan: {
+          type: Plan.team,
+          total: { teamMembers: 50 } as unknown as ReturnType<
+            typeof useProviderContext
+          >['plan']['total'],
+        } as unknown as ReturnType<typeof useProviderContext>['plan'],
+      }),
+    )
 
     renderMembersPage()
 
@@ -314,10 +341,34 @@ describe('MembersPage', () => {
         accounts: [
           mockAccounts[0],
           mockAccounts[1],
-          { ...mockAccounts[1]!, id: '3', email: 'editor@example.com', name: 'Editor User', role: 'editor' },
-          { ...mockAccounts[1]!, id: '4', email: 'normal@example.com', name: 'Normal User', role: 'normal' },
-          { ...mockAccounts[1]!, id: '5', email: 'dataset@example.com', name: 'Dataset User', role: 'dataset_operator' },
-          { ...mockAccounts[1]!, id: '6', email: 'other-admin@example.com', name: 'Other Admin User', role: 'admin' },
+          {
+            ...mockAccounts[1]!,
+            id: '3',
+            email: 'editor@example.com',
+            name: 'Editor User',
+            role: 'editor',
+          },
+          {
+            ...mockAccounts[1]!,
+            id: '4',
+            email: 'normal@example.com',
+            name: 'Normal User',
+            role: 'normal',
+          },
+          {
+            ...mockAccounts[1]!,
+            id: '5',
+            email: 'dataset@example.com',
+            name: 'Dataset User',
+            role: 'dataset_operator',
+          },
+          {
+            ...mockAccounts[1]!,
+            id: '6',
+            email: 'other-admin@example.com',
+            name: 'Other Admin User',
+            role: 'admin',
+          },
         ],
       },
       refetch: mockRefetch,
@@ -354,13 +405,17 @@ describe('MembersPage', () => {
       data: { accounts: [mockAccounts[0]] },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: 5 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: true,
+        plan: {
+          type: Plan.sandbox,
+          total: { teamMembers: 5 } as unknown as ReturnType<
+            typeof useProviderContext
+          >['plan']['total'],
+        } as unknown as ReturnType<typeof useProviderContext>['plan'],
+      }),
+    )
 
     renderMembersPage()
 
@@ -398,13 +453,17 @@ describe('MembersPage', () => {
   })
 
   it('should show upgrade button when member limit is full', () => {
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      enableBilling: true,
-      plan: {
-        type: Plan.sandbox,
-        total: { teamMembers: 2 } as unknown as ReturnType<typeof useProviderContext>['plan']['total'],
-      } as unknown as ReturnType<typeof useProviderContext>['plan'],
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        enableBilling: true,
+        plan: {
+          type: Plan.sandbox,
+          total: { teamMembers: 2 } as unknown as ReturnType<
+            typeof useProviderContext
+          >['plan']['total'],
+        } as unknown as ReturnType<typeof useProviderContext>['plan'],
+      }),
+    )
 
     renderMembersPage()
 

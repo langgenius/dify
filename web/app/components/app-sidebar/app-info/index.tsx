@@ -43,8 +43,7 @@ export const AppInfoDetailLayer = ({
     onConfirmDelete,
   } = actions
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   return (
     <>
@@ -80,14 +79,9 @@ export const AppInfoView = ({
   renderDetail = true,
 }: AppInfoViewProps) => {
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const {
-    appDetail,
-    panelOpen,
-    setPanelOpen,
-  } = actions
+  const { appDetail, panelOpen, setPanelOpen } = actions
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   return (
     <div>
@@ -96,16 +90,12 @@ export const AppInfoView = ({
           appDetail={appDetail}
           expand={expand}
           onClick={() => {
-            if (isCurrentWorkspaceEditor)
-              setPanelOpen(v => !v)
+            if (isCurrentWorkspaceEditor) setPanelOpen((v) => !v)
           }}
         />
       )}
       {renderDetail && (
-        <AppInfoDetailLayer
-          actions={actions}
-          open={onlyShowDetail ? openState : panelOpen}
-        />
+        <AppInfoDetailLayer actions={actions} open={onlyShowDetail ? openState : panelOpen} />
       )}
     </div>
   )
@@ -114,12 +104,7 @@ export const AppInfoView = ({
 const AppInfo = ({ onDetailExpand, ...props }: IAppInfoProps) => {
   const actions = useAppInfoActions({ onDetailExpand })
 
-  return (
-    <AppInfoView
-      {...props}
-      actions={actions}
-    />
-  )
+  return <AppInfoView {...props} actions={actions} />
 }
 
 export default React.memo(AppInfo)

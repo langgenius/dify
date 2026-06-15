@@ -19,23 +19,18 @@ const renderReplacementPlugin = (props?: {
   generatorType?: GeneratorType
   onInsert?: () => void
 }) => {
-  const {
-    generatorType = GeneratorType.prompt,
-    onInsert,
-  } = props ?? {}
+  const { generatorType = GeneratorType.prompt, onInsert } = props ?? {}
 
   return renderLexicalEditor({
     namespace: 'current-block-replacement-plugin-test',
     nodes: [CustomTextNode, CurrentBlockNode],
-    children: (
-      <CurrentBlockReplacementBlock generatorType={generatorType} onInsert={onInsert} />
-    ),
+    children: <CurrentBlockReplacementBlock generatorType={generatorType} onInsert={onInsert} />,
   })
 }
 
 const getCurrentNodeGeneratorTypes = (editor: LexicalEditor) => {
   return readEditorStateValue(editor, () => {
-    return $nodesOfType(CurrentBlockNode).map(node => node.getGeneratorType())
+    return $nodesOfType(CurrentBlockNode).map((node) => node.getGeneratorType())
   })
 }
 
@@ -54,7 +49,11 @@ describe('CurrentBlockReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, `prefix ${CURRENT_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
+      setEditorRootText(
+        editor,
+        `prefix ${CURRENT_PLACEHOLDER_TEXT} suffix`,
+        (text) => new CustomTextNode(text),
+      )
 
       await waitFor(() => {
         expect(getNodeCount(editor, CurrentBlockNode)).toBe(1)
@@ -72,7 +71,11 @@ describe('CurrentBlockReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, 'plain text without current placeholder', text => new CustomTextNode(text))
+      setEditorRootText(
+        editor,
+        'plain text without current placeholder',
+        (text) => new CustomTextNode(text),
+      )
 
       await waitFor(() => {
         expect(getNodeCount(editor, CurrentBlockNode)).toBe(0)
@@ -87,7 +90,7 @@ describe('CurrentBlockReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, CURRENT_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
+      setEditorRootText(editor, CURRENT_PLACEHOLDER_TEXT, (text) => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodeCount(editor, CurrentBlockNode)).toBe(1)

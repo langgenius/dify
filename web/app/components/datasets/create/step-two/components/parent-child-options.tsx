@@ -2,7 +2,11 @@
 
 import type { FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type {
+  ParentMode,
+  PreProcessingRule,
+  SummaryIndexSetting as SummaryIndexSettingType,
+} from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
@@ -94,7 +98,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
       description={t('stepTwo.parentChildTip', { ns: 'datasetCreation' })}
       isActive={isActive}
       onSwitched={() => onDocFormChange(ChunkingMode.parentChild)}
-      actions={(
+      actions={
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
             <RiSearchEyeLine className="mr-0.5 size-4" />
@@ -104,7 +108,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             {t('stepTwo.reset', { ns: 'datasetCreation' })}
           </Button>
         </>
-      )}
+      }
       noHighlight={isInUpload && isNotUploadInEmptyDataset}
     >
       <div className="flex flex-col gap-4">
@@ -119,7 +123,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
           <RadioGroup<ParentMode>
             aria-label={t('stepTwo.parentChunkForContext', { ns: 'datasetCreation' })}
             value={parentChildConfig.chunkForContext}
-            onValueChange={value => onChunkForContextChange(value)}
+            onValueChange={(value) => onChunkForContextChange(value)}
             className="mt-1 flex-col items-stretch gap-2"
           >
             <RadioCard
@@ -127,12 +131,12 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
               icon={<img src={Note.src} alt="" />}
               title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
               description={t('stepTwo.paragraphTip', { ns: 'datasetCreation' })}
-              chosenConfig={(
+              chosenConfig={
                 <div className="flex gap-3">
                   <DelimiterInput
                     value={parentChildConfig.parent.delimiter}
                     tooltip={t('stepTwo.parentChildDelimiterTip', { ns: 'datasetCreation' })!}
-                    onChange={e => onParentDelimiterChange(e.target.value)}
+                    onChange={(e) => onParentDelimiterChange(e.target.value)}
                   />
                   <MaxLengthInput
                     unit="characters"
@@ -140,7 +144,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                     onChange={onParentMaxLengthChange}
                   />
                 </div>
-              )}
+              }
             />
             <RadioCard
               value="full-doc"
@@ -155,7 +159,9 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
         <div>
           <div className="flex items-center gap-x-2">
             <div className="inline-flex shrink-0">
-              <TextLabel>{t('stepTwo.childChunkForRetrieval', { ns: 'datasetCreation' })}</TextLabel>
+              <TextLabel>
+                {t('stepTwo.childChunkForRetrieval', { ns: 'datasetCreation' })}
+              </TextLabel>
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>
@@ -163,7 +169,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             <DelimiterInput
               value={parentChildConfig.child.delimiter}
               tooltip={t('stepTwo.parentChildChunkDelimiterTip', { ns: 'datasetCreation' })!}
-              onChange={e => onChildDelimiterChange(e.target.value)}
+              onChange={(e) => onChildDelimiterChange(e.target.value)}
             />
             <MaxLengthInput
               unit="characters"
@@ -182,31 +188,23 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             <Divider className="grow" bgStyle="gradient" />
           </div>
           <div className="mt-1">
-            {rules.map(rule => (
-              <label
-                key={rule.id}
-                className={`${s.ruleItem} cursor-pointer`}
-              >
-                <Checkbox
-                  checked={rule.enabled}
-                  onCheckedChange={() => onRuleToggle(rule.id)}
-                />
+            {rules.map((rule) => (
+              <label key={rule.id} className={`${s.ruleItem} cursor-pointer`}>
+                <Checkbox checked={rule.enabled} onCheckedChange={() => onRuleToggle(rule.id)} />
                 <span className="ml-2 system-sm-regular text-text-secondary">
                   {getRuleName(rule.id)}
                 </span>
               </label>
             ))}
-            {
-              showSummaryIndexSetting && IS_CE_EDITION && (
-                <div className="mt-3">
-                  <SummaryIndexSetting
-                    entry="create-document"
-                    summaryIndexSetting={summaryIndexSetting}
-                    onSummaryIndexSettingChange={onSummaryIndexSettingChange}
-                  />
-                </div>
-              )
-            }
+            {showSummaryIndexSetting && IS_CE_EDITION && (
+              <div className="mt-3">
+                <SummaryIndexSetting
+                  entry="create-document"
+                  summaryIndexSetting={summaryIndexSetting}
+                  onSummaryIndexSettingChange={onSummaryIndexSettingChange}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

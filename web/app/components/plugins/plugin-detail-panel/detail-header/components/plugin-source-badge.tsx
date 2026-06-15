@@ -30,7 +30,12 @@ const SOURCE_CONFIG_MAP: Record<PluginSource, SourceConfig | null> = {
     tipKey: 'detailPanel.categoryTip.local',
   },
   [PluginSource.debugging]: {
-    icon: <span aria-hidden className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning" />,
+    icon: (
+      <span
+        aria-hidden
+        className="i-ri-bug-line size-3.5 text-text-tertiary hover:text-text-warning"
+      />
+    ),
     tipKey: 'detailPanel.categoryTip.debugging',
   },
 }
@@ -39,8 +44,7 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
   const { t } = useTranslation()
 
   const config = SOURCE_CONFIG_MAP[source]
-  if (!config)
-    return null
+  if (!config) return null
   const tip = t(config.tipKey as never, { ns: 'plugin' })
 
   return (
@@ -48,15 +52,13 @@ const PluginSourceBadge: FC<PluginSourceBadgeProps> = ({ source }) => {
       <div className="mr-0.5 ml-1 system-xs-regular text-text-quaternary">·</div>
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <span aria-label={tip} className="inline-flex">
               {config.icon}
             </span>
-          )}
+          }
         />
-        <TooltipContent>
-          {tip}
-        </TooltipContent>
+        <TooltipContent>{tip}</TooltipContent>
       </Tooltip>
     </>
   )

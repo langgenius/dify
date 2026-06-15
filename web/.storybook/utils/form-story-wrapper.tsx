@@ -13,27 +13,22 @@ type FormStoryWrapperProps = {
   subtitle?: string
 }
 
-export const FormStoryWrapper = ({
-  options,
-  children,
-  title,
-  subtitle,
-}: FormStoryWrapperProps) => {
+export const FormStoryWrapper = ({ options, children, title, subtitle }: FormStoryWrapperProps) => {
   const [lastSubmitted, setLastSubmitted] = useState<unknown>(null)
   const [submitCount, setSubmitCount] = useState(0)
 
   const form = useAppForm({
     ...options,
     onSubmit: (context) => {
-      setSubmitCount(count => count + 1)
+      setSubmitCount((count) => count + 1)
       setLastSubmitted(context.value)
       options?.onSubmit?.(context)
     },
   })
 
-  const values = useStore(form.store, state => state.values)
-  const isSubmitting = useStore(form.store, state => state.isSubmitting)
-  const canSubmit = useStore(form.store, state => state.canSubmit)
+  const values = useStore(form.store, (state) => state.values)
+  const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
+  const canSubmit = useStore(form.store, (state) => state.canSubmit)
 
   return (
     <div className="flex flex-col gap-6 px-6 md:flex-row md:px-10">
@@ -50,9 +45,7 @@ export const FormStoryWrapper = ({
         <div className="flex items-center justify-between text-[11px] tracking-wide text-text-tertiary uppercase">
           <span>Form State</span>
           <span>
-            {submitCount}
-            {' '}
-            submit
+            {submitCount} submit
             {submitCount === 1 ? '' : 's'}
           </span>
         </div>

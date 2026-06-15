@@ -33,7 +33,14 @@ const CustomPage = () => {
       {showContact && (
         <div className="absolute bottom-0 h-[50px] text-xs leading-[50px] text-text-quaternary">
           {t('customize.prefix', { ns: 'custom' })}
-          <a className="text-text-accent" href={contactSalesUrl} target="_blank" rel="noopener noreferrer">{t('customize.contactUs', { ns: 'custom' })}</a>
+          <a
+            className="text-text-accent"
+            href={contactSalesUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t('customize.contactUs', { ns: 'custom' })}
+          </a>
           {t('customize.suffix', { ns: 'custom' })}
         </div>
       )}

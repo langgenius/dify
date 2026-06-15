@@ -21,7 +21,9 @@ describe('DemoForm', () => {
 
     expect(screen.queryByRole('heading', { name: /contacts/i })).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('textbox', { name: /^name$/i }), { target: { value: 'Alice' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^name$/i }), {
+      target: { value: 'Alice' },
+    })
 
     expect(screen.getByRole('heading', { name: /contacts/i })).toBeInTheDocument()
   })
@@ -53,17 +55,24 @@ describe('DemoForm', () => {
     const nameInput = screen.getByRole('textbox', { name: /^name$/i }) as HTMLInputElement
 
     fireEvent.change(nameInput, { target: { value: 'Alice' } })
-    fireEvent.change(screen.getByRole('textbox', { name: /^surname$/i }), { target: { value: 'Smith' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /^surname$/i }), {
+      target: { value: 'Smith' },
+    })
     fireEvent.click(screen.getByText(/i accept the terms and conditions/i))
-    fireEvent.change(screen.getByRole('textbox', { name: /email/i }), { target: { value: 'alice@example.com' } })
+    fireEvent.change(screen.getByRole('textbox', { name: /email/i }), {
+      target: { value: 'alice@example.com' },
+    })
     fireEvent.submit(nameInput.form!)
 
     return waitFor(() => {
-      expect(consoleLogSpy).toHaveBeenCalledWith('Form submitted:', expect.objectContaining({
-        name: 'Alice',
-        surname: 'Smith',
-        isAcceptingTerms: true,
-      }))
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'Form submitted:',
+        expect.objectContaining({
+          name: 'Alice',
+          surname: 'Smith',
+          isAcceptingTerms: true,
+        }),
+      )
     })
   })
 })

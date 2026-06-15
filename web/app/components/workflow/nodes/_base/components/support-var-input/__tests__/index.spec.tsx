@@ -6,7 +6,10 @@ describe('SupportVarInput', () => {
   it('should render plain text, highlighted variables, and preserved line breaks', () => {
     render(<SupportVarInput value={'Hello {{user_name}}\nWorld'} />)
 
-    expect(screen.getByText('World').closest('[title]')).toHaveAttribute('title', 'Hello {{user_name}}\nWorld')
+    expect(screen.getByText('World').closest('[title]')).toHaveAttribute(
+      'title',
+      'Hello {{user_name}}\nWorld',
+    )
     expect(screen.getByText('user_name')).toBeInTheDocument()
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getByText('World')).toBeInTheDocument()
@@ -17,11 +20,7 @@ describe('SupportVarInput', () => {
     const onFocus = vi.fn()
 
     render(
-      <SupportVarInput
-        isFocus
-        value="draft"
-        onFocus={onFocus}
-      >
+      <SupportVarInput isFocus value="draft" onFocus={onFocus}>
         <input aria-label="inline-editor" />
       </SupportVarInput>,
     )
@@ -37,11 +36,7 @@ describe('SupportVarInput', () => {
 
   it('should keep the static preview visible when the input is read-only', () => {
     render(
-      <SupportVarInput
-        isFocus
-        readonly
-        value="readonly content"
-      >
+      <SupportVarInput isFocus readonly value="readonly content">
         <input aria-label="hidden-editor" />
       </SupportVarInput>,
     )

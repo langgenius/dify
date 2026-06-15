@@ -13,16 +13,16 @@ The `pnpm analyze-component` tool uses SonarJS cognitive complexity metrics:
 
 ### What Increases Complexity
 
-| Pattern | Complexity Impact |
-|---------|-------------------|
-| `if/else` | +1 per branch |
-| Nested conditions | +1 per nesting level |
-| `switch/case` | +1 per case |
-| `for/while/do` | +1 per loop |
-| `&&`/`||` chains | +1 per operator |
-| Nested callbacks | +1 per nesting level |
-| `try/catch` | +1 per catch |
-| Ternary expressions | +1 per nesting |
+| Pattern             | Complexity Impact    |
+| ------------------- | -------------------- | -------- | --------------- |
+| `if/else`           | +1 per branch        |
+| Nested conditions   | +1 per nesting level |
+| `switch/case`       | +1 per case          |
+| `for/while/do`      | +1 per loop          |
+| `&&`/`              |                      | ` chains | +1 per operator |
+| Nested callbacks    | +1 per nesting level |
+| `try/catch`         | +1 per catch         |
+| Ternary expressions | +1 per nesting       |
 
 ## Pattern 1: Replace Conditionals with Lookup Tables
 
@@ -85,10 +85,10 @@ const TEMPLATE_MAP: Record<AppModeEnum, Record<string, ComponentType<TemplatePro
 // Clean component logic
 const Template = useMemo(() => {
   if (!appDetail?.mode) return null
-  
+
   const templates = TEMPLATE_MAP[appDetail.mode]
   if (!templates) return null
-  
+
   const TemplateComponent = templates[locale] ?? templates.default
   return <TemplateComponent appDetail={appDetail} />
 }, [appDetail, locale])
@@ -124,17 +124,17 @@ const handleSubmit = () => {
     showValidationError()
     return
   }
-  
+
   if (!hasChanges) {
     showNoChangesMessage()
     return
   }
-  
+
   if (!isConnected) {
     showConnectionError()
     return
   }
-  
+
   submitData()
 }
 ```
@@ -146,12 +146,10 @@ const handleSubmit = () => {
 ```typescript
 const canPublish = (() => {
   if (mode !== AppModeEnum.COMPLETION) {
-    if (!isAdvancedMode)
-      return true
+    if (!isAdvancedMode) return true
 
     if (modelModeType === ModelModeType.completion) {
-      if (!hasSetBlockStatus.history || !hasSetBlockStatus.query)
-        return false
+      if (!hasSetBlockStatus.history || !hasSetBlockStatus.query) return false
       return true
     }
     return true
@@ -173,9 +171,8 @@ const canPublishInChatMode = () => {
 }
 
 // Clean main logic
-const canPublish = mode === AppModeEnum.COMPLETION
-  ? canPublishInCompletionMode()
-  : canPublishInChatMode()
+const canPublish =
+  mode === AppModeEnum.COMPLETION ? canPublishInCompletionMode() : canPublishInChatMode()
 ```
 
 ## Pattern 4: Replace Chained Ternaries
@@ -232,7 +229,7 @@ const statusText = t(STATUS_TEXT_MAP[getStatusKey()])
 ```typescript
 const processData = (items: Item[]) => {
   const results: ProcessedItem[] = []
-  
+
   for (const item of items) {
     if (item.isValid) {
       for (const child of item.children) {
@@ -250,7 +247,7 @@ const processData = (items: Item[]) => {
       }
     }
   }
-  
+
   return results
 }
 ```
@@ -261,19 +258,19 @@ const processData = (items: Item[]) => {
 // Use functional approach
 const processData = (items: Item[]) => {
   return items
-    .filter(item => item.isValid)
-    .flatMap(item =>
+    .filter((item) => item.isValid)
+    .flatMap((item) =>
       item.children
-        .filter(child => child.isActive)
-        .flatMap(child =>
+        .filter((child) => child.isActive)
+        .flatMap((child) =>
           child.properties
-            .filter(prop => prop.value !== null)
-            .map(prop => ({
+            .filter((prop) => prop.value !== null)
+            .map((prop) => ({
               itemId: item.id,
               childId: child.id,
               propValue: prop.value,
-            }))
-        )
+            })),
+        ),
     )
 }
 ```
@@ -309,10 +306,10 @@ const Component = () => {
       setDataSets(data)
     }
     hideSelectDataSet()
-    
+
     // 40 more lines of logic...
   }
-  
+
   return <div>...</div>
 }
 ```
@@ -325,7 +322,7 @@ const useDatasetSelection = (dataSets: DataSet[], setDataSets: SetState<DataSet[
   const normalizeSelection = (data: DataSet[]) => {
     const hasUnloadedItem = data.some(item => !item.name)
     if (!hasUnloadedItem) return data
-    
+
     return produce(data, (draft) => {
       data.forEach((item, index) => {
         if (!item.name) {
@@ -335,33 +332,33 @@ const useDatasetSelection = (dataSets: DataSet[], setDataSets: SetState<DataSet[
       })
     })
   }
-  
+
   const hasSelectionChanged = (newData: DataSet[]) => {
     return !isEqual(
       newData.map(item => item.id),
       dataSets.map(item => item.id)
     )
   }
-  
+
   return { normalizeSelection, hasSelectionChanged }
 }
 
 // Component becomes cleaner
 const Component = () => {
   const { normalizeSelection, hasSelectionChanged } = useDatasetSelection(dataSets, setDataSets)
-  
+
   const handleSelect = (data: DataSet[]) => {
     if (!hasSelectionChanged(data)) {
       hideSelectDataSet()
       return
     }
-    
+
     formattingChangedDispatcher()
     const normalized = normalizeSelection(data)
     setDataSets(normalized)
     hideSelectDataSet()
   }
-  
+
   return <div>...</div>
 }
 ```
@@ -371,12 +368,13 @@ const Component = () => {
 **Before** (complexity: ~8):
 
 ```typescript
-const toggleDisabled = hasInsufficientPermissions
-  || appUnpublished
-  || missingStartNode
-  || triggerModeDisabled
-  || (isAdvancedApp && !currentWorkflow?.graph)
-  || (isBasicApp && !basicAppConfig.updated_at)
+const toggleDisabled =
+  hasInsufficientPermissions ||
+  appUnpublished ||
+  missingStartNode ||
+  triggerModeDisabled ||
+  (isAdvancedApp && !currentWorkflow?.graph) ||
+  (isBasicApp && !basicAppConfig.updated_at)
 ```
 
 **After** (complexity: ~3):
@@ -425,8 +423,7 @@ const payload = useMemo(() => {
       description: '',
       type: item.value_type,
     }))
-  }
-  else if (detail && detail.tool) {
+  } else if (detail && detail.tool) {
     parameters = (inputs || []).map((item) => ({
       // Complex transformation...
     }))
@@ -434,7 +431,7 @@ const payload = useMemo(() => {
       // Complex transformation...
     }))
   }
-  
+
   return {
     icon: detail?.icon || icon,
     label: detail?.label || name,
@@ -450,7 +447,7 @@ const payload = useMemo(() => {
 const useParameterTransform = (inputs: InputVar[], detail?: ToolDetail, published?: boolean) => {
   return useMemo(() => {
     if (!published) {
-      return inputs.map(item => ({
+      return inputs.map((item) => ({
         name: item.variable,
         description: '',
         form: 'llm',
@@ -458,15 +455,16 @@ const useParameterTransform = (inputs: InputVar[], detail?: ToolDetail, publishe
         type: item.type,
       }))
     }
-    
+
     if (!detail?.tool) return []
-    
-    return inputs.map(item => ({
+
+    return inputs.map((item) => ({
       name: item.variable,
       required: item.required,
       type: item.type === 'paragraph' ? 'string' : item.type,
-      description: detail.tool.parameters.find(p => p.name === item.variable)?.llm_description || '',
-      form: detail.tool.parameters.find(p => p.name === item.variable)?.form || 'llm',
+      description:
+        detail.tool.parameters.find((p) => p.name === item.variable)?.llm_description || '',
+      form: detail.tool.parameters.find((p) => p.name === item.variable)?.form || 'llm',
     }))
   }, [inputs, detail, published])
 }
@@ -475,21 +473,24 @@ const useParameterTransform = (inputs: InputVar[], detail?: ToolDetail, publishe
 const parameters = useParameterTransform(inputs, detail, published)
 const outputParameters = useOutputTransform(outputs, detail, published)
 
-const payload = useMemo(() => ({
-  icon: detail?.icon || icon,
-  label: detail?.label || name,
-  parameters,
-  outputParameters,
-  // ...
-}), [detail, icon, name, parameters, outputParameters])
+const payload = useMemo(
+  () => ({
+    icon: detail?.icon || icon,
+    label: detail?.label || name,
+    parameters,
+    outputParameters,
+    // ...
+  }),
+  [detail, icon, name, parameters, outputParameters],
+)
 ```
 
 ## Target Metrics After Refactoring
 
-| Metric | Target |
-|--------|--------|
-| Total Complexity | < 50 |
-| Max Function Complexity | < 30 |
-| Function Length | < 30 lines |
-| Nesting Depth | ≤ 3 levels |
-| Conditional Chains | ≤ 3 conditions |
+| Metric                  | Target         |
+| ----------------------- | -------------- |
+| Total Complexity        | < 50           |
+| Max Function Complexity | < 30           |
+| Function Length         | < 30 lines     |
+| Nesting Depth           | ≤ 3 levels     |
+| Conditional Chains      | ≤ 3 conditions |

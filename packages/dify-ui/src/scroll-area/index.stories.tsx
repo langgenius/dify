@@ -17,7 +17,8 @@ const meta = {
     layout: 'padded',
     docs: {
       description: {
-        component: 'Compound scroll container built on Base UI Scroll Area. The examples mirror the upstream anatomy and focus patterns while applying Dify UI tokens, panel surfaces, and scrollbar spacing. Base UI ScrollArea.Content defaults to min-width: fit-content, so vertical-only regions that should truncate long content must set min-width: 0 on the content slot.',
+        component:
+          'Compound scroll container built on Base UI Scroll Area. The examples mirror the upstream anatomy and focus patterns while applying Dify UI tokens, panel surfaces, and scrollbar spacing. Base UI ScrollArea.Content defaults to min-width: fit-content, so vertical-only regions that should truncate long content must set min-width: 0 on the content slot.',
       },
     },
   },
@@ -33,7 +34,8 @@ const scrollFadeRootClassName = cn(
   'has-[>_:first-child:focus-visible]:outline-state-accent-solid',
 )
 const rootClassName = 'relative min-h-0 min-w-0'
-const viewportClassName = 'h-full max-h-full max-w-full rounded-xl border border-divider-subtle bg-components-panel-bg'
+const viewportClassName =
+  'h-full max-h-full max-w-full rounded-xl border border-divider-subtle bg-components-panel-bg'
 const fadeViewportClassName = cn(
   'h-full max-h-full max-w-full rounded-xl bg-components-panel-bg outline-none focus-visible:outline-none',
   'mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
@@ -44,23 +46,90 @@ const scrollbarClassName = cn(
 )
 const verticalContentClassName = 'w-full max-w-full min-w-0'
 const verticalContentStyle = { minWidth: 0 } satisfies React.CSSProperties
-const panelClassName = 'min-w-0 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'
+const panelClassName =
+  'min-w-0 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'
 const pageClassName = 'min-w-0 rounded-[28px] border border-divider-subtle bg-background-body p-5'
 const labelClassName = 'system-xs-medium-uppercase text-text-tertiary'
 const headingClassName = 'system-md-semibold text-text-primary'
 
 const appRows = [
-  { name: 'Invoice Copilot', meta: 'Pinned', icon: 'i-ri-file-list-3-line', selected: true, pinned: true },
-  { name: 'RAG Ops Console', meta: 'Ops', icon: 'i-ri-database-2-line', selected: false, pinned: true },
-  { name: 'Knowledge Studio', meta: 'Docs', icon: 'i-ri-book-open-line', selected: false, pinned: true },
-  { name: 'Workflow Studio', meta: 'Build', icon: 'i-ri-flow-chart', selected: false, pinned: true },
-  { name: 'Agent Playground', meta: 'Lab', icon: 'i-ri-robot-2-line', selected: false, pinned: false },
-  { name: 'Sales Briefing', meta: 'Team', icon: 'i-ri-presentation-line', selected: false, pinned: false },
-  { name: 'Support Triage', meta: 'Queue', icon: 'i-ri-customer-service-2-line', selected: false, pinned: false },
-  { name: 'Legal Review', meta: 'Beta', icon: 'i-ri-scales-3-line', selected: false, pinned: false },
-  { name: 'Release Watcher', meta: 'Feed', icon: 'i-ri-rocket-line', selected: false, pinned: false },
-  { name: 'Security Radar', meta: 'Risk', icon: 'i-ri-shield-check-line', selected: false, pinned: false },
-  { name: 'Partner Portal', meta: 'Ext', icon: 'i-ri-handshake-line', selected: false, pinned: false },
+  {
+    name: 'Invoice Copilot',
+    meta: 'Pinned',
+    icon: 'i-ri-file-list-3-line',
+    selected: true,
+    pinned: true,
+  },
+  {
+    name: 'RAG Ops Console',
+    meta: 'Ops',
+    icon: 'i-ri-database-2-line',
+    selected: false,
+    pinned: true,
+  },
+  {
+    name: 'Knowledge Studio',
+    meta: 'Docs',
+    icon: 'i-ri-book-open-line',
+    selected: false,
+    pinned: true,
+  },
+  {
+    name: 'Workflow Studio',
+    meta: 'Build',
+    icon: 'i-ri-flow-chart',
+    selected: false,
+    pinned: true,
+  },
+  {
+    name: 'Agent Playground',
+    meta: 'Lab',
+    icon: 'i-ri-robot-2-line',
+    selected: false,
+    pinned: false,
+  },
+  {
+    name: 'Sales Briefing',
+    meta: 'Team',
+    icon: 'i-ri-presentation-line',
+    selected: false,
+    pinned: false,
+  },
+  {
+    name: 'Support Triage',
+    meta: 'Queue',
+    icon: 'i-ri-customer-service-2-line',
+    selected: false,
+    pinned: false,
+  },
+  {
+    name: 'Legal Review',
+    meta: 'Beta',
+    icon: 'i-ri-scales-3-line',
+    selected: false,
+    pinned: false,
+  },
+  {
+    name: 'Release Watcher',
+    meta: 'Feed',
+    icon: 'i-ri-rocket-line',
+    selected: false,
+    pinned: false,
+  },
+  {
+    name: 'Security Radar',
+    meta: 'Risk',
+    icon: 'i-ri-shield-check-line',
+    selected: false,
+    pinned: false,
+  },
+  {
+    name: 'Partner Portal',
+    meta: 'Ext',
+    icon: 'i-ri-handshake-line',
+    selected: false,
+    pinned: false,
+  },
   { name: 'QA Replays', meta: 'Debug', icon: 'i-ri-replay-line', selected: false, pinned: false },
 ] as const
 
@@ -103,11 +172,11 @@ function StorySection({
       <div className="space-y-1">
         <div className={labelClassName}>{eyebrow}</div>
         <h3 className={headingClassName}>{title}</h3>
-        <p className="max-w-[72ch] text-pretty system-sm-regular text-text-secondary">{description}</p>
+        <p className="max-w-[72ch] system-sm-regular text-pretty text-text-secondary">
+          {description}
+        </p>
       </div>
-      <div className="mt-5 flex justify-center">
-        {children}
-      </div>
+      <div className="mt-5 flex justify-center">{children}</div>
     </section>
   )
 }
@@ -138,12 +207,14 @@ export const Anatomy: Story = {
     >
       <div className={cn(panelClassName, 'h-75 w-full max-w-105')}>
         <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
-          <ScrollAreaViewport aria-label="Scrollable anatomy example" role="region" className={viewportClassName}>
-            <VerticalContent className="flex flex-col gap-4 py-2 pl-3 pr-5 text-text-secondary system-sm-regular leading-6">
-              {articleParagraphs.map(paragraph => (
-                <p key={paragraph}>
-                  {paragraph}
-                </p>
+          <ScrollAreaViewport
+            aria-label="Scrollable anatomy example"
+            role="region"
+            className={viewportClassName}
+          >
+            <VerticalContent className="flex flex-col gap-4 py-2 pr-5 pl-3 system-sm-regular leading-6 text-text-secondary">
+              {articleParagraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
               ))}
             </VerticalContent>
           </ScrollAreaViewport>
@@ -165,19 +236,21 @@ export const Vertical: Story = {
     >
       <div className={cn(panelClassName, 'h-90 w-full max-w-130')}>
         <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
-          <ScrollAreaViewport aria-label="Long form content" role="region" className={viewportClassName}>
-            <VerticalContent className="flex flex-col gap-4 p-4 pr-6 text-text-secondary system-sm-regular leading-6">
+          <ScrollAreaViewport
+            aria-label="Long form content"
+            role="region"
+            className={viewportClassName}
+          >
+            <VerticalContent className="flex flex-col gap-4 p-4 pr-6 system-sm-regular leading-6 text-text-secondary">
               <div className="space-y-1">
                 <div className={labelClassName}>Article</div>
                 <div className={headingClassName}>Scrollable text region</div>
               </div>
-              {Array.from({ length: 4 }, (_, groupIndex) => (
-                articleParagraphs.map(paragraph => (
-                  <p key={`${groupIndex}-${paragraph}`}>
-                    {paragraph}
-                  </p>
-                ))
-              ))}
+              {Array.from({ length: 4 }, (_, groupIndex) =>
+                articleParagraphs.map((paragraph) => (
+                  <p key={`${groupIndex}-${paragraph}`}>{paragraph}</p>
+                )),
+              )}
             </VerticalContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar className={scrollbarClassName}>
@@ -198,9 +271,13 @@ export const VerticalTruncation: Story = {
     >
       <div className={cn(panelClassName, 'h-48 w-full max-w-80')}>
         <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
-          <ScrollAreaViewport aria-label="Vertical file list" role="region" className={viewportClassName}>
+          <ScrollAreaViewport
+            aria-label="Vertical file list"
+            role="region"
+            className={viewportClassName}
+          >
             <VerticalContent className="flex flex-col gap-0.5 p-2">
-              {fileRows.map(file => (
+              {fileRows.map((file) => (
                 <div
                   key={file}
                   className="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-text-secondary hover:bg-state-base-hover"
@@ -231,15 +308,17 @@ export const ScrollFade: Story = {
     >
       <div className={cn(panelClassName, 'h-90 w-full max-w-130')}>
         <ScrollAreaRoot className={cn(rootClassName, scrollFadeRootClassName, 'h-full p-1')}>
-          <ScrollAreaViewport aria-label="Scroll fade article" role="region" className={fadeViewportClassName}>
-            <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 text-text-secondary system-sm-regular leading-6">
-              {Array.from({ length: 5 }, (_, groupIndex) => (
-                articleParagraphs.map(paragraph => (
-                  <p key={`${groupIndex}-${paragraph}`}>
-                    {paragraph}
-                  </p>
-                ))
-              ))}
+          <ScrollAreaViewport
+            aria-label="Scroll fade article"
+            role="region"
+            className={fadeViewportClassName}
+          >
+            <VerticalContent className="flex flex-col gap-4 px-4 py-3 pr-6 system-sm-regular leading-6 text-text-secondary">
+              {Array.from({ length: 5 }, (_, groupIndex) =>
+                articleParagraphs.map((paragraph) => (
+                  <p key={`${groupIndex}-${paragraph}`}>{paragraph}</p>
+                )),
+              )}
             </VerticalContent>
           </ScrollAreaViewport>
           <ScrollAreaScrollbar className={scrollbarClassName}>
@@ -261,11 +340,18 @@ export const Horizontal: Story = {
     >
       <div className={cn(panelClassName, 'h-46 w-full max-w-130')}>
         <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
-          <ScrollAreaViewport aria-label="Horizontal numbered row" role="region" className={viewportClassName}>
+          <ScrollAreaViewport
+            aria-label="Horizontal numbered row"
+            role="region"
+            className={viewportClassName}
+          >
             <ScrollAreaContent className="min-h-full min-w-max p-4 pb-6">
               <div className="grid grid-cols-[repeat(18,6.25rem)] gap-3">
-                {gridCells.slice(0, 18).map(cell => (
-                  <div key={cell} className="flex h-24 items-center justify-center rounded-xl border border-divider-subtle bg-components-panel-bg-alt tabular-nums system-md-semibold text-text-secondary">
+                {gridCells.slice(0, 18).map((cell) => (
+                  <div
+                    key={cell}
+                    className="flex h-24 items-center justify-center rounded-xl border border-divider-subtle bg-components-panel-bg-alt system-md-semibold text-text-secondary tabular-nums"
+                  >
                     {cell}
                   </div>
                 ))}
@@ -290,11 +376,18 @@ export const BothAxes: Story = {
     >
       <div className={cn(panelClassName, 'h-85 w-full max-w-140')}>
         <ScrollAreaRoot className={cn(rootClassName, 'h-full p-1')}>
-          <ScrollAreaViewport aria-label="Numbered grid" role="region" className={viewportClassName}>
+          <ScrollAreaViewport
+            aria-label="Numbered grid"
+            role="region"
+            className={viewportClassName}
+          >
             <ScrollAreaContent className="pt-3 pr-6 pb-6 pl-3">
               <div className="grid grid-cols-[repeat(10,6.25rem)] grid-rows-[repeat(10,6.25rem)] gap-3">
-                {gridCells.map(cell => (
-                  <div key={cell} className="flex items-center justify-center rounded-lg border border-divider-subtle bg-components-panel-bg-alt tabular-nums system-md-semibold text-text-secondary">
+                {gridCells.map((cell) => (
+                  <div
+                    key={cell}
+                    className="flex items-center justify-center rounded-lg border border-divider-subtle bg-components-panel-bg-alt system-md-semibold text-text-secondary tabular-nums"
+                  >
                     {cell}
                   </div>
                 ))}
@@ -316,7 +409,7 @@ export const BothAxes: Story = {
 
 export const AppSidebar: Story = {
   render: () => {
-    const pinnedCount = appRows.filter(row => row.pinned).length
+    const pinnedCount = appRows.filter((row) => row.pinned).length
 
     return (
       <StorySection
@@ -336,14 +429,18 @@ export const AppSidebar: Story = {
             </div>
             <div className="h-76 min-h-0">
               <ScrollAreaRoot className={cn(rootClassName, 'h-full')}>
-                <ScrollAreaViewport aria-label="Web apps" role="region" className="h-full max-h-full max-w-full rounded-lg bg-transparent">
+                <ScrollAreaViewport
+                  aria-label="Web apps"
+                  role="region"
+                  className="h-full max-h-full max-w-full rounded-lg bg-transparent"
+                >
                   <VerticalContent className="space-y-0.5">
                     {appRows.map((row, index) => (
                       <div key={row.name} className="space-y-0.5">
                         <button
                           type="button"
                           className={cn(
-                            'flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2 text-left transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-solid focus-visible:outline-state-accent-solid',
+                            'flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2 text-left transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
                             row.selected
                               ? 'bg-state-base-active text-components-menu-item-text-active'
                               : 'text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',

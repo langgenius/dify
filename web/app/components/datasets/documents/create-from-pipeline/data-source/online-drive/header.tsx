@@ -9,27 +9,14 @@ type HeaderProps = {
   docLink: string
 }
 
-const Header = ({
-  onClickConfiguration,
-  docTitle,
-  docLink,
-}: HeaderProps) => {
+const Header = ({ onClickConfiguration, docTitle, docLink }: HeaderProps) => {
   return (
     <div className="flex items-center gap-x-2">
       <div className="flex shrink-0 grow items-center gap-x-1">
-        <div className="w-20 bg-black">
-          {/* placeholder */}
-        </div>
+        <div className="w-20 bg-black">{/* placeholder */}</div>
         <Divider type="vertical" className="mx-1 h-3.5" />
-        <Button
-          variant="ghost"
-          size="small"
-          className="px-1"
-        >
-          <RiEqualizer2Line
-            className="size-4"
-            onClick={onClickConfiguration}
-          />
+        <Button variant="ghost" size="small" className="px-1">
+          <RiEqualizer2Line className="size-4" onClick={onClickConfiguration} />
         </Button>
       </div>
       <a
@@ -39,7 +26,9 @@ const Header = ({
         rel="noopener noreferrer"
       >
         <RiBookOpenLine className="size-3.5 shrink-0" />
-        <span className="grow truncate" title={docTitle}>{docTitle}</span>
+        <span className="grow truncate" title={docTitle}>
+          {docTitle}
+        </span>
       </a>
     </div>
   )

@@ -1,4 +1,8 @@
-import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
+import type {
+  AppDescribeResponse,
+  AppListResponse,
+  AppMode,
+} from '@dify/contracts/api/openapi/types.gen'
 import type { ActiveContext } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
@@ -49,46 +53,56 @@ export async function runGetApp(opts: GetAppOptions, deps: GetAppDeps): Promise<
   const label = opts.appId !== undefined && opts.appId !== '' ? 'Fetching app' : 'Fetching apps'
   const io = deps.io ?? nullStreams()
 
-  const envelope = await runWithSpinner(
-    { io, label },
-    async (): Promise<AppListResponse> => {
-      if (opts.allWorkspaces === true) {
-        const ws = wsFactory(deps.http)
-        return runAllWorkspaces(apps, ws, opts, page, pageSize)
-      }
-      if (opts.appId !== undefined && opts.appId !== '') {
-        const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
-        const wsName = workspaceNameForId(deps.active, wsId)
-        const desc = await apps.describe(opts.appId, ['info'])
-        return describeToEnvelope(desc, wsId, wsName)
-      }
-      const wsId = resolveWorkspaceId({ flag: opts.workspace, env: env('DIFY_WORKSPACE_ID'), active: deps.active })
-      return apps.list({
-        workspaceId: wsId,
-        page,
-        limit: pageSize,
-        mode: opts.mode,
-        name: opts.name,
-        tag: opts.tag,
+  const envelope = await runWithSpinner({ io, label }, async (): Promise<AppListResponse> => {
+    if (opts.allWorkspaces === true) {
+      const ws = wsFactory(deps.http)
+      return runAllWorkspaces(apps, ws, opts, page, pageSize)
+    }
+    if (opts.appId !== undefined && opts.appId !== '') {
+      const wsId = resolveWorkspaceId({
+        flag: opts.workspace,
+        env: env('DIFY_WORKSPACE_ID'),
+        active: deps.active,
       })
-    },
-  )
+      const wsName = workspaceNameForId(deps.active, wsId)
+      const desc = await apps.describe(opts.appId, ['info'])
+      return describeToEnvelope(desc, wsId, wsName)
+    }
+    const wsId = resolveWorkspaceId({
+      flag: opts.workspace,
+      env: env('DIFY_WORKSPACE_ID'),
+      active: deps.active,
+    })
+    return apps.list({
+      workspaceId: wsId,
+      page,
+      limit: pageSize,
+      mode: opts.mode,
+      name: opts.name,
+      tag: opts.tag,
+    })
+  })
 
   return {
-    data: new AppListOutput(envelope.data.map(row => new AppRow(row)), envelope),
+    data: new AppListOutput(
+      envelope.data.map((row) => new AppRow(row)),
+      envelope,
+    ),
   }
 }
 
 function resolveLimit(raw: string | undefined, env: (k: string) => string | undefined): number {
-  if (raw !== undefined && raw !== '')
-    return parseLimit(raw, '--limit')
+  if (raw !== undefined && raw !== '') return parseLimit(raw, '--limit')
   const envValue = env('DIFY_LIMIT')
-  if (envValue !== undefined && envValue !== '')
-    return parseLimit(envValue, 'DIFY_LIMIT')
+  if (envValue !== undefined && envValue !== '') return parseLimit(envValue, 'DIFY_LIMIT')
   return LIMIT_DEFAULT
 }
 
-function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: string): AppListResponse {
+function describeToEnvelope(
+  desc: AppDescribeResponse,
+  wsId: string,
+  wsName: string,
+): AppListResponse {
   if (desc.info === null || desc.info === undefined) {
     return { page: 1, limit: 1, total: 0, has_more: false, data: [] }
   }
@@ -97,23 +111,24 @@ function describeToEnvelope(desc: AppDescribeResponse, wsId: string, wsName: str
     limit: 1,
     total: 1,
     has_more: false,
-    data: [{
-      id: desc.info.id,
-      name: desc.info.name,
-      description: desc.info.description,
-      mode: desc.info.mode as AppMode,
-      tags: desc.info.tags,
-      updated_at: desc.info.updated_at,
-      created_by_name: desc.info.author === '' ? undefined : desc.info.author,
-      workspace_id: wsId,
-      workspace_name: wsName === '' ? undefined : wsName,
-    }],
+    data: [
+      {
+        id: desc.info.id,
+        name: desc.info.name,
+        description: desc.info.description,
+        mode: desc.info.mode as AppMode,
+        tags: desc.info.tags,
+        updated_at: desc.info.updated_at,
+        created_by_name: desc.info.author === '' ? undefined : desc.info.author,
+        workspace_id: wsId,
+        workspace_name: wsName === '' ? undefined : wsName,
+      },
+    ],
   }
 }
 
 function workspaceNameForId(active: ActiveContext, id: string): string {
-  if (id === '')
-    return ''
+  if (id === '') return ''
   return active.ctx.workspace?.id === id ? active.ctx.workspace.name : ''
 }
 
@@ -125,8 +140,7 @@ async function runAllWorkspaces(
   limit: number,
 ): Promise<AppListResponse> {
   const wsResp = await ws.list()
-  if (wsResp.workspaces.length === 0)
-    return { page: 1, limit, total: 0, has_more: false, data: [] }
+  if (wsResp.workspaces.length === 0) return { page: 1, limit, total: 0, has_more: false, data: [] }
 
   const merged: AppListResponse = { page: 1, limit, total: 0, has_more: false, data: [] }
   const queue = [...wsResp.workspaces]
@@ -148,8 +162,7 @@ async function runAllWorkspaces(
   const runner = async (): Promise<void> => {
     while (true) {
       const next = queue.shift()
-      if (next === undefined)
-        return
+      if (next === undefined) return
       await fetchOne(next.id)
     }
   }

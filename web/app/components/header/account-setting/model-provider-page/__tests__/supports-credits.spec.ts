@@ -7,15 +7,16 @@ vi.mock('@/config', async (importOriginal) => {
   return { ...actual, IS_CLOUD_EDITION: true }
 })
 
-const makeProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'langgenius/openai/openai',
-  system_configuration: {
-    enabled: true,
-    current_quota_type: CurrentSystemQuotaTypeEnum.trial,
-    quota_configurations: [],
-  },
-  ...overrides,
-} as ModelProvider)
+const makeProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'langgenius/openai/openai',
+    system_configuration: {
+      enabled: true,
+      current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+      quota_configurations: [],
+    },
+    ...overrides,
+  }) as ModelProvider
 
 describe('providerSupportsCredits', () => {
   it('returns true when the provider is system-enabled and listed in trial_models', () => {
@@ -27,13 +28,18 @@ describe('providerSupportsCredits', () => {
   })
 
   it('returns false when system hosting is disabled', () => {
-    expect(providerSupportsCredits(makeProvider({
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.trial,
-        quota_configurations: [],
-      },
-    }), ['langgenius/openai/openai'])).toBe(false)
+    expect(
+      providerSupportsCredits(
+        makeProvider({
+          system_configuration: {
+            enabled: false,
+            current_quota_type: CurrentSystemQuotaTypeEnum.trial,
+            quota_configurations: [],
+          },
+        }),
+        ['langgenius/openai/openai'],
+      ),
+    ).toBe(false)
   })
 
   it('returns false for an undefined provider', () => {

@@ -56,8 +56,7 @@ function renderEnvironment(): string {
   let out = 'ENVIRONMENT VARIABLES\n\n'
   for (const v of ENV_REGISTRY) {
     out += `  ${v.name}\n      ${v.description}\n`
-    if (v.sensitive)
-      out += '      (treat as secret; never echoed)\n'
+    if (v.sensitive) out += '      (treat as secret; never echoed)\n'
     out += '\n'
   }
   return out
@@ -125,5 +124,5 @@ export const TOPICS: readonly HelpTopic[] = [
 ]
 
 export function findTopic(name: string): HelpTopic | undefined {
-  return TOPICS.find(t => t.name === name)
+  return TOPICS.find((t) => t.name === name)
 }

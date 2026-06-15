@@ -13,16 +13,18 @@ type ToggleTooltipContentProps = {
 
 const TOGGLE_SHORTCUT = ['Mod', 'B']
 
-const ToggleTooltipContent = ({
-  expand,
-}: ToggleTooltipContentProps) => {
+const ToggleTooltipContent = ({ expand }: ToggleTooltipContentProps) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="px-0.5 system-xs-medium text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <span className="px-0.5 system-xs-medium text-text-secondary">
+        {expand
+          ? t('sidebar.collapseSidebar', { ns: 'layout' })
+          : t('sidebar.expandSidebar', { ns: 'layout' })}
+      </span>
       <KbdGroup>
-        {TOGGLE_SHORTCUT.map(key => (
+        {TOGGLE_SHORTCUT.map((key) => (
           <Kbd key={key}>{formatForDisplay(key)}</Kbd>
         ))}
       </KbdGroup>
@@ -36,23 +38,23 @@ type ToggleButtonProps = {
   className?: string
 }
 
-const ToggleButton = ({
-  expand,
-  handleToggle,
-  className,
-}: ToggleButtonProps) => {
+const ToggleButton = ({ expand, handleToggle, className }: ToggleButtonProps) => {
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <Button
             size="small"
             onClick={handleToggle}
             className={cn('rounded-full px-1', className)}
           />
-        )}
+        }
       >
-        {expand ? <RiArrowLeftSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}
+        {expand ? (
+          <RiArrowLeftSLine className="size-4" />
+        ) : (
+          <RiArrowRightSLine className="size-4" />
+        )}
       </TooltipTrigger>
       <TooltipContent placement="right" className="rounded-lg p-1.5">
         <ToggleTooltipContent expand={expand} />

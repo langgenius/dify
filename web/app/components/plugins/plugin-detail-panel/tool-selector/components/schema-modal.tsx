@@ -1,15 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
-import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
+import {
+  MittProvider,
+  VisualEditorContextProvider,
+} from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
 
 type Props = Readonly<{
   isShow: boolean
@@ -18,18 +17,10 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-const SchemaModal: FC<Props> = ({
-  isShow,
-  schema,
-  rootName,
-  onClose,
-}) => {
+const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
   const { t } = useTranslation()
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={open => !open && onClose()}
-    >
+    <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-full max-w-[960px] p-0">
         <div className="pb-6">
           {/* Header */}
@@ -55,8 +46,7 @@ const SchemaModal: FC<Props> = ({
                   schema={schema}
                   rootName={rootName}
                   readOnly
-                >
-                </VisualEditor>
+                ></VisualEditor>
               </VisualEditorContextProvider>
             </MittProvider>
           </div>

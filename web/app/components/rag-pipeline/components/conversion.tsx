@@ -31,8 +31,7 @@ const Conversion = () => {
           toast.success(t('conversion.successMessage', { ns: 'datasetPipeline' }))
           setShowConfirmModal(false)
           invalidDatasetDetail()
-        }
-        else if (res.status === 'failed') {
+        } else if (res.status === 'failed') {
           toast.error(t('conversion.errorMessage', { ns: 'datasetPipeline' }))
         }
       },
@@ -58,8 +57,12 @@ const Conversion = () => {
               {t('conversion.title', { ns: 'datasetPipeline' })}
             </div>
             <div className="body-md-medium">
-              <span className="text-text-secondary">{t('conversion.descriptionChunk1', { ns: 'datasetPipeline' })}</span>
-              <span className="text-text-tertiary">{t('conversion.descriptionChunk2', { ns: 'datasetPipeline' })}</span>
+              <span className="text-text-secondary">
+                {t('conversion.descriptionChunk1', { ns: 'datasetPipeline' })}
+              </span>
+              <span className="text-text-tertiary">
+                {t('conversion.descriptionChunk2', { ns: 'datasetPipeline' })}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-x-4">
@@ -79,7 +82,10 @@ const Conversion = () => {
           </div>
         </div>
       </div>
-      <AlertDialog open={showConfirmModal} onOpenChange={open => !open && handleCancelConversion()}>
+      <AlertDialog
+        open={showConfirmModal}
+        onOpenChange={(open) => !open && handleCancelConversion()}
+      >
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -93,7 +99,11 @@ const Conversion = () => {
             <AlertDialogCancelButton>
               {t('operation.cancel', { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={isPending} disabled={isPending} onClick={handleConvert}>
+            <AlertDialogConfirmButton
+              loading={isPending}
+              disabled={isPending}
+              onClick={handleConvert}
+            >
               {t('operation.confirm', { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

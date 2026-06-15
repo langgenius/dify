@@ -7,9 +7,12 @@ let mockIsWorkflowPage = false
 const mockSetShowGlobalVariablePanel = vi.fn()
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { setShowGlobalVariablePanel: (visible: boolean) => void }) => unknown) => selector({
-    setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
-  }),
+  useStore: (
+    selector: (state: { setShowGlobalVariablePanel: (visible: boolean) => void }) => unknown,
+  ) =>
+    selector({
+      setShowGlobalVariablePanel: mockSetShowGlobalVariablePanel,
+    }),
 }))
 
 vi.mock('../../../constants', () => ({
@@ -32,8 +35,12 @@ describe('global-variable-panel path', () => {
     const { container } = render(<Panel />)
 
     expect(screen.getByText('workflow.globalVar.title')).toBeInTheDocument()
-    expect(screen.getByText((_, node) => node?.textContent === 'sys.conversation_id')).toBeInTheDocument()
-    expect(screen.getByText((_, node) => node?.textContent === 'sys.dialog_count')).toBeInTheDocument()
+    expect(
+      screen.getByText((_, node) => node?.textContent === 'sys.conversation_id'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText((_, node) => node?.textContent === 'sys.dialog_count'),
+    ).toBeInTheDocument()
     expect(screen.queryByText('sys.timestamp')).not.toBeInTheDocument()
 
     await user.click(container.querySelector('.cursor-pointer') as HTMLElement)
@@ -50,6 +57,8 @@ describe('global-variable-panel path', () => {
     expect(screen.queryByText('sys.conversation_id')).not.toBeInTheDocument()
     expect(screen.queryByText('sys.dialog_count')).not.toBeInTheDocument()
     expect(screen.getByText((_, node) => node?.textContent === 'sys.timestamp')).toBeInTheDocument()
-    expect(screen.getByText('workflow.globalVar.fieldsDescription.triggerTimestamp')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.globalVar.fieldsDescription.triggerTimestamp'),
+    ).toBeInTheDocument()
   })
 })

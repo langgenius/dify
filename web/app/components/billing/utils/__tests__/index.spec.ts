@@ -50,7 +50,9 @@ describe('billing utils', () => {
 
   // parseCurrentPlan tests
   describe('parseCurrentPlan', () => {
-    const createMockPlanData = (overrides: Partial<CurrentPlanInfoBackend> = {}): CurrentPlanInfoBackend => ({
+    const createMockPlanData = (
+      overrides: Partial<CurrentPlanInfoBackend> = {},
+    ): CurrentPlanInfoBackend => ({
       billing: {
         enabled: true,
         subscription: {

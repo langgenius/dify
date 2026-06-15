@@ -34,11 +34,11 @@ No olvides vincular un issue existente o abrir uno nuevo en la descripción del 
 
 Cómo priorizamos:
 
-| Tipo de Issue | Prioridad |
-| ------------------------------------------------------------ | --------------- |
-| Errores en funciones principales (servicio en la nube, no poder iniciar sesión, aplicaciones que no funcionan, fallos de seguridad) | Crítica |
-| Errores no críticos, mejoras de rendimiento | Prioridad Media |
-| Correcciones menores (errores tipográficos, UI confusa pero funcional) | Prioridad Baja |
+| Tipo de Issue                                                                                                                       | Prioridad       |
+| ----------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Errores en funciones principales (servicio en la nube, no poder iniciar sesión, aplicaciones que no funcionan, fallos de seguridad) | Crítica         |
+| Errores no críticos, mejoras de rendimiento                                                                                         | Prioridad Media |
+| Correcciones menores (errores tipográficos, UI confusa pero funcional)                                                              | Prioridad Baja  |
 
 ### Solicitudes de funcionalidades
 
@@ -52,12 +52,12 @@ Cómo priorizamos:
 
 Cómo priorizamos:
 
-| Tipo de Funcionalidad | Prioridad |
-| ------------------------------------------------------------ | --------------- |
-| Funcionalidades de alta prioridad etiquetadas por un miembro del equipo | Prioridad Alta |
-| Solicitudes populares de funcionalidades de nuestro [tablero de comentarios de la comunidad](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridad Media |
-| Funcionalidades no principales y mejoras menores | Prioridad Baja |
-| Valiosas pero no inmediatas | Futura-Funcionalidad |
+| Tipo de Funcionalidad                                                                                                                                             | Prioridad            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| Funcionalidades de alta prioridad etiquetadas por un miembro del equipo                                                                                           | Prioridad Alta       |
+| Solicitudes populares de funcionalidades de nuestro [tablero de comentarios de la comunidad](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Prioridad Media      |
+| Funcionalidades no principales y mejoras menores                                                                                                                  | Prioridad Baja       |
+| Valiosas pero no inmediatas                                                                                                                                       | Futura-Funcionalidad |
 
 ## Enviando tu PR
 

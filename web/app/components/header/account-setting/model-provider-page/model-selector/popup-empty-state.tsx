@@ -5,9 +5,7 @@ type ModelSelectorEmptyStateProps = {
   onConfigure: () => void
 }
 
-function ModelSelectorEmptyState({
-  onConfigure,
-}: ModelSelectorEmptyStateProps) {
+function ModelSelectorEmptyState({ onConfigure }: ModelSelectorEmptyStateProps) {
   const { t } = useTranslation()
 
   return (
@@ -23,11 +21,7 @@ function ModelSelectorEmptyState({
           {t('modelProvider.selector.noProviderConfiguredDesc', { ns: 'common' })}
         </p>
       </div>
-      <Button
-        variant="primary"
-        className="w-[108px]"
-        onClick={onConfigure}
-      >
+      <Button variant="primary" className="w-[108px]" onClick={onConfigure}>
         {t('modelProvider.selector.configure', { ns: 'common' })}
         <span className="i-ri-arrow-right-line size-4" />
       </Button>

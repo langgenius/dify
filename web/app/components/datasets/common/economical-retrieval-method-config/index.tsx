@@ -15,11 +15,7 @@ type Props = Readonly<{
   onChange: (value: RetrievalConfig) => void
 }>
 
-const EconomicalRetrievalMethodConfig: FC<Props> = ({
-  disabled = false,
-  value,
-  onChange,
-}) => {
+const EconomicalRetrievalMethodConfig: FC<Props> = ({ disabled = false, value, onChange }) => {
   const { t } = useTranslation()
 
   return (

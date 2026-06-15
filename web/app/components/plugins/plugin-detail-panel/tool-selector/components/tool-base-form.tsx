@@ -60,15 +60,15 @@ const ToolBaseForm: FC<ToolBaseFormProps> = ({
         <ToolPicker
           placement="bottom"
           offset={offset}
-          trigger={(
+          trigger={
             <ToolTrigger
               open={panelShowState || isShowChooseTool}
               value={value}
               provider={currentProvider}
             />
-          )}
+          }
           isShow={panelShowState || isShowChooseTool}
-          onShowChange={hasTrigger ? (onPanelShowStateChange || (() => {})) : onShowChange}
+          onShowChange={hasTrigger ? onPanelShowStateChange || (() => {}) : onShowChange}
           disabled={false}
           supportAddCustomTool
           onSelect={onSelectTool}

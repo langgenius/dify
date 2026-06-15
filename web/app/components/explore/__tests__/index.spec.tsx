@@ -52,11 +52,11 @@ describe('Explore', () => {
 
   describe('Rendering', () => {
     it('should render children', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.getByText('child')).toBeInTheDocument()
     })
@@ -68,11 +68,11 @@ describe('Explore', () => {
         isCurrentWorkspaceDatasetOperator: true,
       })
 
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       await waitFor(() => {
         expect(mockReplace).not.toHaveBeenCalled()
@@ -80,11 +80,11 @@ describe('Explore', () => {
     })
 
     it('should not redirect non dataset operators', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(mockReplace).not.toHaveBeenCalled()
     })

@@ -6,10 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  RiEqualizer2Line,
-  RiMenuLine,
-} from '@remixicon/react'
+import { RiEqualizer2Line, RiMenuLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,12 +31,11 @@ type Props = Readonly<{
 const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const appDetail = useAppStore(state => state.appDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
   const [detailExpand, setDetailExpand] = useState(false)
   const [open, setOpen] = useState(false)
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   return (
     <>
@@ -66,15 +62,20 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
             sideOffset={4}
             popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
-            <div className={cn('w-[305px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg')}>
+            <div
+              className={cn(
+                'w-[305px] rounded-xl border-[0.5px] border-components-panel-border bg-background-default-subtle shadow-lg',
+              )}
+            >
               <div className="p-2">
                 <div
-                  className={cn('flex flex-col gap-2 rounded-lg p-2 pb-2.5', isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover')}
+                  className={cn(
+                    'flex flex-col gap-2 rounded-lg p-2 pb-2.5',
+                    isCurrentWorkspaceEditor && 'cursor-pointer hover:bg-state-base-hover',
+                  )}
                   onClick={() => {
-                    if (appInfoActions)
-                      appInfoActions.setPanelOpen(true)
-                    else
-                      setDetailExpand(true)
+                    if (appInfoActions) appInfoActions.setPanelOpen(true)
+                    else setDetailExpand(true)
                     setOpen(false)
                   }}
                 >
@@ -94,9 +95,13 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
                   </div>
                   <div className="flex flex-col items-start gap-1">
                     <div className="flex w-full">
-                      <div className="truncate system-md-semibold text-text-secondary">{appDetail.name}</div>
+                      <div className="truncate system-md-semibold text-text-secondary">
+                        {appDetail.name}
+                      </div>
                     </div>
-                    <div className="system-2xs-medium-uppercase text-text-tertiary">{getAppModeLabel(appDetail.mode, t)}</div>
+                    <div className="system-2xs-medium-uppercase text-text-tertiary">
+                      {getAppModeLabel(appDetail.mode, t)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -106,7 +111,13 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
               <nav className="space-y-0.5 px-3 pt-4 pb-6">
                 {navigation.map((item, index) => {
                   return (
-                    <NavLink key={index} mode="expand" iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
+                    <NavLink
+                      key={index}
+                      mode="expand"
+                      iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+                      name={item.name}
+                      href={item.href}
+                    />
                   )
                 })}
               </nav>
@@ -116,7 +127,12 @@ const AppSidebarDropdown = ({ navigation, appInfoActions }: Props) => {
       </div>
       {!appInfoActions && (
         <div className="z-20">
-          <AppInfo expand onlyShowDetail openState={detailExpand} onDetailExpand={setDetailExpand} />
+          <AppInfo
+            expand
+            onlyShowDetail
+            openState={detailExpand}
+            onDetailExpand={setDetailExpand}
+          />
         </div>
       )}
     </>

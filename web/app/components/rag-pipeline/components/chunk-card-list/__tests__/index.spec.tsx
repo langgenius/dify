@@ -1,4 +1,10 @@
-import type { GeneralChunks, ParentChildChunk, ParentChildChunks, QAChunk, QAChunks } from '../types'
+import type {
+  GeneralChunks,
+  ParentChildChunk,
+  ParentChildChunks,
+  QAChunk,
+  QAChunks,
+} from '../types'
 import { render, screen } from '@testing-library/react'
 import { ChunkingMode } from '@/models/datasets'
 import ChunkCard from '../chunk-card'
@@ -7,8 +13,7 @@ import QAItem from '../q-a-item'
 import { QAItemType } from '../types'
 
 const createGeneralChunks = (overrides: GeneralChunks = []): GeneralChunks => {
-  if (overrides.length > 0)
-    return overrides
+  if (overrides.length > 0) return overrides
   return [
     { content: 'This is the first chunk of text content.' },
     { content: 'This is the second chunk with different content.' },
@@ -23,7 +28,9 @@ const createParentChildChunk = (overrides: Partial<ParentChildChunk> = {}): Pare
   ...overrides,
 })
 
-const createParentChildChunks = (overrides: Partial<ParentChildChunks> = {}): ParentChildChunks => ({
+const createParentChildChunks = (
+  overrides: Partial<ParentChildChunks> = {},
+): ParentChildChunks => ({
   parent_child_chunks: [
     createParentChildChunk(),
     createParentChildChunk({
@@ -137,12 +144,7 @@ describe('ChunkCard', () => {
       }
 
       render(
-        <ChunkCard
-          chunkType={ChunkingMode.qa}
-          content={qaContent}
-          wordCount={45}
-          positionId={2}
-        />,
+        <ChunkCard chunkType={ChunkingMode.qa} content={qaContent} wordCount={45} positionId={2} />,
       )
 
       expect(screen.getByText('Q'))!.toBeInTheDocument()
@@ -368,12 +370,7 @@ describe('ChunkCard', () => {
 
       const qaContent: QAChunk = { question: 'Q?', answer: 'A.' }
       rerender(
-        <ChunkCard
-          chunkType={ChunkingMode.qa}
-          content={qaContent}
-          wordCount={4}
-          positionId={1}
-        />,
+        <ChunkCard chunkType={ChunkingMode.qa} content={qaContent} wordCount={4} positionId={1} />,
       )
 
       expect(screen.getByText('Q'))!.toBeInTheDocument()
@@ -400,12 +397,7 @@ describe('ChunkCard', () => {
       const emptyQA: QAChunk = { question: '', answer: '' }
 
       render(
-        <ChunkCard
-          chunkType={ChunkingMode.qa}
-          content={emptyQA}
-          wordCount={0}
-          positionId={1}
-        />,
+        <ChunkCard chunkType={ChunkingMode.qa} content={emptyQA} wordCount={0} positionId={1} />,
       )
 
       expect(screen.getByText('Q'))!.toBeInTheDocument()
@@ -452,12 +444,7 @@ describe('ChunkCardList', () => {
     it('should render text chunks correctly', () => {
       const chunks = createGeneralChunks()
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />)
 
       expect(screen.getByText(chunks[0]!.content))!.toBeInTheDocument()
       expect(screen.getByText(chunks[1]!.content))!.toBeInTheDocument()
@@ -483,12 +470,7 @@ describe('ChunkCardList', () => {
     it('should render QA chunks correctly', () => {
       const chunks = createQAChunks()
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.qa}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.qa} chunkInfo={chunks} />)
 
       expect(screen.getByText('What is the answer to life?'))!.toBeInTheDocument()
       expect(screen.getByText('The answer is 42.'))!.toBeInTheDocument()
@@ -499,17 +481,9 @@ describe('ChunkCardList', () => {
 
   describe('Memoization - chunkList', () => {
     it('should extract chunks from GeneralChunks for text mode', () => {
-      const chunks: GeneralChunks = [
-        { content: 'Chunk 1' },
-        { content: 'Chunk 2' },
-      ]
+      const chunks: GeneralChunks = [{ content: 'Chunk 1' }, { content: 'Chunk 2' }]
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />)
 
       expect(screen.getByText('Chunk 1'))!.toBeInTheDocument()
       expect(screen.getByText('Chunk 2'))!.toBeInTheDocument()
@@ -517,9 +491,7 @@ describe('ChunkCardList', () => {
 
     it('should extract parent_child_chunks from ParentChildChunks for parentChild mode', () => {
       const chunks = createParentChildChunks({
-        parent_child_chunks: [
-          createParentChildChunk({ child_contents: ['Specific child'] }),
-        ],
+        parent_child_chunks: [createParentChildChunk({ child_contents: ['Specific child'] })],
       })
 
       render(
@@ -535,17 +507,10 @@ describe('ChunkCardList', () => {
 
     it('should extract qa_chunks from QAChunks for qa mode', () => {
       const chunks: QAChunks = {
-        qa_chunks: [
-          { question: 'Specific Q', answer: 'Specific A' },
-        ],
+        qa_chunks: [{ question: 'Specific Q', answer: 'Specific A' }],
       }
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.qa}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.qa} chunkInfo={chunks} />)
 
       expect(screen.getByText('Specific Q'))!.toBeInTheDocument()
       expect(screen.getByText('Specific A'))!.toBeInTheDocument()
@@ -555,21 +520,13 @@ describe('ChunkCardList', () => {
       const initialChunks = createGeneralChunks([{ content: 'Initial chunk' }])
 
       const { rerender } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={initialChunks}
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={initialChunks} />,
       )
 
       expect(screen.getByText('Initial chunk'))!.toBeInTheDocument()
 
       const updatedChunks = createGeneralChunks([{ content: 'Updated chunk' }])
-      rerender(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={updatedChunks}
-        />,
-      )
+      rerender(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={updatedChunks} />)
 
       expect(screen.getByText('Updated chunk'))!.toBeInTheDocument()
       expect(screen.queryByText('Initial chunk')).not.toBeInTheDocument()
@@ -580,12 +537,7 @@ describe('ChunkCardList', () => {
     it('should calculate word count for text chunks using string length', () => {
       const chunks = createGeneralChunks([{ content: 'Hello' }])
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />)
 
       expect(screen.getByText(/5\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
@@ -613,17 +565,10 @@ describe('ChunkCardList', () => {
 
     it('should calculate word count for QA chunks using question + answer length', () => {
       const chunks: QAChunks = {
-        qa_chunks: [
-          { question: 'Hi', answer: 'Bye' },
-        ],
+        qa_chunks: [{ question: 'Hi', answer: 'Bye' }],
       }
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.qa}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.qa} chunkInfo={chunks} />)
 
       expect(screen.getByText(/5\s+(?:\S.*)?characters/))!.toBeInTheDocument()
     })
@@ -637,12 +582,7 @@ describe('ChunkCardList', () => {
         { content: 'Third' },
       ])
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />)
 
       expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
       expect(screen.getByText(/Chunk-02/))!.toBeInTheDocument()
@@ -655,11 +595,7 @@ describe('ChunkCardList', () => {
       const chunks = createGeneralChunks([{ content: 'Test' }])
 
       const { container } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-          className="custom-class"
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} className="custom-class" />,
       )
 
       expect(container.firstChild)!.toHaveClass('custom-class')
@@ -686,10 +622,7 @@ describe('ChunkCardList', () => {
       const chunks = createGeneralChunks([{ content: 'Test' }])
 
       const { container } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />,
       )
 
       expect(container.firstChild)!.toHaveClass('flex')
@@ -747,10 +680,7 @@ describe('ChunkCardList', () => {
       const chunks: GeneralChunks = []
 
       const { container } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />,
       )
 
       expect(container.firstChild)!.toBeInTheDocument()
@@ -780,12 +710,7 @@ describe('ChunkCardList', () => {
         qa_chunks: [],
       }
 
-      const { container } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.qa}
-          chunkInfo={chunks}
-        />,
-      )
+      const { container } = render(<ChunkCardList chunkType={ChunkingMode.qa} chunkInfo={chunks} />)
 
       expect(container.firstChild)!.toBeInTheDocument()
       expect(container.firstChild?.childNodes.length).toBe(0)
@@ -794,12 +719,7 @@ describe('ChunkCardList', () => {
     it('should handle single item in chunks', () => {
       const chunks = createGeneralChunks([{ content: 'Single chunk' }])
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />)
 
       expect(screen.getByText('Single chunk'))!.toBeInTheDocument()
       expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
@@ -808,12 +728,7 @@ describe('ChunkCardList', () => {
     it('should handle large number of chunks', () => {
       const chunks = Array.from({ length: 100 }, (_, i) => ({ content: `Chunk number ${i + 1}` }))
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />)
 
       expect(screen.getByText('Chunk number 1'))!.toBeInTheDocument()
       expect(screen.getByText('Chunk number 100'))!.toBeInTheDocument()
@@ -829,10 +744,7 @@ describe('ChunkCardList', () => {
         { content: 'Same content' },
       ])
       const { container } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={chunks}
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={chunks} />,
       )
 
       const chunkCards = container.querySelectorAll('.bg-components-panel-bg')
@@ -854,12 +766,7 @@ describe('ChunkCardList Integration', () => {
         { content: 'Final paragraph concluding the content.' },
       ])
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={textChunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.text} chunkInfo={textChunks} />)
 
       expect(screen.getByText('First paragraph of the document.'))!.toBeInTheDocument()
       expect(screen.getByText(/Chunk-01/))!.toBeInTheDocument()
@@ -915,12 +822,7 @@ describe('ChunkCardList Integration', () => {
         ],
       })
 
-      render(
-        <ChunkCardList
-          chunkType={ChunkingMode.qa}
-          chunkInfo={qaChunks}
-        />,
-      )
+      render(<ChunkCardList chunkType={ChunkingMode.qa} chunkInfo={qaChunks} />)
 
       const qLabels = screen.getAllByText('Q')
       const aLabels = screen.getAllByText('A')
@@ -928,9 +830,13 @@ describe('ChunkCardList Integration', () => {
       expect(aLabels.length).toBe(2)
 
       expect(screen.getByText('What is Dify?'))!.toBeInTheDocument()
-      expect(screen.getByText('Dify is an open-source LLM application development platform.'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('Dify is an open-source LLM application development platform.'),
+      )!.toBeInTheDocument()
       expect(screen.getByText('How do I get started?'))!.toBeInTheDocument()
-      expect(screen.getByText('You can start by installing the platform using Docker.'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('You can start by installing the platform using Docker.'),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -940,20 +846,12 @@ describe('ChunkCardList Integration', () => {
       const qaChunks = createQAChunks()
 
       const { rerender } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={textChunks}
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={textChunks} />,
       )
 
       expect(screen.getByText('Text content'))!.toBeInTheDocument()
 
-      rerender(
-        <ChunkCardList
-          chunkType={ChunkingMode.qa}
-          chunkInfo={qaChunks}
-        />,
-      )
+      rerender(<ChunkCardList chunkType={ChunkingMode.qa} chunkInfo={qaChunks} />)
 
       expect(screen.queryByText('Text content')).not.toBeInTheDocument()
       expect(screen.getByText('What is the answer to life?'))!.toBeInTheDocument()
@@ -964,10 +862,7 @@ describe('ChunkCardList Integration', () => {
       const parentChildChunks = createParentChildChunks()
 
       const { rerender } = render(
-        <ChunkCardList
-          chunkType={ChunkingMode.text}
-          chunkInfo={textChunks}
-        />,
+        <ChunkCardList chunkType={ChunkingMode.text} chunkInfo={textChunks} />,
       )
 
       expect(screen.getByText('Simple text'))!.toBeInTheDocument()

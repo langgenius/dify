@@ -33,10 +33,8 @@ vi.mock('#i18n', () => ({
   useLocale: vi.fn(() => mockDefaultLocale),
   useTranslation: vi.fn((ns: string) => ({
     t: (key: string) => {
-      if (ns === 'plugin')
-        return pluginTranslations[key] || key
-      if (ns === 'common')
-        return commonTranslations[key] || key
+      if (ns === 'plugin') return pluginTranslations[key] || key
+      if (ns === 'common') return commonTranslations[key] || key
       return key
     },
   })),
@@ -426,7 +424,9 @@ describe('Description', () => {
       const content = subheading.textContent || ''
 
       // Commas should exist between categories
-      expect(content).toMatch(/Models[^\n\r,\u2028\u2029]*,.*Tools[^\n\r,\u2028\u2029]*,.*Data Sources[^\n\r,\u2028\u2029]*,.*Triggers[^\n\r,\u2028\u2029]*,.*Agent Strategies[^\n\r,\u2028\u2029]*,.*Extensions/)
+      expect(content).toMatch(
+        /Models[^\n\r,\u2028\u2029]*,.*Tools[^\n\r,\u2028\u2029]*,.*Data Sources[^\n\r,\u2028\u2029]*,.*Triggers[^\n\r,\u2028\u2029]*,.*Agent Strategies[^\n\r,\u2028\u2029]*,.*Extensions/,
+      )
     })
 
     it('should have "and" before last category (Bundles)', () => {

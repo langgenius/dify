@@ -29,8 +29,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
   const { t } = useTranslation()
 
   // Memoize typeOptions to prevent unnecessary re-renders that cause Select state resets
-  const typeOptions = useMemo(() =>
-    createParameterTypeOptions(contentType), [contentType])
+  const typeOptions = useMemo(() => createParameterTypeOptions(contentType), [contentType])
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [
@@ -67,7 +66,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
     required: false,
   }
 
-  const tableData: GenericTableRow[] = parameters.map(param => ({
+  const tableData: GenericTableRow[] = parameters.map((param) => ({
     key: param.name,
     type: param.type,
     required: param.required,
@@ -80,16 +79,19 @@ const ParameterTable: FC<ParameterTableProps> = ({
     const isOctetStream = (contentType || '').toLowerCase() === 'application/octet-stream'
 
     const normalized = data
-      .filter(row => typeof row.key === 'string' && (row.key as string).trim() !== '')
-      .map(row => ({
+      .filter((row) => typeof row.key === 'string' && (row.key as string).trim() !== '')
+      .map((row) => ({
         name: String(row.key),
-        type: isTextPlain ? VarType.string : isOctetStream ? VarType.file : normalizeParameterType((row.type as string)),
+        type: isTextPlain
+          ? VarType.string
+          : isOctetStream
+            ? VarType.file
+            : normalizeParameterType(row.type as string),
         required: Boolean(row.required),
       }))
 
-    const newParams: WebhookParameter[] = (isTextPlain || isOctetStream)
-      ? normalized.slice(0, 1)
-      : normalized
+    const newParams: WebhookParameter[] =
+      isTextPlain || isOctetStream ? normalized.slice(0, 1) : normalized
 
     onChange(newParams)
   }

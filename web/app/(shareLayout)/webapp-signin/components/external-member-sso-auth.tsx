@@ -22,12 +22,10 @@ const ExternalMemberSSOAuth = () => {
   }
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    if (!redirectUrl)
-      return null
+    if (!redirectUrl) return null
     const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
     const appCode = url.pathname.split('/').pop()
-    if (!appCode)
-      return null
+    if (!appCode) return null
 
     return appCode
   }, [redirectUrl])
@@ -60,7 +58,12 @@ const ExternalMemberSSOAuth = () => {
       default:
         showErrorToast('SSO protocol is not supported.')
     }
-  }, [getAppCodeFromRedirectUrl, redirectUrl, router, systemFeatures.webapp_auth.sso_config.protocol])
+  }, [
+    getAppCodeFromRedirectUrl,
+    redirectUrl,
+    router,
+    systemFeatures.webapp_auth.sso_config.protocol,
+  ])
 
   useEffect(() => {
     handleSSOLogin()

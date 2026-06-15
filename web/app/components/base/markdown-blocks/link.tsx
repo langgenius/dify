@@ -13,9 +13,16 @@ const Link = ({ node, children, ...props }: any) => {
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className={commonClassName} onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value || ''}>{node.children[0]?.value || ''}</abbr>
-  }
-  else {
+    return (
+      <abbr
+        className={commonClassName}
+        onClick={() => onSend?.(hidden_text)}
+        title={node.children[0]?.value || ''}
+      >
+        {node.children[0]?.value || ''}
+      </abbr>
+    )
+  } else {
     const href = props.href || node.properties?.href
     if (href && /^#[\w-]+$/.test(href.toString())) {
       const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -26,17 +33,23 @@ const Link = ({ node, children, ...props }: any) => {
         if (answerContainer) {
           const targetId = CSS.escape(href.toString().substring(1))
           const targetElement = answerContainer.querySelector(`[id="${targetId}"]`)
-          if (targetElement)
-            targetElement.scrollIntoView({ behavior: 'smooth' })
+          if (targetElement) targetElement.scrollIntoView({ behavior: 'smooth' })
         }
       }
-      return <a href={href} onClick={handleClick} className={commonClassName}>{children || 'ScrollView'}</a>
+      return (
+        <a href={href} onClick={handleClick} className={commonClassName}>
+          {children || 'ScrollView'}
+        </a>
+      )
     }
 
-    if (!href || !isValidUrl(href))
-      return <span>{children}</span>
+    if (!href || !isValidUrl(href)) return <span>{children}</span>
 
-    return <a href={href} target="_blank" rel="noopener noreferrer" className={commonClassName}>{children || 'Download'}</a>
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={commonClassName}>
+        {children || 'Download'}
+      </a>
+    )
   }
 }
 

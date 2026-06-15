@@ -16,7 +16,9 @@ vi.mock('@/service/use-common', () => ({
 vi.mock('@/app/components/datasets/common/image-previewer', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="image-previewer">
-      <button data-testid="close-preview" onClick={onClose}>Close</button>
+      <button data-testid="close-preview" onClick={onClose}>
+        Close
+      </button>
     </div>
   ),
 }))

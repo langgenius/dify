@@ -17,27 +17,32 @@ export const isReRankModelSelected = ({
 }) => {
   const rerankModelSelected = (() => {
     if (retrievalConfig.reranking_model?.reranking_model_name) {
-      const provider = rerankModelList.find(({ provider }) => provider === retrievalConfig.reranking_model?.reranking_provider_name)
+      const provider = rerankModelList.find(
+        ({ provider }) => provider === retrievalConfig.reranking_model?.reranking_provider_name,
+      )
 
-      return provider?.models.find(({ model }) => model === retrievalConfig.reranking_model?.reranking_model_name)
+      return provider?.models.find(
+        ({ model }) => model === retrievalConfig.reranking_model?.reranking_model_name,
+      )
     }
 
     return false
   })()
 
   if (
-    indexMethod === 'high_quality'
-    && ([RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText].includes(retrievalConfig.search_method))
-    && retrievalConfig.reranking_enable
-    && !rerankModelSelected
+    indexMethod === 'high_quality' &&
+    [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.fullText].includes(retrievalConfig.search_method) &&
+    retrievalConfig.reranking_enable &&
+    !rerankModelSelected
   ) {
     return false
   }
 
   if (
-    indexMethod === 'high_quality'
-    && (retrievalConfig.search_method === RETRIEVE_METHOD.hybrid && retrievalConfig.reranking_mode !== RerankingModeEnum.WeightedScore)
-    && !rerankModelSelected
+    indexMethod === 'high_quality' &&
+    retrievalConfig.search_method === RETRIEVE_METHOD.hybrid &&
+    retrievalConfig.reranking_mode !== RerankingModeEnum.WeightedScore &&
+    !rerankModelSelected
   ) {
     return false
   }
@@ -54,12 +59,15 @@ export const ensureRerankModelSelected = ({
   retrievalConfig: RetrievalConfig
   indexMethod?: string
 }) => {
-  const rerankModel = retrievalConfig.reranking_model?.reranking_model_name ? retrievalConfig.reranking_model : undefined
+  const rerankModel = retrievalConfig.reranking_model?.reranking_model_name
+    ? retrievalConfig.reranking_model
+    : undefined
   if (
-    indexMethod === 'high_quality'
-    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.hybrid)
-    && !rerankModel
-    && rerankDefaultModel
+    indexMethod === 'high_quality' &&
+    (retrievalConfig.reranking_enable ||
+      retrievalConfig.search_method === RETRIEVE_METHOD.hybrid) &&
+    !rerankModel &&
+    rerankDefaultModel
   ) {
     return {
       ...retrievalConfig,

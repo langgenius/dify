@@ -32,14 +32,15 @@ describe('install-plugin/hooks', () => {
       it('fetches releases from GitHub API and formats them', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            releases: [
-              {
-                tag: 'v1.0.0',
-                assets: [{ downloadUrl: 'https://example.com/plugin.zip' }],
-              },
-            ],
-          }),
+          json: () =>
+            Promise.resolve({
+              releases: [
+                {
+                  tag: 'v1.0.0',
+                  assets: [{ downloadUrl: 'https://example.com/plugin.zip' }],
+                },
+              ],
+            }),
         })
 
         const releases = await fetchReleases('owner', 'repo')
@@ -74,9 +75,7 @@ describe('install-plugin/hooks', () => {
       })
 
       it('returns no update when current is latest', () => {
-        const releases = [
-          { tag_name: 'v1.0.0', assets: [] },
-        ]
+        const releases = [{ tag_name: 'v1.0.0', assets: [] }]
         const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
         expect(needUpdate).toBe(false)
         expect(toastProps.type).toBe('info')
@@ -122,9 +121,7 @@ describe('install-plugin/hooks', () => {
     it('shows toast on upload error', async () => {
       mockUploadGitHub.mockRejectedValue(new Error('Upload failed'))
 
-      await expect(
-        handleUpload('url', 'v1', 'pkg'),
-      ).rejects.toThrow('Upload failed')
+      await expect(handleUpload('url', 'v1', 'pkg')).rejects.toThrow('Upload failed')
       expect(mockNotify).toHaveBeenCalledWith('Error uploading package')
     })
   })

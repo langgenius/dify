@@ -19,10 +19,18 @@ import Input from '@/app/components/base/input'
 import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
 import dynamic from '@/next/dynamic'
 
-const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), { ssr: false })
-const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), { ssr: false })
-const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), { ssr: false })
-const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), { ssr: false })
+const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
+  ssr: false,
+})
+const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
+  ssr: false,
+})
+const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
+  ssr: false,
+})
+const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
+  ssr: false,
+})
 
 type AppInfoModalsProps = {
   appDetail: App & Partial<AppSSO>
@@ -56,11 +64,8 @@ const AppInfoModals = ({
   const [isConfirmingExport, setIsConfirmingExport] = useState(false)
   const [isSecretExporting, setIsSecretExporting] = useState(false)
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
-  const exportDialogMode = secretEnvList.length > 0
-    ? 'secret'
-    : activeModal === 'exportWarning'
-      ? 'warning'
-      : null
+  const exportDialogMode =
+    secretEnvList.length > 0 ? 'secret' : activeModal === 'exportWarning' ? 'warning' : null
   const isExportDialogOpen = exportDialogMode !== null
 
   const handleDeleteDialogClose = () => {
@@ -69,14 +74,12 @@ const AppInfoModals = ({
   }
 
   const handleExportWarningConfirm = useCallback(async () => {
-    if (isConfirmingExport)
-      return
+    if (isConfirmingExport) return
 
     setIsConfirmingExport(true)
     try {
       await handleConfirmExport()
-    }
-    finally {
+    } finally {
       setIsConfirmingExport(false)
     }
   }, [handleConfirmExport, isConfirmingExport])
@@ -90,12 +93,14 @@ const AppInfoModals = ({
     closeModal()
   }, [closeModal, exportDialogMode, setSecretEnvList])
 
-  const handleExportDialogOpenChange = useCallback((open: boolean) => {
-    if (open || isConfirmingExport || isSecretExporting)
-      return
+  const handleExportDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (open || isConfirmingExport || isSecretExporting) return
 
-    handleExportDialogClose()
-  }, [handleExportDialogClose, isConfirmingExport, isSecretExporting])
+      handleExportDialogClose()
+    },
+    [handleExportDialogClose, isConfirmingExport, isSecretExporting],
+  )
 
   return (
     <>
@@ -137,14 +142,16 @@ const AppInfoModals = ({
           onHide={closeModal}
         />
       )}
-      <AlertDialog open={activeModal === 'delete'} onOpenChange={open => !open && handleDeleteDialogClose()}>
+      <AlertDialog
+        open={activeModal === 'delete'}
+        onOpenChange={(open) => !open && handleDeleteDialogClose()}
+      >
         <AlertDialogContent>
           <form
             className="flex flex-col"
             onSubmit={(e) => {
               e.preventDefault()
-              if (isDeleteConfirmDisabled)
-                return
+              if (isDeleteConfirmDisabled) return
               onConfirmDelete()
             }}
           >
@@ -162,7 +169,9 @@ const AppInfoModals = ({
                     ns="app"
                     values={{ appName: appDetail.name }}
                     components={{
-                      appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
+                      appName: (
+                        <span className="system-sm-semibold text-text-primary" translate="no" />
+                      ),
                     }}
                   />
                 </label>
@@ -173,7 +182,7 @@ const AppInfoModals = ({
                     spellCheck={false}
                     placeholder={t('deleteAppConfirmInputPlaceholder', { ns: 'app' })}
                     value={confirmDeleteInput}
-                    onChange={e => setConfirmDeleteInput(e.target.value)}
+                    onChange={(e) => setConfirmDeleteInput(e.target.value)}
                     className="pr-20"
                   />
                   <button
@@ -198,22 +207,18 @@ const AppInfoModals = ({
         </AlertDialogContent>
       </AlertDialog>
       {activeModal === 'importDSL' && (
-        <UpdateDSLModal
-          onCancel={closeModal}
-          onBackup={exportCheck}
-        />
+        <UpdateDSLModal onCancel={closeModal} onBackup={exportCheck} />
       )}
       <AlertDialog open={isExportDialogOpen} onOpenChange={handleExportDialogOpenChange}>
-        {exportDialogMode === 'secret'
-          ? (
-              <DSLExportConfirmContent
-                envList={secretEnvList}
-                onConfirm={onExport}
-                onClose={() => setSecretEnvList([])}
-                onExportingChange={setIsSecretExporting}
-              />
-            )
-          : exportDialogMode === 'warning' && (
+        {exportDialogMode === 'secret' ? (
+          <DSLExportConfirmContent
+            envList={secretEnvList}
+            onConfirm={onExport}
+            onClose={() => setSecretEnvList([])}
+            onExportingChange={setIsSecretExporting}
+          />
+        ) : (
+          exportDialogMode === 'warning' && (
             <AlertDialogContent>
               <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                 <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
@@ -224,7 +229,9 @@ const AppInfoModals = ({
                 </AlertDialogDescription>
               </div>
               <AlertDialogActions>
-                <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+                <AlertDialogCancelButton>
+                  {t('operation.cancel', { ns: 'common' })}
+                </AlertDialogCancelButton>
                 <AlertDialogConfirmButton
                   tone="default"
                   loading={isConfirmingExport}
@@ -237,7 +244,8 @@ const AppInfoModals = ({
                 </AlertDialogConfirmButton>
               </AlertDialogActions>
             </AlertDialogContent>
-          )}
+          )
+        )}
       </AlertDialog>
     </>
   )

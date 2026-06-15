@@ -31,8 +31,7 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <AlertDialogContent className="overflow-hidden! border-none text-left align-middle shadow-xl">
@@ -52,7 +51,10 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
           >
             {t('operation.cancel', { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton nativeButton={false} onClick={onDelete.bind(null, versionInfo.id)}>
+          <AlertDialogConfirmButton
+            nativeButton={false}
+            onClick={onDelete.bind(null, versionInfo.id)}
+          >
             {t('operation.delete', { ns: 'common' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>

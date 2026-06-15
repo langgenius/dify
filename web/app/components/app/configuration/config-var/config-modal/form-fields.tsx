@@ -75,7 +75,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   const { type, label, variable } = tempPayload
   const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
   const docLink = useDocLink()
-  const hiddenDescriptionAriaLabel = t('variableConfig.hiddenDescription', { ns: 'appDebug' }).replace(/<[^>]+>/g, '')
+  const hiddenDescriptionAriaLabel = t('variableConfig.hiddenDescription', {
+    ns: 'appDebug',
+  }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
@@ -94,7 +96,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       <Field title={t('variableConfig.labelName', { ns: 'appDebug' })}>
         <Input
           value={label as string}
-          onChange={e => onPayloadChange('label')(e.target.value)}
+          onChange={(e) => onPayloadChange('label')(e.target.value)}
           placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
         />
       </Field>
@@ -114,7 +116,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
             value={typeof tempPayload.default === 'string' ? tempPayload.default : ''}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
+            onChange={(e) => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
         </Field>
@@ -125,7 +127,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           <Textarea
             aria-label={t('variableConfig.defaultValue', { ns: 'appDebug' })}
             value={String(tempPayload.default ?? '')}
-            onValueChange={value => onPayloadChange('default')(value || undefined)}
+            onValueChange={(value) => onPayloadChange('default')(value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
         </Field>
@@ -135,8 +137,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
             type="number"
-            value={typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string' ? tempPayload.default : ''}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
+            value={
+              typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string'
+                ? tempPayload.default
+                : ''
+            }
+            onChange={(e) => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
         </Field>
@@ -144,17 +150,28 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
 
       {type === InputVarType.checkbox && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
-          <Select value={checkboxDefaultSelectValue} onValueChange={value => onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)}>
+          <Select
+            value={checkboxDefaultSelectValue}
+            onValueChange={(value) =>
+              onPayloadChange('default')(value === CHECKBOX_DEFAULT_TRUE_VALUE)
+            }
+          >
             <SelectTrigger size="large" className="w-full">
-              <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+              <SelectValue
+                placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })}
+              />
             </SelectTrigger>
             <SelectContent listClassName="max-h-[140px] overflow-y-auto">
               <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
-                <SelectItemText>{t('variableConfig.startChecked', { ns: 'appDebug' })}</SelectItemText>
+                <SelectItemText>
+                  {t('variableConfig.startChecked', { ns: 'appDebug' })}
+                </SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
               <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
-                <SelectItemText>{t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}</SelectItemText>
+                <SelectItemText>
+                  {t('variableConfig.noDefaultSelected', { ns: 'appDebug' })}
+                </SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
             </SelectContent>
@@ -172,22 +189,30 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
               <Select
                 key={`default-select-${options.join('-')}`}
                 value={tempPayload.default ? String(tempPayload.default) : EMPTY_SELECT_VALUE}
-                onValueChange={value => onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)}
+                onValueChange={(value) =>
+                  onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)
+                }
               >
                 <SelectTrigger size="large" className="w-full">
-                  <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
+                  <SelectValue
+                    placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })}
+                  />
                 </SelectTrigger>
                 <SelectContent listClassName="max-h-[140px] overflow-y-auto">
                   <SelectItem value={EMPTY_SELECT_VALUE}>
-                    <SelectItemText>{t('variableConfig.noDefaultValue', { ns: 'appDebug' })}</SelectItemText>
+                    <SelectItemText>
+                      {t('variableConfig.noDefaultValue', { ns: 'appDebug' })}
+                    </SelectItemText>
                     <SelectItemIndicator />
                   </SelectItem>
-                  {options.filter(option => option.trim() !== '').map(option => (
-                    <SelectItem key={option} value={option}>
-                      <SelectItemText>{option}</SelectItemText>
-                      <SelectItemIndicator />
-                    </SelectItem>
-                  ))}
+                  {options
+                    .filter((option) => option.trim() !== '')
+                    .map((option) => (
+                      <SelectItem key={option} value={option}>
+                        <SelectItemText>{option}</SelectItemText>
+                        <SelectItemIndicator />
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -204,17 +229,26 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           />
           <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
             <FileUploaderInAttachmentWrapper
-              value={(type === InputVarType.singleFile ? (tempPayload.default ? [tempPayload.default] : []) : (tempPayload.default || [])) as unknown as FileEntity[]}
+              value={
+                (type === InputVarType.singleFile
+                  ? tempPayload.default
+                    ? [tempPayload.default]
+                    : []
+                  : tempPayload.default || []) as unknown as FileEntity[]
+              }
               onChange={(files) => {
                 if (type === InputVarType.singleFile)
                   onPayloadChange('default')(files?.[0] || undefined)
-                else
-                  onPayloadChange('default')(files || undefined)
+                else onPayloadChange('default')(files || undefined)
               }}
               fileConfig={{
-                allowed_file_types: tempPayload.allowed_file_types || [SupportUploadFileTypes.document],
+                allowed_file_types: tempPayload.allowed_file_types || [
+                  SupportUploadFileTypes.document,
+                ],
                 allowed_file_extensions: tempPayload.allowed_file_extensions || [],
-                allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [TransferMethod.remote_url],
+                allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [
+                  TransferMethod.remote_url,
+                ],
                 number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
               }}
             />
@@ -239,9 +273,11 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Checkbox
           checked={tempPayload.required}
           disabled={!isFileInput && tempPayload.hide}
-          onCheckedChange={checked => onPayloadChange('required')(checked)}
+          onCheckedChange={(checked) => onPayloadChange('required')(checked)}
         />
-        <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
+        <span className="system-sm-semibold text-text-secondary">
+          {t('variableConfig.required', { ns: 'appDebug' })}
+        </span>
       </label>
 
       {showHiddenField && !isFileInput && (
@@ -250,15 +286,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
             <Checkbox
               checked={tempPayload.hide}
               disabled={tempPayload.required}
-              onCheckedChange={checked => onPayloadChange('hide')(checked)}
+              onCheckedChange={(checked) => onPayloadChange('hide')(checked)}
             />
-            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+            <span className="system-sm-semibold text-text-secondary">
+              {t('variableConfig.hidden', { ns: 'appDebug' })}
+            </span>
           </label>
           <div className="flex items-center gap-1">
-            <Infotip
-              aria-label={hiddenDescriptionAriaLabel}
-              popupClassName="max-w-[300px]"
-            >
+            <Infotip aria-label={hiddenDescriptionAriaLabel} popupClassName="max-w-[300px]">
               <Trans
                 i18nKey="variableConfig.hiddenDescription"
                 ns="appDebug"

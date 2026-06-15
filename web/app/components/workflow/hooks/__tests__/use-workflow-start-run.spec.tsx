@@ -18,11 +18,23 @@ describe('useWorkflowStartRun', () => {
     })
 
     expect(result.current.handleStartWorkflowRun).toBe(handlers.handleStartWorkflowRun)
-    expect(result.current.handleWorkflowStartRunInWorkflow).toBe(handlers.handleWorkflowStartRunInWorkflow)
-    expect(result.current.handleWorkflowStartRunInChatflow).toBe(handlers.handleWorkflowStartRunInChatflow)
-    expect(result.current.handleWorkflowTriggerScheduleRunInWorkflow).toBe(handlers.handleWorkflowTriggerScheduleRunInWorkflow)
-    expect(result.current.handleWorkflowTriggerWebhookRunInWorkflow).toBe(handlers.handleWorkflowTriggerWebhookRunInWorkflow)
-    expect(result.current.handleWorkflowTriggerPluginRunInWorkflow).toBe(handlers.handleWorkflowTriggerPluginRunInWorkflow)
-    expect(result.current.handleWorkflowRunAllTriggersInWorkflow).toBe(handlers.handleWorkflowRunAllTriggersInWorkflow)
+    expect(result.current.handleWorkflowStartRunInWorkflow).toBe(
+      handlers.handleWorkflowStartRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowStartRunInChatflow).toBe(
+      handlers.handleWorkflowStartRunInChatflow,
+    )
+    expect(result.current.handleWorkflowTriggerScheduleRunInWorkflow).toBe(
+      handlers.handleWorkflowTriggerScheduleRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowTriggerWebhookRunInWorkflow).toBe(
+      handlers.handleWorkflowTriggerWebhookRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowTriggerPluginRunInWorkflow).toBe(
+      handlers.handleWorkflowTriggerPluginRunInWorkflow,
+    )
+    expect(result.current.handleWorkflowRunAllTriggersInWorkflow).toBe(
+      handlers.handleWorkflowRunAllTriggersInWorkflow,
+    )
   })
 })

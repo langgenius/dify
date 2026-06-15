@@ -16,16 +16,16 @@ import {
   RequestURLBlockNode,
 } from '../index'
 
-const renderRequestURLBlock = (props: {
-  onInsert?: () => void
-  onDelete?: () => void
-} = {}) => {
+const renderRequestURLBlock = (
+  props: {
+    onInsert?: () => void
+    onDelete?: () => void
+  } = {},
+) => {
   return renderLexicalEditor({
     namespace: 'request-url-block-plugin-test',
     nodes: [CustomTextNode, RequestURLBlockNode],
-    children: (
-      <RequestURLBlock {...props} />
-    ),
+    children: <RequestURLBlock {...props} />,
   })
 }
 

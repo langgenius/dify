@@ -23,12 +23,8 @@ const Marketplace = async ({
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams}>
         <Description />
-        <StickySearchAndSwitchWrapper
-          pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-        />
-        <ListWrapper
-          showInstallButton={showInstallButton}
-        />
+        <StickySearchAndSwitchWrapper pluginTypeSwitchClassName={pluginTypeSwitchClassName} />
+        <ListWrapper showInstallButton={showInstallButton} />
       </HydrateQueryClient>
     </TanstackQueryInitializer>
   )

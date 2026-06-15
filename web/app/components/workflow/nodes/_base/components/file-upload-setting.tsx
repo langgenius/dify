@@ -39,79 +39,93 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_extensions = [],
   } = payload
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const {
-    imgSizeLimit,
-    docSizeLimit,
-    audioSizeLimit,
-    videoSizeLimit,
-    maxFileUploadLimit,
-  } = useFileSizeLimit(fileUploadConfigResponse)
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit, maxFileUploadLimit } =
+    useFileSizeLimit(fileUploadConfigResponse)
 
-  const handleSupportFileTypeChange = useCallback((type: SupportUploadFileTypes) => {
-    const newPayload = produce(payload, (draft) => {
-      if (type === SupportUploadFileTypes.custom) {
-        if (!draft.allowed_file_types.includes(SupportUploadFileTypes.custom))
-          draft.allowed_file_types = [SupportUploadFileTypes.custom]
-
-        else
-          draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== type)
-      }
-      else {
-        draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== SupportUploadFileTypes.custom)
-        if (draft.allowed_file_types.includes(type))
-          draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== type)
-        else
-          draft.allowed_file_types.push(type)
-      }
-    })
-    onChange(newPayload)
-  }, [onChange, payload])
-
-  const handleUploadMethodChange = useCallback((method: TransferMethod) => {
-    return () => {
+  const handleSupportFileTypeChange = useCallback(
+    (type: SupportUploadFileTypes) => {
       const newPayload = produce(payload, (draft) => {
-        if (method === TransferMethod.all)
-          draft.allowed_file_upload_methods = [TransferMethod.local_file, TransferMethod.remote_url]
-        else
-          draft.allowed_file_upload_methods = [method]
+        if (type === SupportUploadFileTypes.custom) {
+          if (!draft.allowed_file_types.includes(SupportUploadFileTypes.custom))
+            draft.allowed_file_types = [SupportUploadFileTypes.custom]
+          else draft.allowed_file_types = draft.allowed_file_types.filter((v) => v !== type)
+        } else {
+          draft.allowed_file_types = draft.allowed_file_types.filter(
+            (v) => v !== SupportUploadFileTypes.custom,
+          )
+          if (draft.allowed_file_types.includes(type))
+            draft.allowed_file_types = draft.allowed_file_types.filter((v) => v !== type)
+          else draft.allowed_file_types.push(type)
+        }
       })
       onChange(newPayload)
-    }
-  }, [onChange, payload])
+    },
+    [onChange, payload],
+  )
 
-  const handleCustomFileTypesChange = useCallback((customFileTypes: string[]) => {
-    const newPayload = produce(payload, (draft) => {
-      draft.allowed_file_extensions = customFileTypes.map((v) => {
-        return v
+  const handleUploadMethodChange = useCallback(
+    (method: TransferMethod) => {
+      return () => {
+        const newPayload = produce(payload, (draft) => {
+          if (method === TransferMethod.all)
+            draft.allowed_file_upload_methods = [
+              TransferMethod.local_file,
+              TransferMethod.remote_url,
+            ]
+          else draft.allowed_file_upload_methods = [method]
+        })
+        onChange(newPayload)
+      }
+    },
+    [onChange, payload],
+  )
+
+  const handleCustomFileTypesChange = useCallback(
+    (customFileTypes: string[]) => {
+      const newPayload = produce(payload, (draft) => {
+        draft.allowed_file_extensions = customFileTypes.map((v) => {
+          return v
+        })
       })
-    })
-    onChange(newPayload)
-  }, [onChange, payload])
+      onChange(newPayload)
+    },
+    [onChange, payload],
+  )
 
-  const handleMaxUploadNumLimitChange = useCallback((value: number) => {
-    const newPayload = produce(payload, (draft) => {
-      draft.max_length = value
-    })
-    onChange(newPayload)
-  }, [onChange, payload])
+  const handleMaxUploadNumLimitChange = useCallback(
+    (value: number) => {
+      const newPayload = produce(payload, (draft) => {
+        draft.max_length = value
+      })
+      onChange(newPayload)
+    },
+    [onChange, payload],
+  )
 
   return (
     <div>
       {!inFeaturePanel && (
-        <Field
-          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
-        >
+        <Field title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}>
           <div className="space-y-1">
-            {
-              [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
-                <FileTypeItem
-                  key={type}
-                  type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
-                  selected={allowed_file_types.includes(type)}
-                  onToggle={handleSupportFileTypeChange}
-                />
-              ))
-            }
+            {[
+              SupportUploadFileTypes.document,
+              SupportUploadFileTypes.image,
+              SupportUploadFileTypes.audio,
+              SupportUploadFileTypes.video,
+            ].map((type: SupportUploadFileTypes) => (
+              <FileTypeItem
+                key={type}
+                type={
+                  type as
+                    | SupportUploadFileTypes.image
+                    | SupportUploadFileTypes.document
+                    | SupportUploadFileTypes.audio
+                    | SupportUploadFileTypes.video
+                }
+                selected={allowed_file_types.includes(type)}
+                onToggle={handleSupportFileTypeChange}
+              />
+            ))}
             <FileTypeItem
               type={SupportUploadFileTypes.custom}
               selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
@@ -122,33 +136,36 @@ const FileUploadSetting: FC<Props> = ({
           </div>
         </Field>
       )}
-      <Field
-        title={t('variableConfig.uploadFileTypes', { ns: 'appDebug' })}
-        className="mt-4"
-      >
+      <Field title={t('variableConfig.uploadFileTypes', { ns: 'appDebug' })} className="mt-4">
         <div className="grid grid-cols-3 gap-2">
           <OptionCard
             title={t('variableConfig.localUpload', { ns: 'appDebug' })}
-            selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.local_file)}
+            selected={
+              allowed_file_upload_methods.length === 1 &&
+              allowed_file_upload_methods.includes(TransferMethod.local_file)
+            }
             onSelect={handleUploadMethodChange(TransferMethod.local_file)}
           />
           <OptionCard
             title="URL"
-            selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
+            selected={
+              allowed_file_upload_methods.length === 1 &&
+              allowed_file_upload_methods.includes(TransferMethod.remote_url)
+            }
             onSelect={handleUploadMethodChange(TransferMethod.remote_url)}
           />
           <OptionCard
             title={t('variableConfig.both', { ns: 'appDebug' })}
-            selected={allowed_file_upload_methods.includes(TransferMethod.local_file) && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
+            selected={
+              allowed_file_upload_methods.includes(TransferMethod.local_file) &&
+              allowed_file_upload_methods.includes(TransferMethod.remote_url)
+            }
             onSelect={handleUploadMethodChange(TransferMethod.all)}
           />
         </div>
       </Field>
       {isMultiple && (
-        <Field
-          className="mt-4"
-          title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
-        >
+        <Field className="mt-4" title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}>
           <div>
             <div className="mb-1.5 body-xs-regular text-text-tertiary">
               {t('variableConfig.maxNumberTip', {
@@ -176,16 +193,25 @@ const FileUploadSetting: FC<Props> = ({
           className="mt-4"
         >
           <div className="space-y-1">
-            {
-              [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
-                <FileTypeItem
-                  key={type}
-                  type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
-                  selected={allowed_file_types.includes(type)}
-                  onToggle={handleSupportFileTypeChange}
-                />
-              ))
-            }
+            {[
+              SupportUploadFileTypes.document,
+              SupportUploadFileTypes.image,
+              SupportUploadFileTypes.audio,
+              SupportUploadFileTypes.video,
+            ].map((type: SupportUploadFileTypes) => (
+              <FileTypeItem
+                key={type}
+                type={
+                  type as
+                    | SupportUploadFileTypes.image
+                    | SupportUploadFileTypes.document
+                    | SupportUploadFileTypes.audio
+                    | SupportUploadFileTypes.video
+                }
+                selected={allowed_file_types.includes(type)}
+                onToggle={handleSupportFileTypeChange}
+              />
+            ))}
             <FileTypeItem
               type={SupportUploadFileTypes.custom}
               selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
@@ -196,7 +222,6 @@ const FileUploadSetting: FC<Props> = ({
           </div>
         </Field>
       )}
-
     </div>
   )
 }

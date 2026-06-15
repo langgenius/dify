@@ -18,7 +18,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
       <input
         aria-label="instruction-input"
         value={value}
-        onChange={event => onChange(event.target.value)}
+        onChange={(event) => onChange(event.target.value)}
       />
     </div>
   ),
@@ -26,11 +26,11 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
 
 vi.mock('@/app/components/workflow/nodes/_base/components/memory-config', () => ({
   __esModule: true,
-  default: ({
-    onChange,
-  }: {
-    onChange: (value: { enabled: boolean }) => void
-  }) => <button type="button" onClick={() => onChange({ enabled: true })}>memory-config</button>,
+  default: ({ onChange }: { onChange: (value: { enabled: boolean }) => void }) => (
+    <button type="button" onClick={() => onChange({ enabled: true })}>
+      memory-config
+    </button>
+  ),
 }))
 
 describe('question-classifier/advanced-setting', () => {

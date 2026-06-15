@@ -33,7 +33,9 @@ describe('Operator Component', () => {
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
 
       // Act
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
       await userEvent.setup().click(screen.getByRole('button'))
 
       // Assert
@@ -41,7 +43,9 @@ describe('Operator Component', () => {
       expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
       expect(screen.getByText('common.operation.remove')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.rename')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.dataSource.notion.changeAuthorizedPages')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.dataSource.notion.changeAuthorizedPages'),
+      ).not.toBeInTheDocument()
     })
 
     it('should render correct actions for OAUTH2 type', async () => {
@@ -49,7 +53,9 @@ describe('Operator Component', () => {
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
 
       // Act
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
       await userEvent.setup().click(screen.getByRole('button'))
 
       // Assert
@@ -65,7 +71,9 @@ describe('Operator Component', () => {
     it('should call onRename when "rename" action is selected', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -92,7 +100,9 @@ describe('Operator Component', () => {
     it('should call onAction for "setDefault" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -107,7 +117,9 @@ describe('Operator Component', () => {
     it('should call onAction for "edit" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -122,7 +134,9 @@ describe('Operator Component', () => {
     it('should call onAction for "change" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -137,7 +151,9 @@ describe('Operator Component', () => {
     it('should call onAction for "delete" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(
+        <Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />,
+      )
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))

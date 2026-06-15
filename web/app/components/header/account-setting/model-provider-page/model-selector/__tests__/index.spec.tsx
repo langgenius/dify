@@ -2,11 +2,7 @@ import type { ReactNode } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '../../declarations'
+import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import ModelSelector from '../index'
 
 vi.mock('../model-selector-trigger', () => ({
@@ -14,26 +10,28 @@ vi.mock('../model-selector-trigger', () => ({
     currentProvider,
     currentModel,
     defaultModel,
-  }: { currentProvider?: Model, currentModel?: ModelItem, defaultModel?: DefaultModel }) => {
-    if (currentProvider && currentModel)
-      return <div>model-trigger</div>
+  }: {
+    currentProvider?: Model
+    currentModel?: ModelItem
+    defaultModel?: DefaultModel
+  }) => {
+    if (currentProvider && currentModel) return <div>model-trigger</div>
 
-    if (defaultModel)
-      return <div>{`deprecated:${defaultModel.model}`}</div>
+    if (defaultModel) return <div>{`deprecated:${defaultModel.model}`}</div>
 
     return <div>empty-trigger</div>
   },
 }))
 
 vi.mock('../popup', async () => {
-  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>('@langgenius/dify-ui/combobox')
+  const { ComboboxItem } = await vi.importActual<typeof import('@langgenius/dify-ui/combobox')>(
+    '@langgenius/dify-ui/combobox',
+  )
 
   return {
     default: ({ onHide }: { onHide: () => void }) => (
       <>
-        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>
-          select
-        </ComboboxItem>
+        <ComboboxItem value={{ provider: 'openai', model: 'gpt-4' }}>select</ComboboxItem>
         <button type="button" onClick={onHide}>
           hide
         </button>
@@ -62,20 +60,17 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-})
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createTestQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {node}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
 }
 
 describe('ModelSelector', () => {
@@ -128,9 +123,9 @@ describe('ModelSelector', () => {
     fireEvent.click(screen.getByRole('combobox'))
 
     expect(
-      Array.from(document.body.querySelectorAll('[class]')).some(element =>
-        element.className.includes('w-[432px]')
-        && element.className.includes('max-w-[432px]'),
+      Array.from(document.body.querySelectorAll('[class]')).some(
+        (element) =>
+          element.className.includes('w-[432px]') && element.className.includes('max-w-[432px]'),
       ),
     ).toBe(true)
   })
@@ -154,10 +149,7 @@ describe('ModelSelector', () => {
 
     unmount()
     renderWithQueryClient(
-      <ModelSelector
-        defaultModel={{ provider: '', model: '' }}
-        modelList={[makeModel()]}
-      />,
+      <ModelSelector defaultModel={{ provider: '', model: '' }} modelList={[makeModel()]} />,
     )
     expect(screen.getByText('deprecated:')).toBeInTheDocument()
   })

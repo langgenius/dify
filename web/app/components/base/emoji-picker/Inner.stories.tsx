@@ -9,7 +9,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Core emoji grid with search and style swatches. Use this when embedding the selector inline without a modal frame.',
+        component:
+          'Core emoji grid with search and style swatches. Use this when embedding the selector inline without a modal frame.',
       },
     },
   },
@@ -20,7 +21,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 const InnerDemo = () => {
-  const [selection, setSelection] = useState<{ emoji: string, background: string } | null>(null)
+  const [selection, setSelection] = useState<{ emoji: string; background: string } | null>(null)
 
   return (
     <div className="flex h-[520px] flex-col gap-4 rounded-xl border border-divider-subtle bg-components-panel-bg p-6 shadow-lg">
@@ -31,7 +32,9 @@ const InnerDemo = () => {
       <div className="rounded-lg border border-divider-subtle bg-background-default-subtle p-3 text-xs text-text-secondary">
         <div className="font-medium text-text-primary">Latest selection</div>
         <pre className="mt-1 max-h-40 overflow-auto font-mono">
-          {selection ? JSON.stringify(selection, null, 2) : 'Tap an emoji to set background options.'}
+          {selection
+            ? JSON.stringify(selection, null, 2)
+            : 'Tap an emoji to set background options.'}
         </pre>
       </div>
     </div>

@@ -1,5 +1,10 @@
 import { cn } from '@langgenius/dify-ui/cn'
-import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import {
+  SkeletonContainer,
+  SkeletonPoint,
+  SkeletonRectangle,
+  SkeletonRow,
+} from '@/app/components/base/skeleton'
 
 type ToolCardSkeletonGridProps = {
   className?: string
@@ -34,10 +39,7 @@ const ToolCardSkeleton = () => (
   </div>
 )
 
-const ToolCardSkeletonGrid = ({
-  className,
-  count = 6,
-}: ToolCardSkeletonGridProps) => (
+const ToolCardSkeletonGrid = ({ className, count = 6 }: ToolCardSkeletonGridProps) => (
   <>
     {Array.from({ length: count }, (_, index) => (
       <div key={index} className={cn(className)}>

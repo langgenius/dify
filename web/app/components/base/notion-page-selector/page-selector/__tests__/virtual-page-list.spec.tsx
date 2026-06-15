@@ -94,25 +94,31 @@ describe('VirtualPageList', () => {
     expect(screen.getByTestId('virtual-list')).toBeInTheDocument()
     expect(screen.getByTestId('page-row-page-1')).toBeInTheDocument()
     expect(screen.getByTestId('page-row-page-2')).toBeInTheDocument()
-    expect(pageRowPropsSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      checked: true,
-      disabled: false,
-      isPreviewed: false,
-      searchValue: '',
-      selectionMode: 'multiple',
-      showPreview: true,
-      row: rows[0],
-      style: expect.objectContaining({
-        height: '28px',
-        width: 'calc(100% - 16px)',
+    expect(pageRowPropsSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        checked: true,
+        disabled: false,
+        isPreviewed: false,
+        searchValue: '',
+        selectionMode: 'multiple',
+        showPreview: true,
+        row: rows[0],
+        style: expect.objectContaining({
+          height: '28px',
+          width: 'calc(100% - 16px)',
+        }),
       }),
-    }))
-    expect(pageRowPropsSpy).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      checked: false,
-      disabled: true,
-      isPreviewed: true,
-      row: rows[1],
-    }))
+    )
+    expect(pageRowPropsSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        checked: false,
+        disabled: true,
+        isPreviewed: true,
+        row: rows[1],
+      }),
+    )
   })
 
   it('should size the virtual container using the row estimate', () => {

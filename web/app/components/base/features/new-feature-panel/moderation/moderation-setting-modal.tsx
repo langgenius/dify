@@ -33,15 +33,15 @@ type ModerationSettingModalProps = {
   onSave: (moderationConfig: ModerationConfig) => void
 }
 
-const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
-  data,
-  onCancel,
-  onSave,
-}) => {
+const ModerationSettingModal: FC<ModerationSettingModalProps> = ({ data, onCancel, onSave }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const locale = useLocale()
-  const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
+  const {
+    data: modelProviders,
+    isPending: isLoading,
+    refetch: refetchModelProviders,
+  } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const { setShowAccountSettingModal } = useModalContext()
   const handleOpenSettingsModal = () => {
@@ -53,11 +53,18 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     })
   }
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
-  const openaiProvider = modelProviders?.data.find(item => item.provider === 'langgenius/openai/openai')
+  const openaiProvider = modelProviders?.data.find(
+    (item) => item.provider === 'langgenius/openai/openai',
+  )
   const systemOpenaiProviderEnabled = openaiProvider?.system_configuration.enabled
-  const systemOpenaiProviderQuota = systemOpenaiProviderEnabled ? openaiProvider?.system_configuration.quota_configurations.find(item => item.quota_type === openaiProvider.system_configuration.current_quota_type) : undefined
+  const systemOpenaiProviderQuota = systemOpenaiProviderEnabled
+    ? openaiProvider?.system_configuration.quota_configurations.find(
+        (item) => item.quota_type === openaiProvider.system_configuration.current_quota_type,
+      )
+    : undefined
   const systemOpenaiProviderCanUse = systemOpenaiProviderQuota?.is_valid
-  const customOpenaiProvidersCanUse = openaiProvider?.custom_configuration.status === CustomConfigurationStatusEnum.active
+  const customOpenaiProvidersCanUse =
+    openaiProvider?.custom_configuration.status === CustomConfigurationStatusEnum.active
   const isOpenAIProviderConfigured = customOpenaiProvidersCanUse || systemOpenaiProviderCanUse
   const providers: Provider[] = [
     {
@@ -72,30 +79,31 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       key: 'api',
       name: t('apiBasedExtension.selector.title', { ns: 'common' }),
     },
-    ...(
-      codeBasedExtensionList
-        ? codeBasedExtensionList.data.map((item) => {
-            return {
-              key: item.name,
-              name: locale === 'zh-Hans' ? item.label['zh-Hans'] : item.label['en-US'],
-              form_schema: item.form_schema,
-            }
-          })
-        : []
-    ),
+    ...(codeBasedExtensionList
+      ? codeBasedExtensionList.data.map((item) => {
+          return {
+            key: item.name,
+            name: locale === 'zh-Hans' ? item.label['zh-Hans'] : item.label['en-US'],
+            form_schema: item.form_schema,
+          }
+        })
+      : []),
   ]
 
-  const currentProvider = providers.find(provider => provider.key === localeData.type)
+  const currentProvider = providers.find((provider) => provider.key === localeData.type)
 
   const handleDataTypeChange = (type: string) => {
     let config: undefined | Record<string, any>
-    const currProvider = providers.find(provider => provider.key === type)
+    const currProvider = providers.find((provider) => provider.key === type)
 
-    if (systemTypes.findIndex(t => t === type) < 0 && currProvider?.form_schema) {
-      config = currProvider?.form_schema.reduce((prev, next) => {
-        prev[next.variable] = next.default
-        return prev
-      }, {} as Record<string, any>)
+    if (systemTypes.findIndex((t) => t === type) < 0 && currProvider?.form_schema) {
+      config = currProvider?.form_schema.reduce(
+        (prev, next) => {
+          prev[next.variable] = next.default
+          return prev
+        },
+        {} as Record<string, any>,
+      )
     }
     setLocaleData({
       ...localeData,
@@ -106,10 +114,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 
   const handleDataKeywordsChange = (value: string) => {
     const arr = value.split('\n').reduce((prev: string[], next: string) => {
-      if (next !== '')
-        prev.push(next.slice(0, 100))
-      if (next === '' && prev[prev.length - 1] !== '')
-        prev.push(next)
+      if (next !== '') prev.push(next.slice(0, 100))
+      if (next === '' && prev[prev.length - 1] !== '') prev.push(next)
 
       return prev
     }, [])
@@ -158,13 +164,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     const { inputs_config, outputs_config } = config!
     const params: Record<string, string | undefined> = {}
 
-    if (type === 'keywords')
-      params.keywords = config?.keywords
+    if (type === 'keywords') params.keywords = config?.keywords
 
-    if (type === 'api')
-      params.api_based_extension_id = config?.api_based_extension_id
+    if (type === 'api') params.api_based_extension_id = config?.api_based_extension_id
 
-    if (systemTypes.findIndex(t => t === type) < 0 && currentProvider?.form_schema) {
+    if (systemTypes.findIndex((t) => t === type) < 0 && currentProvider?.form_schema) {
       currentProvider.form_schema.forEach((form) => {
         params[form.variable] = config?.[form.variable]
       })
@@ -183,8 +187,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 
   const handleSave = () => {
     /* v8 ignore next -- UI-invariant guard: same condition is used in Save button disabled logic, so when true handleSave has no user-triggerable invocation path. @preserve */
-    if (localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured)
-      return
+    if (localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured) return
 
     if (!localeData.config?.inputs_config?.enabled && !localeData.config?.outputs_config?.enabled) {
       toast.error(t('feature.moderation.modal.content.condition', { ns: 'appDebug' }))
@@ -192,30 +195,59 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     }
 
     if (localeData.type === 'keywords' && !localeData.config.keywords) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }))
+      toast.error(
+        t('errorMessage.valueOfVarRequired', {
+          ns: 'appDebug',
+          key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词',
+        }),
+      )
       return
     }
 
     if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
-      toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
+      toast.error(
+        t('errorMessage.valueOfVarRequired', {
+          ns: 'appDebug',
+          key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展',
+        }),
+      )
       return
     }
 
-    if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
+    if (systemTypes.findIndex((t) => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
-        if (!localeData.config?.[currentProvider.form_schema[i]!.variable] && currentProvider.form_schema[i]!.required) {
-          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i]!.label['en-US'] : currentProvider.form_schema[i]!.label['zh-Hans'] }))
+        if (
+          !localeData.config?.[currentProvider.form_schema[i]!.variable] &&
+          currentProvider.form_schema[i]!.required
+        ) {
+          toast.error(
+            t('errorMessage.valueOfVarRequired', {
+              ns: 'appDebug',
+              key:
+                locale !== LanguagesSupported[1]
+                  ? currentProvider.form_schema[i]!.label['en-US']
+                  : currentProvider.form_schema[i]!.label['zh-Hans'],
+            }),
+          )
           return
         }
       }
     }
 
-    if (localeData.config.inputs_config?.enabled && !localeData.config.inputs_config.preset_response && localeData.type !== 'api') {
+    if (
+      localeData.config.inputs_config?.enabled &&
+      !localeData.config.inputs_config.preset_response &&
+      localeData.type !== 'api'
+    ) {
       toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
-    if (localeData.config.outputs_config?.enabled && !localeData.config.outputs_config.preset_response && localeData.type !== 'api') {
+    if (
+      localeData.config.outputs_config?.enabled &&
+      !localeData.config.outputs_config.preset_response &&
+      localeData.type !== 'api'
+    ) {
       toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
@@ -226,9 +258,10 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   return (
     <Dialog open>
       <DialogContent className="mt-14! w-[600px]! max-w-none! border-none p-6! text-left align-middle">
-
         <div className="flex items-center justify-between">
-          <div className="title-2xl-semi-bold text-text-primary">{t('feature.moderation.modal.title', { ns: 'appDebug' })}</div>
+          <div className="title-2xl-semi-bold text-text-primary">
+            {t('feature.moderation.modal.title', { ns: 'appDebug' })}
+          </div>
           <button
             type="button"
             aria-label={t('operation.close', { ns: 'common' })}
@@ -243,129 +276,140 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             {t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}
           </div>
           <div className="grid grid-cols-3 gap-2.5">
-            {
-              providers.map(provider => (
+            {providers.map((provider) => (
+              <div
+                key={provider.key}
+                className={cn(
+                  'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
+                  localeData.type !== provider.key &&
+                    'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+                  localeData.type === provider.key &&
+                    'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
+                  localeData.type === 'openai_moderation' &&
+                    provider.key === 'openai_moderation' &&
+                    !isOpenAIProviderConfigured &&
+                    'text-text-disabled',
+                )}
+                onClick={() => handleDataTypeChange(provider.key)}
+              >
                 <div
-                  key={provider.key}
                   className={cn(
-                    'flex h-8 cursor-default items-center rounded-md border border-components-option-card-option-border bg-components-option-card-option-bg px-2 system-sm-regular text-text-secondary',
-                    localeData.type !== provider.key && 'cursor-pointer hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
-                    localeData.type === provider.key && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-sm-medium shadow-xs',
-                    localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !isOpenAIProviderConfigured && 'text-text-disabled',
-                  )}
-                  onClick={() => handleDataTypeChange(provider.key)}
-                >
-                  <div className={cn(
                     'mr-2 size-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
-                    localeData.type === provider.key && 'border-[5px] border-components-radio-border-checked',
+                    localeData.type === provider.key &&
+                      'border-[5px] border-components-radio-border-checked',
                   )}
-                  >
-                  </div>
-                  {provider.name}
-                </div>
-              ))
-            }
+                ></div>
+                {provider.name}
+              </div>
+            ))}
           </div>
-          {
-            !isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
-              <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
-                <span className="mr-1 i-custom-vender-line-general-info-circle h-4 w-4 text-[#F79009]" />
-                <div className="flex items-center text-xs font-medium text-gray-700">
-                  {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
-                  <span
-                    className="cursor-pointer text-primary-600"
-                    onClick={handleOpenSettingsModal}
-                  >
+          {!isLoading && !isOpenAIProviderConfigured && localeData.type === 'openai_moderation' && (
+            <div className="mt-2 flex items-center rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 py-2">
+              <span className="mr-1 i-custom-vender-line-general-info-circle h-4 w-4 text-[#F79009]" />
+              <div className="flex items-center text-xs font-medium text-gray-700">
+                {t('feature.moderation.modal.openaiNotConfig.before', { ns: 'appDebug' })}
+                <span className="cursor-pointer text-primary-600" onClick={handleOpenSettingsModal}>
                   &nbsp;
-                    {t('settings.provider', { ns: 'common' })}
-&nbsp;
-                  </span>
-                  {t('feature.moderation.modal.openaiNotConfig.after', { ns: 'appDebug' })}
-                </div>
+                  {t('settings.provider', { ns: 'common' })}
+                  &nbsp;
+                </span>
+                {t('feature.moderation.modal.openaiNotConfig.after', { ns: 'appDebug' })}
               </div>
-            )
-          }
+            </div>
+          )}
         </div>
-        {
-          localeData.type === 'keywords' && (
-            <div className="py-2">
-              <div className="mb-1 text-sm font-medium text-text-primary">{t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}</div>
-              <div className="mb-2 text-xs text-text-tertiary">{t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}</div>
-              {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
-              <div className="relative h-[88px]">
-                <Textarea
-                  aria-label={t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' }) as string}
-                  value={localeData.config?.keywords || ''}
-                  onValueChange={handleDataKeywordsChange}
-                  className="size-full resize-none pb-8"
-                  placeholder={t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''}
-                />
-                <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
-                  <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>
-                  /
-                  <span className="text-text-tertiary">
-                    100
-                    {t('feature.moderation.modal.keywords.line', { ns: 'appDebug' })}
-                  </span>
-                </div>
-              </div>
+        {localeData.type === 'keywords' && (
+          <div className="py-2">
+            <div className="mb-1 text-sm font-medium text-text-primary">
+              {t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })}
             </div>
-          )
-        }
-        {
-          localeData.type === 'api' && (
-            <div className="py-2">
-              <div className="flex h-9 items-center justify-between">
-                <div className="text-sm font-medium text-text-primary">{t('apiBasedExtension.selector.title', { ns: 'common' })}</div>
-                <a
-                  href={docLink('/use-dify/workspace/api-extension/api-extension')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
-                >
-                  <span className="mr-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-primary-600" />
-                  {t('apiBasedExtension.link', { ns: 'common' })}
-                </a>
-              </div>
-              <ApiBasedExtensionSelector
-                value={localeData.config?.api_based_extension_id || ''}
-                onChange={handleDataApiBasedChange}
+            <div className="mb-2 text-xs text-text-tertiary">
+              {t('feature.moderation.modal.keywords.tip', { ns: 'appDebug' })}
+            </div>
+            {/* Keep this counter composed locally; extract only if more textarea counter cases repeat. */}
+            <div className="relative h-[88px]">
+              <Textarea
+                aria-label={
+                  t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' }) as string
+                }
+                value={localeData.config?.keywords || ''}
+                onValueChange={handleDataKeywordsChange}
+                className="size-full resize-none pb-8"
+                placeholder={
+                  t('feature.moderation.modal.keywords.placeholder', { ns: 'appDebug' }) || ''
+                }
               />
+              <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 text-xs font-medium text-text-quaternary">
+                <span>
+                  {(localeData.config?.keywords || '').split('\n').filter(Boolean).length}
+                </span>
+                /
+                <span className="text-text-tertiary">
+                  100
+                  {t('feature.moderation.modal.keywords.line', { ns: 'appDebug' })}
+                </span>
+              </div>
             </div>
-          )
-        }
-        {
-          systemTypes.findIndex(t => t === localeData.type) < 0
-          && currentProvider?.form_schema
-          && (
+          </div>
+        )}
+        {localeData.type === 'api' && (
+          <div className="py-2">
+            <div className="flex h-9 items-center justify-between">
+              <div className="text-sm font-medium text-text-primary">
+                {t('apiBasedExtension.selector.title', { ns: 'common' })}
+              </div>
+              <a
+                href={docLink('/use-dify/workspace/api-extension/api-extension')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center text-xs text-text-tertiary hover:text-primary-600"
+              >
+                <span className="mr-1 i-custom-vender-line-education-book-open-01 size-3 text-text-tertiary group-hover:text-primary-600" />
+                {t('apiBasedExtension.link', { ns: 'common' })}
+              </a>
+            </div>
+            <ApiBasedExtensionSelector
+              value={localeData.config?.api_based_extension_id || ''}
+              onChange={handleDataApiBasedChange}
+            />
+          </div>
+        )}
+        {systemTypes.findIndex((t) => t === localeData.type) < 0 &&
+          currentProvider?.form_schema && (
             <FormGeneration
               forms={currentProvider?.form_schema}
               value={localeData.config}
               onChange={handleDataExtraChange}
             />
-          )
-        }
+          )}
         <Divider bgStyle="gradient" className="my-3 h-px" />
         <ModerationContent
           title={t('feature.moderation.modal.content.input', { ns: 'appDebug' }) || ''}
           config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
-          onConfigChange={config => handleDataContentChange('inputs_config', config)}
-          info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
+          onConfigChange={(config) => handleDataContentChange('inputs_config', config)}
+          info={
+            (localeData.type === 'api' &&
+              t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) ||
+            ''
+          }
           showPreset={localeData.type !== 'api'}
         />
         <ModerationContent
           title={t('feature.moderation.modal.content.output', { ns: 'appDebug' }) || ''}
           config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
-          onConfigChange={config => handleDataContentChange('outputs_config', config)}
-          info={(localeData.type === 'api' && t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) || ''}
+          onConfigChange={(config) => handleDataContentChange('outputs_config', config)}
+          info={
+            (localeData.type === 'api' &&
+              t('feature.moderation.modal.content.fromApi', { ns: 'appDebug' })) ||
+            ''
+          }
           showPreset={localeData.type !== 'api'}
         />
-        <div className="mt-1 mb-8 text-xs font-medium text-text-tertiary">{t('feature.moderation.modal.content.condition', { ns: 'appDebug' })}</div>
+        <div className="mt-1 mb-8 text-xs font-medium text-text-tertiary">
+          {t('feature.moderation.modal.content.condition', { ns: 'appDebug' })}
+        </div>
         <div className="flex items-center justify-end">
-          <Button
-            onClick={onCancel}
-            className="mr-2"
-          >
+          <Button onClick={onCancel} className="mr-2">
             {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button

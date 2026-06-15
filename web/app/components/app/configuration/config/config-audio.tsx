@@ -15,38 +15,34 @@ import ConfigContext from '@/context/debug-configuration'
 
 const ConfigAudio: FC = () => {
   const { t } = useTranslation()
-  const file = useFeatures(s => s.features.file)
+  const file = useFeatures((s) => s.features.file)
   const featuresStore = useFeaturesStore()
   const { isShowAudioConfig, readonly } = useContext(ConfigContext)
 
   const isAudioEnabled = file?.allowed_file_types?.includes(SupportUploadFileTypes.audio) ?? false
 
-  const handleChange = useCallback((value: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (value: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      if (value) {
-        draft.file!.allowed_file_types = Array.from(new Set([
-          ...(draft.file?.allowed_file_types || []),
-          SupportUploadFileTypes.audio,
-        ]))
-      }
-      else {
-        draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
-          type => type !== SupportUploadFileTypes.audio,
-        )
-      }
-      if (draft.file)
-        draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
-    })
-    setFeatures(newFeatures)
-  }, [featuresStore])
+      const newFeatures = produce(features, (draft) => {
+        if (value) {
+          draft.file!.allowed_file_types = Array.from(
+            new Set([...(draft.file?.allowed_file_types || []), SupportUploadFileTypes.audio]),
+          )
+        } else {
+          draft.file!.allowed_file_types = draft.file!.allowed_file_types?.filter(
+            (type) => type !== SupportUploadFileTypes.audio,
+          )
+        }
+        if (draft.file) draft.file.enabled = (draft.file.allowed_file_types?.length ?? 0) > 0
+      })
+      setFeatures(newFeatures)
+    },
+    [featuresStore],
+  )
 
-  if (!isShowAudioConfig || (readonly && !isAudioEnabled))
-    return null
+  if (!isShowAudioConfig || (readonly && !isAudioEnabled)) return null
 
   return (
     <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn p-2">
@@ -56,7 +52,9 @@ const ConfigAudio: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="mr-1 system-sm-semibold text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
+        <div className="mr-1 system-sm-semibold text-text-secondary">
+          {t('feature.audioUpload.title', { ns: 'appDebug' })}
+        </div>
         <Infotip
           aria-label={t('feature.audioUpload.description', { ns: 'appDebug' })}
           popupClassName="w-[180px]"
@@ -67,11 +65,7 @@ const ConfigAudio: FC = () => {
       {!readonly && (
         <div className="flex shrink-0 items-center">
           <div className="mr-3 ml-1 h-3.5 w-px bg-divider-subtle"></div>
-          <Switch
-            checked={isAudioEnabled}
-            onCheckedChange={handleChange}
-            size="md"
-          />
+          <Switch checked={isAudioEnabled} onCheckedChange={handleChange} size="md" />
         </div>
       )}
     </div>

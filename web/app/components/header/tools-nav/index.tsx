@@ -1,10 +1,7 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiHammerFill,
-  RiHammerLine,
-} from '@remixicon/react'
+import { RiHammerFill, RiHammerLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
@@ -13,9 +10,7 @@ type ToolsNavProps = {
   className?: string
 }
 
-const ToolsNav = ({
-  className,
-}: ToolsNavProps) => {
+const ToolsNav = ({ className }: ToolsNavProps) => {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
   const activated = selectedSegment === 'tools'
@@ -23,16 +18,18 @@ const ToolsNav = ({
   return (
     <Link
       href="/tools"
-      className={cn('group text-sm font-medium', activated && 'hover:bg-components-main-nav-nav-button-bg-active-hover bg-components-main-nav-nav-button-bg-active font-semibold shadow-md', activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover', className)}
-    >
-      {
+      className={cn(
+        'group text-sm font-medium',
+        activated &&
+          'hover:bg-components-main-nav-nav-button-bg-active-hover bg-components-main-nav-nav-button-bg-active font-semibold shadow-md',
         activated
-          ? <RiHammerFill className="size-4" />
-          : <RiHammerLine className="size-4" />
-      }
-      <div className="ml-2 max-[1024px]:hidden">
-        {t('menus.tools', { ns: 'common' })}
-      </div>
+          ? 'text-components-main-nav-nav-button-text-active'
+          : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover',
+        className,
+      )}
+    >
+      {activated ? <RiHammerFill className="size-4" /> : <RiHammerLine className="size-4" />}
+      <div className="ml-2 max-[1024px]:hidden">{t('menus.tools', { ns: 'common' })}</div>
     </Link>
   )
 }

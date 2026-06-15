@@ -1,7 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'

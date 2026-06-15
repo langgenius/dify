@@ -11,7 +11,10 @@ const promptVariables: PromptVariable[] = [
 describe('replaceStringWithValues', () => {
   it('should replace placeholders when inputs have values', () => {
     const template = 'Hello {{user}} talking about {{topic}}'
-    const result = replaceStringWithValues(template, promptVariables, { user: 'Alice', topic: 'cats' })
+    const result = replaceStringWithValues(template, promptVariables, {
+      user: 'Alice',
+      topic: 'cats',
+    })
     expect(result).toBe('Hello Alice talking about cats')
   })
 

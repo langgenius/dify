@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       dify_version:
-        description: "Dify image tag to test against (e.g. 1.7.0)"
+        description: 'Dify image tag to test against (e.g. 1.7.0)'
         type: string
         required: true
       cli_ref:
-        description: "Git ref to build the cli from (default: current branch)"
+        description: 'Git ref to build the cli from (default: current branch)'
         type: string
         required: false
 

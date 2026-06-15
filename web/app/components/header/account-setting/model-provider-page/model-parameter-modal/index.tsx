@@ -1,34 +1,17 @@
-import type {
-  FC,
-  ReactNode,
-} from 'react'
-import type {
-  DefaultModel,
-  FormValue,
-  ModelParameterRule,
-} from '../declarations'
+import type { FC, ReactNode } from 'react'
+import type { DefaultModel, FormValue, ModelParameterRule } from '../declarations'
 import type { ParameterValue } from './parameter-item'
 import type { TriggerProps } from './trigger'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverClose,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Loading from '@/app/components/base/loading'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
-import {
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '../hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import ModelSelector from '../model-selector'
 import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
@@ -40,7 +23,12 @@ export type ModelParameterModalProps = {
   isAdvancedMode: boolean
   modelId: string
   provider: string
-  setModel: (model: { modelId: string, provider: string, mode?: string, features?: string[] }) => void
+  setModel: (model: {
+    modelId: string
+    provider: string
+    mode?: string
+    features?: string[]
+  }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   hideDebugWithMultipleModel?: boolean
@@ -74,24 +62,16 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const settingsIconRef = useRef<HTMLDivElement>(null)
-  const {
-    data: parameterRulesData,
-    isLoading,
-  } = useModelParameterRules(provider, modelId)
+  const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
-  const {
-    currentProvider,
-    currentModel,
-    activeTextGenerationModelList,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    { provider, model: modelId },
-  )
+  const { currentProvider, currentModel, activeTextGenerationModelList } =
+    useTextGenerationCurrentProviderAndModelAndModelList({ provider, model: modelId })
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []
   }, [parameterRulesData])
   const supportedPresetParameterNames = useMemo(() => {
-    return parameterRules.map(parameterRule => parameterRule.name)
+    return parameterRules.map((parameterRule) => parameterRule.name)
   }, [parameterRules])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
@@ -102,8 +82,10 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleChangeModel = ({ provider, model }: DefaultModel) => {
-    const targetProvider = activeTextGenerationModelList.find(modelItem => modelItem.provider === provider)
-    const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
+    const targetProvider = activeTextGenerationModelList.find(
+      (modelItem) => modelItem.provider === provider,
+    )
+    const targetModelItem = targetProvider?.models.find((modelItem) => modelItem.model === model)
     setModel({
       modelId: model,
       provider,
@@ -138,39 +120,39 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     <Popover
       open={open}
       onOpenChange={(newOpen) => {
-        if (readonly)
-          return
+        if (readonly) return
         setOpen(newOpen)
       }}
     >
       <PopoverTrigger
-        render={(
-          <button type="button" className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]">
-            {
-              renderTrigger
-                ? renderTrigger({
-                    open,
-                    currentProvider,
-                    currentModel,
-                    providerName: provider,
-                    modelId,
-                  })
-                : (
-                    <Trigger
-                      isInWorkflow={isInWorkflow}
-                      currentProvider={currentProvider}
-                      currentModel={currentModel}
-                      providerName={provider}
-                      modelId={modelId}
-                      settingsRef={settingsIconRef}
-                    />
-                  )
-            }
+        render={
+          <button
+            type="button"
+            className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]"
+          >
+            {renderTrigger ? (
+              renderTrigger({
+                open,
+                currentProvider,
+                currentModel,
+                providerName: provider,
+                modelId,
+              })
+            ) : (
+              <Trigger
+                isInWorkflow={isInWorkflow}
+                currentProvider={currentProvider}
+                currentModel={currentModel}
+                providerName={provider}
+                modelId={modelId}
+                settingsRef={settingsIconRef}
+              />
+            )}
           </button>
-        )}
+        }
       />
       <PopoverContent
-        placement={isInWorkflow ? 'left' : (renderTrigger ? 'bottom-end' : 'left-start')}
+        placement={isInWorkflow ? 'left' : renderTrigger ? 'bottom-end' : 'left-start'}
         sideOffset={4}
         popupClassName={cn(popupClassName, 'w-[400px] rounded-2xl')}
         positionerProps={!renderTrigger ? { anchor: settingsIconRef } : undefined}
@@ -186,66 +168,63 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         <div className="max-h-[420px] overflow-y-auto">
           <div className="px-4 pt-2 pb-4">
             <ModelSelector
-              defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
+              defaultModel={provider || modelId ? { provider, model: modelId } : undefined}
               modelList={activeTextGenerationModelList}
               onSelect={handleChangeModel}
               onHide={() => setOpen(false)}
             />
           </div>
-          {
-            !!parameterRules.length && (
-              <div className="flex flex-col gap-2 border-t border-divider-subtle px-4 pt-3 pb-4">
-                <div className="flex items-center gap-1">
-                  <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">{t('modelProvider.parameters', { ns: 'common' })}</div>
-                  {
-                    PROVIDER_WITH_PRESET_TONE.includes(provider) && (
-                      <PresetsParameter
-                        onSelect={handleSelectPresetParameter}
-                        supportedParameterNames={supportedPresetParameterNames}
-                      />
-                    )
-                  }
+          {!!parameterRules.length && (
+            <div className="flex flex-col gap-2 border-t border-divider-subtle px-4 pt-3 pb-4">
+              <div className="flex items-center gap-1">
+                <div className="flex flex-1 items-center system-sm-semibold-uppercase text-text-secondary">
+                  {t('modelProvider.parameters', { ns: 'common' })}
                 </div>
-                {
-                  isRulesLoading
-                    ? <div className="py-5"><Loading /></div>
-                    : (
-                        [
-                          ...parameterRules,
-                          ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : []),
-                        ].map(parameter => (
-                          <ParameterItem
-                            key={`${modelId}-${parameter.name}`}
-                            parameterRule={parameter}
-                            value={completionParams?.[parameter.name]}
-                            onChange={v => handleParamChange(parameter.name, v)}
-                            onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
-                            isInWorkflow={isInWorkflow}
-                            nodesOutputVars={nodesOutputVars}
-                            availableNodes={availableNodes}
-                          />
-                        ))
-                      )
-                }
+                {PROVIDER_WITH_PRESET_TONE.includes(provider) && (
+                  <PresetsParameter
+                    onSelect={handleSelectPresetParameter}
+                    supportedParameterNames={supportedPresetParameterNames}
+                  />
+                )}
               </div>
-            )
-          }
-          {
-            !parameterRules.length && isRulesLoading && (
-              <div className="px-4 py-5"><Loading /></div>
-            )
-          }
+              {isRulesLoading ? (
+                <div className="py-5">
+                  <Loading />
+                </div>
+              ) : (
+                [...parameterRules, ...(isAdvancedMode ? [STOP_PARAMETER_RULE] : [])].map(
+                  (parameter) => (
+                    <ParameterItem
+                      key={`${modelId}-${parameter.name}`}
+                      parameterRule={parameter}
+                      value={completionParams?.[parameter.name]}
+                      onChange={(v) => handleParamChange(parameter.name, v)}
+                      onSwitch={(checked, assignValue) =>
+                        handleSwitch(parameter.name, checked, assignValue)
+                      }
+                      isInWorkflow={isInWorkflow}
+                      nodesOutputVars={nodesOutputVars}
+                      availableNodes={availableNodes}
+                    />
+                  ),
+                )
+              )}
+            </div>
+          )}
+          {!parameterRules.length && isRulesLoading && (
+            <div className="px-4 py-5">
+              <Loading />
+            </div>
+          )}
         </div>
         {!hideDebugWithMultipleModel && (
           <div
             className="flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
-            {
-              debugWithMultipleModel
-                ? t('debugAsSingleModel', { ns: 'appDebug' })
-                : t('debugAsMultipleModel', { ns: 'appDebug' })
-            }
+            {debugWithMultipleModel
+              ? t('debugAsSingleModel', { ns: 'appDebug' })
+              : t('debugAsMultipleModel', { ns: 'appDebug' })}
             <ArrowNarrowLeft className="size-3 rotate-180" />
           </div>
         )}

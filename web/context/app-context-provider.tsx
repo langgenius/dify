@@ -22,26 +22,33 @@ import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
-import {
-  useLangGeniusVersion,
-} from '@/service/use-common'
+import { useLangGeniusVersion } from '@/service/use-common'
 
 type AppContextProviderProps = {
   children: ReactNode
 }
 
-const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
+const workspaceRoles = new Set<ICurrentWorkspace['role']>([
+  'owner',
+  'admin',
+  'editor',
+  'dataset_operator',
+  'normal',
+])
 
-const resolveWorkspaceRole = (role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] => {
+const resolveWorkspaceRole = (
+  role: PostWorkspacesCurrentResponse['role'],
+): ICurrentWorkspace['role'] => {
   if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
     return role as ICurrentWorkspace['role']
 
   return initialWorkspaceInfo.role
 }
 
-const normalizeCurrentWorkspace = (workspace?: PostWorkspacesCurrentResponse): ICurrentWorkspace => {
-  if (!workspace)
-    return initialWorkspaceInfo
+const normalizeCurrentWorkspace = (
+  workspace?: PostWorkspacesCurrentResponse,
+): ICurrentWorkspace => {
+  if (!workspace) return initialWorkspaceInfo
 
   return {
     id: workspace.id,
@@ -53,7 +60,8 @@ const normalizeCurrentWorkspace = (workspace?: PostWorkspacesCurrentResponse): I
     providers: initialWorkspaceInfo.providers,
     trial_credits: workspace.trial_credits ?? initialWorkspaceInfo.trial_credits,
     trial_credits_used: workspace.trial_credits_used ?? initialWorkspaceInfo.trial_credits_used,
-    next_credit_reset_date: workspace.next_credit_reset_date ?? initialWorkspaceInfo.next_credit_reset_date,
+    next_credit_reset_date:
+      workspace.next_credit_reset_date ?? initialWorkspaceInfo.next_credit_reset_date,
     trial_end_reason: workspace.trial_end_reason ?? undefined,
     custom_config: workspace.custom_config
       ? {
@@ -68,14 +76,24 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
-  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useQuery(consoleQuery.workspaces.current.post.queryOptions())
+  const {
+    data: currentWorkspaceResp,
+    isPending: isLoadingCurrentWorkspace,
+    isFetching: isValidatingCurrentWorkspace,
+  } = useQuery(consoleQuery.workspaces.current.post.queryOptions())
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
   )
 
-  const userProfile = useMemo<GetAccountProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
-  const currentWorkspace = useMemo<ICurrentWorkspace>(() => normalizeCurrentWorkspace(currentWorkspaceResp), [currentWorkspaceResp])
+  const userProfile = useMemo<GetAccountProfileResponse>(
+    () => userProfileResp?.profile || userProfilePlaceholder,
+    [userProfileResp?.profile],
+  )
+  const currentWorkspace = useMemo<ICurrentWorkspace>(
+    () => normalizeCurrentWorkspace(currentWorkspaceResp),
+    [currentWorkspaceResp],
+  )
   const langGeniusVersionInfo = useMemo<LangGeniusVersionResponse>(() => {
     if (!userProfileResp?.meta?.currentVersion || !langGeniusVersionQuery.data)
       return initialLangGeniusVersionInfo
@@ -91,10 +109,22 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }
   }, [langGeniusVersionQuery.data, userProfileResp?.meta])
 
-  const isCurrentWorkspaceManager = useMemo(() => ['owner', 'admin'].includes(currentWorkspace.role), [currentWorkspace.role])
-  const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
-  const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
-  const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
+  const isCurrentWorkspaceManager = useMemo(
+    () => ['owner', 'admin'].includes(currentWorkspace.role),
+    [currentWorkspace.role],
+  )
+  const isCurrentWorkspaceOwner = useMemo(
+    () => currentWorkspace.role === 'owner',
+    [currentWorkspace.role],
+  )
+  const isCurrentWorkspaceEditor = useMemo(
+    () => ['owner', 'admin', 'editor'].includes(currentWorkspace.role),
+    [currentWorkspace.role],
+  )
+  const isCurrentWorkspaceDatasetOperator = useMemo(
+    () => currentWorkspace.role === 'dataset_operator',
+    [currentWorkspace.role],
+  )
 
   const mutateUserProfile = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
@@ -107,37 +137,45 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   // #region Zendesk conversation fields
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.ENVIRONMENT && langGeniusVersionInfo?.current_env) {
-      setZendeskConversationFields([{
-        id: ZENDESK_FIELD_IDS.ENVIRONMENT,
-        value: langGeniusVersionInfo.current_env.toLowerCase(),
-      }])
+      setZendeskConversationFields([
+        {
+          id: ZENDESK_FIELD_IDS.ENVIRONMENT,
+          value: langGeniusVersionInfo.current_env.toLowerCase(),
+        },
+      ])
     }
   }, [langGeniusVersionInfo?.current_env])
 
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.VERSION && langGeniusVersionInfo?.version) {
-      setZendeskConversationFields([{
-        id: ZENDESK_FIELD_IDS.VERSION,
-        value: langGeniusVersionInfo.version,
-      }])
+      setZendeskConversationFields([
+        {
+          id: ZENDESK_FIELD_IDS.VERSION,
+          value: langGeniusVersionInfo.version,
+        },
+      ])
     }
   }, [langGeniusVersionInfo?.version])
 
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.EMAIL && userProfile?.email) {
-      setZendeskConversationFields([{
-        id: ZENDESK_FIELD_IDS.EMAIL,
-        value: userProfile.email,
-      }])
+      setZendeskConversationFields([
+        {
+          id: ZENDESK_FIELD_IDS.EMAIL,
+          value: userProfile.email,
+        },
+      ])
     }
   }, [userProfile?.email])
 
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.WORKSPACE_ID && currentWorkspace?.id) {
-      setZendeskConversationFields([{
-        id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-        value: currentWorkspace.id,
-      }])
+      setZendeskConversationFields([
+        {
+          id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+          value: currentWorkspace.id,
+        },
+      ])
     }
   }, [currentWorkspace?.id])
   // #endregion Zendesk conversation fields
@@ -170,20 +208,21 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   }, [userProfile, currentWorkspace])
 
   return (
-    <AppContext.Provider value={{
-      userProfile,
-      mutateUserProfile,
-      langGeniusVersionInfo,
-      useSelector,
-      currentWorkspace,
-      isCurrentWorkspaceManager,
-      isCurrentWorkspaceOwner,
-      isCurrentWorkspaceEditor,
-      isCurrentWorkspaceDatasetOperator,
-      mutateCurrentWorkspace,
-      isLoadingCurrentWorkspace,
-      isValidatingCurrentWorkspace,
-    }}
+    <AppContext.Provider
+      value={{
+        userProfile,
+        mutateUserProfile,
+        langGeniusVersionInfo,
+        useSelector,
+        currentWorkspace,
+        isCurrentWorkspaceManager,
+        isCurrentWorkspaceOwner,
+        isCurrentWorkspaceEditor,
+        isCurrentWorkspaceDatasetOperator,
+        mutateCurrentWorkspace,
+        isLoadingCurrentWorkspace,
+        isValidatingCurrentWorkspace,
+      }}
     >
       <div className="flex h-full flex-col overflow-y-auto">
         {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}

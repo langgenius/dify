@@ -115,7 +115,10 @@ describe('usePipelineRun', () => {
     })
 
     mockGetNodes.mockReturnValue([
-      { id: 'node-1', data: { type: 'start', selected: true, _runningStatus: WorkflowRunningStatus.Running } },
+      {
+        id: 'node-1',
+        data: { type: 'start', selected: true, _runningStatus: WorkflowRunningStatus.Running },
+      },
     ])
 
     mockGetViewport.mockReturnValue({ x: 0, y: 0, zoom: 1 })
@@ -299,7 +302,9 @@ describe('usePipelineRun', () => {
       const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
+        result.current.handleRestoreFromPublishedWorkflow(
+          publishedWorkflow as unknown as VersionHistory,
+        )
       })
 
       expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
@@ -323,7 +328,9 @@ describe('usePipelineRun', () => {
       const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
+        result.current.handleRestoreFromPublishedWorkflow(
+          publishedWorkflow as unknown as VersionHistory,
+        )
       })
 
       expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([{ key: 'ENV', value: 'value' }])
@@ -343,10 +350,14 @@ describe('usePipelineRun', () => {
       const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
+        result.current.handleRestoreFromPublishedWorkflow(
+          publishedWorkflow as unknown as VersionHistory,
+        )
       })
 
-      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([{ variable: 'query', type: 'text-input' }])
+      expect(mockSetRagPipelineVariables).toHaveBeenCalledWith([
+        { variable: 'query', type: 'text-input' },
+      ])
     })
 
     it('should handle empty environment and rag pipeline variables', () => {
@@ -363,7 +374,9 @@ describe('usePipelineRun', () => {
       const { result } = renderHook(() => usePipelineRun())
 
       act(() => {
-        result.current.handleRestoreFromPublishedWorkflow(publishedWorkflow as unknown as VersionHistory)
+        result.current.handleRestoreFromPublishedWorkflow(
+          publishedWorkflow as unknown as VersionHistory,
+        )
       })
 
       expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([])
@@ -762,7 +775,9 @@ describe('usePipelineRun', () => {
       const { result } = renderHook(() => usePipelineRun())
 
       await act(async () => {
-        await result.current.handleRun({ inputs: {} }, { onData: customCallback } as unknown as Parameters<typeof result.current.handleRun>[1])
+        await result.current.handleRun({ inputs: {} }, {
+          onData: customCallback,
+        } as unknown as Parameters<typeof result.current.handleRun>[1])
       })
 
       expect(capturedCallbacks.onData).toBeDefined()

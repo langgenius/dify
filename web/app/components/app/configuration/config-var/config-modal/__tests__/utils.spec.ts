@@ -74,10 +74,12 @@ describe('config-modal utils', () => {
     })
 
     it('should normalize empty select defaults to undefined', () => {
-      const nextPayload = normalizeSelectDefaultValue(createInputVar({
-        type: InputVarType.select,
-        default: '',
-      }))
+      const nextPayload = normalizeSelectDefaultValue(
+        createInputVar({
+          type: InputVarType.select,
+          default: '',
+        }),
+      )
 
       expect(nextPayload.default).toBeUndefined()
     })
@@ -85,9 +87,13 @@ describe('config-modal utils', () => {
     it('should parse checkbox default values and normalize json schema editor content', () => {
       expect(parseCheckboxSelectValue('true')).toBe(true)
       expect(parseCheckboxSelectValue('false')).toBe(false)
-      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(JSON.stringify({ type: 'object' }, null, 2))
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(
+        JSON.stringify({ type: 'object' }, null, 2),
+      )
       expect(getJsonSchemaEditorValue(InputVarType.textInput, '{"type":"object"}')).toBe('')
-      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe('{"type":"object"}')
+      expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe(
+        '{"type":"object"}',
+      )
     })
 
     it('should fall back to an empty editor value when json schema serialization fails', () => {
@@ -110,11 +116,13 @@ describe('config-modal utils', () => {
         t,
       })
 
-      expect(options.map(option => option.value)).toEqual(expect.arrayContaining([
-        InputVarType.singleFile,
-        InputVarType.multiFiles,
-        InputVarType.jsonObject,
-      ]))
+      expect(options.map((option) => option.value)).toEqual(
+        expect.arrayContaining([
+          InputVarType.singleFile,
+          InputVarType.multiFiles,
+          InputVarType.jsonObject,
+        ]),
+      )
     })
 
     it('should derive checkbox defaults from boolean and string values', () => {
@@ -238,10 +246,12 @@ describe('config-modal utils', () => {
       })
 
       expect(result.errorMessage).toBeUndefined()
-      expect(result.payloadToSave).toEqual(expect.objectContaining({
-        json_schema: undefined,
-        variable: 'question_new',
-      }))
+      expect(result.payloadToSave).toEqual(
+        expect.objectContaining({
+          json_schema: undefined,
+          variable: 'question_new',
+        }),
+      )
       expect(result.moreInfo).toEqual({
         type: ChangeType.changeVarName,
         payload: {
@@ -264,9 +274,11 @@ describe('config-modal utils', () => {
         t,
       })
 
-      expect(result.payloadToSave).toEqual(expect.objectContaining({
-        hide: false,
-      }))
+      expect(result.payloadToSave).toEqual(
+        expect.objectContaining({
+          hide: false,
+        }),
+      )
     })
 
     it('should stop validation when the variable name checker rejects the payload', () => {

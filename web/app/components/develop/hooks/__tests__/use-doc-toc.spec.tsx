@@ -3,16 +3,19 @@ import { act, renderHook } from '@testing-library/react'
 import { useDocToc } from '../use-doc-toc'
 
 const mockMatchMedia = (matches: boolean) => {
-  vi.stubGlobal('matchMedia', vi.fn().mockImplementation((query: string) => ({
-    matches,
-    media: query,
-    onchange: null,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })))
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  )
 }
 
 const setupDocument = () => {
@@ -57,10 +60,12 @@ describe('useDocToc', () => {
     setupDocument()
     mockMatchMedia(true)
 
-    const { result } = renderHook(() => useDocToc({
-      appDetail: { id: 'app-1' },
-      locale: 'en',
-    }))
+    const { result } = renderHook(() =>
+      useDocToc({
+        appDetail: { id: 'app-1' },
+        locale: 'en',
+      }),
+    )
 
     act(() => {
       vi.runAllTimers()
@@ -78,13 +83,15 @@ describe('useDocToc', () => {
     const { scrollContainer, intro, details } = setupDocument()
     Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
 
-    intro.getBoundingClientRect = vi.fn(() => ({ top: 500 } as DOMRect))
-    details.getBoundingClientRect = vi.fn(() => ({ top: 300 } as DOMRect))
+    intro.getBoundingClientRect = vi.fn(() => ({ top: 500 }) as DOMRect)
+    details.getBoundingClientRect = vi.fn(() => ({ top: 300 }) as DOMRect)
 
-    const { result } = renderHook(() => useDocToc({
-      appDetail: { id: 'app-1' },
-      locale: 'en',
-    }))
+    const { result } = renderHook(() =>
+      useDocToc({
+        appDetail: { id: 'app-1' },
+        locale: 'en',
+      }),
+    )
 
     act(() => {
       vi.runAllTimers()
@@ -99,10 +106,12 @@ describe('useDocToc', () => {
 
   it('should scroll the container to the clicked heading offset', async () => {
     const { scrollContainer } = setupDocument()
-    const { result } = renderHook(() => useDocToc({
-      appDetail: { id: 'app-1' },
-      locale: 'en',
-    }))
+    const { result } = renderHook(() =>
+      useDocToc({
+        appDetail: { id: 'app-1' },
+        locale: 'en',
+      }),
+    )
 
     act(() => {
       vi.runAllTimers()

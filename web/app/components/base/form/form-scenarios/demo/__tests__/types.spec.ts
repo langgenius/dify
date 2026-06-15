@@ -11,16 +11,18 @@ describe('demo scenario types', () => {
   })
 
   it('should validate a complete user payload', () => {
-    expect(UserSchema.safeParse({
-      name: 'Alice',
-      surname: 'Smith',
-      isAcceptingTerms: true,
-      contact: {
-        email: 'alice@example.com',
-        phone: '',
-        preferredContactMethod: 'email',
-      },
-    }).success).toBe(true)
+    expect(
+      UserSchema.safeParse({
+        name: 'Alice',
+        surname: 'Smith',
+        isAcceptingTerms: true,
+        contact: {
+          email: 'alice@example.com',
+          phone: '',
+          preferredContactMethod: 'email',
+        },
+      }).success,
+    ).toBe(true)
   })
 
   it('should reject invalid user payload', () => {

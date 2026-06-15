@@ -6,27 +6,28 @@ import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datase
 import OperationsDropdown from '../operations-dropdown'
 
 describe('OperationsDropdown', () => {
-  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-    id: 'dataset-1',
-    name: 'Test Dataset',
-    description: 'Test description',
-    provider: 'vendor',
-    permission: DatasetPermission.allTeamMembers,
-    data_source_type: DataSourceType.FILE,
-    indexing_technique: IndexingType.QUALIFIED,
-    embedding_available: true,
-    app_count: 5,
-    document_count: 10,
-    word_count: 1000,
-    updated_at: 1609545600,
-    tags: [],
-    embedding_model: 'text-embedding-ada-002',
-    embedding_model_provider: 'openai',
-    created_by: 'user-1',
-    doc_form: ChunkingMode.text,
-    runtime_mode: 'general',
-    ...overrides,
-  } as DataSet)
+  const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+    ({
+      id: 'dataset-1',
+      name: 'Test Dataset',
+      description: 'Test description',
+      provider: 'vendor',
+      permission: DatasetPermission.allTeamMembers,
+      data_source_type: DataSourceType.FILE,
+      indexing_technique: IndexingType.QUALIFIED,
+      embedding_available: true,
+      app_count: 5,
+      document_count: 10,
+      word_count: 1000,
+      updated_at: 1609545600,
+      tags: [],
+      embedding_model: 'text-embedding-ada-002',
+      embedding_model_provider: 'openai',
+      created_by: 'user-1',
+      doc_form: ChunkingMode.text,
+      runtime_mode: 'general',
+      ...overrides,
+    }) as DataSet
 
   const defaultProps = {
     dataset: createMockDataset(),
@@ -69,16 +70,14 @@ describe('OperationsDropdown', () => {
       render(<OperationsDropdown {...defaultProps} isCurrentWorkspaceDatasetOperator={false} />)
 
       const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      if (triggerButton) fireEvent.click(triggerButton)
     })
 
     it('should hide delete option when is workspace dataset operator', () => {
       render(<OperationsDropdown {...defaultProps} isCurrentWorkspaceDatasetOperator={true} />)
 
       const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      if (triggerButton) fireEvent.click(triggerButton)
     })
 
     it('should show export pipeline when runtime_mode is rag_pipeline', () => {
@@ -86,8 +85,7 @@ describe('OperationsDropdown', () => {
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
       const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      if (triggerButton) fireEvent.click(triggerButton)
     })
 
     it('should hide export pipeline when runtime_mode is not rag_pipeline', () => {
@@ -95,8 +93,7 @@ describe('OperationsDropdown', () => {
       render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
 
       const triggerButton = document.querySelector('[class*="cursor-pointer"]')
-      if (triggerButton)
-        fireEvent.click(triggerButton)
+      if (triggerButton) fireEvent.click(triggerButton)
     })
   })
 
@@ -153,7 +150,9 @@ describe('OperationsDropdown', () => {
 
       render(
         <div>
-          <button type="button" onClick={onOutsideClick}>Outside action</button>
+          <button type="button" onClick={onOutsideClick}>
+            Outside action
+          </button>
           <OperationsDropdown {...defaultProps} />
         </div>,
       )

@@ -21,15 +21,24 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 
 // Mock the Header component (sibling component, not a base component)
 vi.mock('../header', () => ({
-  default: ({ onReset, resetDisabled, onPreview, previewDisabled }: {
+  default: ({
+    onReset,
+    resetDisabled,
+    onPreview,
+    previewDisabled,
+  }: {
     onReset: () => void
     resetDisabled: boolean
     onPreview: () => void
     previewDisabled: boolean
   }) => (
     <div data-testid="form-header">
-      <button data-testid="reset-btn" onClick={onReset} disabled={resetDisabled}>Reset</button>
-      <button data-testid="preview-btn" onClick={onPreview} disabled={previewDisabled}>Preview</button>
+      <button data-testid="reset-btn" onClick={onReset} disabled={resetDisabled}>
+        Reset
+      </button>
+      <button data-testid="preview-btn" onClick={onPreview} disabled={previewDisabled}>
+        Preview
+      </button>
     </div>
   ),
 }))
@@ -40,8 +49,20 @@ const schema = z.object({
 })
 
 const defaultConfigs: BaseConfiguration[] = [
-  { variable: 'name', type: 'text-input', label: 'Name', required: true, showConditions: [] } as BaseConfiguration,
-  { variable: 'value', type: 'text-input', label: 'Value', required: false, showConditions: [] } as BaseConfiguration,
+  {
+    variable: 'name',
+    type: 'text-input',
+    label: 'Name',
+    required: true,
+    showConditions: [],
+  } as BaseConfiguration,
+  {
+    variable: 'value',
+    type: 'text-input',
+    label: 'Value',
+    required: false,
+    showConditions: [],
+  } as BaseConfiguration,
 ]
 
 const defaultProps = {
@@ -72,12 +93,32 @@ describe('Form (process-documents)', () => {
 
     it('should render all configuration fields', () => {
       const configs: BaseConfiguration[] = [
-        { variable: 'a', type: 'text-input', label: 'A', required: false, showConditions: [] } as BaseConfiguration,
-        { variable: 'b', type: 'text-input', label: 'B', required: false, showConditions: [] } as BaseConfiguration,
-        { variable: 'c', type: 'text-input', label: 'C', required: false, showConditions: [] } as BaseConfiguration,
+        {
+          variable: 'a',
+          type: 'text-input',
+          label: 'A',
+          required: false,
+          showConditions: [],
+        } as BaseConfiguration,
+        {
+          variable: 'b',
+          type: 'text-input',
+          label: 'B',
+          required: false,
+          showConditions: [],
+        } as BaseConfiguration,
+        {
+          variable: 'c',
+          type: 'text-input',
+          label: 'C',
+          required: false,
+          showConditions: [],
+        } as BaseConfiguration,
       ]
 
-      render(<Form {...defaultProps} configurations={configs} initialData={{ a: '', b: '', c: '' }} />)
+      render(
+        <Form {...defaultProps} configurations={configs} initialData={{ a: '', b: '', c: '' }} />,
+      )
 
       expect(screen.getByText('A')).toBeInTheDocument()
       expect(screen.getByText('B')).toBeInTheDocument()

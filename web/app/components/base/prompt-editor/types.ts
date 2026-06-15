@@ -3,11 +3,7 @@ import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
-import type {
-  Node,
-  NodeOutPutVar,
-  ValueSelector,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
 
 export type Option = {
   value: string
@@ -65,10 +61,7 @@ export type ExternalToolBlockType = {
   onAddExternalTool?: () => void
 }
 
-export type GetVarType = (payload: {
-  nodeId: string
-  valueSelector: ValueSelector
-}) => Type
+export type GetVarType = (payload: { nodeId: string; valueSelector: ValueSelector }) => Type
 
 export type WorkflowVariableBlockType = {
   show?: boolean
@@ -81,7 +74,12 @@ export type WorkflowVariableBlockType = {
   onManageInputField?: () => void
 }
 
-export type WorkflowNodesMap = Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'> & { modelProvider?: string }>
+export type WorkflowNodesMap = Record<
+  string,
+  Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'> & {
+    modelProvider?: string
+  }
+>
 
 export type HITLInputBlockType = {
   show?: boolean

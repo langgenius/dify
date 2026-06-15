@@ -1,11 +1,7 @@
 import type { FC } from 'react'
 import type { ImageFile, VisionSettings } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TransferMethod } from '@/types/app'
@@ -17,19 +13,12 @@ type UploadOnlyFromLocalProps = {
   disabled?: boolean
   limit?: number
 }
-const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
-  onUpload,
-  disabled,
-  limit,
-}) => {
+const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({ onUpload, disabled, limit }) => {
   return (
     <Uploader onUpload={onUpload} disabled={disabled} limit={limit}>
-      {hovering => (
+      {(hovering) => (
         <div
-          className={`
-            relative flex size-8 cursor-pointer items-center justify-center rounded-lg
-            ${hovering && 'bg-gray-100'}
-          `}
+          className={`relative flex size-8 cursor-pointer items-center justify-center rounded-lg ${hovering && 'bg-gray-100'} `}
         >
           <span className="i-custom-vender-line-images-image-plus size-4 text-gray-500" />
         </div>
@@ -44,18 +33,11 @@ type UploaderButtonProps = {
   disabled?: boolean
   limit?: number
 }
-const UploaderButton: FC<UploaderButtonProps> = ({
-  methods,
-  onUpload,
-  disabled,
-  limit,
-}) => {
+const UploaderButton: FC<UploaderButtonProps> = ({ methods, onUpload, disabled, limit }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const hasUploadFromLocal = methods.find(
-    method => method === TransferMethod.local_file,
-  )
+  const hasUploadFromLocal = methods.find((method) => method === TransferMethod.local_file)
 
   const handleUpload = (imageFile: ImageFile) => {
     onUpload(imageFile)
@@ -67,13 +49,12 @@ const UploaderButton: FC<UploaderButtonProps> = ({
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
-        if (disabled)
-          return
+        if (disabled) return
         setOpen(nextOpen)
       }}
     >
       <PopoverTrigger
-        render={(
+        render={
           <button
             type="button"
             disabled={disabled}
@@ -81,7 +62,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
           >
             <span className="i-custom-vender-line-images-image-plus size-4 text-gray-500" />
           </button>
-        )}
+        }
       />
       <PopoverContent
         placement="top-start"
@@ -97,12 +78,8 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                 OR
                 <div className="ml-3 h-px w-[93px] bg-linear-to-r from-[#F3F4F6]" />
               </div>
-              <Uploader
-                onUpload={handleUpload}
-                limit={limit}
-                closePopover={closePopover}
-              >
-                {hovering => (
+              <Uploader onUpload={handleUpload} limit={limit} closePopover={closePopover}>
+                {(hovering) => (
                   <div
                     className={cn(
                       'flex h-8 cursor-pointer items-center justify-center rounded-lg text-[13px] font-medium text-[#155EEF]',
@@ -127,14 +104,10 @@ type ChatImageUploaderProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
 }
-const ChatImageUploader: FC<ChatImageUploaderProps> = ({
-  settings,
-  onUpload,
-  disabled,
-}) => {
-  const onlyUploadLocal
-    = settings.transfer_methods.length === 1
-      && settings.transfer_methods[0] === TransferMethod.local_file
+const ChatImageUploader: FC<ChatImageUploaderProps> = ({ settings, onUpload, disabled }) => {
+  const onlyUploadLocal =
+    settings.transfer_methods.length === 1 &&
+    settings.transfer_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (

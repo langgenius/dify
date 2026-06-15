@@ -62,7 +62,12 @@ const triggerKeyPress = (combo: string) => {
   }
 }
 
-let mockQueryResult = { data: [] as TestSearchResult[], isLoading: false, isError: false, error: null as Error | null }
+let mockQueryResult = {
+  data: [] as TestSearchResult[],
+  isLoading: false,
+  isError: false,
+  error: null as Error | null,
+}
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => mockQueryResult,
 }))
@@ -126,11 +131,19 @@ vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
 }))
 
 vi.mock('../../plugins/install-plugin/install-from-marketplace', () => ({
-  default: (props: { manifest?: { name?: string }, onClose: () => void, onSuccess: () => void }) => (
+  default: (props: {
+    manifest?: { name?: string }
+    onClose: () => void
+    onSuccess: () => void
+  }) => (
     <div data-testid="install-modal">
       <span>{props.manifest?.name}</span>
-      <button onClick={props.onClose} data-testid="close-install">close</button>
-      <button onClick={props.onSuccess} data-testid="success-install">success</button>
+      <button onClick={props.onClose} data-testid="close-install">
+        close
+      </button>
+      <button onClick={props.onSuccess} data-testid="success-install">
+        success
+      </button>
     </div>
   ),
 }))
@@ -138,17 +151,13 @@ vi.mock('../../plugins/install-plugin/install-from-marketplace', () => ({
 const renderGotoAnything = (ui: React.ReactElement) => {
   const store = createStore()
 
-  return render(
-    <Provider store={store}>
-      {ui}
-    </Provider>,
-  )
+  return render(<Provider store={store}>{ui}</Provider>)
 }
 
 describe('GotoAnything', () => {
   beforeEach(() => {
     routerPush.mockClear()
-    Object.keys(hotkeyHandlers).forEach(key => delete hotkeyHandlers[key])
+    Object.keys(hotkeyHandlers).forEach((key) => delete hotkeyHandlers[key])
     mockQueryResult = { data: [], isLoading: false, isError: false, error: null }
     matchActionMock.mockReset()
     searchAnythingMock.mockClear()
@@ -162,7 +171,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -172,12 +183,16 @@ describe('GotoAnything', () => {
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
+        expect(
+          screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -186,12 +201,16 @@ describe('GotoAnything', () => {
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
+        expect(
+          screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -202,7 +221,9 @@ describe('GotoAnything', () => {
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       await user.keyboard('{Escape}')
@@ -217,7 +238,9 @@ describe('GotoAnything', () => {
 
       triggerKeyPress('ctrl.k')
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -225,7 +248,9 @@ describe('GotoAnything', () => {
 
       await user.keyboard('{Escape}')
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
+        expect(
+          screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).not.toBeInTheDocument()
       })
 
       triggerKeyPress('ctrl.k')
@@ -240,15 +265,17 @@ describe('GotoAnything', () => {
     it('should navigate to selected result', async () => {
       const user = userEvent.setup()
       mockQueryResult = {
-        data: [{
-          id: 'app-1',
-          type: 'app',
-          title: 'Sample App',
-          description: 'desc',
-          path: '/apps/1',
-          icon: <div data-testid="icon">🧩</div>,
-          data: {},
-        }],
+        data: [
+          {
+            id: 'app-1',
+            type: 'app',
+            title: 'Sample App',
+            description: 'desc',
+            path: '/apps/1',
+            icon: <div data-testid="icon">🧩</div>,
+            data: {},
+          },
+        ],
         isLoading: false,
         isError: false,
         error: null,
@@ -258,7 +285,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -276,7 +305,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -300,7 +331,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -324,7 +357,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -338,7 +373,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       expect(screen.getByText('app.gotoAnything.searchTitle')).toBeInTheDocument()
@@ -357,7 +394,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -371,18 +410,20 @@ describe('GotoAnything', () => {
     it('should open plugin installer when selecting plugin result', async () => {
       const user = userEvent.setup()
       mockQueryResult = {
-        data: [{
-          id: 'plugin-1',
-          type: 'plugin',
-          title: 'Plugin Item',
-          description: 'desc',
-          path: '',
-          icon: <div />,
-          data: {
-            name: 'Plugin Item',
-            latest_package_identifier: 'pkg',
+        data: [
+          {
+            id: 'plugin-1',
+            type: 'plugin',
+            title: 'Plugin Item',
+            description: 'desc',
+            path: '',
+            icon: <div />,
+            data: {
+              name: 'Plugin Item',
+              latest_package_identifier: 'pkg',
+            },
           },
-        }],
+        ],
         isLoading: false,
         isError: false,
         error: null,
@@ -392,7 +433,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -407,18 +450,20 @@ describe('GotoAnything', () => {
     it('should close plugin installer via close button', async () => {
       const user = userEvent.setup()
       mockQueryResult = {
-        data: [{
-          id: 'plugin-1',
-          type: 'plugin',
-          title: 'Plugin Item',
-          description: 'desc',
-          path: '',
-          icon: <div />,
-          data: {
-            name: 'Plugin Item',
-            latest_package_identifier: 'pkg',
+        data: [
+          {
+            id: 'plugin-1',
+            type: 'plugin',
+            title: 'Plugin Item',
+            description: 'desc',
+            path: '',
+            icon: <div />,
+            data: {
+              name: 'Plugin Item',
+              latest_package_identifier: 'pkg',
+            },
           },
-        }],
+        ],
         isLoading: false,
         isError: false,
         error: null,
@@ -428,7 +473,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -448,18 +495,20 @@ describe('GotoAnything', () => {
     it('should close plugin installer on success', async () => {
       const user = userEvent.setup()
       mockQueryResult = {
-        data: [{
-          id: 'plugin-1',
-          type: 'plugin',
-          title: 'Plugin Item',
-          description: 'desc',
-          path: '',
-          icon: <div />,
-          data: {
-            name: 'Plugin Item',
-            latest_package_identifier: 'pkg',
+        data: [
+          {
+            id: 'plugin-1',
+            type: 'plugin',
+            title: 'Plugin Item',
+            description: 'desc',
+            path: '',
+            icon: <div />,
+            data: {
+              name: 'Plugin Item',
+              latest_package_identifier: 'pkg',
+            },
           },
-        }],
+        ],
         isLoading: false,
         isError: false,
         error: null,
@@ -469,7 +518,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -501,7 +552,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -524,7 +577,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -546,7 +601,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -568,7 +625,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -576,7 +635,9 @@ describe('GotoAnything', () => {
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder')).not.toBeInTheDocument()
+        expect(
+          screen.queryByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -585,15 +646,17 @@ describe('GotoAnything', () => {
     it('should handle knowledge result navigation', async () => {
       const user = userEvent.setup()
       mockQueryResult = {
-        data: [{
-          id: 'kb-1',
-          type: 'knowledge',
-          title: 'Knowledge Base',
-          description: 'desc',
-          path: '/datasets/kb-1',
-          icon: <div />,
-          data: {},
-        }],
+        data: [
+          {
+            id: 'kb-1',
+            type: 'knowledge',
+            title: 'Knowledge Base',
+            description: 'desc',
+            path: '/datasets/kb-1',
+            icon: <div />,
+            data: {},
+          },
+        ],
         isLoading: false,
         isError: false,
         error: null,
@@ -603,7 +666,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')
@@ -618,15 +683,17 @@ describe('GotoAnything', () => {
     it('should NOT navigate when result has no path', async () => {
       const user = userEvent.setup()
       mockQueryResult = {
-        data: [{
-          id: 'item-1',
-          type: 'app',
-          title: 'No Path Item',
-          description: 'desc',
-          path: '',
-          icon: <div />,
-          data: {},
-        }],
+        data: [
+          {
+            id: 'item-1',
+            type: 'app',
+            title: 'No Path Item',
+            description: 'desc',
+            path: '',
+            icon: <div />,
+            data: {},
+          },
+        ],
         isLoading: false,
         isError: false,
         error: null,
@@ -636,7 +703,9 @@ describe('GotoAnything', () => {
       triggerKeyPress('ctrl.k')
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
+        ).toBeInTheDocument()
       })
 
       const input = screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder')

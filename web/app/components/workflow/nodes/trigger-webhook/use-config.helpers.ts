@@ -14,7 +14,10 @@ type SanitizedEntry = {
 
 type NotifyError = (key: string) => void
 
-const sanitizeEntryName = (item: WebhookParameter | WebhookHeader, sourceType: VariableSyncSource) => {
+const sanitizeEntryName = (
+  item: WebhookParameter | WebhookHeader,
+  sourceType: VariableSyncSource,
+) => {
   return sourceType === 'header' ? item.name.replace(/-/g, '_') : item.name
 }
 
@@ -22,7 +25,7 @@ const getSanitizedEntries = (
   newData: (WebhookParameter | WebhookHeader)[],
   sourceType: VariableSyncSource,
 ): SanitizedEntry[] => {
-  return newData.map(item => ({
+  return newData.map((item) => ({
     item,
     sanitizedName: sanitizeEntryName(item, sourceType),
   }))
@@ -61,28 +64,29 @@ export const syncVariables = ({
   isVarUsedInNodes: (selector: [string, string]) => boolean
   removeUsedVarInNodes: (selector: [string, string]) => void
 }) => {
-  if (!draft.variables)
-    draft.variables = []
+  if (!draft.variables) draft.variables = []
 
   const sanitizedEntries = getSanitizedEntries(newData, sourceType)
-  if (sanitizedEntries.some(entry => entry.sanitizedName === WEBHOOK_RAW_VARIABLE_NAME)) {
+  if (sanitizedEntries.some((entry) => entry.sanitizedName === WEBHOOK_RAW_VARIABLE_NAME)) {
     notifyError('variableConfig.varName')
     return false
   }
 
   const existingOtherVarNames = new Set(
     draft.variables
-      .filter(v => v.label !== sourceType && v.variable !== WEBHOOK_RAW_VARIABLE_NAME)
-      .map(v => v.variable),
+      .filter((v) => v.label !== sourceType && v.variable !== WEBHOOK_RAW_VARIABLE_NAME)
+      .map((v) => v.variable),
   )
 
-  const crossScopeConflict = sanitizedEntries.find(entry => existingOtherVarNames.has(entry.sanitizedName))
+  const crossScopeConflict = sanitizedEntries.find((entry) =>
+    existingOtherVarNames.has(entry.sanitizedName),
+  )
   if (crossScopeConflict) {
     notifyError(crossScopeConflict.sanitizedName)
     return false
   }
 
-  if (hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
+  if (hasDuplicateStr(sanitizedEntries.map((entry) => entry.sanitizedName))) {
     notifyError('variableConfig.varName')
     return false
   }
@@ -95,45 +99,41 @@ export const syncVariables = ({
     }
   }
 
-  const nextNames = new Set(sanitizedEntries.map(entry => entry.sanitizedName))
+  const nextNames = new Set(sanitizedEntries.map((entry) => entry.sanitizedName))
   draft.variables
-    .filter(v => v.label === sourceType && !nextNames.has(v.variable))
+    .filter((v) => v.label === sourceType && !nextNames.has(v.variable))
     .forEach((variable) => {
-      if (isVarUsedInNodes([id, variable.variable]))
-        removeUsedVarInNodes([id, variable.variable])
+      if (isVarUsedInNodes([id, variable.variable])) removeUsedVarInNodes([id, variable.variable])
     })
 
   draft.variables = draft.variables.filter((variable) => {
-    if (variable.label !== sourceType)
-      return true
+    if (variable.label !== sourceType) return true
     return nextNames.has(variable.variable)
   })
 
   sanitizedEntries.forEach(({ item, sanitizedName }) => {
-    const existingVarIndex = draft.variables.findIndex(v => v.variable === sanitizedName)
+    const existingVarIndex = draft.variables.findIndex((v) => v.variable === sanitizedName)
     const variable = createVariable(item, sourceType, sanitizedName)
-    if (existingVarIndex >= 0)
-      draft.variables[existingVarIndex] = variable
-    else
-      draft.variables.push(variable)
+    if (existingVarIndex >= 0) draft.variables[existingVarIndex] = variable
+    else draft.variables.push(variable)
   })
 
   return true
 }
 
-export const updateMethod = (inputs: WebhookTriggerNodeType, method: HttpMethod) => produce(inputs, (draft) => {
-  draft.method = method
-})
+export const updateMethod = (inputs: WebhookTriggerNodeType, method: HttpMethod) =>
+  produce(inputs, (draft) => {
+    draft.method = method
+  })
 
-export const updateSimpleField = <
-  K extends 'async_mode' | 'status_code' | 'response_body',
->(
+export const updateSimpleField = <K extends 'async_mode' | 'status_code' | 'response_body'>(
   inputs: WebhookTriggerNodeType,
   key: K,
   value: WebhookTriggerNodeType[K],
-) => produce(inputs, (draft) => {
-  draft[key] = value
-})
+) =>
+  produce(inputs, (draft) => {
+    draft[key] = value
+  })
 
 export const updateContentType = ({
   inputs,
@@ -147,26 +147,24 @@ export const updateContentType = ({
   contentType: string
   isVarUsedInNodes: (selector: [string, string]) => boolean
   removeUsedVarInNodes: (selector: [string, string]) => void
-}) => produce(inputs, (draft) => {
-  const previousContentType = draft.content_type
-  draft.content_type = contentType
+}) =>
+  produce(inputs, (draft) => {
+    const previousContentType = draft.content_type
+    draft.content_type = contentType
 
-  if (previousContentType === contentType)
-    return
+    if (previousContentType === contentType) return
 
-  draft.body = []
-  if (!draft.variables)
-    return
+    draft.body = []
+    if (!draft.variables) return
 
-  draft.variables
-    .filter(v => v.label === 'body')
-    .forEach((variable) => {
-      if (isVarUsedInNodes([id, variable.variable]))
-        removeUsedVarInNodes([id, variable.variable])
-    })
+    draft.variables
+      .filter((v) => v.label === 'body')
+      .forEach((variable) => {
+        if (isVarUsedInNodes([id, variable.variable])) removeUsedVarInNodes([id, variable.variable])
+      })
 
-  draft.variables = draft.variables.filter(v => v.label !== 'body')
-})
+    draft.variables = draft.variables.filter((v) => v.label !== 'body')
+  })
 
 type SourceField = 'params' | 'headers' | 'body'
 
@@ -197,24 +195,26 @@ export const updateSourceFields = ({
   notifyError: NotifyError
   isVarUsedInNodes: (selector: [string, string]) => boolean
   removeUsedVarInNodes: (selector: [string, string]) => void
-}) => produce(inputs, (draft) => {
-  draft[getSourceField(sourceType)] = nextData as never
-  syncVariables({
-    draft,
-    id,
-    newData: nextData,
-    sourceType,
-    notifyError,
-    isVarUsedInNodes,
-    removeUsedVarInNodes,
+}) =>
+  produce(inputs, (draft) => {
+    draft[getSourceField(sourceType)] = nextData as never
+    syncVariables({
+      draft,
+      id,
+      newData: nextData,
+      sourceType,
+      notifyError,
+      isVarUsedInNodes,
+      removeUsedVarInNodes,
+    })
   })
-})
 
 export const updateWebhookUrls = (
   inputs: WebhookTriggerNodeType,
   webhookUrl: string,
   webhookDebugUrl?: string,
-) => produce(inputs, (draft) => {
-  draft.webhook_url = webhookUrl
-  draft.webhook_debug_url = webhookDebugUrl
-})
+) =>
+  produce(inputs, (draft) => {
+    draft.webhook_url = webhookUrl
+    draft.webhook_debug_url = webhookDebugUrl
+  })

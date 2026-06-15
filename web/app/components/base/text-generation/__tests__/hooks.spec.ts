@@ -3,7 +3,14 @@ import { act, renderHook } from '@testing-library/react'
 import { useTextGeneration } from '../hooks'
 
 const mockNotify = vi.fn()
-const mockSsePost = vi.fn<(url: string, fetchOptions: { body: Record<string, unknown> }, otherOptions: IOtherOptions) => void>()
+const mockSsePost =
+  vi.fn<
+    (
+      url: string,
+      fetchOptions: { body: Record<string, unknown> },
+      otherOptions: IOtherOptions,
+    ) => void
+  >()
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: {
@@ -23,8 +30,7 @@ vi.mock('@/service/base', () => ({
 
 const getLatestStreamOptions = (): IOtherOptions => {
   const latestCall = mockSsePost.mock.calls[mockSsePost.mock.calls.length - 1]
-  if (!latestCall)
-    throw new Error('Expected ssePost to be called at least once')
+  if (!latestCall) throw new Error('Expected ssePost to be called at least once')
   return latestCall[2]
 }
 
@@ -110,7 +116,9 @@ describe('useTextGeneration', () => {
         streamOptions.onData?.('Old content', true, { messageId: 'message-2' })
       })
 
-      const replaceMessage = { answer: 'New content' } as Parameters<NonNullable<IOtherOptions['onMessageReplace']>>[0]
+      const replaceMessage = { answer: 'New content' } as Parameters<
+        NonNullable<IOtherOptions['onMessageReplace']>
+      >[0]
       act(() => {
         streamOptions.onMessageReplace?.(replaceMessage)
       })

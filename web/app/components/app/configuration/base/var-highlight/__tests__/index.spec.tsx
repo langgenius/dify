@@ -40,7 +40,7 @@ describe('VarHighlight', () => {
   describe('varHighlightHTML', () => {
     it('should escape dangerous characters before returning HTML string', () => {
       // Arrange
-      const props = { name: '<script>alert(\'xss\')</script>' }
+      const props = { name: "<script>alert('xss')</script>" }
 
       // Act
       const html = varHighlightHTML(props)

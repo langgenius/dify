@@ -9,11 +9,13 @@ export const trialAppInfoContract = base
     path: '/trial-apps/{appId}',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<TryAppInfo>())
 
 export const trialAppDatasetsContract = base
@@ -21,14 +23,16 @@ export const trialAppDatasetsContract = base
     path: '/trial-apps/{appId}/datasets',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-    query: {
-      ids: string[]
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+      query: {
+        ids: string[]
+      }
+    }>(),
+  )
   .output(type<DataSetListResponse>())
 
 export const trialAppWorkflowsContract = base
@@ -36,11 +40,13 @@ export const trialAppWorkflowsContract = base
     path: '/trial-apps/{appId}/workflows',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<TryAppFlowPreview>())
 
 export const trialAppParametersContract = base
@@ -48,9 +54,11 @@ export const trialAppParametersContract = base
     path: '/trial-apps/{appId}/parameters',
     method: 'GET',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<ChatConfig>())

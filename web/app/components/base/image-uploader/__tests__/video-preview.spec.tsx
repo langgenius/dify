@@ -97,7 +97,7 @@ describe('VideoPreview', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty url', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       render(<VideoPreview {...defaultProps} url="" />)
 
       const source = screen.getByTestId('video-element').querySelector('source')

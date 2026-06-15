@@ -26,8 +26,12 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.Answer]).toBeDefined()
     expect(result.current.nodesMap?.[BlockEnum.End]).toBeUndefined()
     expect(result.current.nodesMap?.[BlockEnum.TriggerWebhook]).toBeUndefined()
-    expect(result.current.nodesMap?.[BlockEnum.VariableAssigner]).toBe(result.current.nodesMap?.[BlockEnum.VariableAggregator])
-    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toContain('/docs/use-dify/nodes/')
+    expect(result.current.nodesMap?.[BlockEnum.VariableAssigner]).toBe(
+      result.current.nodesMap?.[BlockEnum.VariableAggregator],
+    )
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toContain(
+      '/docs/use-dify/nodes/',
+    )
   })
 
   it('should include workflow-specific trigger and end nodes outside chat mode', () => {

@@ -5,14 +5,12 @@ const DefaultCards = React.memo(() => {
   const renderArray = Array.from({ length: 36 })
   return (
     <>
-      {
-        renderArray.map((_, index) => (
-          <div
-            key={index}
-            className="inline-flex h-[160px] rounded-xl bg-background-default-lighter"
-          />
-        ))
-      }
+      {renderArray.map((_, index) => (
+        <div
+          key={index}
+          className="inline-flex h-[160px] rounded-xl bg-background-default-lighter"
+        />
+      ))}
     </>
   )
 })

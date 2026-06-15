@@ -65,7 +65,9 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
 
     it('should not render external link for cloud version', () => {
       const { container } = scenarios.withAPIKeyNotSet()
-      expect(container.querySelector('a[href="https://cloud.dify.ai/apps"]')).not.toBeInTheDocument()
+      expect(
+        container.querySelector('a[href="https://cloud.dify.ai/apps"]'),
+      ).not.toBeInTheDocument()
     })
 
     it('should display set API button text', () => {

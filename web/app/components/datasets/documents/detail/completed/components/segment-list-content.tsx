@@ -42,10 +42,11 @@ export const FullDocModeContent: FC<FullDocModeContentProps> = ({
   const firstSegment = segments[0]
 
   return (
-    <div className={cn(
-      'flex grow flex-col overflow-x-hidden',
-      (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
-    )}
+    <div
+      className={cn(
+        'flex grow flex-col overflow-x-hidden',
+        isLoadingSegmentList || isLoadingChildSegmentList ? 'overflow-y-hidden' : 'overflow-y-auto',
+      )}
     >
       <SegmentCard
         detail={firstSegment}

@@ -2,18 +2,18 @@
 
 ## Context
 
-HITL standalone forms can be opened directly through a form link and do not require the 
-submitter to sign in through the Web App. After `file` and `file-list` inputs were introduced, 
+HITL standalone forms can be opened directly through a form link and do not require the
+submitter to sign in through the Web App. After `file` and `file-list` inputs were introduced,
 this standalone entry point also needed file upload support.
 
 This entry point has a different identity model from the existing upload paths:
 
 - Web App upload is backed by Web App authentication and an `EndUser` context.
 - Service API upload is backed by API key authentication and the `user` parameter.
-- HITL standalone form submission is link-based and anonymous from the product perspective. 
+- HITL standalone form submission is link-based and anonymous from the product perspective.
   The standalone submitter is not necessarily the workflow or chatflow initiator.
 
-The goal is therefore not to add another general-purpose upload channel. The goal is to 
+The goal is therefore not to add another general-purpose upload channel. The goal is to
 provide a constrained, short-lived upload capability that is scoped to one HITL form submission.
 
 ## Goals
@@ -28,26 +28,26 @@ provide a constrained, short-lived upload capability that is scoped to one HITL 
 
 ## Decision
 
-HITL standalone upload uses a dedicated upload token that is bound to a form 
+HITL standalone upload uses a dedicated upload token that is bound to a form
 recipient. The token authorizes file upload only while the related form is still valid.
 
-Files uploaded through the HITL standalone page are recorded under the workflow or 
+Files uploaded through the HITL standalone page are recorded under the workflow or
 chatflow initiator, not under the anonymous standalone submitter and not under a technical HITL `EndUser`.
 
-This keeps workflow resume aligned with the existing execution model: one initiator owns the 
-workflow run context, and file restoration continues to resolve files through that initiator's 
-access scope. HITL-specific form/token/file relationships remain available for audit and tracing, 
+This keeps workflow resume aligned with the existing execution model: one initiator owns the
+workflow run context, and file restoration continues to resolve files through that initiator's
+access scope. HITL-specific form/token/file relationships remain available for audit and tracing,
 but they do not become the source of truth for file access control.
 
 ## API Shape
 
 HITL standalone upload has three endpoint categories:
 
-| Purpose | HITL endpoint | Aligned Web App endpoint |
-| --- | --- | --- |
-| Issue upload token | `POST /api/form/human_input/{form_token}/upload-token` | No direct equivalent |
-| Upload local file | `POST /api/form/human_input/files/upload` | `POST /api/files/upload` |
-| Upload remote file | `POST /api/form/human_input/files/remote-upload` | `POST /api/remote-files/upload` |
+| Purpose            | HITL endpoint                                          | Aligned Web App endpoint        |
+| ------------------ | ------------------------------------------------------ | ------------------------------- |
+| Issue upload token | `POST /api/form/human_input/{form_token}/upload-token` | No direct equivalent            |
+| Upload local file  | `POST /api/form/human_input/files/upload`              | `POST /api/files/upload`        |
+| Upload remote file | `POST /api/form/human_input/files/remote-upload`       | `POST /api/remote-files/upload` |
 
 Local upload follows the Web App `POST /api/files/upload` parameter shape:
 
@@ -59,8 +59,8 @@ Remote upload follows the Web App `POST /api/remote-files/upload` parameter shap
 - `application/json`
 - Required `url`
 
-HITL upload endpoints do not accept the Service API `user` parameter. That parameter 
-belongs to the Service API `EndUser` mapping model and does not represent the anonymous 
+HITL upload endpoints do not accept the Service API `user` parameter. That parameter
+belongs to the Service API `EndUser` mapping model and does not represent the anonymous
 standalone form submitter.
 
 ## Upload Token
@@ -77,7 +77,7 @@ Upload requests carry the token through the `Authorization` header:
 Authorization: bearer hitl_upload_{random_value}
 ```
 
-The `hitl_upload_` prefix only distinguishes this credential from other bearer token types. 
+The `hitl_upload_` prefix only distinguishes this credential from other bearer token types.
 Security comes from the high-entropy random value, server-side hash storage, and server-side state validation.
 
 The token is bound to at least:

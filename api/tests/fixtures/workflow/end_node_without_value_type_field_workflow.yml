@@ -14,17 +14,17 @@ workflow:
   features:
     file_upload:
       allowed_file_extensions:
-      - .JPG
-      - .JPEG
-      - .PNG
-      - .GIF
-      - .WEBP
-      - .SVG
+        - .JPG
+        - .JPEG
+        - .PNG
+        - .GIF
+        - .WEBP
+        - .SVG
       allowed_file_types:
-      - image
+        - image
       allowed_file_upload_methods:
-      - local_file
-      - remote_url
+        - local_file
+        - remote_url
       enabled: false
       fileUploadConfig:
         audio_file_size_limit: 50
@@ -39,8 +39,8 @@ workflow:
         enabled: false
         number_limits: 3
         transfer_methods:
-        - local_file
-        - remote_url
+          - local_file
+          - remote_url
       number_limits: 3
     opening_statement: ''
     retriever_resource:
@@ -58,68 +58,68 @@ workflow:
       voice: ''
   graph:
     edges:
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: start
-        targetType: end
-      id: 1765423445456-source-1765423454810-target
-      source: '1765423445456'
-      sourceHandle: source
-      target: '1765423454810'
-      targetHandle: target
-      type: custom
-      zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: end
+        id: 1765423445456-source-1765423454810-target
+        source: '1765423445456'
+        sourceHandle: source
+        target: '1765423454810'
+        targetHandle: target
+        type: custom
+        zIndex: 0
     nodes:
-    - data:
+      - data:
+          selected: false
+          title: 用户输入
+          type: start
+          variables:
+            - default: ''
+              hint: ''
+              label: query
+              max_length: 48
+              options: []
+              placeholder: ''
+              required: true
+              type: text-input
+              variable: query
+        height: 109
+        id: '1765423445456'
+        position:
+          x: -48
+          y: 261
+        positionAbsolute:
+          x: -48
+          y: 261
         selected: false
-        title: 用户输入
-        type: start
-        variables:
-        - default: ''
-          hint: ''
-          label: query
-          max_length: 48
-          options: []
-          placeholder: ''
-          required: true
-          type: text-input
-          variable: query
-      height: 109
-      id: '1765423445456'
-      position:
-        x: -48
-        y: 261
-      positionAbsolute:
-        x: -48
-        y: 261
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
-    - data:
-        outputs:
-        - value_selector:
-          - '1765423445456'
-          - query
-          variable: query
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+      - data:
+          outputs:
+            - value_selector:
+                - '1765423445456'
+                - query
+              variable: query
+          selected: true
+          title: 输出
+          type: end
+        height: 88
+        id: '1765423454810'
+        position:
+          x: 382
+          y: 282
+        positionAbsolute:
+          x: 382
+          y: 282
         selected: true
-        title: 输出
-        type: end
-      height: 88
-      id: '1765423454810'
-      position:
-        x: 382
-        y: 282
-      positionAbsolute:
-        x: 382
-        y: 282
-      selected: true
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 242
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
     viewport:
       x: 139
       y: -135

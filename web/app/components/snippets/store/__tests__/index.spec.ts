@@ -15,10 +15,7 @@ describe('useSnippetDetailStore', () => {
   })
 
   it('should store and reset snippet input fields', () => {
-    const fields = [
-      createField('topic'),
-      createField('audience'),
-    ]
+    const fields = [createField('topic'), createField('audience')]
 
     useSnippetDetailStore.getState().setFields(fields)
 

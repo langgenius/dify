@@ -13,7 +13,14 @@ describe('Field', () => {
     it('should render label with correct styling', () => {
       render(<Field label="My Label">Content</Field>)
       const labelElement = screen.getByText('My Label')
-      expect(labelElement).toHaveClass('system-xs-medium', 'w-[128px]', 'shrink-0', 'truncate', 'py-1', 'text-text-tertiary')
+      expect(labelElement).toHaveClass(
+        'system-xs-medium',
+        'w-[128px]',
+        'shrink-0',
+        'truncate',
+        'py-1',
+        'text-text-tertiary',
+      )
     })
 
     it('should render children in correct container', () => {
@@ -91,7 +98,11 @@ describe('Field', () => {
     })
 
     it('should render with empty children', () => {
-      const { container } = render(<Field label="Label"><span></span></Field>)
+      const { container } = render(
+        <Field label="Label">
+          <span></span>
+        </Field>,
+      )
       expect(container.firstChild).toBeInTheDocument()
     })
 

@@ -8,12 +8,14 @@ type SuggestedActionButton = {
   onClick: (event: ReactMouseEvent<HTMLButtonElement>) => void
 }
 
-type SuggestedActionProps = PropsWithChildren<HTMLProps<HTMLAnchorElement> & {
-  icon?: React.ReactNode
-  link?: string
-  disabled?: boolean
-  actionButton?: SuggestedActionButton
-}>
+type SuggestedActionProps = PropsWithChildren<
+  HTMLProps<HTMLAnchorElement> & {
+    icon?: React.ReactNode
+    link?: string
+    disabled?: boolean
+    actionButton?: SuggestedActionButton
+  }
+>
 
 const SuggestedAction = ({
   icon,
@@ -50,8 +52,12 @@ const SuggestedAction = ({
       rel="noreferrer"
       className={cn(
         'flex min-w-0 items-center justify-start gap-2 px-2.5 py-2 text-text-secondary transition-colors',
-        actionButton ? 'flex-1 rounded-l-lg' : 'rounded-lg bg-background-section-burn not-first:mt-1',
-        disabled ? 'cursor-not-allowed opacity-30 shadow-xs' : 'cursor-pointer hover:bg-state-accent-hover hover:text-text-accent',
+        actionButton
+          ? 'flex-1 rounded-l-lg'
+          : 'rounded-lg bg-background-section-burn not-first:mt-1',
+        disabled
+          ? 'cursor-not-allowed opacity-30 shadow-xs'
+          : 'cursor-pointer hover:bg-state-accent-hover hover:text-text-accent',
       )}
       onClick={handleClick}
       {...props}
@@ -62,8 +68,7 @@ const SuggestedAction = ({
     </a>
   )
 
-  if (!actionButton)
-    return mainAction
+  if (!actionButton) return mainAction
 
   return (
     <div
@@ -80,7 +85,9 @@ const SuggestedAction = ({
         disabled={disabled}
         className={cn(
           'flex w-9 shrink-0 items-center justify-center rounded-r-lg border-l-[0.5px] border-divider-subtle text-text-tertiary transition-colors',
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-state-accent-hover hover:text-text-accent',
+          disabled
+            ? 'cursor-not-allowed'
+            : 'cursor-pointer hover:bg-state-accent-hover hover:text-text-accent',
         )}
         onClick={handleActionClick}
       >

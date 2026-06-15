@@ -4,8 +4,7 @@ import DownloadCount from '../download-count'
 
 vi.mock('@/utils/format', () => ({
   formatNumber: (n: number) => {
-    if (n >= 1000)
-      return `${(n / 1000).toFixed(1)}k`
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
     return String(n)
   },
 }))

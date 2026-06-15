@@ -101,9 +101,8 @@ describe('Test Run Flow Integration', () => {
 
   describe('Step Navigation', () => {
     it('should start at step 1 and navigate forward', async () => {
-      const { useTestRunSteps } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useTestRunSteps } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useTestRunSteps())
 
       expect(result.current.currentStep).toBe(1)
@@ -116,9 +115,8 @@ describe('Test Run Flow Integration', () => {
     })
 
     it('should navigate back from step 2 to step 1', async () => {
-      const { useTestRunSteps } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useTestRunSteps } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useTestRunSteps())
 
       act(() => {
@@ -133,9 +131,8 @@ describe('Test Run Flow Integration', () => {
     })
 
     it('should provide labeled steps', async () => {
-      const { useTestRunSteps } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useTestRunSteps } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useTestRunSteps())
 
       expect(result.current.steps).toHaveLength(2)
@@ -146,9 +143,8 @@ describe('Test Run Flow Integration', () => {
 
   describe('Datasource Options', () => {
     it('should filter nodes to only DataSource type', async () => {
-      const { useDatasourceOptions } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useDatasourceOptions } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useDatasourceOptions())
 
       // Should only include DataSource nodes, not KnowledgeBase
@@ -158,9 +154,8 @@ describe('Test Run Flow Integration', () => {
     })
 
     it('should include node data in options', async () => {
-      const { useDatasourceOptions } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useDatasourceOptions } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useDatasourceOptions())
 
       expect(result.current[0]!.label).toBe('Local Files')
@@ -170,9 +165,8 @@ describe('Test Run Flow Integration', () => {
 
   describe('Data Clearing Flow', () => {
     it('should clear online document data', async () => {
-      const { useOnlineDocument } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useOnlineDocument } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useOnlineDocument())
 
       act(() => {
@@ -187,9 +181,8 @@ describe('Test Run Flow Integration', () => {
     })
 
     it('should clear website crawl data', async () => {
-      const { useWebsiteCrawl } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useWebsiteCrawl } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useWebsiteCrawl())
 
       act(() => {
@@ -204,9 +197,8 @@ describe('Test Run Flow Integration', () => {
     })
 
     it('should clear online drive data', async () => {
-      const { useOnlineDrive } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useOnlineDrive } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useOnlineDrive())
 
       act(() => {
@@ -223,9 +215,8 @@ describe('Test Run Flow Integration', () => {
 
   describe('Full Flow Simulation', () => {
     it('should support complete step navigation cycle', async () => {
-      const { useTestRunSteps } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useTestRunSteps } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result } = renderHook(() => useTestRunSteps())
 
       // Start at step 1
@@ -251,13 +242,8 @@ describe('Test Run Flow Integration', () => {
     })
 
     it('should not regress when clearing all data sources in sequence', async () => {
-      const {
-        useOnlineDocument,
-        useWebsiteCrawl,
-        useOnlineDrive,
-      } = await import(
-        '@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks',
-      )
+      const { useOnlineDocument, useWebsiteCrawl, useOnlineDrive } =
+        await import('@/app/components/rag-pipeline/components/panel/test-run/preparation/hooks')
       const { result: docResult } = renderHook(() => useOnlineDocument())
       const { result: crawlResult } = renderHook(() => useWebsiteCrawl())
       const { result: driveResult } = renderHook(() => useOnlineDrive())

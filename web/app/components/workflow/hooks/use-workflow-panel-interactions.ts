@@ -28,32 +28,29 @@ export const useWorkflowInteractions = () => {
 }
 
 export const useWorkflowMoveMode = () => {
-  const setControlMode = useStore(s => s.setControlMode)
+  const setControlMode = useStore((s) => s.setControlMode)
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSelectionCancel } = useSelectionInteractions()
   const { data: isCommentModeAvailable } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_collaboration_mode,
+    select: (s) => s.enable_collaboration_mode,
   })
 
   const handleModePointer = useCallback(() => {
-    if (getNodesReadOnly())
-      return
+    if (getNodesReadOnly()) return
 
     setControlMode(ControlMode.Pointer)
   }, [getNodesReadOnly, setControlMode])
 
   const handleModeHand = useCallback(() => {
-    if (getNodesReadOnly())
-      return
+    if (getNodesReadOnly()) return
 
     setControlMode(ControlMode.Hand)
     handleSelectionCancel()
   }, [getNodesReadOnly, handleSelectionCancel, setControlMode])
 
   const handleModeComment = useCallback(() => {
-    if (getNodesReadOnly() || !isCommentModeAvailable)
-      return
+    if (getNodesReadOnly() || !isCommentModeAvailable) return
 
     setControlMode(ControlMode.Comment)
     handleSelectionCancel()

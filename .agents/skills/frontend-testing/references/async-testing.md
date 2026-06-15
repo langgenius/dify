@@ -9,7 +9,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 
 it('should load and display data', async () => {
   render(<DataComponent />)
-  
+
   // Wait for element to appear
   await waitFor(() => {
     expect(screen.getByText('Loaded Data')).toBeInTheDocument()
@@ -18,7 +18,7 @@ it('should load and display data', async () => {
 
 it('should hide loading spinner after load', async () => {
   render(<DataComponent />)
-  
+
   // Wait for element to disappear
   await waitFor(() => {
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
@@ -31,11 +31,11 @@ it('should hide loading spinner after load', async () => {
 ```typescript
 it('should show user name after fetch', async () => {
   render(<UserProfile />)
-  
+
   // findBy returns a promise, auto-waits up to 1000ms
   const userName = await screen.findByText('John Doe')
   expect(userName).toBeInTheDocument()
-  
+
   // findByRole with options
   const button = await screen.findByRole('button', { name: /submit/i })
   expect(button).toBeEnabled()
@@ -50,13 +50,13 @@ import userEvent from '@testing-library/user-event'
 it('should submit form', async () => {
   const user = userEvent.setup()
   const onSubmit = vi.fn()
-  
+
   render(<Form onSubmit={onSubmit} />)
-  
+
   // userEvent methods are async
   await user.type(screen.getByLabelText('Email'), 'test@example.com')
   await user.click(screen.getByRole('button', { name: /submit/i }))
-  
+
   await waitFor(() => {
     expect(onSubmit).toHaveBeenCalledWith({ email: 'test@example.com' })
   })
@@ -87,16 +87,16 @@ describe('Debounced Search', () => {
   it('should debounce search input', async () => {
     const onSearch = vi.fn()
     render(<SearchInput onSearch={onSearch} debounceMs={300} />)
-    
+
     // Type in the input
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'query' } })
-    
+
     // Search not called immediately
     expect(onSearch).not.toHaveBeenCalled()
-    
+
     // Advance timers
     vi.advanceTimersByTime(300)
-    
+
     // Now search is called
     expect(onSearch).toHaveBeenCalledWith('query')
   })
@@ -111,23 +111,23 @@ it('should retry on failure', async () => {
   const fetchData = vi.fn()
     .mockRejectedValueOnce(new Error('Network error'))
     .mockResolvedValueOnce({ data: 'success' })
-  
+
   render(<RetryComponent fetchData={fetchData} retryDelayMs={1000} />)
-  
+
   // First call fails
   await waitFor(() => {
     expect(fetchData).toHaveBeenCalledTimes(1)
   })
-  
+
   // Advance timer for retry
   vi.advanceTimersByTime(1000)
-  
+
   // Second call succeeds
   await waitFor(() => {
     expect(fetchData).toHaveBeenCalledTimes(2)
     expect(screen.getByText('success')).toBeInTheDocument()
   })
-  
+
   vi.useRealTimers()
 })
 ```
@@ -163,31 +163,31 @@ describe('DataFetcher', () => {
 
   it('should show loading state', () => {
     mockedApi.fetchData.mockImplementation(() => new Promise(() => {})) // Never resolves
-    
+
     render(<DataFetcher />)
-    
+
     expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
   })
 
   it('should show data on success', async () => {
     mockedApi.fetchData.mockResolvedValue({ items: ['Item 1', 'Item 2'] })
-    
+
     render(<DataFetcher />)
-    
+
     // Use findBy* for multiple async elements (better error messages than waitFor with multiple assertions)
     const item1 = await screen.findByText('Item 1')
     const item2 = await screen.findByText('Item 2')
     expect(item1).toBeInTheDocument()
     expect(item2).toBeInTheDocument()
-    
+
     expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument()
   })
 
   it('should show error on failure', async () => {
     mockedApi.fetchData.mockRejectedValue(new Error('Failed to fetch'))
-    
+
     render(<DataFetcher />)
-    
+
     await waitFor(() => {
       expect(screen.getByText(/failed to fetch/i)).toBeInTheDocument()
     })
@@ -195,16 +195,16 @@ describe('DataFetcher', () => {
 
   it('should retry on error', async () => {
     mockedApi.fetchData.mockRejectedValue(new Error('Network error'))
-    
+
     render(<DataFetcher />)
-    
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
     })
-    
+
     mockedApi.fetchData.mockResolvedValue({ items: ['Item 1'] })
     fireEvent.click(screen.getByRole('button', { name: /retry/i }))
-    
+
     await waitFor(() => {
       expect(screen.getByText('Item 1')).toBeInTheDocument()
     })
@@ -218,19 +218,19 @@ describe('DataFetcher', () => {
 it('should submit form and show success', async () => {
   const user = userEvent.setup()
   mockedApi.createItem.mockResolvedValue({ id: '1', name: 'New Item' })
-  
+
   render(<CreateItemForm />)
-  
+
   await user.type(screen.getByLabelText('Name'), 'New Item')
   await user.click(screen.getByRole('button', { name: /create/i }))
-  
+
   // Button should be disabled during submission
   expect(screen.getByRole('button', { name: /creating/i })).toBeDisabled()
-  
+
   await waitFor(() => {
     expect(screen.getByText(/created successfully/i)).toBeInTheDocument()
   })
-  
+
   expect(mockedApi.createItem).toHaveBeenCalledWith({ name: 'New Item' })
 })
 ```
@@ -242,9 +242,9 @@ it('should submit form and show success', async () => {
 ```typescript
 it('should fetch data on mount', async () => {
   const fetchData = vi.fn().mockResolvedValue({ data: 'test' })
-  
+
   render(<ComponentWithEffect fetchData={fetchData} />)
-  
+
   await waitFor(() => {
     expect(fetchData).toHaveBeenCalledTimes(1)
   })
@@ -256,15 +256,15 @@ it('should fetch data on mount', async () => {
 ```typescript
 it('should refetch when id changes', async () => {
   const fetchData = vi.fn().mockResolvedValue({ data: 'test' })
-  
+
   const { rerender } = render(<ComponentWithEffect id="1" fetchData={fetchData} />)
-  
+
   await waitFor(() => {
     expect(fetchData).toHaveBeenCalledWith('1')
   })
-  
+
   rerender(<ComponentWithEffect id="2" fetchData={fetchData} />)
-  
+
   await waitFor(() => {
     expect(fetchData).toHaveBeenCalledWith('2')
     expect(fetchData).toHaveBeenCalledTimes(2)
@@ -279,13 +279,13 @@ it('should cleanup subscription on unmount', () => {
   const subscribe = vi.fn()
   const unsubscribe = vi.fn()
   subscribe.mockReturnValue(unsubscribe)
-  
+
   const { unmount } = render(<SubscriptionComponent subscribe={subscribe} />)
-  
+
   expect(subscribe).toHaveBeenCalledTimes(1)
-  
+
   unmount()
-  
+
   expect(unsubscribe).toHaveBeenCalledTimes(1)
 })
 ```

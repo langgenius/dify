@@ -19,9 +19,12 @@ type Props = {
  * not need to run validation itself.
  */
 const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
-  const handle = useCallback((raw: string) => {
-    onChange(normaliseUserCodeInput(raw))
-  }, [onChange])
+  const handle = useCallback(
+    (raw: string) => {
+      onChange(normaliseUserCodeInput(raw))
+    },
+    [onChange],
+  )
 
   return (
     <input
@@ -37,7 +40,7 @@ const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
       value={value}
       disabled={disabled}
       autoFocus={autoFocus}
-      onChange={e => handle(e.target.value)}
+      onChange={(e) => handle(e.target.value)}
     />
   )
 }

@@ -15,10 +15,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.loop'
 
-const Panel: FC<NodePanelProps<LoopNodeType>> = ({
-  id,
-  data,
-}) => {
+const Panel: FC<NodePanelProps<LoopNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
 
   const {
@@ -45,14 +42,14 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
       <div>
         <Field
           title={<div className="pl-3">{t('nodes.loop.loopVariables', { ns: 'workflow' })}</div>}
-          operations={(
+          operations={
             <div
               className="mr-4 flex size-5 cursor-pointer items-center justify-center"
               onClick={handleAddLoopVariable}
             >
               <RiAddLine className="size-4 text-text-tertiary" />
             </div>
-          )}
+          }
         >
           <div className="px-4">
             <LoopVariable
@@ -65,7 +62,9 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
         </Field>
         <Split className="my-2" />
         <Field
-          title={<div className="pl-3">{t(`${i18nPrefix}.breakCondition`, { ns: 'workflow' })}</div>}
+          title={
+            <div className="pl-3">{t(`${i18nPrefix}.breakCondition`, { ns: 'workflow' })}</div>
+          }
           tooltip={t(`${i18nPrefix}.breakConditionTip`, { ns: 'workflow' })}
         >
           <ConditionWrap
@@ -78,7 +77,9 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             handleAddSubVariableCondition={handleAddSubVariableCondition}
             handleRemoveSubVariableCondition={handleRemoveSubVariableCondition}
             handleUpdateSubVariableCondition={handleUpdateSubVariableCondition}
-            handleToggleSubVariableConditionLogicalOperator={handleToggleSubVariableConditionLogicalOperator}
+            handleToggleSubVariableConditionLogicalOperator={
+              handleToggleSubVariableConditionLogicalOperator
+            }
             availableNodes={loopChildrenNodes}
             availableVars={childrenNodeVars}
             conditions={inputs.break_conditions || []}
@@ -88,7 +89,9 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
         <Split className="mt-2" />
         <div className="mt-2">
           <Field
-            title={<div className="pl-3">{t(`${i18nPrefix}.loopMaxCount`, { ns: 'workflow' })}</div>}
+            title={
+              <div className="pl-3">{t(`${i18nPrefix}.loopMaxCount`, { ns: 'workflow' })}</div>
+            }
           >
             <div className="px-3 py-2">
               <InputNumberWithSlider

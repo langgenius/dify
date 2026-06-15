@@ -132,8 +132,12 @@ vi.mock('@/app/components/tools/edit-custom-collection-modal', () => ({
     onHide: () => void
   }) => (
     <div data-testid="edit-custom-tool-modal">
-      <button type="button" onClick={() => onAdd({ name: 'collection-a' })}>submit-custom-tool</button>
-      <button type="button" onClick={onHide}>hide-custom-tool</button>
+      <button type="button" onClick={() => onAdd({ name: 'collection-a' })}>
+        submit-custom-tool
+      </button>
+      <button type="button" onClick={onHide}>
+        hide-custom-tool
+      </button>
     </div>
   ),
 }))
@@ -170,8 +174,12 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
     onClose: () => void
   }) => (
     <div data-testid="install-from-marketplace">
-      <button type="button" onClick={() => onSuccess()}>complete-featured-install</button>
-      <button type="button" onClick={onClose}>cancel-featured-install</button>
+      <button type="button" onClick={() => onSuccess()}>
+        complete-featured-install
+      </button>
+      <button type="button" onClick={onClose}>
+        cancel-featured-install
+      </button>
     </div>
   ),
 }))
@@ -184,11 +192,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   }
 })
 
-const createTool = (
-  name: string,
-  label: string,
-  description = `${label} description`,
-): Tool => ({
+const createTool = (name: string, label: string, description = `${label} description`): Tool => ({
   name,
   author: 'author',
   label: {
@@ -204,9 +208,7 @@ const createTool = (
   output_schema: {},
 })
 
-const createToolProvider = (
-  overrides: Partial<ToolWithProvider> = {},
-): ToolWithProvider => ({
+const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWithProvider => ({
   id: 'provider-1',
   name: 'provider-one',
   author: 'Provider Author',
@@ -344,9 +346,15 @@ describe('ToolPicker', () => {
       fetchNextPage: vi.fn(),
       page: 0,
     } as ReturnType<typeof useMarketplacePlugins>)
-    mockUseAllBuiltInTools.mockReturnValue({ data: builtInTools } as ReturnType<typeof useAllBuiltInTools>)
-    mockUseAllCustomTools.mockReturnValue({ data: customTools } as ReturnType<typeof useAllCustomTools>)
-    mockUseAllWorkflowTools.mockReturnValue({ data: workflowTools } as ReturnType<typeof useAllWorkflowTools>)
+    mockUseAllBuiltInTools.mockReturnValue({ data: builtInTools } as ReturnType<
+      typeof useAllBuiltInTools
+    >)
+    mockUseAllCustomTools.mockReturnValue({ data: customTools } as ReturnType<
+      typeof useAllCustomTools
+    >)
+    mockUseAllWorkflowTools.mockReturnValue({ data: workflowTools } as ReturnType<
+      typeof useAllWorkflowTools
+    >)
     mockUseAllMCPTools.mockReturnValue({ data: mcpTools } as ReturnType<typeof useAllMCPTools>)
     mockUseInvalidateAllBuiltInTools.mockReturnValue(mockInvalidateBuiltInTools)
     mockUseInvalidateAllCustomTools.mockReturnValue(mockInvalidateCustomTools)
@@ -435,11 +443,13 @@ describe('ToolPicker', () => {
     })
     await user.click(screen.getByText('Weather Tool'))
 
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({
-      provider_name: 'custom-provider',
-      tool_name: 'weather-tool',
-      tool_label: 'Weather Tool',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider_name: 'custom-provider',
+        tool_name: 'weather-tool',
+        tool_label: 'Weather Tool',
+      }),
+    )
 
     await user.hover(screen.getByText('Custom Provider'))
     await user.click(screen.getByText('workflow.tabs.addAll'))
@@ -486,7 +496,9 @@ describe('ToolPicker', () => {
     const user = userEvent.setup()
 
     mockUseFeaturedToolsRecommendations.mockReturnValue({
-      plugins: [createPlugin({ plugin_id: 'featured-1', latest_package_identifier: 'featured-1@1.0.0' })],
+      plugins: [
+        createPlugin({ plugin_id: 'featured-1', latest_package_identifier: 'featured-1@1.0.0' }),
+      ],
       isLoading: false,
     } as ReturnType<typeof useFeaturedToolsRecommendations>)
 
@@ -501,11 +513,14 @@ describe('ToolPicker', () => {
     expect(await screen.findByTestId('install-from-marketplace')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'complete-featured-install' }))
 
-    await waitFor(() => {
-      expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)
-      expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
-      expect(mockInvalidateWorkflowTools).toHaveBeenCalledTimes(1)
-      expect(mockInvalidateMcpTools).toHaveBeenCalledTimes(1)
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(mockInvalidateBuiltInTools).toHaveBeenCalledTimes(1)
+        expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
+        expect(mockInvalidateWorkflowTools).toHaveBeenCalledTimes(1)
+        expect(mockInvalidateMcpTools).toHaveBeenCalledTimes(1)
+      },
+      { timeout: 3000 },
+    )
   })
 })

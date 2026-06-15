@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
-  currentWorkspaceQueryOptions: vi.fn(() => ({ queryKey: ['console', 'workspaces', 'current', 'post'] })),
+  currentWorkspaceQueryOptions: vi.fn(() => ({
+    queryKey: ['console', 'workspaces', 'current', 'post'],
+  })),
 }))
 
 let mockPathname = '/apps'
@@ -39,7 +41,7 @@ vi.mock('@/service/client', () => ({
 
 const mockUseQuery = vi.mocked(useQuery)
 
-const setCurrentWorkspaceQuery = (overrides: { role?: string, isPending?: boolean } = {}) => {
+const setCurrentWorkspaceQuery = (overrides: { role?: string; isPending?: boolean } = {}) => {
   mockUseQuery.mockReturnValue({
     data: overrides.role,
     isPending: overrides.isPending ?? false,
@@ -56,11 +58,11 @@ describe('RoleRouteGuard', () => {
   it('should render loading while workspace is loading', () => {
     setCurrentWorkspaceQuery({ isPending: true })
 
-    render((
+    render(
       <RoleRouteGuard>
         <div>content</div>
-      </RoleRouteGuard>
-    ))
+      </RoleRouteGuard>,
+    )
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText('content')).not.toBeInTheDocument()
@@ -73,11 +75,13 @@ describe('RoleRouteGuard', () => {
   it('should redirect dataset operator on guarded routes', () => {
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    expect(() => render((
-      <RoleRouteGuard>
-        <div>content</div>
-      </RoleRouteGuard>
-    ))).toThrow('NEXT_REDIRECT:/datasets')
+    expect(() =>
+      render(
+        <RoleRouteGuard>
+          <div>content</div>
+        </RoleRouteGuard>,
+      ),
+    ).toThrow('NEXT_REDIRECT:/datasets')
 
     expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
   })
@@ -86,11 +90,11 @@ describe('RoleRouteGuard', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    render((
+    render(
       <RoleRouteGuard>
         <div>content</div>
-      </RoleRouteGuard>
-    ))
+      </RoleRouteGuard>,
+    )
 
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(mocks.redirect).not.toHaveBeenCalled()
@@ -100,11 +104,11 @@ describe('RoleRouteGuard', () => {
     mockPathname = '/plugins'
     setCurrentWorkspaceQuery({ isPending: true })
 
-    render((
+    render(
       <RoleRouteGuard>
         <div>content</div>
-      </RoleRouteGuard>
-    ))
+      </RoleRouteGuard>,
+    )
 
     expect(screen.getByText('content')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()

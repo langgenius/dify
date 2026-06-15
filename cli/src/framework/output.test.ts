@@ -1,14 +1,13 @@
 import type { FormattedPrintable, NamePrintable, TablePrintable } from './output'
 import { describe, expect, it } from 'vitest'
 import { OutputFormatNotSupportedError } from './errors'
-import {
-  formatted,
-  raw,
-  stringifyOutput,
-  table,
-} from './output'
+import { formatted, raw, stringifyOutput, table } from './output'
 
-function makeFormatted(opts: { text?: string, json?: unknown, name?: string }): FormattedPrintable & NamePrintable {
+function makeFormatted(opts: {
+  text?: string
+  json?: unknown
+  name?: string
+}): FormattedPrintable & NamePrintable {
   return {
     text: () => opts.text ?? 'hello',
     json: () => opts.json ?? { msg: 'hello' },
@@ -17,16 +16,17 @@ function makeFormatted(opts: { text?: string, json?: unknown, name?: string }): 
 }
 
 function makeTable(opts: {
-  columns?: Array<{ name: string, priority: number }>
+  columns?: Array<{ name: string; priority: number }>
   rows?: Array<Array<string | number | boolean | null | undefined>>
   json?: unknown
   name?: string
 }): TablePrintable & NamePrintable {
   return {
-    tableColumns: () => opts.columns ?? [
-      { name: 'NAME', priority: 0 },
-      { name: 'STATUS', priority: 0 },
-    ],
+    tableColumns: () =>
+      opts.columns ?? [
+        { name: 'NAME', priority: 0 },
+        { name: 'STATUS', priority: 0 },
+      ],
     tableRows: () => opts.rows ?? [['alice', 'active']],
     json: () => opts.json ?? [{ name: 'alice', status: 'active' }],
     name: () => opts.name ?? 'table-name',
@@ -145,7 +145,7 @@ describe('stringifyOutput — table', () => {
       ],
     })
     const result = stringifyOutput(table({ format: '', data }))
-    const lines = result.split('\n').filter(l => l.length > 0)
+    const lines = result.split('\n').filter((l) => l.length > 0)
     // 'hello' display width 5, '猜谜' display width 4 — column width=5
     // padding after 'hello': 5-5+2=2 spaces → 'hello  aaa'
     // padding after '猜谜':  5-4+2=3 spaces → '猜谜   bbb'
@@ -185,8 +185,14 @@ describe('stringifyOutput — table', () => {
 
   it('table renders column padding correctly', () => {
     const data = makeTable({
-      columns: [{ name: 'NAME', priority: 0 }, { name: 'ID', priority: 0 }],
-      rows: [['alice-longname', '1'], ['bob', '2']],
+      columns: [
+        { name: 'NAME', priority: 0 },
+        { name: 'ID', priority: 0 },
+      ],
+      rows: [
+        ['alice-longname', '1'],
+        ['bob', '2'],
+      ],
     })
     const result = stringifyOutput(table({ format: '', data }))
     const lines = result.split('\n').filter(Boolean)

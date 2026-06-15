@@ -16,15 +16,13 @@ type RunModeProps = {
   text?: string
 }
 
-const RunMode = ({
-  text,
-}: RunModeProps) => {
+const RunMode = ({ text }: RunModeProps) => {
   const { t } = useTranslation()
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
   const workflowStore = useWorkflowStore()
-  const workflowRunningData = useStore(s => s.workflowRunningData)
-  const isPreparingDataSource = useStore(s => s.isPreparingDataSource)
+  const workflowRunningData = useStore((s) => s.workflowRunningData)
+  const isPreparingDataSource = useStore((s) => s.isPreparingDataSource)
 
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
   const isDisabled = isPreparingDataSource || isRunning
@@ -41,8 +39,7 @@ const RunMode = ({
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === EVENT_WORKFLOW_STOP)
-      handleStop()
+    if (v.type === EVENT_WORKFLOW_STOP) handleStop()
   })
 
   return (
@@ -62,7 +59,9 @@ const RunMode = ({
         {!isDisabled && (
           <>
             <RiPlayLargeLine className="mr-1 size-4" />
-            {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
+            {workflowRunningData
+              ? t('common.reRun', { ns: 'pipeline' })
+              : (text ?? t('common.testRun', { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
@@ -77,15 +76,13 @@ const RunMode = ({
             {t('common.preparingDataSource', { ns: 'pipeline' })}
           </>
         )}
-        {
-          !isDisabled && (
-            <KbdGroup>
-              {['Alt', 'R'].map(key => (
-                <Kbd key={key}>{formatForDisplay(key)}</Kbd>
-              ))}
-            </KbdGroup>
-          )
-        }
+        {!isDisabled && (
+          <KbdGroup>
+            {['Alt', 'R'].map((key) => (
+              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            ))}
+          </KbdGroup>
+        )}
       </button>
       {isRunning && (
         <button

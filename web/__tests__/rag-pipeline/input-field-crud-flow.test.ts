@@ -32,9 +32,8 @@ vi.mock('@/config', () => ({
 describe('Input Field CRUD Flow', () => {
   describe('Create → Edit → Convert Round-trip', () => {
     it('should create a text field and roundtrip through form data', async () => {
-      const { convertToInputFieldFormData, convertFormDataToINputField } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData, convertFormDataToINputField } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       // Create new field from template (no data passed)
       const newFormData = convertToInputFieldFormData()
@@ -68,9 +67,8 @@ describe('Input Field CRUD Flow', () => {
     })
 
     it('should handle file field with upload settings', async () => {
-      const { convertToInputFieldFormData, convertFormDataToINputField } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData, convertFormDataToINputField } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       const fileInputVar: InputVar = {
         type: PipelineInputVarType.singleFile,
@@ -90,7 +88,10 @@ describe('Input Field CRUD Flow', () => {
 
       // Convert to form data
       const formData = convertToInputFieldFormData(fileInputVar)
-      expect(formData.allowedFileUploadMethods).toEqual([TransferMethod.local_file, TransferMethod.remote_url])
+      expect(formData.allowedFileUploadMethods).toEqual([
+        TransferMethod.local_file,
+        TransferMethod.remote_url,
+      ])
       expect(formData.allowedTypesAndExtensions).toEqual({
         allowedFileTypes: [SupportUploadFileTypes.document],
         allowedFileExtensions: ['.pdf', '.docx'],
@@ -98,15 +99,17 @@ describe('Input Field CRUD Flow', () => {
 
       // Round-trip back
       const restored = convertFormDataToINputField(formData)
-      expect(restored.allowed_file_upload_methods).toEqual([TransferMethod.local_file, TransferMethod.remote_url])
+      expect(restored.allowed_file_upload_methods).toEqual([
+        TransferMethod.local_file,
+        TransferMethod.remote_url,
+      ])
       expect(restored.allowed_file_types).toEqual([SupportUploadFileTypes.document])
       expect(restored.allowed_file_extensions).toEqual(['.pdf', '.docx'])
     })
 
     it('should handle select field with options', async () => {
-      const { convertToInputFieldFormData, convertFormDataToINputField } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData, convertFormDataToINputField } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       const selectVar: InputVar = {
         type: PipelineInputVarType.select,
@@ -134,9 +137,8 @@ describe('Input Field CRUD Flow', () => {
     })
 
     it('should handle number field with unit', async () => {
-      const { convertToInputFieldFormData, convertFormDataToINputField } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData, convertFormDataToINputField } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       const numberVar: InputVar = {
         type: PipelineInputVarType.number,
@@ -166,9 +168,8 @@ describe('Input Field CRUD Flow', () => {
 
   describe('Omit optional fields', () => {
     it('should not include tooltips when undefined', async () => {
-      const { convertToInputFieldFormData } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       const inputVar: InputVar = {
         type: PipelineInputVarType.textInput,
@@ -196,9 +197,8 @@ describe('Input Field CRUD Flow', () => {
     })
 
     it('should include optional fields when explicitly set to empty string', async () => {
-      const { convertToInputFieldFormData } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       const inputVar: InputVar = {
         type: PipelineInputVarType.textInput,
@@ -227,9 +227,8 @@ describe('Input Field CRUD Flow', () => {
 
   describe('Multiple fields workflow', () => {
     it('should process multiple fields independently', async () => {
-      const { convertToInputFieldFormData, convertFormDataToINputField } = await import(
-        '@/app/components/rag-pipeline/components/panel/input-field/editor/utils',
-      )
+      const { convertToInputFieldFormData, convertFormDataToINputField } =
+        await import('@/app/components/rag-pipeline/components/panel/input-field/editor/utils')
 
       const fields: InputVar[] = [
         {
@@ -264,8 +263,8 @@ describe('Input Field CRUD Flow', () => {
         },
       ]
 
-      const formDataList = fields.map(f => convertToInputFieldFormData(f))
-      const restoredFields = formDataList.map(fd => convertFormDataToINputField(fd))
+      const formDataList = fields.map((f) => convertToInputFieldFormData(f))
+      const restoredFields = formDataList.map((fd) => convertFormDataToINputField(fd))
 
       expect(restoredFields).toHaveLength(2)
       expect(restoredFields[0]!.variable).toBe('name')

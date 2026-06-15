@@ -41,7 +41,11 @@ vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth/authorize', () => ({
-  default: ({ pluginPayload, canOAuth, canApiKey }: {
+  default: ({
+    pluginPayload,
+    canOAuth,
+    canApiKey,
+  }: {
     pluginPayload: { provider: string }
     canOAuth: boolean
     canApiKey: boolean
@@ -55,17 +59,16 @@ vi.mock('@/app/components/plugins/plugin-auth/authorize', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-auth/authorized', () => ({
-  default: ({ pluginPayload, credentials }: {
+  default: ({
+    pluginPayload,
+    credentials,
+  }: {
     pluginPayload: { provider: string }
-    credentials: Array<{ id: string, name: string }>
+    credentials: Array<{ id: string; name: string }>
   }) => (
     <div data-testid="authorized-component">
       <span data-testid="auth-provider">{pluginPayload.provider}</span>
-      <span data-testid="auth-credential-count">
-        {credentials.length}
-        {' '}
-        credentials
-      </span>
+      <span data-testid="auth-credential-count">{credentials.length} credentials</span>
     </div>
   ),
 }))
@@ -144,9 +147,7 @@ describe('Plugin Authentication Flow Integration', () => {
         isAuthorized: true,
         canOAuth: false,
         canApiKey: true,
-        credentials: [
-          { id: 'cred-1', name: 'My API Key', is_default: true },
-        ],
+        credentials: [{ id: 'cred-1', name: 'My API Key', is_default: true }],
         disabled: false,
         invalidPluginCredentialInfo: vi.fn(),
         notAllowCustomCredential: false,
@@ -256,7 +257,12 @@ describe('Plugin Authentication Flow Integration', () => {
         credentials: [
           { id: 'cred-1', name: 'API Key 1', is_default: true },
           { id: 'cred-2', name: 'API Key 2', is_default: false },
-          { id: 'cred-3', name: 'OAuth Token', is_default: false, credential_type: CredentialTypeEnum.OAUTH2 },
+          {
+            id: 'cred-3',
+            name: 'OAuth Token',
+            is_default: false,
+            credential_type: CredentialTypeEnum.OAUTH2,
+          },
         ],
         disabled: false,
         invalidPluginCredentialInfo: vi.fn(),

@@ -10,13 +10,13 @@ export type BedrockRetrievalPayload = {
   retrieval_setting: BedrockRetrievalSetting
 }
 
-export type ExternalRetrievalTestResponse
-  = | {
-    [key: string]: unknown
-  }
+export type ExternalRetrievalTestResponse =
+  | {
+      [key: string]: unknown
+    }
   | Array<{
-    [key: string]: unknown
-  }>
+      [key: string]: unknown
+    }>
 
 export type BedrockRetrievalSetting = {
   score_threshold?: number

@@ -13,11 +13,7 @@ vi.mock('@/config', () => ({
 vi.mock('@/app/components/plugins/card', () => ({
   default: (props: { titleLeft?: React.ReactNode }) => {
     mockCard(props)
-    return (
-      <div data-testid="card">
-        {props.titleLeft}
-      </div>
-    )
+    return <div data-testid="card">{props.titleLeft}</div>
   },
 }))
 
@@ -55,44 +51,38 @@ describe('Installed', () => {
   })
 
   it('renders plugin cards with install status and marketplace icon handling', () => {
-    render(
-      <Installed
-        list={plugins}
-        installStatus={installStatus}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<Installed list={plugins} installStatus={installStatus} onCancel={vi.fn()} />)
 
     expect(screen.getAllByTestId('card')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     expect(screen.getByText('1.0.0')).toBeInTheDocument()
     expect(screen.getByText('2.0.0')).toBeInTheDocument()
-    expect(mockCard).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      installed: true,
-      installFailed: false,
-      payload: expect.objectContaining({
-        icon: 'https://marketplace.example.com/plugins/dify/Plugin One/icon',
+    expect(mockCard).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        installed: true,
+        installFailed: false,
+        payload: expect.objectContaining({
+          icon: 'https://marketplace.example.com/plugins/dify/Plugin One/icon',
+        }),
       }),
-    }))
-    expect(mockCard).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      installed: false,
-      installFailed: true,
-      payload: expect.objectContaining({
-        icon: 'https://api.example.com/icon-2.png',
+    )
+    expect(mockCard).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        installed: false,
+        installFailed: true,
+        payload: expect.objectContaining({
+          icon: 'https://api.example.com/icon-2.png',
+        }),
       }),
-    }))
+    )
   })
 
   it('calls onCancel when close button is clicked', () => {
     const onCancel = vi.fn()
 
-    render(
-      <Installed
-        list={plugins}
-        installStatus={installStatus}
-        onCancel={onCancel}
-      />,
-    )
+    render(<Installed list={plugins} installStatus={installStatus} onCancel={onCancel} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
@@ -101,12 +91,7 @@ describe('Installed', () => {
 
   it('hides action button when isHideButton is true', () => {
     render(
-      <Installed
-        list={plugins}
-        installStatus={installStatus}
-        onCancel={vi.fn()}
-        isHideButton
-      />,
+      <Installed list={plugins} installStatus={installStatus} onCancel={vi.fn()} isHideButton />,
     )
 
     expect(screen.queryByRole('button', { name: 'common.operation.close' })).not.toBeInTheDocument()

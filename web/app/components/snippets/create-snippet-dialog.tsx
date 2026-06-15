@@ -68,8 +68,7 @@ function CreateSnippetDialog({
     const trimmedName = name.trim()
     const trimmedDescription = description.trim()
 
-    if (!trimmedName)
-      return
+    if (!trimmedName) return
 
     const payload = {
       name: trimmedName,
@@ -82,18 +81,16 @@ function CreateSnippetDialog({
   }, [description, inputFields, name, onConfirm, selectedGraph])
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (!isOpen)
-      return
+    if (!isOpen) return
 
-    if (isSubmitting)
-      return
+    if (isSubmitting) return
 
     handleConfirm()
   })
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={open => !open && handleClose()}>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-120 max-w-120 p-0">
           <DialogCloseButton />
 
@@ -110,7 +107,7 @@ function CreateSnippetDialog({
               </div>
               <Input
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 placeholder={t('snippet.namePlaceholder', { ns: 'workflow' }) || ''}
                 disabled={isSubmitting}
                 autoFocus
@@ -124,7 +121,7 @@ function CreateSnippetDialog({
               <Textarea
                 className="resize-none"
                 value={description}
-                onValueChange={value => setDescription(value)}
+                onValueChange={(value) => setDescription(value)}
                 placeholder={t('snippet.descriptionPlaceholder', { ns: 'workflow' }) || ''}
                 disabled={isSubmitting}
               />

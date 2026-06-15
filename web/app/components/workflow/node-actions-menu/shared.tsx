@@ -35,9 +35,7 @@ export function NodeActionsMenuAbout({
 }) {
   return (
     <div className="px-3 py-2 text-xs text-text-tertiary">
-      <div className="mb-1 flex h-[22px] items-center font-medium">
-        {title.toLocaleUpperCase()}
-      </div>
+      <div className="mb-1 flex h-[22px] items-center font-medium">{title.toLocaleUpperCase()}</div>
       <div className="mb-1 leading-[18px] text-text-secondary">{description}</div>
       <div className="leading-[18px]">{author}</div>
     </div>

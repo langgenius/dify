@@ -15,12 +15,14 @@ const createInputs = (version: AssignerNodeType['version'] = '1'): AssignerNodeT
   desc: '',
   type: BlockEnum.Assigner,
   version,
-  items: [{
-    variable_selector: ['conversation', 'count'],
-    input_type: AssignerNodeInputType.variable,
-    operation: WriteMode.overwrite,
-    value: ['node-1', 'value'],
-  }],
+  items: [
+    {
+      variable_selector: ['conversation', 'count'],
+      input_type: AssignerNodeInputType.variable,
+      operation: WriteMode.overwrite,
+      value: ['node-1', 'value'],
+    },
+  ],
 })
 
 describe('assigner use-config helpers', () => {
@@ -42,23 +44,39 @@ describe('assigner use-config helpers', () => {
   })
 
   it('validates assignment targets for append, arithmetic and fallback modes', () => {
-    expect(canAssignToVar({ type: VarType.number } as never, VarType.number, WriteMode.multiply)).toBe(true)
-    expect(canAssignToVar({ type: VarType.string } as never, VarType.number, WriteMode.multiply)).toBe(false)
-    expect(canAssignToVar({ type: VarType.string } as never, VarType.arrayString, WriteMode.append)).toBe(true)
-    expect(canAssignToVar({ type: VarType.number } as never, VarType.arrayNumber, WriteMode.append)).toBe(true)
-    expect(canAssignToVar({ type: VarType.object } as never, VarType.arrayObject, WriteMode.append)).toBe(true)
-    expect(canAssignToVar({ type: VarType.boolean } as never, VarType.arrayString, WriteMode.append)).toBe(false)
-    expect(canAssignToVar({ type: VarType.string } as never, VarType.string, WriteMode.set)).toBe(true)
+    expect(
+      canAssignToVar({ type: VarType.number } as never, VarType.number, WriteMode.multiply),
+    ).toBe(true)
+    expect(
+      canAssignToVar({ type: VarType.string } as never, VarType.number, WriteMode.multiply),
+    ).toBe(false)
+    expect(
+      canAssignToVar({ type: VarType.string } as never, VarType.arrayString, WriteMode.append),
+    ).toBe(true)
+    expect(
+      canAssignToVar({ type: VarType.number } as never, VarType.arrayNumber, WriteMode.append),
+    ).toBe(true)
+    expect(
+      canAssignToVar({ type: VarType.object } as never, VarType.arrayObject, WriteMode.append),
+    ).toBe(true)
+    expect(
+      canAssignToVar({ type: VarType.boolean } as never, VarType.arrayString, WriteMode.append),
+    ).toBe(false)
+    expect(canAssignToVar({ type: VarType.string } as never, VarType.string, WriteMode.set)).toBe(
+      true,
+    )
   })
 
   it('ensures version 2 and replaces operation items immutably', () => {
     const legacyInputs = createInputs('1')
-    const nextItems = [{
-      variable_selector: ['conversation', 'total'],
-      input_type: AssignerNodeInputType.constant,
-      operation: WriteMode.clear,
-      value: '0',
-    }]
+    const nextItems = [
+      {
+        variable_selector: ['conversation', 'total'],
+        input_type: AssignerNodeInputType.constant,
+        operation: WriteMode.clear,
+        value: '0',
+      },
+    ]
 
     expect(ensureAssignerVersion(legacyInputs).version).toBe('2')
     expect(ensureAssignerVersion(createInputs('2')).version).toBe('2')
@@ -67,18 +85,23 @@ describe('assigner use-config helpers', () => {
   })
 
   it('sanitizes variable-selector items restored from collaboration payloads', () => {
-    const dirtyItems = [{
-      variable_selector: null as unknown as AssignerNodeType['items'][number]['variable_selector'],
-      input_type: AssignerNodeInputType.variable,
-      operation: WriteMode.overwrite,
-      value: null,
-    }]
+    const dirtyItems = [
+      {
+        variable_selector:
+          null as unknown as AssignerNodeType['items'][number]['variable_selector'],
+        input_type: AssignerNodeInputType.variable,
+        operation: WriteMode.overwrite,
+        value: null,
+      },
+    ]
 
-    expect(updateOperationItems(createInputs('2'), dirtyItems).items).toEqual([{
-      variable_selector: [],
-      input_type: AssignerNodeInputType.variable,
-      operation: WriteMode.overwrite,
-      value: [],
-    }])
+    expect(updateOperationItems(createInputs('2'), dirtyItems).items).toEqual([
+      {
+        variable_selector: [],
+        input_type: AssignerNodeInputType.variable,
+        operation: WriteMode.overwrite,
+        value: [],
+      },
+    ])
   })
 })

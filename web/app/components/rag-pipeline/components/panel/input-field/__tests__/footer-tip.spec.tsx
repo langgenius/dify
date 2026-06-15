@@ -25,7 +25,14 @@ describe('FooterTip', () => {
       const { container } = render(<FooterTip />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'shrink-0', 'items-center', 'justify-center', 'gap-x-2', 'py-4')
+      expect(wrapper).toHaveClass(
+        'flex',
+        'shrink-0',
+        'items-center',
+        'justify-center',
+        'gap-x-2',
+        'py-4',
+      )
     })
 
     it('should have correct text styling', () => {

@@ -17,11 +17,16 @@ describe('AccountClient.get', () => {
   })
 
   it('GETs account, sends the bearer, and returns the parsed payload', async () => {
-    stub = await startStubServer(cap =>
-      jsonResponder(200, {
-        subject_type: 'account',
-        account: { id: 'acct-1', email: 'a@e.com', name: 'A' },
-      }, cap))
+    stub = await startStubServer((cap) =>
+      jsonResponder(
+        200,
+        {
+          subject_type: 'account',
+          account: { id: 'acct-1', email: 'a@e.com', name: 'A' },
+        },
+        cap,
+      ),
+    )
 
     const res = await makeClient(stub.url).get()
 
@@ -32,10 +37,10 @@ describe('AccountClient.get', () => {
   })
 
   it('maps 401 to a classified BaseError', async () => {
-    stub = await startStubServer(cap => jsonResponder(401, { error: 'expired' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(401, { error: 'expired' }, cap))
 
     await expect(makeClient(stub.url).get()).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 401,
+      (err) => isHttpClientError(err) && err.httpStatus === 401,
     )
   })
 })

@@ -7,7 +7,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: 'Interactive copy-to-clipboard glyph that swaps to a checkmark once the content has been copied. Tooltips rely on the app locale.',
+        component:
+          'Interactive copy-to-clipboard glyph that swaps to a checkmark once the content has been copied. Tooltips rely on the app locale.',
       },
     },
   },
@@ -21,7 +22,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  render: args => (
+  render: (args) => (
     <div className="flex items-center gap-2 rounded-lg border border-divider-subtle bg-components-panel-bg p-4 text-sm text-text-secondary">
       <span>Hover or click to copy the app link:</span>
       <CopyIcon {...args} />
@@ -43,14 +44,17 @@ export const Default: Story = {
 }
 
 export const InlineUsage: Story = {
-  render: args => (
+  render: (args) => (
     <div className="space-y-3 text-sm text-text-secondary">
       <p>
-        Use the copy icon inline with labels or metadata. Clicking the icon copies the value to the clipboard and shows a success tooltip.
+        Use the copy icon inline with labels or metadata. Clicking the icon copies the value to the
+        clipboard and shows a success tooltip.
       </p>
       <div className="flex items-center gap-1">
         <span className="font-medium text-text-primary">Client ID</span>
-        <span className="rounded-sm bg-background-default-subtle px-2 py-1 font-mono text-xs text-text-secondary">acc-3f92fa</span>
+        <span className="rounded-sm bg-background-default-subtle px-2 py-1 font-mono text-xs text-text-secondary">
+          acc-3f92fa
+        </span>
         <CopyIcon {...args} content="acc-3f92fa" />
       </div>
     </div>

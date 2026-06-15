@@ -32,17 +32,17 @@ const ConfigurationPage = () => {
           <AppPublisher ... />
         </div>
       </div>
-      
+
       {/* Config Section - 200 lines */}
       <div className="config">
         <Config />
       </div>
-      
+
       {/* Debug Section - 150 lines */}
       <div className="debug">
         <Debug ... />
       </div>
-      
+
       {/* Modals Section - 100 lines */}
       {showSelectDataSet && <SelectDataSet ... />}
       {showHistoryModal && <EditHistoryModal ... />}
@@ -70,7 +70,7 @@ function ConfigurationHeader({
   onPublish,
 }: ConfigurationHeaderProps) {
   const { t } = useTranslation()
-  
+
   return (
     <div className="header">
       <h1>{t('configuration.title')}</h1>
@@ -87,7 +87,7 @@ function ConfigurationHeader({
 const ConfigurationPage = () => {
   const { modelConfig, setModelConfig } = useModelConfig()
   const { activeModal, openModal, closeModal } = useModalState()
-  
+
   return (
     <div>
       <ConfigurationHeader
@@ -175,15 +175,15 @@ const AppInfo = () => {
   const [showDuplicate, setShowDuplicate] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [showSwitch, setShowSwitch] = useState(false)
-  
+
   const onEdit = async (data) => { /* 20 lines */ }
   const onDuplicate = async (data) => { /* 20 lines */ }
   const onDelete = async () => { /* 15 lines */ }
-  
+
   return (
     <div>
       {/* Main content */}
-      
+
       {showEdit && <EditModal onConfirm={onEdit} onClose={() => setShowEdit(false)} />}
       {showDuplicate && <DuplicateModal onConfirm={onDuplicate} onClose={() => setShowDuplicate(false)} />}
       {showDelete && <DeleteConfirm onConfirm={onDelete} onClose={() => setShowDelete(false)} />}
@@ -248,12 +248,12 @@ function AppInfoModals({
 // Parent component
 const AppInfo = () => {
   const { activeModal, openModal, closeModal } = useModalState()
-  
+
   return (
     <div>
       {/* Main content with openModal triggers */}
       <Button onClick={() => openModal('edit')}>Edit</Button>
-      
+
       <AppInfoModals
         appDetail={appDetail}
         activeModal={activeModal}
@@ -418,7 +418,7 @@ Use callbacks for child-to-parent communication:
 // Parent
 const Parent = () => {
   const [value, setValue] = useState('')
-  
+
   return (
     <Child
       value={value}
@@ -460,7 +460,7 @@ function List<T>({ items, renderItem, renderEmpty }: ListProps<T>) {
   if (items.length === 0 && renderEmpty) {
     return <>{renderEmpty()}</>
   }
-  
+
   return (
     <div>
       {items.map((item, index) => renderItem(item, index))}

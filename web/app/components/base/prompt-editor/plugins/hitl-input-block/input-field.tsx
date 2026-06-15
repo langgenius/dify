@@ -1,5 +1,9 @@
 import type { Item as TypeSelectItem } from '@/app/components/app/configuration/config-var/config-modal/type-select'
-import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import type {
+  FormInputItem,
+  FormInputItemDefault,
+  ParagraphFormInput,
+} from '@/app/components/workflow/nodes/human-input/types'
 import type { UploadFileSetting, ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -45,7 +49,9 @@ const InputField: React.FC<InputFieldProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
-  const [tempPayload, setTempPayload] = useState<FormInputItem>(() => payload || createDefaultParagraphFormInput())
+  const [tempPayload, setTempPayload] = useState<FormInputItem>(
+    () => payload || createDefaultParagraphFormInput(),
+  )
   const fieldTypeItems = useMemo<TypeSelectItem[]>(() => {
     return [
       {
@@ -77,53 +83,50 @@ const InputField: React.FC<InputFieldProps> = ({
     return createDefaultParagraphFormInput(tempPayload.output_variable_name)
   }, [tempPayload])
   const unavailableVariableNameSet = useMemo(() => {
-    return new Set(unavailableVariableNames.map(name => name.trim()).filter(Boolean))
+    return new Set(unavailableVariableNames.map((name) => name.trim()).filter(Boolean))
   }, [unavailableVariableNames])
   const variableNameError = useMemo(() => {
     const name = tempPayload.output_variable_name.trim()
-    if (!name)
-      return null
-    if (name.includes(' '))
-      return 'variableNameInvalid'
-    if (!/^[a-z_]\w{0,29}$/.test(name))
-      return 'variableNameInvalid'
-    if (unavailableVariableNameSet.has(name))
-      return 'variableNameDuplicated'
+    if (!name) return null
+    if (name.includes(' ')) return 'variableNameInvalid'
+    if (!/^[a-z_]\w{0,29}$/.test(name)) return 'variableNameInvalid'
+    if (unavailableVariableNameSet.has(name)) return 'variableNameDuplicated'
     return null
   }, [tempPayload.output_variable_name, unavailableVariableNameSet])
   const nameValid = useMemo(() => {
     return !!tempPayload.output_variable_name.trim() && !variableNameError
   }, [tempPayload.output_variable_name, variableNameError])
   const handleSave = useCallback(() => {
-    if (!nameValid)
-      return
+    if (!nameValid) return
     onChange(tempPayload)
   }, [nameValid, onChange, tempPayload])
   const handleTypeChange = useCallback((item: TypeSelectItem) => {
-    setTempPayload(prev => createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name))
+    setTempPayload((prev) =>
+      createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name),
+    )
   }, [])
-  const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
-    return (value: ValueSelector | string) => {
-      const nextValue = produce(paragraphPayload, (draft) => {
-        if (key === 'selector') {
-          draft.default.type = 'variable'
-          draft.default.selector = value as ValueSelector
-        }
-        else if (key === 'value') {
-          draft.default.type = 'constant'
-          draft.default.value = value as string
-        }
-        else if (key === 'type') {
-          draft.default.type = value as 'constant' | 'variable'
-        }
-      })
-      setTempPayload(nextValue)
-    }
-  }, [paragraphPayload])
+  const handleDefaultValueChange = useCallback(
+    (key: keyof FormInputItemDefault) => {
+      return (value: ValueSelector | string) => {
+        const nextValue = produce(paragraphPayload, (draft) => {
+          if (key === 'selector') {
+            draft.default.type = 'variable'
+            draft.default.selector = value as ValueSelector
+          } else if (key === 'value') {
+            draft.default.type = 'constant'
+            draft.default.value = value as string
+          } else if (key === 'type') {
+            draft.default.type = value as 'constant' | 'variable'
+          }
+        })
+        setTempPayload(nextValue)
+      }
+    },
+    [paragraphPayload],
+  )
   const handleSelectOptionsChange = useCallback((options: string[]) => {
     setTempPayload((prev) => {
-      if (!isSelectFormInput(prev))
-        return prev
+      if (!isSelectFormInput(prev)) return prev
 
       return {
         ...prev,
@@ -137,8 +140,7 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [])
   const handleSelectOptionSourceTypeChange = useCallback((isVariable: boolean) => {
     setTempPayload((prev) => {
-      if (!isSelectFormInput(prev))
-        return prev
+      if (!isSelectFormInput(prev)) return prev
 
       return {
         ...prev,
@@ -151,8 +153,7 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [])
   const handleSelectOptionSourceSelectorChange = useCallback((selector: ValueSelector | string) => {
     setTempPayload((prev) => {
-      if (!isSelectFormInput(prev))
-        return prev
+      if (!isSelectFormInput(prev)) return prev
 
       return {
         ...prev,
@@ -166,8 +167,7 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [])
   const handleFilePayloadChange = useCallback((payload: UploadFileSetting) => {
     setTempPayload((prev) => {
-      if (!isFileFormInput(prev))
-        return prev
+      if (!isFileFormInput(prev)) return prev
 
       return {
         ...prev,
@@ -179,8 +179,7 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [])
   const handleFileListPayloadChange = useCallback((payload: UploadFileSetting) => {
     setTempPayload((prev) => {
-      if (!isFileListFormInput(prev))
-        return prev
+      if (!isFileListFormInput(prev)) return prev
 
       return {
         ...prev,
@@ -208,7 +207,9 @@ const InputField: React.FC<InputFieldProps> = ({
   return (
     <div className="flex max-h-(--shortcut-popup-max-height) w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
       <div className="shrink-0 p-3 pb-2">
-        <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
+        <div className="system-md-semibold text-text-primary">
+          {t(`${i18nPrefix}.title`, { ns: 'workflow' })}
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0 pb-0">
         <div className="mt-3">
@@ -233,7 +234,7 @@ const InputField: React.FC<InputFieldProps> = ({
             placeholder={t(`${i18nPrefix}.saveResponseAsPlaceholder`, { ns: 'workflow' })}
             value={tempPayload.output_variable_name}
             onChange={(e) => {
-              setTempPayload(prev => ({ ...prev, output_variable_name: e.target.value }))
+              setTempPayload((prev) => ({ ...prev, output_variable_name: e.target.value }))
             }}
             autoFocus
           />
@@ -266,37 +267,39 @@ const InputField: React.FC<InputFieldProps> = ({
             <div className="mb-1.5 system-xs-medium text-text-secondary">
               {t(`${i18nPrefix}.options`, { ns: 'workflow' })}
             </div>
-            {tempPayload.option_source.type === 'variable'
-              ? (
-                  <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
-                    <VarReferencePicker
-                      nodeId={nodeId}
-                      value={tempPayload.option_source.selector}
-                      onChange={handleSelectOptionSourceSelectorChange}
-                      readonly={false}
-                      isJustShowValue
-                      filterVar={varPayload => varPayload.type === VarType.arrayString}
-                    />
-                    <TypeSwitch
-                      className="absolute bottom-1 left-1.5"
-                      isVariable
-                      onIsVariableChange={handleSelectOptionSourceTypeChange}
-                    />
-                  </div>
-                )
-              : (
-                  <div className={cn('rounded-lg border border-transparent bg-components-input-bg-normal p-2')}>
-                    <ConfigSelect
-                      options={tempPayload.option_source.value}
-                      onChange={handleSelectOptionsChange}
-                    />
-                    <TypeSwitch
-                      className="mt-2"
-                      isVariable={false}
-                      onIsVariableChange={handleSelectOptionSourceTypeChange}
-                    />
-                  </div>
+            {tempPayload.option_source.type === 'variable' ? (
+              <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
+                <VarReferencePicker
+                  nodeId={nodeId}
+                  value={tempPayload.option_source.selector}
+                  onChange={handleSelectOptionSourceSelectorChange}
+                  readonly={false}
+                  isJustShowValue
+                  filterVar={(varPayload) => varPayload.type === VarType.arrayString}
+                />
+                <TypeSwitch
+                  className="absolute bottom-1 left-1.5"
+                  isVariable
+                  onIsVariableChange={handleSelectOptionSourceTypeChange}
+                />
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  'rounded-lg border border-transparent bg-components-input-bg-normal p-2',
                 )}
+              >
+                <ConfigSelect
+                  options={tempPayload.option_source.value}
+                  onChange={handleSelectOptionsChange}
+                />
+                <TypeSwitch
+                  className="mt-2"
+                  isVariable={false}
+                  onIsVariableChange={handleSelectOptionSourceTypeChange}
+                />
+              </div>
+            )}
           </div>
         )}
         {isFileFormInput(tempPayload) && (
@@ -327,31 +330,22 @@ const InputField: React.FC<InputFieldProps> = ({
       <div className="shrink-0 bg-components-panel-bg p-3">
         <div className="flex justify-end space-x-2">
           <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-          {isEdit
-            ? (
-                <Button
-                  variant="primary"
-                  onClick={handleSave}
-                  disabled={!nameValid}
-                >
-                  {t('operation.save', { ns: 'common' })}
-                </Button>
-              )
-            : (
-                <Button
-                  className="flex"
-                  variant="primary"
-                  disabled={!nameValid}
-                  onClick={handleSave}
-                >
-                  <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
-                  <KbdGroup>
-                    {['Mod', 'Enter'].map(key => (
-                      <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
-                    ))}
-                  </KbdGroup>
-                </Button>
-              )}
+          {isEdit ? (
+            <Button variant="primary" onClick={handleSave} disabled={!nameValid}>
+              {t('operation.save', { ns: 'common' })}
+            </Button>
+          ) : (
+            <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
+              <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
+              <KbdGroup>
+                {['Mod', 'Enter'].map((key) => (
+                  <Kbd key={key} color="white">
+                    {formatForDisplay(key)}
+                  </Kbd>
+                ))}
+              </KbdGroup>
+            </Button>
+          )}
         </div>
       </div>
     </div>

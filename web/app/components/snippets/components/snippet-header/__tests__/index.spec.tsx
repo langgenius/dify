@@ -7,7 +7,9 @@ import SnippetHeader from '..'
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogActions: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
+  AlertDialogCancelButton: ({ children }: { children: ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
   AlertDialogConfirmButton: ({
     children,
     disabled,
@@ -16,11 +18,16 @@ vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
     children: ReactNode
     disabled?: boolean
     onClick?: () => void
-  }) => <button type="button" disabled={disabled} onClick={onClick}>{children}</button>,
+  }) => (
+    <button type="button" disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
   AlertDialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogDescription: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  AlertDialogTrigger: ({ children, render }: { children?: ReactNode, render?: ReactNode }) => render ?? <button type="button">{children}</button>,
+  AlertDialogTrigger: ({ children, render }: { children?: ReactNode; render?: ReactNode }) =>
+    render ?? <button type="button">{children}</button>,
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({

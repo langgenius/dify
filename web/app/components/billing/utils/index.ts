@@ -8,8 +8,7 @@ import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
  */
 export const parseVectorSpaceToMB = (vectorSpace: string): number => {
   const match = /^(\d+)(MB|GB)$/i.exec(vectorSpace)
-  if (!match)
-    return 0
+  if (!match) return 0
 
   const value = Number.parseInt(match[1]!, 10)
   const unit = match[2]!.toUpperCase()
@@ -22,35 +21,29 @@ export const parseVectorSpaceToMB = (vectorSpace: string): number => {
  */
 export const getPlanVectorSpaceLimitMB = (planType: BasicPlan): number => {
   const planInfo = ALL_PLANS[planType]
-  if (!planInfo)
-    return 0
+  if (!planInfo) return 0
 
   return parseVectorSpaceToMB(planInfo.vectorSpace)
 }
 
 const parseLimit = (limit: number) => {
-  if (limit === 0)
-    return NUM_INFINITE
+  if (limit === 0) return NUM_INFINITE
 
   return limit
 }
 
 const parseRateLimit = (limit: number) => {
-  if (limit === 0 || limit === -1)
-    return NUM_INFINITE
+  if (limit === 0 || limit === -1) return NUM_INFINITE
 
   return limit
 }
 
 const normalizeResetDate = (resetDate?: number | null) => {
-  if (typeof resetDate !== 'number' || resetDate <= 0)
-    return null
+  if (typeof resetDate !== 'number' || resetDate <= 0) return null
 
-  if (resetDate >= 1e12)
-    return dayjs(resetDate)
+  if (resetDate >= 1e12) return dayjs(resetDate)
 
-  if (resetDate >= 1e9)
-    return dayjs(resetDate * 1000)
+  if (resetDate >= 1e9) return dayjs(resetDate * 1000)
 
   const digits = resetDate.toString()
   if (digits.length === 8) {
@@ -66,12 +59,10 @@ const normalizeResetDate = (resetDate?: number | null) => {
 
 const getResetInDaysFromDate = (resetDate?: number | null) => {
   const resetDay = normalizeResetDate(resetDate)
-  if (!resetDay)
-    return null
+  if (!resetDay) return null
 
   const diff = resetDay.startOf('day').diff(dayjs().startOf('day'), 'day')
-  if (Number.isNaN(diff) || diff < 0)
-    return null
+  if (Number.isNaN(diff) || diff < 0) return null
 
   return diff
 }
@@ -86,8 +77,7 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
   }
   const getQuotaUsage = (quota?: BillingQuota) => quota?.usage ?? 0
   const getQuotaResetInDays = (quota?: BillingQuota) => {
-    if (!quota)
-      return null
+    if (!quota) return null
     return getResetInDaysFromDate(quota.reset_date)
   }
 
@@ -108,7 +98,10 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       teamMembers: parseLimit(data.members.limit),
       annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
       documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
-      apiRateLimit: resolveRateLimit(data.api_rate_limit?.limit, planPreset?.apiRateLimit ?? NUM_INFINITE),
+      apiRateLimit: resolveRateLimit(
+        data.api_rate_limit?.limit,
+        planPreset?.apiRateLimit ?? NUM_INFINITE,
+      ),
       triggerEvents: resolveRateLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
     },
     reset: {

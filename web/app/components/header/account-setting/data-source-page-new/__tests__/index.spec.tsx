@@ -67,9 +67,15 @@ describe('DataSourcePage Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<typeof useTheme>)
-    vi.mocked(useRenderI18nObject).mockReturnValue((obj: Record<string, string>) => obj?.en_US || '')
-    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({ mutateAsync: vi.fn() } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
+    vi.mocked(useTheme).mockReturnValue({ theme: 'light' } as unknown as ReturnType<
+      typeof useTheme
+    >)
+    vi.mocked(useRenderI18nObject).mockReturnValue(
+      (obj: Record<string, string>) => obj?.en_US || '',
+    )
+    vi.mocked(useGetDataSourceOAuthUrl).mockReturnValue({
+      mutateAsync: vi.fn(),
+    } as unknown as ReturnType<typeof useGetDataSourceOAuthUrl>)
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: vi.fn() })
     vi.mocked(useMarketplaceAllPlugins).mockReturnValue({ plugins: [], isLoading: false })
     vi.mocked(usePluginAuthAction).mockReturnValue({
@@ -102,7 +108,9 @@ describe('DataSourcePage Component', () => {
 
       // Assert
       expect(screen.queryByText('Dify Source')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.modelProvider.installDataSourceProvider'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -184,7 +192,9 @@ describe('DataSourcePage Component', () => {
       })
 
       // Assert
-      expect(screen.queryByText('common.modelProvider.installDataSourceProvider')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.modelProvider.installDataSourceProvider'),
+      ).not.toBeInTheDocument()
     })
   })
 })

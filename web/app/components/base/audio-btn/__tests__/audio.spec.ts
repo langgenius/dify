@@ -20,7 +20,16 @@ vi.mock('@/service/share', () => ({
   textToAudioStream: (...args: unknown[]) => mockTextToAudioStream(...args),
 }))
 
-type AudioEventName = 'ended' | 'paused' | 'loaded' | 'play' | 'timeupdate' | 'loadeddate' | 'canplay' | 'error' | 'sourceopen'
+type AudioEventName =
+  | 'ended'
+  | 'paused'
+  | 'loaded'
+  | 'play'
+  | 'timeupdate'
+  | 'loadeddate'
+  | 'canplay'
+  | 'error'
+  | 'sourceopen'
 
 type AudioEventListener = () => void
 
@@ -150,7 +159,7 @@ const originalCreateObjectURL = globalThis.URL.createObjectURL
 const originalMediaSource = window.MediaSource
 const originalManagedMediaSource = window.ManagedMediaSource
 
-const setMediaSourceSupport = (options: { mediaSource: boolean, managedMediaSource: boolean }) => {
+const setMediaSourceSupport = (options: { mediaSource: boolean; managedMediaSource: boolean }) => {
   Object.defineProperty(window, 'MediaSource', {
     configurable: true,
     writable: true,
@@ -455,8 +464,7 @@ describe('AudioPlayer', () => {
         expect(player.cacheBuffers).toHaveLength(0)
         expect(mediaSource!.endOfStream).toHaveBeenCalledTimes(1)
         expect(callback).not.toHaveBeenCalledWith('play')
-      }
-      finally {
+      } finally {
         vi.useRealTimers()
       }
     })
@@ -546,9 +554,10 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
-        .mockImplementation(() => { })
-
-        ; (player as unknown as { receiveAudioData: (data: Uint8Array | undefined) => void }).receiveAudioData(undefined)
+        .mockImplementation(() => {})
+      ;(
+        player as unknown as { receiveAudioData: (data: Uint8Array | undefined) => void }
+      ).receiveAudioData(undefined)
 
       expect(finishStream).toHaveBeenCalledTimes(1)
     })
@@ -557,9 +566,10 @@ describe('AudioPlayer', () => {
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
       const finishStream = vi
         .spyOn(player as unknown as { finishStream: () => void }, 'finishStream')
-        .mockImplementation(() => { })
-
-        ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array(0))
+        .mockImplementation(() => {})
+      ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(
+        new Uint8Array(0),
+      )
 
       expect(finishStream).toHaveBeenCalledTimes(1)
     })
@@ -569,8 +579,9 @@ describe('AudioPlayer', () => {
       const mediaSource = testState.mediaSources[0]
       mediaSource!.emit('sourceopen')
       mediaSource!.sourceBuffer.updating = true
-
-      ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([1, 2, 3]))
+      ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(
+        new Uint8Array([1, 2, 3]),
+      )
 
       expect(player.cacheBuffers.length).toBe(1)
     })
@@ -583,8 +594,9 @@ describe('AudioPlayer', () => {
       const existingBuffer = new ArrayBuffer(2)
       player.cacheBuffers = [existingBuffer]
       mediaSource!.sourceBuffer.updating = false
-
-      ; (player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(new Uint8Array([9]))
+      ;(player as unknown as { receiveAudioData: (data: Uint8Array) => void }).receiveAudioData(
+        new Uint8Array([9]),
+      )
 
       expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)
       expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledWith(existingBuffer)
@@ -598,8 +610,7 @@ describe('AudioPlayer', () => {
       mediaSource!.emit('sourceopen')
       mediaSource!.sourceBuffer.updating = false
       player.cacheBuffers = [new ArrayBuffer(3)]
-
-      ; (player as unknown as { finishStream: () => void }).finishStream()
+      ;(player as unknown as { finishStream: () => void }).finishStream()
       vi.advanceTimersByTime(50)
 
       expect(mediaSource!.sourceBuffer.appendBuffer).toHaveBeenCalledTimes(1)

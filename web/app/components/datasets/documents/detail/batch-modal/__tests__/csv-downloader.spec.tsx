@@ -13,7 +13,17 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 // Mock react-papaparse
-const MockCSVDownloader = ({ children, data, filename, type }: { children: ReactNode, data: unknown, filename: string, type: string }) => (
+const MockCSVDownloader = ({
+  children,
+  data,
+  filename,
+  type,
+}: {
+  children: ReactNode
+  data: unknown
+  filename: string
+  type: string
+}) => (
   <div
     data-testid="csv-downloader-link"
     data-filename={filename}
@@ -131,11 +141,7 @@ describe('CSVDownloader', () => {
 
       const link = screen.getByTestId('csv-downloader-link')
       const data = JSON.parse(link.getAttribute('data-data') || '[]')
-      expect(data).toEqual([
-        ['segment content'],
-        ['content1'],
-        ['content2'],
-      ])
+      expect(data).toEqual([['segment content'], ['content1'], ['content2']])
     })
 
     it('should provide Chinese QA template when locale is Chinese and docForm is qa', () => {
@@ -159,11 +165,7 @@ describe('CSVDownloader', () => {
 
       const link = screen.getByTestId('csv-downloader-link')
       const data = JSON.parse(link.getAttribute('data-data') || '[]')
-      expect(data).toEqual([
-        ['分段内容'],
-        ['内容 1'],
-        ['内容 2'],
-      ])
+      expect(data).toEqual([['分段内容'], ['内容 1'], ['内容 2']])
     })
   })
 

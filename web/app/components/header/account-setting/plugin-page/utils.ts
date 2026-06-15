@@ -7,12 +7,9 @@ export const validatePluginKey = async (pluginType: string, body: any) => {
       url: `/workspaces/current/tool-providers/${pluginType}/credentials-validate`,
       body,
     })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error })
-  }
-  catch (e: any) {
+    if (res.result === 'success') return Promise.resolve({ status: ValidatedStatus.Success })
+    else return Promise.resolve({ status: ValidatedStatus.Error, message: res.error })
+  } catch (e: any) {
     return Promise.resolve({ status: ValidatedStatus.Error, message: e.message })
   }
 }
@@ -23,12 +20,9 @@ export const updatePluginKey = async (pluginType: string, body: any) => {
       url: `/workspaces/current/tool-providers/${pluginType}/credentials`,
       body,
     })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error })
-  }
-  catch (e: any) {
+    if (res.result === 'success') return Promise.resolve({ status: ValidatedStatus.Success })
+    else return Promise.resolve({ status: ValidatedStatus.Error, message: res.error })
+  } catch (e: any) {
     return Promise.resolve({ status: ValidatedStatus.Error, message: e.message })
   }
 }

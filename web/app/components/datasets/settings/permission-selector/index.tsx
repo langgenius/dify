@@ -1,11 +1,7 @@
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
@@ -35,29 +31,35 @@ const PermissionSelector = ({
   onMemberSelect,
 }: RoleSelectorProps) => {
   const { t } = useTranslation()
-  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  const userProfile = useAppContextWithSelector((state) => state.userProfile)
   const [open, setOpen] = useState(false)
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
+  const { run: handleSearch } = useDebounceFn(
+    () => {
+      setSearchKeywords(keywords)
+    },
+    { wait: 500 },
+  )
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
     handleSearch()
   }
-  const selectMember = useCallback((member: Member) => {
-    if (value.includes(member.id))
-      onMemberSelect(value.filter(v => v !== member.id))
-    else
-      onMemberSelect([...value, member.id])
-  }, [value, onMemberSelect])
+  const selectMember = useCallback(
+    (member: Member) => {
+      if (value.includes(member.id)) onMemberSelect(value.filter((v) => v !== member.id))
+      else onMemberSelect([...value, member.id])
+    },
+    [value, onMemberSelect],
+  )
 
   const selectedMembers = useMemo(() => {
     return [
       userProfile,
-      ...memberList.filter(member => member.id !== userProfile.id).filter(member => value.includes(member.id)),
+      ...memberList
+        .filter((member) => member.id !== userProfile.id)
+        .filter((member) => value.includes(member.id)),
     ]
   }, [userProfile, value, memberList])
 
@@ -66,7 +68,12 @@ const PermissionSelector = ({
   }, [searchKeywords, userProfile])
 
   const filteredMemberList = useMemo(() => {
-    return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id && ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role))
+    return memberList.filter(
+      (member) =>
+        (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) &&
+        member.id !== userProfile.id &&
+        ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role),
+    )
   }, [memberList, searchKeywords, userProfile])
 
   const onSelectOnlyMe = useCallback(() => {
@@ -87,86 +94,81 @@ const PermissionSelector = ({
   const isOnlyMe = permission === DatasetPermission.onlyMe
   const isAllTeamMembers = permission === DatasetPermission.allTeamMembers
   const isPartialMembers = permission === DatasetPermission.partialMembers
-  const selectedMemberNames = selectedMembers.map(member => member.name).join(', ')
+  const selectedMemberNames = selectedMembers.map((member) => member.name).join(', ')
 
   return (
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
-        if (disabled)
-          return
+        if (disabled) return
         setOpen(nextOpen)
       }}
     >
       <div className="relative">
         <PopoverTrigger
-          render={(
-            <div className={cn('group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt', disabled && 'cursor-not-allowed! bg-components-input-bg-disabled! hover:bg-components-input-bg-disabled!')}>
-              {
-                isOnlyMe && (
-                  <>
-                    <div className="flex size-6 shrink-0 items-center justify-center">
-                      <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
-                    </div>
-                    <div className="grow p-1 system-sm-regular text-components-input-text-filled">
-                      {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
-                    </div>
-                  </>
-                )
-              }
-              {
-                isAllTeamMembers && (
-                  <>
-                    <div className="flex size-6 shrink-0 items-center justify-center">
-                      <RiGroup2Line className="size-4 text-text-secondary" />
-                    </div>
-                    <div className="grow p-1 system-sm-regular text-components-input-text-filled">
-                      {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
-                    </div>
-                  </>
-                )
-              }
-              {
-                isPartialMembers && (
-                  <>
-                    <div className="relative flex size-6 shrink-0 items-center justify-center">
-                      {
-                        selectedMembers.length === 1 && (
-                          <Avatar
-                            avatar={selectedMembers[0]!.avatar_url}
-                            name={selectedMembers[0]!.name}
-                            size="xs"
-                          />
-                        )
-                      }
-                      {
-                        selectedMembers.length >= 2 && (
-                          <>
-                            <Avatar
-                              avatar={selectedMembers[0]!.avatar_url}
-                              name={selectedMembers[0]!.name}
-                              className="absolute top-0 left-0 z-0"
-                              size="xxs"
-                            />
-                            <Avatar
-                              avatar={selectedMembers[1]!.avatar_url}
-                              name={selectedMembers[1]!.name}
-                              className="absolute right-0 bottom-0 z-10"
-                              size="xxs"
-                            />
-                          </>
-                        )
-                      }
-                    </div>
-                    <div
-                      title={selectedMemberNames}
-                      className="grow truncate p-1 system-sm-regular text-components-input-text-filled"
-                    >
-                      {selectedMemberNames}
-                    </div>
-                  </>
-                )
-              }
+          render={
+            <div
+              className={cn(
+                'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+                disabled &&
+                  'cursor-not-allowed! bg-components-input-bg-disabled! hover:bg-components-input-bg-disabled!',
+              )}
+            >
+              {isOnlyMe && (
+                <>
+                  <div className="flex size-6 shrink-0 items-center justify-center">
+                    <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xs" />
+                  </div>
+                  <div className="grow p-1 system-sm-regular text-components-input-text-filled">
+                    {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
+                  </div>
+                </>
+              )}
+              {isAllTeamMembers && (
+                <>
+                  <div className="flex size-6 shrink-0 items-center justify-center">
+                    <RiGroup2Line className="size-4 text-text-secondary" />
+                  </div>
+                  <div className="grow p-1 system-sm-regular text-components-input-text-filled">
+                    {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
+                  </div>
+                </>
+              )}
+              {isPartialMembers && (
+                <>
+                  <div className="relative flex size-6 shrink-0 items-center justify-center">
+                    {selectedMembers.length === 1 && (
+                      <Avatar
+                        avatar={selectedMembers[0]!.avatar_url}
+                        name={selectedMembers[0]!.name}
+                        size="xs"
+                      />
+                    )}
+                    {selectedMembers.length >= 2 && (
+                      <>
+                        <Avatar
+                          avatar={selectedMembers[0]!.avatar_url}
+                          name={selectedMembers[0]!.name}
+                          className="absolute top-0 left-0 z-0"
+                          size="xxs"
+                        />
+                        <Avatar
+                          avatar={selectedMembers[1]!.avatar_url}
+                          name={selectedMembers[1]!.name}
+                          className="absolute right-0 bottom-0 z-10"
+                          size="xxs"
+                        />
+                      </>
+                    )}
+                  </div>
+                  <div
+                    title={selectedMemberNames}
+                    className="grow truncate p-1 system-sm-regular text-components-input-text-filled"
+                  >
+                    {selectedMemberNames}
+                  </div>
+                </>
+              )}
               <RiArrowDownSLine
                 className={cn(
                   'size-4 shrink-0 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary',
@@ -174,7 +176,7 @@ const PermissionSelector = ({
                 )}
               />
             </div>
-          )}
+          }
         />
         <PopoverContent
           placement="bottom-start"
@@ -186,7 +188,12 @@ const PermissionSelector = ({
               {/* Only me */}
               <Item
                 leftIcon={
-                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size="sm" />
+                  <Avatar
+                    avatar={userProfile.avatar_url}
+                    name={userProfile.name}
+                    className="shrink-0"
+                    size="sm"
+                  />
                 }
                 text={t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
                 onClick={onSelectOnlyMe}
@@ -194,22 +201,22 @@ const PermissionSelector = ({
               />
               {/* All team members */}
               <Item
-                leftIcon={(
+                leftIcon={
                   <div className="flex size-6 shrink-0 items-center justify-center">
                     <RiGroup2Line className="size-4 text-text-secondary" />
                   </div>
-                )}
+                }
                 text={t('form.permissionsAllMember', { ns: 'datasetSettings' })}
                 onClick={onSelectAllMembers}
                 isSelected={isAllTeamMembers}
               />
               {/* Partial members */}
               <Item
-                leftIcon={(
+                leftIcon={
                   <div className="flex size-6 shrink-0 items-center justify-center">
                     <RiLock2Line className="size-4 text-text-secondary" />
                   </div>
-                )}
+                }
                 text={t('form.permissionsInvitedMembers', { ns: 'datasetSettings' })}
                 onClick={onSelectPartialMembers}
                 isSelected={isPartialMembers}
@@ -222,7 +229,7 @@ const PermissionSelector = ({
                     showLeftIcon
                     showClearIcon
                     value={keywords}
-                    onChange={e => handleKeywordsChange(e.target.value)}
+                    onChange={(e) => handleKeywordsChange(e.target.value)}
                     onClear={() => handleKeywordsChange('')}
                   />
                 </div>
@@ -230,7 +237,12 @@ const PermissionSelector = ({
                   {showMe && (
                     <MemberItem
                       leftIcon={
-                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size="sm" />
+                        <Avatar
+                          avatar={userProfile.avatar_url}
+                          name={userProfile.name}
+                          className="shrink-0"
+                          size="sm"
+                        />
                       }
                       name={userProfile.name}
                       email={userProfile.email}
@@ -238,11 +250,16 @@ const PermissionSelector = ({
                       isMe
                     />
                   )}
-                  {filteredMemberList.map(member => (
+                  {filteredMemberList.map((member) => (
                     <MemberItem
                       key={member.id}
                       leftIcon={
-                        <Avatar avatar={member.avatar_url} name={member.name} className="shrink-0" size="sm" />
+                        <Avatar
+                          avatar={member.avatar_url}
+                          name={member.name}
+                          className="shrink-0"
+                          size="sm"
+                        />
                       }
                       name={member.name}
                       email={member.email}
@@ -250,13 +267,11 @@ const PermissionSelector = ({
                       onClick={selectMember.bind(null, member)}
                     />
                   ))}
-                  {
-                    !showMe && filteredMemberList.length === 0 && (
-                      <div className="flex items-center justify-center px-1 py-6 text-center system-xs-regular whitespace-pre-wrap text-text-tertiary">
-                        {t('form.onSearchResults', { ns: 'datasetSettings' })}
-                      </div>
-                    )
-                  }
+                  {!showMe && filteredMemberList.length === 0 && (
+                    <div className="flex items-center justify-center px-1 py-6 text-center system-xs-regular whitespace-pre-wrap text-text-tertiary">
+                      {t('form.onSearchResults', { ns: 'datasetSettings' })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

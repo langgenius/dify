@@ -1,31 +1,17 @@
 import type { LexicalCommand } from 'lexical'
 import type { CSSProperties } from 'react'
-import {
-  autoUpdate,
-  flip,
-  offset,
-  shift,
-  size,
-  useFloating,
-} from '@floating-ui/react'
+import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import {
-  $getSelection,
-  $isRangeSelection,
-} from 'lexical'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react'
+import { $getSelection, $isRangeSelection } from 'lexical'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
-export type ShortcutPopupInsertHandler = <Payload>(command: LexicalCommand<Payload>, params: Payload) => void
+export type ShortcutPopupInsertHandler = <Payload>(
+  command: LexicalCommand<Payload>,
+  params: Payload,
+) => void
 export type ShortcutPopupDisplayMode = 'selection' | 'workflow-panel-adjacent-center'
 
 // Hotkey can be:
@@ -37,7 +23,9 @@ export type Hotkey = string | string[] | string[][] | ((e: KeyboardEvent) => boo
 
 type ShortcutPopupPluginProps = {
   hotkey?: Hotkey
-  children?: React.ReactNode | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
+  children?:
+    | React.ReactNode
+    | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
   className?: string
   container?: Element | null
   displayMode?: ShortcutPopupDisplayMode
@@ -59,9 +47,8 @@ type FixedPlacementState = {
 function getWorkflowPanelAdjacentPlacement(): FixedPlacementState {
   const rightPanel = document.querySelector('[data-workflow-right-panel]') as HTMLElement | null
   const rightPanelRect = rightPanel?.getBoundingClientRect()
-  const rightBoundary = rightPanelRect && rightPanelRect.left > 0
-    ? rightPanelRect.left
-    : window.innerWidth
+  const rightBoundary =
+    rightPanelRect && rightPanelRect.left > 0 ? rightPanelRect.left : window.innerWidth
   const topBoundary = rightPanelRect?.top ?? 56
   const bottomBoundary = window.innerHeight - VIEWPORT_PADDING
   const availableWidth = Math.max(0, rightBoundary - VIEWPORT_PADDING * 2)
@@ -77,16 +64,12 @@ function getWorkflowPanelAdjacentPlacement(): FixedPlacementState {
 
 function getWorkflowPanelAdjacentPlacementSnapshot() {
   /* v8 ignore next 2 -- server/non-browser fallback for a client-only positioning branch. @preserve */
-  if (typeof window === 'undefined' || typeof document === 'undefined')
-    return '0|0|0|0'
+  if (typeof window === 'undefined' || typeof document === 'undefined') return '0|0|0|0'
 
   const placement = getWorkflowPanelAdjacentPlacement()
-  return [
-    placement.right,
-    placement.top,
-    placement.availableWidth,
-    placement.availableHeight,
-  ].join('|')
+  return [placement.right, placement.top, placement.availableWidth, placement.availableHeight].join(
+    '|',
+  )
 }
 
 function parseWorkflowPanelAdjacentPlacement(snapshot: string): FixedPlacementState {
@@ -101,17 +84,14 @@ function parseWorkflowPanelAdjacentPlacement(snapshot: string): FixedPlacementSt
 
 function subscribeWorkflowPanelAdjacentPlacement(callback: () => void) {
   /* v8 ignore next 2 -- server/non-browser fallback for a client-only positioning branch. @preserve */
-  if (typeof window === 'undefined' || typeof document === 'undefined')
-    return () => {}
+  if (typeof window === 'undefined' || typeof document === 'undefined') return () => {}
 
   window.addEventListener('resize', callback)
 
   const rightPanel = document.querySelector('[data-workflow-right-panel]')
-  const resizeObserver = rightPanel && typeof ResizeObserver !== 'undefined'
-    ? new ResizeObserver(callback)
-    : null
-  if (rightPanel)
-    resizeObserver?.observe(rightPanel)
+  const resizeObserver =
+    rightPanel && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(callback) : null
+  if (rightPanel) resizeObserver?.observe(rightPanel)
 
   return () => {
     window.removeEventListener('resize', callback)
@@ -126,14 +106,12 @@ const SHIFT_ALIASES = new Set(['shift'])
 
 function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
   /* v8 ignore next 2 -- plugin always provides a default hotkey ('mod+/'); undefined hotkey is not reachable via public props flow. @preserve */
-  if (!hotkey)
-    return false
+  if (!hotkey) return false
 
-  if (typeof hotkey === 'function')
-    return hotkey(event)
+  if (typeof hotkey === 'function') return hotkey(event)
 
   const matchCombo = (tokens: string[]) => {
-    const parts = tokens.map(t => t.toLowerCase().trim()).filter(Boolean)
+    const parts = tokens.map((t) => t.toLowerCase().trim()).filter(Boolean)
     let expectedKey: string | null = null
 
     let needMod = false
@@ -166,22 +144,16 @@ function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
       expectedKey = p
     }
 
-    if (needMod && !(event.metaKey || event.ctrlKey))
-      return false
-    if (needCtrl && !event.ctrlKey)
-      return false
-    if (needMeta && !event.metaKey)
-      return false
-    if (needAlt && !event.altKey)
-      return false
-    if (needShift && !event.shiftKey)
-      return false
+    if (needMod && !(event.metaKey || event.ctrlKey)) return false
+    if (needCtrl && !event.ctrlKey) return false
+    if (needMeta && !event.metaKey) return false
+    if (needAlt && !event.altKey) return false
+    if (needShift && !event.shiftKey) return false
 
     if (expectedKey) {
       const k = event.key.toLowerCase()
       const normalized = k === ' ' ? 'space' : k
-      if (normalized !== expectedKey)
-        return false
+      if (normalized !== expectedKey) return false
     }
 
     return true
@@ -191,9 +163,8 @@ function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
     const isNested = hotkey.length > 0 && Array.isArray((hotkey as unknown[])[0])
     if (isNested) {
       const combos = hotkey as string[][]
-      return combos.some(tokens => matchCombo(tokens))
-    }
-    else {
+      return combos.some((tokens) => matchCombo(tokens))
+    } else {
       const tokens = hotkey as string[]
       return matchCombo(tokens)
     }
@@ -202,7 +173,7 @@ function matchHotkey(event: KeyboardEvent, hotkey?: Hotkey) {
   const tokensFromString = hotkey
     .toLowerCase()
     .split('+')
-    .map(t => t.trim())
+    .map((t) => t.trim())
     .filter(Boolean)
   return matchCombo(tokensFromString)
 }
@@ -227,7 +198,10 @@ export default function ShortcutsPopupPlugin({
   const lastSelectionRef = useRef<Range | null>(null)
 
   /* v8 ignore next -- defensive non-browser fallback; this client-only plugin runs where document exists (browser/test DOM runtime). @preserve */
-  const containerEl = useMemo(() => container ?? (typeof document !== 'undefined' ? document.body : null), [container])
+  const containerEl = useMemo(
+    () => container ?? (typeof document !== 'undefined' ? document.body : null),
+    [container],
+  )
   const useContainer = !!containerEl && containerEl !== document.body
 
   const { refs, floatingStyles, isPositioned } = useFloating({
@@ -245,7 +219,7 @@ export default function ShortcutsPopupPlugin({
           Object.assign(elements.floating.style, {
             '--shortcut-popup-max-width': `${Math.min(400, availableWidth)}px`,
             '--shortcut-popup-max-height': `${Math.max(0, availableHeight)}px`,
-            'overflow': 'visible',
+            overflow: 'visible',
           })
         },
         padding: 8,
@@ -271,8 +245,7 @@ export default function ShortcutsPopupPlugin({
   const isEditorFocused = useCallback(() => {
     const root = editor.getRootElement()
     /* v8 ignore next 2 -- root can be null during Lexical mount/unmount transitions before DOM root attachment. @preserve */
-    if (!root)
-      return false
+    if (!root) return false
     return root.contains(document.activeElement)
   }, [editor])
 
@@ -285,34 +258,27 @@ export default function ShortcutsPopupPlugin({
 
     const domSelection = window.getSelection()
     let range: Range | null = null
-    if (domSelection && domSelection.rangeCount > 0)
-      range = domSelection.getRangeAt(0).cloneRange()
-    else
-      range = lastSelectionRef.current
+    if (domSelection && domSelection.rangeCount > 0) range = domSelection.getRangeAt(0).cloneRange()
+    else range = lastSelectionRef.current
 
     if (range) {
       const rects = range.getClientRects()
       let rect: DOMRect | null = null
 
-      if (rects && rects.length)
-        rect = rects[rects.length - 1]!
-
-      else
-        rect = range.getBoundingClientRect()
+      if (rects && rects.length) rect = rects[rects.length - 1]!
+      else rect = range.getBoundingClientRect()
 
       if (rect.width === 0 && rect.height === 0) {
         const root = editor.getRootElement()
         /* v8 ignore next 10 -- zero-size rect recovery depends on browser layout/selection geometry; deterministic reproduction in the test DOM runtime is unreliable. @preserve */
         if (root) {
           const sc = range.startContainer
-          const node = sc.nodeType === Node.ELEMENT_NODE
-            ? sc as Element
-            : (sc.parentElement || root)
+          const node =
+            sc.nodeType === Node.ELEMENT_NODE ? (sc as Element) : sc.parentElement || root
 
           rect = node.getBoundingClientRect()
 
-          if (rect.width === 0 && rect.height === 0)
-            rect = root.getBoundingClientRect()
+          if (rect.width === 0 && rect.height === 0) rect = root.getBoundingClientRect()
         }
       }
 
@@ -344,8 +310,7 @@ export default function ShortcutsPopupPlugin({
         return
       }
 
-      if (!isEditorFocused())
-        return
+      if (!isEditorFocused()) return
 
       if (matchHotkey(event, hotkey)) {
         event.preventDefault()
@@ -358,35 +323,35 @@ export default function ShortcutsPopupPlugin({
   }, [hotkey, open, isEditorFocused, openPortal, closePortal])
 
   useEffect(() => {
-    if (!open)
-      return
+    if (!open) return
 
     const onMouseDown = (e: MouseEvent) => {
       /* v8 ignore next 2 -- outside-click listener can race with ref cleanup during close/unmount; null-ref path is a safety guard. @preserve */
-      if (!portalRef.current)
-        return
+      if (!portalRef.current) return
       const target = e.target as HTMLElement | null
-      if (target?.closest('[data-base-ui-portal]'))
-        return
-      if (!portalRef.current.contains(e.target as Node))
-        closePortal()
+      if (target?.closest('[data-base-ui-portal]')) return
+      if (!portalRef.current.contains(e.target as Node)) closePortal()
     }
     document.addEventListener('mousedown', onMouseDown, false)
     return () => document.removeEventListener('mousedown', onMouseDown, false)
   }, [open, closePortal])
 
-  const handleInsert = useCallback(<Payload,>(command: LexicalCommand<Payload>, params: Payload) => {
-    editor.dispatchCommand(command, params)
-    closePortal()
-  }, [editor, closePortal])
+  const handleInsert = useCallback(
+    <Payload,>(command: LexicalCommand<Payload>, params: Payload) => {
+      editor.dispatchCommand(command, params)
+      closePortal()
+    },
+    [editor, closePortal],
+  )
 
-  if (!open || !containerEl)
-    return null
+  if (!open || !containerEl) return null
 
   const isFixedPanelAdjacent = displayMode === 'workflow-panel-adjacent-center'
-  const fixedPlacementState = parseWorkflowPanelAdjacentPlacement(workflowPanelAdjacentPlacementSnapshot)
+  const fixedPlacementState = parseWorkflowPanelAdjacentPlacement(
+    workflowPanelAdjacentPlacementSnapshot,
+  )
   const fixedPanelAdjacentStyles: CSSProperties = isFixedPanelAdjacent
-    ? {
+    ? ({
         position: 'fixed',
         right: fixedPlacementState.right,
         top: fixedPlacementState.top,
@@ -396,7 +361,7 @@ export default function ShortcutsPopupPlugin({
         visibility: 'visible',
         ['--shortcut-popup-max-width' as string]: `${Math.min(POPUP_MAX_WIDTH, fixedPlacementState.availableWidth)}px`,
         ['--shortcut-popup-max-height' as string]: `${fixedPlacementState.availableHeight}px`,
-      } as CSSProperties
+      } as CSSProperties)
     : {}
 
   return createPortal(
@@ -404,24 +369,24 @@ export default function ShortcutsPopupPlugin({
       data-testid="shortcuts-popup"
       ref={(node) => {
         portalRef.current = node
-        if (!isFixedPanelAdjacent)
-          refs.setFloating(node)
+        if (!isFixedPanelAdjacent) refs.setFloating(node)
       }}
-      className={cn(
-        'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
-        className,
-      )}
-      style={isFixedPanelAdjacent
-        ? fixedPanelAdjacentStyles
-        : {
-            ...floatingStyles,
-            zIndex: useContainer ? undefined : 50,
-            overflow: 'visible',
-            visibility: isPositioned ? 'visible' : 'hidden',
-          }}
+      className={cn('absolute rounded-xl bg-components-panel-bg-blur shadow-lg', className)}
+      style={
+        isFixedPanelAdjacent
+          ? fixedPanelAdjacentStyles
+          : {
+              ...floatingStyles,
+              zIndex: useContainer ? undefined : 50,
+              overflow: 'visible',
+              visibility: isPositioned ? 'visible' : 'hidden',
+            }
+      }
     >
       <div className="max-h-(--shortcut-popup-max-height) max-w-(--shortcut-popup-max-width) overflow-hidden rounded-xl">
-        {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+        {typeof children === 'function'
+          ? children(closePortal, handleInsert)
+          : (children ?? SHORTCUTS_EMPTY_CONTENT)}
       </div>
     </div>,
     containerEl,

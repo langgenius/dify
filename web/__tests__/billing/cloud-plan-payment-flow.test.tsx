@@ -80,12 +80,7 @@ const renderCloudPlanItem = ({
   return render(
     <>
       <ToastHost timeout={0} />
-      <CloudPlanItem
-        currentPlan={currentPlan}
-        plan={plan}
-        planRange={planRange}
-        canPay={canPay}
-      />
+      <CloudPlanItem currentPlan={currentPlan} plan={plan} planRange={planRange} canPay={canPay} />
     </>,
   )
 }

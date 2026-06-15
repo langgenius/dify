@@ -10,9 +10,7 @@ type HeaderProps = {
   onClose: () => void
 }
 
-const Header = ({
-  onClose,
-}: HeaderProps) => {
+const Header = ({ onClose }: HeaderProps) => {
   const { t } = useTranslation()
 
   return (

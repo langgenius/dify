@@ -18,7 +18,7 @@ const mockQuotaConfig = {
 }
 
 const renderModelProviderPage = (
-  props: { searchText?: string, enableMarketplace?: boolean } = {},
+  props: { searchText?: string; enableMarketplace?: boolean } = {},
 ) => {
   const { searchText = '', enableMarketplace = true } = props
   return renderWithSystemFeatures(<ModelProviderPage searchText={searchText} />, {
@@ -55,12 +55,12 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-const mockDefaultModels: Record<string, { data: unknown, isLoading: boolean }> = {
-  'llm': { data: null, isLoading: false },
+const mockDefaultModels: Record<string, { data: unknown; isLoading: boolean }> = {
+  llm: { data: null, isLoading: false },
   'text-embedding': { data: null, isLoading: false },
-  'rerank': { data: null, isLoading: false },
-  'speech2text': { data: null, isLoading: false },
-  'tts': { data: null, isLoading: false },
+  rerank: { data: null, isLoading: false },
+  speech2text: { data: null, isLoading: false },
+  tts: { data: null, isLoading: false },
 }
 
 vi.mock('../hooks', () => ({
@@ -72,7 +72,9 @@ vi.mock('../install-from-marketplace', () => ({
 }))
 
 vi.mock('../provider-added-card', () => ({
-  default: ({ provider }: { provider: { provider: string } }) => <div data-testid="provider-card">{provider.provider}</div>,
+  default: ({ provider }: { provider: { provider: string } }) => (
+    <div data-testid="provider-card">{provider.provider}</div>
+  ),
 }))
 
 vi.mock('../provider-added-card/quota-panel', () => ({
@@ -120,25 +122,30 @@ describe('ModelProviderPage', () => {
     Object.keys(mockDefaultModels).forEach((key) => {
       mockDefaultModels[key] = { data: null, isLoading: false }
     })
-    mockProviders.splice(0, mockProviders.length, {
-      provider: 'openai',
-      label: { en_US: 'OpenAI' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.active },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+    mockProviders.splice(
+      0,
+      mockProviders.length,
+      {
+        provider: 'openai',
+        label: { en_US: 'OpenAI' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.active },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    }, {
-      provider: 'anthropic',
-      label: { en_US: 'Anthropic' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+      {
+        provider: 'anthropic',
+        label: { en_US: 'Anthropic' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    })
+    )
   })
 
   afterEach(() => {
@@ -208,7 +215,11 @@ describe('ModelProviderPage', () => {
 
     it('should show partially-configured warning when some default models are set', () => {
       mockDefaultModels.llm = {
-        data: { model: 'gpt-4', model_type: 'llm', provider: { provider: 'openai', icon_small: { en_US: '' } } },
+        data: {
+          model: 'gpt-4',
+          model_type: 'llm',
+          provider: { provider: 'openai', icon_small: { en_US: '' } },
+        },
         isLoading: false,
       }
 
@@ -218,7 +229,11 @@ describe('ModelProviderPage', () => {
 
     it('should not show warning when all default models are configured', () => {
       const makeModel = (model: string, type: string) => ({
-        data: { model, model_type: type, provider: { provider: 'openai', icon_small: { en_US: '' } } },
+        data: {
+          model,
+          model_type: type,
+          provider: { provider: 'openai', icon_small: { en_US: '' } },
+        },
         isLoading: false,
       })
       mockDefaultModels.llm = makeModel('gpt-4', 'llm')
@@ -246,38 +261,44 @@ describe('ModelProviderPage', () => {
   })
 
   it('should prioritize fixed providers in visible order', () => {
-    mockProviders.splice(0, mockProviders.length, {
-      provider: 'zeta-provider',
-      label: { en_US: 'Zeta Provider' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.active },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+    mockProviders.splice(
+      0,
+      mockProviders.length,
+      {
+        provider: 'zeta-provider',
+        label: { en_US: 'Zeta Provider' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.active },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    }, {
-      provider: 'langgenius/anthropic/anthropic',
-      label: { en_US: 'Anthropic Fixed' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.active },
-      system_configuration: {
-        enabled: false,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+      {
+        provider: 'langgenius/anthropic/anthropic',
+        label: { en_US: 'Anthropic Fixed' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.active },
+        system_configuration: {
+          enabled: false,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    }, {
-      provider: 'langgenius/openai/openai',
-      label: { en_US: 'OpenAI Fixed' },
-      custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
-      system_configuration: {
-        enabled: true,
-        current_quota_type: CurrentSystemQuotaTypeEnum.free,
-        quota_configurations: [mockQuotaConfig],
+      {
+        provider: 'langgenius/openai/openai',
+        label: { en_US: 'OpenAI Fixed' },
+        custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure },
+        system_configuration: {
+          enabled: true,
+          current_quota_type: CurrentSystemQuotaTypeEnum.free,
+          quota_configurations: [mockQuotaConfig],
+        },
       },
-    })
+    )
 
     renderModelProviderPage()
 
-    const renderedProviders = screen.getAllByTestId('provider-card').map(item => item.textContent)
+    const renderedProviders = screen.getAllByTestId('provider-card').map((item) => item.textContent)
     expect(renderedProviders).toEqual([
       'langgenius/openai/openai',
       'langgenius/anthropic/anthropic',

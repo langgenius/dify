@@ -3,14 +3,9 @@ import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
 import type { Var } from '@/app/components/workflow/types'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import {
-  $getRoot,
-} from 'lexical'
+import { $getRoot } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { CaptureEditorPlugin } from '../../test-utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../../workflow-variable-block'
 import { HITLInputNode } from '../node'
@@ -59,7 +54,7 @@ const hasErrorIcon = (container: HTMLElement) => {
 const renderVariableBlock = (props: {
   variables: string[]
   workflowNodesMap?: WorkflowNodesMap
-  getVarType?: (payload: { nodeId: string, valueSelector: string[] }) => Type
+  getVarType?: (payload: { nodeId: string; valueSelector: string[] }) => Type
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]

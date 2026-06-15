@@ -8,15 +8,14 @@ type WorkspaceProviderProps = {
   children: ReactNode
 }
 
-export const WorkspaceProvider = ({
-  children,
-}: WorkspaceProviderProps) => {
+export const WorkspaceProvider = ({ children }: WorkspaceProviderProps) => {
   const { data } = useWorkspaces()
 
   return (
-    <WorkspacesContext.Provider value={{
-      workspaces: data?.workspaces || [],
-    }}
+    <WorkspacesContext.Provider
+      value={{
+        workspaces: data?.workspaces || [],
+      }}
     >
       {children}
     </WorkspacesContext.Provider>

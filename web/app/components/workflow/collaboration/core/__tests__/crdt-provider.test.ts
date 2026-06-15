@@ -52,8 +52,7 @@ const createMockSocket = (): MockSocket => {
     }),
     trigger: (event: string, ...args: unknown[]) => {
       const handler = handlers.get(event)
-      if (handler)
-        handler(...args)
+      if (handler) handler(...args)
     },
   }
 

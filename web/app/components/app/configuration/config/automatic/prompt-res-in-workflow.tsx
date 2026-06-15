@@ -12,17 +12,11 @@ type Props = Readonly<{
   nodeId: string
 }>
 
-const PromptResInWorkflow: FC<Props> = ({
-  value,
-  nodeId,
-}) => {
+const PromptResInWorkflow: FC<Props> = ({ value, nodeId }) => {
   const { t } = useTranslation()
-  const {
-    availableVars,
-    availableNodes,
-  } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
-    filterVar: _payload => true,
+    filterVar: (_payload) => true,
   })
   return (
     <PromptRes
@@ -48,8 +42,7 @@ const PromptResInWorkflow: FC<Props> = ({
           return acc
         }, {} as any),
       }}
-    >
-    </PromptRes>
+    ></PromptRes>
   )
 }
 export default React.memo(PromptResInWorkflow)

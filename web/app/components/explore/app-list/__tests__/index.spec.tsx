@@ -11,7 +11,10 @@ import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 import AppList from '../index'
 
-let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockExploreData: { categories: string[]; allList: App[] } | undefined = {
+  categories: [],
+  allList: [],
+}
 let mockIsLoading = false
 let mockIsError = false
 const mockHandleImportDSL = vi.fn()
@@ -67,33 +70,40 @@ vi.mock('@/config', async (importOriginal) => {
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: (props: CreateAppModalProps) => {
-    if (!props.show)
-      return null
+    if (!props.show) return null
     return (
       <div data-testid="create-app-modal">
         <button
           data-testid="confirm-create"
-          onClick={() => props.onConfirm({
-            name: 'New App',
-            icon_type: 'emoji',
-            icon: '🤖',
-            icon_background: '#fff',
-            description: 'desc',
-          })}
+          onClick={() =>
+            props.onConfirm({
+              name: 'New App',
+              icon_type: 'emoji',
+              icon: '🤖',
+              icon_background: '#fff',
+              description: 'desc',
+            })
+          }
         >
           confirm
         </button>
-        <button data-testid="hide-create" onClick={props.onHide}>hide</button>
+        <button data-testid="hide-create" onClick={props.onHide}>
+          hide
+        </button>
       </div>
     )
   },
 }))
 
 vi.mock('../../try-app', () => ({
-  default: ({ onCreate, onClose }: { onCreate: () => void, onClose: () => void }) => (
+  default: ({ onCreate, onClose }: { onCreate: () => void; onClose: () => void }) => (
     <div data-testid="try-app-panel">
-      <button data-testid="try-app-create" onClick={onCreate}>create</button>
-      <button data-testid="try-app-close" onClick={onClose}>close</button>
+      <button data-testid="try-app-create" onClick={onCreate}>
+        create
+      </button>
+      <button data-testid="try-app-close" onClick={onClose}>
+        close
+      </button>
     </div>
   ),
 }))
@@ -103,10 +113,14 @@ vi.mock('../../banner/banner', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) => (
     <div data-testid="dsl-confirm-modal">
-      <button data-testid="dsl-confirm" onClick={onConfirm}>confirm</button>
-      <button data-testid="dsl-cancel" onClick={onCancel}>cancel</button>
+      <button data-testid="dsl-confirm" onClick={onConfirm}>
+        confirm
+      </button>
+      <button data-testid="dsl-cancel" onClick={onCancel}>
+        cancel
+      </button>
     </div>
   ),
 }))
@@ -169,7 +183,9 @@ const renderAppList = (
     <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
   )
   const rendered = renderWithNuqs(
-    <Wrapped><AppList onSuccess={onSuccess} /></Wrapped>,
+    <Wrapped>
+      <AppList onSuccess={onSuccess} />
+    </Wrapped>,
     { searchParams },
   )
   return { ...rendered, queryClient }
@@ -202,7 +218,14 @@ describe('AppList', () => {
     it('should render app cards when data is available', () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
+        allList: [
+          createApp(),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Beta' },
+            categories: ['Translate'],
+          }),
+        ],
       }
 
       renderAppList()
@@ -216,7 +239,14 @@ describe('AppList', () => {
     it('should filter apps by selected category', () => {
       mockExploreData = {
         categories: ['Writing', 'Translate'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, categories: ['Translate'] })],
+        allList: [
+          createApp(),
+          createApp({
+            app_id: 'app-2',
+            app: { ...createApp().app, name: 'Beta' },
+            categories: ['Translate'],
+          }),
+        ],
       }
 
       renderAppList(false, undefined, { category: 'Writing' })
@@ -230,7 +260,10 @@ describe('AppList', () => {
     it('should filter apps by search keywords', async () => {
       mockExploreData = {
         categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
+        allList: [
+          createApp(),
+          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
+        ],
       }
       renderAppList()
 
@@ -251,14 +284,21 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
-        options.onPending?.()
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml-content',
+        mode: AppModeEnum.CHAT,
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
-      })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onSuccess?: () => void; onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
+      mockHandleImportDSLConfirm.mockImplementation(
+        async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, onSuccess)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
@@ -287,7 +327,10 @@ describe('AppList', () => {
     it('should reset search results when clear icon is clicked', async () => {
       mockExploreData = {
         categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
+        allList: [
+          createApp(),
+          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
+        ],
       }
       renderAppList()
 
@@ -327,7 +370,10 @@ describe('AppList', () => {
     it('should reset filter when reset button is clicked', async () => {
       mockExploreData = {
         categories: ['Writing'],
-        allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
+        allList: [
+          createApp(),
+          createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } }),
+        ],
       }
       renderAppList()
 
@@ -349,8 +395,11 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
+      })
 
       renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
@@ -368,11 +417,19 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
@@ -388,11 +445,16 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
-        options.onPending?.()
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (_payload: unknown, options: { onPending?: () => void }) => {
+          options.onPending?.()
+        },
+      )
 
       renderAppList(true)
       fireEvent.click(screen.getByText('explore.appCard.addToWorkspace'))
@@ -434,11 +496,19 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml', mode: AppModeEnum.CHAT })
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
-        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({
+        export_data: 'yaml',
+        mode: AppModeEnum.CHAT,
       })
+      mockHandleImportDSL.mockImplementation(
+        async (
+          _payload: unknown,
+          options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void },
+        ) => {
+          options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
+        },
+      )
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 

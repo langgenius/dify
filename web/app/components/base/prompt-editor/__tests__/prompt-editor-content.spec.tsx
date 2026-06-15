@@ -59,8 +59,7 @@ const setSelectionOnEditable = (editable: HTMLElement) => {
   if (lexicalTextNode) {
     range.setStart(lexicalTextNode, 0)
     range.setEnd(lexicalTextNode, 1)
-  }
-  else {
+  } else {
     range.selectNodeContents(editable)
   }
 
@@ -88,7 +87,7 @@ const PromptEditorContentHarness = ({
   captures,
   initialText = '',
   ...props
-}: ComponentProps<typeof PromptEditorContent> & { captures: Captures, initialText?: string }) => (
+}: ComponentProps<typeof PromptEditorContent> & { captures: Captures; initialText?: string }) => (
   <EventEmitterContextProvider>
     <LexicalComposer
       initialConfig={{
@@ -130,7 +129,9 @@ describe('PromptEditorContent', () => {
     Range.prototype.getClientRects = vi.fn(() => {
       const rectList = [mockDOMRect] as unknown as DOMRectList
       Object.defineProperty(rectList, 'length', { value: 1 })
-      Object.defineProperty(rectList, 'item', { value: (index: number) => index === 0 ? mockDOMRect : null })
+      Object.defineProperty(rectList, 'item', {
+        value: (index: number) => (index === 0 ? mockDOMRect : null),
+      })
       return rectList
     })
     Range.prototype.getBoundingClientRect = vi.fn(() => mockDOMRect as DOMRect)
@@ -193,7 +194,10 @@ describe('PromptEditorContent', () => {
 
       act(() => {
         captures.editor?.dispatchCommand(FOCUS_COMMAND, new FocusEvent('focus'))
-        captures.editor?.dispatchCommand(BLUR_COMMAND, new FocusEvent('blur', { relatedTarget: null }))
+        captures.editor?.dispatchCommand(
+          BLUR_COMMAND,
+          new FocusEvent('blur', { relatedTarget: null }),
+        )
       })
 
       expect(onFocus).toHaveBeenCalledTimes(1)
@@ -206,10 +210,20 @@ describe('PromptEditorContent', () => {
       const onEditorChange = vi.fn()
       const insertCommand = createCommand<string[]>('prompt-editor-shortcut-insert')
       const insertSpy = vi.fn()
-      const Popup = ({ onClose, onInsert }: { onClose: () => void, onInsert: (command: typeof insertCommand, params: string[]) => void }) => (
+      const Popup = ({
+        onClose,
+        onInsert,
+      }: {
+        onClose: () => void
+        onInsert: (command: typeof insertCommand, params: string[]) => void
+      }) => (
         <>
-          <button type="button" onClick={() => onInsert(insertCommand, ['from-shortcut'])}>Insert shortcut</button>
-          <button type="button" onClick={onClose}>Close shortcut</button>
+          <button type="button" onClick={() => onInsert(insertCommand, ['from-shortcut'])}>
+            Insert shortcut
+          </button>
+          <button type="button" onClick={onClose}>
+            Close shortcut
+          </button>
         </>
       )
 

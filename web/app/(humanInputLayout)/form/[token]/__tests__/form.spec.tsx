@@ -53,7 +53,13 @@ vi.mock('@/hooks/use-document-title', () => ({
 
 vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item', () => ({
   __esModule: true,
-  default: ({ content, onInputChange }: { content: string, onInputChange: (name: string, value: unknown) => void }) => {
+  default: ({
+    content,
+    onInputChange,
+  }: {
+    content: string
+    onInputChange: (name: string, value: unknown) => void
+  }) => {
     const isSummaryField = content.includes('summary')
     const isAttachmentField = content.includes('attachments')
 
@@ -77,13 +83,21 @@ vi.mock('@/app/components/base/chat/chat/answer/human-input-content/content-item
           <>
             <button
               type="button"
-              onClick={() => mockContentItemState.staleAttachmentInputChange?.('attachments', [mockContentItemState.uploadingFile])}
+              onClick={() =>
+                mockContentItemState.staleAttachmentInputChange?.('attachments', [
+                  mockContentItemState.uploadingFile,
+                ])
+              }
             >
               share-uploading-attachments
             </button>
             <button
               type="button"
-              onClick={() => mockContentItemState.staleAttachmentInputChange?.('attachments', [mockContentItemState.uploadedFile])}
+              onClick={() =>
+                mockContentItemState.staleAttachmentInputChange?.('attachments', [
+                  mockContentItemState.uploadedFile,
+                ])
+              }
             >
               share-update-attachments
             </button>
@@ -222,15 +236,14 @@ describe('Human input share form', () => {
       const { unmount } = render(<FormContent />)
 
       expect(screen.getByText(title)).toBeInTheDocument()
-      if (subtitle)
-        expect(screen.getByText(subtitle)).toBeInTheDocument()
-      else
-        expect(screen.queryByText('share.humanInput.expired')).not.toBeInTheDocument()
+      if (subtitle) expect(screen.getByText(subtitle)).toBeInTheDocument()
+      else expect(screen.queryByText('share.humanInput.expired')).not.toBeInTheDocument()
 
       if (submissionID)
-        expect(screen.getByText('share.humanInput.submissionID:{"id":"token-123"}')).toBeInTheDocument()
-      else
-        expect(screen.queryByText(/share\.humanInput\.submissionID/)).not.toBeInTheDocument()
+        expect(
+          screen.getByText('share.humanInput.submissionID:{"id":"token-123"}'),
+        ).toBeInTheDocument()
+      else expect(screen.queryByText(/share\.humanInput\.submissionID/)).not.toBeInTheDocument()
 
       expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
       expect(screen.getByText('dify-logo')).toBeInTheDocument()
@@ -247,23 +260,28 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    expect(mockSubmitForm).toHaveBeenCalledWith({
-      token: 'token-123',
-      data: {
-        action: 'approve',
-        inputs: {
-          summary: 'updated summary',
-          attachments: [{
-            type: 'document',
-            transfer_method: TransferMethod.local_file,
-            url: '',
-            upload_file_id: 'upload-file-1',
-          }],
+    expect(mockSubmitForm).toHaveBeenCalledWith(
+      {
+        token: 'token-123',
+        data: {
+          action: 'approve',
+          inputs: {
+            summary: 'updated summary',
+            attachments: [
+              {
+                type: 'document',
+                transfer_method: TransferMethod.local_file,
+                url: '',
+                upload_file_id: 'upload-file-1',
+              },
+            ],
+          },
         },
       },
-    }, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
   })
 
   it('should show the success status after the submit mutation succeeds', async () => {
@@ -296,15 +314,18 @@ describe('Human input share form', () => {
       )
     })
 
-    expect(mockSubmitForm).toHaveBeenCalledWith({
-      token: 'token-empty',
-      data: {
-        action: 'reject',
-        inputs: {},
+    expect(mockSubmitForm).toHaveBeenCalledWith(
+      {
+        token: 'token-empty',
+        data: {
+          action: 'reject',
+          inputs: {},
+        },
       },
-    }, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
   })
 
   it('should keep initialized defaults when file upload uses the initial change callback', async () => {
@@ -315,23 +336,28 @@ describe('Human input share form', () => {
     await user.click(screen.getByRole('button', { name: 'share-update-attachments' }))
     await user.click(screen.getByRole('button', { name: 'Approve' }))
 
-    expect(mockSubmitForm).toHaveBeenCalledWith({
-      token: 'token-123',
-      data: {
-        action: 'approve',
-        inputs: {
-          summary: 'initial summary',
-          attachments: [{
-            type: 'document',
-            transfer_method: TransferMethod.local_file,
-            url: '',
-            upload_file_id: 'upload-file-1',
-          }],
+    expect(mockSubmitForm).toHaveBeenCalledWith(
+      {
+        token: 'token-123',
+        data: {
+          action: 'approve',
+          inputs: {
+            summary: 'initial summary',
+            attachments: [
+              {
+                type: 'document',
+                transfer_method: TransferMethod.local_file,
+                url: '',
+                upload_file_id: 'upload-file-1',
+              },
+            ],
+          },
         },
       },
-    }, expect.objectContaining({
-      onSuccess: expect.any(Function),
-    }))
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    )
   })
 
   it('should disable action buttons until every required field is filled and files are uploaded', async () => {
@@ -396,7 +422,10 @@ describe('Human input share form', () => {
     render(<FormContent />)
 
     expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'logo' })).toHaveAttribute('src', 'https://example.com/custom-logo.png')
+    expect(screen.getByRole('img', { name: 'logo' })).toHaveAttribute(
+      'src',
+      'https://example.com/custom-logo.png',
+    )
     expect(screen.queryByText('dify-logo')).not.toBeInTheDocument()
   })
 })

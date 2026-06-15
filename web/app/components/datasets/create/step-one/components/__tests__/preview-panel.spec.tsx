@@ -5,28 +5,40 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock child components - paths must match source file's imports (relative to source)
 vi.mock('../../../file-preview', () => ({
-  default: ({ file, hidePreview }: { file: { name: string }, hidePreview: () => void }) => (
+  default: ({ file, hidePreview }: { file: { name: string }; hidePreview: () => void }) => (
     <div data-testid="file-preview">
       <span>{file.name}</span>
-      <button data-testid="close-file" onClick={hidePreview}>close-file</button>
+      <button data-testid="close-file" onClick={hidePreview}>
+        close-file
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../../notion-page-preview', () => ({
-  default: ({ currentPage, hidePreview }: { currentPage: { page_name: string }, hidePreview: () => void }) => (
+  default: ({
+    currentPage,
+    hidePreview,
+  }: {
+    currentPage: { page_name: string }
+    hidePreview: () => void
+  }) => (
     <div data-testid="notion-preview">
       <span>{currentPage.page_name}</span>
-      <button data-testid="close-notion" onClick={hidePreview}>close-notion</button>
+      <button data-testid="close-notion" onClick={hidePreview}>
+        close-notion
+      </button>
     </div>
   ),
 }))
 
 vi.mock('../../../website/preview', () => ({
-  default: ({ payload, hidePreview }: { payload: { title: string }, hidePreview: () => void }) => (
+  default: ({ payload, hidePreview }: { payload: { title: string }; hidePreview: () => void }) => (
     <div data-testid="website-preview">
       <span>{payload.title}</span>
-      <button data-testid="close-website" onClick={hidePreview}>close-website</button>
+      <button data-testid="close-website" onClick={hidePreview}>
+        close-website
+      </button>
     </div>
   ),
 }))
@@ -57,19 +69,31 @@ describe('PreviewPanel', () => {
     })
 
     it('should render file preview when currentFile is set', () => {
-      render(<PreviewPanel {...defaultProps} currentFile={{ name: 'test.pdf' } as unknown as File} />)
+      render(
+        <PreviewPanel {...defaultProps} currentFile={{ name: 'test.pdf' } as unknown as File} />,
+      )
       expect(screen.getByTestId('file-preview')).toBeInTheDocument()
       expect(screen.getByText('test.pdf')).toBeInTheDocument()
     })
 
     it('should render notion preview when currentNotionPage is set', () => {
-      render(<PreviewPanel {...defaultProps} currentNotionPage={{ page_name: 'My Page' } as unknown as NotionPage} />)
+      render(
+        <PreviewPanel
+          {...defaultProps}
+          currentNotionPage={{ page_name: 'My Page' } as unknown as NotionPage}
+        />,
+      )
       expect(screen.getByTestId('notion-preview')).toBeInTheDocument()
       expect(screen.getByText('My Page')).toBeInTheDocument()
     })
 
     it('should render website preview when currentWebsite is set', () => {
-      render(<PreviewPanel {...defaultProps} currentWebsite={{ title: 'My Site' } as unknown as CrawlResultItem} />)
+      render(
+        <PreviewPanel
+          {...defaultProps}
+          currentWebsite={{ title: 'My Site' } as unknown as CrawlResultItem}
+        />,
+      )
       expect(screen.getByTestId('website-preview')).toBeInTheDocument()
       expect(screen.getByText('My Site')).toBeInTheDocument()
     })
@@ -82,7 +106,9 @@ describe('PreviewPanel', () => {
 
   describe('interactions', () => {
     it('should call hideFilePreview when file preview close clicked', () => {
-      render(<PreviewPanel {...defaultProps} currentFile={{ name: 'test.pdf' } as unknown as File} />)
+      render(
+        <PreviewPanel {...defaultProps} currentFile={{ name: 'test.pdf' } as unknown as File} />,
+      )
       fireEvent.click(screen.getByTestId('close-file'))
       expect(defaultProps.hideFilePreview).toHaveBeenCalledOnce()
     })
@@ -94,13 +120,23 @@ describe('PreviewPanel', () => {
     })
 
     it('should call hideNotionPagePreview when notion preview close clicked', () => {
-      render(<PreviewPanel {...defaultProps} currentNotionPage={{ page_name: 'My Page' } as unknown as NotionPage} />)
+      render(
+        <PreviewPanel
+          {...defaultProps}
+          currentNotionPage={{ page_name: 'My Page' } as unknown as NotionPage}
+        />,
+      )
       fireEvent.click(screen.getByTestId('close-notion'))
       expect(defaultProps.hideNotionPagePreview).toHaveBeenCalledOnce()
     })
 
     it('should call hideWebsitePreview when website preview close clicked', () => {
-      render(<PreviewPanel {...defaultProps} currentWebsite={{ title: 'My Site' } as unknown as CrawlResultItem} />)
+      render(
+        <PreviewPanel
+          {...defaultProps}
+          currentWebsite={{ title: 'My Site' } as unknown as CrawlResultItem}
+        />,
+      )
       fireEvent.click(screen.getByTestId('close-website'))
       expect(defaultProps.hideWebsitePreview).toHaveBeenCalledOnce()
     })

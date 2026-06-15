@@ -1,16 +1,8 @@
 import type { ReactNode } from 'react'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BLOCKS } from './constants'
-import {
-  TabsEnum,
-  ToolTypeEnum,
-} from './types'
+import { TabsEnum, ToolTypeEnum } from './types'
 
 const startNodesDocsTipLinkKey = 'startNodesDocs' as const
 
@@ -55,65 +47,79 @@ export const useTabs = ({
       ? t('tabs.unconfiguredStartDisabledTip', { ns: 'workflow' })
       : t('tabs.startDisabledTip', { ns: 'workflow' })
   const tabs = useMemo(() => {
-    const tabConfigs = [{
-      key: TabsEnum.Blocks,
-      name: t('tabs.blocks', { ns: 'workflow' }),
-      show: !noBlocks,
-    }, {
-      key: TabsEnum.Sources,
-      name: t('tabs.sources', { ns: 'workflow' }),
-      show: !noSources,
-    }, {
-      key: TabsEnum.Tools,
-      name: t('tabs.tools', { ns: 'workflow' }),
-      show: !noTools,
-    }, {
-      key: TabsEnum.Start,
-      name: t('tabs.start', { ns: 'workflow' }),
-      show: shouldShowStartTab,
-      disabled: shouldDisableStartTab,
-      disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
-      disabledTipLinkKey: shouldDisableStartTab && !disableStartTab && hasStartPlaceholderNode ? startNodesDocsTipLinkKey : undefined,
-    }, {
-      key: TabsEnum.Snippets,
-      name: t('tabs.snippets', { ns: 'workflow' }),
-      show: !noSnippets,
-    }]
+    const tabConfigs = [
+      {
+        key: TabsEnum.Blocks,
+        name: t('tabs.blocks', { ns: 'workflow' }),
+        show: !noBlocks,
+      },
+      {
+        key: TabsEnum.Sources,
+        name: t('tabs.sources', { ns: 'workflow' }),
+        show: !noSources,
+      },
+      {
+        key: TabsEnum.Tools,
+        name: t('tabs.tools', { ns: 'workflow' }),
+        show: !noTools,
+      },
+      {
+        key: TabsEnum.Start,
+        name: t('tabs.start', { ns: 'workflow' }),
+        show: shouldShowStartTab,
+        disabled: shouldDisableStartTab,
+        disabledTip: shouldDisableStartTab ? startDisabledTip : undefined,
+        disabledTipLinkKey:
+          shouldDisableStartTab && !disableStartTab && hasStartPlaceholderNode
+            ? startNodesDocsTipLinkKey
+            : undefined,
+      },
+      {
+        key: TabsEnum.Snippets,
+        name: t('tabs.snippets', { ns: 'workflow' }),
+        show: !noSnippets,
+      },
+    ]
 
-    return tabConfigs.filter(tab => tab.show)
-  }, [t, noBlocks, noSources, noTools, noSnippets, shouldShowStartTab, shouldDisableStartTab, startDisabledTip, disableStartTab, hasStartPlaceholderNode])
+    return tabConfigs.filter((tab) => tab.show)
+  }, [
+    t,
+    noBlocks,
+    noSources,
+    noTools,
+    noSnippets,
+    shouldShowStartTab,
+    shouldDisableStartTab,
+    startDisabledTip,
+    disableStartTab,
+    hasStartPlaceholderNode,
+  ])
 
-  const getValidTabKey = useCallback((targetKey?: TabsEnum) => {
-    if (!targetKey)
-      return undefined
-    const tab = tabs.find(tabItem => tabItem.key === targetKey)
-    if (!tab || tab.disabled)
-      return undefined
-    return tab.key
-  }, [tabs])
+  const getValidTabKey = useCallback(
+    (targetKey?: TabsEnum) => {
+      if (!targetKey) return undefined
+      const tab = tabs.find((tabItem) => tabItem.key === targetKey)
+      if (!tab || tab.disabled) return undefined
+      return tab.key
+    },
+    [tabs],
+  )
 
   const initialTab = useMemo(() => {
-    const fallbackTab = tabs.find(tab => !tab.disabled)?.key ?? TabsEnum.Blocks
+    const fallbackTab = tabs.find((tab) => !tab.disabled)?.key ?? TabsEnum.Blocks
     const preferredDefault = getValidTabKey(defaultActiveTab)
-    if (preferredDefault)
-      return preferredDefault
+    if (preferredDefault) return preferredDefault
 
     const preferredOrder: TabsEnum[] = []
-    if (!noBlocks)
-      preferredOrder.push(TabsEnum.Blocks)
-    if (!noTools)
-      preferredOrder.push(TabsEnum.Tools)
-    if (!noSources)
-      preferredOrder.push(TabsEnum.Sources)
-    if (!noStart)
-      preferredOrder.push(TabsEnum.Start)
-    if (!noSnippets)
-      preferredOrder.push(TabsEnum.Snippets)
+    if (!noBlocks) preferredOrder.push(TabsEnum.Blocks)
+    if (!noTools) preferredOrder.push(TabsEnum.Tools)
+    if (!noSources) preferredOrder.push(TabsEnum.Sources)
+    if (!noStart) preferredOrder.push(TabsEnum.Start)
+    if (!noSnippets) preferredOrder.push(TabsEnum.Snippets)
 
     for (const tabKey of preferredOrder) {
       const validKey = getValidTabKey(tabKey)
-      if (validKey)
-        return validKey
+      if (validKey) return validKey
     }
 
     return fallbackTab
@@ -121,9 +127,8 @@ export const useTabs = ({
   const [activeTab, setActiveTab] = useState(initialTab)
 
   useEffect(() => {
-    const currentTab = tabs.find(tab => tab.key === activeTab)
-    if (!currentTab || currentTab.disabled)
-      setActiveTab(initialTab)
+    const currentTab = tabs.find((tab) => tab.key === activeTab)
+    if (!currentTab || currentTab.disabled) setActiveTab(initialTab)
   }, [tabs, activeTab, initialTab])
 
   return {

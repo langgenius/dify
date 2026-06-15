@@ -104,21 +104,23 @@ describe('New Dataset Card Integration', () => {
       it('should have correct href for create dataset', () => {
         render(<CreateAppCard />)
         const links = screen.getAllByRole('link')
-        const createLink = links.find(link => link.getAttribute('href') === '/datasets/create')
+        const createLink = links.find((link) => link.getAttribute('href') === '/datasets/create')
         expect(createLink).toBeDefined()
       })
 
       it('should have correct href for create from pipeline', () => {
         render(<CreateAppCard />)
         const links = screen.getAllByRole('link')
-        const pipelineLink = links.find(link => link.getAttribute('href') === '/datasets/create-from-pipeline')
+        const pipelineLink = links.find(
+          (link) => link.getAttribute('href') === '/datasets/create-from-pipeline',
+        )
         expect(pipelineLink).toBeDefined()
       })
 
       it('should have correct href for connect dataset', () => {
         render(<CreateAppCard />)
         const links = screen.getAllByRole('link')
-        const connectLink = links.find(link => link.getAttribute('href') === '/datasets/connect')
+        const connectLink = links.find((link) => link.getAttribute('href') === '/datasets/connect')
         expect(connectLink).toBeDefined()
       })
     })

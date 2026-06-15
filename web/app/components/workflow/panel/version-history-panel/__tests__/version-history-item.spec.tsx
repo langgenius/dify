@@ -5,7 +5,8 @@ import { VersionHistoryContextMenuOptions, WorkflowVersion } from '../../../type
 import VersionHistoryItem from '../version-history-item'
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { pipelineId?: string }) => unknown) => selector({ pipelineId: undefined }),
+  useStore: (selector: (state: { pipelineId?: string }) => unknown) =>
+    selector({ pipelineId: undefined }),
 }))
 
 const createVersionHistory = (overrides: Partial<VersionHistory> = {}): VersionHistory => ({
@@ -68,9 +69,11 @@ describe('VersionHistoryItem', () => {
       expect(screen.getByText('workflow.versionHistory.currentDraft')).toBeInTheDocument()
 
       await waitFor(() => {
-        expect(onClick).toHaveBeenCalledWith(expect.objectContaining({
-          version: WorkflowVersion.Draft,
-        }))
+        expect(onClick).toHaveBeenCalledWith(
+          expect.objectContaining({
+            version: WorkflowVersion.Draft,
+          }),
+        )
       })
 
       expect(screen.queryByText('Initial release')).not.toBeInTheDocument()
@@ -97,8 +100,7 @@ describe('VersionHistoryItem', () => {
 
       const title = screen.getByText('Release 1')
       const itemContainer = title.closest('.group')
-      if (!itemContainer)
-        throw new Error('Expected version history item container')
+      if (!itemContainer) throw new Error('Expected version history item container')
 
       fireEvent.mouseEnter(itemContainer)
 
@@ -115,8 +117,7 @@ describe('VersionHistoryItem', () => {
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
 
       const restoreItem = screen.getByText('workflow.common.restore').closest('.cursor-pointer')
-      if (!restoreItem)
-        throw new Error('Expected restore menu item')
+      if (!restoreItem) throw new Error('Expected restore menu item')
 
       fireEvent.click(restoreItem)
 

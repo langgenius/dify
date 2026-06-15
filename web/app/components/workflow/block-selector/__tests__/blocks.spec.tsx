@@ -19,14 +19,19 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) => selector({
-    appDetail: {
-      type: runtimeState.appType,
-    },
-  }),
+  useStore: (selector: (state: { appDetail: { type?: string } }) => unknown) =>
+    selector({
+      appDetail: {
+        type: runtimeState.appType,
+      },
+    }),
 }))
 
-const createBlock = (type: BlockEnum, title: string, classification = BlockClassificationEnum.Default): NodeDefault => ({
+const createBlock = (
+  type: BlockEnum,
+  title: string,
+  classification = BlockClassificationEnum.Default,
+): NodeDefault => ({
   metaData: {
     classification,
     sort: 0,

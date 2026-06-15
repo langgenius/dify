@@ -17,17 +17,20 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('../mail-body-input', () => ({
-  default: ({ value, onChange }: { value: string, onChange: (value: string) => void }) => (
+  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
     <textarea
       aria-label="mail-body-input"
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
     />
   ),
 }))
 
 vi.mock('../recipient', () => ({
-  default: ({ data, onChange }: {
+  default: ({
+    data,
+    onChange,
+  }: {
     data: EmailConfig['recipients']
     onChange: (value: EmailConfig['recipients']) => void
   }) => (
@@ -37,28 +40,34 @@ vi.mock('../recipient', () => ({
       </div>
       <button
         type="button"
-        onClick={() => onChange({
-          whole_workspace: false,
-          items: [{ type: 'external', email: 'notify@example.com' }],
-        })}
+        onClick={() =>
+          onChange({
+            whole_workspace: false,
+            items: [{ type: 'external', email: 'notify@example.com' }],
+          })
+        }
       >
         set-external-recipient
       </button>
       <button
         type="button"
-        onClick={() => onChange({
-          whole_workspace: true,
-          items: [],
-        })}
+        onClick={() =>
+          onChange({
+            whole_workspace: true,
+            items: [],
+          })
+        }
       >
         set-workspace-recipient
       </button>
       <button
         type="button"
-        onClick={() => onChange({
-          whole_workspace: false,
-          items: [],
-        })}
+        onClick={() =>
+          onChange({
+            whole_workspace: false,
+            items: [],
+          })
+        }
       >
         clear-recipient
       </button>
@@ -80,11 +89,13 @@ const createEmailConfig = (overrides: Partial<EmailConfig> = {}): EmailConfig =>
 describe('human-input/delivery-method/email-configure-modal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAppContextSelector.mockImplementation(selector => selector({
-      userProfile: {
-        email: 'owner@example.com',
-      },
-    }))
+    mockUseAppContextSelector.mockImplementation((selector) =>
+      selector({
+        userProfile: {
+          email: 'owner@example.com',
+        },
+      }),
+    )
   })
 
   it('should save a valid email configuration with updated values', () => {
@@ -99,11 +110,18 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       />,
     )
 
-    expect(screen.getByRole('dialog')).toHaveTextContent('nodes.humanInput.deliveryMethod.emailConfigure.debugModeTip1')
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'nodes.humanInput.deliveryMethod.emailConfigure.debugModeTip1',
+    )
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder'), {
-      target: { value: 'Budget alert' },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
+      ),
+      {
+        target: { value: 'Budget alert' },
+      },
+    )
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: 'Please review {{#url#}} now' },
     })
@@ -125,39 +143,48 @@ describe('human-input/delivery-method/email-configure-modal', () => {
   it('should validate subject, body, request url placeholder, and recipients before saving', () => {
     const handleConfirm = vi.fn()
 
-    render(
-      <EmailConfigureModal
-        open
-        onOpenChange={vi.fn()}
-        onConfirm={handleConfirm}
-      />,
-    )
+    render(<EmailConfigureModal open onOpenChange={vi.fn()} onConfirm={handleConfirm} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith('workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectRequired')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectRequired',
+    )
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder'), {
-      target: { value: 'Subject ready' },
-    })
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.subjectPlaceholder',
+      ),
+      {
+        target: { value: 'Subject ready' },
+      },
+    )
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: '   ' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'set-workspace-recipient' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith('workflow.nodes.humanInput.deliveryMethod.emailConfigure.bodyRequired')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.bodyRequired',
+    )
 
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: 'Missing placeholder' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith(expect.stringContaining('workflow.nodes.humanInput.deliveryMethod.emailConfigure.bodyMustContainRequestURL'))
+    expect(mockToastError).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'workflow.nodes.humanInput.deliveryMethod.emailConfigure.bodyMustContainRequestURL',
+      ),
+    )
 
     fireEvent.change(screen.getByLabelText('mail-body-input'), {
       target: { value: 'Ready {{#url#}}' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'clear-recipient' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-    expect(mockToastError).toHaveBeenCalledWith('workflow.nodes.humanInput.deliveryMethod.emailConfigure.recipientsRequired')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'workflow.nodes.humanInput.deliveryMethod.emailConfigure.recipientsRequired',
+    )
     expect(handleConfirm).not.toHaveBeenCalled()
   })
 

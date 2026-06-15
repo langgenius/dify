@@ -38,8 +38,7 @@ const PROVIDER_PLUGIN_ALIASES: Record<ProviderType, Record<string, string>> = {
 
 const parseProviderId = (providerId: string): ProviderInfo | null => {
   const segments = providerId.split('/').filter(Boolean)
-  if (!segments.length)
-    return null
+  if (!segments.length) return null
 
   if (segments.length === 1) {
     return {
@@ -60,8 +59,7 @@ const getPluginName = (providerName: string, type: ProviderType) => {
 
 const getIconUrl = (providerId: string, type: ProviderType) => {
   const parsed = parseProviderId(providerId)
-  if (!parsed)
-    return ''
+  if (!parsed) return ''
 
   const organization = encodeURIComponent(parsed.organization)
   const pluginName = encodeURIComponent(getPluginName(parsed.providerName, type))
@@ -84,33 +82,41 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
     })
   }
   if (isAgent) {
-    requirements.push(...appDetail.model_config.agent_mode.tools.filter(data => (data as AgentTool).enabled).map((data) => {
-      const tool = data as AgentTool
-      return {
-        name: tool.tool_label,
-        iconUrl: getIconUrl(tool.provider_id, 'tool'),
-      }
-    }))
+    requirements.push(
+      ...appDetail.model_config.agent_mode.tools
+        .filter((data) => (data as AgentTool).enabled)
+        .map((data) => {
+          const tool = data as AgentTool
+          return {
+            name: tool.tool_label,
+            iconUrl: getIconUrl(tool.provider_id, 'tool'),
+          }
+        }),
+    )
   }
   if (isAdvanced && flowData && flowData?.graph?.nodes?.length > 0) {
     const nodes = flowData.graph.nodes
-    const llmNodes = nodes.filter(node => node.data.type === BlockEnum.LLM)
-    requirements.push(...llmNodes.map((node) => {
-      const data = node.data as LLMNodeType
-      return {
-        name: data.model.name,
-        iconUrl: getIconUrl(data.model.provider, 'model'),
-      }
-    }))
+    const llmNodes = nodes.filter((node) => node.data.type === BlockEnum.LLM)
+    requirements.push(
+      ...llmNodes.map((node) => {
+        const data = node.data as LLMNodeType
+        return {
+          name: data.model.name,
+          iconUrl: getIconUrl(data.model.provider, 'model'),
+        }
+      }),
+    )
 
-    const toolNodes = nodes.filter(node => node.data.type === BlockEnum.Tool)
-    requirements.push(...toolNodes.map((node) => {
-      const data = node.data as ToolNodeType
-      return {
-        name: data.tool_label,
-        iconUrl: getIconUrl(data.provider_id, 'tool'),
-      }
-    }))
+    const toolNodes = nodes.filter((node) => node.data.type === BlockEnum.Tool)
+    requirements.push(
+      ...toolNodes.map((node) => {
+        const data = node.data as ToolNodeType
+        return {
+          name: data.tool_label,
+          iconUrl: getIconUrl(data.provider_id, 'tool'),
+        }
+      }),
+    )
   }
 
   const uniqueRequirements = uniqBy(requirements, 'name')

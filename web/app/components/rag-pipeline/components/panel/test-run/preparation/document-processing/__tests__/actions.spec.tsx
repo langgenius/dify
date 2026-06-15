@@ -7,9 +7,12 @@ import Actions from '../actions'
 let mockWorkflowRunningData: { result: { status: WorkflowRunningStatus } } | undefined
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { workflowRunningData: typeof mockWorkflowRunningData }) => unknown) => selector({
-    workflowRunningData: mockWorkflowRunningData,
-  }),
+  useStore: (
+    selector: (state: { workflowRunningData: typeof mockWorkflowRunningData }) => unknown,
+  ) =>
+    selector({
+      workflowRunningData: mockWorkflowRunningData,
+    }),
 }))
 
 const createFormParams = (overrides: Partial<CustomActionsProps> = {}): CustomActionsProps => ({
@@ -33,7 +36,9 @@ describe('Document processing actions', () => {
 
     render(<Actions formParams={formParams} onBack={onBack} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.backToDataSource' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'datasetPipeline.operations.backToDataSource' }),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.process' }))
 
     expect(onBack).toHaveBeenCalledTimes(1)
@@ -42,27 +47,22 @@ describe('Document processing actions', () => {
 
   it('should disable processing when runDisabled or the workflow is already running', () => {
     const { rerender } = render(
-      <Actions
-        formParams={createFormParams()}
-        onBack={vi.fn()}
-        runDisabled
-      />,
+      <Actions formParams={createFormParams()} onBack={vi.fn()} runDisabled />,
     )
 
-    expect(screen.getByRole('button', { name: 'datasetPipeline.operations.process' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'datasetPipeline.operations.process' }),
+    ).toBeDisabled()
 
     mockWorkflowRunningData = {
       result: {
         status: WorkflowRunningStatus.Running,
       },
     }
-    rerender(
-      <Actions
-        formParams={createFormParams()}
-        onBack={vi.fn()}
-      />,
-    )
+    rerender(<Actions formParams={createFormParams()} onBack={vi.fn()} />)
 
-    expectLoadingButton(screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }))
+    expectLoadingButton(
+      screen.getByRole('button', { name: /datasetPipeline\.operations\.process/i }),
+    )
   })
 })

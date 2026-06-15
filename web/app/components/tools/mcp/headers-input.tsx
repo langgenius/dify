@@ -21,12 +21,7 @@ type Props = Readonly<{
   isMasked?: boolean
 }>
 
-const HeadersInput = ({
-  headersItems,
-  onChange,
-  readonly = false,
-  isMasked = false,
-}: Props) => {
+const HeadersInput = ({ headersItems, onChange, readonly = false, isMasked = false }: Props) => {
   const { t } = useTranslation()
 
   const handleItemChange = (index: number, field: 'key' | 'value', value: string) => {
@@ -55,12 +50,7 @@ const HeadersInput = ({
           {t('mcp.modal.noHeaders', { ns: 'tools' })}
         </div>
         {!readonly && (
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={handleAddItem}
-            className="w-full"
-          >
+          <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
             <RiAddLine className="mr-1 size-4" />
             {t('mcp.modal.addHeader', { ns: 'tools' })}
           </Button>
@@ -78,8 +68,12 @@ const HeadersInput = ({
       )}
       <div className="overflow-hidden rounded-lg border border-divider-regular">
         <div className="bg-background-secondary flex h-7 items-center system-xs-medium-uppercase leading-7 text-text-tertiary">
-          <div className="h-full w-1/2 border-r border-divider-regular pl-3">{t('mcp.modal.headerKey', { ns: 'tools' })}</div>
-          <div className="h-full w-1/2 pr-1 pl-3">{t('mcp.modal.headerValue', { ns: 'tools' })}</div>
+          <div className="h-full w-1/2 border-r border-divider-regular pl-3">
+            {t('mcp.modal.headerKey', { ns: 'tools' })}
+          </div>
+          <div className="h-full w-1/2 pr-1 pl-3">
+            {t('mcp.modal.headerValue', { ns: 'tools' })}
+          </div>
         </div>
         {headersItems.map((item, index) => (
           <div
@@ -92,7 +86,7 @@ const HeadersInput = ({
             <div className="w-1/2 border-r border-divider-regular">
               <Input
                 value={item.key}
-                onChange={e => handleItemChange(index, 'key', e.target.value)}
+                onChange={(e) => handleItemChange(index, 'key', e.target.value)}
                 placeholder={t('mcp.modal.headerKeyPlaceholder', { ns: 'tools' })}
                 className="rounded-none border-0"
                 readOnly={readonly}
@@ -101,16 +95,13 @@ const HeadersInput = ({
             <div className="flex w-1/2 items-center">
               <Input
                 value={item.value}
-                onChange={e => handleItemChange(index, 'value', e.target.value)}
+                onChange={(e) => handleItemChange(index, 'value', e.target.value)}
                 placeholder={t('mcp.modal.headerValuePlaceholder', { ns: 'tools' })}
                 className="flex-1 rounded-none border-0"
                 readOnly={readonly}
               />
               {!readonly && !!headersItems.length && (
-                <ActionButton
-                  onClick={() => handleRemoveItem(index)}
-                  className="mr-2"
-                >
+                <ActionButton onClick={() => handleRemoveItem(index)} className="mr-2">
                   <RiDeleteBinLine className="size-4 text-text-destructive" />
                 </ActionButton>
               )}
@@ -119,12 +110,7 @@ const HeadersInput = ({
         ))}
       </div>
       {!readonly && (
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={handleAddItem}
-          className="w-full"
-        >
+        <Button variant="secondary" size="small" onClick={handleAddItem} className="w-full">
           <RiAddLine className="mr-1 size-4" />
           {t('mcp.modal.addHeader', { ns: 'tools' })}
         </Button>

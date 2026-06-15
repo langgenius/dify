@@ -33,7 +33,9 @@ vi.mock('../authorized', () => ({
       <div data-testid="items-selected">
         {items.map((item, index) => (
           <span
-            key={item.model?.model ?? item.selectedCredential?.credential_id ?? `missing-${popupTitle}`}
+            key={
+              item.model?.model ?? item.selectedCredential?.credential_id ?? `missing-${popupTitle}`
+            }
             data-testid={`selected-${index}`}
           >
             {item.selectedCredential ? 'has-cred' : 'no-cred'}
@@ -79,7 +81,9 @@ describe('ManageCustomModelCredentials', () => {
     expect(screen.getByTestId('authorized-mock')).toBeInTheDocument()
     expect(screen.getAllByText(/modelProvider.auth.manageCredentials/).length).toBeGreaterThan(0)
     expect(screen.getByTestId('items-count')).toHaveTextContent('2')
-    expect(screen.getByTestId('popup-title')).toHaveTextContent('modelProvider.auth.customModelCredentials')
+    expect(screen.getByTestId('popup-title')).toHaveTextContent(
+      'modelProvider.auth.customModelCredentials',
+    )
   })
 
   it('should render trigger in both open and closed states', () => {

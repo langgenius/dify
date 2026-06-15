@@ -11,13 +11,21 @@ describe('match the schema type', () => {
   })
 
   it('should ignore values and only compare types', () => {
-    expect(matchTheSchemaType({ type: 'string', value: 'hello' }, { type: 'string', value: 'world' })).toBe(true)
-    expect(matchTheSchemaType({ type: 'number', value: 42 }, { type: 'number', value: 100 })).toBe(true)
+    expect(
+      matchTheSchemaType({ type: 'string', value: 'hello' }, { type: 'string', value: 'world' }),
+    ).toBe(true)
+    expect(matchTheSchemaType({ type: 'number', value: 42 }, { type: 'number', value: 100 })).toBe(
+      true,
+    )
   })
 
   it('should return true for structural differences but no types', () => {
-    expect(matchTheSchemaType({ type: 'string', other: { b: 'xxx' } }, { type: 'string', other: 'xxx' })).toBe(true)
-    expect(matchTheSchemaType({ type: 'string', other: { b: 'xxx' } }, { type: 'string' })).toBe(true)
+    expect(
+      matchTheSchemaType({ type: 'string', other: { b: 'xxx' } }, { type: 'string', other: 'xxx' }),
+    ).toBe(true)
+    expect(matchTheSchemaType({ type: 'string', other: { b: 'xxx' } }, { type: 'string' })).toBe(
+      true,
+    )
   })
 
   it('should handle nested objects with same structure and types', () => {
@@ -111,9 +119,7 @@ describe('match the schema type', () => {
           description: 'file related id',
         },
       },
-      required: [
-        'name',
-      ],
+      required: ['name'],
     }
     const file = {
       type: 'object',
@@ -153,9 +159,7 @@ describe('match the schema type', () => {
           description: 'file related id',
         },
       },
-      required: [
-        'name',
-      ],
+      required: ['name'],
     }
     expect(matchTheSchemaType(fileSchema, file)).toBe(true)
   })

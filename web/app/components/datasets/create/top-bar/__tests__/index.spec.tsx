@@ -4,7 +4,17 @@ import { TopBar } from '../index'
 
 // Mock next/link to capture href values
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, replace, className }: { children: React.ReactNode, href: string, replace?: boolean, className?: string }) => (
+  default: ({
+    children,
+    href,
+    replace,
+    className,
+  }: {
+    children: React.ReactNode
+    href: string
+    replace?: boolean
+    className?: string
+  }) => (
     <a href={href} data-replace={replace} className={className} data-testid="back-link">
       {children}
     </a>
@@ -204,12 +214,18 @@ describe('TopBar', () => {
 
       rerender(<TopBar activeIndex={0} datasetId="new-dataset" />)
 
-      expect(screen.getByTestId('back-link')).toHaveAttribute('href', '/datasets/new-dataset/documents')
+      expect(screen.getByTestId('back-link')).toHaveAttribute(
+        'href',
+        '/datasets/new-dataset/documents',
+      )
     })
 
     it('should update fallbackRoute when datasetId changes from defined to undefined', () => {
       const { rerender } = render(<TopBar activeIndex={0} datasetId="existing-id" />)
-      expect(screen.getByTestId('back-link')).toHaveAttribute('href', '/datasets/existing-id/documents')
+      expect(screen.getByTestId('back-link')).toHaveAttribute(
+        'href',
+        '/datasets/existing-id/documents',
+      )
 
       rerender(<TopBar activeIndex={0} datasetId={undefined} />)
 
@@ -227,7 +243,9 @@ describe('TopBar', () => {
     })
 
     it('should not change fallbackRoute when className changes but datasetId stays same', () => {
-      const { rerender } = render(<TopBar activeIndex={0} datasetId="stable-id" className="class-1" />)
+      const { rerender } = render(
+        <TopBar activeIndex={0} datasetId="stable-id" className="class-1" />,
+      )
       const initialHref = screen.getByTestId('back-link').getAttribute('href')
 
       rerender(<TopBar activeIndex={0} datasetId="stable-id" className="class-2" />)
@@ -334,7 +352,10 @@ describe('TopBar', () => {
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('custom-class')
-      expect(screen.getByTestId('back-link')).toHaveAttribute('href', '/datasets/full-props-id/documents')
+      expect(screen.getByTestId('back-link')).toHaveAttribute(
+        'href',
+        '/datasets/full-props-id/documents',
+      )
     })
 
     it('should render correctly with minimal props (only activeIndex)', () => {
@@ -364,7 +385,9 @@ describe('TopBar', () => {
       const { container } = renderTopBar({ activeIndex: 0 })
 
       // Assert - Check for centered positioning classes
-      const centeredContainer = container.querySelector('.absolute.left-1\\/2.top-1\\/2.-translate-1\\/2')
+      const centeredContainer = container.querySelector(
+        '.absolute.left-1\\/2.top-1\\/2.-translate-1\\/2',
+      )
       expect(centeredContainer).toBeInTheDocument()
     })
 
@@ -436,7 +459,10 @@ describe('TopBar', () => {
       expect(container.firstChild).toBeInTheDocument()
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('new-class')
-      expect(screen.getByTestId('back-link')).toHaveAttribute('href', '/datasets/another-id/documents')
+      expect(screen.getByTestId('back-link')).toHaveAttribute(
+        'href',
+        '/datasets/another-id/documents',
+      )
     })
   })
 })

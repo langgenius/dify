@@ -5,8 +5,20 @@ describe('parseDSL', () => {
     const dsl = 'plainNode1 -> plainNode2'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: {}, status: 'succeeded' },
-      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: {}, status: 'succeeded' },
+      {
+        id: 'plainNode1',
+        node_id: 'plainNode1',
+        title: 'plainNode1',
+        execution_metadata: {},
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode2',
+        node_id: 'plainNode2',
+        title: 'plainNode2',
+        execution_metadata: {},
+        status: 'succeeded',
+      },
     ])
   })
 
@@ -14,10 +26,34 @@ describe('parseDSL', () => {
     const dsl = '(retry, retryNode, 3)'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'succeeded' },
-      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'retry' },
-      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'retry' },
-      { id: 'retryNode', node_id: 'retryNode', title: 'retryNode', execution_metadata: {}, status: 'retry' },
+      {
+        id: 'retryNode',
+        node_id: 'retryNode',
+        title: 'retryNode',
+        execution_metadata: {},
+        status: 'succeeded',
+      },
+      {
+        id: 'retryNode',
+        node_id: 'retryNode',
+        title: 'retryNode',
+        execution_metadata: {},
+        status: 'retry',
+      },
+      {
+        id: 'retryNode',
+        node_id: 'retryNode',
+        title: 'retryNode',
+        execution_metadata: {},
+        status: 'retry',
+      },
+      {
+        id: 'retryNode',
+        node_id: 'retryNode',
+        title: 'retryNode',
+        execution_metadata: {},
+        status: 'retry',
+      },
     ])
   })
 
@@ -25,9 +61,28 @@ describe('parseDSL', () => {
     const dsl = '(iteration, iterationNode, plainNode1 -> plainNode2)'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      { id: 'iterationNode', node_id: 'iterationNode', title: 'iterationNode', node_type: 'iteration', execution_metadata: {}, status: 'succeeded' },
-      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0 }, status: 'succeeded' },
-      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0 }, status: 'succeeded' },
+      {
+        id: 'iterationNode',
+        node_id: 'iterationNode',
+        title: 'iterationNode',
+        node_type: 'iteration',
+        execution_metadata: {},
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode1',
+        node_id: 'plainNode1',
+        title: 'plainNode1',
+        execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0 },
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode2',
+        node_id: 'plainNode2',
+        title: 'plainNode2',
+        execution_metadata: { iteration_id: 'iterationNode', iteration_index: 0 },
+        status: 'succeeded',
+      },
     ])
   })
 
@@ -35,9 +90,28 @@ describe('parseDSL', () => {
     const dsl = '(loop, loopNode, plainNode1 -> plainNode2)'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      { id: 'loopNode', node_id: 'loopNode', title: 'loopNode', node_type: 'loop', execution_metadata: {}, status: 'succeeded' },
-      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: { loop_id: 'loopNode', loop_index: 0 }, status: 'succeeded' },
-      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: { loop_id: 'loopNode', loop_index: 0 }, status: 'succeeded' },
+      {
+        id: 'loopNode',
+        node_id: 'loopNode',
+        title: 'loopNode',
+        node_type: 'loop',
+        execution_metadata: {},
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode1',
+        node_id: 'plainNode1',
+        title: 'plainNode1',
+        execution_metadata: { loop_id: 'loopNode', loop_index: 0 },
+        status: 'succeeded',
+      },
+      {
+        id: 'plainNode2',
+        node_id: 'plainNode2',
+        title: 'plainNode2',
+        execution_metadata: { loop_id: 'loopNode', loop_index: 0 },
+        status: 'succeeded',
+      },
     ])
   })
 
@@ -45,10 +119,34 @@ describe('parseDSL', () => {
     const dsl = '(parallel, parallelNode, nodeA, nodeB -> nodeC)'
     const result = parseDSL(dsl)
     expect(result).toEqual([
-      { id: 'parallelNode', node_id: 'parallelNode', title: 'parallelNode', execution_metadata: { parallel_id: 'parallelNode' }, status: 'succeeded' },
-      { id: 'nodeA', node_id: 'nodeA', title: 'nodeA', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeA' }, status: 'succeeded' },
-      { id: 'nodeB', node_id: 'nodeB', title: 'nodeB', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeB' }, status: 'succeeded' },
-      { id: 'nodeC', node_id: 'nodeC', title: 'nodeC', execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeB' }, status: 'succeeded' },
+      {
+        id: 'parallelNode',
+        node_id: 'parallelNode',
+        title: 'parallelNode',
+        execution_metadata: { parallel_id: 'parallelNode' },
+        status: 'succeeded',
+      },
+      {
+        id: 'nodeA',
+        node_id: 'nodeA',
+        title: 'nodeA',
+        execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeA' },
+        status: 'succeeded',
+      },
+      {
+        id: 'nodeB',
+        node_id: 'nodeB',
+        title: 'nodeB',
+        execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeB' },
+        status: 'succeeded',
+      },
+      {
+        id: 'nodeC',
+        node_id: 'nodeC',
+        title: 'nodeC',
+        execution_metadata: { parallel_id: 'parallelNode', parallel_start_node_id: 'nodeB' },
+        status: 'succeeded',
+      },
     ])
   })
 

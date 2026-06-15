@@ -32,7 +32,7 @@ describe('escape', () => {
   })
 
   it('should escape single quote', () => {
-    expect(escape('\'')).toBe('\\\'')
+    expect(escape("'")).toBe("\\'")
   })
 
   // Multiple special characters in one string

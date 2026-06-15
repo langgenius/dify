@@ -107,13 +107,13 @@ describe('Counter', () => {
   it('should increment count', async () => {
     const user = userEvent.setup()
     render(<Counter initialCount={0} />)
-    
+
     // Initial state
     expect(screen.getByText('Count: 0')).toBeInTheDocument()
-    
+
     // Trigger transition
     await user.click(screen.getByRole('button', { name: /increment/i }))
-    
+
     // New state
     expect(screen.getByText('Count: 1')).toBeInTheDocument()
   })
@@ -127,17 +127,17 @@ describe('ControlledInput', () => {
   it('should call onChange with new value', async () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
-    
+
     render(<ControlledInput value="" onChange={handleChange} />)
-    
+
     await user.type(screen.getByRole('textbox'), 'a')
-    
+
     expect(handleChange).toHaveBeenCalledWith('a')
   })
 
   it('should display controlled value', () => {
     render(<ControlledInput value="controlled" onChange={vi.fn()} />)
-    
+
     expect(screen.getByRole('textbox')).toHaveValue('controlled')
   })
 })
@@ -149,26 +149,26 @@ describe('ControlledInput', () => {
 describe('ConditionalComponent', () => {
   it('should show loading state', () => {
     render(<DataDisplay isLoading={true} data={null} />)
-    
+
     expect(screen.getByText(/loading/i)).toBeInTheDocument()
     expect(screen.queryByTestId('data-content')).not.toBeInTheDocument()
   })
 
   it('should show error state', () => {
     render(<DataDisplay isLoading={false} data={null} error="Failed to load" />)
-    
+
     expect(screen.getByText(/failed to load/i)).toBeInTheDocument()
   })
 
   it('should show data when loaded', () => {
     render(<DataDisplay isLoading={false} data={{ name: 'Test' }} />)
-    
+
     expect(screen.getByText('Test')).toBeInTheDocument()
   })
 
   it('should show empty state when no data', () => {
     render(<DataDisplay isLoading={false} data={[]} />)
-    
+
     expect(screen.getByText(/no data/i)).toBeInTheDocument()
   })
 })
@@ -186,7 +186,7 @@ describe('ItemList', () => {
 
   it('should render all items', () => {
     render(<ItemList items={items} />)
-    
+
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
     items.forEach(item => {
       expect(screen.getByText(item.name)).toBeInTheDocument()
@@ -196,17 +196,17 @@ describe('ItemList', () => {
   it('should handle item selection', async () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
-    
+
     render(<ItemList items={items} onSelect={onSelect} />)
-    
+
     await user.click(screen.getByText('Item 2'))
-    
+
     expect(onSelect).toHaveBeenCalledWith(items[1])
   })
 
   it('should handle empty list', () => {
     render(<ItemList items={[]} />)
-    
+
     expect(screen.getByText(/no items/i)).toBeInTheDocument()
   })
 })
@@ -218,55 +218,55 @@ describe('ItemList', () => {
 describe('Modal', () => {
   it('should not render when closed', () => {
     render(<Modal isOpen={false} onClose={vi.fn()} />)
-    
+
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should render when open', () => {
     render(<Modal isOpen={true} onClose={vi.fn()} />)
-    
+
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('should call onClose when clicking overlay', async () => {
     const user = userEvent.setup()
     const handleClose = vi.fn()
-    
+
     render(<Modal isOpen={true} onClose={handleClose} />)
-    
+
     await user.click(screen.getByTestId('modal-overlay'))
-    
+
     expect(handleClose).toHaveBeenCalled()
   })
 
   it('should call onClose when pressing Escape', async () => {
     const user = userEvent.setup()
     const handleClose = vi.fn()
-    
+
     render(<Modal isOpen={true} onClose={handleClose} />)
-    
+
     await user.keyboard('{Escape}')
-    
+
     expect(handleClose).toHaveBeenCalled()
   })
 
   it('should trap focus inside modal', async () => {
     const user = userEvent.setup()
-    
+
     render(
       <Modal isOpen={true} onClose={vi.fn()}>
         <button>First</button>
         <button>Second</button>
       </Modal>
     )
-    
+
     // Focus should cycle within modal
     await user.tab()
     expect(screen.getByText('First')).toHaveFocus()
-    
+
     await user.tab()
     expect(screen.getByText('Second')).toHaveFocus()
-    
+
     await user.tab()
     expect(screen.getByText('First')).toHaveFocus() // Cycles back
   })
@@ -280,13 +280,13 @@ describe('LoginForm', () => {
   it('should submit valid form', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    
+
     render(<LoginForm onSubmit={onSubmit} />)
-    
+
     await user.type(screen.getByLabelText(/email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
-    
+
     expect(onSubmit).toHaveBeenCalledWith({
       email: 'test@example.com',
       password: 'password123',
@@ -295,39 +295,39 @@ describe('LoginForm', () => {
 
   it('should show validation errors', async () => {
     const user = userEvent.setup()
-    
+
     render(<LoginForm onSubmit={vi.fn()} />)
-    
+
     // Submit empty form
     await user.click(screen.getByRole('button', { name: /sign in/i }))
-    
+
     expect(screen.getByText(/email is required/i)).toBeInTheDocument()
     expect(screen.getByText(/password is required/i)).toBeInTheDocument()
   })
 
   it('should validate email format', async () => {
     const user = userEvent.setup()
-    
+
     render(<LoginForm onSubmit={vi.fn()} />)
-    
+
     await user.type(screen.getByLabelText(/email/i), 'invalid-email')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
-    
+
     expect(screen.getByText(/invalid email/i)).toBeInTheDocument()
   })
 
   it('should disable submit button while submitting', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn(() => new Promise(resolve => setTimeout(resolve, 100)))
-    
+
     render(<LoginForm onSubmit={onSubmit} />)
-    
+
     await user.type(screen.getByLabelText(/email/i), 'test@example.com')
     await user.type(screen.getByLabelText(/password/i), 'password123')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
-    
+
     expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled()
-    
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /sign in/i })).toBeEnabled()
     })
@@ -346,7 +346,7 @@ describe('StatusBadge', () => {
     ['info', 'bg-blue-500'],
   ])('should apply correct class for %s status', (status, expectedClass) => {
     render(<StatusBadge status={status} />)
-    
+
     expect(screen.getByTestId('status-badge')).toHaveClass(expectedClass)
   })
 
@@ -357,7 +357,7 @@ describe('StatusBadge', () => {
     { input: 'invalid', expected: 'Unknown' },
   ])('should show "Unknown" for invalid input: $input', ({ input, expected }) => {
     render(<StatusBadge status={input} />)
-    
+
     expect(screen.getByText(expected)).toBeInTheDocument()
   })
 })

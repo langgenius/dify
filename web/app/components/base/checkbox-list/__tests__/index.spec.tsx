@@ -13,16 +13,12 @@ describe('checkbox list component', () => {
   ]
 
   it('renders with title, description and options', () => {
-    render(
-      <CheckboxList
-        title="Test Title"
-        description="Test Description"
-        options={options}
-      />,
-    )
+    render(<CheckboxList title="Test Title" description="Test Description" options={options} />)
     expect(screen.getByText('Test Title'))!.toBeInTheDocument()
     expect(screen.getByText('Test Description'))!.toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Test Title' }))!.toHaveAccessibleDescription('Test Description')
+    expect(screen.getByRole('group', { name: 'Test Title' }))!.toHaveAccessibleDescription(
+      'Test Description',
+    )
     options.forEach((option) => {
       expect(screen.getByText(option.label))!.toBeInTheDocument()
     })
@@ -47,14 +43,7 @@ describe('checkbox list component', () => {
   it('selects all options when select-all is clicked', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        onChange={onChange}
-        showSelectAll
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} onChange={onChange} showSelectAll />)
 
     const selectAll = screen.getByRole('checkbox', { name: selectAllName })
     await userEvent.click(selectAll)
@@ -65,15 +54,7 @@ describe('checkbox list component', () => {
   it('does not select all options when select-all is clicked when disabled', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        disabled
-        showSelectAll
-        onChange={onChange}
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} disabled showSelectAll onChange={onChange} />)
 
     const selectAll = screen.getByRole('checkbox', { name: selectAllName })
     await userEvent.click(selectAll)
@@ -124,14 +105,7 @@ describe('checkbox list component', () => {
   it('selects options when checkbox is clicked', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        onChange={onChange}
-        showSelectAll={false}
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} onChange={onChange} showSelectAll={false} />)
 
     const selectOption = screen.getByRole('checkbox', { name: 'Option 1' })
     await userEvent.click(selectOption)
@@ -158,14 +132,7 @@ describe('checkbox list component', () => {
   it('does not select options when checkbox is clicked', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        onChange={onChange}
-        disabled
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} onChange={onChange} disabled />)
 
     const selectOption = screen.getByRole('checkbox', { name: 'Option 1' })
     await userEvent.click(selectOption)
@@ -175,13 +142,7 @@ describe('checkbox list component', () => {
   it('Reset button works', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        onChange={onChange}
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} onChange={onChange} />)
 
     const input = getSearchInput()
     await userEvent.type(input, 'ban')
@@ -196,13 +157,7 @@ describe('checkbox list component', () => {
       { label: 'Disabled', value: 'disabled', disabled: true },
     ]
 
-    render(
-      <CheckboxList
-        options={disabledOptions}
-        value={[]}
-        onChange={onChange}
-      />,
-    )
+    render(<CheckboxList options={disabledOptions} value={[]} onChange={onChange} />)
 
     const disabledCheckbox = screen.getByRole('checkbox', { name: 'Disabled' })
     await userEvent.click(disabledCheckbox)
@@ -212,38 +167,21 @@ describe('checkbox list component', () => {
   it('does not toggle option when component is disabled and option label is clicked', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        onChange={onChange}
-        disabled
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} onChange={onChange} disabled />)
 
     await userEvent.click(screen.getByText('Option 1'))
     expect(onChange).not.toHaveBeenCalled()
   })
 
   it('renders with label prop', () => {
-    render(
-      <CheckboxList
-        options={options}
-        label="Test Label"
-      />,
-    )
+    render(<CheckboxList options={options} label="Test Label" />)
     expect(screen.getByText('Test Label'))!.toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Test Label' }))!.toBeInTheDocument()
   })
 
   it('renders without showSelectAll, showCount, showSearch', () => {
     render(
-      <CheckboxList
-        options={options}
-        showSelectAll={false}
-        showCount={false}
-        showSearch={false}
-      />,
+      <CheckboxList options={options} showSelectAll={false} showCount={false} showSearch={false} />,
     )
     expect(screen.queryByRole('checkbox', { name: selectAllName })).not.toBeInTheDocument()
     options.forEach((option) => {
@@ -253,21 +191,13 @@ describe('checkbox list component', () => {
 
   it('renders with custom containerClassName', () => {
     const { container } = render(
-      <CheckboxList
-        options={options}
-        containerClassName="custom-class"
-      />,
+      <CheckboxList options={options} containerClassName="custom-class" />,
     )
     expect(container.querySelector('.custom-class'))!.toBeInTheDocument()
   })
 
   it('applies maxHeight style to options container', () => {
-    render(
-      <CheckboxList
-        options={options}
-        maxHeight="200px"
-      />,
-    )
+    render(<CheckboxList options={options} maxHeight="200px" />)
     const optionsContainer = screen.getByTestId('options-container')
     expect(optionsContainer)!.toHaveStyle({ maxHeight: '200px', overflowY: 'auto' })
   })
@@ -315,14 +245,7 @@ describe('checkbox list component', () => {
   it('toggles option by clicking option row', async () => {
     const onChange = vi.fn()
 
-    render(
-      <CheckboxList
-        options={options}
-        value={[]}
-        onChange={onChange}
-        showSelectAll={false}
-      />,
-    )
+    render(<CheckboxList options={options} value={[]} onChange={onChange} showSelectAll={false} />)
 
     const optionLabel = screen.getByText('Option 1')
     const optionRow = optionLabel.closest('label[data-testid="option-item"]')
@@ -334,17 +257,9 @@ describe('checkbox list component', () => {
 
   it('does not toggle when clicking disabled option row', async () => {
     const onChange = vi.fn()
-    const disabledOptions = [
-      { label: 'Option 1', value: 'option1', disabled: true },
-    ]
+    const disabledOptions = [{ label: 'Option 1', value: 'option1', disabled: true }]
 
-    render(
-      <CheckboxList
-        options={disabledOptions}
-        value={[]}
-        onChange={onChange}
-      />,
-    )
+    render(<CheckboxList options={disabledOptions} value={[]} onChange={onChange} />)
 
     const optionRow = screen.getByText('Option 1').closest('label[data-testid="option-item"]')
     expect(optionRow)!.toBeInTheDocument()
@@ -354,24 +269,13 @@ describe('checkbox list component', () => {
   })
 
   it('renders without title and description', () => {
-    render(
-      <CheckboxList
-        options={options}
-        title=""
-        description=""
-      />,
-    )
+    render(<CheckboxList options={options} title="" description="" />)
     expect(screen.queryByText(/Test Title/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Test Description/)).not.toBeInTheDocument()
   })
 
   it('shows correct filtered count message when searching', async () => {
-    render(
-      <CheckboxList
-        options={options}
-        title="Items"
-      />,
-    )
+    render(<CheckboxList options={options} title="Items" />)
 
     const input = getSearchInput()
     await userEvent.type(input, 'opt')
@@ -380,28 +284,15 @@ describe('checkbox list component', () => {
   })
 
   it('shows no data message when no options are provided', () => {
-    render(
-      <CheckboxList
-        options={[]}
-      />,
-    )
+    render(<CheckboxList options={[]} />)
     expect(screen.getByText('common.noData'))!.toBeInTheDocument()
   })
 
   it('does not toggle option when component is disabled even with enabled option', async () => {
     const onChange = vi.fn()
-    const disabledOptions = [
-      { label: 'Option', value: 'option' },
-    ]
+    const disabledOptions = [{ label: 'Option', value: 'option' }]
 
-    render(
-      <CheckboxList
-        options={disabledOptions}
-        value={[]}
-        onChange={onChange}
-        disabled
-      />,
-    )
+    render(<CheckboxList options={disabledOptions} value={[]} onChange={onChange} disabled />)
 
     const checkbox = screen.getByRole('checkbox', { name: 'Option' })
     await userEvent.click(checkbox)

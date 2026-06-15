@@ -45,7 +45,7 @@ const AdvancedSetting: FC<Props> = ({
   return (
     <>
       <Editor
-        title={(
+        title={
           <div className="flex items-center space-x-1">
             <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
             <Infotip
@@ -57,7 +57,7 @@ const AdvancedSetting: FC<Props> = ({
               {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
             </Infotip>
           </div>
-        )}
+        }
         value={instruction}
         onChange={onInstructionChange}
         readOnly={readonly}

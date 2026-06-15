@@ -1,4 +1,7 @@
-import type { TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type {
+  TriggerOAuthConfig,
+  TriggerSubscriptionBuilder,
+} from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -23,8 +26,18 @@ function createMockOAuthConfig(overrides: Partial<TriggerOAuthConfig> = {}): Tri
       client_secret: 'default-client-secret',
     },
     oauth_client_schema: [
-      { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
-      { name: 'client_secret', type: 'secret-input' as unknown, required: true, label: { 'en-US': 'Client Secret' } as unknown },
+      {
+        name: 'client_id',
+        type: 'text-input' as unknown,
+        required: true,
+        label: { 'en-US': 'Client ID' } as unknown,
+      },
+      {
+        name: 'client_secret',
+        type: 'secret-input' as unknown,
+        required: true,
+        label: { 'en-US': 'Client Secret' } as unknown,
+      },
     ] as TriggerOAuthConfig['oauth_client_schema'],
     ...overrides,
   }
@@ -39,7 +52,9 @@ function createMockPluginDetail(overrides: Partial<PluginDetail> = {}): PluginDe
   }
 }
 
-function createMockSubscriptionBuilder(overrides: Partial<TriggerSubscriptionBuilder> = {}): TriggerSubscriptionBuilder {
+function createMockSubscriptionBuilder(
+  overrides: Partial<TriggerSubscriptionBuilder> = {},
+): TriggerSubscriptionBuilder {
   return {
     id: 'builder-123',
     name: 'Test Builder',
@@ -82,13 +97,15 @@ vi.mock('@/service/use-triggers', () => ({
 
 const mockOpenOAuthPopup = vi.fn()
 vi.mock('@/hooks/use-oauth', () => ({
-  openOAuthPopup: (url: string, callback: (data: unknown) => void) => mockOpenOAuthPopup(url, callback),
+  openOAuthPopup: (url: string, callback: (data: unknown) => void) =>
+    mockOpenOAuthPopup(url, callback),
 }))
 
 const mockToastNotify = vi.fn()
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(
-    (message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }),
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
     {
       success: (message: string) => mockToastNotify({ type: 'success', message }),
       error: (message: string) => mockToastNotify({ type: 'error', message }),
@@ -110,7 +127,7 @@ Object.defineProperty(navigator, 'clipboard', {
   writable: true,
 })
 
-let mockFormValues: { values: Record<string, string>, isCheckValidated: boolean } = {
+let mockFormValues: { values: Record<string, string>; isCheckValidated: boolean } = {
   values: { client_id: 'test-client-id', client_secret: 'test-client-secret' },
   isCheckValidated: true,
 }
@@ -123,15 +140,17 @@ vi.mock('@/app/components/base/form/components/base', () => ({
     formSchemas,
     ref,
   }: {
-    formSchemas: Array<{ name: string, default?: string }>
-    ref?: React.Ref<{ getFormValues: () => { values: Record<string, string>, isCheckValidated: boolean } }>
+    formSchemas: Array<{ name: string; default?: string }>
+    ref?: React.Ref<{
+      getFormValues: () => { values: Record<string, string>; isCheckValidated: boolean }
+    }>
   }) => {
     React.useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
     }))
     return (
       <div data-testid="base-form">
-        {formSchemas.map(schema => (
+        {formSchemas.map((schema) => (
           <input
             key={schema.name}
             data-testid={`form-field-${schema.name}`}
@@ -156,9 +175,10 @@ describe('OAuthClientSettingsModal', () => {
   const getCloseButton = () => screen.getByRole('button', { name: 'Close' })
   const getCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
   const getSaveOnlyButton = () => screen.getByRole('button', { name: 'plugin.auth.saveOnly' })
-  const getConfirmButton = () => screen.getByRole('button', {
-    name: /plugin\.auth\.saveAndAuth|pluginTrigger\.modal\.common\.authorizing|pluginTrigger\.modal\.oauth\.authorization\.waitingJump/,
-  })
+  const getConfirmButton = () =>
+    screen.getByRole('button', {
+      name: /plugin\.auth\.saveAndAuth|pluginTrigger\.modal\.common\.authorizing|pluginTrigger\.modal\.oauth\.authorization\.waitingJump/,
+    })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -191,8 +211,12 @@ describe('OAuthClientSettingsModal', () => {
     it('should render client type selector when system_configured is true', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByText('pluginTrigger.subscription.addType.options.oauth.default')).toBeInTheDocument()
-      expect(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom')).toBeInTheDocument()
+      expect(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.default'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom'),
+      ).toBeInTheDocument()
     })
 
     it('should not render client type selector when system_configured is false', () => {
@@ -200,9 +224,13 @@ describe('OAuthClientSettingsModal', () => {
         system_configured: false,
       })
 
-      render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithoutSystemConfigured} />)
+      render(
+        <OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithoutSystemConfigured} />,
+      )
 
-      expect(screen.queryByText('pluginTrigger.subscription.addType.options.oauth.default')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('pluginTrigger.subscription.addType.options.oauth.default'),
+      ).not.toBeInTheDocument()
     })
 
     it('should render redirect URI info when custom client type is selected', () => {
@@ -245,14 +273,18 @@ describe('OAuthClientSettingsModal', () => {
     it('should default to Default client type when system_configured is true', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      const defaultCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.default').closest('div')
+      const defaultCard = screen
+        .getByText('pluginTrigger.subscription.addType.options.oauth.default')
+        .closest('div')
       expect(defaultCard).toHaveClass('border-[1.5px]')
     })
 
     it('should switch to Custom client type when Custom card is clicked', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
+      const customCard = screen
+        .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+        .closest('div')
       fireEvent.click(customCard!)
 
       expect(customCard).toHaveClass('border-[1.5px]')
@@ -261,10 +293,14 @@ describe('OAuthClientSettingsModal', () => {
     it('should switch back to Default client type when Default card is clicked', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
+      const customCard = screen
+        .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+        .closest('div')
       fireEvent.click(customCard!)
 
-      const defaultCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.default').closest('div')
+      const defaultCard = screen
+        .getByText('pluginTrigger.subscription.addType.options.oauth.default')
+        .closest('div')
       fireEvent.click(defaultCard!)
 
       expect(defaultCard).toHaveClass('border-[1.5px]')
@@ -432,10 +468,7 @@ describe('OAuthClientSettingsModal', () => {
       const removeButton = screen.getByText('common.operation.remove')
       fireEvent.click(removeButton)
 
-      expect(mockDeleteOAuth).toHaveBeenCalledWith(
-        'test-provider',
-        expect.any(Object),
-      )
+      expect(mockDeleteOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
     })
 
     it('should show success toast when remove succeeds', () => {
@@ -591,10 +624,7 @@ describe('OAuthClientSettingsModal', () => {
       fireEvent.click(getConfirmButton())
 
       // Verify OAuth flow was initiated
-      expect(mockInitiateOAuth).toHaveBeenCalledWith(
-        'test-provider',
-        expect.any(Object),
-      )
+      expect(mockInitiateOAuth).toHaveBeenCalledWith('test-provider', expect.any(Object))
     })
 
     it('should continue polling when verifyBuilder returns an error', async () => {
@@ -778,7 +808,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom
-      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')
+      const customCard = screen
+        .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+        .closest('div')
       fireEvent.click(customCard!)
 
       fireEvent.click(getSaveOnlyButton())
@@ -850,9 +882,24 @@ describe('OAuthClientSettingsModal', () => {
           client_secret: '', // empty value - will not be set as default
         },
         oauth_client_schema: [
-          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
-          { name: 'client_secret', type: 'secret-input' as unknown, required: true, label: { 'en-US': 'Client Secret' } as unknown },
-          { name: 'extra_param', type: 'text-input' as unknown, required: false, label: { 'en-US': 'Extra Param' } as unknown },
+          {
+            name: 'client_id',
+            type: 'text-input' as unknown,
+            required: true,
+            label: { 'en-US': 'Client ID' } as unknown,
+          },
+          {
+            name: 'client_secret',
+            type: 'secret-input' as unknown,
+            required: true,
+            label: { 'en-US': 'Client Secret' } as unknown,
+          },
+          {
+            name: 'extra_param',
+            type: 'text-input' as unknown,
+            required: false,
+            label: { 'en-US': 'Extra Param' } as unknown,
+          },
         ] as TriggerOAuthConfig['oauth_client_schema'],
       })
 
@@ -916,7 +963,9 @@ describe('OAuthClientSettingsModal', () => {
         redirect_uri: '',
       })
 
-      render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithEmptyRedirectUri} />)
+      render(
+        <OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithEmptyRedirectUri} />,
+      )
 
       expect(screen.queryByText('pluginTrigger.modal.oauthRedirectInfo')).not.toBeInTheDocument()
     })
@@ -966,7 +1015,9 @@ describe('OAuthClientSettingsModal', () => {
     it('should render client type title', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
-      expect(screen.getByText('pluginTrigger.subscription.addType.options.oauth.clientTitle')).toBeInTheDocument()
+      expect(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.clientTitle'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -980,7 +1031,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      const customCard = screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!
+      const customCard = screen
+        .getByText('pluginTrigger.subscription.addType.options.oauth.custom')
+        .closest('div')!
       fireEvent.click(customCard)
 
       fireEvent.click(getSaveOnlyButton())
@@ -1003,7 +1056,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
+      fireEvent.click(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
+      )
 
       fireEvent.click(getSaveOnlyButton())
 
@@ -1030,7 +1085,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
+      fireEvent.click(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
+      )
 
       fireEvent.click(getSaveOnlyButton())
 
@@ -1057,7 +1114,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
+      fireEvent.click(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
+      )
 
       fireEvent.click(getSaveOnlyButton())
 
@@ -1084,7 +1143,9 @@ describe('OAuthClientSettingsModal', () => {
       render(<OAuthClientSettingsModal {...defaultProps} />)
 
       // Switch to custom type
-      fireEvent.click(screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!)
+      fireEvent.click(
+        screen.getByText('pluginTrigger.subscription.addType.options.oauth.custom').closest('div')!,
+      )
 
       fireEvent.click(getSaveOnlyButton())
 
@@ -1127,7 +1188,9 @@ describe('OAuthClientSettingsModal', () => {
 
       // Button text should show waitingJump after verified
       await waitFor(() => {
-        expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.oauth.authorization.waitingJump')
+        expect(getConfirmButton()).toHaveTextContent(
+          'pluginTrigger.modal.oauth.authorization.waitingJump',
+        )
       })
 
       vi.useRealTimers()
@@ -1177,13 +1240,30 @@ describe('OAuthClientSettingsModal', () => {
           client_secret: 'test-secret',
         },
         oauth_client_schema: [
-          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
-          { name: 'client_secret', type: 'secret-input' as unknown, required: true, label: { 'en-US': 'Client Secret' } as unknown },
-          { name: 'extra_field', type: 'text-input' as unknown, required: false, label: { 'en-US': 'Extra' } as unknown },
+          {
+            name: 'client_id',
+            type: 'text-input' as unknown,
+            required: true,
+            label: { 'en-US': 'Client ID' } as unknown,
+          },
+          {
+            name: 'client_secret',
+            type: 'secret-input' as unknown,
+            required: true,
+            label: { 'en-US': 'Client Secret' } as unknown,
+          },
+          {
+            name: 'extra_field',
+            type: 'text-input' as unknown,
+            required: false,
+            label: { 'en-US': 'Extra' } as unknown,
+          },
         ] as TriggerOAuthConfig['oauth_client_schema'],
       })
 
-      render(<OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithSchemaNotInParams} />)
+      render(
+        <OAuthClientSettingsModal {...defaultProps} oauthConfig={configWithSchemaNotInParams} />,
+      )
 
       // extra_field should be rendered but without default value
       const extraInput = screen.getByTestId('form-field-extra_field') as HTMLInputElement
@@ -1196,7 +1276,12 @@ describe('OAuthClientSettingsModal', () => {
         custom_enabled: true,
         params: undefined as unknown as TriggerOAuthConfig['params'],
         oauth_client_schema: [
-          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
+          {
+            name: 'client_id',
+            type: 'text-input' as unknown,
+            required: true,
+            label: { 'en-US': 'Client ID' } as unknown,
+          },
         ] as TriggerOAuthConfig['oauth_client_schema'],
       })
 
@@ -1212,7 +1297,12 @@ describe('OAuthClientSettingsModal', () => {
         custom_enabled: true,
         params: null as unknown as TriggerOAuthConfig['params'],
         oauth_client_schema: [
-          { name: 'client_id', type: 'text-input' as unknown, required: true, label: { 'en-US': 'Client ID' } as unknown },
+          {
+            name: 'client_id',
+            type: 'text-input' as unknown,
+            required: true,
+            label: { 'en-US': 'Client ID' } as unknown,
+          },
         ] as TriggerOAuthConfig['oauth_client_schema'],
       })
 

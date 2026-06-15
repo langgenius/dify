@@ -44,10 +44,9 @@ vi.mock('@/app/components/workflow/nodes/loop/use-interactions', () => ({
 }))
 
 vi.mock('../use-node-resize-observer', () => ({
-  default: (options: { enabled: boolean, onResize: () => void }) => {
+  default: (options: { enabled: boolean; onResize: () => void }) => {
     mockUseNodeResizeObserver(options)
-    if (options.enabled)
-      options.onResize()
+    if (options.enabled) options.onResize()
   },
 }))
 
@@ -57,7 +56,9 @@ vi.mock('../components/add-variable-popup-with-position', () => ({
 vi.mock('../components/entry-node-container', () => ({
   __esModule: true,
   StartNodeTypeEnum: { Start: 'start', Trigger: 'trigger' },
-  default: ({ children }: PropsWithChildren) => <div data-testid="entry-node-container">{children}</div>,
+  default: ({ children }: PropsWithChildren) => (
+    <div data-testid="entry-node-container">{children}</div>
+  ),
 }))
 vi.mock('../components/error-handle/error-handle-on-node', () => ({
   default: () => <div data-testid="error-handle-node" />,
@@ -161,13 +162,15 @@ describe('BaseNode', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-1"
-        data={toNodeData(createData({
-          type: BlockEnum.Loop,
-          _loopIndex: 3,
-          _runningStatus: NodeRunningStatus.Running,
-          width: 320,
-          height: 220,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Loop,
+            _loopIndex: 3,
+            _runningStatus: NodeRunningStatus.Running,
+            width: 320,
+            height: 220,
+          }),
+        )}
       >
         <div>Loop body</div>
       </BaseNode>,
@@ -189,11 +192,13 @@ describe('BaseNode', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-1"
-        data={toNodeData(createData({
-          type: BlockEnum.Iteration,
-          selected: true,
-          isInIteration: true,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Iteration,
+            selected: true,
+            isInIteration: true,
+          }),
+        )}
       >
         <div>Iteration body</div>
       </BaseNode>,
@@ -208,11 +213,13 @@ describe('BaseNode', () => {
     renderWorkflowComponent(
       <BaseNode
         id="node-2"
-        data={toNodeData(createData({
-          type: BlockEnum.Loop,
-          selected: true,
-          isInLoop: true,
-        }))}
+        data={toNodeData(
+          createData({
+            type: BlockEnum.Loop,
+            selected: true,
+            isInLoop: true,
+          }),
+        )}
       >
         <div>Loop body</div>
       </BaseNode>,
@@ -223,7 +230,8 @@ describe('BaseNode', () => {
   })
 
   it('should keep viewer avatars outside the truncated title area', () => {
-    const longTitle = 'This is a very long node title that should truncate before it clips the viewer avatars'
+    const longTitle =
+      'This is a very long node title that should truncate before it clips the viewer avatars'
     mockUseCollaboration.mockReturnValue({
       nodePanelPresence: {
         'node-1': {

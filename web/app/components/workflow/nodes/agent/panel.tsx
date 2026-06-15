@@ -21,7 +21,7 @@ const i18nPrefix = 'nodes.agent'
 
 function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
   return {
-    ...param as any,
+    ...(param as any),
     variable: param.name,
     show_on: [],
     type: toType(param.type),
@@ -46,7 +46,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const { t } = useTranslation()
   const isMCPVersionSupported = isSupportMCP(inputs.meta?.version)
 
-  const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
+  const resetEditor = useStore((s) => s.setControlPromptEditorRerenderKey)
   return (
     <div className="my-2">
       <Field
@@ -57,16 +57,18 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
       >
         <MCPToolAvailabilityProvider versionSupported={isMCPVersionSupported}>
           <AgentStrategy
-            strategy={inputs.agent_strategy_name
-              ? {
-                  agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
-                  agent_strategy_name: inputs.agent_strategy_name!,
-                  agent_strategy_label: inputs.agent_strategy_label!,
-                  agent_output_schema: inputs.output_schema,
-                  plugin_unique_identifier: inputs.plugin_unique_identifier!,
-                  meta: inputs.meta,
-                }
-              : undefined}
+            strategy={
+              inputs.agent_strategy_name
+                ? {
+                    agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
+                    agent_strategy_name: inputs.agent_strategy_name!,
+                    agent_strategy_label: inputs.agent_strategy_label!,
+                    agent_output_schema: inputs.output_schema,
+                    plugin_unique_identifier: inputs.plugin_unique_identifier!,
+                    meta: inputs.meta,
+                  }
+                : undefined
+            }
             onStrategyChange={(strategy) => {
               setInputs({
                 ...inputs,
@@ -125,12 +127,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
           />
           {outputSchema.map(({ name, type, description }) => (
-            <VarItem
-              key={name}
-              name={name}
-              type={type}
-              description={description}
-            />
+            <VarItem key={name} name={name} type={type} description={description} />
           ))}
         </OutputVars>
       </div>

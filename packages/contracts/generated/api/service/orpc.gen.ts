@@ -567,12 +567,12 @@ export const name = {
 export const put2 = oc
   .route({
     description:
-      'Update a conversation variable\'s value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable\'s expected type.',
+      "Update a conversation variable's value\nAllows updating the value of a specific conversation variable.\nThe value must match the variable's expected type.",
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putConversationsByCIdVariablesByVariableId',
     path: '/conversations/{c_id}/variables/{variable_id}',
-    summary: 'Update a conversation variable\'s value',
+    summary: "Update a conversation variable's value",
     tags: ['service_api'],
   })
   .input(
@@ -1034,7 +1034,7 @@ export const byBatch = {
  */
 export const get9 = oc
   .route({
-    description: 'Get a signed download URL for a document\'s original uploaded file',
+    description: "Get a signed download URL for a document's original uploaded file",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdDownload',
@@ -1791,7 +1791,7 @@ export const tags2 = {
 export const delete8 = oc
   .route({
     description:
-      'Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key \'result\' and a value \'success\'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.',
+      "Delete a dataset\nArgs:\n    _: ignore\n    dataset_id (UUID): The ID of the dataset to be deleted.\n\nReturns:\n    dict: A dictionary with a key 'result' and a value 'success'\n          if the dataset was successfully deleted. Omitted in HTTP response.\n    int: HTTP status code 204 indicating that the operation was successful.\n\nRaises:\n    NotFound: If the dataset with the given ID does not exist.",
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteDatasetsByDatasetId',
@@ -1900,7 +1900,7 @@ export const datasets = {
 export const get21 = oc
   .route({
     description:
-      'Get an end user by ID\nThis endpoint is scoped to the current app token\'s tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.',
+      "Get an end user by ID\nThis endpoint is scoped to the current app token's tenant/app to prevent\ncross-tenant/app access when an end-user ID is known.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getEndUsersByEndUserId',
@@ -1953,7 +1953,7 @@ export const upload = {
 export const get22 = oc
   .route({
     description:
-      'Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app\'s context.',
+      "Preview or download a file uploaded via Service API\nProvides secure file preview/download functionality.\nFiles can only be accessed if they belong to messages within the requesting app's context.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFilesByFileIdPreview',

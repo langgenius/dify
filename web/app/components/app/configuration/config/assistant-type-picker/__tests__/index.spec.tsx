@@ -580,7 +580,8 @@ describe('AssistantTypePicker', () => {
           renderComponent(combo)
 
           // Assert
-          const expectedText = combo.value === 'agent' ? 'agentAssistant.name' : 'chatAssistant.name'
+          const expectedText =
+            combo.value === 'agent' ? 'agentAssistant.name' : 'chatAssistant.name'
           expect(screen.getByText(new RegExp(expectedText, 'i')))!.toBeInTheDocument()
         },
       )

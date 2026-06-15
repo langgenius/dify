@@ -17,9 +17,11 @@ export const appListContract = base
     path: '/apps',
     method: 'GET',
   })
-  .input(type<{
-    query?: AppListQuery
-  }>())
+  .input(
+    type<{
+      query?: AppListQuery
+    }>(),
+  )
   .output(type<AppListResponse>())
 
 export const appDeleteContract = base
@@ -27,11 +29,13 @@ export const appDeleteContract = base
     path: '/apps/{appId}',
     method: 'DELETE',
   })
-  .input(type<{
-    params: {
-      appId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        appId: string
+      }
+    }>(),
+  )
   .output(type<unknown>())
 
 export const workflowOnlineUsersContract = base
@@ -39,9 +43,11 @@ export const workflowOnlineUsersContract = base
     path: '/apps/workflows/online-users',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      app_ids: string[]
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        app_ids: string[]
+      }
+    }>(),
+  )
   .output(type<WorkflowOnlineUsersResponse>())

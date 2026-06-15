@@ -78,7 +78,9 @@ describe('SerpapiPlugin', () => {
     render(<SerpapiPlugin plugin={mockPlugin} onUpdate={mockOnUpdate} />)
 
     fireEvent.click(screen.getByText('common.provider.editKey'))
-    expect(screen.getByPlaceholderText('common.plugin.serpapi.apiKeyPlaceholder')).toBeInTheDocument()
+    expect(
+      screen.getByPlaceholderText('common.plugin.serpapi.apiKeyPlaceholder'),
+    ).toBeInTheDocument()
   })
 
   it('should clear existing key on focus and show validation error for invalid key', async () => {
@@ -124,8 +126,7 @@ describe('SerpapiPlugin', () => {
       })
 
       expect(screen.queryByText(/Invalid API key/)).toBeNull()
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })
@@ -189,7 +190,9 @@ describe('SerpapiPlugin', () => {
     fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('common.plugin.serpapi.apiKeyPlaceholder')).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('common.plugin.serpapi.apiKeyPlaceholder'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -207,7 +210,9 @@ describe('SerpapiPlugin', () => {
     fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('common.plugin.serpapi.apiKeyPlaceholder')).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText('common.plugin.serpapi.apiKeyPlaceholder'),
+      ).toBeInTheDocument()
     })
   })
 })

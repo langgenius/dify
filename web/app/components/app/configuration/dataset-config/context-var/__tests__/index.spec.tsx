@@ -30,25 +30,17 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     const isControlled = controlledOpen !== undefined
     const open = isControlled ? !!controlledOpen : uncontrolledOpen
     const setOpen = (nextOpen: boolean) => {
-      if (!isControlled)
-        setUncontrolledOpen(nextOpen)
+      if (!isControlled) setUncontrolledOpen(nextOpen)
       onOpenChange?.(nextOpen)
     }
 
-    return (
-      <PopoverContext.Provider value={{ open, setOpen }}>
-        {children}
-      </PopoverContext.Provider>
-    )
+    return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
   }
 
   const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
     const { open, setOpen } = React.useContext(PopoverContext)
     return (
-      <div
-        data-testid="popover-trigger"
-        onClick={() => setOpen(!open)}
-      >
+      <div data-testid="popover-trigger" onClick={() => setOpen(!open)}>
         {render}
       </div>
     )
@@ -59,8 +51,7 @@ vi.mock('@langgenius/dify-ui/popover', async () => {
     ...props
   }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => {
     const { open } = React.useContext(PopoverContext)
-    if (!open)
-      return null
+    if (!open) return null
 
     return (
       <div data-testid="popover-content" {...props}>
@@ -178,7 +169,9 @@ describe('ContextVar', () => {
       // Assert - Should show placeholder instead of variable
       // Assert - Should show placeholder instead of variable
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -272,7 +265,9 @@ describe('ContextVar', () => {
       // Assert
       // Assert
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
     })
 
@@ -290,7 +285,9 @@ describe('ContextVar', () => {
       // Assert
       // Assert
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -306,7 +303,9 @@ describe('ContextVar', () => {
       // Assert
       // Assert
       expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title'))!.toBeInTheDocument()
-      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder'),
+      )!.toBeInTheDocument()
     })
 
     it('should handle options with different data types', () => {

@@ -5,9 +5,7 @@ type TitleProps = {
   name: string
 }
 
-const Title = ({
-  name,
-}: TitleProps) => {
+const Title = ({ name }: TitleProps) => {
   const { t } = useTranslation()
 
   return (

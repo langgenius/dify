@@ -17,43 +17,38 @@ type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
 }
-const CardWrapperComponent = ({
-  plugin,
-  showInstallButton,
-}: CardWrapperProps) => {
+const CardWrapperComponent = ({ plugin, showInstallButton }: CardWrapperProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const [isShowInstallFromMarketplace, {
-    setTrue: showInstallFromMarketplace,
-    setFalse: hideInstallFromMarketplace,
-  }] = useBoolean(false)
+  const [
+    isShowInstallFromMarketplace,
+    { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
+  ] = useBoolean(false)
   const locale = useLocale()
   const { getTagLabel } = useTags()
 
   // Memoize marketplace link params to prevent unnecessary re-renders
-  const marketplaceLinkParams = useMemo(() => ({
-    language: locale,
-    theme,
-  }), [locale, theme])
+  const marketplaceLinkParams = useMemo(
+    () => ({
+      language: locale,
+      theme,
+    }),
+    [locale, theme],
+  )
 
   // Memoize tag labels to prevent recreating array on every render
-  const tagLabels = useMemo(() =>
-    plugin.tags.map(tag => getTagLabel(tag.name)), [plugin.tags, getTagLabel])
+  const tagLabels = useMemo(
+    () => plugin.tags.map((tag) => getTagLabel(tag.name)),
+    [plugin.tags, getTagLabel],
+  )
 
   if (showInstallButton) {
     return (
-      <div
-        className="group relative cursor-pointer rounded-xl hover:bg-components-panel-on-panel-item-bg-hover"
-      >
+      <div className="group relative cursor-pointer rounded-xl hover:bg-components-panel-on-panel-item-bg-hover">
         <Card
           key={plugin.name}
           payload={plugin}
-          footer={(
-            <CardMoreInfo
-              downloadCount={plugin.install_count}
-              tags={tagLabels}
-            />
-          )}
+          footer={<CardMoreInfo downloadCount={plugin.install_count} tags={tagLabels} />}
         />
         <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-hover:flex">
           <Button
@@ -63,25 +58,25 @@ const CardWrapperComponent = ({
           >
             {t('detailPanel.operation.install', { ns: 'plugin' })}
           </Button>
-          <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block w-[calc(50%-4px)] flex-1 shrink-0">
-            <Button
-              className="w-full gap-0.5"
-            >
+          <a
+            href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)}
+            target="_blank"
+            className="block w-[calc(50%-4px)] flex-1 shrink-0"
+          >
+            <Button className="w-full gap-0.5">
               {t('detailPanel.operation.detail', { ns: 'plugin' })}
               <RiArrowRightUpLine className="ml-1 size-4" />
             </Button>
           </a>
         </div>
-        {
-          isShowInstallFromMarketplace && (
-            <InstallFromMarketplace
-              manifest={plugin}
-              uniqueIdentifier={plugin.latest_package_identifier}
-              onClose={hideInstallFromMarketplace}
-              onSuccess={hideInstallFromMarketplace}
-            />
-          )
-        }
+        {isShowInstallFromMarketplace && (
+          <InstallFromMarketplace
+            manifest={plugin}
+            uniqueIdentifier={plugin.latest_package_identifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
+        )}
       </div>
     )
   }
@@ -94,12 +89,7 @@ const CardWrapperComponent = ({
       <Card
         key={plugin.name}
         payload={plugin}
-        footer={(
-          <CardMoreInfo
-            downloadCount={plugin.install_count}
-            tags={tagLabels}
-          />
-        )}
+        footer={<CardMoreInfo downloadCount={plugin.install_count} tags={tagLabels} />}
       />
     </a>
   )

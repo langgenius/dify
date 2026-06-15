@@ -35,11 +35,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import { ZERO } from '@/util/uuid.js'
-import {
-  assertErrorEnvelope,
-  assertNoAnsi,
-  assertNonZeroExit,
-} from '../../helpers/assert.js'
+import { assertErrorEnvelope, assertNoAnsi, assertNonZeroExit } from '../../helpers/assert.js'
 import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -81,35 +77,39 @@ describe('E2E / error message standards (spec 5.3)', () => {
 
   // ── 5.63  dfoe_ token insufficient_scope ──────────────────────────────────
 
-  itWithSso('[P0] 5.63 dfoe_ SSO token with workspace returns insufficient_scope for management commands', async () => {
-    // Spec 5.63: an external SSO token (dfoe_) must not be able to access
-    // internal management APIs; the CLI must return an insufficient_scope
-    // error with exit 1.
-    const { mkdir } = await import('node:fs/promises')
-    const ssoTmp = await withTempConfig()
-    try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `workspace:`,
-        `  id: ${E.workspaceId}`,
-        `  name: "${E.workspaceName}"`,
-        `  role: member`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
-      assertNonZeroExit(result)
-      // In this environment ssoToken may be a dfoa_ token; the server returns
-      // either insufficient_scope or server_5xx — both are non-zero exits.
-      expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(0)
-    }
-    finally {
-      await ssoTmp.cleanup()
-    }
-  })
+  itWithSso(
+    '[P0] 5.63 dfoe_ SSO token with workspace returns insufficient_scope for management commands',
+    async () => {
+      // Spec 5.63: an external SSO token (dfoe_) must not be able to access
+      // internal management APIs; the CLI must return an insufficient_scope
+      // error with exit 1.
+      const { mkdir } = await import('node:fs/promises')
+      const ssoTmp = await withTempConfig()
+      try {
+        await mkdir(ssoTmp.configDir, { recursive: true })
+        const hostsYml = `${[
+          `current_host: ${E.host}`,
+          `token_storage: file`,
+          `tokens:`,
+          `  bearer: ${E.ssoToken}`,
+          `workspace:`,
+          `  id: ${E.workspaceId}`,
+          `  name: "${E.workspaceName}"`,
+          `  role: member`,
+        ].join('\n')}\n`
+        await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+        const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
+        assertNonZeroExit(result)
+        // In this environment ssoToken may be a dfoa_ token; the server returns
+        // either insufficient_scope or server_5xx — both are non-zero exits.
+        expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(
+          0,
+        )
+      } finally {
+        await ssoTmp.cleanup()
+      }
+    },
+  )
 
   // ── 5.66  Corrupt config — error contains config file path ────────────────
 
@@ -118,19 +118,16 @@ describe('E2E / error message standards (spec 5.3)', () => {
     // include the config file path so the user knows which file to fix.
     const corruptTmp = await withTempConfig()
     try {
-      await writeFile(
-        join(corruptTmp.configDir, 'config.yml'),
-        ': broken: yaml: [[[',
-        { mode: 0o600 },
-      )
+      await writeFile(join(corruptTmp.configDir, 'config.yml'), ': broken: yaml: [[[', {
+        mode: 0o600,
+      })
       const result = await run(['config', 'get', 'defaults.format'], {
         configDir: corruptTmp.configDir,
       })
       assertNonZeroExit(result)
       // The error must mention the config file path (either full path or filename)
       expect(result.stderr).toMatch(/config\.yml/)
-    }
-    finally {
+    } finally {
       await corruptTmp.cleanup()
     }
   })
@@ -172,8 +169,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       // regardless of -o flag. This differs from the spec which expects a JSON
       // envelope. We verify the minimum contract: stderr is non-empty.
       expect(result.stderr.trim().length, 'stderr must be non-empty on failure').toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -191,8 +187,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       expect(combined).not.toMatch(/dfoa_[\w-]{10,}/)
       expect(combined).not.toMatch(/dfoe_[\w-]{10,}/)
       expect(combined).not.toMatch(/password|secret/i)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -234,8 +229,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       expect(combined).toMatch(/cjk-test-|\u6587\u6863|ENOENT|not.*found|failed/i)
       // Must not contain \uXXXX escapes for the CJK characters
       expect(combined).not.toMatch(/\\u[0-9a-fA-F]{4}/)
-    }
-    finally {
+    } finally {
       await rm(fileDir, { recursive: true, force: true })
     }
   })
@@ -263,11 +257,13 @@ describe('E2E / error message standards (spec 5.3)', () => {
     try {
       const result = await run(['get', 'app'], { configDir: unauthTmp.configDir })
       assertNonZeroExit(result)
-      expect(result.stderr.trim().length, 'stderr must be non-empty in pipe/non-TTY mode').toBeGreaterThan(0)
+      expect(
+        result.stderr.trim().length,
+        'stderr must be non-empty in pipe/non-TTY mode',
+      ).toBeGreaterThan(0)
       // stderr must also have no ANSI codes (non-TTY = no colour)
       assertNoAnsi(result.stderr, 'stderr')
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -284,12 +280,10 @@ describe('E2E / error message standards (spec 5.3)', () => {
       expect(result.stderr).not.toMatch(/TypeError|SyntaxError|^\s+at\s+\S/m)
       if (result.exitCode !== 0) {
         assertErrorEnvelope(result)
-      }
-      else {
+      } else {
         expect(result.stdout.trim()).toMatch(/^\{/)
       }
-    }
-    finally {
+    } finally {
       await rm(cacheDir, { recursive: true, force: true })
     }
   })
@@ -297,7 +291,9 @@ describe('E2E / error message standards (spec 5.3)', () => {
   it('[P1] 5.89 corrupt hosts.yml produces JSON error envelope', async () => {
     const corruptTmp = await withTempConfig()
     try {
-      await writeFile(join(corruptTmp.configDir, 'hosts.yml'), ': : not valid yaml', { mode: 0o600 })
+      await writeFile(join(corruptTmp.configDir, 'hosts.yml'), ': : not valid yaml', {
+        mode: 0o600,
+      })
       const result = await run(['get', 'app', '-o', 'json'], {
         configDir: corruptTmp.configDir,
       })
@@ -305,8 +301,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       const envelope = assertErrorEnvelope(result)
       expect(envelope.error.message).toContain('hosts.yml')
       expect(result.stderr).not.toMatch(/YAMLException|^\s+at\s+\S/m)
-    }
-    finally {
+    } finally {
       await corruptTmp.cleanup()
     }
   })

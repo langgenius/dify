@@ -32,9 +32,7 @@ describe('Spinner component', () => {
 
   it('should render children correctly', () => {
     const childText = 'Child content'
-    const { getByText } = render(
-      <Spinner loading={true}>{childText}</Spinner>,
-    )
+    const { getByText } = render(<Spinner loading={true}>{childText}</Spinner>)
 
     expect(getByText(childText)).toBeInTheDocument()
   })

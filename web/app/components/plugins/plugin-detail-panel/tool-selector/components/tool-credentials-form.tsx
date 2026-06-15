@@ -5,15 +5,16 @@ import type { ToolCredentialFormSchema } from '@/app/components/tools/utils/to-f
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiArrowRightUpLine,
-} from '@remixicon/react'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import {
+  addDefaultValue,
+  toolCredentialToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 
@@ -23,11 +24,7 @@ type Props = Readonly<{
   onSaved: (value: Record<string, unknown>) => void
 }>
 
-const ToolCredentialForm: FC<Props> = ({
-  collection,
-  onCancel,
-  onSaved,
-}) => {
+const ToolCredentialForm: FC<Props> = ({ collection, onCancel, onSaved }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<ToolCredentialFormSchema[] | null>(null)
@@ -45,14 +42,15 @@ const ToolCredentialForm: FC<Props> = ({
   }, [])
 
   const handleSave = () => {
-    if (!credentialSchema)
-      return
+    if (!credentialSchema) return
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        toast.error(t('errorMsg.fieldRequired', {
-          ns: 'common',
-          field: getValueFromI18nObject(field.label),
-        }))
+        toast.error(
+          t('errorMsg.fieldRequired', {
+            ns: 'common',
+            field: getValueFromI18nObject(field.label),
+          }),
+        )
         return
       }
     }
@@ -61,45 +59,48 @@ const ToolCredentialForm: FC<Props> = ({
 
   return (
     <>
-      {!credentialSchema
-        ? <div className="pt-3"><Loading type="app" /></div>
-        : (
-            <>
-              <div className="max-h-[464px] overflow-y-auto px-4">
-                <Form
-                  value={tempCredential}
-                  onChange={(v) => {
-                    setTempCredential(v)
-                  }}
-                  formSchemas={credentialSchema}
-                  isEditMode={true}
-                  showOnVariableMap={{}}
-                  validating={false}
-                  inputClassName="bg-components-input-bg-normal hover:bg-components-input-bg-hover"
-                  fieldMoreInfo={item => item.url
-                    ? (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center text-xs text-text-accent"
-                        >
-                          {t('howToGet', { ns: 'tools' })}
-                          <RiArrowRightUpLine className="ml-1 size-3" />
-                        </a>
-                      )
-                    : null}
-                />
-              </div>
-              <div className={cn('mt-1 flex justify-end px-4')}>
-                <div className="flex space-x-2">
-                  <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-                  <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
-                </div>
-              </div>
-            </>
-          )}
-
+      {!credentialSchema ? (
+        <div className="pt-3">
+          <Loading type="app" />
+        </div>
+      ) : (
+        <>
+          <div className="max-h-[464px] overflow-y-auto px-4">
+            <Form
+              value={tempCredential}
+              onChange={(v) => {
+                setTempCredential(v)
+              }}
+              formSchemas={credentialSchema}
+              isEditMode={true}
+              showOnVariableMap={{}}
+              validating={false}
+              inputClassName="bg-components-input-bg-normal hover:bg-components-input-bg-hover"
+              fieldMoreInfo={(item) =>
+                item.url ? (
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-xs text-text-accent"
+                  >
+                    {t('howToGet', { ns: 'tools' })}
+                    <RiArrowRightUpLine className="ml-1 size-3" />
+                  </a>
+                ) : null
+              }
+            />
+          </div>
+          <div className={cn('mt-1 flex justify-end px-4')}>
+            <div className="flex space-x-2">
+              <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button variant="primary" onClick={handleSave}>
+                {t('operation.save', { ns: 'common' })}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }

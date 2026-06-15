@@ -2,9 +2,7 @@
 name = "dify-vdb-qdrant"
 version = "0.0.1"
 
-dependencies = [
-    "qdrant-client==1.9.0",
-]
+dependencies = ["qdrant-client==1.9.0"]
 description = "Dify vector store backend (dify-vdb-qdrant)."
 
 [project.entry-points."dify.vector_backends"]

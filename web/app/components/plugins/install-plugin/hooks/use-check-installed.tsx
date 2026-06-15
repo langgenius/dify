@@ -11,8 +11,7 @@ const useCheckInstalled = (props: Props) => {
   const { data, isLoading, error } = useDoCheckInstalled(props)
 
   const installedInfo = useMemo(() => {
-    if (!data)
-      return undefined
+    if (!data) return undefined
 
     const res: Record<string, VersionInfo> = {}
     data?.plugins.forEach((plugin) => {

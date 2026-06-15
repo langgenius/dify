@@ -8,7 +8,7 @@ describe('FileTypeIcon', () => {
   })
 
   describe('icon rendering per file type', () => {
-    const fileTypeToColor: Array<{ type: keyof typeof FileAppearanceTypeEnum, color: string }> = [
+    const fileTypeToColor: Array<{ type: keyof typeof FileAppearanceTypeEnum; color: string }> = [
       { type: 'pdf', color: 'text-[#EA3434]' },
       { type: 'image', color: 'text-[#00B2EA]' },
       { type: 'video', color: 'text-[#844FDA]' },
@@ -23,20 +23,19 @@ describe('FileTypeIcon', () => {
       { type: 'gif', color: 'text-[#00B2EA]' },
     ]
 
-    it.each(fileTypeToColor)(
-      'should render $type icon with correct color',
-      ({ type, color }) => {
-        const { container } = render(<FileTypeIcon type={type} />)
+    it.each(fileTypeToColor)('should render $type icon with correct color', ({ type, color }) => {
+      const { container } = render(<FileTypeIcon type={type} />)
 
-        const icon = container.querySelector('svg')
-        expect(icon).toBeInTheDocument()
-        expect(icon).toHaveClass(color)
-      },
-    )
+      const icon = container.querySelector('svg')
+      expect(icon).toBeInTheDocument()
+      expect(icon).toHaveClass(color)
+    })
   })
 
   it('should render document icon when type is unknown', () => {
-    const { container } = render(<FileTypeIcon type={'nonexistent' as unknown as keyof typeof FileAppearanceTypeEnum} />)
+    const { container } = render(
+      <FileTypeIcon type={'nonexistent' as unknown as keyof typeof FileAppearanceTypeEnum} />,
+    )
 
     const icon = container.querySelector('svg')
     expect(icon).toBeInTheDocument()
@@ -44,7 +43,7 @@ describe('FileTypeIcon', () => {
   })
 
   describe('size variants', () => {
-    const sizeMap: Array<{ size: 'sm' | 'md' | 'lg' | 'xl', expectedClass: string }> = [
+    const sizeMap: Array<{ size: 'sm' | 'md' | 'lg' | 'xl'; expectedClass: string }> = [
       { size: 'sm', expectedClass: 'size-4' },
       { size: 'md', expectedClass: 'size-[18px]' },
       { size: 'lg', expectedClass: 'size-5' },

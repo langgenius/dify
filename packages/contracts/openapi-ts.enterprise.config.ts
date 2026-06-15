@@ -25,16 +25,13 @@ const enterpriseOpenApiPath = path.join(enterpriseServerDir, 'pkg/apis/enterpris
 const isConsoleApiPath = (routePath: string) => routePath.startsWith('/console/api/')
 
 const stripConsoleApiPrefix = (routePath: string) => {
-  if (isConsoleApiPath(routePath))
-    return routePath.replace('/console/api', '')
+  if (isConsoleApiPath(routePath)) return routePath.replace('/console/api', '')
 
   return routePath
 }
 
 const stripSchemaNamePrefix = (schemaName: string) => {
-  return schemaName
-    .replace(/^dify\.enterprise\.api\.enterprise\./, '')
-    .replace(/^pagination\./, '')
+  return schemaName.replace(/^dify\.enterprise\.api\.enterprise\./, '').replace(/^pagination\./, '')
 }
 
 const contractNameSegments = (operation: ContractOperation) => {

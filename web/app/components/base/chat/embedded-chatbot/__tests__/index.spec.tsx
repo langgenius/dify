@@ -9,11 +9,12 @@ import { useEmbeddedChatbot } from '../hooks'
 import EmbeddedChatbot from '../index'
 
 let mockBrandingWorkspaceLogo = ''
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    branding: { enabled: true, workspace_logo: mockBrandingWorkspaceLogo },
-  },
-})
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: {
+      branding: { enabled: true, workspace_logo: mockBrandingWorkspaceLogo },
+    },
+  })
 
 vi.mock('../hooks', () => ({
   useEmbeddedChatbot: vi.fn(),
@@ -58,7 +59,9 @@ vi.mock('../utils', () => ({
 
 type EmbeddedChatbotHookReturn = ReturnType<typeof useEmbeddedChatbot>
 
-const createHookReturn = (overrides: Partial<EmbeddedChatbotHookReturn> = {}): EmbeddedChatbotHookReturn => {
+const createHookReturn = (
+  overrides: Partial<EmbeddedChatbotHookReturn> = {},
+): EmbeddedChatbotHookReturn => {
   const appData: AppData = {
     app_id: 'app-1',
     can_replace_logo: true,
@@ -134,7 +137,9 @@ describe('EmbeddedChatbot index', () => {
 
   describe('Loading and chat content', () => {
     it('should show loading state before chat content', () => {
-      vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({ appChatListDataLoading: true }))
+      vi.mocked(useEmbeddedChatbot).mockReturnValue(
+        createHookReturn({ appChatListDataLoading: true }),
+      )
 
       render(<EmbeddedChatbot />)
 
@@ -156,52 +161,62 @@ describe('EmbeddedChatbot index', () => {
       render(<EmbeddedChatbot />)
 
       expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
-      expect(screen.getByAltText('logo')).toHaveAttribute('src', 'https://example.com/workspace-logo.png')
+      expect(screen.getByAltText('logo')).toHaveAttribute(
+        'src',
+        'https://example.com/workspace-logo.png',
+      )
     })
 
     it('should show custom logo when workspace branding logo is unavailable', () => {
-      vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({
-        appData: {
-          app_id: 'app-1',
-          can_replace_logo: true,
-          custom_config: {
-            remove_webapp_brand: false,
-            replace_webapp_logo: 'https://example.com/custom-logo.png',
+      vi.mocked(useEmbeddedChatbot).mockReturnValue(
+        createHookReturn({
+          appData: {
+            app_id: 'app-1',
+            can_replace_logo: true,
+            custom_config: {
+              remove_webapp_brand: false,
+              replace_webapp_logo: 'https://example.com/custom-logo.png',
+            },
+            enable_site: true,
+            end_user_id: 'user-1',
+            site: {
+              title: 'Embedded App',
+              chat_color_theme: 'blue',
+              chat_color_theme_inverted: false,
+            },
           },
-          enable_site: true,
-          end_user_id: 'user-1',
-          site: {
-            title: 'Embedded App',
-            chat_color_theme: 'blue',
-            chat_color_theme_inverted: false,
-          },
-        },
-      }))
+        }),
+      )
 
       render(<EmbeddedChatbot />)
 
       expect(screen.getByText('share.chat.poweredBy')).toBeInTheDocument()
-      expect(screen.getByAltText('logo')).toHaveAttribute('src', 'https://example.com/custom-logo.png')
+      expect(screen.getByAltText('logo')).toHaveAttribute(
+        'src',
+        'https://example.com/custom-logo.png',
+      )
     })
 
     it('should hide powered by section when branding is removed', () => {
-      vi.mocked(useEmbeddedChatbot).mockReturnValue(createHookReturn({
-        appData: {
-          app_id: 'app-1',
-          can_replace_logo: true,
-          custom_config: {
-            remove_webapp_brand: true,
-            replace_webapp_logo: '',
+      vi.mocked(useEmbeddedChatbot).mockReturnValue(
+        createHookReturn({
+          appData: {
+            app_id: 'app-1',
+            can_replace_logo: true,
+            custom_config: {
+              remove_webapp_brand: true,
+              replace_webapp_logo: '',
+            },
+            enable_site: true,
+            end_user_id: 'user-1',
+            site: {
+              title: 'Embedded App',
+              chat_color_theme: 'blue',
+              chat_color_theme_inverted: false,
+            },
           },
-          enable_site: true,
-          end_user_id: 'user-1',
-          site: {
-            title: 'Embedded App',
-            chat_color_theme: 'blue',
-            chat_color_theme_inverted: false,
-          },
-        },
-      }))
+        }),
+      )
 
       render(<EmbeddedChatbot />)
 

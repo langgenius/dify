@@ -17,8 +17,12 @@ describe('ContrlBtnGroup', () => {
       render(<ContrlBtnGroup onSave={onSave} onReset={onReset} />)
 
       // Assert
-      expect(screen.getByRole('button', { name: 'appDebug.operation.applyConfig' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'appDebug.operation.resetConfig' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appDebug.operation.applyConfig' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appDebug.operation.resetConfig' }),
+      ).toBeInTheDocument()
     })
   })
 

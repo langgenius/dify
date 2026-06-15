@@ -6,12 +6,7 @@ type MockForm = {
   id: string
 }
 
-const {
-  mockForm,
-  mockBaseField,
-  mockUseInitialData,
-  mockUseConfigurations,
-} = vi.hoisted(() => ({
+const { mockForm, mockBaseField, mockUseInitialData, mockUseConfigurations } = vi.hoisted(() => ({
   mockForm: {
     id: 'form-1',
   } as MockForm,

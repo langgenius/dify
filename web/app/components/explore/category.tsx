@@ -18,20 +18,16 @@ type ICategoryProps = {
   allCategoriesEn: string
 }
 
-const Category: FC<ICategoryProps> = ({
-  className,
-  list,
-  value,
-  onChange,
-  allCategoriesEn,
-}) => {
+const Category: FC<ICategoryProps> = ({ className, list, value, onChange, allCategoriesEn }) => {
   const { t } = useTranslation()
   const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
 
-  const itemClassName = (isSelected: boolean) => cn(
-    'flex h-7 cursor-pointer items-center rounded-lg border border-transparent px-3 system-sm-medium text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
-    isSelected && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
-  )
+  const itemClassName = (isSelected: boolean) =>
+    cn(
+      'flex h-7 cursor-pointer items-center rounded-lg border border-transparent px-3 system-sm-medium text-text-tertiary hover:bg-components-main-nav-nav-button-bg-active',
+      isSelected &&
+        'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text-active shadow-xs',
+    )
 
   const renderCategoryName = (name: AppCategory) => {
     const categoryKey = `category.${name}` as keyof typeof exploreI18n
@@ -40,22 +36,17 @@ const Category: FC<ICategoryProps> = ({
 
   return (
     <div className={cn(className, 'flex flex-wrap gap-1 text-[13px]')}>
-      <div
-        className={itemClassName(isAllCategories)}
-        onClick={() => onChange(allCategoriesEn)}
-      >
+      <div className={itemClassName(isAllCategories)} onClick={() => onChange(allCategoriesEn)}>
         <ThumbsUp className="mr-1 size-3.5" />
         {t('apps.allCategories', { ns: 'explore' })}
       </div>
-      {list.filter(name => name !== allCategoriesEn).map(name => (
-        <div
-          key={name}
-          className={itemClassName(name === value)}
-          onClick={() => onChange(name)}
-        >
-          {renderCategoryName(name)}
-        </div>
-      ))}
+      {list
+        .filter((name) => name !== allCategoriesEn)
+        .map((name) => (
+          <div key={name} className={itemClassName(name === value)} onClick={() => onChange(name)}>
+            {renderCategoryName(name)}
+          </div>
+        ))}
     </div>
   )
 }

@@ -68,8 +68,7 @@ describe('useSnippetsQueryState', () => {
       expect(onUrlUpdate).toHaveBeenCalled()
       const update = onUrlUpdate.mock.calls.at(-1)![0]
       expect(update.searchParams.get('keywords')).toBe('search')
-    }
-    finally {
+    } finally {
       vi.useRealTimers()
     }
   })

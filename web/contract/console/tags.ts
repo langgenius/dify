@@ -15,11 +15,13 @@ export const tagListContract = base
     path: '/tags',
     method: 'GET',
   })
-  .input(type<{
-    query: {
-      type: TagType
-    }
-  }>())
+  .input(
+    type<{
+      query: {
+        type: TagType
+      }
+    }>(),
+  )
   .output(type<Tag[]>())
 
 export const tagCreateContract = base
@@ -27,12 +29,14 @@ export const tagCreateContract = base
     path: '/tags',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      name: string
-      type: TagType
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        name: string
+        type: TagType
+      }
+    }>(),
+  )
   .output(type<Tag>())
 
 export const tagUpdateContract = base
@@ -40,14 +44,16 @@ export const tagUpdateContract = base
     path: '/tags/{tagId}',
     method: 'PATCH',
   })
-  .input(type<{
-    params: {
-      tagId: string
-    }
-    body: {
-      name: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        tagId: string
+      }
+      body: {
+        name: string
+      }
+    }>(),
+  )
   .output(type<Tag>())
 
 export const tagDeleteContract = base
@@ -55,11 +61,13 @@ export const tagDeleteContract = base
     path: '/tags/{tagId}',
     method: 'DELETE',
   })
-  .input(type<{
-    params: {
-      tagId: string
-    }
-  }>())
+  .input(
+    type<{
+      params: {
+        tagId: string
+      }
+    }>(),
+  )
   .output(type<unknown>())
 
 export const tagBindingCreateContract = base
@@ -67,13 +75,15 @@ export const tagBindingCreateContract = base
     path: '/tag-bindings',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      tag_ids: string[]
-      target_id: string
-      type: TagType
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        tag_ids: string[]
+        target_id: string
+        type: TagType
+      }
+    }>(),
+  )
   .output(type<unknown>())
 
 export const tagBindingRemoveContract = base
@@ -81,11 +91,13 @@ export const tagBindingRemoveContract = base
     path: '/tag-bindings/remove',
     method: 'POST',
   })
-  .input(type<{
-    body: {
-      tag_ids: string[]
-      target_id: string
-      type: TagType
-    }
-  }>())
+  .input(
+    type<{
+      body: {
+        tag_ids: string[]
+        target_id: string
+        type: TagType
+      }
+    }>(),
+  )
   .output(type<unknown>())

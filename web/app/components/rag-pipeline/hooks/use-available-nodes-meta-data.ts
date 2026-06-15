@@ -12,48 +12,63 @@ export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
 
-  const mergedNodesMetaData = useMemo(() => [
-    // RAG pipeline doesn't support human-input node temporarily
-    ...WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.HumanInput),
-    {
-      ...dataSourceDefault,
-      defaultValue: {
-        ...dataSourceDefault.defaultValue,
-        _dataSourceStartToAdd: true,
+  const mergedNodesMetaData = useMemo(
+    () => [
+      // RAG pipeline doesn't support human-input node temporarily
+      ...WORKFLOW_COMMON_NODES.filter((node) => node.metaData.type !== BlockEnum.HumanInput),
+      {
+        ...dataSourceDefault,
+        defaultValue: {
+          ...dataSourceDefault.defaultValue,
+          _dataSourceStartToAdd: true,
+        },
       },
-    },
-    knowledgeBaseDefault,
-    dataSourceEmptyDefault,
-  ], [])
+      knowledgeBaseDefault,
+      dataSourceEmptyDefault,
+    ],
+    [],
+  )
 
-  const helpLinkUri = useMemo(() => docLink(
-    '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',
-  ), [docLink])
+  const helpLinkUri = useMemo(
+    () => docLink('/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration'),
+    [docLink],
+  )
 
-  const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
-    const { metaData } = node
-    const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
-    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
-    return {
-      ...node,
-      metaData: {
-        ...metaData,
-        title,
-        description,
-        helpLinkUri,
-      },
-      defaultValue: {
-        ...node.defaultValue,
-        type: metaData.type,
-        title,
-      },
-    }
-  }), [helpLinkUri, mergedNodesMetaData, t])
+  const availableNodesMetaData = useMemo(
+    () =>
+      mergedNodesMetaData.map((node) => {
+        const { metaData } = node
+        const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
+        const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
+        return {
+          ...node,
+          metaData: {
+            ...metaData,
+            title,
+            description,
+            helpLinkUri,
+          },
+          defaultValue: {
+            ...node.defaultValue,
+            type: metaData.type,
+            title,
+          },
+        }
+      }),
+    [helpLinkUri, mergedNodesMetaData, t],
+  )
 
-  const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
-    acc![node.metaData.type] = node
-    return acc
-  }, {} as AvailableNodesMetaData['nodesMap']), [availableNodesMetaData])
+  const availableNodesMetaDataMap = useMemo(
+    () =>
+      availableNodesMetaData.reduce(
+        (acc, node) => {
+          acc![node.metaData.type] = node
+          return acc
+        },
+        {} as AvailableNodesMetaData['nodesMap'],
+      ),
+    [availableNodesMetaData],
+  )
 
   return useMemo(() => {
     return {

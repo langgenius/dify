@@ -74,42 +74,51 @@ vi.mock('@/app/components/base/features/new-feature-panel', () => ({
     onAutoAddPromptVariable: (variables: PromptVariable[]) => void
     workflowVariables: InputVar[]
   }) => {
-    if (!show)
-      return null
+    if (!show) return null
 
     return (
       <section aria-label="new feature panel">
         <div>{isChatMode ? 'chat mode' : 'completion mode'}</div>
         <div>{disabled ? 'panel disabled' : 'panel enabled'}</div>
         <ul aria-label="workflow variables">
-          {workflowVariables.map(variable => (
-            <li key={variable.variable}>
-              {`${variable.label}:${variable.variable}`}
-            </li>
+          {workflowVariables.map((variable) => (
+            <li key={variable.variable}>{`${variable.label}:${variable.variable}`}</li>
           ))}
         </ul>
-        <button type="button" onClick={onChange}>open features</button>
-        <button type="button" onClick={onClose}>close features</button>
+        <button type="button" onClick={onChange}>
+          open features
+        </button>
+        <button type="button" onClick={onClose}>
+          close features
+        </button>
         <button
           type="button"
-          onClick={() => onAutoAddPromptVariable([{
-            key: 'opening_statement',
-            name: 'Opening Statement',
-            type: 'string',
-            max_length: 200,
-            required: true,
-          }])}
+          onClick={() =>
+            onAutoAddPromptVariable([
+              {
+                key: 'opening_statement',
+                name: 'Opening Statement',
+                type: 'string',
+                max_length: 200,
+                required: true,
+              },
+            ])
+          }
         >
           add required variable
         </button>
         <button
           type="button"
-          onClick={() => onAutoAddPromptVariable([{
-            key: 'optional_statement',
-            name: 'Optional Statement',
-            type: 'string',
-            max_length: 120,
-          }])}
+          onClick={() =>
+            onAutoAddPromptVariable([
+              {
+                key: 'optional_statement',
+                name: 'Optional Statement',
+                type: 'string',
+                max_length: 120,
+              },
+            ])
+          }
         >
           add optional variable
         </button>
@@ -128,27 +137,25 @@ const startNode = createStartNode({
 const DelayedFeatures = () => {
   const nodes = useNodes()
 
-  if (!nodes.length)
-    return null
+  if (!nodes.length) return null
 
   return <Features />
 }
 
-const renderFeatures = (options?: Omit<NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>, 'nodes' | 'edges'>) => {
+const renderFeatures = (
+  options?: Omit<NonNullable<Parameters<typeof renderWorkflowFlowComponent>[1]>, 'nodes' | 'edges'>,
+) => {
   const mergedInitialStoreState = {
     appId: 'app-1',
     ...(options?.initialStoreState || {}),
   }
 
-  return renderWorkflowFlowComponent(
-    <DelayedFeatures />,
-    {
-      nodes: [startNode],
-      edges: [],
-      ...options,
-      initialStoreState: mergedInitialStoreState,
-    },
-  )
+  return renderWorkflowFlowComponent(<DelayedFeatures />, {
+    nodes: [startNode],
+    edges: [],
+    ...options,
+    initialStoreState: mergedInitialStoreState,
+  })
 }
 
 describe('Features', () => {
@@ -165,7 +172,9 @@ describe('Features', () => {
 
       expect(screen.getByText('chat mode')).toBeInTheDocument()
       expect(screen.getByText('panel enabled')).toBeInTheDocument()
-      expect(screen.getByRole('list', { name: 'workflow variables' })).toHaveTextContent('Existing Variable:existing_variable')
+      expect(screen.getByRole('list', { name: 'workflow variables' })).toHaveTextContent(
+        'Existing Variable:existing_variable',
+      )
     })
   })
 

@@ -19,7 +19,11 @@ const unusedGet = vi.fn() as unknown as SliceCreatorParams[1]
 const unusedApi = vi.fn() as unknown as SliceCreatorParams[2]
 
 function createSlice(mockSet = vi.fn()) {
-  return createRagPipelineSliceSlice(mockSet as unknown as SliceCreatorParams[0], unusedGet, unusedApi)
+  return createRagPipelineSliceSlice(
+    mockSet as unknown as SliceCreatorParams[0],
+    unusedGet,
+    unusedApi,
+  )
 }
 
 describe('createRagPipelineSliceSlice', () => {
@@ -185,7 +189,13 @@ describe('createRagPipelineSliceSlice', () => {
       mockSet.mockClear()
       const slice = createSlice(mockSet)
       const variables: RAGPipelineVariables = [
-        { type: PipelineInputVarType.textInput, variable: 'var1', label: 'Var 1', required: true, belong_to_node_id: 'node-1' },
+        {
+          type: PipelineInputVarType.textInput,
+          variable: 'var1',
+          label: 'Var 1',
+          required: true,
+          belong_to_node_id: 'node-1',
+        },
       ]
 
       slice.setRagPipelineVariables(variables)

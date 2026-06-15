@@ -8,8 +8,7 @@ const PartnerStackCookieRecorder = () => {
   const { saveOrUpdate } = usePSInfo()
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION)
-      return
+    if (!IS_CLOUD_EDITION) return
     saveOrUpdate()
   }, [])
 

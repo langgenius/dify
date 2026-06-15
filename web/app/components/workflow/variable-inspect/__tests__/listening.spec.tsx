@@ -22,28 +22,33 @@ describe('variable inspect listening', () => {
   it('renders the listening message and forwards the stop action', () => {
     const onStop = vi.fn()
 
-    renderWorkflowFlowComponent(<Listening onStop={onStop} message="Waiting for webhook payload" />, {
-      nodes: [
-        createTriggerNode(BlockEnum.TriggerWebhook, {
-          id: 'trigger-1',
-          data: {
-            title: 'Webhook Trigger',
-            webhook_debug_url: 'https://example.com/debug',
-          },
-        }),
-      ],
-      edges: [],
-      initialStoreState: {
-        listeningTriggerType: BlockEnum.TriggerWebhook,
-        listeningTriggerNodeId: 'trigger-1',
-        listeningTriggerNodeIds: [],
-        listeningTriggerIsAll: false,
+    renderWorkflowFlowComponent(
+      <Listening onStop={onStop} message="Waiting for webhook payload" />,
+      {
+        nodes: [
+          createTriggerNode(BlockEnum.TriggerWebhook, {
+            id: 'trigger-1',
+            data: {
+              title: 'Webhook Trigger',
+              webhook_debug_url: 'https://example.com/debug',
+            },
+          }),
+        ],
+        edges: [],
+        initialStoreState: {
+          listeningTriggerType: BlockEnum.TriggerWebhook,
+          listeningTriggerNodeId: 'trigger-1',
+          listeningTriggerNodeIds: [],
+          listeningTriggerIsAll: false,
+        },
       },
-    })
+    )
 
     expect(screen.getByText('Waiting for webhook payload')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.listening.stopButton' }),
+    )
 
     expect(onStop).toHaveBeenCalledTimes(1)
   })

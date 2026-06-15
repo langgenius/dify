@@ -18,7 +18,9 @@ vi.mock('../../../store', () => ({
       name: 'Plugin',
       plugin_unique_identifier: 'plugin-uid',
       provider: 'provider-1',
-      declaration: { trigger: { subscription_constructor: { parameters: [], credentials_schema: [] } } },
+      declaration: {
+        trigger: { subscription_constructor: { parameters: [], credentials_schema: [] } },
+      },
     },
   }),
 }))
@@ -69,7 +71,9 @@ describe('SubscriptionCard', () => {
   it('should render used-by text when workflows are present', () => {
     render(<SubscriptionCard data={createSubscription({ workflows_in_use: 2 })} />)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.usedByNum/))!.toBeInTheDocument()
+    expect(
+      screen.getByText(/pluginTrigger\.subscription\.list\.item\.usedByNum/),
+    )!.toBeInTheDocument()
   })
 
   it('should open delete confirmation when delete action is clicked', () => {
@@ -79,7 +83,9 @@ describe('SubscriptionCard', () => {
     expect(deleteButton).toBeTruthy()
     fireEvent.click(deleteButton)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/))!.toBeInTheDocument()
+    expect(
+      screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.deleteConfirm\.title/),
+    )!.toBeInTheDocument()
   })
 
   it('should open edit modal when edit action is clicked', () => {
@@ -88,6 +94,8 @@ describe('SubscriptionCard', () => {
     const editButton = container.querySelectorAll('button')[0]
     fireEvent.click(editButton!)
 
-    expect(screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/))!.toBeInTheDocument()
+    expect(
+      screen.getByText(/pluginTrigger\.subscription\.list\.item\.actions\.edit\.title/),
+    )!.toBeInTheDocument()
   })
 })

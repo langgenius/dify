@@ -3,15 +3,9 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, render, waitFor } from '@testing-library/react'
-import {
-  $nodesOfType,
-  COMMAND_PRIORITY_EDITOR,
-} from 'lexical'
+import { $nodesOfType, COMMAND_PRIORITY_EDITOR } from 'lexical'
 import { useEffect, useState } from 'react'
-import {
-  BlockEnum,
-  InputVarType,
-} from '@/app/components/workflow/types'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
@@ -81,7 +75,7 @@ const createInsertPayload = () => ({
 
 const readHITLReadonlyValues = (editor: LexicalEditor): boolean[] => {
   return readEditorStateValue(editor, () => {
-    return $nodesOfType(HITLInputNode).map(node => node.getReadonly())
+    return $nodesOfType(HITLInputNode).map((node) => node.getReadonly())
   })
 }
 
@@ -98,7 +92,9 @@ const renderHITLInputBlock = (props?: {
     nodes: [CustomTextNode, HITLInputNode],
     children: (
       <>
-        {props?.onWorkflowMapUpdate && <UpdateWorkflowNodesMapPlugin onUpdate={props.onWorkflowMapUpdate} />}
+        {props?.onWorkflowMapUpdate && (
+          <UpdateWorkflowNodesMapPlugin onUpdate={props.onWorkflowMapUpdate} />
+        )}
         <HITLInputBlock
           nodeId="node-1"
           formInputs={[createFormInput()]}
@@ -277,7 +273,10 @@ describe('HITLInputBlock', () => {
       let insertHandled = true
       let deleteHandled = true
       act(() => {
-        insertHandled = editor.dispatchCommand(INSERT_HITL_INPUT_BLOCK_COMMAND, createInsertPayload())
+        insertHandled = editor.dispatchCommand(
+          INSERT_HITL_INPUT_BLOCK_COMMAND,
+          createInsertPayload(),
+        )
         deleteHandled = editor.dispatchCommand(DELETE_HITL_INPUT_BLOCK_COMMAND, undefined)
       })
 

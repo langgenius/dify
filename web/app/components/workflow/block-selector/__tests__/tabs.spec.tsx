@@ -8,18 +8,16 @@ import { TabsEnum } from '../types'
 const render = (ui: React.ReactElement) =>
   renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
 
-const {
-  mockSetState,
-  mockInvalidateBuiltInTools,
-  mockToolsState,
-} = vi.hoisted(() => ({
+const { mockSetState, mockInvalidateBuiltInTools, mockToolsState } = vi.hoisted(() => ({
   mockSetState: vi.fn(),
   mockInvalidateBuiltInTools: vi.fn(),
   mockToolsState: {
-    buildInTools: [{ icon: '/tool.svg', name: 'tool' }] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
-    customTools: [] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
-    workflowTools: [] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
-    mcpTools: [] as Array<{ icon: string | Record<string, string>, name: string }> | undefined,
+    buildInTools: [{ icon: '/tool.svg', name: 'tool' }] as
+      | Array<{ icon: string | Record<string, string>; name: string }>
+      | undefined,
+    customTools: [] as Array<{ icon: string | Record<string, string>; name: string }> | undefined,
+    workflowTools: [] as Array<{ icon: string | Record<string, string>; name: string }> | undefined,
+    mcpTools: [] as Array<{ icon: string | Record<string, string>; name: string }> | undefined,
   },
 }))
 
@@ -70,9 +68,7 @@ vi.mock('../all-tools', () => ({
     <div>
       tools-content
       {props.buildInTools.map((tool, index) => (
-        <span key={index}>
-          {typeof tool.icon === 'string' ? tool.icon : 'object-icon'}
-        </span>
+        <span key={index}>{typeof tool.icon === 'string' ? tool.icon : 'object-icon'}</span>
       ))}
       <span>{props.showFeatured ? 'featured-on' : 'featured-off'}</span>
       <span>{props.featuredLoading ? 'featured-loading' : 'featured-idle'}</span>
@@ -118,13 +114,7 @@ describe('Tabs', () => {
   it('should switch tabs through click handlers and render tools content with normalized icons', () => {
     const onActiveTabChange = vi.fn()
 
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Tools}
-        onActiveTabChange={onActiveTabChange}
-      />,
-    )
+    render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} onActiveTabChange={onActiveTabChange} />)
 
     fireEvent.click(screen.getByText('Start'))
 
@@ -145,13 +135,7 @@ describe('Tabs', () => {
     const user = userEvent.setup()
     const onActiveTabChange = vi.fn()
 
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Start}
-        onActiveTabChange={onActiveTabChange}
-      />,
-    )
+    render(<Tabs {...baseProps} activeTab={TabsEnum.Start} onActiveTabChange={onActiveTabChange} />)
 
     await user.click(screen.getByText('Start'))
     await user.click(screen.getByText('Blocks'))
@@ -182,7 +166,9 @@ describe('Tabs', () => {
       workflowTools: mockToolsState.workflowTools,
       mcpTools: mockToolsState.mcpTools,
     }
-    const updateState = mockSetState.mock.calls[0]![0] as (state: typeof previousState) => typeof previousState
+    const updateState = mockSetState.mock.calls[0]![0] as (
+      state: typeof previousState,
+    ) => typeof previousState
 
     expect(updateState(previousState)).toBe(previousState)
   })
@@ -198,23 +184,25 @@ describe('Tabs', () => {
     expect(screen.getByText('object-icon'))!.toBeInTheDocument()
 
     const updateState = mockSetState.mock.calls[0]![0] as (state: {
-      buildInTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      customTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      workflowTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      mcpTools?: Array<{ icon: string | Record<string, string>, name: string }>
+      buildInTools?: Array<{ icon: string | Record<string, string>; name: string }>
+      customTools?: Array<{ icon: string | Record<string, string>; name: string }>
+      workflowTools?: Array<{ icon: string | Record<string, string>; name: string }>
+      mcpTools?: Array<{ icon: string | Record<string, string>; name: string }>
     }) => {
-      buildInTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      customTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      workflowTools?: Array<{ icon: string | Record<string, string>, name: string }>
-      mcpTools?: Array<{ icon: string | Record<string, string>, name: string }>
+      buildInTools?: Array<{ icon: string | Record<string, string>; name: string }>
+      customTools?: Array<{ icon: string | Record<string, string>; name: string }>
+      workflowTools?: Array<{ icon: string | Record<string, string>; name: string }>
+      mcpTools?: Array<{ icon: string | Record<string, string>; name: string }>
     }
 
-    expect(updateState({
-      buildInTools: [],
-      customTools: [],
-      workflowTools: [],
-      mcpTools: [],
-    })).toEqual({
+    expect(
+      updateState({
+        buildInTools: [],
+        customTools: [],
+        workflowTools: [],
+        mcpTools: [],
+      }),
+    ).toEqual({
       buildInTools: [{ icon: { light: '/tool.svg' }, name: 'tool' }],
       customTools: [{ icon: '/console/custom.svg', name: 'custom' }],
       workflowTools: [{ icon: '/console/workflow.svg', name: 'workflow' }],
@@ -233,12 +221,7 @@ describe('Tabs', () => {
   it('should force start content to render and invalidate built-in tools after featured installs', async () => {
     const user = userEvent.setup()
 
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Tools}
-      />,
-    )
+    render(<Tabs {...baseProps} activeTab={TabsEnum.Tools} />)
 
     await user.click(screen.getByRole('button', { name: 'Install featured tool' }))
 
@@ -247,14 +230,7 @@ describe('Tabs', () => {
   })
 
   it('should render start content when blocks are hidden but forceShowStartContent is enabled', () => {
-    render(
-      <Tabs
-        {...baseProps}
-        activeTab={TabsEnum.Start}
-        noBlocks
-        forceShowStartContent
-      />,
-    )
+    render(<Tabs {...baseProps} activeTab={TabsEnum.Start} noBlocks forceShowStartContent />)
 
     expect(screen.getByText('start-content'))!.toBeInTheDocument()
   })

@@ -31,14 +31,13 @@ describe('ImageList', () => {
   describe('Rendering', () => {
     it('should render without crashing with empty list', () => {
       render(<ImageList list={[]} />)
-      expect(screen.getByRole('list', { name: 'common.imageUploader.imageList' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('list', { name: 'common.imageUploader.imageList' }),
+      ).toBeInTheDocument()
     })
 
     it('should render images for each item in the list', () => {
-      const list = [
-        createLocalFile({ _id: 'file-1' }),
-        createLocalFile({ _id: 'file-2' }),
-      ]
+      const list = [createLocalFile({ _id: 'file-1' }), createLocalFile({ _id: 'file-2' })]
       render(<ImageList list={list} />)
 
       const images = screen.getAllByRole('img')
@@ -156,7 +155,9 @@ describe('ImageList', () => {
 
     it('should open image preview when clicking a completed image', async () => {
       const user = userEvent.setup()
-      const list = [createRemoteFile({ _id: 'file-1', progress: 100, url: 'https://example.com/img.png' })]
+      const list = [
+        createRemoteFile({ _id: 'file-1', progress: 100, url: 'https://example.com/img.png' }),
+      ]
       render(<ImageList list={list} />)
 
       await user.click(screen.getByRole('img'))
@@ -192,7 +193,13 @@ describe('ImageList', () => {
 
     it('should open preview with base64Url for completed local file', async () => {
       const user = userEvent.setup()
-      const list = [createLocalFile({ _id: 'file-1', progress: 100, base64Url: 'data:image/png;base64,localdata' })]
+      const list = [
+        createLocalFile({
+          _id: 'file-1',
+          progress: 100,
+          base64Url: 'data:image/png;base64,localdata',
+        }),
+      ]
       render(<ImageList list={list} />)
 
       await user.click(screen.getByRole('img'))
@@ -261,10 +268,7 @@ describe('ImageList', () => {
 
   describe('Edge Cases', () => {
     it('should handle list with mixed local and remote files', () => {
-      const list = [
-        createLocalFile({ _id: 'local-1' }),
-        createRemoteFile({ _id: 'remote-1' }),
-      ]
+      const list = [createLocalFile({ _id: 'local-1' }), createRemoteFile({ _id: 'remote-1' })]
       render(<ImageList list={list} />)
 
       expect(screen.getAllByRole('img')).toHaveLength(2)

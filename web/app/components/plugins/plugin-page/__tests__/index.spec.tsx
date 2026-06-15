@@ -433,9 +433,12 @@ describe('PluginPage Component', () => {
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
-      await waitFor(() => {
-        expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
+        },
+        { timeout: 3000 },
+      )
     })
 
     it('should handle fetch error gracefully', async () => {
@@ -696,9 +699,12 @@ describe('PluginPage Component', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       // Wait for modal to appear
-      await waitFor(() => {
-        expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
+        },
+        { timeout: 3000 },
+      )
 
       // Close modal
       fireEvent.click(screen.getByText('Close'))
@@ -828,7 +834,9 @@ describe('Uploader Hook Integration', () => {
         container.dispatchEvent(dragEnterEvent)
       })
 
-      const file = new File(['content'], 'test-plugin.difypkg', { type: 'application/octet-stream' })
+      const file = new File(['content'], 'test-plugin.difypkg', {
+        type: 'application/octet-stream',
+      })
       const dropEvent = new Event('drop', { bubbles: true, cancelable: true })
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: { files: [file] },
@@ -981,9 +989,12 @@ describe('PluginPage Integration', () => {
     })
 
     // Wait for modal
-    await waitFor(() => {
-      expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
-    }, { timeout: 3000 })
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
+      },
+      { timeout: 3000 },
+    )
 
     // Close modal
     fireEvent.click(screen.getByText('Close'))

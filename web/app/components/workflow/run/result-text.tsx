@@ -34,9 +34,7 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isRunning && error && (
         <div className="px-4 py-2">
-          <StatusContainer status="failed">
-            {error}
-          </StatusContainer>
+          <StatusContainer status="failed">{error}</StatusContainer>
         </div>
       )}
       {!isPaused && !isRunning && !outputs && !error && !allFiles?.length && (
@@ -63,17 +61,18 @@ const ResultText: FC<ResultTextProps> = ({
               <Markdown content={outputs} />
             </div>
           )}
-          {!!allFiles?.length && allFiles.map(item => (
-            <div key={item.varName} className="flex flex-col gap-1 px-4 py-2 system-xs-regular">
-              <div className="py-1 text-text-tertiary">{item.varName}</div>
-              <FileList
-                files={item.list}
-                showDeleteAction={false}
-                showDownloadAction
-                canPreview
-              />
-            </div>
-          ))}
+          {!!allFiles?.length &&
+            allFiles.map((item) => (
+              <div key={item.varName} className="flex flex-col gap-1 px-4 py-2 system-xs-regular">
+                <div className="py-1 text-text-tertiary">{item.varName}</div>
+                <FileList
+                  files={item.list}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
+                />
+              </div>
+            ))}
         </>
       )}
     </div>

@@ -1,9 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import {
-  Pagination,
-  PaginationSkeleton,
-} from '.'
+import { Pagination, PaginationSkeleton } from '.'
 
 function PaginationExample({
   initialPage = 2,
@@ -57,7 +54,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Compound pagination primitive for list navigation. It combines semantic page buttons, a NumberField-backed page jump summary, and a SegmentedControl-backed page-size selector.',
+        component:
+          'Compound pagination primitive for list navigation. It combines semantic page buttons, a NumberField-backed page jump summary, and a SegmentedControl-backed page-size selector.',
       },
     },
   },
@@ -81,7 +79,8 @@ export const DesignSpec: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',
+        story:
+          'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',
       },
     },
   },

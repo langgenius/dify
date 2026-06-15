@@ -25,9 +25,7 @@ vi.mock('@/app/components/share/text-generation/run-batch/csv-reader', () => ({
 
 vi.mock('@/app/components/share/text-generation/run-batch/csv-download', () => ({
   default: ({ vars }: { vars: { name: string }[] }) => (
-    <div data-testid="csv-download">
-      {vars.map(v => v.name).join(', ')}
-    </div>
+    <div data-testid="csv-download">{vars.map((v) => v.name).join(', ')}</div>
   ),
 }))
 
@@ -42,9 +40,7 @@ describe('RunBatch – integration flow', () => {
   it('full lifecycle: upload CSV → run → finish → run again', async () => {
     const onSend = vi.fn()
 
-    const { rerender } = render(
-      <RunBatch vars={vars} onSend={onSend} isAllFinished />,
-    )
+    const { rerender } = render(<RunBatch vars={vars} onSend={onSend} isAllFinished />)
 
     // Phase 1 – verify child components rendered
     expect(screen.getByTestId('csv-reader')).toBeInTheDocument()
@@ -102,9 +98,7 @@ describe('RunBatch – integration flow', () => {
 
   it('should show spinner icon when results are still running', async () => {
     const onSend = vi.fn()
-    const { container } = render(
-      <RunBatch vars={vars} onSend={onSend} isAllFinished={false} />,
-    )
+    const { container } = render(<RunBatch vars={vars} onSend={onSend} isAllFinished={false} />)
 
     // Upload CSV first
     await act(async () => {

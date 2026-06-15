@@ -88,7 +88,9 @@ const EmptyState: FC<EmptyStateProps> = ({
       return t('gotoAnything.emptyState.tryDifferentTerm', { ns: 'app' })
     }
 
-    const shortcuts = Object.values(Actions).map(action => action.shortcut).join(', ')
+    const shortcuts = Object.values(Actions)
+      .map((action) => action.shortcut)
+      .join(', ')
     return t('gotoAnything.emptyState.trySpecificSearch', { ns: 'app', shortcuts })
   }
 

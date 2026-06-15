@@ -4,18 +4,19 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
+import {
+  useInvalidateReferenceSettings,
+  useMutationReferenceSettings,
+  useReferenceSettings,
+} from '@/service/use-plugins'
 import { PermissionType } from '../types'
 
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
-  if (!permission)
-    return false
+  if (!permission) return false
 
-  if (permission === PermissionType.noOne)
-    return false
+  if (permission === PermissionType.noOne) return false
 
-  if (permission === PermissionType.everyone)
-    return true
+  if (permission === PermissionType.everyone) return true
 
   return isAdmin
 }
@@ -27,12 +28,13 @@ const useReferenceSetting = () => {
   // console.log(data)
   const { permission: permissions } = data || {}
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
-  const { mutate: updateReferenceSetting, isPending: isUpdatePending } = useMutationReferenceSettings({
-    onSuccess: () => {
-      invalidateReferenceSettings()
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
-    },
-  })
+  const { mutate: updateReferenceSetting, isPending: isUpdatePending } =
+    useMutationReferenceSettings({
+      onSuccess: () => {
+        invalidateReferenceSettings()
+        toast.success(t('api.actionSuccess', { ns: 'common' }))
+      },
+    })
   const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
 
   return {
@@ -48,7 +50,7 @@ const useReferenceSetting = () => {
 export const useCanInstallPluginFromMarketplace = () => {
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const { canManagement } = useReferenceSetting()
 

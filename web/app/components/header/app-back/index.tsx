@@ -17,20 +17,17 @@ export default function AppBack({ curApp }: IAppBackProps) {
 
   return (
     <div
-      className={cn(`
-        flex h-7 cursor-pointer items-center rounded-[10px]
-        pr-2 pl-2.5 font-semibold
-        text-[#1C64F2]
-        ${curApp && 'hover:bg-[#EBF5FF]'}
-      `)}
+      className={cn(
+        `flex h-7 cursor-pointer items-center rounded-[10px] pr-2 pl-2.5 font-semibold text-[#1C64F2] ${curApp && 'hover:bg-[#EBF5FF]'} `,
+      )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {
-        (hovered && curApp)
-          ? <ArrowLeftIcon className="mr-1 h-[18px] w-[18px]" />
-          : <Squares2X2Icon className="mr-1 h-[18px] w-[18px]" />
-      }
+      {hovered && curApp ? (
+        <ArrowLeftIcon className="mr-1 h-[18px] w-[18px]" />
+      ) : (
+        <Squares2X2Icon className="mr-1 h-[18px] w-[18px]" />
+      )}
       {t('menus.apps', { ns: 'common' })}
     </div>
   )

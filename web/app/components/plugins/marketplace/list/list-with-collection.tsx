@@ -29,54 +29,46 @@ const ListWithCollection = ({
 
   return (
     <>
-      {
-        marketplaceCollections.filter((collection) => {
+      {marketplaceCollections
+        .filter((collection) => {
           return marketplaceCollectionPluginsMap[collection.name]?.length
-        }).map(collection => (
-          <div
-            key={collection.name}
-            className="py-3"
-          >
+        })
+        .map((collection) => (
+          <div key={collection.name} className="py-3">
             <div className="flex items-end justify-between">
               <div>
-                <div className="title-xl-semi-bold text-text-primary">{collection.label[getLanguage(locale)]}</div>
-                <div className="system-xs-regular text-text-tertiary">{collection.description[getLanguage(locale)]}</div>
+                <div className="title-xl-semi-bold text-text-primary">
+                  {collection.label[getLanguage(locale)]}
+                </div>
+                <div className="system-xs-regular text-text-tertiary">
+                  {collection.description[getLanguage(locale)]}
+                </div>
               </div>
-              {
-                collection.searchable && (
-                  <div
-                    className="flex cursor-pointer items-center system-xs-medium text-text-accent"
-                    onClick={() => onMoreClick(collection.search_params)}
-                  >
-                    {t('marketplace.viewMore', { ns: 'plugin' })}
-                    <RiArrowRightSLine className="size-4" />
-                  </div>
-                )
-              }
+              {collection.searchable && (
+                <div
+                  className="flex cursor-pointer items-center system-xs-medium text-text-accent"
+                  onClick={() => onMoreClick(collection.search_params)}
+                >
+                  {t('marketplace.viewMore', { ns: 'plugin' })}
+                  <RiArrowRightSLine className="size-4" />
+                </div>
+              )}
             </div>
-            <div className={cn(
-              'mt-2 grid grid-cols-4 gap-3',
-              cardContainerClassName,
-            )}
-            >
-              {
-                marketplaceCollectionPluginsMap[collection.name]!.map((plugin) => {
-                  if (cardRender)
-                    return cardRender(plugin)
+            <div className={cn('mt-2 grid grid-cols-4 gap-3', cardContainerClassName)}>
+              {marketplaceCollectionPluginsMap[collection.name]!.map((plugin) => {
+                if (cardRender) return cardRender(plugin)
 
-                  return (
-                    <CardWrapper
-                      key={plugin.plugin_id}
-                      plugin={plugin}
-                      showInstallButton={showInstallButton}
-                    />
-                  )
-                })
-              }
+                return (
+                  <CardWrapper
+                    key={plugin.plugin_id}
+                    plugin={plugin}
+                    showInstallButton={showInstallButton}
+                  />
+                )
+              })}
             </div>
           </div>
-        ))
-      }
+        ))}
     </>
   )
 }

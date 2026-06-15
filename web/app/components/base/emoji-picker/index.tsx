@@ -14,23 +14,12 @@ type EmojiPickerProps = {
   className?: string
 }
 
-function EmojiPicker({
-  open,
-  onOpenChange,
-  onSelect,
-  className,
-}: EmojiPickerProps) {
+function EmojiPicker({ open, onOpenChange, onSelect, className }: EmojiPickerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {open
-        ? (
-            <EmojiPickerContent
-              className={className}
-              onOpenChange={onOpenChange}
-              onSelect={onSelect}
-            />
-          )
-        : null}
+      {open ? (
+        <EmojiPickerContent className={className} onOpenChange={onOpenChange} onSelect={onSelect} />
+      ) : null}
     </Dialog>
   )
 }
@@ -41,11 +30,7 @@ type EmojiPickerContentProps = {
   onSelect?: (emoji: string, background: string) => void
 }
 
-function EmojiPickerContent({
-  className,
-  onOpenChange,
-  onSelect,
-}: EmojiPickerContentProps) {
+function EmojiPickerContent({ className, onOpenChange, onSelect }: EmojiPickerContentProps) {
   const { t } = useTranslation()
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectedBackground, setSelectedBackground] = useState<string>()
@@ -58,9 +43,7 @@ function EmojiPickerContent({
         className,
       )}
     >
-      <DialogTitle className="sr-only">
-        {t('iconPicker.emoji', { ns: 'app' })}
-      </DialogTitle>
+      <DialogTitle className="sr-only">{t('iconPicker.emoji', { ns: 'app' })}</DialogTitle>
 
       <EmojiPickerInner
         className="pt-3"
@@ -71,10 +54,7 @@ function EmojiPickerContent({
       />
       <Divider className="mt-3 mb-0" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
-        <Button
-          className="w-full"
-          onClick={() => onOpenChange(false)}
-        >
+        <Button className="w-full" onClick={() => onOpenChange(false)}>
           {t('iconPicker.cancel', { ns: 'app' })}
         </Button>
         <Button

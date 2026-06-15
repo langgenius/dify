@@ -14,7 +14,8 @@ describe('handleStream', () => {
 
       // Create a mock response that returns 'data: null'
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: null\n'),
@@ -36,7 +37,7 @@ describe('handleStream', () => {
       handleStream(mockResponse, onData, onCompleted)
 
       // Wait for the stream to be processed
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // Assert
       expect(onData).toHaveBeenCalledWith('', true, {
@@ -55,7 +56,8 @@ describe('handleStream', () => {
 
       // Create a mock response that returns a primitive value
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: "string"\n'),
@@ -77,7 +79,7 @@ describe('handleStream', () => {
       handleStream(mockResponse, onData, onCompleted)
 
       // Wait for the stream to be processed
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // Assert
       expect(onData).toHaveBeenCalledWith('', true, {
@@ -103,7 +105,8 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode(`data: ${JSON.stringify(validMessage)}\n`),
@@ -125,7 +128,7 @@ describe('handleStream', () => {
       handleStream(mockResponse, onData, onCompleted)
 
       // Wait for the stream to be processed
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // Assert
       expect(onData).toHaveBeenCalledWith('Hello world', true, {
@@ -148,7 +151,8 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode(`data: ${JSON.stringify(errorMessage)}\n`),
@@ -170,7 +174,7 @@ describe('handleStream', () => {
       handleStream(mockResponse, onData, onCompleted)
 
       // Wait for the stream to be processed
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // Assert
       expect(onData).toHaveBeenCalledWith('', false, {
@@ -188,7 +192,8 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
-        read: vi.fn()
+        read: vi
+          .fn()
           .mockResolvedValueOnce({
             done: false,
             value: new TextEncoder().encode('data: {invalid json}\n'),
@@ -210,7 +215,7 @@ describe('handleStream', () => {
       handleStream(mockResponse, onData, onCompleted)
 
       // Wait for the stream to be processed
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 50))
 
       // Assert - malformed JSON triggers the catch block which calls onData and returns
       expect(onData).toHaveBeenCalled()

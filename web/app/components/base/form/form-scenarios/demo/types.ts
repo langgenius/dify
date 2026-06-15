@@ -21,7 +21,7 @@ export const UserSchema = z.object({
     .string()
     .min(3, 'Surname must be at least 3 characters long')
     .regex(/^[A-Z]/, 'Surname must start with a capital letter'),
-  isAcceptingTerms: z.boolean().refine(val => val, {
+  isAcceptingTerms: z.boolean().refine((val) => val, {
     error: 'You must accept the terms and conditions',
   }),
   contact: z.object({

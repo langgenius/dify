@@ -1,13 +1,6 @@
 import type { ChatItem } from '../../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useChatLayout } from '../use-chat-layout'
 
 type ResizeCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver) => void
@@ -31,7 +24,11 @@ const makeResizeEntry = (blockSize: number, inlineSize: number): ResizeObserverE
   target: document.createElement('div'),
 })
 
-const assignMetric = (node: HTMLElement, key: 'clientWidth' | 'clientHeight' | 'scrollHeight', value: number) => {
+const assignMetric = (
+  node: HTMLElement,
+  key: 'clientWidth' | 'clientHeight' | 'scrollHeight',
+  value: number,
+) => {
   Object.defineProperty(node, key, {
     configurable: true,
     value,
@@ -47,13 +44,8 @@ const LayoutHarness = ({
   sidebarCollapseState?: boolean
   attachRefs?: boolean
 }) => {
-  const {
-    width,
-    chatContainerRef,
-    chatContainerInnerRef,
-    chatFooterRef,
-    chatFooterInnerRef,
-  } = useChatLayout({ chatList, sidebarCollapseState })
+  const { width, chatContainerRef, chatContainerInnerRef, chatFooterRef, chatFooterInnerRef } =
+    useChatLayout({ chatList, sidebarCollapseState })
 
   return (
     <>
@@ -76,8 +68,7 @@ const LayoutHarness = ({
           data-testid="chat-container-inner"
           ref={(node) => {
             chatContainerInnerRef.current = attachRefs ? node : null
-            if (node && attachRefs)
-              assignMetric(node, 'clientWidth', 360)
+            if (node && attachRefs) assignMetric(node, 'clientWidth', 360)
           }}
         />
       </div>
@@ -102,7 +93,7 @@ const LayoutHarness = ({
 const flushAnimationFrames = () => {
   const queuedCallbacks = [...rafCallbacks]
   rafCallbacks = []
-  queuedCallbacks.forEach(callback => callback(0))
+  queuedCallbacks.forEach((callback) => callback(0))
 }
 
 describe('useChatLayout', () => {
@@ -123,15 +114,18 @@ describe('useChatLayout', () => {
       return rafCallbacks.length
     })
 
-    vi.stubGlobal('ResizeObserver', class {
-      constructor(cb: ResizeCallback) {
-        capturedResizeCallbacks.push(cb)
-      }
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(cb: ResizeCallback) {
+          capturedResizeCallbacks.push(cb)
+        }
 
-      observe() { }
-      unobserve() { }
-      disconnect = disconnectSpy
-    })
+        observe() {}
+        unobserve() {}
+        disconnect = disconnectSpy
+      },
+    )
   })
 
   afterEach(() => {
@@ -146,10 +140,7 @@ describe('useChatLayout', () => {
 
       render(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q1' }),
-            makeChatItem({ id: 'a1', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'a1', isAnswer: true })]}
           sidebarCollapseState={false}
         />,
       )
@@ -173,10 +164,7 @@ describe('useChatLayout', () => {
       const removeSpy = vi.spyOn(window, 'removeEventListener')
       const { unmount } = render(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q1' }),
-            makeChatItem({ id: 'a1', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'a1', isAnswer: true })]}
         />,
       )
 
@@ -201,10 +189,7 @@ describe('useChatLayout', () => {
     it('should respect manual scrolling until a new first message arrives and safely ignore missing refs', () => {
       const { rerender } = render(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q1' }),
-            makeChatItem({ id: 'a1', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q1' }), makeChatItem({ id: 'a1', isAnswer: true })]}
         />,
       )
 
@@ -242,10 +227,7 @@ describe('useChatLayout', () => {
 
       rerender(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q2' }),
-            makeChatItem({ id: 'a3', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q2' }), makeChatItem({ id: 'a3', isAnswer: true })]}
         />,
       )
 
@@ -258,10 +240,7 @@ describe('useChatLayout', () => {
 
       rerender(
         <LayoutHarness
-          chatList={[
-            makeChatItem({ id: 'q2' }),
-            makeChatItem({ id: 'a3', isAnswer: true }),
-          ]}
+          chatList={[makeChatItem({ id: 'q2' }), makeChatItem({ id: 'a3', isAnswer: true })]}
           attachRefs={false}
         />,
       )

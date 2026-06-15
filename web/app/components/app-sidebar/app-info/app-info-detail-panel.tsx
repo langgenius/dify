@@ -37,50 +37,58 @@ const AppInfoDetailPanel = ({
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
 
-  const primaryOperations = useMemo<Operation[]>(() => [
-    {
-      id: 'edit',
-      title: t('editApp', { ns: 'app' }),
-      icon: <RiEditLine />,
-      onClick: () => openModal('edit'),
-    },
-    {
-      id: 'duplicate',
-      title: t('duplicate', { ns: 'app' }),
-      icon: <RiFileCopy2Line />,
-      onClick: () => openModal('duplicate'),
-    },
-    {
-      id: 'export',
-      title: t('export', { ns: 'app' }),
-      icon: <RiFileDownloadLine />,
-      onClick: exportCheck,
-    },
-  ], [t, openModal, exportCheck])
+  const primaryOperations = useMemo<Operation[]>(
+    () => [
+      {
+        id: 'edit',
+        title: t('editApp', { ns: 'app' }),
+        icon: <RiEditLine />,
+        onClick: () => openModal('edit'),
+      },
+      {
+        id: 'duplicate',
+        title: t('duplicate', { ns: 'app' }),
+        icon: <RiFileCopy2Line />,
+        onClick: () => openModal('duplicate'),
+      },
+      {
+        id: 'export',
+        title: t('export', { ns: 'app' }),
+        icon: <RiFileDownloadLine />,
+        onClick: exportCheck,
+      },
+    ],
+    [t, openModal, exportCheck],
+  )
 
-  const secondaryOperations = useMemo<Operation[]>(() => [
-    ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
-      ? [{
-          id: 'import',
-          title: t('common.importDSL', { ns: 'workflow' }),
-          icon: <RiFileUploadLine />,
-          onClick: () => openModal('importDSL'),
-        }]
-      : [],
-    {
-      id: 'divider-1',
-      title: '',
-      icon: <></>,
-      onClick: () => {},
-      type: 'divider' as const,
-    },
-    {
-      id: 'delete',
-      title: t('operation.delete', { ns: 'common' }),
-      icon: <RiDeleteBinLine />,
-      onClick: () => openModal('delete'),
-    },
-  ], [appDetail.mode, t, openModal])
+  const secondaryOperations = useMemo<Operation[]>(
+    () => [
+      ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW
+        ? [
+            {
+              id: 'import',
+              title: t('common.importDSL', { ns: 'workflow' }),
+              icon: <RiFileUploadLine />,
+              onClick: () => openModal('importDSL'),
+            },
+          ]
+        : []),
+      {
+        id: 'divider-1',
+        title: '',
+        icon: <></>,
+        onClick: () => {},
+        type: 'divider' as const,
+      },
+      {
+        id: 'delete',
+        title: t('operation.delete', { ns: 'common' }),
+        icon: <RiDeleteBinLine />,
+        onClick: () => openModal('delete'),
+      },
+    ],
+    [appDetail.mode, t, openModal],
+  )
 
   const switchOperation = useMemo(() => {
     if (appDetail.mode !== AppModeEnum.COMPLETION && appDetail.mode !== AppModeEnum.CHAT)
@@ -94,10 +102,7 @@ const AppInfoDetailPanel = ({
   }, [appDetail.mode, t, openModal])
 
   return (
-    <AppInfoDetailDrawer
-      open={show}
-      onClose={onClose}
-    >
+    <AppInfoDetailDrawer open={show} onClose={onClose}>
       <div className="flex shrink-0 flex-col items-start justify-center gap-3 self-stretch p-4">
         <div className="flex items-center gap-3 self-stretch">
           <AppIcon
@@ -108,7 +113,9 @@ const AppInfoDetailPanel = ({
             imageUrl={appDetail.icon_url}
           />
           <div className="flex flex-1 flex-col items-start justify-center overflow-hidden">
-            <h2 className="w-full truncate system-md-semibold text-text-secondary">{appDetail.name}</h2>
+            <h2 className="w-full truncate system-md-semibold text-text-secondary">
+              {appDetail.name}
+            </h2>
             <div className="system-2xs-medium-uppercase text-text-tertiary">
               {getAppModeLabel(appDetail.mode, t)}
             </div>

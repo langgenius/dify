@@ -13,7 +13,7 @@ let mockLanguages = [
 
 let mockPathname = '/app/test-app-id/configuration'
 
-let mockVoiceItems: { value: string, name: string }[] | undefined = [
+let mockVoiceItems: { value: string; name: string }[] | undefined = [
   { value: 'alloy', name: 'Alloy' },
   { value: 'echo', name: 'Echo' },
 ]
@@ -50,21 +50,19 @@ const defaultFeatures: Features = {
 }
 
 const renderWithProvider = (
-  props: { onClose?: () => void, onChange?: OnFeaturesChange } = {},
+  props: { onClose?: () => void; onChange?: OnFeaturesChange } = {},
   featureOverrides?: Partial<Features>,
 ) => {
   const features = { ...defaultFeatures, ...featureOverrides }
   return render(
     <FeaturesProvider features={features}>
-      <ParamConfigContent
-        onClose={props.onClose ?? vi.fn()}
-        onChange={props.onChange}
-      />
+      <ParamConfigContent onClose={props.onClose ?? vi.fn()} onChange={props.onChange} />
     </FeaturesProvider>,
   )
 }
 
-const getLanguageSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.language/ })
+const getLanguageSelect = () =>
+  screen.getByRole('combobox', { name: /voice\.voiceSettings\.language/ })
 const getVoiceSelect = () => screen.getByRole('combobox', { name: /voice\.voiceSettings\.voice/ })
 
 describe('ParamConfigContent', () => {
@@ -113,7 +111,9 @@ describe('ParamConfigContent', () => {
 
       const languageLabel = screen.getByText(/voice\.voiceSettings\.language/)
       expect(languageLabel)!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /voice\.voiceSettings\.resolutionTooltip/ }),
+      )!.toBeInTheDocument()
     })
 
     it('should display language listbox button', () => {
@@ -148,17 +148,28 @@ describe('ParamConfigContent', () => {
     })
 
     it('should render with no language set and use first as default', () => {
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
+        },
+      )
 
       expect(getLanguageSelect()).toBeInTheDocument()
     })
 
     it('should render with no voice set and use first as default', () => {
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: 'en-US', voice: 'nonexistent', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: {
+            enabled: true,
+            language: 'en-US',
+            voice: 'nonexistent',
+            autoPlay: TtsAutoPlay.disabled,
+          },
+        },
+      )
 
       expect(getVoiceSelect()).toHaveTextContent('Alloy')
     })
@@ -213,7 +224,14 @@ describe('ParamConfigContent', () => {
       const onChange = vi.fn()
       renderWithProvider(
         { onChange },
-        { text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.enabled } },
+        {
+          text2speech: {
+            enabled: true,
+            language: 'en-US',
+            voice: 'alloy',
+            autoPlay: TtsAutoPlay.enabled,
+          },
+        },
       )
 
       const autoPlaySwitch = screen.getByRole('switch')
@@ -271,7 +289,7 @@ describe('ParamConfigContent', () => {
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(1)
 
-      const selectedOption = options.find(opt => opt.textContent?.includes('voice.language.enUS'))
+      const selectedOption = options.find((opt) => opt.textContent?.includes('voice.language.enUS'))
       expect(selectedOption).toBeDefined()
       expect(selectedOption)!.toHaveAttribute('aria-selected', 'true')
     })
@@ -283,7 +301,7 @@ describe('ParamConfigContent', () => {
       const options = await screen.findAllByRole('option')
       expect(options.length).toBeGreaterThanOrEqual(1)
 
-      const selectedOption = options.find(opt => opt.textContent?.includes('Alloy'))
+      const selectedOption = options.find((opt) => opt.textContent?.includes('Alloy'))
       expect(selectedOption).toBeDefined()
       expect(selectedOption)!.toHaveAttribute('aria-selected', 'true')
     })
@@ -295,9 +313,17 @@ describe('ParamConfigContent', () => {
       mockLanguages = []
       mockVoiceItems = undefined
 
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: 'en-US', voice: 'alloy', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: {
+            enabled: true,
+            language: 'en-US',
+            voice: 'alloy',
+            autoPlay: TtsAutoPlay.disabled,
+          },
+        },
+      )
 
       const placeholderTexts = screen.getAllByText(/placeholder\.select/)
       expect(placeholderTexts.length).toBeGreaterThanOrEqual(2)
@@ -316,9 +342,12 @@ describe('ParamConfigContent', () => {
     it('should render language text when selected language value is empty string', () => {
       mockLanguages = [{ value: '' as string, name: 'Unknown Language', example: '' }]
 
-      renderWithProvider({}, {
-        text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
-      })
+      renderWithProvider(
+        {},
+        {
+          text2speech: { enabled: true, language: '', voice: '', autoPlay: TtsAutoPlay.disabled },
+        },
+      )
 
       expect(screen.getByText(/voice\.language\./))!.toBeInTheDocument()
     })

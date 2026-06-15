@@ -131,7 +131,10 @@ describe('PreviewItem', () => {
       })
 
       it('should use TEXT as default type when type is "text"', () => {
-        const props = createDefaultProps({ type: 'text' as PreviewType, content: 'Default type content' })
+        const props = createDefaultProps({
+          type: 'text' as PreviewType,
+          content: 'Default type content',
+        })
 
         render(<PreviewItem {...props} />)
 
@@ -251,7 +254,9 @@ describe('PreviewItem', () => {
 
         // Assert - Check content is in pre-line div
         const preLineDivs = container.querySelectorAll('[style*="white-space: pre-line"]')
-        const questionDiv = Array.from(preLineDivs).find(div => div.textContent?.includes('Question line 1'))
+        const questionDiv = Array.from(preLineDivs).find((div) =>
+          div.textContent?.includes('Question line 1'),
+        )
         expect(questionDiv).toBeTruthy()
         expect(questionDiv?.textContent).toContain('Question line 2')
       })
@@ -268,7 +273,9 @@ describe('PreviewItem', () => {
 
         // Assert - Check content is in pre-line div
         const preLineDivs = container.querySelectorAll('[style*="white-space: pre-line"]')
-        const answerDiv = Array.from(preLineDivs).find(div => div.textContent?.includes('Answer line 1'))
+        const answerDiv = Array.from(preLineDivs).find((div) =>
+          div.textContent?.includes('Answer line 1'),
+        )
         expect(answerDiv).toBeTruthy()
         expect(answerDiv?.textContent).toContain('Answer line 2')
       })
@@ -329,7 +336,9 @@ describe('PreviewItem', () => {
       expect(screen.getByText('Text content')).toBeInTheDocument()
       expect(screen.queryByText('Q')).not.toBeInTheDocument()
 
-      rerender(<PreviewItem type={PreviewType.QA} index={1} qa={{ question: 'Q1', answer: 'A1' }} />)
+      rerender(
+        <PreviewItem type={PreviewType.QA} index={1} qa={{ question: 'Q1', answer: 'A1' }} />,
+      )
 
       expect(screen.getByText('Q')).toBeInTheDocument()
       expect(screen.getByText('A')).toBeInTheDocument()

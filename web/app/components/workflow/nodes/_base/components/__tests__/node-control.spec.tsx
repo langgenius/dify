@@ -4,10 +4,7 @@ import { renderWorkflowComponent } from '../../../../__tests__/workflow-test-env
 import { BlockEnum, NodeRunningStatus } from '../../../../types'
 import NodeControl from '../node-control'
 
-const {
-  mockHandleNodeSelect,
-  mockCanRunBySingle,
-} = vi.hoisted(() => ({
+const { mockHandleNodeSelect, mockCanRunBySingle } = vi.hoisted(() => ({
   mockHandleNodeSelect: vi.fn(),
   mockCanRunBySingle: vi.fn(() => true),
 }))
@@ -35,20 +32,25 @@ vi.mock('../../../../utils', async () => {
 vi.mock('@/app/components/workflow/node-actions-menu', () => ({
   NodeActionsDropdown: ({ onOpenChange }: { onOpenChange: (open: boolean) => void }) => (
     <>
-      <button type="button" onClick={() => onOpenChange(true)}>open panel</button>
-      <button type="button" onClick={() => onOpenChange(false)}>close panel</button>
+      <button type="button" onClick={() => onOpenChange(true)}>
+        open panel
+      </button>
+      <button type="button" onClick={() => onOpenChange(false)}>
+        close panel
+      </button>
     </>
   ),
 }))
 
-function NodeControlHarness({ id, data }: { id: string, data: CommonNodeType, selected?: boolean }) {
-  return (
-    <NodeControl
-      id={id}
-      data={data}
-      pluginInstallLocked={mockPluginInstallLocked}
-    />
-  )
+function NodeControlHarness({
+  id,
+  data,
+}: {
+  id: string
+  data: CommonNodeType
+  selected?: boolean
+}) {
+  return <NodeControl id={id} data={data} pluginInstallLocked={mockPluginInstallLocked} />
 }
 
 const makeData = (overrides: Partial<CommonNodeType> = {}): CommonNodeType => ({
@@ -94,7 +96,9 @@ describe('NodeControl', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.debug.variableInspect.trigger.stop' }),
+      )
 
       expect(store.getState().pendingSingleRun).toEqual({ nodeId: 'node-2', action: 'stop' })
       expect(mockHandleNodeSelect).toHaveBeenCalledWith('node-2')
@@ -121,14 +125,11 @@ describe('NodeControl', () => {
     it('should hide the run control when single-node execution is not supported', () => {
       mockCanRunBySingle.mockReturnValue(false)
 
-      renderWorkflowComponent(
-        <NodeControlHarness
-          id="node-4"
-          data={makeData()}
-        />,
-      )
+      renderWorkflowComponent(<NodeControlHarness id="node-4" data={makeData()} />)
 
-      expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'workflow.panel.runThisStep' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'open panel' })).toBeInTheDocument()
     })
   })

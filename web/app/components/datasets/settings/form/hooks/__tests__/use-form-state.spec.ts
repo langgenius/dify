@@ -1,7 +1,12 @@
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
+import {
+  ChunkingMode,
+  DatasetPermission,
+  DataSourceType,
+  WeightedScoreEnum,
+} from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import { useFormState } from '../use-form-state'
@@ -90,7 +95,9 @@ const createDefaultMockDataset = (): DataSet => ({
 let mockDataset: DataSet = createDefaultMockDataset()
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: DataSet | null, mutateDatasetRes: () => void }) => unknown) => {
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: DataSet | null; mutateDatasetRes: () => void }) => unknown,
+  ) => {
     const state = {
       dataset: mockDataset,
       mutateDatasetRes: mockMutateDatasets,
@@ -112,8 +119,28 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-        { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'user-1',
+          name: 'User 1',
+          email: 'user1@example.com',
+          role: 'owner',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
+        {
+          id: 'user-2',
+          name: 'User 2',
+          email: 'user2@example.com',
+          role: 'admin',
+          avatar: '',
+          avatar_url: '',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ],
     },
   }),
@@ -525,7 +552,9 @@ describe('useFormState', () => {
 
     it('should not save when already loading', async () => {
       const { updateDatasetSetting } = await import('@/service/datasets')
-      vi.mocked(updateDatasetSetting).mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      vi.mocked(updateDatasetSetting).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100)),
+      )
 
       const { result } = renderHook(() => useFormState())
 

@@ -16,7 +16,7 @@ vi.mock('@/hooks/use-metadata', () => ({
 }))
 
 vi.mock('@/models/datasets', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
     CUSTOMIZABLE_DOC_TYPES: ['book', 'web_page', 'paper'],
@@ -128,7 +128,9 @@ describe('DocumentTypeDisplay', () => {
 
     it('should call onChangeClick when change link is clicked', () => {
       const onClick = vi.fn()
-      render(<DocumentTypeDisplay displayType="book" showChangeLink={true} onChangeClick={onClick} />)
+      render(
+        <DocumentTypeDisplay displayType="book" showChangeLink={true} onChangeClick={onClick} />,
+      )
 
       fireEvent.click(screen.getByRole('button', { name: /operation\.change/ }))
 

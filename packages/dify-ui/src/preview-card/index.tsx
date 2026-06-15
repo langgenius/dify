@@ -37,10 +37,7 @@ type PreviewCardContentProps = {
     BasePreviewCard.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
-  popupProps?: Omit<
-    BasePreviewCard.Popup.Props,
-    'children' | 'className'
-  >
+  popupProps?: Omit<BasePreviewCard.Popup.Props, 'children' | 'className'>
 }
 
 export function PreviewCardContent({

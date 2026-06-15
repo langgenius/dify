@@ -14,7 +14,8 @@ type WebhookFlowNode = Node & {
 }
 
 vi.mock('@/app/components/app/store', async () =>
-  (await import('../../__tests__/service-mock-factory')).createAppStoreMock({ appId: 'app-123' }))
+  (await import('../../__tests__/service-mock-factory')).createAppStoreMock({ appId: 'app-123' }),
+)
 
 const mockFetchWebhookUrl = vi.fn()
 vi.mock('@/service/apps', () => ({
@@ -35,13 +36,16 @@ describe('useAutoGenerateWebhookUrl', () => {
   ]
 
   const renderAutoGenerateWebhookUrlHook = () =>
-    renderWorkflowFlowHook(() => ({
-      autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
-      nodes: useNodes<WebhookFlowNode>(),
-    }), {
-      nodes: createFlowNodes(),
-      edges: [],
-    })
+    renderWorkflowFlowHook(
+      () => ({
+        autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
+        nodes: useNodes<WebhookFlowNode>(),
+      }),
+      {
+        nodes: createFlowNodes(),
+        edges: [],
+      },
+    )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -62,7 +66,9 @@ describe('useAutoGenerateWebhookUrl', () => {
     expect(mockFetchWebhookUrl).toHaveBeenCalledWith({ appId: 'app-123', nodeId: 'webhook-1' })
 
     await waitFor(() => {
-      const webhookNode = result.current.nodes.find(node => node.id === 'webhook-1') as WebhookFlowNode | undefined
+      const webhookNode = result.current.nodes.find((node) => node.id === 'webhook-1') as
+        | WebhookFlowNode
+        | undefined
       expect(webhookNode?.data.webhook_url).toBe('https://example.com/webhook')
       expect(webhookNode?.data.webhook_debug_url).toBe('https://example.com/webhook-debug')
     })
@@ -77,7 +83,9 @@ describe('useAutoGenerateWebhookUrl', () => {
 
     expect(mockFetchWebhookUrl).not.toHaveBeenCalled()
 
-    const codeNode = result.current.nodes.find(node => node.id === 'code-1') as WebhookFlowNode | undefined
+    const codeNode = result.current.nodes.find((node) => node.id === 'code-1') as
+      | WebhookFlowNode
+      | undefined
     expect(codeNode?.data.webhook_url).toBeUndefined()
   })
 
@@ -92,20 +100,23 @@ describe('useAutoGenerateWebhookUrl', () => {
   })
 
   it('should not fetch when webhook_url already exists', async () => {
-    const { result } = renderWorkflowFlowHook(() => ({
-      autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
-    }), {
-      nodes: [
-        createNode({
-          id: 'webhook-1',
-          data: {
-            type: BlockEnum.TriggerWebhook,
-            webhook_url: 'https://existing.com/webhook',
-          },
-        }) as WebhookFlowNode,
-      ],
-      edges: [],
-    })
+    const { result } = renderWorkflowFlowHook(
+      () => ({
+        autoGenerateWebhookUrl: useAutoGenerateWebhookUrl(),
+      }),
+      {
+        nodes: [
+          createNode({
+            id: 'webhook-1',
+            data: {
+              type: BlockEnum.TriggerWebhook,
+              webhook_url: 'https://existing.com/webhook',
+            },
+          }) as WebhookFlowNode,
+        ],
+        edges: [],
+      },
+    )
 
     await act(async () => {
       await result.current.autoGenerateWebhookUrl('webhook-1')
@@ -128,7 +139,9 @@ describe('useAutoGenerateWebhookUrl', () => {
       'Failed to auto-generate webhook URL:',
       expect.any(Error),
     )
-    const webhookNode = result.current.nodes.find(node => node.id === 'webhook-1') as WebhookFlowNode | undefined
+    const webhookNode = result.current.nodes.find((node) => node.id === 'webhook-1') as
+      | WebhookFlowNode
+      | undefined
     expect(webhookNode?.data.webhook_url).toBe('')
     consoleSpy.mockRestore()
   })

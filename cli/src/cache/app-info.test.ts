@@ -42,10 +42,8 @@ describe('app-info disk cache', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -93,8 +91,7 @@ describe('app-info disk cache', () => {
     await c.set('h', 'app-1', metaInfoOnly())
     const { stat } = await import('node:fs/promises')
     const s = await stat(appInfoPath(dir))
-    if (platform() !== 'win32')
-      expect(s.mode & 0o777).toBe(0o600)
+    if (platform() !== 'win32') expect(s.mode & 0o777).toBe(0o600)
   })
 
   it('missing cache file is not an error', async () => {

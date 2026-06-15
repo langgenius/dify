@@ -1,11 +1,6 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
-import type {
-  ChatConfig,
-  ChatItem,
-  ChatItemInTree,
-  OnSend,
-} from '../types'
+import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -61,8 +56,7 @@ const ChatWrapper = () => {
 
   // Read sendOnEnter from URL params (e.g., ?sendOnEnter=false)
   const sendOnEnter = useMemo(() => {
-    if (typeof window === 'undefined')
-      return true
+    if (typeof window === 'undefined') return true
     const urlParams = new URLSearchParams(window.location.search)
     const param = urlParams.get('sendOnEnter')
     return param !== 'false'
@@ -95,49 +89,52 @@ const ChatWrapper = () => {
       inputsForm: inputsForms,
     },
     appPrevChatList,
-    taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
+    (taskId) => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
   )
-  const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
+  const inputsFormValue = currentConversationId
+    ? currentConversationInputs
+    : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {
-    if (allInputsHidden)
-      return false
+    if (allInputsHidden) return false
 
     let hasEmptyInput = ''
     let fileIsUploading = false
-    const requiredVars = inputsForms.filter(({ required, type }) => required && type !== InputVarType.checkbox) // boolean can be not checked
+    const requiredVars = inputsForms.filter(
+      ({ required, type }) => required && type !== InputVarType.checkbox,
+    ) // boolean can be not checked
     if (requiredVars.length) {
       requiredVars.forEach(({ variable, label, type }) => {
-        if (hasEmptyInput)
-          return
+        if (hasEmptyInput) return
 
-        if (fileIsUploading)
-          return
+        if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable])
-          hasEmptyInput = label as string
+        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
 
-        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && inputsFormValue?.[variable]) {
+        if (
+          (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
+          inputsFormValue?.[variable]
+        ) {
           const files = inputsFormValue[variable]
           if (Array.isArray(files))
-            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+            fileIsUploading = files.find(
+              (item) => item.transferMethod === TransferMethod.local_file && !item.uploadedId,
+            )
           else
-            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
+            fileIsUploading =
+              files.transferMethod === TransferMethod.local_file && !files.uploadedId
         }
       })
     }
-    if (hasEmptyInput)
-      return true
+    if (hasEmptyInput) return true
 
-    if (fileIsUploading)
-      return true
+    if (fileIsUploading) return true
     return false
   }, [inputsFormValue, inputsForms, allInputsHidden])
 
   useEffect(() => {
-    if (currentChatInstanceRef.current)
-      currentChatInstanceRef.current.handleStop = handleStop
+    if (currentChatInstanceRef.current) currentChatInstanceRef.current.handleStop = handleStop
   }, [currentChatInstanceRef, handleStop])
   useEffect(() => {
     setIsResponding(respondingState)
@@ -145,19 +142,22 @@ const ChatWrapper = () => {
 
   // Resume paused workflows when chat history is loaded
   useEffect(() => {
-    if (!appPrevChatList || appPrevChatList.length === 0)
-      return
+    if (!appPrevChatList || appPrevChatList.length === 0) return
 
     // Find the last answer item with workflow_run_id that needs resumption (DFS - find deepest first)
     let lastPausedNode: ChatItemInTree | undefined
     const findLastPausedWorkflow = (nodes: ChatItemInTree[]) => {
       nodes.forEach((node) => {
         // DFS: recurse to children first
-        if (node.children && node.children.length > 0)
-          findLastPausedWorkflow(node.children)
+        if (node.children && node.children.length > 0) findLastPausedWorkflow(node.children)
 
         // Track the last node with humanInputFormDataList
-        if (node.isAnswer && node.workflow_run_id && node.humanInputFormDataList && node.humanInputFormDataList.length > 0)
+        if (
+          node.isAnswer &&
+          node.workflow_run_id &&
+          node.humanInputFormDataList &&
+          node.humanInputFormDataList.length > 0
+        )
           lastPausedNode = node
       })
     }
@@ -166,95 +166,120 @@ const ChatWrapper = () => {
 
     // Only resume the last paused workflow
     if (lastPausedNode) {
-      handleSwitchSibling(
-        lastPausedNode.id,
-        {
-          onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
-          onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-          isPublicAPI: appSourceType === AppSourceType.webApp,
-        },
-      )
+      handleSwitchSibling(lastPausedNode.id, {
+        onGetSuggestedQuestions: (responseItemId) =>
+          fetchSuggestedQuestions(responseItemId, appSourceType, appId),
+        onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
+      })
     }
   }, [])
 
-  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
-    const data: any = {
-      query: message,
-      files,
-      inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
-      conversation_id: currentConversationId,
-      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-    }
-    handleSend(
-      getUrl('chat-messages', appSourceType, appId || ''),
-      data,
-      {
-        onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
+  const doSend: OnSend = useCallback(
+    (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      const data: any = {
+        query: message,
+        files,
+        inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
+        conversation_id: currentConversationId,
+        parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+      }
+      handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+        onGetSuggestedQuestions: (responseItemId) =>
+          fetchSuggestedQuestions(responseItemId, appSourceType, appId),
         onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
         isPublicAPI: appSourceType === AppSourceType.webApp,
-      },
-    )
-  }, [currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, appSourceType, appId, handleNewConversationCompleted])
+      })
+    },
+    [
+      currentConversationId,
+      currentConversationInputs,
+      newConversationInputs,
+      chatList,
+      handleSend,
+      appSourceType,
+      appId,
+      handleNewConversationCompleted,
+    ],
+  )
 
-  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
-    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
-    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
-  }, [chatList, doSend])
+  const doRegenerate = useCallback(
+    (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => {
+      const question = editedQuestion
+        ? chatItem
+        : chatList.find((item) => item.id === chatItem.parentMessageId)!
+      const parentAnswer = chatList.find((item) => item.id === question.parentMessageId)
+      doSend(
+        editedQuestion ? editedQuestion.message : question.content,
+        editedQuestion ? editedQuestion.files : question.message_files,
+        true,
+        isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+      )
+    },
+    [chatList, doSend],
+  )
 
-  const doSwitchSibling = useCallback((siblingMessageId: string) => {
-    handleSwitchSibling(siblingMessageId, {
-      onGetSuggestedQuestions: responseItemId => fetchSuggestedQuestions(responseItemId, appSourceType, appId),
-      onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
-      isPublicAPI: appSourceType === AppSourceType.webApp,
-    })
-  }, [handleSwitchSibling, appSourceType, appId, currentConversationId, handleNewConversationCompleted])
+  const doSwitchSibling = useCallback(
+    (siblingMessageId: string) => {
+      handleSwitchSibling(siblingMessageId, {
+        onGetSuggestedQuestions: (responseItemId) =>
+          fetchSuggestedQuestions(responseItemId, appSourceType, appId),
+        onConversationComplete: currentConversationId ? undefined : handleNewConversationCompleted,
+        isPublicAPI: appSourceType === AppSourceType.webApp,
+      })
+    },
+    [
+      handleSwitchSibling,
+      appSourceType,
+      appId,
+      currentConversationId,
+      handleNewConversationCompleted,
+    ],
+  )
 
   const messageList = useMemo(() => {
-    if (currentConversationId || chatList.length > 1)
-      return chatList
+    if (currentConversationId || chatList.length > 1) return chatList
     // Without messages we are in the welcome screen, so hide the opening statement from chatlist
-    return chatList.filter(item => !item.isOpeningStatement)
+    return chatList.filter((item) => !item.isOpeningStatement)
   }, [chatList, currentConversationId])
 
   const isTryApp = appSourceType === AppSourceType.tryApp
   const [collapsed, setCollapsed] = useState(!!currentConversationId && !isTryApp) // try app always use the new chat
 
   const chatNode = useMemo(() => {
-    if (allInputsHidden || !inputsForms.length)
-      return null
+    if (allInputsHidden || !inputsForms.length) return null
     if (isMobile) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
       return <div className="mb-4"></div>
-    }
-    else {
+    } else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
   }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
 
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
-    if (isInstalledApp)
-      await submitHumanInputFormService(formToken, formData)
-    else
-      await submitHumanInputForm(formToken, formData)
-  }, [isInstalledApp])
+  const handleSubmitHumanInputForm = useCallback(
+    async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
+      else await submitHumanInputForm(formToken, formData)
+    },
+    [isInstalledApp],
+  )
 
   const welcome = useMemo(() => {
-    const welcomeMessage = chatList.find(item => item.isOpeningStatement)
-    if (respondingState)
-      return null
-    if (currentConversationId)
-      return null
-    if (!welcomeMessage)
-      return null
-    if (!collapsed && inputsForms.length > 0 && !allInputsHidden)
-      return null
-    if (!appData?.site)
-      return null
+    const welcomeMessage = chatList.find((item) => item.isOpeningStatement)
+    if (respondingState) return null
+    if (currentConversationId) return null
+    if (!welcomeMessage) return null
+    if (!collapsed && inputsForms.length > 0 && !allInputsHidden) return null
+    if (!appData?.site) return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
-        <div className={cn('flex items-center justify-center px-4 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
+        <div
+          className={cn(
+            'flex items-center justify-center px-4 py-12',
+            isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+          )}
+        >
           <div className="flex max-w-[720px] grow gap-4">
             <AppIcon
               size="xl"
@@ -272,7 +297,12 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
+      <div
+        className={cn(
+          'flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12',
+          isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]',
+        )}
+      >
         <AppIcon
           size="xl"
           iconType={appData?.site.icon_type}
@@ -281,24 +311,34 @@ const ChatWrapper = () => {
           imageUrl={appData?.site.icon_url}
         />
         <div className="max-w-[768px] px-4">
-          <Markdown className="body-2xl-regular! text-text-tertiary!" content={welcomeMessage.content} />
+          <Markdown
+            className="body-2xl-regular! text-text-tertiary!"
+            content={welcomeMessage.content}
+          />
         </div>
       </div>
     )
-  }, [chatList, respondingState, currentConversationId, collapsed, inputsForms.length, allInputsHidden, appData?.site, isMobile])
+  }, [
+    chatList,
+    respondingState,
+    currentConversationId,
+    collapsed,
+    inputsForms.length,
+    allInputsHidden,
+    appData?.site,
+    isMobile,
+  ])
 
-  const answerIcon = isDify()
-    ? <LogoAvatar className="relative shrink-0" />
-    : (appData?.site && appData.site.use_icon_as_answer_icon)
-        ? (
-            <AnswerIcon
-              iconType={appData.site.icon_type}
-              icon={appData.site.icon}
-              background={appData.site.icon_background}
-              imageUrl={appData.site.icon_url}
-            />
-          )
-        : null
+  const answerIcon = isDify() ? (
+    <LogoAvatar className="relative shrink-0" />
+  ) : appData?.site && appData.site.use_icon_as_answer_icon ? (
+    <AnswerIcon
+      iconType={appData.site.icon_type}
+      icon={appData.site.icon}
+      background={appData.site.icon_background}
+      imageUrl={appData.site.icon_url}
+    />
+  ) : null
 
   return (
     <Chat
@@ -307,21 +347,24 @@ const ChatWrapper = () => {
       config={appConfig}
       chatList={messageList}
       isResponding={respondingState}
-      chatContainerInnerClassName={cn('mx-auto w-full max-w-full px-4', messageList.length && 'pt-4')}
+      chatContainerInnerClassName={cn(
+        'mx-auto w-full max-w-full px-4',
+        messageList.length && 'pt-4',
+      )}
       chatFooterClassName={cn('pb-4', !isMobile && 'rounded-b-2xl')}
       chatFooterInnerClassName={cn('mx-auto w-full max-w-full px-4', isMobile && 'px-2')}
       onSend={doSend}
-      inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
+      inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       onHumanInputFormSubmit={handleSubmitHumanInputForm}
-      chatNode={(
+      chatNode={
         <>
           {chatNode}
           {welcome}
         </>
-      )}
+      }
       allToolIcons={appMeta?.tool_icons || {}}
       disableFeedback={disableFeedback}
       onFeedback={handleFeedback}
@@ -333,15 +376,13 @@ const ChatWrapper = () => {
       inputDisabled={inputDisabled}
       sendOnEnter={sendOnEnter}
       questionIcon={
-        initUserVariables?.avatar_url
-          ? (
-              <Avatar
-                avatar={initUserVariables.avatar_url}
-                name={initUserVariables.name || 'user'}
-                size="xl"
-              />
-            )
-          : undefined
+        initUserVariables?.avatar_url ? (
+          <Avatar
+            avatar={initUserVariables.avatar_url}
+            name={initUserVariables.name || 'user'}
+            size="xl"
+          />
+        ) : undefined
       }
     />
   )

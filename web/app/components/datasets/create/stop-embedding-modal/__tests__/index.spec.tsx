@@ -84,8 +84,12 @@ describe('StopEmbeddingModal', () => {
     it('should render buttons in correct order (cancel first, then confirm)', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' }),
+      ).toBeInTheDocument()
     })
 
     it('should render confirm button with primary variant styling', () => {
@@ -353,8 +357,7 @@ describe('StopEmbeddingModal', () => {
       // Act - Rapid clicks
       const confirmButton = screen.getByText('datasetCreation.stepThree.modelButtonConfirm')
       await act(async () => {
-        for (let i = 0; i < 10; i++)
-          fireEvent.click(confirmButton)
+        for (let i = 0; i < 10; i++) fireEvent.click(confirmButton)
       })
 
       expect(onConfirm).toHaveBeenCalledTimes(10)
@@ -369,8 +372,7 @@ describe('StopEmbeddingModal', () => {
       // Act - Rapid clicks
       const cancelButton = screen.getByText('datasetCreation.stepThree.modelButtonCancel')
       await act(async () => {
-        for (let i = 0; i < 10; i++)
-          fireEvent.click(cancelButton)
+        for (let i = 0; i < 10; i++) fireEvent.click(cancelButton)
       })
 
       expect(onHide).toHaveBeenCalledTimes(10)
@@ -405,13 +407,7 @@ describe('StopEmbeddingModal', () => {
     })
 
     it('should render with all required props', () => {
-      render(
-        <StopEmbeddingModal
-          show={true}
-          onConfirm={vi.fn()}
-          onHide={vi.fn()}
-        />,
-      )
+      render(<StopEmbeddingModal show={true} onConfirm={vi.fn()} onHide={vi.fn()} />)
 
       expect(screen.getByText('datasetCreation.stepThree.modelTitle'))!.toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepThree.modelContent'))!.toBeInTheDocument()
@@ -423,7 +419,9 @@ describe('StopEmbeddingModal', () => {
     it('should have buttons container with flex-row-reverse', () => {
       renderStopEmbeddingModal({ show: true })
 
-      const confirmButton = screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })
+      const confirmButton = screen.getByRole('button', {
+        name: 'datasetCreation.stepThree.modelButtonConfirm',
+      })
       expect(confirmButton.closest('div'))!.toHaveClass('flex', 'flex-row-reverse')
     })
 
@@ -437,8 +435,12 @@ describe('StopEmbeddingModal', () => {
     it('should render two action buttons', () => {
       renderStopEmbeddingModal({ show: true })
 
-      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -523,9 +525,12 @@ describe('StopEmbeddingModal', () => {
       })
 
       // Assert - Modal should transition to hidden (wait for transition)
-      await waitFor(() => {
-        expect(screen.queryByText('datasetCreation.stepThree.modelTitle')).not.toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.queryByText('datasetCreation.stepThree.modelTitle')).not.toBeInTheDocument()
+        },
+        { timeout: 3000 },
+      )
     })
   })
 
@@ -543,8 +548,12 @@ describe('StopEmbeddingModal', () => {
       renderStopEmbeddingModal({ show: true })
 
       expect(screen.getByRole('button', { name: /operation\.close$/ })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonCancel' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetCreation.stepThree.modelButtonConfirm' }),
+      ).toBeInTheDocument()
     })
 
     it('should have accessible text content', () => {

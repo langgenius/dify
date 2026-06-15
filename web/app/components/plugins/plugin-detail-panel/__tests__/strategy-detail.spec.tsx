@@ -111,9 +111,10 @@ describe('StrategyDetail', () => {
       render(<StrategyDetail provider={mockProvider} detail={mockDetail} onHide={mockOnHide} />)
 
       // Find the close button (ActionButton with action-btn class)
-      const closeButton = screen.getAllByRole('button').find(btn => btn.classList.contains('action-btn'))
-      if (closeButton)
-        fireEvent.click(closeButton)
+      const closeButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.classList.contains('action-btn'))
+      if (closeButton) fireEvent.click(closeButton)
 
       expect(mockOnHide).toHaveBeenCalledTimes(1)
     })
@@ -133,7 +134,9 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'number-input' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithNumber} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail provider={mockProvider} detail={detailWithNumber} onHide={mockOnHide} />,
+      )
 
       expect(screen.getByText('tools.setBuiltInTools.number'))!.toBeInTheDocument()
     })
@@ -143,7 +146,9 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'checkbox' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithCheckbox} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail provider={mockProvider} detail={detailWithCheckbox} onHide={mockOnHide} />,
+      )
 
       expect(screen.getByText('boolean'))!.toBeInTheDocument()
     })
@@ -163,7 +168,13 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'array[tools]' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithArrayTools} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail
+          provider={mockProvider}
+          detail={detailWithArrayTools}
+          onHide={mockOnHide}
+        />,
+      )
 
       expect(screen.getByText('multiple-tool-select'))!.toBeInTheDocument()
     })
@@ -173,7 +184,9 @@ describe('StrategyDetail', () => {
         ...mockDetail,
         parameters: [{ ...mockDetail.parameters[0]!, type: 'custom-type' }],
       }
-      render(<StrategyDetail provider={mockProvider} detail={detailWithUnknown} onHide={mockOnHide} />)
+      render(
+        <StrategyDetail provider={mockProvider} detail={detailWithUnknown} onHide={mockOnHide} />,
+      )
 
       expect(screen.getByText('custom-type'))!.toBeInTheDocument()
     })
@@ -188,7 +201,10 @@ describe('StrategyDetail', () => {
     })
 
     it('should handle no output schema', () => {
-      const detailNoOutput = { ...mockDetail, output_schema: undefined as unknown as Record<string, unknown> }
+      const detailNoOutput = {
+        ...mockDetail,
+        output_schema: undefined as unknown as Record<string, unknown>,
+      }
       render(<StrategyDetail provider={mockProvider} detail={detailNoOutput} onHide={mockOnHide} />)
 
       expect(screen.queryByText('OUTPUT')).not.toBeInTheDocument()

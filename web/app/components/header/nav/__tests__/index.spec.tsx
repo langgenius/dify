@@ -1,12 +1,6 @@
 import type { NavItem } from '../nav-selector'
 import type { AppContextValue } from '@/context/app-context'
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { vi } from 'vitest'
@@ -38,7 +32,10 @@ vi.mock('@/next/link', () => ({
     children,
     onClick,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string, children?: React.ReactNode }) => (
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    href: string
+    children?: React.ReactNode
+  }) => (
     <a
       href={href}
       onClick={(event) => {
@@ -148,9 +145,7 @@ describe('Nav Component', () => {
       vi.mocked(useSelectedLayoutSegment).mockReturnValue('other')
       const { container } = render(<Nav {...defaultProps} />)
       const navDiv = container.firstChild as HTMLElement
-      expect(navDiv.className).toContain(
-        'hover:bg-components-main-nav-nav-button-bg-hover',
-      )
+      expect(navDiv.className).toContain('hover:bg-components-main-nav-nav-button-bg-hover')
     })
   })
 
@@ -240,7 +235,7 @@ describe('Nav Component', () => {
       })
 
       const listItems = await screen.findAllByText('Item 1')
-      const listItem = listItems.find(el => el.closest('[role="menuitem"]'))
+      const listItem = listItems.find((el) => el.closest('[role="menuitem"]'))
 
       if (listItem) {
         await act(async () => {
@@ -326,8 +321,7 @@ describe('Nav Component', () => {
 
       const scrollContainer = await screen.findByRole('menu').then((menu) => {
         const container = menu.querySelector('.overflow-auto')
-        if (!container)
-          throw new Error('Not found')
+        if (!container) throw new Error('Not found')
         return container as HTMLElement
       })
 

@@ -98,13 +98,7 @@ describe('TaskStatusIndicator', () => {
     })
 
     it('should handle zero totalPluginsLength without division error', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstalling
-          totalPluginsLength={0}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isInstalling totalPluginsLength={0} />)
       const progress = screen.getByTestId('progress-circle')
       expect(progress).toHaveAttribute('data-value', '0')
     })
@@ -156,36 +150,20 @@ describe('TaskStatusIndicator', () => {
   describe('Failed state', () => {
     it('should show error icon when isFailed', () => {
       const { container } = render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          totalPluginsLength={2}
-        />,
+        <TaskStatusIndicator {...defaultProps} isFailed totalPluginsLength={2} />,
       )
       const errorIcon = container.querySelector('.text-text-destructive')
       expect(errorIcon).toBeInTheDocument()
     })
 
     it('should apply destructive styling when isFailed', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isFailed
-          totalPluginsLength={1}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isFailed totalPluginsLength={1} />)
       const button = document.getElementById('plugin-task-trigger')!
       expect(button.className).toContain('bg-state-destructive-hover')
     })
 
     it('should apply destructive styling when isInstallingWithError', () => {
-      render(
-        <TaskStatusIndicator
-          {...defaultProps}
-          isInstallingWithError
-          totalPluginsLength={2}
-        />,
-      )
+      render(<TaskStatusIndicator {...defaultProps} isInstallingWithError totalPluginsLength={2} />)
       const button = document.getElementById('plugin-task-trigger')!
       expect(button.className).toContain('bg-state-destructive-hover')
     })

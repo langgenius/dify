@@ -5,7 +5,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
+import {
+  useGetInstalledAppAccessModeByAppId,
+  useGetInstalledAppMeta,
+  useGetInstalledAppParams,
+  useGetInstalledApps,
+} from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import InstalledApp from '../index'
 
@@ -23,7 +28,11 @@ vi.mock('@/service/use-explore', () => ({
 }))
 
 vi.mock('@/app/components/share/text-generation', () => ({
-  default: ({ isInstalledApp, installedAppInfo, isWorkflow }: {
+  default: ({
+    isInstalledApp,
+    installedAppInfo,
+    isWorkflow,
+  }: {
     isInstalledApp?: boolean
     installedAppInfo?: InstalledAppType
     isWorkflow?: boolean
@@ -37,14 +46,15 @@ vi.mock('@/app/components/share/text-generation', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/chat-with-history', () => ({
-  default: ({ installedAppInfo, className }: {
+  default: ({
+    installedAppInfo,
+    className,
+  }: {
     installedAppInfo?: InstalledAppType
     className?: string
   }) => (
     <div data-testid="chat-with-history" className={className}>
-      Chat With History -
-      {' '}
-      {installedAppInfo?.id}
+      Chat With History - {installedAppInfo?.id}
     </div>
   ),
 }))
@@ -98,10 +108,7 @@ describe('InstalledApp', () => {
       isFetching?: boolean
     } = {},
   ) => {
-    const {
-      isPending = false,
-      isFetching = false,
-    } = options
+    const { isPending = false, isFetching = false } = options
 
     ;(useGetInstalledApps as Mock).mockReturnValue({
       data: { installed_apps: installedApps },
@@ -115,24 +122,26 @@ describe('InstalledApp', () => {
 
     setupMocks()
 
-    ;(useWebAppStore as unknown as Mock).mockImplementation((
-      selector: (state: {
-        updateAppInfo: Mock
-        updateWebAppAccessMode: Mock
-        updateAppParams: Mock
-        updateWebAppMeta: Mock
-        updateUserCanAccessApp: Mock
-      }) => unknown,
-    ) => {
-      const state = {
-        updateAppInfo: mockUpdateAppInfo,
-        updateWebAppAccessMode: mockUpdateWebAppAccessMode,
-        updateAppParams: mockUpdateAppParams,
-        updateWebAppMeta: mockUpdateWebAppMeta,
-        updateUserCanAccessApp: mockUpdateUserCanAccessApp,
-      }
-      return selector(state)
-    })
+    ;(useWebAppStore as unknown as Mock).mockImplementation(
+      (
+        selector: (state: {
+          updateAppInfo: Mock
+          updateWebAppAccessMode: Mock
+          updateAppParams: Mock
+          updateWebAppMeta: Mock
+          updateUserCanAccessApp: Mock
+        }) => unknown,
+      ) => {
+        const state = {
+          updateAppInfo: mockUpdateAppInfo,
+          updateWebAppAccessMode: mockUpdateWebAppAccessMode,
+          updateAppParams: mockUpdateAppParams,
+          updateWebAppMeta: mockUpdateWebAppMeta,
+          updateUserCanAccessApp: mockUpdateUserCanAccessApp,
+        }
+        return selector(state)
+      },
+    )
 
     ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
       isPending: false,

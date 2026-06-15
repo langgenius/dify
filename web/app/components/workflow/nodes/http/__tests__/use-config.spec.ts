@@ -141,25 +141,31 @@ describe('http/use-config', () => {
     const { result } = renderHook(() => useConfig('http-node', currentInputs))
 
     await waitFor(() => {
-      expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-        method: Method.get,
-        url: 'https://api.example.com',
-        body: {
-          type: BodyType.json,
-          data: [{
-            type: BodyPayloadValueType.text,
-            value: '{"name":"alice"}',
-          }],
-        },
-        ssl_verify: true,
-      }))
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: Method.get,
+          url: 'https://api.example.com',
+          body: {
+            type: BodyType.json,
+            data: [
+              {
+                type: BodyPayloadValueType.text,
+                value: '{"name":"alice"}',
+              },
+            ],
+          },
+          ssl_verify: true,
+        }),
+      )
     })
 
     expect(result.current.isDataReady).toBe(true)
     expect(result.current.readOnly).toBe(false)
     expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
     expect(result.current.handleAddVariable).toBe(mockHandleAddVariable)
-    expect(result.current.headers).toEqual([{ id: 'header-1', key: 'accept', value: 'application/json' }])
+    expect(result.current.headers).toEqual([
+      { id: 'header-1', key: 'accept', value: 'application/json' },
+    ])
     expect(result.current.setHeaders).toBe(headerSetList)
     expect(result.current.addHeader).toBe(headerAddItem)
     expect(result.current.isHeaderKeyValueEdit).toBe(true)
@@ -186,12 +192,14 @@ describe('http/use-config', () => {
     renderHook(() => useConfig('http-node', currentInputs))
 
     await waitFor(() => {
-      expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-        body: {
-          type: BodyType.formData,
-          data: [],
-        },
-      }))
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: {
+            type: BodyType.formData,
+            data: [],
+          },
+        }),
+      )
     })
   })
 
@@ -232,40 +240,58 @@ describe('http/use-config', () => {
 
     act(() => {
       result.current.hideCurlPanel()
-      result.current.handleCurlImport(createPayload({
-        method: Method.patch,
-        url: 'https://imported.example.com',
-        headers: 'authorization:Bearer imported',
-        params: 'debug:true',
-        body: { type: BodyType.json, data: [{ type: BodyPayloadValueType.text, value: '{"ok":true}' }] },
-      }))
+      result.current.handleCurlImport(
+        createPayload({
+          method: Method.patch,
+          url: 'https://imported.example.com',
+          headers: 'authorization:Bearer imported',
+          params: 'debug:true',
+          body: {
+            type: BodyType.json,
+            data: [{ type: BodyPayloadValueType.text, value: '{"ok":true}' }],
+          },
+        }),
+      )
       result.current.handleSSLVerifyChange(false)
     })
 
     expect(result.current.isShowAuthorization).toBe(false)
     expect(result.current.isShowCurlPanel).toBe(false)
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ method: Method.delete }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://changed.example.com' }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://changed.example.com' }),
+    )
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ headers: 'x-token:123' }))
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ params: 'size:20' }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      body: { type: BodyType.rawText, data: 'raw payload' },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      authorization: expect.objectContaining({
-        type: AuthorizationType.apiKey,
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: { type: BodyType.rawText, data: 'raw payload' },
       }),
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      timeout: { connect: 30, read: 40, write: 50 },
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      method: Method.patch,
-      url: 'https://imported.example.com',
-      headers: 'authorization:Bearer imported',
-      params: 'debug:true',
-      body: { type: BodyType.json, data: [{ type: BodyPayloadValueType.text, value: '{"ok":true}' }] },
-    }))
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorization: expect.objectContaining({
+          type: AuthorizationType.apiKey,
+        }),
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeout: { connect: 30, read: 40, write: 50 },
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        method: Method.patch,
+        url: 'https://imported.example.com',
+        headers: 'authorization:Bearer imported',
+        params: 'debug:true',
+        body: {
+          type: BodyType.json,
+          data: [{ type: BodyPayloadValueType.text, value: '{"ok":true}' }],
+        },
+      }),
+    )
     expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({ ssl_verify: false }))
   })
 })

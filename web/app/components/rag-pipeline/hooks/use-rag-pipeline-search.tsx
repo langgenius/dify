@@ -55,103 +55,104 @@ export const useRagPipelineSearch = () => {
         blockType: nodeData.type,
         nodeData,
         toolIcon: getToolIcon(nodeData),
-        modelInfo: nodeData.type === BlockEnum.LLM
-          ? {
-              provider: (nodeData as LLMNodeType).model?.provider,
-              name: (nodeData as LLMNodeType).model?.name,
-              mode: (nodeData as LLMNodeType).model?.mode,
-            }
-          : {
-              provider: undefined,
-              name: undefined,
-              mode: undefined,
-            },
+        modelInfo:
+          nodeData.type === BlockEnum.LLM
+            ? {
+                provider: (nodeData as LLMNodeType).model?.provider,
+                name: (nodeData as LLMNodeType).model?.name,
+                mode: (nodeData as LLMNodeType).model?.mode,
+              }
+            : {
+                provider: undefined,
+                name: undefined,
+                mode: undefined,
+              },
       }
     })
   }, [nodes, getToolIcon])
 
   // Calculate relevance score for search results
-  const calculateScore = useCallback((node: {
-    title: string
-    type: string
-    desc: string
-    modelInfo: { provider?: string, name?: string, mode?: string }
-  }, searchTerm: string): number => {
-    if (!searchTerm)
-      return 1
+  const calculateScore = useCallback(
+    (
+      node: {
+        title: string
+        type: string
+        desc: string
+        modelInfo: { provider?: string; name?: string; mode?: string }
+      },
+      searchTerm: string,
+    ): number => {
+      if (!searchTerm) return 1
 
-    let score = 0
-    const term = searchTerm.toLowerCase()
+      let score = 0
+      const term = searchTerm.toLowerCase()
 
-    // Title match (highest priority)
-    if (node.title.toLowerCase().includes(term))
-      score += 10
+      // Title match (highest priority)
+      if (node.title.toLowerCase().includes(term)) score += 10
 
-    // Type match
-    if (node.type.toLowerCase().includes(term))
-      score += 8
+      // Type match
+      if (node.type.toLowerCase().includes(term)) score += 8
 
-    // Description match
-    if (node.desc.toLowerCase().includes(term))
-      score += 5
+      // Description match
+      if (node.desc.toLowerCase().includes(term)) score += 5
 
-    // Model info matches (for LLM nodes)
-    if (node.modelInfo.provider?.toLowerCase().includes(term))
-      score += 6
-    if (node.modelInfo.name?.toLowerCase().includes(term))
-      score += 6
-    if (node.modelInfo.mode?.toLowerCase().includes(term))
-      score += 4
+      // Model info matches (for LLM nodes)
+      if (node.modelInfo.provider?.toLowerCase().includes(term)) score += 6
+      if (node.modelInfo.name?.toLowerCase().includes(term)) score += 6
+      if (node.modelInfo.mode?.toLowerCase().includes(term)) score += 4
 
-    return score
-  }, [])
+      return score
+    },
+    [],
+  )
 
   // Create search function for RAG pipeline nodes
-  const searchRagPipelineNodes = useCallback((query: string) => {
-    if (!searchableNodes.length)
-      return []
+  const searchRagPipelineNodes = useCallback(
+    (query: string) => {
+      if (!searchableNodes.length) return []
 
-    const searchTerm = query.toLowerCase().trim()
+      const searchTerm = query.toLowerCase().trim()
 
-    const results = searchableNodes
-      .map((node) => {
-        const score = calculateScore(node, searchTerm)
+      const results = searchableNodes
+        .map((node) => {
+          const score = calculateScore(node, searchTerm)
 
-        return score > 0
-          ? {
-              id: node.id,
-              title: node.title,
-              description: node.desc || node.type,
-              type: 'workflow-node' as const,
-              path: `#${node.id}`,
-              icon: (
-                <BlockIcon
-                  type={node.blockType}
-                  className="shrink-0"
-                  size="sm"
-                  toolIcon={node.toolIcon}
-                />
-              ),
-              metadata: {
-                nodeId: node.id,
-                nodeData: node.nodeData,
-              },
-              data: node.nodeData,
-              score,
-            }
-          : null
-      })
-      .filter((node): node is NonNullable<typeof node> => node !== null)
-      .sort((a, b) => {
-        // If no search term, sort alphabetically
-        if (!searchTerm)
-          return a.title.localeCompare(b.title)
-        // Sort by relevance score (higher score first)
-        return (b.score || 0) - (a.score || 0)
-      })
+          return score > 0
+            ? {
+                id: node.id,
+                title: node.title,
+                description: node.desc || node.type,
+                type: 'workflow-node' as const,
+                path: `#${node.id}`,
+                icon: (
+                  <BlockIcon
+                    type={node.blockType}
+                    className="shrink-0"
+                    size="sm"
+                    toolIcon={node.toolIcon}
+                  />
+                ),
+                metadata: {
+                  nodeId: node.id,
+                  nodeData: node.nodeData,
+                },
+                data: node.nodeData,
+                score,
+              }
+            : null
+        })
+        .filter((node): node is NonNullable<typeof node> => node !== null)
+        .sort((a, b) => {
+          // If no search term, sort alphabetically
+          if (!searchTerm) return a.title.localeCompare(b.title)
+          // Sort by relevance score (higher score first)
+          return (b.score || 0) - (a.score || 0)
+        })
 
-    return results
-  }, [searchableNodes, calculateScore])
+      return results
+    },
+    [searchableNodes, calculateScore],
+  )
 
   // Directly set the search function on the action object
   useEffect(() => {

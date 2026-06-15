@@ -57,7 +57,9 @@ const BasicInfoSection = ({
       {/* Dataset name and icon */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.nameAndIcon', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t('form.nameAndIcon', { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="flex grow items-center gap-x-2">
           <AppIcon
@@ -73,7 +75,7 @@ const BasicInfoSection = ({
           <Input
             disabled={!currentDataset?.embedding_available}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
           />
         </div>
       </div>
@@ -81,7 +83,9 @@ const BasicInfoSection = ({
       {/* Dataset description */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t('form.desc', { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="grow">
           <Textarea
@@ -90,7 +94,7 @@ const BasicInfoSection = ({
             className="resize-none"
             placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             value={description}
-            onValueChange={value => setDescription(value)}
+            onValueChange={(value) => setDescription(value)}
           />
         </div>
       </div>
@@ -98,14 +102,16 @@ const BasicInfoSection = ({
       {/* Permissions */}
       <div className={rowClass}>
         <div className={labelClass}>
-          <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
+          <div className="system-sm-semibold text-text-secondary">
+            {t('form.permissions', { ns: 'datasetSettings' })}
+          </div>
         </div>
         <div className="grow">
           <PermissionSelector
             disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
             permission={permission}
             value={selectedMemberIDs}
-            onChange={v => setPermission(v)}
+            onChange={(v) => setPermission(v)}
             onMemberSelect={setSelectedMemberIDs}
             memberList={memberList}
           />
@@ -115,9 +121,11 @@ const BasicInfoSection = ({
       {showAppIconPicker && (
         <AppIconPicker
           open={showAppIconPicker}
-          initialEmoji={iconInfo.icon_type === 'emoji'
-            ? { icon: iconInfo.icon, background: iconInfo.icon_background }
-            : undefined}
+          initialEmoji={
+            iconInfo.icon_type === 'emoji'
+              ? { icon: iconInfo.icon, background: iconInfo.icon_background }
+              : undefined
+          }
           onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
         />

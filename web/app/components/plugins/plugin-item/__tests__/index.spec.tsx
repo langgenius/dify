@@ -23,12 +23,12 @@ vi.mock('@/hooks/use-i18n', () => ({
   useRenderI18nObject: () => mockGetValueFromI18nObject,
 }))
 
-const mockCategoriesMap: Record<string, { name: string, label: string }> = {
-  'tool': { name: 'tool', label: 'Tools' },
-  'model': { name: 'model', label: 'Models' },
-  'extension': { name: 'extension', label: 'Extensions' },
+const mockCategoriesMap: Record<string, { name: string; label: string }> = {
+  tool: { name: 'tool', label: 'Tools' },
+  model: { name: 'model', label: 'Models' },
+  extension: { name: 'extension', label: 'Extensions' },
   'agent-strategy': { name: 'agent-strategy', label: 'Agents' },
-  'datasource': { name: 'datasource', label: 'Data Sources' },
+  datasource: { name: 'datasource', label: 'Data Sources' },
 }
 vi.mock('../../hooks', () => ({
   useCategories: () => ({
@@ -64,9 +64,11 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('../action', () => ({
-  default: ({ onDelete, pluginName }: { onDelete: () => void, pluginName: string }) => (
+  default: ({ onDelete, pluginName }: { onDelete: () => void; pluginName: string }) => (
     <div data-testid="plugin-action" data-plugin-name={pluginName}>
-      <button data-testid="delete-button" onClick={onDelete}>Delete</button>
+      <button data-testid="delete-button" onClick={onDelete}>
+        Delete
+      </button>
     </div>
   ),
 }))
@@ -84,11 +86,9 @@ vi.mock('../../card/base/description', () => ({
 }))
 
 vi.mock('../../card/base/org-info', () => ({
-  default: ({ orgName, packageName }: { orgName: string, packageName: string }) => (
+  default: ({ orgName, packageName }: { orgName: string; packageName: string }) => (
     <div data-testid="org-info" data-org={orgName} data-package={packageName}>
-      {orgName}
-      /
-      {packageName}
+      {orgName}/{packageName}
     </div>
   ),
 }))
@@ -98,12 +98,16 @@ vi.mock('../../base/badges/verified', () => ({
 }))
 
 vi.mock('../../../base/badge', () => ({
-  default: ({ text, hasRedCornerMark }: { text: string, hasRedCornerMark?: boolean }) => (
-    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>{text}</div>
+  default: ({ text, hasRedCornerMark }: { text: string; hasRedCornerMark?: boolean }) => (
+    <div data-testid="version-badge" data-has-update={hasRedCornerMark}>
+      {text}
+    </div>
   ),
 }))
 
-const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -637,7 +641,9 @@ describe('PluginItem', () => {
 
       // Assert
       const pluginContainer = container.firstChild as HTMLElement
-      expect(pluginContainer).not.toHaveClass('border-components-option-card-option-selected-border')
+      expect(pluginContainer).not.toHaveClass(
+        'border-components-option-card-option-selected-border',
+      )
     })
 
     it('should stop propagation when action area is clicked', () => {

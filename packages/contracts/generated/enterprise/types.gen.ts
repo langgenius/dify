@@ -974,8 +974,8 @@ export type ConsoleSsoOAuth2LoginResponses = {
   200: OAuth2LoginReply
 }
 
-export type ConsoleSsoOAuth2LoginResponse
-  = ConsoleSsoOAuth2LoginResponses[keyof ConsoleSsoOAuth2LoginResponses]
+export type ConsoleSsoOAuth2LoginResponse =
+  ConsoleSsoOAuth2LoginResponses[keyof ConsoleSsoOAuth2LoginResponses]
 
 export type ConsoleSsoOidcLoginData = {
   body?: never
@@ -988,8 +988,8 @@ export type ConsoleSsoOidcLoginResponses = {
   200: OidcReply
 }
 
-export type ConsoleSsoOidcLoginResponse
-  = ConsoleSsoOidcLoginResponses[keyof ConsoleSsoOidcLoginResponses]
+export type ConsoleSsoOidcLoginResponse =
+  ConsoleSsoOidcLoginResponses[keyof ConsoleSsoOidcLoginResponses]
 
 export type ConsoleSsoSamlLoginData = {
   body?: never
@@ -1002,8 +1002,8 @@ export type ConsoleSsoSamlLoginResponses = {
   200: SamlLoginReply
 }
 
-export type ConsoleSsoSamlLoginResponse
-  = ConsoleSsoSamlLoginResponses[keyof ConsoleSsoSamlLoginResponses]
+export type ConsoleSsoSamlLoginResponse =
+  ConsoleSsoSamlLoginResponses[keyof ConsoleSsoSamlLoginResponses]
 
 export type WebAppAuthGetWebAppAccessModeData = {
   body?: never
@@ -1018,8 +1018,8 @@ export type WebAppAuthGetWebAppAccessModeResponses = {
   200: GetWebAppAccessModeRes
 }
 
-export type WebAppAuthGetWebAppAccessModeResponse
-  = WebAppAuthGetWebAppAccessModeResponses[keyof WebAppAuthGetWebAppAccessModeResponses]
+export type WebAppAuthGetWebAppAccessModeResponse =
+  WebAppAuthGetWebAppAccessModeResponses[keyof WebAppAuthGetWebAppAccessModeResponses]
 
 export type WebAppAuthUpdateWebAppWhitelistSubjectsData = {
   body: UpdateWebAppWhitelistSubjectsReq
@@ -1032,8 +1032,8 @@ export type WebAppAuthUpdateWebAppWhitelistSubjectsResponses = {
   200: UpdateWebAppWhitelistSubjectsRes
 }
 
-export type WebAppAuthUpdateWebAppWhitelistSubjectsResponse
-  = WebAppAuthUpdateWebAppWhitelistSubjectsResponses[keyof WebAppAuthUpdateWebAppWhitelistSubjectsResponses]
+export type WebAppAuthUpdateWebAppWhitelistSubjectsResponse =
+  WebAppAuthUpdateWebAppWhitelistSubjectsResponses[keyof WebAppAuthUpdateWebAppWhitelistSubjectsResponses]
 
 export type WebAppAuthSearchForWhilteListCandidatesData = {
   body?: never
@@ -1051,8 +1051,8 @@ export type WebAppAuthSearchForWhilteListCandidatesResponses = {
   200: SearchForWhilteListCandidatesRes
 }
 
-export type WebAppAuthSearchForWhilteListCandidatesResponse
-  = WebAppAuthSearchForWhilteListCandidatesResponses[keyof WebAppAuthSearchForWhilteListCandidatesResponses]
+export type WebAppAuthSearchForWhilteListCandidatesResponse =
+  WebAppAuthSearchForWhilteListCandidatesResponses[keyof WebAppAuthSearchForWhilteListCandidatesResponses]
 
 export type WebAppAuthGetWebAppWhitelistSubjectsData = {
   body?: never
@@ -1067,8 +1067,8 @@ export type WebAppAuthGetWebAppWhitelistSubjectsResponses = {
   200: GetWebAppWhitelistSubjectsRes
 }
 
-export type WebAppAuthGetWebAppWhitelistSubjectsResponse
-  = WebAppAuthGetWebAppWhitelistSubjectsResponses[keyof WebAppAuthGetWebAppWhitelistSubjectsResponses]
+export type WebAppAuthGetWebAppWhitelistSubjectsResponse =
+  WebAppAuthGetWebAppWhitelistSubjectsResponses[keyof WebAppAuthGetWebAppWhitelistSubjectsResponses]
 
 export type WebAppAuthGetGroupSubjectsData = {
   body?: never
@@ -1083,8 +1083,8 @@ export type WebAppAuthGetGroupSubjectsResponses = {
   200: GetGroupSubjectsRes
 }
 
-export type WebAppAuthGetGroupSubjectsResponse
-  = WebAppAuthGetGroupSubjectsResponses[keyof WebAppAuthGetGroupSubjectsResponses]
+export type WebAppAuthGetGroupSubjectsResponse =
+  WebAppAuthGetGroupSubjectsResponses[keyof WebAppAuthGetGroupSubjectsResponses]
 
 export type WebAppAuthIsUserAllowedToAccessWebAppData = {
   body?: never
@@ -1099,5 +1099,5 @@ export type WebAppAuthIsUserAllowedToAccessWebAppResponses = {
   200: IsUserAllowedToAccessWebAppRes
 }
 
-export type WebAppAuthIsUserAllowedToAccessWebAppResponse
-  = WebAppAuthIsUserAllowedToAccessWebAppResponses[keyof WebAppAuthIsUserAllowedToAccessWebAppResponses]
+export type WebAppAuthIsUserAllowedToAccessWebAppResponse =
+  WebAppAuthIsUserAllowedToAccessWebAppResponses[keyof WebAppAuthIsUserAllowedToAccessWebAppResponses]

@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { createStore } from 'zustand'
 import { createOnlineDocumentSlice } from '../online-document'
 
-const createTestStore = () => createStore<OnlineDocumentSliceShape>((...args) => createOnlineDocumentSlice(...args))
+const createTestStore = () =>
+  createStore<OnlineDocumentSliceShape>((...args) => createOnlineDocumentSlice(...args))
 
 describe('createOnlineDocumentSlice', () => {
   it('should initialize with default values', () => {

@@ -79,7 +79,11 @@ describe('EmptyState', () => {
         } as unknown as Record<string, import('../../actions/types').ActionItem>
         render(<EmptyState variant="no-results" searchMode="general" Actions={Actions} />)
 
-        expect(screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":"@app, @plugin"}')).toBeInTheDocument()
+        expect(
+          screen.getByText(
+            'app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":"@app, @plugin"}',
+          ),
+        ).toBeInTheDocument()
       })
     })
 
@@ -109,7 +113,9 @@ describe('EmptyState', () => {
       it('should render no knowledge bases found message', () => {
         render(<EmptyState variant="no-results" searchMode="@knowledge" />)
 
-        expect(screen.getByText('app.gotoAnything.emptyState.noKnowledgeBasesFound')).toBeInTheDocument()
+        expect(
+          screen.getByText('app.gotoAnything.emptyState.noKnowledgeBasesFound'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -117,7 +123,9 @@ describe('EmptyState', () => {
       it('should render no workflow nodes found message', () => {
         render(<EmptyState variant="no-results" searchMode="@node" />)
 
-        expect(screen.getByText('app.gotoAnything.emptyState.noWorkflowNodesFound')).toBeInTheDocument()
+        expect(
+          screen.getByText('app.gotoAnything.emptyState.noWorkflowNodesFound'),
+        ).toBeInTheDocument()
       })
     })
 
@@ -140,7 +148,9 @@ describe('EmptyState', () => {
     it('should use empty object as default Actions', () => {
       render(<EmptyState variant="no-results" searchMode="general" />)
 
-      expect(screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":""}')).toBeInTheDocument()
+      expect(
+        screen.getByText('app.gotoAnything.emptyState.trySpecificSearch:{"shortcuts":""}'),
+      ).toBeInTheDocument()
     })
   })
 })

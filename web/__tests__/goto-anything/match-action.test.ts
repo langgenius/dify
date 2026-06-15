@@ -25,8 +25,7 @@ const actualMatchAction = (query: string, actions: Record<string, ActionItem>) =
         const cmdPattern = `/${cmd.name}`
 
         // For direct mode commands, don't match (keep in command selector)
-        if (cmd.mode === 'direct')
-          return false
+        if (cmd.mode === 'direct') return false
 
         // For submenu mode commands, match when complete command is entered
         return query === cmdPattern || query.startsWith(`${cmdPattern} `)

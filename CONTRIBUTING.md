@@ -34,11 +34,11 @@ Don't forget to link an existing issue or open a new issue in the PR's descripti
 
 How we prioritize:
 
-| Issue Type | Priority |
-| ------------------------------------------------------------ | --------------- |
-| Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical |
-| Non-critical bugs, performance boosts | Medium Priority |
-| Minor fixes (typos, confusing but working UI) | Low Priority |
+| Issue Type                                                                                         | Priority        |
+| -------------------------------------------------------------------------------------------------- | --------------- |
+| Bugs in core functions (cloud service, cannot login, applications not working, security loopholes) | Critical        |
+| Non-critical bugs, performance boosts                                                              | Medium Priority |
+| Minor fixes (typos, confusing but working UI)                                                      | Low Priority    |
 
 ### Feature requests
 
@@ -52,12 +52,12 @@ How we prioritize:
 
 How we prioritize:
 
-| Feature Type | Priority |
-| ------------------------------------------------------------ | --------------- |
-| High-Priority Features as being labeled by a team member | High Priority |
+| Feature Type                                                                                                                      | Priority        |
+| --------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| High-Priority Features as being labeled by a team member                                                                          | High Priority   |
 | Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
-| Non-core features and minor enhancements | Low Priority |
-| Valuable but not immediate | Future-Feature |
+| Non-core features and minor enhancements                                                                                          | Low Priority    |
+| Valuable but not immediate                                                                                                        | Future-Feature  |
 
 ## Submitting your PR
 

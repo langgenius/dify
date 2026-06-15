@@ -31,7 +31,7 @@ export default function TriggerEventsLimitModal({
       Icon={TriggerAll}
       title={t('triggerLimitModal.title', { ns: 'billing' })}
       description={t('triggerLimitModal.description', { ns: 'billing' })}
-      extraInfo={(
+      extraInfo={
         <UsageInfo
           className="mt-4 w-full rounded-xl bg-components-panel-on-panel-item-bg"
           Icon={TriggerAll}
@@ -41,7 +41,7 @@ export default function TriggerEventsLimitModal({
           resetInDays={resetInDays}
           hideIcon
         />
-      )}
+      }
     />
   )
 }

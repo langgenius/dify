@@ -22,7 +22,7 @@ vi.mock('../csv-downloader', () => ({
 let lastUploadedFile: File | undefined
 
 vi.mock('../csv-uploader', () => ({
-  default: ({ file, updateFile }: { file?: File, updateFile: (file?: File) => void }) => (
+  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <div>
       <button
         data-testid="mock-uploader"
@@ -132,7 +132,10 @@ describe('BatchModal', () => {
     const runButton = screen.getByRole('button', { name: 'appAnnotation.batchModal.run' })
     expect(runButton).not.toBeDisabled()
 
-    annotationBatchImportMock.mockResolvedValue({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
+    annotationBatchImportMock.mockResolvedValue({
+      job_id: 'job-1',
+      job_status: ProcessStatus.PROCESSING,
+    })
     checkAnnotationBatchImportProgressMock
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.PROCESSING })
       .mockResolvedValueOnce({ job_id: 'job-1', job_status: ProcessStatus.COMPLETED })

@@ -14,19 +14,41 @@ vi.mock('@langgenius/dify-ui/cn', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children, open }: { children: ReactNode, open: boolean }) => (
-    <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+  DropdownMenu: ({ children, open }: { children: ReactNode; open: boolean }) => (
+    <div data-testid="dropdown-menu" data-open={open}>
+      {children}
+    </div>
   ),
-  DropdownMenuTrigger: ({ children, className }: { children: ReactNode, className?: string }) => (
-    <button data-testid="dropdown-trigger" className={className}>{children}</button>
+  DropdownMenuTrigger: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <button data-testid="dropdown-trigger" className={className}>
+      {children}
+    </button>
   ),
   DropdownMenuContent: ({ children }: { children: ReactNode }) => (
     <div data-testid="dropdown-content">{children}</div>
   ),
-  DropdownMenuItem: ({ children, onClick, render, destructive }: { children: ReactNode, onClick?: () => void, render?: ReactElement, destructive?: boolean }) => {
+  DropdownMenuItem: ({
+    children,
+    onClick,
+    render,
+    destructive,
+  }: {
+    children: ReactNode
+    onClick?: () => void
+    render?: ReactElement
+    destructive?: boolean
+  }) => {
     if (render)
-      return cloneElement(render, { onClick, 'data-destructive': destructive } as Record<string, unknown>, children)
-    return <div data-testid="dropdown-item" data-destructive={destructive} onClick={onClick}>{children}</div>
+      return cloneElement(
+        render,
+        { onClick, 'data-destructive': destructive } as Record<string, unknown>,
+        children,
+      )
+    return (
+      <div data-testid="dropdown-item" data-destructive={destructive} onClick={onClick}>
+        {children}
+      </div>
+    )
   },
   DropdownMenuSeparator: () => <hr data-testid="dropdown-separator" />,
 }))
@@ -165,9 +187,7 @@ describe('OperationDropdown', () => {
       ]
 
       sources.forEach((source) => {
-        const { unmount } = render(
-          <OperationDropdown {...defaultProps} source={source} />,
-        )
+        const { unmount } = render(<OperationDropdown {...defaultProps} source={source} />)
         expect(screen.getByTestId('dropdown-menu')).toBeInTheDocument()
         expect(screen.getByText('plugin.detailPanel.operation.remove')).toBeInTheDocument()
         unmount()
@@ -175,10 +195,7 @@ describe('OperationDropdown', () => {
     })
 
     it('should handle different detail URLs', () => {
-      const urls = [
-        'https://github.com/owner/repo',
-        'https://marketplace.example.com/plugin/123',
-      ]
+      const urls = ['https://github.com/owner/repo', 'https://marketplace.example.com/plugin/123']
 
       urls.forEach((url) => {
         const { unmount } = render(

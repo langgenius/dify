@@ -46,57 +46,75 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/app/create-app-dialog', () => ({
-  default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) =>
-    show
-      ? (
-          <button
-            type="button"
-            data-testid="create-app-template-dialog"
-            onClick={() => {
-              onClose()
-              onSuccess()
-            }}
-          >
-            Create Template
-          </button>
-        )
-      : null,
+  default: ({
+    show,
+    onClose,
+    onSuccess,
+  }: {
+    show: boolean
+    onClose: () => void
+    onSuccess: () => void
+  }) =>
+    show ? (
+      <button
+        type="button"
+        data-testid="create-app-template-dialog"
+        onClick={() => {
+          onClose()
+          onSuccess()
+        }}
+      >
+        Create Template
+      </button>
+    ) : null,
 }))
 
 vi.mock('@/app/components/app/create-app-modal', () => ({
-  default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) =>
-    show
-      ? (
-          <button
-            type="button"
-            data-testid="create-app-modal"
-            onClick={() => {
-              onClose()
-              onSuccess()
-            }}
-          >
-            Create App
-          </button>
-        )
-      : null,
+  default: ({
+    show,
+    onClose,
+    onSuccess,
+  }: {
+    show: boolean
+    onClose: () => void
+    onSuccess: () => void
+  }) =>
+    show ? (
+      <button
+        type="button"
+        data-testid="create-app-modal"
+        onClick={() => {
+          onClose()
+          onSuccess()
+        }}
+      >
+        Create App
+      </button>
+    ) : null,
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
-  default: ({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) =>
-    show
-      ? (
-          <button
-            type="button"
-            data-testid="create-from-dsl-modal"
-            onClick={() => {
-              onClose()
-              onSuccess()
-            }}
-          >
-            Create from DSL
-          </button>
-        )
-      : null,
+  default: ({
+    show,
+    onClose,
+    onSuccess,
+  }: {
+    show: boolean
+    onClose: () => void
+    onSuccess: () => void
+  }) =>
+    show ? (
+      <button
+        type="button"
+        data-testid="create-from-dsl-modal"
+        onClick={() => {
+          onClose()
+          onSuccess()
+        }}
+      >
+        Create from DSL
+      </button>
+    ) : null,
 }))
 
 vi.mock('../../nav', () => ({
@@ -110,9 +128,9 @@ vi.mock('../../nav', () => ({
   }: {
     onCreate: (state: string) => void
     onLoadMore?: () => void
-    navigationItems?: Array<{ id: string, name: string, link: string }>
+    navigationItems?: Array<{ id: string; name: string; link: string }>
     activeSegment?: string | string[]
-    activeLink?: { segment: string, text: string, link: string }
+    activeLink?: { segment: string; text: string; link: string }
     text?: string
   }) => (
     <div data-testid="nav">
@@ -122,7 +140,7 @@ vi.mock('../../nav', () => ({
         <div data-testid="nav-active-link">{`${activeLink.segment}:${activeLink.text}->${activeLink.link}`}</div>
       )}
       <ul data-testid="nav-items">
-        {(navigationItems ?? []).map(item => (
+        {(navigationItems ?? []).map((item) => (
           <li key={item.id}>{`${item.name} -> ${item.link}`}</li>
         ))}
       </ul>
@@ -158,10 +176,10 @@ const mockUseParams = vi.mocked(useParams)
 const mockUseAppContext = vi.mocked(useAppContext)
 const mockUseAppStore = vi.mocked(useAppStore)
 const mockUseInfiniteQuery = vi.mocked(useInfiniteQuery)
-let mockAppDetail: { id: string, name: string } | null = null
+let mockAppDetail: { id: string; name: string } | null = null
 type AppListInfiniteOptions = {
-  input: (pageParam: number) => { query: { page: number, limit: number, name: string } }
-  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+  input: (pageParam: number) => { query: { page: number; limit: number; name: string } }
+  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
 }
 
 const setupDefaultMocks = (options?: {
@@ -175,8 +193,14 @@ const setupDefaultMocks = (options?: {
   const fetchNextPage = options?.fetchNextPage ?? vi.fn()
 
   mockUseParams.mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
-  mockUseAppContext.mockReturnValue({ isCurrentWorkspaceEditor: options?.isEditor ?? false } as ReturnType<typeof useAppContext>)
-  mockUseAppStore.mockImplementation((selector: unknown) => (selector as (state: { appDetail: { id: string, name: string } | null }) => unknown)({ appDetail: mockAppDetail }))
+  mockUseAppContext.mockReturnValue({
+    isCurrentWorkspaceEditor: options?.isEditor ?? false,
+  } as ReturnType<typeof useAppContext>)
+  mockUseAppStore.mockImplementation((selector: unknown) =>
+    (selector as (state: { appDetail: { id: string; name: string } | null }) => unknown)({
+      appDetail: mockAppDetail,
+    }),
+  )
   mockUseInfiniteQuery.mockReturnValue({
     data: { pages: [{ data: options?.appData ?? mockAppData }] },
     fetchNextPage,
@@ -217,8 +241,12 @@ describe('AppNav', () => {
     render(<AppNav />)
 
     expect(screen.getByTestId('nav-text')).toHaveTextContent('menus.apps')
-    expect(screen.getByTestId('nav-active-segment')).toHaveTextContent(JSON.stringify(['apps', 'app', 'snippets']))
-    expect(screen.getByTestId('nav-active-link')).toHaveTextContent('snippets:tabs.snippets->/snippets')
+    expect(screen.getByTestId('nav-active-segment')).toHaveTextContent(
+      JSON.stringify(['apps', 'app', 'snippets']),
+    )
+    expect(screen.getByTestId('nav-active-link')).toHaveTextContent(
+      'snippets:tabs.snippets->/snippets',
+    )
   })
 
   it('should build editor links and update app name when app detail changes', async () => {

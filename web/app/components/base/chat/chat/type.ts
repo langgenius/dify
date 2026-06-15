@@ -2,11 +2,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
-import type {
-  FileResponse,
-  HumanInputFilledFormData,
-  HumanInputFormData,
-} from '@/types/workflow'
+import type { FileResponse, HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 
 type MessageMore = {
   time: string
@@ -20,14 +16,8 @@ export type FeedbackType = {
   content?: string | null
 }
 
-export type FeedbackFunc = (
-  messageId: string,
-  feedback: FeedbackType,
-) => Promise<any>
-export type SubmitAnnotationFunc = (
-  messageId: string,
-  content: string,
-) => Promise<any>
+export type FeedbackFunc = (messageId: string, feedback: FeedbackType) => Promise<any>
+export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<any>
 
 export type ToolInfoInThought = {
   name: string
@@ -111,7 +101,7 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string, text: string, files?: FileEntity[] }[]
+  log?: { role: string; text: string; files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
   message_files?: FileEntity[]
   workflow_run_id?: string

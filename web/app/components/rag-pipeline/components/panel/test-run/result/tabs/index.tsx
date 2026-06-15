@@ -9,11 +9,7 @@ type TabsProps = {
   switchTab: (tab: string) => void
 }
 
-const Tabs = ({
-  currentTab,
-  workflowRunningData,
-  switchTab,
-}: TabsProps) => {
+const Tabs = ({ currentTab, workflowRunningData, switchTab }: TabsProps) => {
   const { t } = useTranslation()
   return (
     <div className="flex shrink-0 items-center gap-x-6 border-b-[0.5px] border-divider-subtle px-4">

@@ -12,12 +12,8 @@ const Header = () => {
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleClose = useCallback(() => {
-    const {
-      isPreparingDataSource,
-      setIsPreparingDataSource,
-    } = workflowStore.getState()
-    if (isPreparingDataSource)
-      setIsPreparingDataSource?.(false)
+    const { isPreparingDataSource, setIsPreparingDataSource } = workflowStore.getState()
+    if (isPreparingDataSource) setIsPreparingDataSource?.(false)
     handleCancelDebugAndPreviewPanel()
   }, [workflowStore])
 

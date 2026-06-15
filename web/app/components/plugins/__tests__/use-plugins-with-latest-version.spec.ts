@@ -49,9 +49,7 @@ describe('usePluginsWithLatestVersion', () => {
   })
 
   it('should disable latest-version querying when there are no marketplace plugins', () => {
-    const plugins = [
-      createPlugin({ plugin_id: 'github-plugin', source: PluginSource.github }),
-    ]
+    const plugins = [createPlugin({ plugin_id: 'github-plugin', source: PluginSource.github })]
 
     const { result } = renderHook(() => usePluginsWithLatestVersion(plugins))
 

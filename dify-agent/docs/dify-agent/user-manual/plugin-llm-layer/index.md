@@ -9,13 +9,13 @@ because that layer supplies the daemon identity and transport context.
 
 ## Config fields
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `plugin_id` | `str` | Plugin package id, for example `langgenius/openai`. |
-| `model_provider` | `str` | Provider name inside `plugin_id`. Use the value of `DIFY_AGENT_PROVIDER` from `dify-agent/.env`. |
-| `model` | `str` | Model name. Use the value of `DIFY_AGENT_MODEL_NAME` from `dify-agent/.env`. |
-| `credentials` | `dict[str, str \| int \| float \| bool \| None]` | Provider-specific credential object. |
-| `model_settings` | `ModelSettings \| None` | Optional pydantic-ai model settings. |
+| Field            | Type                                             | Meaning                                                                                          |
+| ---------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `plugin_id`      | `str`                                            | Plugin package id, for example `langgenius/openai`.                                              |
+| `model_provider` | `str`                                            | Provider name inside `plugin_id`. Use the value of `DIFY_AGENT_PROVIDER` from `dify-agent/.env`. |
+| `model`          | `str`                                            | Model name. Use the value of `DIFY_AGENT_MODEL_NAME` from `dify-agent/.env`.                     |
+| `credentials`    | `dict[str, str \| int \| float \| bool \| None]` | Provider-specific credential object.                                                             |
+| `model_settings` | `ModelSettings \| None`                          | Optional pydantic-ai model settings.                                                             |
 
 The plugin LLM layer type id is `dify.plugin.llm`.
 

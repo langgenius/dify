@@ -33,7 +33,7 @@ const OperationsDropdown = ({
           ? 'pointer-events-auto visible'
           : 'pointer-events-none invisible group-hover:pointer-events-auto group-hover:visible',
       )}
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
@@ -48,10 +48,7 @@ const OperationsDropdown = ({
         >
           <span className="i-ri-more-fill size-5 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          placement="bottom-end"
-          popupClassName="min-w-[186px]"
-        >
+        <DropdownMenuContent placement="bottom-end" popupClassName="min-w-[186px]">
           <Operations
             showDelete={!isCurrentWorkspaceDatasetOperator}
             showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}

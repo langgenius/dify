@@ -20,7 +20,7 @@ const COLUMN_PADDING = 2
 export function runEnvList(opts: RunEnvListOptions = {}): string {
   const lookup = opts.lookup ?? getEnv
   if (opts.json) {
-    const rows: EnvListJsonRow[] = ENV_REGISTRY.map(v => ({
+    const rows: EnvListJsonRow[] = ENV_REGISTRY.map((v) => ({
       name: v.name,
       description: v.description,
       sensitive: v.sensitive ?? false,
@@ -29,7 +29,7 @@ export function runEnvList(opts: RunEnvListOptions = {}): string {
     return `${JSON.stringify(rows, null, 2)}\n`
   }
   const header: readonly string[] = ['NAME', 'VALUE', 'DESCRIPTION']
-  const dataRows = ENV_REGISTRY.map(v => [
+  const dataRows = ENV_REGISTRY.map((v) => [
     v.name,
     displayValue(v.name, v.sensitive ?? false, lookup),
     v.description,
@@ -39,21 +39,18 @@ export function runEnvList(opts: RunEnvListOptions = {}): string {
 
 function displayValue(name: string, sensitive: boolean, lookup: EnvLookup): string {
   const raw = lookup(name) ?? ''
-  if (sensitive)
-    return raw === '' ? '<unset>' : '<set>'
+  if (sensitive) return raw === '' ? '<unset>' : '<set>'
   return raw === '' ? '<unset>' : raw
 }
 
 function renderTable(rows: readonly (readonly string[])[]): string {
-  if (rows.length === 0)
-    return ''
+  if (rows.length === 0) return ''
   const cols = rows[0]?.length ?? 0
   const widths: number[] = Array.from({ length: cols }, () => 0)
   for (const row of rows) {
     for (let i = 0; i < cols; i++) {
       const cell = row[i] ?? ''
-      if (cell.length > (widths[i] ?? 0))
-        widths[i] = cell.length
+      if (cell.length > (widths[i] ?? 0)) widths[i] = cell.length
     }
   }
   let out = ''

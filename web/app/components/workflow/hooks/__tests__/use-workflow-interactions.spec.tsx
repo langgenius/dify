@@ -1,8 +1,5 @@
 import { act } from '@testing-library/react'
-import {
-  createLoopNode,
-  createNode,
-} from '../../__tests__/fixtures'
+import { createLoopNode, createNode } from '../../__tests__/fixtures'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { ControlMode } from '../../types'
 import {
@@ -34,7 +31,7 @@ const mockInitialEdges = vi.hoisted(() => vi.fn((edges: unknown[], _nodes: unkno
 
 const runtimeState = vi.hoisted(() => ({
   nodes: [] as ReturnType<typeof createNode>[],
-  edges: [] as { id: string, source: string, target: string }[],
+  edges: [] as { id: string; source: string; target: string }[],
   nodesReadOnly: false,
   workflowReadOnly: false,
 }))
@@ -84,13 +81,15 @@ vi.mock('../use-selection-interactions', () => ({
 
 vi.mock('../use-nodes-interactions-without-sync', () => ({
   useNodesInteractionsWithoutSync: () => ({
-    handleNodeCancelRunningStatus: (...args: unknown[]) => mockHandleNodeCancelRunningStatus(...args),
+    handleNodeCancelRunningStatus: (...args: unknown[]) =>
+      mockHandleNodeCancelRunningStatus(...args),
   }),
 }))
 
 vi.mock('../use-edges-interactions-without-sync', () => ({
   useEdgesInteractionsWithoutSync: () => ({
-    handleEdgeCancelRunningStatus: (...args: unknown[]) => mockHandleEdgeCancelRunningStatus(...args),
+    handleEdgeCancelRunningStatus: (...args: unknown[]) =>
+      mockHandleEdgeCancelRunningStatus(...args),
   }),
 }))
 
@@ -109,13 +108,13 @@ vi.mock('../use-workflow-history', () => ({
   },
 }))
 
-vi.mock('../../utils', async importOriginal => ({
+vi.mock('../../utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../utils')>()),
   initialNodes: (nodes: unknown[], edges: unknown[]) => mockInitialNodes(nodes, edges),
   initialEdges: (edges: unknown[], nodes: unknown[]) => mockInitialEdges(edges, nodes),
 }))
 
-vi.mock('../../utils/elk-layout', async importOriginal => ({
+vi.mock('../../utils/elk-layout', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../utils/elk-layout')>()),
   getLayoutForChildNodes: (...args: unknown[]) => mockGetLayoutForChildNodes(...args),
   getLayoutByELK: (...args: unknown[]) => mockGetLayoutByELK(...args),
@@ -203,9 +202,7 @@ describe('use-workflow-interactions exports', () => {
     runtimeState.edges = []
     mockGetLayoutForChildNodes.mockResolvedValue({
       bounds: { minX: 0, minY: 0, maxX: 320, maxY: 220 },
-      nodes: new Map([
-        ['loop-child', { x: 40, y: 60, width: 100, height: 60 }],
-      ]),
+      nodes: new Map([['loop-child', { x: 40, y: 60, width: 100, height: 60 }]]),
     })
     mockGetLayoutByELK.mockResolvedValue({
       nodes: new Map([
@@ -225,14 +222,18 @@ describe('use-workflow-interactions exports', () => {
 
     expect(mockSetNodes).toHaveBeenCalledTimes(1)
     const nextNodes = mockSetNodes.mock.calls[0]![0]
-    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(expect.objectContaining({
-      width: expect.any(Number),
-      height: expect.any(Number),
-      position: { x: 10, y: 20 },
-    }))
-    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-child')).toEqual(expect.objectContaining({
-      position: { x: 100, y: 120 },
-    }))
+    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-node')).toEqual(
+      expect.objectContaining({
+        width: expect.any(Number),
+        height: expect.any(Number),
+        position: { x: 10, y: 20 },
+      }),
+    )
+    expect(nextNodes.find((node: { id: string }) => node.id === 'loop-child')).toEqual(
+      expect.objectContaining({
+        position: { x: 100, y: 120 },
+      }),
+    )
     expect(mockSetViewport).toHaveBeenCalledWith({ x: 0, y: 0, zoom: 0.7 })
     expect(mockSaveStateToHistory).toHaveBeenCalledWith('LayoutOrganize')
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalled()
@@ -304,9 +305,11 @@ describe('use-workflow-interactions exports', () => {
 
     expect(mockInitialNodes).toHaveBeenCalled()
     expect(mockInitialEdges).toHaveBeenCalled()
-    expect(mockEventEmit).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'WORKFLOW_DATA_UPDATE',
-    }))
+    expect(mockEventEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'WORKFLOW_DATA_UPDATE',
+      }),
+    )
     expect(mockSetViewport).toHaveBeenCalledTimes(1)
     expect(mockSetViewport).toHaveBeenCalledWith({ x: 10, y: 20, zoom: 0.5 })
   })

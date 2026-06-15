@@ -11,12 +11,7 @@ describe('list-operator/sub-variable-picker', () => {
     const user = userEvent.setup()
     const handleChange = vi.fn()
 
-    render(
-      <SubVariablePicker
-        value=""
-        onChange={handleChange}
-      />,
-    )
+    render(<SubVariablePicker value="" onChange={handleChange} />)
 
     expect(screen.getByText('common.placeholder.select')).toBeInTheDocument()
 
@@ -31,11 +26,7 @@ describe('list-operator/sub-variable-picker', () => {
     const handleChange = vi.fn()
 
     const { container } = render(
-      <SubVariablePicker
-        value="size"
-        onChange={handleChange}
-        className="custom-sub-variable"
-      />,
+      <SubVariablePicker value="size" onChange={handleChange} className="custom-sub-variable" />,
     )
 
     expect(container.firstChild).toHaveClass('custom-sub-variable')

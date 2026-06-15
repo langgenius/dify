@@ -19,18 +19,21 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
-import { RiArrowRightSLine, RiBookOpenLine, RiBuildingLine, RiEqualizer2Line, RiExternalLinkLine, RiGlobalLine, RiLockLine, RiPaintBrushLine, RiSettings2Line, RiVerifiedBadgeLine, RiWindowLine } from '@remixicon/react'
+  RiArrowRightSLine,
+  RiBookOpenLine,
+  RiBuildingLine,
+  RiEqualizer2Line,
+  RiExternalLinkLine,
+  RiGlobalLine,
+  RiLockLine,
+  RiPaintBrushLine,
+  RiSettings2Line,
+  RiVerifiedBadgeLine,
+  RiWindowLine,
+} from '@remixicon/react'
 import { Trans } from 'react-i18next'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Divider from '@/app/components/base/divider'
@@ -48,11 +51,11 @@ type AppInfo = AppDetailResponse & Partial<AppSSO>
 
 type OperationIcon = ComponentType<{ className?: string }>
 
-type AccessModeLabelKey
-  = | 'accessControlDialog.accessItems.organization'
-    | 'accessControlDialog.accessItems.specific'
-    | 'accessControlDialog.accessItems.anyone'
-    | 'accessControlDialog.accessItems.external'
+type AccessModeLabelKey =
+  | 'accessControlDialog.accessItems.organization'
+  | 'accessControlDialog.accessItems.specific'
+  | 'accessControlDialog.accessItems.anyone'
+  | 'accessControlDialog.accessItems.external'
 
 type AppCardOperation = {
   key: OverviewOperationKey
@@ -101,15 +104,12 @@ const MaybeTooltip = ({
   tooltipClassName?: string
   show?: boolean
 }) => {
-  if (!show || !content)
-    return <>{children}</>
+  if (!show || !content) return <>{children}</>
 
   return (
     <Tooltip>
       <TooltipTrigger render={<div>{children}</div>} />
-      <TooltipContent className={tooltipClassName}>
-        {content}
-      </TooltipContent>
+      <TooltipContent className={tooltipClassName}>{content}</TooltipContent>
     </Tooltip>
   )
 }
@@ -133,8 +133,7 @@ export const WorkflowLaunchDialog = ({
   onValueChange: (variable: string, value: WorkflowLaunchInputValue) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) => {
-  if (!hiddenVariables.length && !unsupportedVariables.length)
-    return null
+  if (!hiddenVariables.length && !unsupportedVariables.length) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,7 +209,7 @@ export const createAppCardOperations = ({
   }
 
   return operationKeys.map((key) => {
-    const disabled = triggerModeDisabled ? true : (key === 'settings' ? false : !runningStatus)
+    const disabled = triggerModeDisabled ? true : key === 'settings' ? false : !runningStatus
     return {
       key,
       label: labelMap[key],
@@ -250,14 +249,15 @@ export const AppCardUrlSection = ({
     </div>
     <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
       <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-        <div className="truncate text-xs font-medium text-text-secondary">
-          {accessibleUrl}
-        </div>
+        <div className="truncate text-xs font-medium text-text-secondary">{accessibleUrl}</div>
       </div>
       <CopyFeedback content={accessibleUrl} className="size-6!" />
       {isApp && <ShareQRCode content={accessibleUrl} />}
       {isApp && <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />}
-      <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && onHideRegenerateConfirm()}>
+      <AlertDialog
+        open={showConfirmDelete}
+        onOpenChange={(open) => !open && onHideRegenerateConfirm()}
+      >
         <AlertDialogContent>
           <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
@@ -283,7 +283,9 @@ export const AppCardUrlSection = ({
             className="size-6 cursor-pointer rounded-md hover:bg-state-base-hover"
             onClick={onShowRegenerateConfirm}
           >
-            <div className={`size-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`} />
+            <div
+              className={`size-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
+            />
           </div>
         </MaybeTooltip>
       )}
@@ -307,7 +309,9 @@ export const AppCardAccessControlSection = ({
 
   return (
     <div className="flex flex-col items-start justify-center self-stretch">
-      <div className="pb-1 system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
+      <div className="pb-1 system-xs-medium text-text-tertiary">
+        {t('publishApp.title', { ns: 'app' })}
+      </div>
       <div
         className="flex h-9 w-full cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5"
         onClick={onClick}
@@ -316,7 +320,11 @@ export const AppCardAccessControlSection = ({
           <Icon className="size-4 shrink-0 text-text-secondary" />
           <p className="system-sm-medium text-text-secondary">{t(labelKey, { ns: 'app' })}</p>
         </div>
-        {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+        {!isAppAccessSet && (
+          <p className="shrink-0 system-xs-regular text-text-tertiary">
+            {t('publishApp.notSet', { ns: 'app' })}
+          </p>
+        )}
         <div className="flex size-4 shrink-0 items-center justify-center">
           <RiArrowRightSLine className="size-4 text-text-quaternary" />
         </div>
@@ -344,7 +352,11 @@ export const AppCardOperations = ({
         >
           <div className="flex items-center justify-center gap-px">
             <Icon className="size-3.5" />
-            <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}>{label}</div>
+            <div
+              className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}
+            >
+              {label}
+            </div>
           </div>
         </MaybeTooltip>
       )
@@ -372,10 +384,7 @@ export const AppCardOperations = ({
                 </div>
               </Button>
             </MaybeTooltip>
-            <div
-              aria-hidden="true"
-              className="h-6 w-px shrink-0 bg-divider-regular opacity-100"
-            />
+            <div aria-hidden="true" className="h-6 w-px shrink-0 bg-divider-regular opacity-100" />
             <Button
               aria-label={launchConfigAction.label}
               className="w-8 rounded-l-none border-0 p-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg-hover"
@@ -443,8 +452,7 @@ export const AppCardDialogs = ({
   onConfirmAccessControl: () => Promise<void>
   hiddenInputs?: WorkflowHiddenStartVariable[]
 }) => {
-  if (!isApp)
-    return null
+  if (!isApp) return null
 
   return (
     <>

@@ -12,7 +12,10 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
+import {
+  useInvalidateConversationVarValues,
+  useInvalidateSysVarValues,
+} from '@/service/use-workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
@@ -22,10 +25,7 @@ type Params = {
   flowId: string
 }
 
-export const useSetWorkflowVarsWithValue = ({
-  flowType,
-  flowId,
-}: Params) => {
+export const useSetWorkflowVarsWithValue = ({ flowType, flowId }: Params) => {
   const workflowStore = useWorkflowStore()
   const store = useStoreApi()
   const invalidateConversationVarValues = useInvalidateConversationVarValues(flowType, flowId)
@@ -36,7 +36,7 @@ export const useSetWorkflowVarsWithValue = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
-  const dataSourceList = useStore(s => s.dataSourceList)
+  const dataSourceList = useStore((s) => s.dataSourceList)
 
   const allPluginInfoList = useMemo(() => {
     return {
@@ -48,71 +48,98 @@ export const useSetWorkflowVarsWithValue = ({
     }
   }, [buildInTools, customTools, workflowTools, mcpTools, dataSourceList])
 
-  const setInspectVarsToStore = useCallback((inspectVars: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]) => {
-    const { setNodesWithInspectVars } = workflowStore.getState()
-    const { getNodes } = store.getState()
+  const setInspectVarsToStore = useCallback(
+    (
+      inspectVars: VarInInspect[],
+      passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>,
+      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[],
+    ) => {
+      const { setNodesWithInspectVars } = workflowStore.getState()
+      const { getNodes } = store.getState()
 
-    const nodeArr = getNodes()
-    const allNodesOutputVars = toNodeOutputVars(nodeArr, false, () => true, [], [], [], passedInAllPluginInfoList || allPluginInfoList, passedInSchemaTypeDefinitions || schemaTypeDefinitions)
+      const nodeArr = getNodes()
+      const allNodesOutputVars = toNodeOutputVars(
+        nodeArr,
+        false,
+        () => true,
+        [],
+        [],
+        [],
+        passedInAllPluginInfoList || allPluginInfoList,
+        passedInSchemaTypeDefinitions || schemaTypeDefinitions,
+      )
 
-    const nodesKeyValue: Record<string, Node> = {}
-    nodeArr.forEach((node) => {
-      nodesKeyValue[node.id] = node
-    })
-
-    const withValueNodeIds: Record<string, boolean> = {}
-    inspectVars.forEach((varItem) => {
-      const nodeId = varItem.selector[0]
-
-      const node = nodesKeyValue[nodeId!]
-      if (!node)
-        return
-      withValueNodeIds[nodeId!] = true
-    })
-    const withValueNodes = Object.keys(withValueNodeIds).map((nodeId) => {
-      return nodesKeyValue[nodeId]
-    })
-
-    const res: NodeWithVar[] = withValueNodes.map((node) => {
-      const nodeId = node!.id
-      const varsUnderTheNode = inspectVars.filter((varItem) => {
-        return varItem.selector[0] === nodeId
+      const nodesKeyValue: Record<string, Node> = {}
+      nodeArr.forEach((node) => {
+        nodesKeyValue[node.id] = node
       })
-      const nodeVar = allNodesOutputVars.find(item => item.nodeId === nodeId)
 
-      const nodeWithVar = {
-        nodeId,
-        nodePayload: node!.data,
-        nodeType: node!.data.type,
-        title: node!.data.title,
-        vars: varsUnderTheNode.map((item) => {
-          const schemaType = nodeVar ? nodeVar.vars.find(v => v.variable === item.name)?.schemaType : ''
-          return {
-            ...item,
-            schemaType,
-          }
-        }),
-        isSingRunRunning: false,
-        isValueFetched: false,
-      }
-      return nodeWithVar
-    })
-    setNodesWithInspectVars(res)
-  }, [workflowStore, store, allPluginInfoList, schemaTypeDefinitions])
+      const withValueNodeIds: Record<string, boolean> = {}
+      inspectVars.forEach((varItem) => {
+        const nodeId = varItem.selector[0]
 
-  const fetchInspectVars = useCallback(async (params: {
-    passInVars?: boolean
-    vars?: VarInInspect[]
-    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
-    passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
-  }) => {
-    const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
-    invalidateConversationVarValues()
-    invalidateSysVarValues()
-    const data = passInVars ? vars! : await fetchAllInspectVars(flowType, flowId)
-    setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
-    handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
-  }, [invalidateConversationVarValues, invalidateSysVarValues, flowType, flowId, setInspectVarsToStore, handleCancelAllNodeSuccessStatus])
+        const node = nodesKeyValue[nodeId!]
+        if (!node) return
+        withValueNodeIds[nodeId!] = true
+      })
+      const withValueNodes = Object.keys(withValueNodeIds).map((nodeId) => {
+        return nodesKeyValue[nodeId]
+      })
+
+      const res: NodeWithVar[] = withValueNodes.map((node) => {
+        const nodeId = node!.id
+        const varsUnderTheNode = inspectVars.filter((varItem) => {
+          return varItem.selector[0] === nodeId
+        })
+        const nodeVar = allNodesOutputVars.find((item) => item.nodeId === nodeId)
+
+        const nodeWithVar = {
+          nodeId,
+          nodePayload: node!.data,
+          nodeType: node!.data.type,
+          title: node!.data.title,
+          vars: varsUnderTheNode.map((item) => {
+            const schemaType = nodeVar
+              ? nodeVar.vars.find((v) => v.variable === item.name)?.schemaType
+              : ''
+            return {
+              ...item,
+              schemaType,
+            }
+          }),
+          isSingRunRunning: false,
+          isValueFetched: false,
+        }
+        return nodeWithVar
+      })
+      setNodesWithInspectVars(res)
+    },
+    [workflowStore, store, allPluginInfoList, schemaTypeDefinitions],
+  )
+
+  const fetchInspectVars = useCallback(
+    async (params: {
+      passInVars?: boolean
+      vars?: VarInInspect[]
+      passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
+      passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+    }) => {
+      const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params
+      invalidateConversationVarValues()
+      invalidateSysVarValues()
+      const data = passInVars ? vars! : await fetchAllInspectVars(flowType, flowId)
+      setInspectVarsToStore(data, passedInAllPluginInfoList, passedInSchemaTypeDefinitions)
+      handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
+    },
+    [
+      invalidateConversationVarValues,
+      invalidateSysVarValues,
+      flowType,
+      flowId,
+      setInspectVarsToStore,
+      handleCancelAllNodeSuccessStatus,
+    ],
+  )
 
   return {
     fetchInspectVars,

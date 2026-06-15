@@ -26,12 +26,10 @@ type CreatorOption = {
   isYou: boolean
 }
 
-const baseChipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
+const baseChipClassName =
+  'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
 
-const CreatorsFilter = ({
-  value,
-  onChange,
-}: CreatorsFilterProps) => {
+const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
   const { data: membersData } = useMembers()
@@ -42,15 +40,13 @@ const CreatorsFilter = ({
     const members = membersData?.accounts ?? []
 
     return [...members]
-      .filter(member => member.status !== 'pending')
+      .filter((member) => member.status !== 'pending')
       .sort((left, right) => {
-        if (left.id === currentUserId)
-          return -1
-        if (right.id === currentUserId)
-          return 1
+        if (left.id === currentUserId) return -1
+        if (right.id === currentUserId) return 1
         return left.name.localeCompare(right.name)
       })
-      .map(member => ({
+      .map((member) => ({
         id: member.id,
         name: member.name,
         avatarUrl: member.avatar_url,
@@ -60,8 +56,7 @@ const CreatorsFilter = ({
 
   const filteredCreators = useMemo(() => {
     const normalizedKeywords = keywords.trim().toLowerCase()
-    if (!normalizedKeywords)
-      return creatorOptions
+    if (!normalizedKeywords) return creatorOptions
 
     return creatorOptions.filter((creator) => {
       const keyword = normalizedKeywords
@@ -70,20 +65,23 @@ const CreatorsFilter = ({
   }, [creatorOptions, keywords])
 
   const selectedCreators = useMemo(() => {
-    const creatorMap = new Map(creatorOptions.map(creator => [creator.id, creator]))
+    const creatorMap = new Map(creatorOptions.map((creator) => [creator.id, creator]))
     return value
-      .map(id => creatorMap.get(id))
+      .map((id) => creatorMap.get(id))
       .filter((creator): creator is CreatorOption => Boolean(creator))
   }, [creatorOptions, value])
 
-  const toggleCreator = useCallback((creatorId: string) => {
-    if (value.includes(creatorId)) {
-      onChange(value.filter(id => id !== creatorId))
-      return
-    }
+  const toggleCreator = useCallback(
+    (creatorId: string) => {
+      if (value.includes(creatorId)) {
+        onChange(value.filter((id) => id !== creatorId))
+        return
+      }
 
-    onChange([...value, creatorId])
-  }, [onChange, value])
+      onChange([...value, creatorId])
+    },
+    [onChange, value],
+  )
 
   const resetCreators = useCallback(() => {
     onChange([])
@@ -97,7 +95,7 @@ const CreatorsFilter = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={(
+        render={
           <button
             type="button"
             className={cn(
@@ -107,18 +105,25 @@ const CreatorsFilter = ({
                 : 'border-transparent bg-components-input-bg-normal text-text-tertiary hover:bg-components-input-bg-hover',
             )}
           />
-        )}
+        }
       >
         <span aria-hidden className="i-ri-user-shared-line h-4 w-4 shrink-0 text-text-tertiary" />
         {!isSelected && (
           <>
-            <span className="px-1 text-text-tertiary">{t('studio.filters.allCreators', { ns: 'app' })}</span>
-            <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
+            <span className="px-1 text-text-tertiary">
+              {t('studio.filters.allCreators', { ns: 'app' })}
+            </span>
+            <span
+              aria-hidden
+              className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary"
+            />
           </>
         )}
         {isSelected && (
           <>
-            <span className="px-1 text-text-tertiary">{t('studio.filters.creators', { ns: 'app' })}</span>
+            <span className="px-1 text-text-tertiary">
+              {t('studio.filters.creators', { ns: 'app' })}
+            </span>
             <span className="flex items-center pr-1">
               {selectedAvatarCreators.map((creator, index) => (
                 <Avatar
@@ -126,10 +131,7 @@ const CreatorsFilter = ({
                   avatar={creator.avatarUrl}
                   name={creator.name}
                   size="xs"
-                  className={cn(
-                    'border border-components-panel-bg',
-                    index > 0 && '-ml-1',
-                  )}
+                  className={cn('border border-components-panel-bg', index > 0 && '-ml-1')}
                 />
               ))}
             </span>
@@ -144,8 +146,7 @@ const CreatorsFilter = ({
                 resetCreators()
               }}
               onKeyDown={(event) => {
-                if (event.key !== 'Enter' && event.key !== ' ')
-                  return
+                if (event.key !== 'Enter' && event.key !== ' ') return
 
                 event.preventDefault()
                 event.stopPropagation()
@@ -160,11 +161,14 @@ const CreatorsFilter = ({
       <DropdownMenuContent placement="bottom-start" popupClassName="w-[280px] p-0">
         <div className="flex items-center gap-1 p-2 pb-1">
           <div className="relative min-w-0 grow">
-            <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+            />
             <Input
               className={cn('pl-6.5', keywords && 'pr-6.5')}
               value={keywords}
-              onChange={e => setKeywords(e.target.value)}
+              onChange={(e) => setKeywords(e.target.value)}
               placeholder={t('studio.filters.searchCreators', { ns: 'app' })}
             />
             {!!keywords && (
@@ -199,11 +203,7 @@ const CreatorsFilter = ({
                 className="flex w-full items-center gap-1 rounded-md px-2 py-1.5 hover:bg-state-base-hover"
                 onClick={() => toggleCreator(creator.id)}
               >
-                <Checkbox
-                  id={creator.id}
-                  checked={checked}
-                  className="shrink-0"
-                />
+                <Checkbox id={creator.id} checked={checked} className="shrink-0" />
                 <div className="flex min-w-0 grow items-center gap-2 px-1">
                   <Avatar
                     avatar={creator.avatarUrl}
@@ -214,7 +214,9 @@ const CreatorsFilter = ({
                   <div className="flex min-w-0 grow items-center justify-between gap-2">
                     <span className="truncate text-sm text-text-secondary">{creator.name}</span>
                     {creator.isYou && (
-                      <span className="shrink-0 text-sm text-text-quaternary">{t('studio.filters.you', { ns: 'app' })}</span>
+                      <span className="shrink-0 text-sm text-text-quaternary">
+                        {t('studio.filters.you', { ns: 'app' })}
+                      </span>
                     )}
                   </div>
                 </div>

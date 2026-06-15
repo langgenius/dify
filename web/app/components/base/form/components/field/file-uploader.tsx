@@ -23,14 +23,10 @@ const FileUploaderField = ({
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        {...(labelOptions ?? {})}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
       <FileUploaderInAttachmentWrapper
         value={field.state.value}
-        onChange={value => field.handleChange(value)}
+        onChange={(value) => field.handleChange(value)}
         {...inputProps}
       />
     </div>

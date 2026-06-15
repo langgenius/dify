@@ -1,9 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
-import {
-  Radio,
-  RadioSkeleton,
-} from '.'
+import { Radio, RadioSkeleton } from '.'
 import { FieldItem, FieldLabel, FieldRoot } from '../field'
 import { FieldsetLegend, FieldsetRoot } from '../fieldset'
 import { RadioGroup } from '../radio-group'
@@ -15,7 +12,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Radio primitive built on Base UI. It preserves RadioGroup selection, hidden input, disabled, and form semantics while applying the Dify 16px radio design from Figma. Import from `@langgenius/dify-ui/radio` and place radios inside `RadioGroup` from `@langgenius/dify-ui/radio-group`.',
+        component:
+          'Radio primitive built on Base UI. It preserves RadioGroup selection, hidden input, disabled, and form semantics while applying the Dify 16px radio design from Figma. Import from `@langgenius/dify-ui/radio` and place radios inside `RadioGroup` from `@langgenius/dify-ui/radio-group`.',
       },
     },
   },
@@ -41,9 +39,13 @@ function RadioDemo(args: Partial<React.ComponentProps<typeof Radio>>) {
   return (
     <FieldRoot name="storageType">
       <FieldsetRoot
-        render={(
-          <RadioGroup value={value} onValueChange={setValue} className="flex-col items-start gap-3" />
-        )}
+        render={
+          <RadioGroup
+            value={value}
+            onValueChange={setValue}
+            className="flex-col items-start gap-3"
+          />
+        }
       >
         <FieldsetLegend>Storage type</FieldsetLegend>
         <FieldItem>
@@ -64,7 +66,7 @@ function RadioDemo(args: Partial<React.ComponentProps<typeof Radio>>) {
 }
 
 export const Default: Story = {
-  render: args => <RadioDemo {...args} />,
+  render: (args) => <RadioDemo {...args} />,
   args: {
     disabled: false,
   },
@@ -102,7 +104,9 @@ export const StateMatrix: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
       <FieldRoot name="radioStates">
-        <FieldsetRoot render={<RadioGroup value="checked" className="flex-col items-start gap-3" />}>
+        <FieldsetRoot
+          render={<RadioGroup value="checked" className="flex-col items-start gap-3" />}
+        >
           <FieldsetLegend>Radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
@@ -139,7 +143,8 @@ export const StateMatrix: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'The full visual matrix for Dify radio states. State styling comes from Base UI data attributes such as data-checked and data-disabled.',
+        story:
+          'The full visual matrix for Dify radio states. State styling comes from Base UI data attributes such as data-checked and data-disabled.',
       },
     },
   },

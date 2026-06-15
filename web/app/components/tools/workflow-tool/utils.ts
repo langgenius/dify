@@ -1,13 +1,15 @@
-import type { WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema } from '../types'
+import type {
+  WorkflowToolProviderOutputParameter,
+  WorkflowToolProviderOutputSchema,
+} from '../types'
 import { VarType } from '@/app/components/workflow/types'
 
 const validVarTypes = new Set<string>(Object.values(VarType))
 
 const normalizeVarType = (type?: string): VarType | undefined => {
-  if (!type)
-    return undefined
+  if (!type) return undefined
 
-  return validVarTypes.has(type) ? type as VarType : undefined
+  return validVarTypes.has(type) ? (type as VarType) : undefined
 }
 
 export const buildWorkflowOutputParameters = (
@@ -17,8 +19,7 @@ export const buildWorkflowOutputParameters = (
   const schemaProperties = outputSchema?.properties
 
   if (Array.isArray(outputParameters) && outputParameters.length > 0) {
-    if (!schemaProperties)
-      return outputParameters
+    if (!schemaProperties) return outputParameters
 
     return outputParameters.map((item) => {
       const schema = schemaProperties[item.name]
@@ -30,8 +31,7 @@ export const buildWorkflowOutputParameters = (
     })
   }
 
-  if (!schemaProperties)
-    return []
+  if (!schemaProperties) return []
 
   return Object.entries(schemaProperties).map(([name, schema]) => ({
     name,

@@ -4,7 +4,14 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
-import { AppCardAccessControlSection, AppCardDialogs, AppCardOperations, AppCardUrlSection, createAppCardOperations, WorkflowLaunchDialog } from '../app-card-sections'
+import {
+  AppCardAccessControlSection,
+  AppCardDialogs,
+  AppCardOperations,
+  AppCardUrlSection,
+  createAppCardOperations,
+  WorkflowLaunchDialog,
+} from '../app-card-sections'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -26,10 +33,14 @@ vi.mock('../customize', () => ({
 }))
 
 vi.mock('../../app-access-control', () => ({
-  default: ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) => (
+  default: ({ onClose, onConfirm }: { onClose: () => void; onConfirm: () => void }) => (
     <div data-testid="access-control">
-      <button type="button" onClick={onClose}>close-access</button>
-      <button type="button" onClick={onConfirm}>confirm-access</button>
+      <button type="button" onClick={onClose}>
+        close-access
+      </button>
+      <button type="button" onClick={onConfirm}>
+        confirm-access
+      </button>
     </div>
   ),
 }))
@@ -112,7 +123,9 @@ describe('app-card-sections', () => {
 
     expect(onLaunch).toHaveBeenCalledTimes(1)
     expect(onLaunchConfig).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /overview\.appInfo\.embedded\.entry/i }),
+    ).toBeInTheDocument()
   })
 
   it('should keep customize available for web app cards that are not completion or workflow apps', () => {
@@ -128,12 +141,7 @@ describe('app-card-sections', () => {
       onDevelop: vi.fn(),
     })
 
-    render(
-      <AppCardOperations
-        t={t as never}
-        operations={operations}
-      />,
-    )
+    render(<AppCardOperations t={t as never} operations={operations} />)
 
     expect(screen.getByText('overview.appInfo.customize.entry')).toBeInTheDocument()
     expect(AppModeEnum.CHAT).toBe('chat')
@@ -194,13 +202,15 @@ describe('app-card-sections', () => {
       <WorkflowLaunchDialog
         t={t as never}
         open
-        hiddenVariables={[{
-          variable: 'secret',
-          label: 'Secret',
-          type: InputVarType.textInput,
-          hide: true,
-          required: true,
-        }]}
+        hiddenVariables={[
+          {
+            variable: 'secret',
+            label: 'Secret',
+            type: InputVarType.textInput,
+            hide: true,
+            required: true,
+          },
+        ]}
         unsupportedVariables={[]}
         values={{ secret: 'hello' }}
         onOpenChange={onOpenChange}
@@ -209,8 +219,12 @@ describe('app-card-sections', () => {
       />,
     )
 
-    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
-    fireEvent.submit(screen.getByRole('button', { name: /overview\.appInfo\.launch/i }).closest('form')!)
+    expect(
+      screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title'),
+    ).toBeInTheDocument()
+    fireEvent.submit(
+      screen.getByRole('button', { name: /overview\.appInfo\.launch/i }).closest('form')!,
+    )
     expect(onSubmit).toHaveBeenCalled()
   })
 

@@ -45,21 +45,17 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
     if (res.result === 'success') {
       refetchErrorDocs()
       dispatch({ type: 'success' })
-    }
-    else {
+    } else {
       dispatch({ type: 'error' })
     }
   }
 
   useEffect(() => {
-    if (errorDocs?.total === 0)
-      dispatch({ type: 'success' })
-    else
-      dispatch({ type: 'error' })
+    if (errorDocs?.total === 0) dispatch({ type: 'success' })
+    else dispatch({ type: 'error' })
   }, [errorDocs?.total])
 
-  if (isLoading || indexState.value === 'success')
-    return null
+  if (isLoading || indexState.value === 'success') return null
 
   return (
     <StatusWithAction

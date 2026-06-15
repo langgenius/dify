@@ -14,10 +14,18 @@ describe('ExamplePrompts', () => {
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 
       expect(screen.getAllByRole('button')).toHaveLength(4)
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.translate/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.rag/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.classify/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.translate/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.rag/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.classify/i }),
+      ).toBeInTheDocument()
     })
 
     // Advanced-chat mode surfaces a different (3-prompt) set tailored to
@@ -26,8 +34,12 @@ describe('ExamplePrompts', () => {
       render(<ExamplePrompts mode="advanced-chat" onSelect={vi.fn()} />)
 
       expect(screen.getAllByRole('button')).toHaveLength(3)
-      expect(screen.getByRole('button', { name: /workflowGenerator\.examples\.chatflow\.support/i })).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowGenerator\.examples\.chatflow\.support/i }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i }),
+      ).not.toBeInTheDocument()
     })
 
     // The "Try one of these" label anchors the row visually; missing it
@@ -42,16 +54,20 @@ describe('ExamplePrompts', () => {
     // Clicking a chip is the whole point of the component — it must hand
     // the chip text back to the parent verbatim so the parent can populate
     // the instruction textarea.
-    it('should forward the clicked chip\'s text to onSelect', async () => {
+    it("should forward the clicked chip's text to onSelect", async () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
       render(<ExamplePrompts mode="workflow" onSelect={onSelect} />)
 
-      const chip = screen.getByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })
+      const chip = screen.getByRole('button', {
+        name: /workflowGenerator\.examples\.workflow\.summarize/i,
+      })
       await user.click(chip)
 
       expect(onSelect).toHaveBeenCalledTimes(1)
-      expect(onSelect.mock.calls[0]![0]).toMatch(/workflowGenerator\.examples\.workflow\.summarize/i)
+      expect(onSelect.mock.calls[0]![0]).toMatch(
+        /workflowGenerator\.examples\.workflow\.summarize/i,
+      )
     })
   })
 })

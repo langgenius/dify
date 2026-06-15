@@ -24,7 +24,9 @@ vi.mock('../base/amplitude/registration-tracking', () => ({
 const mockUseSearchParams = vi.mocked(useSearchParams)
 
 const setSearchParams = (searchParams = '') => {
-  mockUseSearchParams.mockReturnValue(new URLSearchParams(searchParams) as unknown as ReturnType<typeof useSearchParams>)
+  mockUseSearchParams.mockReturnValue(
+    new URLSearchParams(searchParams) as unknown as ReturnType<typeof useSearchParams>,
+  )
   window.history.replaceState(null, '', `/signin${searchParams ? `?${searchParams}` : ''}`)
 }
 
@@ -37,10 +39,13 @@ describe('OAuthRegistrationAnalytics', () => {
   })
 
   it('should track oauth registration with utm info and clear the query flag', async () => {
-    Cookies.set('utm_info', JSON.stringify({
-      utm_source: 'linkedin',
-      slug: 'agent-launch',
-    }))
+    Cookies.set(
+      'utm_info',
+      JSON.stringify({
+        utm_source: 'linkedin',
+        slug: 'agent-launch',
+      }),
+    )
 
     setSearchParams('oauth_new_user=true&source=signin')
     const replaceStateSpy = vi.spyOn(window.history, 'replaceState')

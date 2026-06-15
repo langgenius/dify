@@ -2,11 +2,7 @@
 
 import type { HeaderProps } from '@/app/components/workflow/header'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  memo,
-  useMemo,
-  useState,
-} from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Header from '@/app/components/workflow/header'
 import SaveBeforeLeavingDialog from '../save-before-leaving-dialog'
@@ -48,7 +44,18 @@ const EditActions = ({
   onExitEditingWithoutSave,
   onPublish,
   onSaveAndExitEditing,
-}: Pick<SnippetHeaderProps, 'canSave' | 'hasDraftChanges' | 'isEditing' | 'isPublishing' | 'onEdit' | 'onExitEditing' | 'onExitEditingWithoutSave' | 'onPublish' | 'onSaveAndExitEditing'>) => {
+}: Pick<
+  SnippetHeaderProps,
+  | 'canSave'
+  | 'hasDraftChanges'
+  | 'isEditing'
+  | 'isPublishing'
+  | 'onEdit'
+  | 'onExitEditing'
+  | 'onExitEditingWithoutSave'
+  | 'onPublish'
+  | 'onSaveAndExitEditing'
+>) => {
   const { t } = useTranslation('snippet')
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
 
@@ -65,7 +72,7 @@ const EditActions = ({
       <SaveBeforeLeavingDialog
         open={exitConfirmOpen}
         onOpenChange={setExitConfirmOpen}
-        trigger={(
+        trigger={
           <Button
             disabled={isPublishing}
             onClick={(event) => {
@@ -80,7 +87,7 @@ const EditActions = ({
           >
             {t('exitEditing')}
           </Button>
-        )}
+        }
         disabled={isPublishing}
         saveDisabled={!canSave}
         loading={isPublishing}
@@ -130,9 +137,15 @@ const SnippetHeader = ({
     return {
       normal: {
         components: {
-          title: isEditing
-            ? (hasDraftChanges ? <CancelChanges canDiscardChanges={canDiscardChanges} onCancel={onCancel} /> : <></>)
-            : <ViewOnlyBadge />,
+          title: isEditing ? (
+            hasDraftChanges ? (
+              <CancelChanges canDiscardChanges={canDiscardChanges} onCancel={onCancel} />
+            ) : (
+              <></>
+            )
+          ) : (
+            <ViewOnlyBadge />
+          ),
           left: (
             <EditActions
               canSave={canSave}
@@ -164,7 +177,21 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [canDiscardChanges, canSave, hasDraftChanges, isEditing, isPublishing, onCancel, onEdit, onExitEditing, onExitEditingWithoutSave, onPublish, onSaveAndExitEditing, t, viewHistoryProps])
+  }, [
+    canDiscardChanges,
+    canSave,
+    hasDraftChanges,
+    isEditing,
+    isPublishing,
+    onCancel,
+    onEdit,
+    onExitEditing,
+    onExitEditingWithoutSave,
+    onPublish,
+    onSaveAndExitEditing,
+    t,
+    viewHistoryProps,
+  ])
 
   return <Header {...headerProps} />
 }

@@ -51,7 +51,9 @@ describe('AuthorizeSSO', () => {
     render(<AuthorizeSSO onApproved={vi.fn()} onError={vi.fn()} />)
     await screen.findByRole('button', { name: /Authorize/i })
     await userEvent.click(screen.getByRole('button', { name: /Authorize/i }))
-    await waitFor(() => expect(mockApproveExternal).toHaveBeenCalledWith(mockCtx, mockCtx.user_code))
+    await waitFor(() =>
+      expect(mockApproveExternal).toHaveBeenCalledWith(mockCtx, mockCtx.user_code),
+    )
   })
 
   it('calls onApproved after successful approve', async () => {

@@ -76,18 +76,10 @@ vi.mock('../field-list', () => ({
     allVariableNames: string[]
   }) => (
     <div data-testid={`field-list-${nodeId}`}>
-      <span data-testid={`field-list-readonly-${nodeId}`}>
-        {String(readonly)}
-      </span>
-      <span data-testid={`field-list-classname-${nodeId}`}>
-        {labelClassName}
-      </span>
-      <span data-testid={`field-list-fields-count-${nodeId}`}>
-        {inputFields.length}
-      </span>
-      <span data-testid={`field-list-all-vars-${nodeId}`}>
-        {allVariableNames.join(',')}
-      </span>
+      <span data-testid={`field-list-readonly-${nodeId}`}>{String(readonly)}</span>
+      <span data-testid={`field-list-classname-${nodeId}`}>{labelClassName}</span>
+      <span data-testid={`field-list-fields-count-${nodeId}`}>{inputFields.length}</span>
+      <span data-testid={`field-list-all-vars-${nodeId}`}>{allVariableNames.join(',')}</span>
       {LabelRightContent}
       <button
         data-testid={`trigger-change-${nodeId}`}
@@ -101,7 +93,8 @@ vi.mock('../field-list', () => ({
               max_length: 48,
               required: true,
             },
-          ])}
+          ])
+        }
       >
         Add Field
       </button>
@@ -121,9 +114,7 @@ vi.mock('../footer-tip', () => ({
 
 vi.mock('../label-right-content/datasource', () => ({
   default: ({ nodeData }: { nodeData: DataSourceNodeType }) => (
-    <div data-testid={`datasource-label-${nodeData.title}`}>
-      {nodeData.title}
-    </div>
+    <div data-testid={`datasource-label-${nodeData.title}`}>{nodeData.title}</div>
   ),
 }))
 
@@ -148,10 +139,7 @@ const createInputVar = (overrides?: Partial<InputVar>): InputVar => ({
   ...overrides,
 })
 
-const createRAGPipelineVariable = (
-  nodeId: string,
-  overrides?: Partial<InputVar>,
-) => ({
+const createRAGPipelineVariable = (nodeId: string, overrides?: Partial<InputVar>) => ({
   belong_to_node_id: nodeId,
   ...createInputVar(overrides),
 })
@@ -232,7 +220,9 @@ describe('InputFieldPanel', () => {
     it('should render unique inputs section title', () => {
       render(<InputFieldPanel />)
 
-      expect(screen.getByText('datasetPipeline.inputFieldPanel.uniqueInputs.title'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('datasetPipeline.inputFieldPanel.uniqueInputs.title'),
+      )!.toBeInTheDocument()
     })
 
     it('should render global inputs field list', () => {
@@ -331,19 +321,15 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-node-1'))!.toHaveTextContent(
-        'var1,var2',
-      )
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
-        'var1,var2',
-      )
+      expect(screen.getByTestId('field-list-all-vars-node-1'))!.toHaveTextContent('var1,var2')
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent('var1,var2')
     })
   })
 
   describe('User Interactions', () => {
     const isCloseButton = (btn: HTMLElement) =>
-      btn.classList.contains('size-6')
-      || btn.className.includes('shrink-0 items-center justify-center p-0.5')
+      btn.classList.contains('size-6') ||
+      btn.className.includes('shrink-0 items-center justify-center p-0.5')
 
     it('should call closeAllInputFieldPanels when close button is clicked', () => {
       render(<InputFieldPanel />)
@@ -369,9 +355,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      const previewButton = screen
-        .getByText('datasetPipeline.operations.preview')
-        .closest('button')
+      const previewButton = screen.getByText('datasetPipeline.operations.preview').closest('button')
       expect(previewButton)!.toBeDisabled()
     })
 
@@ -380,9 +364,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      const previewButton = screen
-        .getByText('datasetPipeline.operations.preview')
-        .closest('button')
+      const previewButton = screen.getByText('datasetPipeline.operations.preview').closest('button')
       expect(previewButton).not.toBeDisabled()
     })
   })
@@ -393,9 +375,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      const previewButton = screen
-        .getByText('datasetPipeline.operations.preview')
-        .closest('button')
+      const previewButton = screen.getByText('datasetPipeline.operations.preview').closest('button')
       expect(previewButton)!.toHaveClass('bg-state-accent-active')
       expect(previewButton)!.toHaveClass('text-text-accent')
     })
@@ -405,9 +385,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
-        'true',
-      )
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
     })
 
     it('should set readonly to true when editing', () => {
@@ -415,9 +393,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
-        'true',
-      )
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('true')
     })
 
     it('should set readonly to false when not previewing or editing', () => {
@@ -425,9 +401,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent(
-        'false',
-      )
+      expect(screen.getByTestId('field-list-readonly-shared'))!.toHaveTextContent('false')
     })
   })
 
@@ -458,9 +432,7 @@ describe('InputFieldPanel', () => {
 
     it('should place datasource node fields before global fields', async () => {
       const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [
-        createRAGPipelineVariable('shared', { variable: 'shared_var' }),
-      ]
+      const variables = [createRAGPipelineVariable('shared', { variable: 'shared_var' })]
       setupMocks({ nodes, ragPipelineVariables: variables })
       render(<InputFieldPanel />)
 
@@ -529,9 +501,7 @@ describe('InputFieldPanel', () => {
     it('should pass correct className to global inputs field list', () => {
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-classname-shared'))!.toHaveTextContent(
-        'pt-2 pb-1',
-      )
+      expect(screen.getByTestId('field-list-classname-shared'))!.toHaveTextContent('pt-2 pb-1')
     })
   })
 
@@ -565,8 +535,8 @@ describe('InputFieldPanel', () => {
   describe('Callback Stability', () => {
     const findCloseButton = (buttons: HTMLElement[]) => {
       const isCloseButton = (btn: HTMLElement) =>
-        btn.classList.contains('size-6')
-        || btn.className.includes('shrink-0 items-center justify-center p-0.5')
+        btn.classList.contains('size-6') ||
+        btn.className.includes('shrink-0 items-center justify-center p-0.5')
       return buttons.find(isCloseButton)
     }
 
@@ -593,9 +563,7 @@ describe('InputFieldPanel', () => {
       rerender(<InputFieldPanel />)
       fireEvent.click(screen.getByText('datasetPipeline.operations.preview'))
 
-      expect(mockToggleInputFieldPreviewPanel.mock.calls.length).toBe(
-        callCount1 + 1,
-      )
+      expect(mockToggleInputFieldPreviewPanel.mock.calls.length).toBe(callCount1 + 1)
     })
   })
 
@@ -605,9 +573,7 @@ describe('InputFieldPanel', () => {
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent(
-        '',
-      )
+      expect(screen.getByTestId('field-list-all-vars-shared'))!.toHaveTextContent('')
     })
 
     it('should handle undefined ragPipelineVariables', () => {
@@ -633,7 +599,8 @@ describe('InputFieldPanel', () => {
 
     it('should handle large number of datasource nodes', () => {
       const nodes = Array.from({ length: 10 }, (_, i) =>
-        createDataSourceNode(`node-${i}`, `DataSource ${i}`))
+        createDataSourceNode(`node-${i}`, `DataSource ${i}`),
+      )
       setupMocks({ nodes })
 
       render(<InputFieldPanel />)
@@ -645,14 +612,13 @@ describe('InputFieldPanel', () => {
 
     it('should handle large number of variables', () => {
       const variables = Array.from({ length: 100 }, (_, i) =>
-        createRAGPipelineVariable('shared', { variable: `var_${i}` }))
+        createRAGPipelineVariable('shared', { variable: `var_${i}` }),
+      )
       setupMocks({ ragPipelineVariables: variables })
 
       render(<InputFieldPanel />)
 
-      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent(
-        '100',
-      )
+      expect(screen.getByTestId('field-list-fields-count-shared'))!.toHaveTextContent('100')
     })
 
     it('should handle special characters in variable names', () => {
@@ -732,9 +698,7 @@ describe('InputFieldPanel', () => {
   describe('Integration with FieldList Component', () => {
     it('should pass correct props to FieldList for datasource nodes', () => {
       const nodes = [createDataSourceNode('node-1', 'DataSource 1')]
-      const variables = [
-        createRAGPipelineVariable('node-1', { variable: 'test_var' }),
-      ]
+      const variables = [createRAGPipelineVariable('node-1', { variable: 'test_var' })]
       setupMocks({
         nodes,
         ragPipelineVariables: variables,
@@ -749,9 +713,7 @@ describe('InputFieldPanel', () => {
     })
 
     it('should pass correct props to FieldList for shared node', () => {
-      const variables = [
-        createRAGPipelineVariable('shared', { variable: 'shared_var' }),
-      ]
+      const variables = [createRAGPipelineVariable('shared', { variable: 'shared_var' })]
       setupMocks({ ragPipelineVariables: variables, isEditing: true })
 
       render(<InputFieldPanel />)

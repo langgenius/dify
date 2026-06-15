@@ -6,9 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  RiMenuLine,
-} from '@remixicon/react'
+import { RiMenuLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,11 +31,9 @@ type DatasetSidebarDropdownProps = {
   }>
 }
 
-const DatasetSidebarDropdown = ({
-  navigation,
-}: DatasetSidebarDropdownProps) => {
+const DatasetSidebarDropdown = ({ navigation }: DatasetSidebarDropdownProps) => {
   const { t } = useTranslation()
-  const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
 
   const { data: relatedApps } = useDatasetRelatedApps(dataset.id)
 
@@ -52,8 +48,7 @@ const DatasetSidebarDropdown = ({
   const isExternalProvider = dataset.provider === 'external'
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
-  if (!dataset)
-    return null
+  if (!dataset) return null
 
   return (
     <>
@@ -104,8 +99,15 @@ const DatasetSidebarDropdown = ({
                     {isExternalProvider && t('externalTag', { ns: 'dataset' })}
                     {!!(!isExternalProvider && dataset.doc_form && dataset.indexing_technique) && (
                       <div className="flex items-center gap-x-2">
-                        <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
-                        <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
+                        <span>
+                          {t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
+                        </span>
+                        <span>
+                          {formatIndexingTechniqueAndMethod(
+                            dataset.indexing_technique,
+                            dataset.retrieval_model_dict?.search_method,
+                          )}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -137,11 +139,7 @@ const DatasetSidebarDropdown = ({
                   )
                 })}
               </nav>
-              <ExtraInfo
-                relatedApps={relatedApps}
-                expand
-                documentCount={dataset.document_count}
-              />
+              <ExtraInfo relatedApps={relatedApps} expand documentCount={dataset.document_count} />
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

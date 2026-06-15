@@ -7,11 +7,7 @@ type OptionProps = {
   href: string
 }
 
-const Option = ({
-  Icon,
-  text,
-  href,
-}: OptionProps) => {
+const Option = ({ Icon, text, href }: OptionProps) => {
   return (
     <Link
       type="button"

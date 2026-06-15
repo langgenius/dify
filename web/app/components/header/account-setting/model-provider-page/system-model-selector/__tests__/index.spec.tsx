@@ -59,7 +59,10 @@ vi.mock('../../hooks', () => ({
     data: [],
   }),
   useSystemDefaultModelAndModelList: (defaultModel: DefaultModelResponse | undefined) => [
-    defaultModel || { model: '', provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } } },
+    defaultModel || {
+      model: '',
+      provider: { provider: '', icon_small: { en_US: '', zh_Hans: '' } },
+    },
     vi.fn(),
   ],
   useUpdateModelList: () => mockUpdateModelList,
@@ -71,8 +74,10 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: ({ onSelect }: { onSelect: (model: { model: string, provider: string }) => void }) => (
-    <button onClick={() => onSelect({ model: 'test', provider: 'test' })}>Mock Model Selector</button>
+  default: ({ onSelect }: { onSelect: (model: { model: string; provider: string }) => void }) => (
+    <button onClick={() => onSelect({ model: 'test', provider: 'test' })}>
+      Mock Model Selector
+    </button>
   ),
 }))
 
@@ -141,7 +146,7 @@ describe('SystemModel', () => {
     })
 
     const selectorButtons = screen.getAllByRole('button', { name: 'Mock Model Selector' })
-    selectorButtons.forEach(button => fireEvent.click(button))
+    selectorButtons.forEach((button) => fireEvent.click(button))
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
 

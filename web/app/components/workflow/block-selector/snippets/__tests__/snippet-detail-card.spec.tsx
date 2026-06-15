@@ -12,13 +12,25 @@ vi.mock('@/service/use-common', () => ({
   useMembers: () => ({
     data: {
       accounts: [
-        { id: 'user-1', name: 'Evan', email: 'evan@example.com', avatar: '', avatar_url: null, role: 'editor', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'user-1',
+          name: 'Evan',
+          email: 'evan@example.com',
+          avatar: '',
+          avatar_url: null,
+          role: 'editor',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ],
     },
   }),
 }))
 
-const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): PublishedSnippetListItem => ({
+const createSnippet = (
+  overrides: Partial<PublishedSnippetListItem> = {},
+): PublishedSnippetListItem => ({
   id: 'snippet-1',
   name: 'Customer Review',
   description: 'Snippet description',

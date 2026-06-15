@@ -46,7 +46,11 @@ vi.mock('@langgenius/dify-ui/button', () => ({
     children: React.ReactNode
     onClick?: () => void
     disabled?: boolean
-  }) => <button disabled={disabled} onClick={onClick}>{children}</button>,
+  }) => (
+    <button disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -56,7 +60,13 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ titleLeft, payload }: { titleLeft: React.ReactNode, payload: { label: Record<string, string> } }) => (
+  default: ({
+    titleLeft,
+    payload,
+  }: {
+    titleLeft: React.ReactNode
+    payload: { label: Record<string, string> }
+  }) => (
     <div data-testid="plugin-card">
       <div>{payload.label.en_US}</div>
       <div>{titleLeft}</div>
@@ -113,7 +123,9 @@ vi.mock('../downgrade-warning', () => ({
   ),
 }))
 
-const createPayload = (overrides: Partial<UpdateFromMarketPlacePayload> = {}): UpdateFromMarketPlacePayload => ({
+const createPayload = (
+  overrides: Partial<UpdateFromMarketPlacePayload> = {},
+): UpdateFromMarketPlacePayload => ({
   category: PluginCategoryEnum.tool,
   originalPackageInfo: {
     id: 'plugin@1.0.0',
@@ -141,13 +153,7 @@ describe('UpdateFromMarketplace', () => {
   })
 
   it('renders the upgrade modal content and current version transition', async () => {
-    render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<UpdateFromMarketplace payload={createPayload()} onSave={vi.fn()} onCancel={vi.fn()} />)
 
     expect(screen.getByText('plugin.upgrade.title')).toBeInTheDocument()
     expect(screen.getByText('plugin.upgrade.description')).toBeInTheDocument()
@@ -159,13 +165,7 @@ describe('UpdateFromMarketplace', () => {
 
   it('submits the marketplace upgrade and calls onSave when installation is immediate', async () => {
     const onSave = vi.fn()
-    render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
-        onSave={onSave}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<UpdateFromMarketplace payload={createPayload()} onSave={onSave} onCancel={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.upgrade.upgrade'))
 
@@ -182,20 +182,16 @@ describe('UpdateFromMarketplace', () => {
     mockUpdateFromMarketPlace.mockResolvedValue({
       task: {
         status: TaskStatus.failed,
-        plugins: [{
-          plugin_unique_identifier: 'plugin@2.0.0',
-          message: 'upgrade failed',
-        }],
+        plugins: [
+          {
+            plugin_unique_identifier: 'plugin@2.0.0',
+            message: 'upgrade failed',
+          },
+        ],
       },
     })
 
-    render(
-      <UpdateFromMarketplace
-        payload={createPayload()}
-        onSave={vi.fn()}
-        onCancel={vi.fn()}
-      />,
-    )
+    render(<UpdateFromMarketplace payload={createPayload()} onSave={vi.fn()} onCancel={vi.fn()} />)
 
     fireEvent.click(screen.getByText('plugin.upgrade.upgrade'))
 

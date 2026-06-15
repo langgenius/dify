@@ -17,10 +17,10 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
     return <div data-testid="dialog">{children}</div>
   },
   DialogCloseButton: ({ ...props }: Record<string, unknown>) => <button {...props} />,
-  DialogContent: ({ children, className }: { children: ReactNode, className?: string }) => (
+  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
-  DialogTitle: ({ children, className }: { children: ReactNode, className?: string }) => (
+  DialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
 }))

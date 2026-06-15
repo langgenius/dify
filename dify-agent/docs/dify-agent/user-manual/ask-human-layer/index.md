@@ -12,15 +12,15 @@ deferred tool call.
 
 ## Layer contract
 
-| Property | Value |
-| --- | --- |
-| Type id | `dify.ask_human` |
-| Common layer name | `ask_human` |
-| Config DTO | `DifyAskHumanLayerConfig` |
-| Model-visible tool | `ask_human` by default, configurable with `tool_name` |
-| Tool kind | pydantic-ai `external` deferred tool |
-| Terminal event | `run_succeeded` |
-| Terminal payload branch | `run_succeeded.data.deferred_tool_call` |
+| Property                | Value                                                 |
+| ----------------------- | ----------------------------------------------------- |
+| Type id                 | `dify.ask_human`                                      |
+| Common layer name       | `ask_human`                                           |
+| Config DTO              | `DifyAskHumanLayerConfig`                             |
+| Model-visible tool      | `ask_human` by default, configurable with `tool_name` |
+| Tool kind               | pydantic-ai `external` deferred tool                  |
+| Terminal event          | `run_succeeded`                                       |
+| Terminal payload branch | `run_succeeded.data.deferred_tool_call`               |
 
 The agent run does not enter a paused status. When the model calls the ask-human
 tool, the current run succeeds with a `deferred_tool_call` instead of normal
@@ -92,19 +92,19 @@ and the same logical composition with the history layer still present.
 `DifyAskHumanLayerConfig` controls the model-facing tool identity and guardrails.
 It intentionally does not contain delivery settings.
 
-| Field | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `enabled` | `bool` | `True` | When false, the layer exposes neither the tool nor the prompt guidance. |
-| `tool_name` | `str` | `"ask_human"` | Model-visible tool name. Must be a valid identifier. |
-| `tool_description` | `str \| None` | default description | Optional model-visible tool description. |
-| `max_fields` | `int` | `8` | Maximum number of fields the model may request. Use `0` for action-only requests. |
-| `max_actions` | `int` | `4` | Maximum number of human actions the model may request. |
-| `allowed_field_types` | `list["paragraph" \| "select" \| "file" \| "file-list"]` | `["paragraph", "select"]` | Field types accepted by runtime validation. |
-| `allow_file_fields` | `bool` | `False` | File field types are rejected unless this is true and the type is listed in `allowed_field_types`. |
-| `max_markdown_chars` | `int` | `8000` | Maximum length for the optional `markdown` body. |
-| `max_question_chars` | `int` | `1000` | Maximum length for the required `question`. |
-| `max_field_label_chars` | `int` | `120` | Maximum label length for each field. |
-| `max_action_label_chars` | `int` | `80` | Maximum label length for each action. |
+| Field                    | Type                                                     | Default                   | Meaning                                                                                            |
+| ------------------------ | -------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| `enabled`                | `bool`                                                   | `True`                    | When false, the layer exposes neither the tool nor the prompt guidance.                            |
+| `tool_name`              | `str`                                                    | `"ask_human"`             | Model-visible tool name. Must be a valid identifier.                                               |
+| `tool_description`       | `str \| None`                                            | default description       | Optional model-visible tool description.                                                           |
+| `max_fields`             | `int`                                                    | `8`                       | Maximum number of fields the model may request. Use `0` for action-only requests.                  |
+| `max_actions`            | `int`                                                    | `4`                       | Maximum number of human actions the model may request.                                             |
+| `allowed_field_types`    | `list["paragraph" \| "select" \| "file" \| "file-list"]` | `["paragraph", "select"]` | Field types accepted by runtime validation.                                                        |
+| `allow_file_fields`      | `bool`                                                   | `False`                   | File field types are rejected unless this is true and the type is listed in `allowed_field_types`. |
+| `max_markdown_chars`     | `int`                                                    | `8000`                    | Maximum length for the optional `markdown` body.                                                   |
+| `max_question_chars`     | `int`                                                    | `1000`                    | Maximum length for the required `question`.                                                        |
+| `max_field_label_chars`  | `int`                                                    | `120`                     | Maximum label length for each field.                                                               |
+| `max_action_label_chars` | `int`                                                    | `80`                      | Maximum label length for each action.                                                              |
 
 Configured limits are also capped by server hard limits. If a config exceeds a
 hard cap, request validation fails before the run can execute.
@@ -118,14 +118,14 @@ business-specific guidance such as when human input is appropriate.
 When enabled, the layer exposes an external deferred tool whose argument shape is
 `AskHumanToolArgs`:
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `title` | `str \| None` | Optional short title for the human request. |
-| `question` | `str` | Required question/instruction for the human. |
-| `markdown` | `str \| None` | Optional longer Markdown body. Treat it as untrusted user-visible content. |
-| `fields` | `list[AskHumanField]` | Optional structured fields for the human to fill. |
-| `actions` | `list[AskHumanAction]` | Optional action buttons. If omitted, Dify Agent normalizes to a single primary `Submit` action. |
-| `urgency` | `"normal" \| "high"` | Hint for downstream systems; it is not a delivery policy. |
+| Field      | Type                   | Meaning                                                                                         |
+| ---------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
+| `title`    | `str \| None`          | Optional short title for the human request.                                                     |
+| `question` | `str`                  | Required question/instruction for the human.                                                    |
+| `markdown` | `str \| None`          | Optional longer Markdown body. Treat it as untrusted user-visible content.                      |
+| `fields`   | `list[AskHumanField]`  | Optional structured fields for the human to fill.                                               |
+| `actions`  | `list[AskHumanAction]` | Optional action buttons. If omitted, Dify Agent normalizes to a single primary `Submit` action. |
+| `urgency`  | `"normal" \| "high"`   | Hint for downstream systems; it is not a delivery policy.                                       |
 
 Supported field variants:
 
@@ -181,8 +181,8 @@ A typical deferred payload looks like this:
       }
     ],
     "actions": [
-      {"id": "approve", "label": "Approve", "style": "primary"},
-      {"id": "reject", "label": "Reject", "style": "destructive"}
+      { "id": "approve", "label": "Approve", "style": "primary" },
+      { "id": "reject", "label": "Reject", "style": "destructive" }
     ],
     "urgency": "normal"
   },
@@ -237,7 +237,7 @@ being treated as agent-run failures:
 ```json
 {
   "status": "timeout",
-  "action": {"id": "__timeout", "label": "Timeout"},
+  "action": { "id": "__timeout", "label": "Timeout" },
   "values": {},
   "message": "The human did not respond before the workflow timeout."
 }
@@ -261,11 +261,11 @@ should not control delivery or authorization.
 
 ## Troubleshooting
 
-| Symptom | What to check |
-| --- | --- |
-| Run fails with `Deferred tool results require a 'history' layer` | Add the `history` layer and resume with the prior snapshot. |
-| Run fails with `pending tool call can be resumed` | Keep the history layer active for the initial deferred run. |
-| Run fails with `exactly one deferred call` | The MVP supports one ask-human call per run. Ask the model to ask one question at a time. |
-| Run fails with `tool name must be ...` | Use the configured `tool_name`; do not rename it only in downstream form code. |
-| File fields are rejected | Set `allow_file_fields=True` and include `file` or `file-list` in `allowed_field_types`. |
-| `run_succeeded.data.output` is absent | Check `run_succeeded.data.deferred_tool_call`; this is a human-request success, not a failed run. |
+| Symptom                                                          | What to check                                                                                     |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Run fails with `Deferred tool results require a 'history' layer` | Add the `history` layer and resume with the prior snapshot.                                       |
+| Run fails with `pending tool call can be resumed`                | Keep the history layer active for the initial deferred run.                                       |
+| Run fails with `exactly one deferred call`                       | The MVP supports one ask-human call per run. Ask the model to ask one question at a time.         |
+| Run fails with `tool name must be ...`                           | Use the configured `tool_name`; do not rename it only in downstream form code.                    |
+| File fields are rejected                                         | Set `allow_file_fields=True` and include `file` or `file-list` in `allowed_field_types`.          |
+| `run_succeeded.data.output` is absent                            | Check `run_succeeded.data.deferred_tool_call`; this is a human-request success, not a failed run. |

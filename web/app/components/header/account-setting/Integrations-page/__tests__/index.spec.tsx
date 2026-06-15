@@ -89,7 +89,12 @@ describe('IntegrationsPage', () => {
     it('should handle unknown providers gracefully', () => {
       // Arrange
       const mockData = [
-        { provider: 'unknown', is_bound: false, link: '', created_at: 1678888888 } as unknown as AccountIntegrate,
+        {
+          provider: 'unknown',
+          is_bound: false,
+          link: '',
+          created_at: 1678888888,
+        } as unknown as AccountIntegrate,
       ]
 
       vi.mocked(useAccountIntegrates).mockReturnValue({

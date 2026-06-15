@@ -45,11 +45,9 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         params.set('token', encodeURIComponent(ret.data))
         router.push(`/signin/check-code?${params.toString()}`)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -61,7 +59,9 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       }}
     >
       <FieldRoot name="email" disabled={isInvite} className="mb-2">
-        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">{t('email', { ns: 'login' })}</FieldLabel>
+        <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
+          {t('email', { ns: 'login' })}
+        </FieldLabel>
         <FieldControl
           type="email"
           autoComplete="email"
@@ -72,7 +72,15 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
           onValueChange={setEmail}
         />
         <div className="mt-3">
-          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
+          <Button
+            type="submit"
+            loading={loading}
+            disabled={loading || !email}
+            variant="primary"
+            className="w-full"
+          >
+            {t('signup.verifyMail', { ns: 'login' })}
+          </Button>
         </div>
       </FieldRoot>
     </Form>

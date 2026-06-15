@@ -8,19 +8,23 @@ import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-c
 import { useRouter } from '@/next/navigation'
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, currentWorkspace, isLoadingCurrentWorkspace } = useAppContext()
+  const {
+    isCurrentWorkspaceEditor,
+    isCurrentWorkspaceDatasetOperator,
+    currentWorkspace,
+    isLoadingCurrentWorkspace,
+  } = useAppContext()
   const router = useRouter()
-  const shouldRedirect = !isLoadingCurrentWorkspace
-    && currentWorkspace.id
-    && !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
+  const shouldRedirect =
+    !isLoadingCurrentWorkspace &&
+    currentWorkspace.id &&
+    !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator)
 
   useEffect(() => {
-    if (shouldRedirect)
-      router.replace('/apps')
+    if (shouldRedirect) router.replace('/apps')
   }, [shouldRedirect, router])
 
-  if (isLoadingCurrentWorkspace || !currentWorkspace.id)
-    return <Loading type="app" />
+  if (isLoadingCurrentWorkspace || !currentWorkspace.id) return <Loading type="app" />
 
   if (shouldRedirect) {
     return null
@@ -28,9 +32,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
 
   return (
     <ExternalKnowledgeApiProvider>
-      <ExternalApiPanelProvider>
-        {children}
-      </ExternalApiPanelProvider>
+      <ExternalApiPanelProvider>{children}</ExternalApiPanelProvider>
     </ExternalKnowledgeApiProvider>
   )
 }

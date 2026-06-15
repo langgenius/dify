@@ -14,10 +14,7 @@ type IProps = {
   hidePreview: () => void
 }
 
-const FilePreview = ({
-  file,
-  hidePreview,
-}: IProps) => {
+const FilePreview = ({ file, hidePreview }: IProps) => {
   const { t } = useTranslation()
   const [previewContent, setPreviewContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -27,13 +24,11 @@ const FilePreview = ({
       const res = await fetchFilePreview({ fileID })
       setPreviewContent(res.content)
       setLoading(false)
-    }
-    catch { }
+    } catch {}
   }
 
   const getFileName = (currentFile?: File) => {
-    if (!currentFile)
-      return ''
+    if (!currentFile) return ''
     const arr = currentFile.name.split('.')
     return arr.slice(0, -1).join()
   }
@@ -61,17 +56,12 @@ const FilePreview = ({
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>
           <span>{getFileName(file)}</span>
-          <span className={cn(s.filetype)}>
-            .
-            {file?.extension}
-          </span>
+          <span className={cn(s.filetype)}>.{file?.extension}</span>
         </div>
       </div>
       <div className={cn(s.previewContent)}>
         {loading && <Loading type="area" />}
-        {!loading && (
-          <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
-        )}
+        {!loading && <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>}
       </div>
     </div>
   )

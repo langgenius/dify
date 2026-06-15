@@ -34,11 +34,11 @@ N'oubliez pas de lier un problème existant ou d'ouvrir un nouveau problème dan
 
 Comment nous priorisons :
 
-| Type de Problème | Priorité |
-| ------------------------------------------------------------ | --------------- |
-| Bugs dans les fonctions principales (service cloud, impossibilité de se connecter, applications qui ne fonctionnent pas, failles de sécurité) | Critique |
-| Bugs non critiques, améliorations de performance | Priorité Moyenne |
-| Corrections mineures (fautes de frappe, UI confuse mais fonctionnelle) | Priorité Basse |
+| Type de Problème                                                                                                                              | Priorité         |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| Bugs dans les fonctions principales (service cloud, impossibilité de se connecter, applications qui ne fonctionnent pas, failles de sécurité) | Critique         |
+| Bugs non critiques, améliorations de performance                                                                                              | Priorité Moyenne |
+| Corrections mineures (fautes de frappe, UI confuse mais fonctionnelle)                                                                        | Priorité Basse   |
 
 ### Demandes de fonctionnalités
 
@@ -52,12 +52,12 @@ Comment nous priorisons :
 
 Comment nous priorisons :
 
-| Type de Fonctionnalité | Priorité |
-| ------------------------------------------------------------ | --------------- |
-| Fonctionnalités hautement prioritaires étiquetées par un membre de l'équipe | Priorité Haute |
-| Demandes populaires de fonctionnalités de notre [tableau de feedback communautaire](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Priorité Moyenne |
-| Fonctionnalités non essentielles et améliorations mineures | Priorité Basse |
-| Précieuses mais non immédiates | Fonctionnalité Future |
+| Type de Fonctionnalité                                                                                                                                   | Priorité              |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Fonctionnalités hautement prioritaires étiquetées par un membre de l'équipe                                                                              | Priorité Haute        |
+| Demandes populaires de fonctionnalités de notre [tableau de feedback communautaire](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Priorité Moyenne      |
+| Fonctionnalités non essentielles et améliorations mineures                                                                                               | Priorité Basse        |
+| Précieuses mais non immédiates                                                                                                                           | Fonctionnalité Future |
 
 ## Soumettre votre PR
 

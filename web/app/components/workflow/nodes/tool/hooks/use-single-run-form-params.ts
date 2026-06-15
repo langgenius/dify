@@ -32,37 +32,45 @@ const useSingleRunFormParams = ({
   const { inputs } = useNodeCrud<ToolNodeType>(id, payload)
 
   const hadVarParams = Object.keys(inputs.tool_parameters)
-    .filter(key => inputs.tool_parameters[key]!.type !== VarType.constant)
-    .map(k => inputs.tool_parameters[k])
+    .filter((key) => inputs.tool_parameters[key]!.type !== VarType.constant)
+    .map((k) => inputs.tool_parameters[k])
 
   const hadVarSettings = Object.keys(inputs.tool_configurations)
-    .filter(key => typeof inputs.tool_configurations[key] === 'object' && inputs.tool_configurations[key].type && inputs.tool_configurations[key].type !== VarType.constant)
-    .map(k => inputs.tool_configurations[k])
+    .filter(
+      (key) =>
+        typeof inputs.tool_configurations[key] === 'object' &&
+        inputs.tool_configurations[key].type &&
+        inputs.tool_configurations[key].type !== VarType.constant,
+    )
+    .map((k) => inputs.tool_configurations[k])
 
-  const varInputs = getInputVars([...hadVarParams, ...hadVarSettings].map((p) => {
-    if (p.type === VarType.variable) {
-      // handle the old wrong value not crash the page
-      if (!(p.value as any).join)
-        return `{{#${p.value}#}}`
+  const varInputs = getInputVars(
+    [...hadVarParams, ...hadVarSettings].map((p) => {
+      if (p.type === VarType.variable) {
+        // handle the old wrong value not crash the page
+        if (!(p.value as any).join) return `{{#${p.value}#}}`
 
-      return `{{#${(p.value as ValueSelector).join('.')}#}}`
-    }
+        return `{{#${(p.value as ValueSelector).join('.')}#}}`
+      }
 
-    return p.value as string
-  }))
+      return p.value as string
+    }),
+  )
   const [inputVarValues, setInputVarValues] = useState<Record<string, any>>({})
-  const handleInputVarValuesChange = useCallback((value: Record<string, any>) => {
-    setInputVarValues(value)
-    setRunInputData(value)
-  }, [setRunInputData])
+  const handleInputVarValuesChange = useCallback(
+    (value: Record<string, any>) => {
+      setInputVarValues(value)
+      setRunInputData(value)
+    },
+    [setRunInputData],
+  )
 
   const inputVarValuesWithConstantValue = useCallback(() => {
     const res = produce(inputVarValues, (draft) => {
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]!
         if (type === VarType.constant && (value === undefined || value === null)) {
-          if (!draft.tool_parameters || !draft.tool_parameters[key])
-            return
+          if (!draft.tool_parameters || !draft.tool_parameters[key]) return
           draft[key] = value
         }
       })
@@ -71,30 +79,32 @@ const useSingleRunFormParams = ({
   }, [inputs.tool_parameters, inputVarValues])
 
   const forms = useMemo(() => {
-    const forms: FormProps[] = [{
-      inputs: varInputs,
-      values: inputVarValuesWithConstantValue(),
-      onChange: handleInputVarValuesChange,
-    }]
+    const forms: FormProps[] = [
+      {
+        inputs: varInputs,
+        values: inputVarValuesWithConstantValue(),
+        onChange: handleInputVarValuesChange,
+      },
+    ]
     return forms
   }, [handleInputVarValuesChange, inputVarValuesWithConstantValue, varInputs])
 
   const nodeInfo = useMemo(() => {
-    if (!runResult)
-      return null
+    if (!runResult) return null
     return formatToTracingNodeList([runResult], t)[0]
   }, [runResult, t])
 
   const toolIcon = useToolIcon(payload)
 
   const getDependentVars = () => {
-    return varInputs.map((item) => {
-      // Guard against null/undefined variable to prevent app crash
-      if (!item.variable || typeof item.variable !== 'string')
-        return []
+    return varInputs
+      .map((item) => {
+        // Guard against null/undefined variable to prevent app crash
+        if (!item.variable || typeof item.variable !== 'string') return []
 
-      return item.variable.slice(1, -1).split('.')
-    }).filter(arr => arr.length > 0)
+        return item.variable.slice(1, -1).split('.')
+      })
+      .filter((arr) => arr.length > 0)
   }
 
   return {

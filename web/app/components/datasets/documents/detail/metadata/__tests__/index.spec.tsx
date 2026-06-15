@@ -5,21 +5,31 @@ import Metadata, { FieldInfo } from '../index'
 
 // Mock document context
 vi.mock('../../context', () => ({
-  useDocumentContext: (selector: (state: { datasetId: string, documentId: string }) => unknown) => {
+  useDocumentContext: (selector: (state: { datasetId: string; documentId: string }) => unknown) => {
     return selector({ datasetId: 'test-dataset-id', documentId: 'test-document-id' })
   },
 }))
 
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) =>
+    record({ message, ...options }),
+  )
   return {
     record,
     api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
       dismiss: vi.fn(),
       update: vi.fn(),
       promise: vi.fn(),
@@ -27,7 +37,7 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
     useContext: () => ({ notify: toastMocks.api }),
@@ -116,7 +126,11 @@ vi.mock('@/hooks/use-metadata', () => ({
       text: 'Technical Parameters',
       subFieldsMap: {
         segment_count: { label: 'Segment Count', inputType: 'input' },
-        hit_count: { label: 'Hit Count', inputType: 'input', render: (v: number, segCount?: number) => `${v}/${segCount}` },
+        hit_count: {
+          label: 'Hit Count',
+          inputType: 'input',
+          render: (v: number, segCount?: number) => `${v}/${segCount}`,
+        },
       },
     },
   }),
@@ -125,7 +139,7 @@ vi.mock('@/hooks/use-metadata', () => ({
     zh: 'Chinese',
   }),
   useBookCategories: () => ({
-    'fiction': 'Fiction',
+    fiction: 'Fiction',
     'non-fiction': 'Non-Fiction',
   }),
   usePersonalDocCategories: () => ({
@@ -143,28 +157,28 @@ vi.mock('@/utils', () => ({
     try {
       const result = await promise
       return [null, result]
-    }
-    catch (e) {
+    } catch (e) {
       return [e, null]
     }
   },
   getTextWidthWithCanvas: () => 100,
 }))
 
-const createMockDocDetail = (overrides = {}): FullDocumentDetail => ({
-  id: 'doc-1',
-  name: 'Test Document',
-  doc_type: 'book',
-  doc_metadata: {
-    title: 'Test Book',
-    author: 'Test Author',
-    language: 'en',
-  },
-  data_source_type: 'upload_file',
-  segment_count: 10,
-  hit_count: 5,
-  ...overrides,
-} as FullDocumentDetail)
+const createMockDocDetail = (overrides = {}): FullDocumentDetail =>
+  ({
+    id: 'doc-1',
+    name: 'Test Document',
+    doc_type: 'book',
+    doc_metadata: {
+      title: 'Test Book',
+      author: 'Test Author',
+      language: 'en',
+    },
+    data_source_type: 'upload_file',
+    segment_count: 10,
+    hit_count: 5,
+    ...overrides,
+  }) as FullDocumentDetail
 
 describe('Metadata', () => {
   beforeEach(() => {
@@ -393,7 +407,9 @@ describe('Metadata', () => {
     })
 
     it('should handle undefined docDetail gracefully', () => {
-      const { container } = render(<Metadata {...defaultProps} docDetail={undefined} loading={false} />)
+      const { container } = render(
+        <Metadata {...defaultProps} docDetail={undefined} loading={false} />,
+      )
 
       // Assert
       // Assert
@@ -462,7 +478,14 @@ describe('FieldInfo', () => {
   // Edit mode
   describe('Edit Mode', () => {
     it('should render input when showEdit is true and inputType is input', () => {
-      render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="input" onUpdate={vi.fn()} />)
+      render(
+        <FieldInfo
+          {...defaultFieldInfoProps}
+          showEdit={true}
+          inputType="input"
+          onUpdate={vi.fn()}
+        />,
+      )
 
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
@@ -484,14 +507,28 @@ describe('FieldInfo', () => {
     })
 
     it('should render textarea when showEdit is true and inputType is textarea', () => {
-      render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="textarea" onUpdate={vi.fn()} />)
+      render(
+        <FieldInfo
+          {...defaultFieldInfoProps}
+          showEdit={true}
+          inputType="textarea"
+          onUpdate={vi.fn()}
+        />,
+      )
 
       expect(screen.getByRole('textbox'))!.toBeInTheDocument()
     })
 
     it('should call onUpdate when input value changes', () => {
       const mockOnUpdate = vi.fn()
-      render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="input" onUpdate={mockOnUpdate} />)
+      render(
+        <FieldInfo
+          {...defaultFieldInfoProps}
+          showEdit={true}
+          inputType="input"
+          onUpdate={mockOnUpdate}
+        />,
+      )
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New Value' } })
 
@@ -500,7 +537,14 @@ describe('FieldInfo', () => {
 
     it('should call onUpdate when textarea value changes', () => {
       const mockOnUpdate = vi.fn()
-      render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="textarea" onUpdate={mockOnUpdate} />)
+      render(
+        <FieldInfo
+          {...defaultFieldInfoProps}
+          showEdit={true}
+          inputType="textarea"
+          onUpdate={mockOnUpdate}
+        />,
+      )
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New Textarea Value' } })
 
@@ -511,13 +555,26 @@ describe('FieldInfo', () => {
   // Props
   describe('Props', () => {
     it('should render value icon when provided', () => {
-      render(<FieldInfo {...defaultFieldInfoProps} valueIcon={<span data-testid="value-icon">Icon</span>} />)
+      render(
+        <FieldInfo
+          {...defaultFieldInfoProps}
+          valueIcon={<span data-testid="value-icon">Icon</span>}
+        />,
+      )
 
       expect(screen.getByTestId('value-icon'))!.toBeInTheDocument()
     })
 
     it('should use defaultValue when provided', () => {
-      render(<FieldInfo {...defaultFieldInfoProps} showEdit={true} inputType="input" defaultValue="Default" onUpdate={vi.fn()} />)
+      render(
+        <FieldInfo
+          {...defaultFieldInfoProps}
+          showEdit={true}
+          inputType="input"
+          defaultValue="Default"
+          onUpdate={vi.fn()}
+        />,
+      )
 
       const input = screen.getByRole('textbox')
       expect(input)!.toHaveAttribute('placeholder')
@@ -659,10 +716,7 @@ describe('useMetadataState coverage', () => {
     it('should handle doc_metadata being null in effect sync', () => {
       // Arrange — first render with null metadata
       const { rerender } = render(
-        <Metadata
-          {...defaultProps}
-          docDetail={createMockDocDetail({ doc_metadata: null })}
-        />,
+        <Metadata {...defaultProps} docDetail={createMockDocDetail({ doc_metadata: null })} />,
       )
 
       // Act — rerender with a different doc_type to trigger useEffect sync

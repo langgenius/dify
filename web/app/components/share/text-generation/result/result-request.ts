@@ -5,15 +5,15 @@ import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import { TransferMethod } from '@/types/app'
 import { formatBooleanInputs } from '@/utils/model-config'
 
-export type ResultInputValue
-  = | string
-    | boolean
-    | number
-    | string[]
-    | Record<string, unknown>
-    | FileEntity
-    | FileEntity[]
-    | undefined
+export type ResultInputValue =
+  | string
+  | boolean
+  | number
+  | string[]
+  | Record<string, unknown>
+  | FileEntity
+  | FileEntity[]
+  | undefined
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
@@ -44,11 +44,9 @@ const isMissingRequiredInput = (
   variable: PromptConfig['prompt_variables'][number],
   value: ResultInputValue,
 ) => {
-  if (value === undefined || value === null)
-    return true
+  if (value === undefined || value === null) return true
 
-  if (variable.type === 'file-list')
-    return !Array.isArray(value) || value.length === 0
+  if (variable.type === 'file-list') return !Array.isArray(value) || value.length === 0
 
   if (['string', 'paragraph', 'number', 'json_object', 'select'].includes(variable.type))
     return typeof value !== 'string' ? false : value.trim() === ''
@@ -57,7 +55,9 @@ const isMissingRequiredInput = (
 }
 
 const hasPendingLocalFiles = (completionFiles: VisionFile[]) => {
-  return completionFiles.some(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)
+  return completionFiles.some(
+    (item) => item.transfer_method === TransferMethod.local_file && !item.upload_file_id,
+  )
 }
 
 export const validateResultRequest = ({
@@ -67,8 +67,7 @@ export const validateResultRequest = ({
   promptConfig,
   t,
 }: ValidateResultRequestParams): ValidationResult => {
-  if (isCallBatchAPI)
-    return { canSend: true }
+  if (isCallBatchAPI) return { canSend: true }
 
   const promptVariables = promptConfig?.prompt_variables
   if (!promptVariables?.length) {
@@ -86,13 +85,22 @@ export const validateResultRequest = ({
   }
 
   const requiredVariables = promptVariables.filter(({ key, name, required, type }) => {
-    if (type === 'boolean' || type === 'checkbox')
-      return false
+    if (type === 'boolean' || type === 'checkbox') return false
 
-    return (!key || !key.trim()) || (!name || !name.trim()) || required === undefined || required === null || required
+    return (
+      !key ||
+      !key.trim() ||
+      !name ||
+      !name.trim() ||
+      required === undefined ||
+      required === null ||
+      required
+    )
   })
 
-  const missingRequiredVariable = requiredVariables.find(variable => isMissingRequiredInput(variable, inputs[variable.key]))?.name
+  const missingRequiredVariable = requiredVariables.find((variable) =>
+    isMissingRequiredInput(variable, inputs[variable.key]),
+  )?.name
   if (missingRequiredVariable) {
     return {
       canSend: false,
@@ -126,7 +134,10 @@ export const buildResultRequestData = ({
   visionConfig,
 }: BuildResultRequestDataParams) => {
   const processedInputs = {
-    ...formatBooleanInputs(promptConfig?.prompt_variables, inputs as Record<string, string | number | boolean | object>),
+    ...formatBooleanInputs(
+      promptConfig?.prompt_variables,
+      inputs as Record<string, string | number | boolean | object>,
+    ),
   }
 
   promptConfig?.prompt_variables.forEach((variable) => {
@@ -145,8 +156,7 @@ export const buildResultRequestData = ({
     ...(visionConfig.enabled && completionFiles.length > 0
       ? {
           files: completionFiles.map((item) => {
-            if (item.transfer_method === TransferMethod.local_file)
-              return { ...item, url: '' }
+            if (item.transfer_method === TransferMethod.local_file) return { ...item, url: '' }
 
             return item
           }),

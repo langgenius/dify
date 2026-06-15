@@ -6,7 +6,9 @@ import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-for
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import useMatchSchemaType, { getMatchedSchemaType } from '../../_base/components/variable/use-match-schema-type'
+import useMatchSchemaType, {
+  getMatchedSchemaType,
+} from '../../_base/components/variable/use-match-schema-type'
 import ToolForm from '../../tool/components/tool-form'
 import { useConfig } from '../hooks/use-config'
 import Panel from '../panel'
@@ -49,7 +51,7 @@ vi.mock('@/app/components/workflow/utils/tool', () => ({
 vi.mock('../../_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 vi.mock('../../_base/components/variable/object-child-tree-panel/show', () => ({
@@ -65,12 +67,24 @@ vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
 
 vi.mock('../../tool/components/tool-form', () => ({
   __esModule: true,
-  default: vi.fn(({ onChange, onManageInputField }: { onChange: (value: unknown) => void, onManageInputField?: () => void }) => (
-    <div>
-      <button type="button" onClick={() => onChange({ dataset: 'docs' })}>tool-form-change</button>
-      <button type="button" onClick={() => onManageInputField?.()}>manage-input-field</button>
-    </div>
-  )),
+  default: vi.fn(
+    ({
+      onChange,
+      onManageInputField,
+    }: {
+      onChange: (value: unknown) => void
+      onManageInputField?: () => void
+    }) => (
+      <div>
+        <button type="button" onClick={() => onChange({ dataset: 'docs' })}>
+          tool-form-change
+        </button>
+        <button type="button" onClick={() => onManageInputField?.()}>
+          manage-input-field
+        </button>
+      </div>
+    ),
+  ),
 }))
 
 vi.mock('../hooks/use-config', () => ({
@@ -111,14 +125,18 @@ describe('data-source/panel', () => {
     mockUseStore.mockImplementation((selector) => {
       const select = selector as (state: unknown) => unknown
       return select({
-        dataSourceList: [{
-          plugin_id: 'plugin-1',
-          is_authorized: true,
-          tools: [{
-            name: 'source-a',
-            parameters: [{ name: 'dataset' }],
-          }],
-        }],
+        dataSourceList: [
+          {
+            plugin_id: 'plugin-1',
+            is_authorized: true,
+            tools: [
+              {
+                name: 'source-a',
+                parameters: [{ name: 'dataset' }],
+              },
+            ],
+          },
+        ],
         pipelineId: 'pipeline-1',
         setShowInputFieldPanel,
       })
@@ -130,7 +148,9 @@ describe('data-source/panel', () => {
       hasObjectOutput: false,
     })
     mockToolParametersToFormSchemas.mockReturnValue([{ name: 'dataset' }] as never)
-    mockUseMatchSchemaType.mockReturnValue({ schemaTypeDefinitions: {} } as ReturnType<typeof useMatchSchemaType>)
+    mockUseMatchSchemaType.mockReturnValue({ schemaTypeDefinitions: {} } as ReturnType<
+      typeof useMatchSchemaType
+    >)
     mockGetMatchedSchemaType.mockReturnValue('')
   })
 
@@ -139,32 +159,31 @@ describe('data-source/panel', () => {
     mockUseConfig.mockReturnValueOnce({
       handleFileExtensionsChange: vi.fn(),
       handleParametersChange,
-      outputSchema: [{
-        name: 'metadata',
-        value: { type: 'object' },
-      }],
+      outputSchema: [
+        {
+          name: 'metadata',
+          value: { type: 'object' },
+        },
+      ],
       hasObjectOutput: true,
     })
     mockGetMatchedSchemaType.mockReturnValueOnce('json')
 
-    render(
-      <Panel
-        id="data-source-node"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<Panel id="data-source-node" data={createData()} panelProps={panelProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'tool-form-change' }))
     fireEvent.click(screen.getByRole('button', { name: 'manage-input-field' }))
 
     expect(handleParametersChange).toHaveBeenCalledWith({ dataset: 'docs' })
     expect(setShowInputFieldPanel).toHaveBeenCalledWith(true)
-    expect(mockToolForm).toHaveBeenCalledWith(expect.objectContaining({
-      nodeId: 'data-source-node',
-      showManageInputField: true,
-      value: {},
-    }), undefined)
+    expect(mockToolForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeId: 'data-source-node',
+        showManageInputField: true,
+        value: {},
+      }),
+      undefined,
+    )
     expect(screen.getByText('metadata')).toBeInTheDocument()
   })
 
@@ -185,7 +204,11 @@ describe('data-source/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.dataSource.supportedFileFormatsPlaceholder' }))
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'workflow.nodes.dataSource.supportedFileFormatsPlaceholder',
+      }),
+    )
 
     expect(handleFileExtensionsChange).toHaveBeenCalledWith(['pdf', 'txt'])
     expect(screen.getByText(`datasource_type:${VarType.string}`)).toBeInTheDocument()

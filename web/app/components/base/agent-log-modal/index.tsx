@@ -12,30 +12,26 @@ type AgentLogModalProps = Readonly<{
   width: number
   onCancel: () => void
 }>
-const AgentLogModal: FC<AgentLogModalProps> = ({
-  currentLogItem,
-  width,
-  onCancel,
-}) => {
+const AgentLogModal: FC<AgentLogModalProps> = ({ currentLogItem, width, onCancel }) => {
   const { t } = useTranslation()
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 
   useClickAway(() => {
-    if (mounted)
-      onCancel()
+    if (mounted) onCancel()
   }, ref)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!currentLogItem || !currentLogItem.conversationId)
-    return null
+  if (!currentLogItem || !currentLogItem.conversationId) return null
 
   return (
     <div
-      className={cn('relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl')}
+      className={cn(
+        'relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl',
+      )}
       style={{
         width: 480,
         position: 'fixed',
@@ -45,7 +41,9 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
+      <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">
+        {t('runDetail.workflowTitle', { ns: 'appLog' })}
+      </h1>
       <button
         type="button"
         aria-label={t('operation.close', { ns: 'common' })}

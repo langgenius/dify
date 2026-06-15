@@ -15,7 +15,6 @@ import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import {
-
   useAppTriggers,
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,
@@ -50,21 +49,18 @@ const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {
   let triggerIcon: string | undefined
   if (trigger_type === 'trigger-plugin' && provider_name) {
     const targetTriggers = triggerPlugins || []
-    const foundTrigger = targetTriggers.find(triggerWithProvider =>
-      canFindTool(triggerWithProvider.id, provider_name)
-      || triggerWithProvider.id.includes(provider_name)
-      || triggerWithProvider.name === provider_name,
+    const foundTrigger = targetTriggers.find(
+      (triggerWithProvider) =>
+        canFindTool(triggerWithProvider.id, provider_name) ||
+        triggerWithProvider.id.includes(provider_name) ||
+        triggerWithProvider.name === provider_name,
     )
     triggerIcon = foundTrigger?.icon
   }
 
   return (
     <div className="relative">
-      <BlockIcon
-        type={blockType}
-        size="md"
-        toolIcon={triggerIcon}
-      />
+      <BlockIcon type={blockType} size="md" toolIcon={triggerIcon} />
       <StatusDot
         className="absolute -top-0.5 -left-0.5"
         size="small"
@@ -93,11 +89,14 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
   // Sync trigger statuses to Zustand store when data loads initially or after API calls
   React.useEffect(() => {
     if (triggers.length > 0) {
-      const statusMap = triggers.reduce((acc, trigger) => {
-        // Map API status to EntryNodeStatus: only 'enabled' shows green, others show gray
-        acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
-        return acc
-      }, {} as Record<string, 'enabled' | 'disabled'>)
+      const statusMap = triggers.reduce(
+        (acc, trigger) => {
+          // Map API status to EntryNodeStatus: only 'enabled' shows green, others show gray
+          acc[trigger.node_id] = trigger.status === 'enabled' ? 'enabled' : 'disabled'
+          return acc
+        },
+        {} as Record<string, 'enabled' | 'disabled'>,
+      )
 
       // Only update if there are actual changes to prevent overriding optimistic updates
       setTriggerStatuses(statusMap)
@@ -119,8 +118,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
       // Success toast notification
       onToggleResult?.(null)
-    }
-    catch (error) {
+    } catch (error) {
       // Rollback Zustand store state on error
       const rollbackStatus = enabled ? 'disabled' : 'enabled'
       setTriggerStatus(trigger.node_id, rollbackStatus)
@@ -154,7 +152,10 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
               <div className="group w-full">
                 <div className="min-w-0 overflow-hidden system-md-semibold break-normal text-ellipsis text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
-                    ? t('overview.triggerInfo.triggersAdded', { ns: 'appOverview', count: triggerCount })
+                    ? t('overview.triggerInfo.triggersAdded', {
+                        ns: 'appOverview',
+                        count: triggerCount,
+                      })
                     : t('overview.triggerInfo.noTriggerAdded', { ns: 'appOverview' })}
                 </div>
               </div>
@@ -164,18 +165,18 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
 
         {triggerCount > 0 && (
           <div className="flex flex-col gap-2 p-3">
-            {triggers.map(trigger => (
+            {triggers.map((trigger) => (
               <div key={trigger.id} className="flex w-full items-center gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <div className="shrink-0">
-                    {getTriggerIcon(trigger, triggerPlugins || [])}
-                  </div>
+                  <div className="shrink-0">{getTriggerIcon(trigger, triggerPlugins || [])}</div>
                   <div className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
                     {trigger.title}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center">
-                  <div className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}>
+                  <div
+                    className={`${trigger.status === 'enabled' ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase whitespace-nowrap`}
+                  >
                     {trigger.status === 'enabled'
                       ? t('overview.status.running', { ns: 'appOverview' })
                       : t('overview.status.disable', { ns: 'appOverview' })}
@@ -184,7 +185,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <div className="shrink-0">
                   <Switch
                     checked={trigger.status === 'enabled'}
-                    onCheckedChange={enabled => onToggleTrigger(trigger, enabled)}
+                    onCheckedChange={(enabled) => onToggleTrigger(trigger, enabled)}
                     disabled={!isCurrentWorkspaceEditor}
                   />
                 </div>
@@ -196,8 +197,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
         {triggerCount === 0 && (
           <div className="p-3">
             <div className="system-xs-regular leading-4 text-text-tertiary">
-              {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}
-              {' '}
+              {t('overview.triggerInfo.triggerStatusDescription', { ns: 'appOverview' })}{' '}
               <Link
                 href={docLink('/use-dify/nodes/trigger/overview')}
                 target="_blank"

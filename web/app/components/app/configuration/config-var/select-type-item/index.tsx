@@ -16,24 +16,22 @@ type ISelectTypeItemProps = {
 type VariableConfigTypeKey = I18nKeysByPrefix<'appDebug', 'variableConfig.'>
 
 const i18nTypeMap: Partial<Record<InputVarType, VariableConfigTypeKey>> = {
-  'file': 'single-file',
+  file: 'single-file',
   'file-list': 'multi-files',
 }
 
-const SelectTypeItem: FC<ISelectTypeItemProps> = ({
-  type,
-  selected,
-  onClick,
-}) => {
+const SelectTypeItem: FC<ISelectTypeItemProps> = ({ type, selected, onClick }) => {
   const { t } = useTranslation()
-  const typeKey = i18nTypeMap[type] ?? type as VariableConfigTypeKey
+  const typeKey = i18nTypeMap[type] ?? (type as VariableConfigTypeKey)
   const typeName = t(`variableConfig.${typeKey}`, { ns: 'appDebug' })
 
   return (
     <div
       className={cn(
         'flex h-[58px] flex-col items-center justify-center space-y-1 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
-        selected ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-xs-medium shadow-xs' : 'cursor-pointer system-xs-regular hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
+        selected
+          ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg system-xs-medium shadow-xs'
+          : 'cursor-pointer system-xs-regular hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
       )}
       onClick={onClick}
     >

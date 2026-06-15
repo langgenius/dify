@@ -64,7 +64,9 @@ beforeEach(async () => {
     mockSearchParams = {}
   })
   mockUseQuery.mockReturnValue({ data: undefined, isError: false } as ReturnType<typeof useQuery>)
-  const mod = await import('@/service/device-flow') as { DeviceFlowError: MockDeviceFlowErrorCtor }
+  const mod = (await import('@/service/device-flow')) as {
+    DeviceFlowError: MockDeviceFlowErrorCtor
+  }
   MockDeviceFlowError = mod.DeviceFlowError
 })
 

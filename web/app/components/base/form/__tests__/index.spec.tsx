@@ -9,10 +9,7 @@ const FormHarness = ({ onSubmit }: { onSubmit: (value: Record<string, unknown>) 
 
   return (
     <form>
-      <form.AppField
-        name="title"
-        children={field => <field.TextField label="Title" />}
-      />
+      <form.AppField name="title" children={(field) => <field.TextField label="Title" />} />
       <form.AppForm>
         <button type="button" onClick={() => form.handleSubmit()}>
           Submit
@@ -26,10 +23,7 @@ const InlinePreview = withForm({
   defaultValues: { title: '' },
   render: ({ form }) => {
     return (
-      <form.AppField
-        name="title"
-        children={field => <field.TextField label="Preview Title" />}
-      />
+      <form.AppField name="title" children={(field) => <field.TextField label="Preview Title" />} />
     )
   },
 })

@@ -19,9 +19,7 @@ const mockCopy = vi.mocked(copy)
 const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
 
 const baseProps: ISavedItemsProps = {
-  list: [
-    { id: '1', answer: 'hello world' },
-  ],
+  list: [{ id: '1', answer: 'hello world' }],
   isShowTextToSpeech: true,
   onRemove: vi.fn(),
   onStartCreateContent: vi.fn(),

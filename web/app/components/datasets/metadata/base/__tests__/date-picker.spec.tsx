@@ -24,12 +24,8 @@ vi.mock('@/app/components/base/date-and-time-picker/date-picker', () => ({
     return (
       <div role="group" aria-label="Date picker">
         {trigger}
-        <button onClick={() => onChange(value || null)}>
-          Select Date
-        </button>
-        <button onClick={() => onClear()}>
-          Clear Date
-        </button>
+        <button onClick={() => onChange(value || null)}>Select Date</button>
+        <button onClick={() => onClear()}>Clear Date</button>
       </div>
     )
   },
@@ -39,8 +35,7 @@ vi.mock('@/app/components/base/date-and-time-picker/date-picker', () => ({
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatTime: (timestamp: number) => {
-      if (!timestamp)
-        return ''
+      if (!timestamp) return ''
       return new Date(timestamp * 1000).toLocaleDateString()
     },
   }),
@@ -62,7 +57,9 @@ describe('WrappedDatePicker', () => {
     it('should render placeholder text when no value', () => {
       const handleChange = vi.fn()
       render(<WrappedDatePicker onChange={handleChange} />)
-      expect(screen.getByRole('button', { name: 'dataset.metadata.chooseTime' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'dataset.metadata.chooseTime' }),
+      ).toBeInTheDocument()
     })
 
     it('should render formatted date when value is provided', () => {
@@ -94,9 +91,7 @@ describe('WrappedDatePicker', () => {
     it('should render close icon for clearing', () => {
       const handleChange = vi.fn()
       const timestamp = Math.floor(Date.now() / 1000)
-      render(
-        <WrappedDatePicker value={timestamp} onChange={handleChange} />,
-      )
+      render(<WrappedDatePicker value={timestamp} onChange={handleChange} />)
       expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeInTheDocument()
     })
 
@@ -104,7 +99,9 @@ describe('WrappedDatePicker', () => {
       const handleChange = vi.fn()
       render(<WrappedDatePicker label="Metadata field" onChange={handleChange} />)
 
-      expect(screen.getByRole('button', { name: 'Metadata field: dataset.metadata.chooseTime' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Metadata field: dataset.metadata.chooseTime' }),
+      ).toBeInTheDocument()
     })
 
     it('should include the field label in the clear button accessible name', () => {
@@ -112,7 +109,9 @@ describe('WrappedDatePicker', () => {
       const timestamp = 1609459200
       render(<WrappedDatePicker label="Metadata field" value={timestamp} onChange={handleChange} />)
 
-      expect(screen.getByRole('button', { name: 'Metadata field: common.operation.clear' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Metadata field: common.operation.clear' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -164,9 +163,7 @@ describe('WrappedDatePicker', () => {
     it('should call onChange with null when close icon is clicked directly', () => {
       const handleChange = vi.fn()
       const timestamp = Math.floor(Date.now() / 1000)
-      render(
-        <WrappedDatePicker value={timestamp} onChange={handleChange} />,
-      )
+      render(<WrappedDatePicker value={timestamp} onChange={handleChange} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
@@ -176,9 +173,7 @@ describe('WrappedDatePicker', () => {
     it('should show close button on hover when value exists', () => {
       const handleChange = vi.fn()
       const timestamp = Math.floor(Date.now() / 1000)
-      const { container } = render(
-        <WrappedDatePicker value={timestamp} onChange={handleChange} />,
-      )
+      const { container } = render(<WrappedDatePicker value={timestamp} onChange={handleChange} />)
 
       // The close icon should be present but hidden initially
       const triggerGroup = container.querySelector('.group')
@@ -188,13 +183,10 @@ describe('WrappedDatePicker', () => {
     it('should handle clicking on trigger element', () => {
       const handleChange = vi.fn()
       const timestamp = Math.floor(Date.now() / 1000)
-      const { container } = render(
-        <WrappedDatePicker value={timestamp} onChange={handleChange} />,
-      )
+      const { container } = render(<WrappedDatePicker value={timestamp} onChange={handleChange} />)
 
       const trigger = container.querySelector('.group.flex')
-      if (trigger)
-        fireEvent.click(trigger)
+      if (trigger) fireEvent.click(trigger)
 
       expect(screen.getByRole('group', { name: 'Date picker' })).toBeInTheDocument()
     })
@@ -211,9 +203,7 @@ describe('WrappedDatePicker', () => {
     it('should have secondary text color when value exists', () => {
       const handleChange = vi.fn()
       const timestamp = Math.floor(Date.now() / 1000)
-      const { container } = render(
-        <WrappedDatePicker value={timestamp} onChange={handleChange} />,
-      )
+      const { container } = render(<WrappedDatePicker value={timestamp} onChange={handleChange} />)
       const textElement = container.querySelector('.text-text-secondary')
       expect(textElement).toBeInTheDocument()
     })
@@ -228,9 +218,7 @@ describe('WrappedDatePicker', () => {
     it('should have quaternary text color for close icon when value exists', () => {
       const handleChange = vi.fn()
       const timestamp = Math.floor(Date.now() / 1000)
-      const { container } = render(
-        <WrappedDatePicker value={timestamp} onChange={handleChange} />,
-      )
+      const { container } = render(<WrappedDatePicker value={timestamp} onChange={handleChange} />)
       const closeIcon = container.querySelector('.text-text-quaternary')
       expect(closeIcon).toBeInTheDocument()
     })
@@ -252,9 +240,7 @@ describe('WrappedDatePicker', () => {
 
     it('should handle switching between no value and value', () => {
       const handleChange = vi.fn()
-      const { rerender } = render(
-        <WrappedDatePicker onChange={handleChange} />,
-      )
+      const { rerender } = render(<WrappedDatePicker onChange={handleChange} />)
 
       expect(screen.getByRole('group', { name: 'Date picker' })).toBeInTheDocument()
 

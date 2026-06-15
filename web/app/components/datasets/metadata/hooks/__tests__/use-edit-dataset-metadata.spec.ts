@@ -297,10 +297,9 @@ describe('useEditDatasetMetadata', () => {
 
   describe('Edge Cases', () => {
     it('should handle different datasetIds', () => {
-      const { result, rerender } = renderHook(
-        props => useEditDatasetMetadata(props),
-        { initialProps: defaultProps },
-      )
+      const { result, rerender } = renderHook((props) => useEditDatasetMetadata(props), {
+        initialProps: defaultProps,
+      })
 
       expect(result.current).toBeDefined()
 

@@ -1,4 +1,7 @@
-import { subscribeWorkflowCommand, WorkflowCommand } from '@/app/components/workflow/shortcuts/commands'
+import {
+  subscribeWorkflowCommand,
+  WorkflowCommand,
+} from '@/app/components/workflow/shortcuts/commands'
 import { registerCommands, unregisterCommands } from '../command-bus'
 import { zenCommand } from '../zen'
 
@@ -27,9 +30,7 @@ describe('zenCommand', () => {
 
   describe('isAvailable', () => {
     it('delegates to isInWorkflowPage', async () => {
-      const { isInWorkflowPage } = vi.mocked(
-        await import('@/app/components/workflow/constants'),
-      )
+      const { isInWorkflowPage } = vi.mocked(await import('@/app/components/workflow/constants'))
 
       isInWorkflowPage.mockReturnValue(true)
       expect(zenCommand.isAvailable?.()).toBe(true)

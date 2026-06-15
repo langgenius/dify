@@ -63,11 +63,16 @@ describe('Navigation Utilities', () => {
         configurable: true,
       })
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ })
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        /* noop */
+      })
       const path = createNavigationPath('/datasets/123/documents')
 
       expect(path).toBe('/datasets/123/documents')
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to preserve query parameters:', expect.any(Error))
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to preserve query parameters:',
+        expect.any(Error),
+      )
 
       consoleSpy.mockRestore()
     })
@@ -134,11 +139,16 @@ describe('Navigation Utilities', () => {
         configurable: true,
       })
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ })
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        /* noop */
+      })
       const params = extractQueryParams(['page', 'limit'])
 
       expect(params).toEqual({})
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to extract query parameters:', expect.any(Error))
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to extract query parameters:',
+        expect.any(Error),
+      )
 
       consoleSpy.mockRestore()
     })
@@ -173,11 +183,16 @@ describe('Navigation Utilities', () => {
         throw new Error('URLSearchParams error')
       }) as any
 
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ })
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        /* noop */
+      })
       const path = createNavigationPathWithParams('/datasets/123/documents', { page: 1 })
 
       expect(path).toBe('/datasets/123/documents')
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to create navigation path with params:', expect.any(Error))
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Failed to create navigation path with params:',
+        expect.any(Error),
+      )
 
       consoleSpy.mockRestore()
       globalThis.URLSearchParams = originalURLSearchParams
@@ -270,7 +285,9 @@ describe('Navigation Utilities', () => {
       backToDocuments()
 
       // Should return to exact same list state
-      expect(mockPush).toHaveBeenCalledWith('/datasets/main-dataset/documents?page=3&keyword=API&limit=25')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/main-dataset/documents?page=3&keyword=API&limit=25',
+      )
     })
 
     it('user applies filters then views document', () => {
@@ -283,7 +300,9 @@ describe('Navigation Utilities', () => {
       const backFn = createBackNavigation(mockRouter, '/datasets/filtered-set/documents')
       backFn()
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/filtered-set/documents?page=1&limit=50&status=active&type=pdf&sort=created_at&order=desc')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/filtered-set/documents?page=1&limit=50&status=active&type=pdf&sort=created_at&order=desc',
+      )
     })
   })
 

@@ -16,16 +16,16 @@ import {
   QueryBlockNode,
 } from '../index'
 
-const renderQueryBlock = (props: {
-  onInsert?: () => void
-  onDelete?: () => void
-} = {}) => {
+const renderQueryBlock = (
+  props: {
+    onInsert?: () => void
+    onDelete?: () => void
+  } = {},
+) => {
   return renderLexicalEditor({
     namespace: 'query-block-plugin-test',
     nodes: [CustomTextNode, QueryBlockNode],
-    children: (
-      <QueryBlock {...props} />
-    ),
+    children: <QueryBlock {...props} />,
   })
 }
 

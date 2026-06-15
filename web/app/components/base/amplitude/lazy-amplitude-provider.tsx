@@ -6,6 +6,6 @@ import dynamic from '@/next/dynamic'
 
 const AmplitudeProvider = dynamic(() => import('./AmplitudeProvider'), { ssr: false })
 
-const LazyAmplitudeProvider: FC<IAmplitudeProps> = props => <AmplitudeProvider {...props} />
+const LazyAmplitudeProvider: FC<IAmplitudeProps> = (props) => <AmplitudeProvider {...props} />
 
 export default LazyAmplitudeProvider

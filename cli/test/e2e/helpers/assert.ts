@@ -28,9 +28,9 @@ function redact(text: string): string {
 export function assertExitCode(result: RunResult, expected: number): void {
   if (result.exitCode !== expected) {
     process.stderr.write(
-      `\n[E2E assertExitCode] expected ${expected}, got ${result.exitCode}\n`
-      + `stdout:\n${redact(result.stdout) || '(empty)'}\n`
-      + `stderr:\n${redact(result.stderr) || '(empty)'}\n`,
+      `\n[E2E assertExitCode] expected ${expected}, got ${result.exitCode}\n` +
+        `stdout:\n${redact(result.stdout) || '(empty)'}\n` +
+        `stderr:\n${redact(result.stderr) || '(empty)'}\n`,
     )
   }
   expect(result.exitCode, `exit code should be ${expected}`).toBe(expected)
@@ -52,8 +52,7 @@ export function assertJson<T = unknown>(result: RunResult): T {
   let parsed: T
   try {
     parsed = JSON.parse(result.stdout) as T
-  }
-  catch {
+  } catch {
     throw new Error(
       `stdout is not valid JSON.\nstdout:\n${redact(result.stdout)}\nstderr:\n${redact(result.stderr)}`,
     )
@@ -77,13 +76,12 @@ export function assertJson<T = unknown>(result: RunResult): T {
 export function assertErrorEnvelope(
   result: RunResult,
   expectedCode?: string,
-): { error: { code: string, message: string, hint?: string } } {
+): { error: { code: string; message: string; hint?: string } } {
   const raw = result.stderr.trim()
-  let parsed: { error: { code: string, message: string, hint?: string } }
+  let parsed: { error: { code: string; message: string; hint?: string } }
   try {
     parsed = JSON.parse(raw) as typeof parsed
-  }
-  catch {
+  } catch {
     throw new Error(
       `stderr is not valid JSON.\nstdout:\n${redact(result.stdout)}\nstderr:\n${redact(result.stderr)}`,
     )
@@ -134,8 +132,8 @@ export function assertPipeFriendlyJson(result: RunResult): void {
 export function assertStdoutContains(result: RunResult, expected: string): void {
   if (!result.stdout.includes(expected)) {
     process.stderr.write(
-      `\n[E2E assertStdoutContains] "${expected}" not found in stdout.\n`
-      + `stdout:\n${redact(result.stdout)}\nstderr:\n${redact(result.stderr)}\n`,
+      `\n[E2E assertStdoutContains] "${expected}" not found in stdout.\n` +
+        `stdout:\n${redact(result.stdout)}\nstderr:\n${redact(result.stderr)}\n`,
     )
   }
   expect(result.stdout).toContain(expected)
@@ -147,8 +145,8 @@ export function assertStdoutContains(result: RunResult, expected: string): void 
 export function assertStderrContains(result: RunResult, expected: string): void {
   if (!result.stderr.includes(expected)) {
     process.stderr.write(
-      `\n[E2E assertStderrContains] "${expected}" not found in stderr.\n`
-      + `stdout:\n${redact(result.stdout)}\nstderr:\n${redact(result.stderr)}\n`,
+      `\n[E2E assertStderrContains] "${expected}" not found in stderr.\n` +
+        `stdout:\n${redact(result.stdout)}\nstderr:\n${redact(result.stderr)}\n`,
     )
   }
   expect(result.stderr).toContain(expected)

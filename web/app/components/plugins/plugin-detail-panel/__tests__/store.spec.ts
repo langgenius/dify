@@ -287,7 +287,9 @@ describe('usePluginStore', () => {
         declaration: {
           trigger: {
             subscription_schema: [],
-            subscription_constructor: mockConstructor as unknown as NonNullable<SimpleDetail['declaration']['trigger']>['subscription_constructor'],
+            subscription_constructor: mockConstructor as unknown as NonNullable<
+              SimpleDetail['declaration']['trigger']
+            >['subscription_constructor'],
           },
         },
       })

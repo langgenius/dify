@@ -28,26 +28,26 @@ run.
 `ServerSettings` loads environment variables with the `DIFY_AGENT_` prefix. It
 also reads `.env` and `dify-agent/.env` when present.
 
-| Environment variable | Default | Description |
-| --- | --- | --- |
-| `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
-| `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
-| `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
-| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
-| `DIFY_AGENT_PLUGIN_DAEMON_URL` | `http://localhost:5002` | Base URL for the Dify plugin daemon. |
-| `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
-| `DIFY_AGENT_SHELLCTL_ENTRYPOINT` | empty | Base URL for the shellctl server used by `dify.shell`; required when runs include the shell layer. |
-| `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token sent to the shellctl server. |
-| `DIFY_AGENT_STUB_URL` | empty | Public Agent Stub URL reachable from shellctl-managed remote machines. Use `http(s)://.../agent-stub` for HTTP or `grpc://host:port` for gRPC; enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
-| `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_URL` uses `grpc://`. |
-| `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Server-wide root secret used to derive Agent Stub JWE keys; required when `DIFY_AGENT_STUB_URL` is set and must be unpadded base64url for 32 bytes. |
-| `DIFY_AGENT_PLUGIN_DAEMON_CONNECT_TIMEOUT` | `10` | Plugin-daemon HTTP connect timeout in seconds. |
-| `DIFY_AGENT_PLUGIN_DAEMON_READ_TIMEOUT` | `600` | Plugin-daemon HTTP read timeout in seconds. |
-| `DIFY_AGENT_PLUGIN_DAEMON_WRITE_TIMEOUT` | `30` | Plugin-daemon HTTP write timeout in seconds. |
-| `DIFY_AGENT_PLUGIN_DAEMON_POOL_TIMEOUT` | `10` | Plugin-daemon HTTP connection-pool wait timeout in seconds. |
-| `DIFY_AGENT_PLUGIN_DAEMON_MAX_CONNECTIONS` | `100` | Maximum total plugin-daemon HTTP connections. |
-| `DIFY_AGENT_PLUGIN_DAEMON_MAX_KEEPALIVE_CONNECTIONS` | `20` | Maximum idle keep-alive plugin-daemon HTTP connections. |
-| `DIFY_AGENT_PLUGIN_DAEMON_KEEPALIVE_EXPIRY` | `30` | Keep-alive expiry in seconds for idle plugin-daemon HTTP connections. |
+| Environment variable                                 | Default                    | Description                                                                                                                                                                                                         |
+| ---------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DIFY_AGENT_REDIS_URL`                               | `redis://localhost:6379/0` | Redis connection URL.                                                                                                                                                                                               |
+| `DIFY_AGENT_REDIS_PREFIX`                            | `dify-agent`               | Prefix for Redis record and event keys.                                                                                                                                                                             |
+| `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS`                  | `30`                       | Seconds to wait for active local runs during graceful shutdown before cancellation.                                                                                                                                 |
+| `DIFY_AGENT_RUN_RETENTION_SECONDS`                   | `259200`                   | Seconds to retain Redis run records and per-run event streams; defaults to 3 days.                                                                                                                                  |
+| `DIFY_AGENT_PLUGIN_DAEMON_URL`                       | `http://localhost:5002`    | Base URL for the Dify plugin daemon.                                                                                                                                                                                |
+| `DIFY_AGENT_PLUGIN_DAEMON_API_KEY`                   | empty                      | API key sent to the Dify plugin daemon.                                                                                                                                                                             |
+| `DIFY_AGENT_SHELLCTL_ENTRYPOINT`                     | empty                      | Base URL for the shellctl server used by `dify.shell`; required when runs include the shell layer.                                                                                                                  |
+| `DIFY_AGENT_SHELLCTL_AUTH_TOKEN`                     | empty                      | Optional bearer token sent to the shellctl server.                                                                                                                                                                  |
+| `DIFY_AGENT_STUB_URL`                                | empty                      | Public Agent Stub URL reachable from shellctl-managed remote machines. Use `http(s)://.../agent-stub` for HTTP or `grpc://host:port` for gRPC; enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS`                  | empty                      | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_URL` uses `grpc://`.                                                                                                                             |
+| `DIFY_AGENT_SERVER_SECRET_KEY`                       | empty                      | Server-wide root secret used to derive Agent Stub JWE keys; required when `DIFY_AGENT_STUB_URL` is set and must be unpadded base64url for 32 bytes.                                                                 |
+| `DIFY_AGENT_PLUGIN_DAEMON_CONNECT_TIMEOUT`           | `10`                       | Plugin-daemon HTTP connect timeout in seconds.                                                                                                                                                                      |
+| `DIFY_AGENT_PLUGIN_DAEMON_READ_TIMEOUT`              | `600`                      | Plugin-daemon HTTP read timeout in seconds.                                                                                                                                                                         |
+| `DIFY_AGENT_PLUGIN_DAEMON_WRITE_TIMEOUT`             | `30`                       | Plugin-daemon HTTP write timeout in seconds.                                                                                                                                                                        |
+| `DIFY_AGENT_PLUGIN_DAEMON_POOL_TIMEOUT`              | `10`                       | Plugin-daemon HTTP connection-pool wait timeout in seconds.                                                                                                                                                         |
+| `DIFY_AGENT_PLUGIN_DAEMON_MAX_CONNECTIONS`           | `100`                      | Maximum total plugin-daemon HTTP connections.                                                                                                                                                                       |
+| `DIFY_AGENT_PLUGIN_DAEMON_MAX_KEEPALIVE_CONNECTIONS` | `20`                       | Maximum idle keep-alive plugin-daemon HTTP connections.                                                                                                                                                             |
+| `DIFY_AGENT_PLUGIN_DAEMON_KEEPALIVE_EXPIRY`          | `30`                       | Keep-alive expiry in seconds for idle plugin-daemon HTTP connections.                                                                                                                                               |
 
 Example `.env`:
 

@@ -36,19 +36,25 @@ describe('AutoHeightTextarea', () => {
 
   describe('Props', () => {
     it('should apply custom className to textarea', () => {
-      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} className="custom-class" />)
+      const { container } = render(
+        <AutoHeightTextarea value="" onChange={vi.fn()} className="custom-class" />,
+      )
       const textarea = container.querySelector('textarea')
       expect(textarea).toHaveClass('custom-class')
     })
 
     it('should apply custom wrapperClassName to wrapper div', () => {
-      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} wrapperClassName="wrapper-class" />)
+      const { container } = render(
+        <AutoHeightTextarea value="" onChange={vi.fn()} wrapperClassName="wrapper-class" />,
+      )
       const wrapper = container.querySelector('div.relative')
       expect(wrapper).toHaveClass('wrapper-class')
     })
 
     it('should apply minHeight and maxHeight styles to hidden div', () => {
-      const { container } = render(<AutoHeightTextarea value="" onChange={vi.fn()} minHeight={50} maxHeight={200} />)
+      const { container } = render(
+        <AutoHeightTextarea value="" onChange={vi.fn()} minHeight={50} maxHeight={200} />,
+      )
       const hiddenDiv = container.querySelector('div.invisible')
       expect(hiddenDiv).toHaveStyle({ minHeight: '50px', maxHeight: '200px' })
     })
@@ -137,7 +143,13 @@ describe('AutoHeightTextarea', () => {
   describe('Ref forwarding', () => {
     it('should accept ref and allow focusing', () => {
       const ref = { current: null as HTMLTextAreaElement | null }
-      render(<AutoHeightTextarea ref={ref as React.RefObject<HTMLTextAreaElement>} value="" onChange={vi.fn()} />)
+      render(
+        <AutoHeightTextarea
+          ref={ref as React.RefObject<HTMLTextAreaElement>}
+          value=""
+          onChange={vi.fn()}
+        />,
+      )
 
       expect(ref.current).not.toBeNull()
       expect(ref.current?.tagName).toBe('TEXTAREA')
@@ -147,7 +159,9 @@ describe('AutoHeightTextarea', () => {
   describe('controlFocus prop', () => {
     it('should call focus when controlFocus changes', () => {
       const focusSpy = vi.spyOn(HTMLTextAreaElement.prototype, 'focus')
-      const { rerender } = render(<AutoHeightTextarea value="" onChange={vi.fn()} controlFocus={1} />)
+      const { rerender } = render(
+        <AutoHeightTextarea value="" onChange={vi.fn()} controlFocus={1} />,
+      )
 
       expect(focusSpy).toHaveBeenCalledTimes(1)
 
@@ -173,8 +187,7 @@ describe('AutoHeightTextarea', () => {
       let sleepCalls = 0
       sleepMock.mockImplementation(async () => {
         sleepCalls += 1
-        if (sleepCalls === 2)
-          exposedNode = assignedNode
+        if (sleepCalls === 2) exposedNode = assignedNode
       })
 
       const focusSpy = vi.spyOn(HTMLTextAreaElement.prototype, 'focus')

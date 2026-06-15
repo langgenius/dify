@@ -57,7 +57,16 @@
                   "description": "file related id"
                 }
               },
-              "required": ["name", "size", "extension", "type", "mime_type", "transfer_method", "url", "related_id"]
+              "required": [
+                "name",
+                "size",
+                "extension",
+                "type",
+                "mime_type",
+                "transfer_method",
+                "url",
+                "related_id"
+              ]
             },
             "description": "List of files"
           },

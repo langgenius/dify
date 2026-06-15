@@ -13,7 +13,10 @@ vi.mock('@/app/components/base/file-uploader', () => ({
   }) => (
     <div>
       <span data-testid="file-uploader-value">{JSON.stringify(value)}</span>
-      <button data-testid="file-uploader" onClick={() => onChange([{ id: 'file-1', name: 'demo.png' }])}>
+      <button
+        data-testid="file-uploader"
+        onClick={() => onChange([{ id: 'file-1', name: 'demo.png' }])}
+      >
         Upload
       </button>
       <button data-testid="file-uploader-empty" onClick={() => onChange([])}>
@@ -30,7 +33,10 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }>({})
 
   return {
-    Select: ({ children, onValueChange }: {
+    Select: ({
+      children,
+      onValueChange,
+    }: {
       children: React.ReactNode
       onValueChange?: (value: string) => void
     }) => (
@@ -44,17 +50,26 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       return (
         <div>
           <button type="button">{children}</button>
-          <button data-testid="select-empty" type="button" onClick={() => context.onValueChange?.('')}>
+          <button
+            data-testid="select-empty"
+            type="button"
+            onClick={() => context.onValueChange?.('')}
+          >
             Empty Select
           </button>
         </div>
       )
     },
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
+    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
       const context = React.useContext(SelectContext)
       return (
-        <button key={value} data-testid={`select-${value}`} type="button" onClick={() => context.onValueChange?.(value)}>
+        <button
+          key={value}
+          data-testid={`select-${value}`}
+          type="button"
+          onClick={() => context.onValueChange?.(value)}
+        >
           {children}
         </button>
       )
@@ -88,7 +103,14 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{ variable: 'question', label: 'Question', type: InputVarType.textInput, required: false }]}
+        inputsForms={[
+          {
+            variable: 'question',
+            label: 'Question',
+            type: InputVarType.textInput,
+            required: false,
+          },
+        ]}
         inputs={{ question: '' }}
         inputsRef={inputsRef}
         onFormChange={onFormChange}
@@ -108,7 +130,9 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{ variable: 'count', label: 'Count', type: InputVarType.number, required: false }]}
+        inputsForms={[
+          { variable: 'count', label: 'Count', type: InputVarType.number, required: false },
+        ]}
         inputs={{ count: '' }}
         inputsRef={inputsRef}
         onFormChange={onFormChange}
@@ -128,7 +152,15 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{ variable: 'tone', label: 'Tone', type: InputVarType.select, options: ['friendly', 'formal'], required: false }]}
+        inputsForms={[
+          {
+            variable: 'tone',
+            label: 'Tone',
+            type: InputVarType.select,
+            options: ['friendly', 'formal'],
+            required: false,
+          },
+        ]}
         inputs={{ tone: '' }}
         inputsRef={inputsRef}
         onFormChange={onFormChange}
@@ -146,7 +178,15 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{ variable: 'tone', label: 'Tone', type: InputVarType.select, options: ['friendly', 'formal'], required: false }]}
+        inputsForms={[
+          {
+            variable: 'tone',
+            label: 'Tone',
+            type: InputVarType.select,
+            options: ['friendly', 'formal'],
+            required: false,
+          },
+        ]}
         inputs={{ tone: '' }}
         inputsRef={inputsRef}
         onFormChange={onFormChange}
@@ -165,15 +205,17 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{
-          variable: 'attachment',
-          label: 'Attachment',
-          type: InputVarType.singleFile,
-          required: false,
-          allowed_file_types: [],
-          allowed_file_extensions: ['.png'],
-          allowed_file_upload_methods: ['local_file'],
-        }]}
+        inputsForms={[
+          {
+            variable: 'attachment',
+            label: 'Attachment',
+            type: InputVarType.singleFile,
+            required: false,
+            allowed_file_types: [],
+            allowed_file_extensions: ['.png'],
+            allowed_file_upload_methods: ['local_file'],
+          },
+        ]}
         inputs={{ attachment: null }}
         inputsRef={inputsRef}
         onFormChange={onFormChange}
@@ -193,7 +235,14 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{ variable: 'description', label: 'Description', type: InputVarType.paragraph, required: false }]}
+        inputsForms={[
+          {
+            variable: 'description',
+            label: 'Description',
+            type: InputVarType.paragraph,
+            required: false,
+          },
+        ]}
         inputs={{ description: '' }}
         inputsRef={inputsRef}
         onFormChange={onFormChange}
@@ -216,16 +265,18 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{
-          variable: 'files',
-          label: 'Files',
-          type: InputVarType.multiFiles,
-          required: true,
-          max_length: 3,
-          allowed_file_types: ['image'],
-          allowed_file_extensions: ['.png'],
-          allowed_file_upload_methods: ['local_file'],
-        }]}
+        inputsForms={[
+          {
+            variable: 'files',
+            label: 'Files',
+            type: InputVarType.multiFiles,
+            required: true,
+            max_length: 3,
+            allowed_file_types: ['image'],
+            allowed_file_extensions: ['.png'],
+            allowed_file_upload_methods: ['local_file'],
+          },
+        ]}
         inputs={{ files: existingFiles }}
         inputsRef={{ current: { files: existingFiles } }}
         onFormChange={onFormChange}
@@ -245,15 +296,17 @@ describe('AppInputsForm', () => {
 
     render(
       <AppInputsForm
-        inputsForms={[{
-          variable: 'attachment',
-          label: 'Attachment',
-          type: InputVarType.singleFile,
-          required: false,
-          allowed_file_types: ['image'],
-          allowed_file_extensions: ['.png'],
-          allowed_file_upload_methods: ['local_file'],
-        }]}
+        inputsForms={[
+          {
+            variable: 'attachment',
+            label: 'Attachment',
+            type: InputVarType.singleFile,
+            required: false,
+            allowed_file_types: ['image'],
+            allowed_file_extensions: ['.png'],
+            allowed_file_upload_methods: ['local_file'],
+          },
+        ]}
         inputs={{ attachment: existingFile }}
         inputsRef={{ current: { attachment: existingFile } }}
         onFormChange={onFormChange}

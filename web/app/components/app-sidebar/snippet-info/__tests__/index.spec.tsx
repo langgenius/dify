@@ -46,12 +46,7 @@ describe('SnippetInfo', () => {
   // Edge cases around optional snippet fields should not break the header layout.
   describe('Edge Cases', () => {
     it('should omit the description block when the snippet has no description', () => {
-      render(
-        <SnippetInfo
-          expand={true}
-          snippet={{ ...mockSnippet, description: '' }}
-        />,
-      )
+      render(<SnippetInfo expand={true} snippet={{ ...mockSnippet, description: '' }} />)
 
       expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
       expect(screen.queryByText(mockSnippet.description)).not.toBeInTheDocument()

@@ -1,7 +1,7 @@
 {
   "name": "dify-e2e",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "check": "vp check --fix",
     "e2e": "tsx ./scripts/run-cucumber.ts",

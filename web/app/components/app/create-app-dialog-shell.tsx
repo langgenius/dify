@@ -23,8 +23,7 @@ export function CreateAppDialogShell({
     <Dialog
       open={show}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen)
-          onClose()
+        if (!nextOpen) onClose()
       }}
     >
       <DialogContent
@@ -40,7 +39,10 @@ export function CreateAppDialogShell({
               className="absolute top-3 right-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover"
               onClick={onClose}
             >
-              <span aria-hidden="true" className="i-ri-close-large-line size-3.5 text-components-button-tertiary-text" />
+              <span
+                aria-hidden="true"
+                className="i-ri-close-large-line size-3.5 text-components-button-tertiary-text"
+              />
             </button>
             {children}
           </div>

@@ -27,15 +27,18 @@ const toastMocks = vi.hoisted(() => {
   const call = vi.fn()
   return {
     call,
-    api: Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })), {
-      success: vi.fn((message, options) => call({ type: 'success', message, ...options })),
-      error: vi.fn((message, options) => call({ type: 'error', message, ...options })),
-      warning: vi.fn((message, options) => call({ type: 'warning', message, ...options })),
-      info: vi.fn((message, options) => call({ type: 'info', message, ...options })),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    }),
+    api: Object.assign(
+      vi.fn((message: unknown, options?: Record<string, unknown>) => call({ message, ...options })),
+      {
+        success: vi.fn((message, options) => call({ type: 'success', message, ...options })),
+        error: vi.fn((message, options) => call({ type: 'error', message, ...options })),
+        warning: vi.fn((message, options) => call({ type: 'warning', message, ...options })),
+        info: vi.fn((message, options) => call({ type: 'info', message, ...options })),
+        dismiss: vi.fn(),
+        update: vi.fn(),
+        promise: vi.fn(),
+      },
+    ),
   }
 })
 
@@ -44,7 +47,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>
+  const actual = (await importOriginal()) as Record<string, unknown>
   return {
     ...actual,
     useContext: () => ({
@@ -151,7 +154,9 @@ describe('CSVUploader', () => {
         file: new File(['content'], 'test.csv', { type: 'text/csv' }) as CustomFile,
         progress: 100,
       }
-      const { container } = render(<CSVUploader {...defaultProps} file={mockFile} updateFile={mockUpdateFile} />)
+      const { container } = render(
+        <CSVUploader {...defaultProps} file={mockFile} updateFile={mockUpdateFile} />,
+      )
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       Object.defineProperty(fileInput, 'value', {
         configurable: true,
@@ -169,9 +174,7 @@ describe('CSVUploader', () => {
       const mockUpdateFile = vi.fn()
       mockUpload.mockResolvedValueOnce({ id: 'uploaded-id' })
 
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
 
@@ -251,9 +254,7 @@ describe('CSVUploader', () => {
       const mockUpdateFile = vi.fn()
       mockUpload.mockResolvedValueOnce({ id: 'test-id' })
 
-      const { container } = render(
-        <CSVUploader file={undefined} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader file={undefined} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
 
@@ -268,9 +269,7 @@ describe('CSVUploader', () => {
   describe('Edge Cases', () => {
     it('should handle empty file list', () => {
       const mockUpdateFile = vi.fn()
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
 
       fireEvent.change(fileInput, { target: { files: [] } })
@@ -280,9 +279,7 @@ describe('CSVUploader', () => {
 
     it('should handle null file', () => {
       const mockUpdateFile = vi.fn()
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
 
       fireEvent.change(fileInput, { target: { files: null } })
@@ -307,9 +304,7 @@ describe('CSVUploader', () => {
       const mockUpdateFile = vi.fn()
       mockUpload.mockRejectedValueOnce(new Error('Upload failed'))
 
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
 
@@ -370,9 +365,7 @@ describe('CSVUploader', () => {
         return Promise.resolve({ id: 'uploaded-id' })
       })
 
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
 
@@ -406,9 +399,7 @@ describe('CSVUploader', () => {
         return Promise.resolve({ id: 'uploaded-id' })
       })
 
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
       const testFile = new File(['content'], 'test.csv', { type: 'text/csv' })
 
@@ -519,14 +510,15 @@ describe('CSVUploader', () => {
       const mockUpdateFile = vi.fn()
       mockUpload.mockResolvedValueOnce({ id: 'dropped-file-id' })
 
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const dropZone = getDropZone(container)
 
       // Create a drop event with a CSV file
       const testFile = new File(['csv,data'], 'dropped.csv', { type: 'text/csv' })
-      const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as unknown as DragEvent
+      const dropEvent = new Event('drop', {
+        bubbles: true,
+        cancelable: true,
+      }) as unknown as DragEvent
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: {
           files: [testFile],
@@ -549,7 +541,10 @@ describe('CSVUploader', () => {
       // Create a drop event with multiple files
       const file1 = new File(['csv1'], 'file1.csv', { type: 'text/csv' })
       const file2 = new File(['csv2'], 'file2.csv', { type: 'text/csv' })
-      const dropEvent = new Event('drop', { bubbles: true, cancelable: true }) as unknown as DragEvent
+      const dropEvent = new Event('drop', {
+        bubbles: true,
+        cancelable: true,
+      }) as unknown as DragEvent
       Object.defineProperty(dropEvent, 'dataTransfer', {
         value: {
           files: [file1, file2],
@@ -569,9 +564,7 @@ describe('CSVUploader', () => {
 
     it('should handle drop event without dataTransfer', () => {
       const mockUpdateFile = vi.fn()
-      const { container } = render(
-        <CSVUploader {...defaultProps} updateFile={mockUpdateFile} />,
-      )
+      const { container } = render(<CSVUploader {...defaultProps} updateFile={mockUpdateFile} />)
       const dropZone = getDropZone(container)
 
       // Create a drop event without dataTransfer
@@ -595,9 +588,7 @@ describe('CSVUploader', () => {
       fireEvent.change(fileInput, { target: { files: [testFile] } })
 
       // Assert - should be valid and trigger upload
-      expect(toastMocks.call).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error' }),
-      )
+      expect(toastMocks.call).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
     })
   })
 })

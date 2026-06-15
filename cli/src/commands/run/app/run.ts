@@ -48,17 +48,25 @@ async function resolveInputs(
   directInputs: Readonly<Record<string, unknown>> | undefined,
 ): Promise<Record<string, unknown>> {
   if (inputsJson !== undefined && inputsFile !== undefined)
-    throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs and --inputs-file are mutually exclusive' })
+    throw new BaseError({
+      code: ErrorCode.UsageInvalidFlag,
+      message: '--inputs and --inputs-file are mutually exclusive',
+    })
   if (inputsJson !== undefined) {
     let parsed: unknown
     try {
       parsed = JSON.parse(inputsJson)
-    }
-    catch {
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs must be valid JSON' })
+    } catch {
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs must be valid JSON',
+      })
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs must be a JSON object' })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs must be a JSON object',
+      })
     return parsed as Record<string, unknown>
   }
   if (inputsFile !== undefined) {
@@ -66,12 +74,17 @@ async function resolveInputs(
     let parsed: unknown
     try {
       parsed = JSON.parse(await readFile(inputsFile, 'utf8'))
-    }
-    catch {
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs-file must contain valid JSON' })
+    } catch {
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs-file must contain valid JSON',
+      })
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new BaseError({ code: ErrorCode.UsageInvalidFlag, message: '--inputs-file must be a JSON object' })
+      throw new BaseError({
+        code: ErrorCode.UsageInvalidFlag,
+        message: '--inputs-file must be a JSON object',
+      })
     return parsed as Record<string, unknown>
   }
   return { ...(directInputs ?? {}) }
@@ -83,11 +96,12 @@ export async function runApp(opts: RunAppOptions, deps: RunAppDeps): Promise<voi
 
   try {
     await executeRun(opts, deps, meta)
-  }
-  catch (err) {
+  } catch (err) {
     if (err instanceof HttpClientError && err.httpStatus === 422) {
       await meta.invalidate(opts.appId)
-      throw err.withHint('app metadata cache cleared — if the app was recently republished, run the command again')
+      throw err.withHint(
+        'app metadata cache cleared — if the app was recently republished, run the command again',
+      )
     }
     throw err
   }
@@ -100,8 +114,7 @@ async function executeRun(
 ): Promise<void> {
   const m = await meta.get(opts.appId, [FieldInfo])
   const mode = m.info?.mode ?? ''
-  if (mode === '')
-    throw new Error(`app ${opts.appId}: mode missing from /describe`)
+  if (mode === '') throw new Error(`app ${opts.appId}: mode missing from /describe`)
 
   if (mode === RUN_MODES.Workflow && opts.message !== undefined && opts.message !== '') {
     throw new BaseError({
@@ -114,10 +127,8 @@ async function executeRun(
   const inputs = await resolveInputs(opts.inputsJson, opts.inputsFile, opts.inputs)
   if (opts.files !== undefined && opts.files.length > 0) {
     const uploadClient = new FileUploadClient(deps.http)
-    const fileInputs = await resolveFileInputs(
-      opts.appId,
-      opts.files,
-      (appId, path) => uploadClient.upload(appId, path),
+    const fileInputs = await resolveFileInputs(opts.appId, opts.files, (appId, path) =>
+      uploadClient.upload(appId, path),
     )
     Object.assign(inputs, fileInputs)
   }
@@ -127,6 +138,16 @@ async function executeRun(
   const runClient = new AppRunClient(deps.http)
 
   const exit = deps.exit ?? processExit
-  const ctx = { opts: { ...opts, inputs }, deps, mode, format, isText, livePrint, runClient, exit, think: opts.think ?? false }
+  const ctx = {
+    opts: { ...opts, inputs },
+    deps,
+    mode,
+    format,
+    isText,
+    livePrint,
+    runClient,
+    exit,
+    think: opts.think ?? false,
+  }
   await pickStrategy(isText, livePrint).execute(ctx)
 }

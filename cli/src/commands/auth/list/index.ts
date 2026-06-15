@@ -14,7 +14,10 @@ export default class AuthList extends DifyCommand {
   ]
 
   static override flags = {
-    output: Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME], default: '' }),
+    output: Flags.outputFormat({
+      options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME],
+      default: '',
+    }),
   }
 
   async run(argv: string[]) {

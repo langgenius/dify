@@ -21,7 +21,7 @@ vi.mock('react-i18next', () => ({
         'type.builtIn': 'Built-in',
         'type.custom': 'Custom',
         'type.workflow': 'Workflow',
-        'noTools': 'No tools found',
+        noTools: 'No tools found',
       }
       return map[key] ?? key
     },
@@ -113,9 +113,17 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/app/components/base/tab-slider-new', () => ({
-  default: ({ value, onChange, options }: { value: string, onChange: (v: string) => void, options: Array<{ value: string, text: string }> }) => (
+  default: ({
+    value,
+    onChange,
+    options,
+  }: {
+    value: string
+    onChange: (v: string) => void
+    options: Array<{ value: string; text: string }>
+  }) => (
     <div data-testid="tab-slider">
-      {options.map((opt: { value: string, text: string }) => (
+      {options.map((opt: { value: string; text: string }) => (
         <button
           key={opt.value}
           data-testid={`tab-${opt.value}`}
@@ -130,7 +138,14 @@ vi.mock('@/app/components/base/tab-slider-new', () => ({
 }))
 
 vi.mock('@/app/components/base/input', () => ({
-  default: ({ value, onChange, onClear, showLeftIcon, showClearIcon, wrapperClassName }: {
+  default: ({
+    value,
+    onChange,
+    onClear,
+    showLeftIcon,
+    showClearIcon,
+    wrapperClassName,
+  }: {
     value: string
     onChange: (e: { target: { value: string } }) => void
     onClear: () => void
@@ -147,14 +162,22 @@ vi.mock('@/app/components/base/input', () => ({
         data-clear-icon={showClearIcon ? 'true' : 'false'}
       />
       {showClearIcon && value && (
-        <button data-testid="clear-search" onClick={onClear}>Clear</button>
+        <button data-testid="clear-search" onClick={onClear}>
+          Clear
+        </button>
       )}
     </div>
   ),
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, className }: { payload: { brief: Record<string, string> | string, name: string }, className?: string }) => {
+  default: ({
+    payload,
+    className,
+  }: {
+    payload: { brief: Record<string, string> | string; name: string }
+    className?: string
+  }) => {
     const briefText = typeof payload.brief === 'object' ? payload.brief?.en_US || '' : payload.brief
     return (
       <div data-testid={`card-${payload.name}`} className={className}>
@@ -172,11 +195,17 @@ vi.mock('@/app/components/plugins/card/card-more-info', () => ({
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
-  default: ({ value: _value, onChange }: { value: string[], onChange: (v: string[]) => void }) => (
+  default: ({ value: _value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
     <div data-testid="label-filter">
-      <button data-testid="filter-search" onClick={() => onChange(['search'])}>Filter: search</button>
-      <button data-testid="filter-utility" onClick={() => onChange(['utility'])}>Filter: utility</button>
-      <button data-testid="filter-clear" onClick={() => onChange([])}>Clear filter</button>
+      <button data-testid="filter-search" onClick={() => onChange(['search'])}>
+        Filter: search
+      </button>
+      <button data-testid="filter-utility" onClick={() => onChange(['utility'])}>
+        Filter: utility
+      </button>
+      <button data-testid="filter-clear" onClick={() => onChange([])}>
+        Clear filter
+      </button>
     </div>
   ),
 }))
@@ -186,10 +215,12 @@ vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/detail', () => ({
-  default: ({ collection, onHide }: { collection: Collection, onHide: () => void }) => (
+  default: ({ collection, onHide }: { collection: Collection; onHide: () => void }) => (
     <div data-testid="provider-detail">
       <span data-testid="detail-name">{collection.name}</span>
-      <button data-testid="detail-close" onClick={onHide}>Close</button>
+      <button data-testid="detail-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -199,9 +230,12 @@ vi.mock('@/app/components/tools/provider/empty', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({ detail, onHide }: { detail: unknown, onHide: () => void }) => (
-    detail ? <div data-testid="plugin-detail-panel"><button onClick={onHide}>Close</button></div> : null
-  ),
+  default: ({ detail, onHide }: { detail: unknown; onHide: () => void }) =>
+    detail ? (
+      <div data-testid="plugin-detail-panel">
+        <button onClick={onHide}>Close</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/empty', () => ({

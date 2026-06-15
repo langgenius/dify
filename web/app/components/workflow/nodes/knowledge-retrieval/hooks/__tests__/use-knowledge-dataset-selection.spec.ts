@@ -81,7 +81,9 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-const createPayload = (overrides: Partial<KnowledgeRetrievalNodeType> = {}): KnowledgeRetrievalNodeType => ({
+const createPayload = (
+  overrides: Partial<KnowledgeRetrievalNodeType> = {},
+): KnowledgeRetrievalNodeType => ({
   title: 'Knowledge Retrieval',
   desc: '',
   type: BlockEnum.KnowledgeRetrieval,
@@ -133,17 +135,19 @@ describe('use-knowledge-dataset-selection', () => {
   it('loads dataset details on mount and exposes multimodal state', async () => {
     const { inputRef, setInputs } = createState(createPayload())
 
-    const { result } = renderHook(() => useKnowledgeDatasetSelection({
-      inputs: inputRef.current,
-      inputRef,
-      setInputs,
-      payloadRetrievalMode: RETRIEVE_TYPE.multiWay,
-      updateDatasetsDetail,
-      fallbackRerankModel: {
-        provider: 'rerank-provider',
-        model: 'rerank-model',
-      },
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeDatasetSelection({
+        inputs: inputRef.current,
+        inputRef,
+        setInputs,
+        payloadRetrievalMode: RETRIEVE_TYPE.multiWay,
+        updateDatasetsDetail,
+        fallbackRerankModel: {
+          provider: 'rerank-provider',
+          model: 'rerank-model',
+        },
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.selectedDatasetsLoaded).toBe(true)
@@ -162,28 +166,34 @@ describe('use-knowledge-dataset-selection', () => {
         ids: ['dataset-1'],
       },
     })
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      dataset_ids: ['dataset-1'],
-    }))
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataset_ids: ['dataset-1'],
+      }),
+    )
     expect(result.current.showImageQueryVarSelector).toBe(true)
   })
 
   it('updates dataset ids, retrieval config, attachment selector, and rerank modal state', async () => {
-    const { inputRef, setInputs } = createState(createPayload({
-      dataset_ids: [],
-    }))
+    const { inputRef, setInputs } = createState(
+      createPayload({
+        dataset_ids: [],
+      }),
+    )
 
-    const { result } = renderHook(() => useKnowledgeDatasetSelection({
-      inputs: inputRef.current,
-      inputRef,
-      setInputs,
-      payloadRetrievalMode: RETRIEVE_TYPE.multiWay,
-      updateDatasetsDetail,
-      fallbackRerankModel: {
-        provider: 'rerank-provider',
-        model: 'rerank-model',
-      },
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeDatasetSelection({
+        inputs: inputRef.current,
+        inputRef,
+        setInputs,
+        payloadRetrievalMode: RETRIEVE_TYPE.multiWay,
+        updateDatasetsDetail,
+        fallbackRerankModel: {
+          provider: 'rerank-provider',
+          model: 'rerank-model',
+        },
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.selectedDatasetsLoaded).toBe(true)
@@ -209,40 +219,46 @@ describe('use-knowledge-dataset-selection', () => {
     })
 
     expect(updateDatasetsDetail).toHaveBeenCalledWith(nextDatasets)
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      dataset_ids: ['dataset-2', 'dataset-3'],
-      query_attachment_selector: [],
-      multiple_retrieval_config: expect.objectContaining({
-        reranking_enable: true,
-        reranking_model: {
-          provider: 'rerank-provider',
-          model: 'rerank-model',
-        },
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataset_ids: ['dataset-2', 'dataset-3'],
+        query_attachment_selector: [],
+        multiple_retrieval_config: expect.objectContaining({
+          reranking_enable: true,
+          reranking_model: {
+            provider: 'rerank-provider',
+            model: 'rerank-model',
+          },
+        }),
       }),
-    }))
+    )
     expect(result.current.rerankModelOpen).toBe(true)
     expect(result.current.showImageQueryVarSelector).toBe(false)
   })
 
   it('keeps attachment selectors and skips multiple retrieval updates outside the multi-way flow', async () => {
-    const { inputRef, setInputs } = createState(createPayload({
-      dataset_ids: [],
-      retrieval_mode: RETRIEVE_TYPE.oneWay,
-      query_attachment_selector: ['start-node', 'files'],
-      multiple_retrieval_config: {
-        top_k: 5,
-        score_threshold: 0.2,
-      },
-    }))
+    const { inputRef, setInputs } = createState(
+      createPayload({
+        dataset_ids: [],
+        retrieval_mode: RETRIEVE_TYPE.oneWay,
+        query_attachment_selector: ['start-node', 'files'],
+        multiple_retrieval_config: {
+          top_k: 5,
+          score_threshold: 0.2,
+        },
+      }),
+    )
 
-    const { result } = renderHook(() => useKnowledgeDatasetSelection({
-      inputs: inputRef.current,
-      inputRef,
-      setInputs,
-      payloadRetrievalMode: RETRIEVE_TYPE.oneWay,
-      updateDatasetsDetail,
-      fallbackRerankModel: {},
-    }))
+    const { result } = renderHook(() =>
+      useKnowledgeDatasetSelection({
+        inputs: inputRef.current,
+        inputRef,
+        setInputs,
+        payloadRetrievalMode: RETRIEVE_TYPE.oneWay,
+        updateDatasetsDetail,
+        fallbackRerankModel: {},
+      }),
+    )
 
     await waitFor(() => {
       expect(result.current.selectedDatasetsLoaded).toBe(true)
@@ -258,14 +274,16 @@ describe('use-knowledge-dataset-selection', () => {
       result.current.setRerankModelOpen(false)
     })
 
-    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-      dataset_ids: ['dataset-4'],
-      query_attachment_selector: ['start-node', 'files'],
-      multiple_retrieval_config: {
-        top_k: 5,
-        score_threshold: 0.2,
-      },
-    }))
+    expect(setInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataset_ids: ['dataset-4'],
+        query_attachment_selector: ['start-node', 'files'],
+        multiple_retrieval_config: {
+          top_k: 5,
+          score_threshold: 0.2,
+        },
+      }),
+    )
     expect(result.current.rerankModelOpen).toBe(false)
     expect(result.current.showImageQueryVarSelector).toBe(true)
   })

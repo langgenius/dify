@@ -78,23 +78,30 @@ vi.mock('@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars', () =>
 }))
 
 vi.mock('@/app/components/workflow', () => ({
-  WorkflowWithInnerContext: ({ children, onWorkflowDataUpdate }: PropsWithChildren<{ onWorkflowDataUpdate?: (payload: unknown) => void }>) => (
+  WorkflowWithInnerContext: ({
+    children,
+    onWorkflowDataUpdate,
+  }: PropsWithChildren<{ onWorkflowDataUpdate?: (payload: unknown) => void }>) => (
     <div data-testid="workflow-inner-context">
       {children}
       <button
         data-testid="trigger-update"
-        onClick={() => onWorkflowDataUpdate?.({
-          rag_pipeline_variables: [{ id: '1', name: 'var1' }],
-          environment_variables: [{ id: '2', name: 'env1' }],
-        })}
+        onClick={() =>
+          onWorkflowDataUpdate?.({
+            rag_pipeline_variables: [{ id: '1', name: 'var1' }],
+            environment_variables: [{ id: '2', name: 'env1' }],
+          })
+        }
       >
         Trigger Update
       </button>
       <button
         data-testid="trigger-update-partial"
-        onClick={() => onWorkflowDataUpdate?.({
-          rag_pipeline_variables: [{ id: '3', name: 'var2' }],
-        })}
+        onClick={() =>
+          onWorkflowDataUpdate?.({
+            rag_pipeline_variables: [{ id: '3', name: 'var2' }],
+          })
+        }
       >
         Trigger Partial Update
       </button>

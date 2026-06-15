@@ -33,12 +33,11 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
     { value: 'weekly', name: t('nodes.triggerSchedule.frequency.weekly', { ns: 'workflow' }) },
     { value: 'monthly', name: t('nodes.triggerSchedule.frequency.monthly', { ns: 'workflow' }) },
   ]
-  const selectedFrequency = frequencies.find(item => item.value === frequency)
+  const selectedFrequency = frequencies.find((item) => item.value === frequency)
 
   const handleFrequencyChange = (value: string | null) => {
-    const selected = frequencies.find(item => item.value === value)
-    if (selected)
-      onChange(selected.value)
+    const selected = frequencies.find((item) => item.value === value)
+    if (selected) onChange(selected.value)
   }
 
   return (
@@ -54,7 +53,7 @@ const FrequencySelector = ({ frequency, onChange }: FrequencySelectorProps) => {
       <SelectContent>
         <SelectGroup>
           <SelectGroupLabel>{groupLabel}</SelectGroupLabel>
-          {frequencies.map(item => (
+          {frequencies.map((item) => (
             <SelectItem key={item.value} value={item.value}>
               <SelectItemText>{item.name}</SelectItemText>
               <SelectItemIndicator />

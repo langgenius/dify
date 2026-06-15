@@ -41,7 +41,9 @@ function SelectItem({ text, value, isChecked }: ItemProps) {
     <FieldItem>
       <FieldLabel
         className={cn(
-          isChecked ? 'border-2 border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm' : 'border border-components-card-border',
+          isChecked
+            ? 'border-2 border-util-colors-indigo-indigo-600 bg-components-panel-on-panel-item-bg shadow-sm'
+            : 'border border-components-card-border',
           'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
         )}
       >
@@ -52,12 +54,7 @@ function SelectItem({ text, value, isChecked }: ItemProps) {
   )
 }
 
-export default function ConfigCredential({
-  positionCenter,
-  credential,
-  onChange,
-  onHide,
-}: Props) {
+export default function ConfigCredential({ positionCenter, credential, onChange, onHide }: Props) {
   const { t } = useTranslation()
   const [tempCredential, setTempCredential] = useState<Credential>(credential)
   const handleAuthTypeChange = (value: AuthType) => {
@@ -90,8 +87,7 @@ export default function ConfigCredential({
       disablePointerDismissal
       swipeDirection="right"
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
       <DrawerPortal>
@@ -126,13 +122,13 @@ export default function ConfigCredential({
               >
                 <FieldRoot name="auth_type" className="contents">
                   <FieldsetRoot
-                    render={(
+                    render={
                       <RadioGroup<AuthType>
                         className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
                         value={tempCredential.auth_type}
                         onValueChange={handleAuthTypeChange}
                       />
-                    )}
+                    }
                   >
                     <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
                       {t('createTool.authMethod.type', { ns: 'tools' })}
@@ -158,13 +154,15 @@ export default function ConfigCredential({
                   <>
                     <FieldRoot name="api_key_header_prefix" className="contents">
                       <FieldsetRoot
-                        render={(
+                        render={
                           <RadioGroup<AuthHeaderPrefix>
                             className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-2"
                             value={tempCredential.api_key_header_prefix}
-                            onValueChange={value => setTempCredential({ ...tempCredential, api_key_header_prefix: value })}
+                            onValueChange={(value) =>
+                              setTempCredential({ ...tempCredential, api_key_header_prefix: value })
+                            }
                           />
-                        )}
+                        }
                       >
                         <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
                           {t('createTool.authHeaderPrefix.title', { ns: 'tools' })}
@@ -172,17 +170,23 @@ export default function ConfigCredential({
                         <SelectItem
                           text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
                           value={AuthHeaderPrefix.basic}
-                          isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic}
+                          isChecked={
+                            tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic
+                          }
                         />
                         <SelectItem
                           text={t('createTool.authHeaderPrefix.types.bearer', { ns: 'tools' })}
                           value={AuthHeaderPrefix.bearer}
-                          isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer}
+                          isChecked={
+                            tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer
+                          }
                         />
                         <SelectItem
                           text={t('createTool.authHeaderPrefix.types.custom', { ns: 'tools' })}
                           value={AuthHeaderPrefix.custom}
-                          isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}
+                          isChecked={
+                            tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom
+                          }
                         />
                       </FieldsetRoot>
                     </FieldRoot>
@@ -199,16 +203,26 @@ export default function ConfigCredential({
                       </div>
                       <Input
                         value={tempCredential.api_key_header}
-                        onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiKeyPlaceholder', { ns: 'tools' })!}
+                        onChange={(e) =>
+                          setTempCredential({ ...tempCredential, api_key_header: e.target.value })
+                        }
+                        placeholder={
+                          t('createTool.authMethod.types.apiKeyPlaceholder', { ns: 'tools' })!
+                        }
                       />
                     </div>
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">
+                        {t('createTool.authMethod.value', { ns: 'tools' })}
+                      </div>
                       <Input
                         value={tempCredential.api_key_value}
-                        onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                        onChange={(e) =>
+                          setTempCredential({ ...tempCredential, api_key_value: e.target.value })
+                        }
+                        placeholder={
+                          t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!
+                        }
                       />
                     </div>
                   </>
@@ -228,16 +242,29 @@ export default function ConfigCredential({
                       </div>
                       <Input
                         value={tempCredential.api_key_query_param}
-                        onChange={e => setTempCredential({ ...tempCredential, api_key_query_param: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.queryParamPlaceholder', { ns: 'tools' })!}
+                        onChange={(e) =>
+                          setTempCredential({
+                            ...tempCredential,
+                            api_key_query_param: e.target.value,
+                          })
+                        }
+                        placeholder={
+                          t('createTool.authMethod.types.queryParamPlaceholder', { ns: 'tools' })!
+                        }
                       />
                     </div>
                     <div>
-                      <div className="py-2 system-sm-medium text-text-primary">{t('createTool.authMethod.value', { ns: 'tools' })}</div>
+                      <div className="py-2 system-sm-medium text-text-primary">
+                        {t('createTool.authMethod.value', { ns: 'tools' })}
+                      </div>
                       <Input
                         value={tempCredential.api_key_value}
-                        onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                        placeholder={t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!}
+                        onChange={(e) =>
+                          setTempCredential({ ...tempCredential, api_key_value: e.target.value })
+                        }
+                        placeholder={
+                          t('createTool.authMethod.types.apiValuePlaceholder', { ns: 'tools' })!
+                        }
                       />
                     </div>
                   </>

@@ -4,20 +4,17 @@ import { describe, expect, it, vi } from 'vitest'
 import { DatasetCardTags } from '../components/dataset-card-tags'
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: ({ value, onOpenTagManagement }: {
+  TagSelector: ({
+    value,
+    onOpenTagManagement,
+  }: {
     value: Tag[]
     onOpenTagManagement?: () => void
   }) => (
     <div role="group" aria-label="Tag selector mock">
-      <div>{value.map(tag => tag.id).join(',')}</div>
-      <div>
-        {value.length}
-        {' '}
-        tags
-      </div>
-      <button onClick={onOpenTagManagement}>
-        Open Management
-      </button>
+      <div>{value.map((tag) => tag.id).join(',')}</div>
+      <div>{value.length} tags</div>
+      <button onClick={onOpenTagManagement}>Open Management</button>
     </div>
   ),
 }))
@@ -74,8 +71,7 @@ describe('DatasetCardTags', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} onClick={onClick} />)
 
       const wrapper = container.firstElementChild
-      if (!wrapper)
-        throw new Error('Expected dataset card tag wrapper')
+      if (!wrapper) throw new Error('Expected dataset card tag wrapper')
       fireEvent.click(wrapper)
 
       expect(onClick).toHaveBeenCalledTimes(1)
@@ -95,16 +91,14 @@ describe('DatasetCardTags', () => {
     it('should have opacity class when embedding is not available', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} embeddingAvailable={false} />)
       const wrapper = container.firstElementChild
-      if (!wrapper)
-        throw new Error('Expected dataset card tag wrapper')
+      if (!wrapper) throw new Error('Expected dataset card tag wrapper')
       expect(wrapper).toHaveClass('opacity-30')
     })
 
     it('should not have opacity class when embedding is available', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} embeddingAvailable={true} />)
       const wrapper = container.firstElementChild
-      if (!wrapper)
-        throw new Error('Expected dataset card tag wrapper')
+      if (!wrapper) throw new Error('Expected dataset card tag wrapper')
       expect(wrapper).not.toHaveClass('opacity-30')
     })
 
@@ -120,7 +114,9 @@ describe('DatasetCardTags', () => {
 
     it('should keep TagSelector visible when tags are empty', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} tags={[]} />)
-      const tagSelectorWrapper = screen.getByRole('group', { name: 'Tag selector mock' }).parentElement
+      const tagSelectorWrapper = screen.getByRole('group', {
+        name: 'Tag selector mock',
+      }).parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
       expect(tagSelectorWrapper).toHaveClass('w-full')
@@ -130,7 +126,9 @@ describe('DatasetCardTags', () => {
 
     it('should keep TagSelector visible when tags exist', () => {
       const { container } = render(<DatasetCardTags {...defaultProps} />)
-      const tagSelectorWrapper = screen.getByRole('group', { name: 'Tag selector mock' }).parentElement
+      const tagSelectorWrapper = screen.getByRole('group', {
+        name: 'Tag selector mock',
+      }).parentElement
 
       expect(tagSelectorWrapper).toBeInTheDocument()
       expect(tagSelectorWrapper).toHaveClass('w-full')
@@ -145,12 +143,15 @@ describe('DatasetCardTags', () => {
     })
 
     it('should handle many tags', () => {
-      const manyTags: Tag[] = Array.from({ length: 20 }, (_, i): Tag => ({
-        id: `tag-${i}`,
-        name: `Tag ${i}`,
-        type: 'knowledge',
-        binding_count: 0,
-      }))
+      const manyTags: Tag[] = Array.from(
+        { length: 20 },
+        (_, i): Tag => ({
+          id: `tag-${i}`,
+          name: `Tag ${i}`,
+          type: 'knowledge',
+          binding_count: 0,
+        }),
+      )
       render(<DatasetCardTags {...defaultProps} tags={manyTags} />)
       expect(screen.getByText('20 tags')).toBeInTheDocument()
     })

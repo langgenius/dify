@@ -3,8 +3,7 @@ export function cleanUpSvgCode(svgCode: string): string {
 }
 
 export const sanitizeMermaidCode = (mermaidCode: string): string => {
-  if (!mermaidCode || typeof mermaidCode !== 'string')
-    return ''
+  if (!mermaidCode || typeof mermaidCode !== 'string') return ''
 
   return mermaidCode
     .split('\n')
@@ -12,12 +11,10 @@ export const sanitizeMermaidCode = (mermaidCode: string): string => {
       const trimmed = line.trimStart()
 
       // Mermaid directives can override config; treat as untrusted in chat context.
-      if (trimmed.startsWith('%%{'))
-        return false
+      if (trimmed.startsWith('%%{')) return false
 
       // Mermaid click directives can create JS callbacks/links inside rendered SVG.
-      if (trimmed.startsWith('click '))
-        return false
+      if (trimmed.startsWith('click ')) return false
 
       return true
     })
@@ -31,8 +28,7 @@ export const sanitizeMermaidCode = (mermaidCode: string): string => {
  * @returns {string} - The prepared mermaid code
  */
 export const prepareMermaidCode = (mermaidCode: string, style: 'classic' | 'handDrawn'): string => {
-  if (!mermaidCode || typeof mermaidCode !== 'string')
-    return ''
+  if (!mermaidCode || typeof mermaidCode !== 'string') return ''
 
   let code = sanitizeMermaidCode(mermaidCode.trim())
 
@@ -63,23 +59,22 @@ export const prepareMermaidCode = (mermaidCode: string, style: 'classic' | 'hand
  * Converts SVG to base64 string for image rendering
  */
 export function svgToBase64(svgGraph: string): Promise<string> {
-  if (!svgGraph)
-    return Promise.resolve('')
+  if (!svgGraph) return Promise.resolve('')
 
   try {
     // Ensure SVG has correct XML declaration
-    if (!svgGraph.includes('<?xml'))
-      svgGraph = `<?xml version="1.0" encoding="UTF-8"?>${svgGraph}`
+    if (!svgGraph.includes('<?xml')) svgGraph = `<?xml version="1.0" encoding="UTF-8"?>${svgGraph}`
 
-    const blob = new Blob([new TextEncoder().encode(svgGraph)], { type: 'image/svg+xml;charset=utf-8' })
+    const blob = new Blob([new TextEncoder().encode(svgGraph)], {
+      type: 'image/svg+xml;charset=utf-8',
+    })
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onloadend = () => resolve(reader.result as string)
       reader.onerror = reject
       reader.readAsDataURL(blob)
     })
-  }
-  catch {
+  } catch {
     return Promise.resolve('')
   }
 }
@@ -109,40 +104,55 @@ export function processSvgForTheme(
         .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${themes.dark.nodeColors[0].bg}"`)
         .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${themes.dark.connectionColor}"`)
         .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
-    }
-    else {
+    } else {
       let i = 0
       const nodeColorRegex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
       processedSvg = processedSvg.replace(nodeColorRegex, (match: string) => {
         const colorIndex = i % themes.dark.nodeColors.length
         i++
-        return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${themes.dark.nodeColors[colorIndex].bg}"`)
+        return match.replace(
+          /fill="#[a-fA-F0-9]{6}"/,
+          `fill="${themes.dark.nodeColors[colorIndex].bg}"`,
+        )
       })
 
       processedSvg = processedSvg
-        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
-        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
+        .replace(
+          /<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
+          `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`,
+        )
+        .replace(
+          /<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
+          `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`,
+        )
     }
-  }
-  else {
+  } else {
     if (isHandDrawn) {
       processedSvg = processedSvg
         .replace(/fill="#[a-fA-F0-9]{6}"/g, `fill="${themes.light.nodeColors[0].bg}"`)
         .replace(/stroke="#[a-fA-F0-9]{6}"/g, `stroke="${themes.light.connectionColor}"`)
         .replace(/stroke-width="1"/g, 'stroke-width="1.5"')
-    }
-    else {
+    } else {
       let i = 0
       const nodeColorRegex = /fill="#[a-fA-F0-9]{6}"[^>]*class="node-[^"]*"/g
       processedSvg = processedSvg.replace(nodeColorRegex, (match: string) => {
         const colorIndex = i % themes.light.nodeColors.length
         i++
-        return match.replace(/fill="#[a-fA-F0-9]{6}"/, `fill="${themes.light.nodeColors[colorIndex].bg}"`)
+        return match.replace(
+          /fill="#[a-fA-F0-9]{6}"/,
+          `fill="${themes.light.nodeColors[colorIndex].bg}"`,
+        )
       })
 
       processedSvg = processedSvg
-        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<path stroke="${themes.light.connectionColor}"`)
-        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<$1 stroke="${themes.light.connectionColor}"`)
+        .replace(
+          /<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
+          `<path stroke="${themes.light.connectionColor}"`,
+        )
+        .replace(
+          /<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
+          `<$1 stroke="${themes.light.connectionColor}"`,
+        )
     }
   }
 
@@ -153,8 +163,7 @@ export function processSvgForTheme(
  * Checks if mermaid code is complete and valid
  */
 export function isMermaidCodeComplete(code: string): boolean {
-  if (!code || code.trim().length === 0)
-    return false
+  if (!code || code.trim().length === 0) return false
 
   try {
     const trimmedCode = code.trim()
@@ -162,19 +171,22 @@ export function isMermaidCodeComplete(code: string): boolean {
     // Special handling for gantt charts
     if (trimmedCode.startsWith('gantt')) {
       // For gantt charts, check if it has at least a title and one task
-      const lines = trimmedCode.split('\n').filter(line => line.trim().length > 0)
+      const lines = trimmedCode.split('\n').filter((line) => line.trim().length > 0)
       return lines.length >= 3
     }
 
     // Special handling for mindmaps
     if (trimmedCode.startsWith('mindmap')) {
       // For mindmaps, check if it has at least a root node
-      const lines = trimmedCode.split('\n').filter(line => line.trim().length > 0)
+      const lines = trimmedCode.split('\n').filter((line) => line.trim().length > 0)
       return lines.length >= 2
     }
 
     // Check for basic syntax structure
-    const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram|mindmap)/.test(trimmedCode)
+    const hasValidStart =
+      /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram|mindmap)/.test(
+        trimmedCode,
+      )
 
     // The balanced bracket check was too strict and produced false negatives for valid
     // mermaid syntax like the asymmetric shape `A>B]`. Relying on Mermaid's own
@@ -182,14 +194,15 @@ export function isMermaidCodeComplete(code: string): boolean {
     const isBalanced = true
 
     // Check for common syntax errors
-    const hasNoSyntaxErrors = !trimmedCode.includes('undefined')
-      && !trimmedCode.includes('[object Object]')
-      && trimmedCode.split('\n').every(line =>
-        !(line.includes('-->') && !/\S+\s*-->\s*\S+/.exec(line)))
+    const hasNoSyntaxErrors =
+      !trimmedCode.includes('undefined') &&
+      !trimmedCode.includes('[object Object]') &&
+      trimmedCode
+        .split('\n')
+        .every((line) => !(line.includes('-->') && !/\S+\s*-->\s*\S+/.exec(line)))
 
     return hasValidStart && isBalanced && hasNoSyntaxErrors
-  }
-  catch (error) {
+  } catch (error) {
     console.error('Mermaid code validation error:', error)
     return false
   }
@@ -198,19 +211,20 @@ export function isMermaidCodeComplete(code: string): boolean {
 /**
  * Helper to wait for DOM element with retry mechanism
  */
-export function waitForDOMElement(callback: () => Promise<any>, maxAttempts = 3, delay = 100): Promise<any> {
+export function waitForDOMElement(
+  callback: () => Promise<any>,
+  maxAttempts = 3,
+  delay = 100,
+): Promise<any> {
   return new Promise((resolve, reject) => {
     let attempts = 0
     const tryRender = async () => {
       try {
         resolve(await callback())
-      }
-      catch (error) {
+      } catch (error) {
         attempts++
-        if (attempts < maxAttempts)
-          setTimeout(tryRender, delay)
-        else
-          reject(error)
+        if (attempts < maxAttempts) setTimeout(tryRender, delay)
+        else reject(error)
       }
     }
     tryRender()

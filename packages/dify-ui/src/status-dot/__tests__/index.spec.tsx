@@ -24,10 +24,26 @@ describe('StatusDot', () => {
   })
 
   it.each([
-    ['warning', 'bg-components-badge-status-light-warning-bg', 'border-components-badge-status-light-warning-border-inner'],
-    ['error', 'bg-components-badge-status-light-error-bg', 'border-components-badge-status-light-error-border-inner'],
-    ['normal', 'bg-components-badge-status-light-normal-bg', 'border-components-badge-status-light-normal-border-inner'],
-    ['disabled', 'bg-components-badge-status-light-disabled-bg', 'border-components-badge-status-light-disabled-border-inner'],
+    [
+      'warning',
+      'bg-components-badge-status-light-warning-bg',
+      'border-components-badge-status-light-warning-border-inner',
+    ],
+    [
+      'error',
+      'bg-components-badge-status-light-error-bg',
+      'border-components-badge-status-light-error-border-inner',
+    ],
+    [
+      'normal',
+      'bg-components-badge-status-light-normal-bg',
+      'border-components-badge-status-light-normal-border-inner',
+    ],
+    [
+      'disabled',
+      'bg-components-badge-status-light-disabled-bg',
+      'border-components-badge-status-light-disabled-border-inner',
+    ],
   ] as const)('applies %s status tokens', async (status, backgroundClass, borderClass) => {
     const screen = await render(<StatusDot status={status} data-testid="dot" />)
 

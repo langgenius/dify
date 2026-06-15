@@ -33,7 +33,11 @@ describe('runSetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.updateRole).toHaveBeenCalledExactlyOnceWith('550e8400-e29b-41d4-a716-446655440000', 'acct-2', { role: 'admin' })
+    expect(client.updateRole).toHaveBeenCalledExactlyOnceWith(
+      '550e8400-e29b-41d4-a716-446655440000',
+      'acct-2',
+      { role: 'admin' },
+    )
     expect(result.data.text()).toMatch(/Set acct-2 role to admin/)
     expect(result.data.name()).toBe('acct-2')
     expect(result.data.json()).toEqual({ id: 'acct-2', role: 'admin' })
@@ -82,6 +86,10 @@ describe('runSetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.updateRole).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', 'acct-2', { role: 'normal' })
+    expect(client.updateRole).toHaveBeenCalledWith(
+      '550e8400-e29b-41d4-a716-446655440008',
+      'acct-2',
+      { role: 'normal' },
+    )
   })
 })

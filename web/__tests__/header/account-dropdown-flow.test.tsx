@@ -5,12 +5,7 @@ import { Plan } from '@/app/components/billing/type'
 import AccountDropdown from '@/app/components/header/account-dropdown'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
-const {
-  mockPush,
-  mockLogout,
-  mockResetUser,
-  mockSetShowAccountSettingModal,
-} = vi.hoisted(() => ({
+const { mockPush, mockLogout, mockResetUser, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockLogout: vi.fn(),
   mockResetUser: vi.fn(),
@@ -19,9 +14,8 @@ const {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string, version?: string }) => {
-      if (options?.version)
-        return `${options.ns}.${key}:${options.version}`
+    t: (key: string, options?: { ns?: string; version?: string }) => {
+      if (options?.version) return `${options.ns}.${key}:${options.version}`
       return options?.ns ? `${options.ns}.${key}` : key
     },
   }),
@@ -107,12 +101,17 @@ const renderAccountDropdown = () => {
 describe('Header Account Dropdown Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
-      repo: { stars: 123456 },
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          repo: { stars: 123456 },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    )
     localStorage.clear()
   })
 

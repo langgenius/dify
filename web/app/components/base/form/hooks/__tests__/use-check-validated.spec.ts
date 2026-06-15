@@ -37,31 +37,36 @@ describe('useCheckValidated', () => {
   it.each([
     { fieldName: 'name', label: 'Name', message: 'Name is required' },
     { fieldName: 'field1', label: 'Field 1', message: 'Field is required' },
-  ])('should notify and return false when visible field has errors (show_on: []) for $fieldName', ({ fieldName, label, message }) => {
-    const form = {
-      getAllErrors: () => ({
-        fields: {
-          [fieldName]: { errors: [message] },
+  ])(
+    'should notify and return false when visible field has errors (show_on: []) for $fieldName',
+    ({ fieldName, label, message }) => {
+      const form = {
+        getAllErrors: () => ({
+          fields: {
+            [fieldName]: { errors: [message] },
+          },
+        }),
+        state: { values: {} },
+      }
+      const schemas = [
+        {
+          name: fieldName,
+          label,
+          required: true,
+          type: FormTypeEnum.textInput,
+          show_on: [],
         },
-      }),
-      state: { values: {} },
-    }
-    const schemas = [{
-      name: fieldName,
-      label,
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [],
-    }]
+      ]
 
-    const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
+      const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
-    expect(result.current.checkValidated()).toBe(false)
-    expect(mockNotify).toHaveBeenCalledWith({
-      type: 'error',
-      message,
-    })
-  })
+      expect(result.current.checkValidated()).toBe(false)
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message,
+      })
+    },
+  )
 
   it('should ignore hidden field errors and return true', () => {
     const form = {
@@ -72,13 +77,15 @@ describe('useCheckValidated', () => {
       }),
       state: { values: { enabled: 'false' } },
     }
-    const schemas = [{
-      name: 'secret',
-      label: 'Secret',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [{ variable: 'enabled', value: 'true' }],
-    }]
+    const schemas = [
+      {
+        name: 'secret',
+        label: 'Secret',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [{ variable: 'enabled', value: 'true' }],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
@@ -95,13 +102,15 @@ describe('useCheckValidated', () => {
       }),
       state: { values: { enabled: 'true' } },
     }
-    const schemas = [{
-      name: 'secret',
-      label: 'Secret',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [{ variable: 'enabled', value: 'true' }],
-    }]
+    const schemas = [
+      {
+        name: 'secret',
+        label: 'Secret',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [{ variable: 'enabled', value: 'true' }],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
@@ -158,16 +167,18 @@ describe('useCheckValidated', () => {
       }),
       state: { values: { enabled: 'true', level: 'advanced' } },
     }
-    const schemas = [{
-      name: 'advancedOption',
-      label: 'Advanced Option',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [
-        { variable: 'enabled', value: 'true' },
-        { variable: 'level', value: 'advanced' },
-      ],
-    }]
+    const schemas = [
+      {
+        name: 'advancedOption',
+        label: 'Advanced Option',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [
+          { variable: 'enabled', value: 'true' },
+          { variable: 'level', value: 'advanced' },
+        ],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
@@ -187,16 +198,18 @@ describe('useCheckValidated', () => {
       }),
       state: { values: { enabled: 'true', level: 'basic' } },
     }
-    const schemas = [{
-      name: 'advancedOption',
-      label: 'Advanced Option',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [
-        { variable: 'enabled', value: 'true' },
-        { variable: 'level', value: 'advanced' },
-      ],
-    }]
+    const schemas = [
+      {
+        name: 'advancedOption',
+        label: 'Advanced Option',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [
+          { variable: 'enabled', value: 'true' },
+          { variable: 'level', value: 'advanced' },
+        ],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
@@ -213,13 +226,15 @@ describe('useCheckValidated', () => {
       }),
       state: { values: {} },
     }
-    const schemas = [{
-      name: 'knownField',
-      label: 'Known Field',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [],
-    }]
+    const schemas = [
+      {
+        name: 'knownField',
+        label: 'Known Field',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
@@ -240,13 +255,15 @@ describe('useCheckValidated', () => {
       }),
       state: { values: {} },
     }
-    const schemas = [{
-      name: 'field1',
-      label: 'Field 1',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [],
-    }]
+    const schemas = [
+      {
+        name: 'field1',
+        label: 'Field 1',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 
@@ -299,13 +316,15 @@ describe('useCheckValidated', () => {
       }),
       state: { values: { threshold: '100' } },
     }
-    const schemas = [{
-      name: 'numericField',
-      label: 'Numeric Field',
-      required: true,
-      type: FormTypeEnum.textInput,
-      show_on: [{ variable: 'threshold', value: '100' }],
-    }]
+    const schemas = [
+      {
+        name: 'numericField',
+        label: 'Numeric Field',
+        required: true,
+        type: FormTypeEnum.textInput,
+        show_on: [{ variable: 'threshold', value: '100' }],
+      },
+    ]
 
     const { result } = renderHook(() => useCheckValidated(form as unknown as AnyFormApi, schemas))
 

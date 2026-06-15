@@ -13,7 +13,9 @@ import { useMarketplaceAllPlugins } from '../use-marketplace-all-plugins'
  */
 
 type UseMarketplacePluginsReturn = ReturnType<typeof useMarketplacePlugins>
-type UseMarketplacePluginsByCollectionIdReturn = ReturnType<typeof useMarketplacePluginsByCollectionId>
+type UseMarketplacePluginsByCollectionIdReturn = ReturnType<
+  typeof useMarketplacePluginsByCollectionId
+>
 
 vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplacePlugins: vi.fn(),
@@ -27,27 +29,33 @@ describe('useMarketplaceAllPlugins', () => {
   const mockCancelQueryPluginsWithDebounced = vi.fn()
   const mockFetchNextPage = vi.fn()
 
-  const createBasePluginsMock = (overrides: Partial<UseMarketplacePluginsReturn> = {}): UseMarketplacePluginsReturn => ({
-    plugins: [],
-    total: 0,
-    resetPlugins: mockResetPlugins,
-    queryPlugins: mockQueryPlugins,
-    queryPluginsWithDebounced: mockQueryPluginsWithDebounced,
-    cancelQueryPluginsWithDebounced: mockCancelQueryPluginsWithDebounced,
-    isLoading: false,
-    isFetchingNextPage: false,
-    hasNextPage: false,
-    fetchNextPage: mockFetchNextPage,
-    page: 1,
-    ...overrides,
-  } as UseMarketplacePluginsReturn)
+  const createBasePluginsMock = (
+    overrides: Partial<UseMarketplacePluginsReturn> = {},
+  ): UseMarketplacePluginsReturn =>
+    ({
+      plugins: [],
+      total: 0,
+      resetPlugins: mockResetPlugins,
+      queryPlugins: mockQueryPlugins,
+      queryPluginsWithDebounced: mockQueryPluginsWithDebounced,
+      cancelQueryPluginsWithDebounced: mockCancelQueryPluginsWithDebounced,
+      isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: mockFetchNextPage,
+      page: 1,
+      ...overrides,
+    }) as UseMarketplacePluginsReturn
 
-  const createBaseCollectionMock = (overrides: Partial<UseMarketplacePluginsByCollectionIdReturn> = {}): UseMarketplacePluginsByCollectionIdReturn => ({
-    plugins: [],
-    isLoading: false,
-    isSuccess: true,
-    ...overrides,
-  } as UseMarketplacePluginsByCollectionIdReturn)
+  const createBaseCollectionMock = (
+    overrides: Partial<UseMarketplacePluginsByCollectionIdReturn> = {},
+  ): UseMarketplacePluginsByCollectionIdReturn =>
+    ({
+      plugins: [],
+      isLoading: false,
+      isSuccess: true,
+      ...overrides,
+    }) as UseMarketplacePluginsByCollectionIdReturn
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -121,7 +129,7 @@ describe('useMarketplaceAllPlugins', () => {
 
       // Assert: pExcluded is removed, p1 is duplicated (so kept once), p2 is added, p3 is bundle (skipped)
       expect(result.current.plugins).toHaveLength(2)
-      expect(result.current.plugins.map(p => p.plugin_id)).toEqual(['p1', 'p2'])
+      expect(result.current.plugins.map((p) => p.plugin_id)).toEqual(['p1', 'p2'])
     })
 
     it('should handle undefined plugins gracefully', () => {

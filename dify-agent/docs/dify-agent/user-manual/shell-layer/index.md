@@ -162,22 +162,22 @@ The same request serialized as JSON has these important layer entries:
   "composition": {
     "schema_version": 1,
     "layers": [
-      {"name": "prompt", "type": "plain.prompt"},
+      { "name": "prompt", "type": "plain.prompt" },
       {
         "name": "shell",
         "type": "dify.shell",
-        "deps": {"execution_context": "execution_context"},
+        "deps": { "execution_context": "execution_context" },
         "config": {}
       },
-      {"name": "execution_context", "type": "dify.execution_context"},
+      { "name": "execution_context", "type": "dify.execution_context" },
       {
         "name": "llm",
         "type": "dify.plugin.llm",
-        "deps": {"execution_context": "execution_context"}
+        "deps": { "execution_context": "execution_context" }
       }
     ]
   },
-  "on_exit": {"default": "delete", "layers": {}}
+  "on_exit": { "default": "delete", "layers": {} }
 }
 ```
 
@@ -185,14 +185,14 @@ The same request serialized as JSON has these important layer entries:
 
 The terminal `run_succeeded` output was:
 
-````markdown
+```markdown
 Here is the analysis of the sales dataset:
 
-* **Total Revenue:** **$305.50**
-* **Top Region:** **west** with **$113.00**
-* **Total Units by Product:** gadget: 25 units, widget: 23 units
-* **SHA-256 Hash:** `e86521a0d759037a09b059cb3cb2419f0a3f06e674db8151ccf2f93811dac0b8`
-````
+- **Total Revenue:** **$305.50**
+- **Top Region:** **west** with **$113.00**
+- **Total Units by Product:** gadget: 25 units, widget: 23 units
+- **SHA-256 Hash:** `e86521a0d759037a09b059cb3cb2419f0a3f06e674db8151ccf2f93811dac0b8`
+```
 
 ## Running shellctl in Docker
 

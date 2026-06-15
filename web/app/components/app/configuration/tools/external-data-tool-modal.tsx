@@ -1,10 +1,16 @@
 import type { FC } from 'react'
-import type {
-  ExternalDataTool,
-} from '@/models/common'
+import type { ExternalDataTool } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
@@ -47,7 +53,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     locale,
     t,
   })
-  const currentProvider = providers.find(provider => provider.key === localeData.type)
+  const currentProvider = providers.find((provider) => provider.key === localeData.type)
 
   const handleDataTypeChange = (type: string) => {
     setLocaleData({
@@ -98,19 +104,17 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
     const formattedData = formatExternalDataTool(localeData, currentProvider, !!data.type)
 
-    if (onValidateBeforeSave && !onValidateBeforeSave(formattedData))
-      return
+    if (onValidateBeforeSave && !onValidateBeforeSave(formattedData)) return
 
     onSave(formattedData)
   }
 
-  const action = data.type ? t('operation.edit', { ns: 'common' }) : t('operation.add', { ns: 'common' })
+  const action = data.type
+    ? t('operation.edit', { ns: 'common' })
+    : t('operation.add', { ns: 'common' })
 
   return (
-    <Dialog
-      open
-      onOpenChange={noop}
-    >
+    <Dialog open onOpenChange={noop}>
       <DialogContent className="w-[640px]! max-w-none! p-8! pb-6!">
         <div className="mb-2 text-xl font-semibold text-text-primary">
           {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
@@ -121,13 +125,16 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
           <Select
             defaultValue={localeData.type}
-            onValueChange={value => value && handleDataTypeChange(value)}
+            onValueChange={(value) => value && handleDataTypeChange(value)}
           >
-            <SelectTrigger className="w-full" aria-label={t('apiBasedExtension.type', { ns: 'common' })}>
+            <SelectTrigger
+              className="w-full"
+              aria-label={t('apiBasedExtension.type', { ns: 'common' })}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent popupClassName="w-[354px]">
-              {providers.map(option => (
+              {providers.map((option) => (
                 <SelectItem key={option.key} value={option.key}>
                   <SelectItemText>{option.name}</SelectItemText>
                   <SelectItemIndicator />
@@ -143,13 +150,15 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           <div className="flex items-center">
             <input
               value={localeData.label || ''}
-              onChange={e => handleValueChange({ label: e.target.value })}
+              onChange={(e) => handleValueChange({ label: e.target.value })}
               className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
               placeholder={t('feature.tools.modal.name.placeholder', { ns: 'appDebug' }) || ''}
             />
             <AppIcon
               size="large"
-              onClick={() => { setShowEmojiPicker(true) }}
+              onClick={() => {
+                setShowEmojiPicker(true)
+              }}
               className="h-9! w-9! cursor-pointer rounded-lg border-[0.5px] border-components-panel-border"
               icon={localeData.icon}
               background={localeData.icon_background}
@@ -162,69 +171,57 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
           <input
             value={localeData.variable || ''}
-            onChange={e => handleValueChange({ variable: e.target.value })}
+            onChange={(e) => handleValueChange({ variable: e.target.value })}
             className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden"
-            placeholder={t('feature.tools.modal.variableName.placeholder', { ns: 'appDebug' }) || ''}
+            placeholder={
+              t('feature.tools.modal.variableName.placeholder', { ns: 'appDebug' }) || ''
+            }
           />
         </div>
-        {
-          localeData.type === 'api' && (
-            <div className="py-2">
-              <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
-                {t('apiBasedExtension.selector.title', { ns: 'common' })}
-                <a
-                  href={docLink('/use-dify/workspace/api-extension/api-extension')}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
-                >
-                  <BookOpen01 className="mr-1 size-3 text-text-tertiary group-hover:text-text-accent" />
-                  {t('apiBasedExtension.link', { ns: 'common' })}
-                </a>
-              </div>
-              <ApiBasedExtensionSelector
-                value={localeData.config?.api_based_extension_id || ''}
-                onChange={handleDataApiBasedChange}
-              />
+        {localeData.type === 'api' && (
+          <div className="py-2">
+            <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
+              {t('apiBasedExtension.selector.title', { ns: 'common' })}
+              <a
+                href={docLink('/use-dify/workspace/api-extension/api-extension')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
+              >
+                <BookOpen01 className="mr-1 size-3 text-text-tertiary group-hover:text-text-accent" />
+                {t('apiBasedExtension.link', { ns: 'common' })}
+              </a>
             </div>
-          )
-        }
-        {
-          localeData.type !== 'api'
-          && currentProvider?.form_schema
-          && (
-            <FormGeneration
-              forms={currentProvider?.form_schema}
-              value={localeData.config}
-              onChange={handleDataExtraChange}
+            <ApiBasedExtensionSelector
+              value={localeData.config?.api_based_extension_id || ''}
+              onChange={handleDataApiBasedChange}
             />
-          )
-        }
+          </div>
+        )}
+        {localeData.type !== 'api' && currentProvider?.form_schema && (
+          <FormGeneration
+            forms={currentProvider?.form_schema}
+            value={localeData.config}
+            onChange={handleDataExtraChange}
+          />
+        )}
         <div className="mt-6 flex items-center justify-end">
-          <Button
-            onClick={onCancel}
-            className="mr-2"
-          >
+          <Button onClick={onCancel} className="mr-2">
             {t('operation.cancel', { ns: 'common' })}
           </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-          >
+          <Button variant="primary" onClick={handleSave}>
             {t('operation.save', { ns: 'common' })}
           </Button>
         </div>
-        {
-          showEmojiPicker && (
-            <EmojiPicker
-              open={showEmojiPicker}
-              onOpenChange={setShowEmojiPicker}
-              onSelect={(icon, icon_background) => {
-                handleValueChange({ icon, icon_background })
-              }}
-            />
-          )
-        }
+        {showEmojiPicker && (
+          <EmojiPicker
+            open={showEmojiPicker}
+            onOpenChange={setShowEmojiPicker}
+            onSelect={(icon, icon_background) => {
+              handleValueChange({ icon, icon_background })
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )

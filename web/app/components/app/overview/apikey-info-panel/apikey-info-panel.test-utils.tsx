@@ -19,7 +19,9 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Type casting for mocks
-const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
+const mockUseProviderContext = actualUseProviderContext as MockedFunction<
+  typeof actualUseProviderContext
+>
 const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
 
 // Default mock data
@@ -184,8 +186,7 @@ export const interactions = {
   // Click the close button
   clickCloseButton: (container: HTMLElement) => {
     const closeButton = container.querySelector('.absolute.right-4.top-4')
-    if (closeButton)
-      fireEvent.click(closeButton)
+    if (closeButton) fireEvent.click(closeButton)
     return closeButton
   },
 }

@@ -46,12 +46,12 @@ pnpm analyze-component <path> --json
 
 ### Complexity Score Interpretation
 
-| Score | Level | Action |
-|-------|-------|--------|
-| 0-25 | 🟢 Simple | Ready for testing |
-| 26-50 | 🟡 Medium | Consider minor refactoring |
-| 51-75 | 🟠 Complex | **Refactor before testing** |
-| 76-100 | 🔴 Very Complex | **Must refactor** |
+| Score  | Level           | Action                      |
+| ------ | --------------- | --------------------------- |
+| 0-25   | 🟢 Simple       | Ready for testing           |
+| 26-50  | 🟡 Medium       | Consider minor refactoring  |
+| 51-75  | 🟠 Complex      | **Refactor before testing** |
+| 76-100 | 🔴 Very Complex | **Must refactor**           |
 
 ## Core Refactoring Patterns
 
@@ -67,9 +67,9 @@ function Configuration() {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>(...)
   const [completionParams, setCompletionParams] = useState<FormValue>({})
-  
+
   // 50+ lines of state management logic...
-  
+
   return <div>...</div>
 }
 
@@ -78,9 +78,9 @@ function Configuration() {
 export const useModelConfig = (appId: string) => {
   const [modelConfig, setModelConfig] = useState<ModelConfig>(...)
   const [completionParams, setCompletionParams] = useState<FormValue>({})
-  
+
   // Related state management logic here
-  
+
   return { modelConfig, setModelConfig, completionParams, setCompletionParams }
 }
 
@@ -92,6 +92,7 @@ function Configuration() {
 ```
 
 **Dify Examples**:
+
 - `web/app/components/app/configuration/hooks/use-advanced-prompt-config.ts`
 - `web/app/components/app/configuration/debug/hooks.tsx`
 - `web/app/components/workflow/hooks/use-workflow.ts`
@@ -123,7 +124,7 @@ const AppInfo = () => {
 
 const AppInfo = () => {
   const { showModal, setShowModal } = useAppInfoModals()
-  
+
   return (
     <div>
       <AppHeader appDetail={appDetail} />
@@ -135,6 +136,7 @@ const AppInfo = () => {
 ```
 
 **Dify Examples**:
+
 - `web/app/components/app/configuration/` directory structure
 - `web/app/components/workflow/nodes/` per-node organization
 
@@ -177,7 +179,7 @@ const TEMPLATE_MAP = {
 const Template = useMemo(() => {
   const modeTemplates = TEMPLATE_MAP[appDetail?.mode]
   if (!modeTemplates) return null
-  
+
   const TemplateComponent = modeTemplates[locale] || modeTemplates.default
   return <TemplateComponent appDetail={appDetail} />
 }, [appDetail, locale])
@@ -188,11 +190,13 @@ const Template = useMemo(() => {
 **When**: Component directly handles API calls, data transformation, or complex async operations.
 
 **Dify Convention**:
+
 - This skill is for component decomposition, not query/mutation design.
 - Do not introduce deprecated `useInvalid` / `useReset`.
 - Do not add thin passthrough `useQuery` wrappers during refactoring; only extract a custom hook when it truly orchestrates multiple queries/mutations or shared derived state.
 
 **Dify Examples**:
+
 - `web/service/use-workflow.ts`
 - `web/service/use-common.ts`
 - `web/service/knowledge/use-dataset.ts`
@@ -220,10 +224,10 @@ type ModalType = 'edit' | 'duplicate' | 'delete' | 'switch' | 'import' | null
 
 const useAppInfoModals = () => {
   const [activeModal, setActiveModal] = useState<ModalType>(null)
-  
+
   const openModal = useCallback((type: ModalType) => setActiveModal(type), [])
   const closeModal = useCallback(() => setActiveModal(null), [])
-  
+
   return {
     activeModal,
     openModal,
@@ -248,7 +252,7 @@ const ConfigForm = () => {
     defaultValues: { name: '', description: '' },
     onSubmit: handleSubmit,
   })
-  
+
   return <form.Provider>...</form.Provider>
 }
 ```
@@ -285,6 +289,7 @@ return <ConfigContext.Provider value={value}>...</ConfigContext.Provider>
 **When**: Refactoring workflow node components (`web/app/components/workflow/nodes/`).
 
 **Conventions**:
+
 - Keep node logic in `use-interactions.ts`
 - Extract panel UI to separate files
 - Use `_base` components for common patterns
@@ -303,6 +308,7 @@ nodes/<node-type>/
 **When**: Refactoring app configuration components.
 
 **Conventions**:
+
 - Separate config sections into subdirectories
 - Use existing patterns from `web/app/components/app/configuration/`
 - Keep feature toggles in dedicated components
@@ -312,6 +318,7 @@ nodes/<node-type>/
 **When**: Refactoring tool-related components (`web/app/components/tools/`).
 
 **Conventions**:
+
 - Follow existing modal patterns
 - Use service hooks from `web/service/use-tools.ts`
 - Keep provider-specific logic isolated
@@ -325,6 +332,7 @@ pnpm refactor-component <path>
 ```
 
 This command will:
+
 - Analyze component complexity and features
 - Identify specific refactoring actions needed
 - Generate a prompt for AI assistant (auto-copied to clipboard on macOS)
@@ -337,6 +345,7 @@ pnpm analyze-component <path> --json
 ```
 
 Identify:
+
 - Total complexity score
 - Max function complexity
 - Line count
@@ -346,13 +355,13 @@ Identify:
 
 Create a refactoring plan based on detected features:
 
-| Detected Feature | Refactoring Action |
-|------------------|-------------------|
-| `hasState: true` + `hasEffects: true` | Extract custom hook |
-| `hasAPI: true` | Extract data/service hook |
-| `hasEvents: true` (many) | Extract event handlers |
-| `lineCount > 300` | Split into sub-components |
-| `maxComplexity > 50` | Simplify conditional logic |
+| Detected Feature                      | Refactoring Action         |
+| ------------------------------------- | -------------------------- |
+| `hasState: true` + `hasEffects: true` | Extract custom hook        |
+| `hasAPI: true`                        | Extract data/service hook  |
+| `hasEvents: true` (many)              | Extract event handlers     |
+| `lineCount > 300`                     | Split into sub-components  |
+| `maxComplexity > 50`                  | Simplify conditional logic |
 
 ### Step 4: Execute Incrementally
 

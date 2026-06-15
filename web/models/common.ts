@@ -120,7 +120,10 @@ export type NotionPage = DataSourceNotionPage & {
   workspace_id: string
 }
 
-export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
+export type DataSourceNotionPageMap = Record<
+  string,
+  DataSourceNotionPage & { workspace_id: string }
+>
 
 export type DataSourceNotionWorkspace = {
   workspace_name: string
@@ -164,15 +167,17 @@ export type FileUploadConfigResponse = {
   file_upload_limit: number // default is 5
 }
 
-export type InvitationResult = {
-  status: 'success'
-  email: string
-  url: string
-} | {
-  status: 'failed'
-  email: string
-  message: string
-}
+export type InvitationResult =
+  | {
+      status: 'success'
+      email: string
+      url: string
+    }
+  | {
+      status: 'failed'
+      email: string
+      message: string
+    }
 
 export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
@@ -183,7 +188,7 @@ export type CodeBasedExtensionForm = {
   label: I18nText
   variable: string
   required: boolean
-  options: { label: I18nText, value: string }[]
+  options: { label: I18nText; value: string }[]
   default: string
   placeholder: string
   max_length?: number

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DebugInfo from '../debug-info'
 
 const mockDebugKey = vi.hoisted(() => ({
-  data: null as null | { key: string, host: string, port: number },
+  data: null as null | { key: string; host: string; port: number },
   isLoading: false,
 }))
 
@@ -27,9 +27,7 @@ vi.mock('../../base/key-value-item', () => ({
     maskedValue?: string
   }) => (
     <div data-testid={`kv-${label}`}>
-      {label}
-      :
-      {maskedValue || value}
+      {label}:{maskedValue || value}
     </div>
   ),
 }))

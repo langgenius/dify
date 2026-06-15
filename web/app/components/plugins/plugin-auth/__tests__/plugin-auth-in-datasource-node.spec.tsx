@@ -20,7 +20,9 @@ describe('PluginAuthInDataSourceNode', () => {
 
   it('renders connect button', () => {
     render(<PluginAuthInDataSourceNode onJumpToDataSourcePage={mockOnJump} />)
-    expect(screen.getByRole('button', { name: /common\.integrations\.connect/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.integrations\.connect/ }),
+    ).toBeInTheDocument()
   })
 
   it('calls onJumpToDataSourcePage when connect button is clicked', () => {

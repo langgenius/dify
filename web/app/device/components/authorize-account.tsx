@@ -41,11 +41,9 @@ const AuthorizeAccount: FC<Props> = ({
     try {
       await deviceApproveAccount(userCode)
       onApproved()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -55,11 +53,9 @@ const AuthorizeAccount: FC<Props> = ({
     try {
       await deviceDenyAccount(userCode)
       onDenied()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -69,7 +65,8 @@ const AuthorizeAccount: FC<Props> = ({
       <div>
         <h2 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          difyctl is requesting access. If you didn&apos;t start this from your terminal, click Cancel.
+          difyctl is requesting access. If you didn&apos;t start this from your terminal, click
+          Cancel.
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
@@ -79,38 +76,20 @@ const AuthorizeAccount: FC<Props> = ({
           name={accountName || accountEmail || ''}
         />
         <div>
-          {accountName && (
-            <p className="text-sm font-semibold text-text-primary">{accountName}</p>
-          )}
-          {accountEmail && (
-            <p className="text-xs text-text-secondary">{accountEmail}</p>
-          )}
+          {accountName && <p className="text-sm font-semibold text-text-primary">{accountName}</p>}
+          {accountEmail && <p className="text-xs text-text-secondary">{accountEmail}</p>}
         </div>
       </div>
       {defaultWorkspace && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          Workspace:
-          {' '}
-          <span className="font-semibold text-text-primary">{defaultWorkspace}</span>
+          Workspace: <span className="font-semibold text-text-primary">{defaultWorkspace}</span>
         </div>
       )}
       <div className="flex gap-3">
-        <Button
-          variant="primary"
-          size="large"
-          className="flex-1"
-          onClick={approve}
-          disabled={busy}
-        >
+        <Button variant="primary" size="large" className="flex-1" onClick={approve} disabled={busy}>
           Authorize
         </Button>
-        <Button
-          variant="secondary"
-          size="large"
-          className="flex-1"
-          onClick={deny}
-          disabled={busy}
-        >
+        <Button variant="secondary" size="large" className="flex-1" onClick={deny} disabled={busy}>
           Cancel
         </Button>
       </div>

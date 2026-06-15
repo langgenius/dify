@@ -16,13 +16,7 @@ type Props = Readonly<{
   onCancel: () => void
 }>
 
-const Installed: FC<Props> = ({
-  payload,
-  isMarketPayload,
-  isFailed,
-  errMsg,
-  onCancel,
-}) => {
+const Installed: FC<Props> = ({ payload, isMarketPayload, isFailed, errMsg, onCancel }) => {
   const { t } = useTranslation()
 
   const handleClose = () => {
@@ -31,26 +25,37 @@ const Installed: FC<Props> = ({
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-2 self-stretch px-6 py-3">
-        <p className="system-md-regular text-text-secondary">{(isFailed && errMsg) ? errMsg : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, { ns: 'plugin' })}</p>
+        <p className="system-md-regular text-text-secondary">
+          {isFailed && errMsg
+            ? errMsg
+            : t(`installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`, {
+                ns: 'plugin',
+              })}
+        </p>
         {payload && (
           <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
             <Card
               className="w-full"
-              payload={isMarketPayload ? pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket) : pluginManifestToCardPluginProps(payload as PluginDeclaration)}
+              payload={
+                isMarketPayload
+                  ? pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket)
+                  : pluginManifestToCardPluginProps(payload as PluginDeclaration)
+              }
               installed={!isFailed}
               installFailed={isFailed}
-              titleLeft={<Badge className="mx-1" size="s" state={BadgeState.Default}>{(payload as PluginDeclaration).version || (payload as PluginManifestInMarket).latest_version}</Badge>}
+              titleLeft={
+                <Badge className="mx-1" size="s" state={BadgeState.Default}>
+                  {(payload as PluginDeclaration).version ||
+                    (payload as PluginManifestInMarket).latest_version}
+                </Badge>
+              }
             />
           </div>
         )}
       </div>
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
-        <Button
-          variant="primary"
-          className="min-w-[72px]"
-          onClick={handleClose}
-        >
+        <Button variant="primary" className="min-w-[72px]" onClick={handleClose}>
           {t('operation.close', { ns: 'common' })}
         </Button>
       </div>

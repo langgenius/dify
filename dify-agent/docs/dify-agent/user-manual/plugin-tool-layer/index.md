@@ -29,24 +29,24 @@ The plugin tools layer type id is `dify.plugin.tools`.
 
 `DifyPluginToolsLayerConfig` contains a list of `DifyPluginToolConfig` objects:
 
-| Field | Type | Meaning |
-| --- | --- | --- |
+| Field   | Type                         | Meaning                                       |
+| ------- | ---------------------------- | --------------------------------------------- |
 | `tools` | `list[DifyPluginToolConfig]` | Prepared plugin tools to expose to the model. |
 
 Each tool config has these fields:
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `plugin_id` | `str` | Plugin package id for this tool, for example `langgenius/wikipedia`. |
-| `provider` | `str` | Tool provider name inside the plugin. |
-| `tool_name` | `str` | Daemon tool name to invoke. |
-| `credential_type` | `"api-key" \| "oauth2" \| "unauthorized"` | Credential mode sent to plugin daemon. |
-| `name` | `str \| None` | Optional model-visible tool name. Defaults to `tool_name`. |
-| `description` | `str \| None` | Optional model-visible description. Defaults to the tool name. |
-| `credentials` | `dict[str, str \| int \| float \| bool \| None]` | Provider-specific tool credentials. |
-| `runtime_parameters` | `dict[str, JsonValue]` | Hidden/manual values merged into daemon invocation but omitted from the model schema. |
-| `parameters` | `list[DifyPluginToolParameter]` | API-prepared effective parameter declarations used for validation, defaults, and casting. |
-| `parameters_json_schema` | `dict[str, JsonValue]` | API-prepared JSON schema shown to the model. |
+| Field                    | Type                                             | Meaning                                                                                   |
+| ------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `plugin_id`              | `str`                                            | Plugin package id for this tool, for example `langgenius/wikipedia`.                      |
+| `provider`               | `str`                                            | Tool provider name inside the plugin.                                                     |
+| `tool_name`              | `str`                                            | Daemon tool name to invoke.                                                               |
+| `credential_type`        | `"api-key" \| "oauth2" \| "unauthorized"`        | Credential mode sent to plugin daemon.                                                    |
+| `name`                   | `str \| None`                                    | Optional model-visible tool name. Defaults to `tool_name`.                                |
+| `description`            | `str \| None`                                    | Optional model-visible description. Defaults to the tool name.                            |
+| `credentials`            | `dict[str, str \| int \| float \| bool \| None]` | Provider-specific tool credentials.                                                       |
+| `runtime_parameters`     | `dict[str, JsonValue]`                           | Hidden/manual values merged into daemon invocation but omitted from the model schema.     |
+| `parameters`             | `list[DifyPluginToolParameter]`                  | API-prepared effective parameter declarations used for validation, defaults, and casting. |
+| `parameters_json_schema` | `dict[str, JsonValue]`                           | API-prepared JSON schema shown to the model.                                              |
 
 ## Example: Dify API prepared Wikipedia tool
 

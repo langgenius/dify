@@ -103,7 +103,10 @@ describe('useDocLink', () => {
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/quick-start' as DocPathWithoutLang, pathMap)
+      const url = result.current(
+        '/use-dify/getting-started/quick-start' as DocPathWithoutLang,
+        pathMap,
+      )
       expect(url).toBe(`${defaultDocBaseUrl}/zh/use-dify/getting-started/introduction`)
     })
 
@@ -119,7 +122,10 @@ describe('useDocLink', () => {
       }
 
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/quick-start' as DocPathWithoutLang, pathMap)
+      const url = result.current(
+        '/use-dify/getting-started/quick-start' as DocPathWithoutLang,
+        pathMap,
+      )
       expect(url).toBe(`${defaultDocBaseUrl}/ja/use-dify/getting-started/quick-start`)
     })
 
@@ -185,7 +191,9 @@ describe('useDocLink', () => {
 
       const { result } = renderHook(() => useDocLink())
       const url = result.current('/api-reference/applications/get-app-info')
-      expect(url).toBe(`${defaultDocBaseUrl}/api-reference/アプリケーション設定/アプリケーションの基本情報を取得`)
+      expect(url).toBe(
+        `${defaultDocBaseUrl}/api-reference/アプリケーション設定/アプリケーションの基本情報を取得`,
+      )
     })
 
     it('should not translate API reference path for English locale', () => {
@@ -239,7 +247,9 @@ describe('useDocLink', () => {
   describe('Edge Cases', () => {
     it('should handle path with anchor', () => {
       const { result } = renderHook(() => useDocLink())
-      const url = result.current('/use-dify/getting-started/introduction#overview' as DocPathWithoutLang)
+      const url = result.current(
+        '/use-dify/getting-started/introduction#overview' as DocPathWithoutLang,
+      )
       expect(url).toBe(`${defaultDocBaseUrl}/en/use-dify/getting-started/introduction#overview`)
     })
 

@@ -5,7 +5,7 @@ export function stripThinkBlocks(s: string): string {
   return s.replace(/<think>[\s\S]*?<\/think>\r?\n?/g, '')
 }
 
-export function extractThinkBlocks(s: string): { clean: string, thinking: string } {
+export function extractThinkBlocks(s: string): { clean: string; thinking: string } {
   const parts: string[] = []
   const clean = s.replace(/<think>([\s\S]*?)<\/think>\r?\n?/g, (_, content: string) => {
     parts.push(`<think>\n${content.trim()}\n</think>`)
@@ -42,17 +42,14 @@ export class ThinkChunkFilter {
         const idx = s.indexOf(OPEN)
         if (idx === -1) {
           const [safe, held] = splitAtPotentialTag(s, OPEN)
-          if (safe)
-            out.write(safe)
+          if (safe) out.write(safe)
           this.buf = held
           return
         }
-        if (idx > 0)
-          out.write(s.slice(0, idx))
+        if (idx > 0) out.write(s.slice(0, idx))
         s = s.slice(idx + OPEN.length)
         this.inThink = true
-        if (this.showThink)
-          errOut.write(`${OPEN}\n`)
+        if (this.showThink) errOut.write(`${OPEN}\n`)
         continue
       }
 
@@ -60,32 +57,24 @@ export class ThinkChunkFilter {
       const idx = s.indexOf(CLOSE)
       if (idx === -1) {
         const [safe, held] = splitAtPotentialTag(s, CLOSE)
-        if (safe && this.showThink)
-          errOut.write(safe)
+        if (safe && this.showThink) errOut.write(safe)
         this.buf = held
         return
       }
-      if (idx > 0 && this.showThink)
-        errOut.write(s.slice(0, idx))
-      if (this.showThink)
-        errOut.write(`${CLOSE}\n`)
+      if (idx > 0 && this.showThink) errOut.write(s.slice(0, idx))
+      if (this.showThink) errOut.write(`${CLOSE}\n`)
       s = s.slice(idx + CLOSE.length)
       this.inThink = false
-      if (s.startsWith('\r\n'))
-        s = s.slice(2)
-      else if (s.startsWith('\n'))
-        s = s.slice(1)
+      if (s.startsWith('\r\n')) s = s.slice(2)
+      else if (s.startsWith('\n')) s = s.slice(1)
     }
   }
 
   flush(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
-    if (this.buf === '')
-      return
+    if (this.buf === '') return
     if (this.inThink) {
-      if (this.showThink)
-        errOut.write(this.buf)
-    }
-    else {
+      if (this.showThink) errOut.write(this.buf)
+    } else {
       out.write(this.buf)
     }
     this.buf = ''

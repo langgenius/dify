@@ -28,7 +28,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>open-icon-picker</button>
+    <button type="button" onClick={onClick}>
+      open-icon-picker
+    </button>
   ),
 }))
 
@@ -151,11 +153,13 @@ describe('DuplicateAppModal', () => {
     })
     await user.click(screen.getByRole('button', { name: 'duplicate' }))
 
-    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Image App',
-      icon_type: 'image',
-      icon: 'original-file',
-      icon_background: undefined,
-    }))
+    expect(onConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Image App',
+        icon_type: 'image',
+        icon: 'original-file',
+        icon_background: undefined,
+      }),
+    )
   })
 })

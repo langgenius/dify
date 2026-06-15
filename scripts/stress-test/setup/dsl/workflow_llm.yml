@@ -6,10 +6,10 @@ app:
   name: workflow_llm
   use_icon_as_answer_icon: false
 dependencies:
-- current_identifier: null
-  type: marketplace
-  value:
-    marketplace_plugin_unique_identifier: langgenius/openai:0.2.5@373362a028986aae53a7baf73a7f11991ba3c22c69eaf97d6cde048cfd4a9f98
+  - current_identifier: null
+    type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/openai:0.2.5@373362a028986aae53a7baf73a7f11991ba3c22c69eaf97d6cde048cfd4a9f98
 kind: app
 version: 0.4.0
 workflow:
@@ -18,17 +18,17 @@ workflow:
   features:
     file_upload:
       allowed_file_extensions:
-      - .JPG
-      - .JPEG
-      - .PNG
-      - .GIF
-      - .WEBP
-      - .SVG
+        - .JPG
+        - .JPEG
+        - .PNG
+        - .GIF
+        - .WEBP
+        - .SVG
       allowed_file_types:
-      - image
+        - image
       allowed_file_upload_methods:
-      - local_file
-      - remote_url
+        - local_file
+        - remote_url
       enabled: false
       fileUploadConfig:
         audio_file_size_limit: 50
@@ -41,8 +41,8 @@ workflow:
         enabled: false
         number_limits: 3
         transfer_methods:
-        - local_file
-        - remote_url
+          - local_file
+          - remote_url
       number_limits: 3
     opening_statement: ''
     retriever_resource:
@@ -60,116 +60,116 @@ workflow:
       voice: ''
   graph:
     edges:
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: start
-        targetType: llm
-      id: 1757611990947-source-1757611992921-target
-      source: '1757611990947'
-      sourceHandle: source
-      target: '1757611992921'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
-        sourceType: llm
-        targetType: end
-      id: 1757611992921-source-1757611996447-target
-      source: '1757611992921'
-      sourceHandle: source
-      target: '1757611996447'
-      targetHandle: target
-      type: custom
-      zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: llm
+        id: 1757611990947-source-1757611992921-target
+        source: '1757611990947'
+        sourceHandle: source
+        target: '1757611992921'
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: llm
+          targetType: end
+        id: 1757611992921-source-1757611996447-target
+        source: '1757611992921'
+        sourceHandle: source
+        target: '1757611996447'
+        targetHandle: target
+        type: custom
+        zIndex: 0
     nodes:
-    - data:
-        desc: ''
+      - data:
+          desc: ''
+          selected: false
+          title: Start
+          type: start
+          variables:
+            - label: question
+              max_length: null
+              options: []
+              required: true
+              type: text-input
+              variable: question
+        height: 90
+        id: '1757611990947'
+        position:
+          x: 30
+          y: 245
+        positionAbsolute:
+          x: 30
+          y: 245
         selected: false
-        title: Start
-        type: start
-        variables:
-        - label: question
-          max_length: null
-          options: []
-          required: true
-          type: text-input
-          variable: question
-      height: 90
-      id: '1757611990947'
-      position:
-        x: 30
-        y: 245
-      positionAbsolute:
-        x: 30
-        y: 245
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
-    - data:
-        context:
-          enabled: false
-          variable_selector: []
-        desc: ''
-        model:
-          completion_params:
-            temperature: 0.7
-          mode: chat
-          name: gpt-4o
-          provider: langgenius/openai/openai
-        prompt_template:
-        - id: c165fcb6-f1f0-42f2-abab-e81982434deb
-          role: system
-          text: ''
-        - role: user
-          text: '{{#1757611990947.question#}}'
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ''
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: gpt-4o
+            provider: langgenius/openai/openai
+          prompt_template:
+            - id: c165fcb6-f1f0-42f2-abab-e81982434deb
+              role: system
+              text: ''
+            - role: user
+              text: '{{#1757611990947.question#}}'
+          selected: false
+          title: LLM
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        height: 90
+        id: '1757611992921'
+        position:
+          x: 334
+          y: 245
+        positionAbsolute:
+          x: 334
+          y: 245
         selected: false
-        title: LLM
-        type: llm
-        variables: []
-        vision:
-          enabled: false
-      height: 90
-      id: '1757611992921'
-      position:
-        x: 334
-        y: 245
-      positionAbsolute:
-        x: 334
-        y: 245
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
-    - data:
-        desc: ''
-        outputs:
-        - value_selector:
-          - '1757611992921'
-          - text
-          value_type: string
-          variable: answer
-        selected: false
-        title: End
-        type: end
-      height: 90
-      id: '1757611996447'
-      position:
-        x: 638
-        y: 245
-      positionAbsolute:
-        x: 638
-        y: 245
-      selected: true
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
+      - data:
+          desc: ''
+          outputs:
+            - value_selector:
+                - '1757611992921'
+                - text
+              value_type: string
+              variable: answer
+          selected: false
+          title: End
+          type: end
+        height: 90
+        id: '1757611996447'
+        position:
+          x: 638
+          y: 245
+        positionAbsolute:
+          x: 638
+          y: 245
+        selected: true
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 244
     viewport:
       x: 0
       y: 0

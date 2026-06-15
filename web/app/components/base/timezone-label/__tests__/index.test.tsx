@@ -5,8 +5,7 @@ import TimezoneLabel from '../index'
 // Mock the convertTimezoneToOffsetStr function
 vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
   convertTimezoneToOffsetStr: (timezone?: string) => {
-    if (!timezone)
-      return 'UTC+0'
+    if (!timezone) return 'UTC+0'
 
     // Mock implementation matching the actual timezone conversions
     const timezoneOffsets: Record<string, string> = {
@@ -15,7 +14,7 @@ vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
       'Europe/London': 'UTC+0',
       'Pacific/Auckland': 'UTC+13',
       'Pacific/Niue': 'UTC-11',
-      'UTC': 'UTC+0',
+      UTC: 'UTC+0',
     }
 
     return timezoneOffsets[timezone] || 'UTC+0'
@@ -112,11 +111,7 @@ describe('TimezoneLabel', () => {
 
     it('should render with all props', () => {
       const { container } = render(
-        <TimezoneLabel
-          timezone="America/New_York"
-          className="text-xs"
-          inline
-        />,
+        <TimezoneLabel timezone="America/New_York" className="text-xs" inline />,
       )
       const span = container.querySelector('span')
       expect(screen.getByText('UTC-5')).toBeInTheDocument()

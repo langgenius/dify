@@ -2,7 +2,14 @@
 import type { Reducer } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
@@ -22,11 +29,11 @@ type IState = {
   timezone: string
 }
 
-type IAction
-  = | { type: 'failed', payload: null }
-    | { type: 'invitation_code', value: string }
-    | { type: 'interface_language', value: string }
-    | { type: 'timezone', value: string }
+type IAction =
+  | { type: 'failed'; payload: null }
+  | { type: 'invitation_code'; value: string }
+  | { type: 'interface_language'; value: string }
+  | { type: 'timezone'; value: string }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -52,17 +59,19 @@ type SelectOption = {
   name: string
 }
 
-const LANGUAGE_OPTIONS: SelectOption[] = languages.filter(item => item.supported)
-const TIMEZONE_OPTIONS: SelectOption[] = timezones.map(item => ({
+const LANGUAGE_OPTIONS: SelectOption[] = languages.filter((item) => item.supported)
+const TIMEZONE_OPTIONS: SelectOption[] = timezones.map((item) => ({
   value: String(item.value),
   name: item.name,
 }))
 
 const hasStatus = (error: unknown): error is { status: number } => {
-  return typeof error === 'object'
-    && error !== null
-    && 'status' in error
-    && typeof error.status === 'number'
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof error.status === 'number'
+  )
 }
 
 const OneMoreStep = () => {
@@ -77,24 +86,21 @@ const OneMoreStep = () => {
     timezone: 'Asia/Shanghai',
   })
   const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
-  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === state.interface_language)
-  const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === state.timezone)
+  const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === state.interface_language)
+  const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === state.timezone)
 
   const handleLanguageChange = (nextValue: string | null) => {
-    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
-    if (nextLanguage)
-      dispatch({ type: 'interface_language', value: nextLanguage.value })
+    const nextLanguage = LANGUAGE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextLanguage) dispatch({ type: 'interface_language', value: nextLanguage.value })
   }
 
   const handleTimezoneChange = (nextValue: string | null) => {
-    const nextTimezone = TIMEZONE_OPTIONS.find(item => item.value === nextValue)
-    if (nextTimezone)
-      dispatch({ type: 'timezone', value: nextTimezone.value })
+    const nextTimezone = TIMEZONE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextTimezone) dispatch({ type: 'timezone', value: nextTimezone.value })
   }
 
   const handleSubmit = async () => {
-    if (isPending)
-      return
+    if (isPending) return
     try {
       await submitOneMoreStep({
         invitation_code: state.invitation_code,
@@ -103,8 +109,7 @@ const OneMoreStep = () => {
       })
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
       router.replace('/')
-    }
-    catch (error: unknown) {
+    } catch (error: unknown) {
       if (hasStatus(error) && error.status === 400)
         toast.error(t('invalidInvitationCode', { ns: 'login' }))
       dispatch({ type: 'failed', payload: null })
@@ -114,28 +119,30 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t('oneMoreStep', { ns: 'login' })}</h2>
-        <p className="mt-1 body-md-regular text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">
+          {t('oneMoreStep', { ns: 'login' })}
+        </h2>
+        <p className="mt-1 body-md-regular text-text-tertiary">
+          {t('createSample', { ns: 'login' })}
+        </p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
             <div className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
-              <label htmlFor="invitation_code">
-                {t('invitationCode', { ns: 'login' })}
-              </label>
+              <label htmlFor="invitation_code">{t('invitationCode', { ns: 'login' })}</label>
               <Popover>
                 <PopoverTrigger
                   openOnHover
-                  render={(
+                  render={
                     <button
                       type="button"
                       className="cursor-pointer rounded-sm text-text-accent-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                     >
                       {t('dontHave', { ns: 'login' })}
                     </button>
-                  )}
+                  }
                 />
                 <PopoverContent
                   placement="top"
@@ -144,7 +151,9 @@ const OneMoreStep = () => {
                   <div>
                     <div className="font-medium">{t('sendUsMail', { ns: 'login' })}</div>
                     <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
-                      <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
+                      <a href="mailto:request-invitation@langgenius.ai">
+                        request-invitation@langgenius.ai
+                      </a>
                     </div>
                   </div>
                 </PopoverContent>
@@ -163,19 +172,19 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className="mb-5">
-            <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
+            <label
+              htmlFor="interface_language"
+              className="my-2 system-md-semibold text-text-secondary"
+            >
               {t('interfaceLanguage', { ns: 'login' })}
             </label>
             <div className="mt-1">
-              <Select
-                value={selectedLanguage?.value ?? null}
-                onValueChange={handleLanguageChange}
-              >
+              <Select value={selectedLanguage?.value ?? null} onValueChange={handleLanguageChange}>
                 <SelectTrigger id="interface_language" size="large">
                   {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {LANGUAGE_OPTIONS.map(item => (
+                  {LANGUAGE_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
@@ -190,15 +199,12 @@ const OneMoreStep = () => {
               {t('timezone', { ns: 'login' })}
             </label>
             <div className="mt-1">
-              <Select
-                value={selectedTimezone?.value ?? null}
-                onValueChange={handleTimezoneChange}
-              >
+              <Select value={selectedTimezone?.value ?? null} onValueChange={handleTimezoneChange}>
                 <SelectTrigger id="timezone" size="large">
                   {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {TIMEZONE_OPTIONS.map(item => (
+                  {TIMEZONE_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />

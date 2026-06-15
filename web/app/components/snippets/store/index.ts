@@ -13,8 +13,8 @@ const initialState = {
   fields: [] as SnippetInputField[],
 }
 
-export const useSnippetDetailStore = create<SnippetDetailUIState>(set => ({
+export const useSnippetDetailStore = create<SnippetDetailUIState>((set) => ({
   ...initialState,
-  setFields: fields => set({ fields }),
+  setFields: (fields) => set({ fields }),
   reset: () => set(initialState),
 }))

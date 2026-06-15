@@ -97,7 +97,7 @@ vi.mock('@/service/use-tools', () => ({
   }),
 }))
 
-let mockCheckedInstalledData: { plugins: { id: string, name: string }[] } | null = null
+let mockCheckedInstalledData: { plugins: { id: string; name: string }[] } | null = null
 const mockInvalidateInstalledPluginList = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: ({ enabled }: { enabled: boolean }) => ({
@@ -107,7 +107,7 @@ vi.mock('@/service/use-plugins', () => ({
 }))
 
 vi.mock('@/app/components/plugins/card', () => ({
-  default: ({ payload, className }: { payload: { name: string }, className?: string }) => (
+  default: ({ payload, className }: { payload: { name: string }; className?: string }) => (
     <div data-testid={`card-${payload.name}`} className={className}>
       {payload.name}
     </div>
@@ -118,21 +118,29 @@ vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
   default: () => (
     <>
       {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} data-testid="tool-card-skeleton">Loading tool</div>
+        <div key={index} data-testid="tool-card-skeleton">
+          Loading tool
+        </div>
       ))}
     </>
   ),
 }))
 
 vi.mock('@/app/components/plugins/card/card-more-info', () => ({
-  default: ({ tags }: { tags: string[] }) => <div data-testid="card-more-info">{tags.join(', ')}</div>,
+  default: ({ tags }: { tags: string[] }) => (
+    <div data-testid="card-more-info">{tags.join(', ')}</div>
+  ),
 }))
 
 vi.mock('@/app/components/tools/labels/filter', () => ({
-  default: ({ value, onChange }: { value: string[], onChange: (v: string[]) => void }) => (
+  default: ({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) => (
     <div data-testid="label-filter">
-      <button data-testid="add-filter" onClick={() => onChange(['search'])}>Add filter</button>
-      <button data-testid="clear-filter" onClick={() => onChange([])}>Clear filter</button>
+      <button data-testid="add-filter" onClick={() => onChange(['search'])}>
+        Add filter
+      </button>
+      <button data-testid="clear-filter" onClick={() => onChange([])}>
+        Clear filter
+      </button>
       <span>{value.join(', ')}</span>
     </div>
   ),
@@ -143,10 +151,12 @@ vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/detail', () => ({
-  default: ({ collection, onHide }: { collection: { name: string }, onHide: () => void }) => (
+  default: ({ collection, onHide }: { collection: { name: string }; onHide: () => void }) => (
     <div data-testid="provider-detail">
       <span>{collection.name}</span>
-      <button data-testid="detail-close" onClick={onHide}>Close</button>
+      <button data-testid="detail-close" onClick={onHide}>
+        Close
+      </button>
     </div>
   ),
 }))
@@ -156,15 +166,25 @@ vi.mock('@/app/components/tools/provider/empty', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({ detail, onUpdate, onHide }: { detail: unknown, onUpdate: () => void, onHide: () => void }) =>
-    detail
-      ? (
-          <div data-testid="plugin-detail-panel">
-            <button data-testid="plugin-update" onClick={onUpdate}>Update</button>
-            <button data-testid="plugin-close" onClick={onHide}>Close</button>
-          </div>
-        )
-      : null,
+  default: ({
+    detail,
+    onUpdate,
+    onHide,
+  }: {
+    detail: unknown
+    onUpdate: () => void
+    onHide: () => void
+  }) =>
+    detail ? (
+      <div data-testid="plugin-detail-panel">
+        <button data-testid="plugin-update" onClick={onUpdate}>
+          Update
+        </button>
+        <button data-testid="plugin-close" onClick={onHide}>
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('@/app/components/plugins/marketplace/empty', () => ({
@@ -173,7 +193,10 @@ vi.mock('@/app/components/plugins/marketplace/empty', () => ({
 
 const mockHandleScroll = vi.fn()
 vi.mock('../marketplace', () => ({
-  default: ({ showMarketplacePanel, isMarketplaceArrowVisible }: {
+  default: ({
+    showMarketplacePanel,
+    isMarketplaceArrowVisible,
+  }: {
     showMarketplacePanel: () => void
     isMarketplaceArrowVisible: boolean
   }) => (
@@ -225,7 +248,9 @@ const renderProviderList = (searchParams?: Record<string, string>) => {
     <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
   )
   return renderWithNuqs(
-    <Wrapped><ProviderList /></Wrapped>,
+    <Wrapped>
+      <ProviderList />
+    </Wrapped>,
     { searchParams },
   )
 }
@@ -362,7 +387,7 @@ describe('ProviderList', () => {
     })
 
     it('shows empty state when no workflow collections exist', () => {
-      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'workflow')
+      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'workflow')
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
     })
@@ -378,7 +403,7 @@ describe('ProviderList', () => {
 
   describe('Builtin Tab Empty State', () => {
     it('shows empty component when no builtin collections', () => {
-      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'builtin')
+      mockCollectionData = createDefaultCollections().filter((c) => c.type !== 'builtin')
       renderProviderList()
       expect(screen.getByTestId('empty')).toBeInTheDocument()
     })
@@ -392,18 +417,20 @@ describe('ProviderList', () => {
     })
 
     it('renders collection that has no labels property', () => {
-      mockCollectionData = [{
-        id: 'no-labels',
-        name: 'no-label-tool',
-        author: 'Dify',
-        description: { en_US: 'Tool', zh_Hans: '工具' },
-        icon: 'icon',
-        label: { en_US: 'No Label Tool', zh_Hans: '无标签工具' },
-        type: 'builtin',
-        team_credentials: {},
-        is_team_authorization: false,
-        allow_delete: false,
-      }] as unknown as ReturnType<typeof createDefaultCollections>
+      mockCollectionData = [
+        {
+          id: 'no-labels',
+          name: 'no-label-tool',
+          author: 'Dify',
+          description: { en_US: 'Tool', zh_Hans: '工具' },
+          icon: 'icon',
+          label: { en_US: 'No Label Tool', zh_Hans: '无标签工具' },
+          type: 'builtin',
+          team_credentials: {},
+          is_team_authorization: false,
+          allow_delete: false,
+        },
+      ] as unknown as ReturnType<typeof createDefaultCollections>
       renderProviderList()
       expect(screen.getByTestId('card-no-label-tool')).toBeInTheDocument()
     })

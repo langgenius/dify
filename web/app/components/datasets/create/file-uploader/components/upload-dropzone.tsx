@@ -31,7 +31,7 @@ const UploadDropzone = ({
   onFileChange,
 }: UploadDropzoneProps) => {
   const { t } = useTranslation()
-  const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  const enableBilling = useProviderContextSelector((state) => state.enableBilling)
 
   return (
     <>
@@ -58,10 +58,7 @@ const UploadDropzone = ({
               ? t('stepOne.uploader.button', { ns: 'datasetCreation' })
               : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
             {acceptTypes.length > 0 && (
-              <label
-                className="ml-1 cursor-pointer text-text-accent"
-                onClick={onSelectFile}
-              >
+              <label className="ml-1 cursor-pointer text-text-accent" onClick={onSelectFile}>
                 {t('stepOne.uploader.browse', { ns: 'datasetCreation' })}
               </label>
             )}

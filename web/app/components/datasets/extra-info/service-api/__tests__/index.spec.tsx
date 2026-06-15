@@ -19,8 +19,18 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock next/link
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode, href: string, [key: string]: unknown }) => (
-    <a href={href} {...props}>{children}</a>
+  default: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode
+    href: string
+    [key: string]: unknown
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -31,19 +41,17 @@ vi.mock('@/hooks/use-api-access-url', () => ({
 
 // Mock SecretKeyModal to avoid complex modal rendering
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => (
-    isShow
-      ? (
-          <div data-testid="secret-key-modal">
-            <button onClick={onClose} data-testid="close-modal-btn">Close</button>
-          </div>
-        )
-      : null
-  ),
+  default: ({ isShow, onClose }: { isShow: boolean; onClose: () => void }) =>
+    isShow ? (
+      <div data-testid="secret-key-modal">
+        <button onClick={onClose} data-testid="close-modal-btn">
+          Close
+        </button>
+      </div>
+    ) : null,
 }))
 
-const renderCard = (ui: React.ReactElement) =>
-  render(<Popover open>{ui}</Popover>)
+const renderCard = (ui: React.ReactElement) => render(<Popover open>{ui}</Popover>)
 
 describe('ServiceApi', () => {
   beforeEach(() => {
@@ -75,7 +83,9 @@ describe('ServiceApi', () => {
 
     it('should render with border and background styles', () => {
       const { container } = render(<ServiceApi apiBaseUrl="https://api.example.com" />)
-      const trigger = container.querySelector('[class*="border-components-button-secondary-border-hover"]')
+      const trigger = container.querySelector(
+        '[class*="border-components-button-secondary-border-hover"]',
+      )
       expect(trigger).toBeInTheDocument()
     })
   })
@@ -94,7 +104,8 @@ describe('ServiceApi', () => {
     })
 
     it('should handle long apiBaseUrl without breaking layout', () => {
-      const longUrl = 'https://api.example.com/v1/very/long/path/to/endpoint/that/might/break/layout'
+      const longUrl =
+        'https://api.example.com/v1/very/long/path/to/endpoint/that/might/break/layout'
       render(<ServiceApi apiBaseUrl={longUrl} />)
       expect(screen.getByText(/serviceApi\.title/i)).toBeInTheDocument()
     })
@@ -113,8 +124,7 @@ describe('ServiceApi', () => {
       render(<ServiceApi apiBaseUrl="https://api.example.com" />)
 
       const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
 
       await waitFor(() => {
         expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
@@ -130,8 +140,7 @@ describe('ServiceApi', () => {
       render(<ServiceApi apiBaseUrl={testUrl} />)
 
       const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-      if (trigger)
-        await user.click(trigger)
+      if (trigger) await user.click(trigger)
 
       await waitFor(() => {
         expect(screen.getByText(testUrl)).toBeInTheDocument()
@@ -166,7 +175,9 @@ describe('Card (service-api)', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(
+        <Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />,
+      )
       expect(screen.getByText(/serviceApi\.card\.title/i)).toBeInTheDocument()
     })
 
@@ -177,12 +188,16 @@ describe('Card (service-api)', () => {
     })
 
     it('should render API Key button', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(
+        <Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />,
+      )
       expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
     })
 
     it('should render API Reference button', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(
+        <Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />,
+      )
       expect(screen.getByText(/serviceApi\.card\.apiReference/i)).toBeInTheDocument()
     })
   })
@@ -191,17 +206,20 @@ describe('Card (service-api)', () => {
     it('should call onOpenSecretKeyModal when API Key button is clicked', async () => {
       const user = userEvent.setup()
 
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(
+        <Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />,
+      )
 
       const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
-      if (apiKeyButton)
-        await user.click(apiKeyButton)
+      if (apiKeyButton) await user.click(apiKeyButton)
 
       expect(onOpenSecretKeyModal).toHaveBeenCalledTimes(1)
     })
 
     it('should have correct href for API Reference link', () => {
-      renderCard(<Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />)
+      renderCard(
+        <Card apiBaseUrl="https://api.example.com" onOpenSecretKeyModal={onOpenSecretKeyModal} />,
+      )
 
       const apiRefLink = screen.getByText(/serviceApi\.card\.apiReference/i).closest('a')
       expect(apiRefLink).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
@@ -221,8 +239,7 @@ describe('ServiceApi Integration', () => {
 
     // Open popover
     const trigger = screen.getByText(/serviceApi\.title/i).closest('[class*="cursor-pointer"]')
-    if (trigger)
-      await user.click(trigger)
+    if (trigger) await user.click(trigger)
 
     await waitFor(() => {
       expect(screen.getByText(/serviceApi\.card\.apiKey/i)).toBeInTheDocument()
@@ -230,8 +247,7 @@ describe('ServiceApi Integration', () => {
 
     // Click API Key button (wrapped by PopoverClose)
     const apiKeyButton = screen.getByText(/serviceApi\.card\.apiKey/i).closest('button')
-    if (apiKeyButton)
-      await user.click(apiKeyButton)
+    if (apiKeyButton) await user.click(apiKeyButton)
 
     // Modal should appear
     await waitFor(() => {

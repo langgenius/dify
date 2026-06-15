@@ -25,8 +25,7 @@ const Bucket = ({
 }: BucketProps) => {
   const { t } = useTranslation()
   const handleClickItem = useCallback(() => {
-    if (!disabled)
-      handleClickBucketName()
+    if (!disabled) handleClickBucketName()
   }, [disabled, handleClickBucketName])
   const allBucketsLabel = t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })
 
@@ -34,7 +33,7 @@ const Bucket = ({
     <>
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <Button
               type="button"
               variant="ghost"
@@ -45,18 +44,18 @@ const Bucket = ({
             >
               <BucketsGray aria-hidden />
             </Button>
-          )}
+          }
         />
-        <TooltipContent>
-          {allBucketsLabel}
-        </TooltipContent>
+        <TooltipContent>{allBucketsLabel}</TooltipContent>
       </Tooltip>
       <span className="system-xs-regular text-divider-deep">/</span>
       <button
         type="button"
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
-          isActive ? 'system-sm-medium text-text-secondary' : 'system-sm-regular text-text-tertiary',
+          isActive
+            ? 'system-sm-medium text-text-secondary'
+            : 'system-sm-regular text-text-tertiary',
           !disabled && 'hover:bg-state-base-hover',
         )}
         disabled={disabled}

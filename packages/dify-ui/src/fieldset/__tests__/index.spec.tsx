@@ -1,8 +1,5 @@
 import { render } from 'vitest-browser-react'
-import {
-  FieldsetLegend,
-  FieldsetRoot,
-} from '../index'
+import { FieldsetLegend, FieldsetRoot } from '../index'
 
 describe('Fieldset primitives', () => {
   it('should apply reset design-system classes', async () => {
@@ -16,6 +13,8 @@ describe('Fieldset primitives', () => {
     const fieldset = legend.closest('fieldset') as HTMLElement
 
     await expect.element(fieldset).toHaveClass('m-0', 'min-w-0', 'border-0', 'p-0', 'custom-root')
-    await expect.element(legend).toHaveClass('mb-1', 'py-1', 'system-sm-medium', 'text-text-secondary', 'custom-legend')
+    await expect
+      .element(legend)
+      .toHaveClass('mb-1', 'py-1', 'system-sm-medium', 'text-text-secondary', 'custom-legend')
   })
 })

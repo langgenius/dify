@@ -857,7 +857,7 @@ export const agentComposer = {
  */
 export const post10 = oc
   .route({
-    description: 'Update an Agent App\'s presentation features (opener, follow-up, citations, ...)',
+    description: "Update an Agent App's presentation features (opener, follow-up, citations, ...)",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentFeatures',
@@ -881,7 +881,7 @@ export const agentFeatures = {
  */
 export const get6 = oc
   .route({
-    description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
+    description: "List workflow apps that reference this Agent App's bound Agent (read-only)",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdAgentReferencingWorkflows',
@@ -1085,7 +1085,7 @@ export const post12 = oc
     operationId: 'postAppsByAppIdAgentFiles',
     path: '/apps/{app_id}/agent/files',
     successStatus: 201,
-    summary: 'ADD FILE: commit one uploaded file into the bound agent\'s drive',
+    summary: "ADD FILE: commit one uploaded file into the bound agent's drive",
     tags: ['console'],
   })
   .input(
@@ -1137,7 +1137,7 @@ export const post13 = oc
     operationId: 'postAppsByAppIdAgentSkillsStandardize',
     path: '/apps/{app_id}/agent/skills/standardize',
     successStatus: 201,
-    summary: 'Upload a Skill, validate it, and standardize it into the app agent\'s drive',
+    summary: "Upload a Skill, validate it, and standardize it into the app agent's drive",
     tags: ['console'],
   })
   .input(
@@ -1187,7 +1187,7 @@ export const upload2 = {
 export const post15 = oc
   .route({
     description:
-      'Infer CLI tool + ENV suggestions from a standardized skill\'s SKILL.md (draft only, ENG-371)\nSaving still goes through composer validation.',
+      "Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)\nSaving still goes through composer validation.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAgentSkillsBySlugInferTools',
@@ -3891,7 +3891,7 @@ export const byOutputName = {
  */
 export const get69 = oc
   .route({
-    description: 'One node\'s declared outputs for a draft workflow run.',
+    description: "One node's declared outputs for a draft workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeId',
@@ -3911,7 +3911,7 @@ export const byNodeId9 = {
  */
 export const get70 = oc
   .route({
-    description: 'Snapshot of every node\'s declared outputs for a draft workflow run.',
+    description: "Snapshot of every node's declared outputs for a draft workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputs',
@@ -4291,7 +4291,7 @@ export const byOutputName2 = {
  */
 export const get78 = oc
   .route({
-    description: 'One node\'s declared outputs for a published workflow run.',
+    description: "One node's declared outputs for a published workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeId',
@@ -4311,7 +4311,7 @@ export const byNodeId10 = {
  */
 export const get79 = oc
   .route({
-    description: 'Snapshot of every node\'s declared outputs for a published workflow run.',
+    description: "Snapshot of every node's declared outputs for a published workflow run.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputs',

@@ -27,17 +27,13 @@ type Props = Readonly<{
   hideLogout?: boolean
 }>
 
-const MenuDropdown: FC<Props> = ({
-  data,
-  placement,
-  hideLogout,
-}) => {
-  const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
+const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
+  const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
   const router = useRouter()
   const pathname = usePathname()
   const { t } = useTranslation()
 
-  const shareCode = useWebAppStore(s => s.shareCode)
+  const shareCode = useWebAppStore((s) => s.shareCode)
   const handleLogout = async () => {
     await webAppLogout(shareCode!)
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
@@ -54,11 +50,11 @@ const MenuDropdown: FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          render={(
+          render={
             <ActionButton size="l" className="data-popup-open:bg-state-base-hover">
               <span aria-hidden className="i-ri-equalizer-2-line h-[18px] w-[18px]" />
             </ActionButton>
-          )}
+          }
           aria-label={t('operation.more', { ns: 'common' })}
         />
         <DropdownMenuContent
@@ -83,17 +79,15 @@ const MenuDropdown: FC<Props> = ({
               <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
             </DropdownMenuLinkItem>
           )}
-          <DropdownMenuItem
-            className="px-3 system-md-regular"
-            onClick={handleOpenInfoModal}
-          >
+          <DropdownMenuItem className="px-3 system-md-regular" onClick={handleOpenInfoModal}>
             {t('userProfile.about', { ns: 'common' })}
           </DropdownMenuItem>
-          {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
-            <DropdownMenuItem
-              className="px-3 system-md-regular"
-              onClick={handleLogout}
-            >
+          {!(
+            hideLogout ||
+            webAppAccessMode === AccessMode.EXTERNAL_MEMBERS ||
+            webAppAccessMode === AccessMode.PUBLIC
+          ) && (
+            <DropdownMenuItem className="px-3 system-md-regular" onClick={handleLogout}>
               {t('userProfile.logout', { ns: 'common' })}
             </DropdownMenuItem>
           )}

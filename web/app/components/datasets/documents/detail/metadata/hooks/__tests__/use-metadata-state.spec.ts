@@ -25,7 +25,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('../../../context', () => ({
-  useDocumentContext: (selector: (state: { datasetId: string, documentId: string }) => unknown) =>
+  useDocumentContext: (selector: (state: { datasetId: string; documentId: string }) => unknown) =>
     selector({ datasetId: 'ds-1', documentId: 'doc-1' }),
 }))
 
@@ -39,8 +39,9 @@ vi.mock('@/utils', () => ({
   asyncRunSafe: async (promise: Promise<unknown>) => {
     try {
       return [null, await promise]
+    } catch (e) {
+      return [e]
     }
-    catch (e) { return [e] }
   },
 }))
 
@@ -50,7 +51,11 @@ const wrapper = ({ children }: { children: ReactNode }) =>
 type DocDetail = Parameters<typeof useMetadataState>[0]['docDetail']
 
 const makeDoc = (overrides: Partial<FullDocumentDetail> = {}): DocDetail =>
-  ({ doc_type: 'book', doc_metadata: { title: 'Test Book', author: 'Author' }, ...overrides } as DocDetail)
+  ({
+    doc_type: 'book',
+    doc_metadata: { title: 'Test Book', author: 'Author' },
+    ...overrides,
+  }) as DocDetail
 
 describe('useMetadataState', () => {
   // Verify all metadata editing workflows using a stable docDetail reference
@@ -62,8 +67,10 @@ describe('useMetadataState', () => {
     // to prevent useEffect infinite loops on docDetail?.doc_metadata
     const stableDocDetail = makeDoc()
 
-    const { result } = renderHook(() =>
-      useMetadataState({ docDetail: stableDocDetail, onUpdate }), { wrapper })
+    const { result } = renderHook(
+      () => useMetadataState({ docDetail: stableDocDetail, onUpdate }),
+      { wrapper },
+    )
 
     // --- Initialization ---
     expect(result.current.docType).toBe('book')
@@ -149,8 +156,13 @@ describe('useMetadataState', () => {
 
   // Verify empty doc type starts in editing mode
   it('should initialize in editing mode when no doc type exists', () => {
-    const stableDocDetail = makeDoc({ doc_type: '' as FullDocumentDetail['doc_type'], doc_metadata: {} as FullDocumentDetail['doc_metadata'] })
-    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail }), { wrapper })
+    const stableDocDetail = makeDoc({
+      doc_type: '' as FullDocumentDetail['doc_type'],
+      doc_metadata: {} as FullDocumentDetail['doc_metadata'],
+    })
+    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail }), {
+      wrapper,
+    })
 
     expect(result.current.docType).toBe('')
     expect(result.current.editStatus).toBe(true)
@@ -160,7 +172,9 @@ describe('useMetadataState', () => {
   // Verify "others" normalization
   it('should normalize "others" doc_type to empty string', () => {
     const stableDocDetail = makeDoc({ doc_type: 'others' as FullDocumentDetail['doc_type'] })
-    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail }), { wrapper })
+    const { result } = renderHook(() => useMetadataState({ docDetail: stableDocDetail }), {
+      wrapper,
+    })
 
     expect(result.current.docType).toBe('')
   })

@@ -5,13 +5,12 @@ import { useNodesReadOnly } from './use-workflow'
 
 export const useWorkflowCanvasMaximize = () => {
   const { eventEmitter } = useEventEmitterContextContext()
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
+  const maximizeCanvas = useStore((s) => s.maximizeCanvas)
+  const setMaximizeCanvas = useStore((s) => s.setMaximizeCanvas)
   const { getNodesReadOnly } = useNodesReadOnly()
 
   const handleToggleMaximizeCanvas = useCallback(() => {
-    if (getNodesReadOnly())
-      return
+    if (getNodesReadOnly()) return
 
     const nextValue = !maximizeCanvas
     setMaximizeCanvas(nextValue)

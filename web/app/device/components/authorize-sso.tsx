@@ -33,12 +33,10 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
     let cancelled = false
     fetchApprovalContext()
       .then((c) => {
-        if (!cancelled)
-          setCtx(c)
+        if (!cancelled) setCtx(c)
       })
       .catch((e) => {
-        if (!cancelled)
-          setLoadErr(approveErrorCopy(e))
+        if (!cancelled) setLoadErr(approveErrorCopy(e))
       })
     return () => {
       cancelled = true
@@ -46,17 +44,14 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   }, [])
 
   const approve = async () => {
-    if (!ctx)
-      return
+    if (!ctx) return
     setBusy(true)
     try {
       await approveExternal(ctx, ctx.user_code)
       onApproved()
-    }
-    catch (e) {
+    } catch (e) {
       onError(approveErrorCopy(e))
-    }
-    finally {
+    } finally {
       setBusy(false)
     }
   }
@@ -67,12 +62,14 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
   if (loadErr) {
     return (
       <div>
-        <h2 className="text-2xl font-semibold text-text-primary">This session is no longer valid</h2>
+        <h2 className="text-2xl font-semibold text-text-primary">
+          This session is no longer valid
+        </h2>
         <p className="mt-2 text-sm text-text-secondary">
-          Run
-          {' '}
-          <code className="rounded bg-components-input-bg-normal px-1 font-mono">difyctl auth login</code>
-          {' '}
+          Run{' '}
+          <code className="rounded bg-components-input-bg-normal px-1 font-mono">
+            difyctl auth login
+          </code>{' '}
           again to start a new sign-in.
         </p>
       </div>
@@ -87,15 +84,12 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
       <div>
         <h2 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h2>
         <p className="mt-2 text-sm text-text-secondary">
-          difyctl is requesting access via SSO. If you didn&apos;t start this from your terminal, close this tab.
+          difyctl is requesting access via SSO. If you didn&apos;t start this from your terminal,
+          close this tab.
         </p>
       </div>
       <div className="flex items-center gap-2.5 rounded-lg bg-background-section-burn px-3 py-2.5">
-        <Avatar
-          size="md"
-          avatar={null}
-          name={ctx.subject_email}
-        />
+        <Avatar size="md" avatar={null} name={ctx.subject_email} />
         <div>
           <p className="text-sm font-semibold text-text-primary">{ctx.subject_email}</p>
           <p className="text-xs text-text-secondary">via SSO</p>
@@ -103,18 +97,11 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
       </div>
       {ctx.subject_issuer && (
         <div className="rounded-lg bg-background-section-burn px-3 py-2 text-sm text-text-secondary">
-          Identity provider:
-          {' '}
+          Identity provider:{' '}
           <span className="font-semibold text-text-primary">{ctx.subject_issuer}</span>
         </div>
       )}
-      <Button
-        variant="primary"
-        size="large"
-        className="w-full"
-        onClick={approve}
-        disabled={busy}
-      >
+      <Button variant="primary" size="large" className="w-full" onClick={approve} disabled={busy}>
         Authorize
       </Button>
     </div>

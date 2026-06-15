@@ -1,12 +1,8 @@
-import type {
-  BlockEnum,
-  ValueSelector,
-} from '../types'
+import type { BlockEnum, ValueSelector } from '../types'
 import { hasErrorHandleNode } from '.'
 
 export const variableTransformer = (v: ValueSelector | string) => {
-  if (typeof v === 'string')
-    return v.replace(/^\{\{#|#\}\}$/g, '').split('.')
+  if (typeof v === 'string') return v.replace(/^\{\{#|#\}\}$/g, '').split('.')
 
   return `{{#${v.join('.')}#}}`
 }

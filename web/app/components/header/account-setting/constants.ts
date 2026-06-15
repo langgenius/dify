@@ -10,12 +10,11 @@ export const ACCOUNT_SETTING_TAB = {
   LANGUAGE: 'language',
 } as const
 
-export type AccountSettingTab = typeof ACCOUNT_SETTING_TAB[keyof typeof ACCOUNT_SETTING_TAB]
+export type AccountSettingTab = (typeof ACCOUNT_SETTING_TAB)[keyof typeof ACCOUNT_SETTING_TAB]
 
 export const DEFAULT_ACCOUNT_SETTING_TAB = ACCOUNT_SETTING_TAB.MEMBERS
 
 export const isValidAccountSettingTab = (tab: string | null): tab is AccountSettingTab => {
-  if (!tab)
-    return false
+  if (!tab) return false
   return Object.values(ACCOUNT_SETTING_TAB).includes(tab as AccountSettingTab)
 }

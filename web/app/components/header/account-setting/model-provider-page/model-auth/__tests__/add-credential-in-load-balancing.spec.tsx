@@ -1,6 +1,13 @@
-import type { CustomModel, ModelCredential, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CustomModel,
+  ModelCredential,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { ConfigurationMethodEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ConfigurationMethodEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import AddCredentialInLoadBalancing from '../add-credential-in-load-balancing'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
@@ -12,12 +19,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth'
   }: {
     renderTrigger: (open?: boolean) => React.ReactNode
     authParams?: { onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void }
-    items: Array<{ credentials: Array<{ credential_id: string, credential_name: string }> }>
-    onItemClick?: (credential: { credential_id: string, credential_name: string }) => void
+    items: Array<{ credentials: Array<{ credential_id: string; credential_name: string }> }>
+    onItemClick?: (credential: { credential_id: string; credential_name: string }) => void
   }) => (
     <div>
       {renderTrigger(false)}
-      <button onClick={() => authParams?.onUpdate?.({ provider: 'x' }, { key: 'value' })}>Run update</button>
+      <button onClick={() => authParams?.onUpdate?.({ provider: 'x' }, { key: 'value' })}>
+        Run update
+      </button>
       <button onClick={() => onItemClick?.(items[0]!.credentials[0]!)}>Select first</button>
     </div>
   ),
@@ -35,9 +44,7 @@ describe('AddCredentialInLoadBalancing', () => {
   } as CustomModel
 
   const modelCredential = {
-    available_credentials: [
-      { credential_id: 'cred-1', credential_name: 'Key 1' },
-    ],
+    available_credentials: [{ credential_id: 'cred-1', credential_name: 'Key 1' }],
     credentials: {},
     load_balancing: { enabled: false, configs: [] },
   } as ModelCredential
@@ -100,11 +107,7 @@ describe('AddCredentialInLoadBalancing', () => {
   // renderTrigger with open=true: bg-state-base-hover style applied
   it('should apply hover background when trigger is rendered with open=true', async () => {
     vi.doMock('@/app/components/header/account-setting/model-provider-page/model-auth', () => ({
-      Authorized: ({
-        renderTrigger,
-      }: {
-        renderTrigger: (open?: boolean) => React.ReactNode
-      }) => (
+      Authorized: ({ renderTrigger }: { renderTrigger: (open?: boolean) => React.ReactNode }) => (
         <div data-testid="open-trigger">{renderTrigger(true)}</div>
       ),
     }))
@@ -129,8 +132,7 @@ describe('AddCredentialInLoadBalancing', () => {
       const triggerDiv = container.querySelector('[data-testid="open-trigger"] > div')
       expect(triggerDiv)!.toBeInTheDocument()
       expect(triggerDiv!.className).toContain('bg-state-base-hover')
-    }
-    finally {
+    } finally {
       vi.doUnmock('@/app/components/header/account-setting/model-provider-page/model-auth')
       vi.resetModules()
     }

@@ -2,10 +2,7 @@
 
 import type { NavItem } from '../nav/nav-selector'
 import type { AppListQuery } from '@/contract/console/apps'
-import {
-  RiRobot2Fill,
-  RiRobot2Line,
-} from '@remixicon/react'
+import { RiRobot2Fill, RiRobot2Line } from '@remixicon/react'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,9 +14,15 @@ import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import Nav from '../nav'
 
-const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), { ssr: false })
-const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), { ssr: false })
-const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), { ssr: false })
+const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), {
+  ssr: false,
+})
+const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
+  ssr: false,
+})
+const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
+  ssr: false,
+})
 
 const appNavListQuery = {
   page: 1,
@@ -28,8 +31,7 @@ const appNavListQuery = {
 } satisfies AppListQuery
 
 const getAppLink = (isCurrentWorkspaceEditor: boolean, appId: string, appMode: AppModeEnum) => {
-  if (!isCurrentWorkspaceEditor)
-    return `/app/${appId}/overview`
+  if (!isCurrentWorkspaceEditor) return `/app/${appId}/overview`
 
   if (appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT)
     return `/app/${appId}/workflow`
@@ -41,7 +43,7 @@ const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const appDetail = useAppStore(state => state.appDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
@@ -54,13 +56,13 @@ const AppNav = () => {
     refetch,
   } = useInfiniteQuery({
     ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
+      input: (pageParam) => ({
         query: {
           ...appNavListQuery,
           page: Number(pageParam),
         },
       }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+      getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
@@ -68,23 +70,19 @@ const AppNav = () => {
   })
 
   const handleLoadMore = useCallback(() => {
-    if (hasNextPage)
-      fetchNextPage()
+    if (hasNextPage) fetchNextPage()
   }, [fetchNextPage, hasNextPage])
 
   const openModal = (state: string) => {
-    if (state === 'blank')
-      setShowNewAppDialog(true)
-    if (state === 'template')
-      setShowNewAppTemplateDialog(true)
-    if (state === 'dsl')
-      setShowCreateFromDSLModal(true)
+    if (state === 'blank') setShowNewAppDialog(true)
+    if (state === 'template') setShowNewAppTemplateDialog(true)
+    if (state === 'dsl') setShowCreateFromDSLModal(true)
   }
 
   const navItems = useMemo<NavItem[]>(() => {
-    const appItems = appsData?.pages.flatMap(appData => appData.data) ?? []
+    const appItems = appsData?.pages.flatMap((appData) => appData.data) ?? []
 
-    return appItems.map(app => ({
+    return appItems.map((app) => ({
       id: app.id,
       icon_type: app.icon_type,
       icon: app.icon,

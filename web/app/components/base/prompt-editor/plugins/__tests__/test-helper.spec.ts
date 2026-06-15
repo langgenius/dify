@@ -61,16 +61,23 @@ describe('test-helpers', () => {
       const editor = await waitForEditorReady(getEditor)
 
       expect(() => {
-        editor.update(() => {
-          throw new Error('test error')
-        }, { discrete: true })
+        editor.update(
+          () => {
+            throw new Error('test error')
+          },
+          { discrete: true },
+        )
       }).toThrow('test error')
     })
   })
 
   describe('selectRootEnd', () => {
     it('should select the end of the root', async () => {
-      const { getEditor } = renderLexicalEditor({ namespace: 'test', nodes: [ParagraphNode, TextNode], children: null })
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'test',
+        nodes: [ParagraphNode, TextNode],
+        children: null,
+      })
       const editor = await waitForEditorReady(getEditor)
 
       selectRootEnd(editor)
@@ -88,17 +95,24 @@ describe('test-helpers', () => {
 
   describe('Content Reading/Writing Helpers', () => {
     it('should read root text content', async () => {
-      const { getEditor } = renderLexicalEditor({ namespace: 'test', nodes: [ParagraphNode, TextNode], children: null })
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'test',
+        nodes: [ParagraphNode, TextNode],
+        children: null,
+      })
       const editor = await waitForEditorReady(getEditor)
 
       act(() => {
-        editor.update(() => {
-          const root = $getRoot()
-          root.clear()
-          const paragraph = $createParagraphNode()
-          paragraph.append($createTextNode('Hello World'))
-          root.append(paragraph)
-        }, { discrete: true })
+        editor.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            const paragraph = $createParagraphNode()
+            paragraph.append($createTextNode('Hello World'))
+            root.append(paragraph)
+          },
+          { discrete: true },
+        )
       })
 
       let content = ''
@@ -109,7 +123,11 @@ describe('test-helpers', () => {
     })
 
     it('should set editor root text and select end', async () => {
-      const { getEditor } = renderLexicalEditor({ namespace: 'test', nodes: [ParagraphNode, TextNode], children: null })
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'test',
+        nodes: [ParagraphNode, TextNode],
+        children: null,
+      })
       const editor = await waitForEditorReady(getEditor)
 
       setEditorRootText(editor, 'New Text', $createTextNode)
@@ -126,16 +144,23 @@ describe('test-helpers', () => {
 
   describe('Node Selection Helpers', () => {
     it('should get node count', async () => {
-      const { getEditor } = renderLexicalEditor({ namespace: 'test', nodes: [ParagraphNode, TextNode], children: null })
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'test',
+        nodes: [ParagraphNode, TextNode],
+        children: null,
+      })
       const editor = await waitForEditorReady(getEditor)
 
       act(() => {
-        editor.update(() => {
-          const root = $getRoot()
-          root.clear()
-          root.append($createParagraphNode())
-          root.append($createParagraphNode())
-        }, { discrete: true })
+        editor.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            root.append($createParagraphNode())
+            root.append($createParagraphNode())
+          },
+          { discrete: true },
+        )
       })
 
       let count = 0
@@ -146,15 +171,22 @@ describe('test-helpers', () => {
     })
 
     it('should get nodes by type', async () => {
-      const { getEditor } = renderLexicalEditor({ namespace: 'test', nodes: [ParagraphNode, TextNode], children: null })
+      const { getEditor } = renderLexicalEditor({
+        namespace: 'test',
+        nodes: [ParagraphNode, TextNode],
+        children: null,
+      })
       const editor = await waitForEditorReady(getEditor)
 
       act(() => {
-        editor.update(() => {
-          const root = $getRoot()
-          root.clear()
-          root.append($createParagraphNode())
-        }, { discrete: true })
+        editor.update(
+          () => {
+            const root = $getRoot()
+            root.clear()
+            root.append($createParagraphNode())
+          },
+          { discrete: true },
+        )
       })
 
       let nodes: ParagraphNode[] = []
@@ -191,9 +223,12 @@ describe('test-helpers', () => {
       expect(editor).toBeDefined()
 
       expect(() => {
-        editor.update(() => {
-          throw new Error('test error')
-        }, { discrete: true })
+        editor.update(
+          () => {
+            throw new Error('test error')
+          },
+          { discrete: true },
+        )
       }).toThrow('test error')
     })
   })

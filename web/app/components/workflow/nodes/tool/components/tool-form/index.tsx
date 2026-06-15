@@ -36,25 +36,23 @@ const ToolForm: FC<Props> = ({
 }) => {
   return (
     <div className="space-y-1">
-      {
-        schema.map((schema, index) => (
-          <ToolFormItem
-            key={index}
-            readOnly={readOnly}
-            nodeId={nodeId}
-            schema={schema}
-            value={value}
-            onChange={onChange}
-            inPanel={inPanel}
-            currentTool={currentTool}
-            currentProvider={currentProvider}
-            showManageInputField={showManageInputField}
-            onManageInputField={onManageInputField}
-            extraParams={extraParams}
-            providerType="tool"
-          />
-        ))
-      }
+      {schema.map((schema, index) => (
+        <ToolFormItem
+          key={index}
+          readOnly={readOnly}
+          nodeId={nodeId}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          inPanel={inPanel}
+          currentTool={currentTool}
+          currentProvider={currentProvider}
+          showManageInputField={showManageInputField}
+          onManageInputField={onManageInputField}
+          extraParams={extraParams}
+          providerType="tool"
+        />
+      ))}
     </div>
   )
 }

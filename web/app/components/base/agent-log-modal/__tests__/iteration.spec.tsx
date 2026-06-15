@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import Iteration from '../iteration'
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       <div data-testid="code-editor-title">{title}</div>
       <div data-testid="code-editor-value">{JSON.stringify(value)}</div>

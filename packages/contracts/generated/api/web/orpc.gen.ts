@@ -957,7 +957,7 @@ export const site = {
 export const get13 = oc
   .route({
     description:
-      'Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can\'t authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.',
+      "Get system feature flags and configuration\nReturns the current system feature flags and configuration\nthat control various functionalities across the platform.\n\nReturns:\n    dict: System feature configuration object\n\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nNOTE: This endpoint is unauthenticated by design, as it provides system features\ndata required for webapp initialization.\n\nAuthentication would create circular dependency (can't authenticate without webapp loading).\n\nOnly non-sensitive configuration data should be returned by this endpoint.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getSystemFeatures',

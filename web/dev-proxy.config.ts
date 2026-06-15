@@ -45,16 +45,12 @@ export default {
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: [
-        '/console/api',
-      ],
+      paths: ['/console/api'],
       target: DEV_PROXY_TARGET,
       cookieRewrite: difyCookieRewrite,
     },
     {
-      paths: [
-        '/api',
-      ],
+      paths: ['/api'],
       target: DEV_PROXY_PUBLIC_TARGET,
       cookieRewrite: difyCookieRewrite,
     },

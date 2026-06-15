@@ -79,25 +79,19 @@ describe('DocumentTitle', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      const { container } = render(
-        <DocumentTitle datasetId="dataset-1" />,
-      )
+      const { container } = render(<DocumentTitle datasetId="dataset-1" />)
 
       expect(container.firstChild).toBeInTheDocument()
     })
 
     it('should render DocumentPicker component', () => {
-      const { getByTestId } = render(
-        <DocumentTitle datasetId="dataset-1" />,
-      )
+      const { getByTestId } = render(<DocumentTitle datasetId="dataset-1" />)
 
       expect(getByTestId('document-picker')).toBeInTheDocument()
     })
 
     it('should render with correct container classes', () => {
-      const { container } = render(
-        <DocumentTitle datasetId="dataset-1" />,
-      )
+      const { container } = render(<DocumentTitle datasetId="dataset-1" />)
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('flex')
@@ -109,9 +103,7 @@ describe('DocumentTitle', () => {
 
   describe('Props', () => {
     it('should pass datasetId to DocumentPicker', () => {
-      const { getByTestId } = render(
-        <DocumentTitle datasetId="test-dataset-id" />,
-      )
+      const { getByTestId } = render(<DocumentTitle datasetId="test-dataset-id" />)
 
       expect(getByTestId('document-picker').getAttribute('data-dataset-id')).toBe('test-dataset-id')
     })
@@ -119,11 +111,7 @@ describe('DocumentTitle', () => {
     it('should pass the selected document to DocumentPicker', () => {
       const document = createDocument({ id: 'doc-current' })
       const { getByTestId } = render(
-        <DocumentTitle
-          datasetId="dataset-1"
-          document={document}
-          parentMode="paragraph"
-        />,
+        <DocumentTitle datasetId="dataset-1" document={document} parentMode="paragraph" />,
       )
 
       expect(getByTestId('document-picker')).toHaveAttribute('data-value-id', 'doc-current')
@@ -131,9 +119,7 @@ describe('DocumentTitle', () => {
     })
 
     it('should pass no parent mode when it is undefined', () => {
-      const { getByTestId } = render(
-        <DocumentTitle datasetId="dataset-1" />,
-      )
+      const { getByTestId } = render(<DocumentTitle datasetId="dataset-1" />)
 
       expect(getByTestId('document-picker')).toHaveAttribute('data-parent-mode', '')
     })
@@ -150,9 +136,7 @@ describe('DocumentTitle', () => {
 
   describe('Navigation', () => {
     it('should navigate to document page when document is selected', () => {
-      const { getByTestId } = render(
-        <DocumentTitle datasetId="dataset-1" />,
-      )
+      const { getByTestId } = render(<DocumentTitle datasetId="dataset-1" />)
 
       getByTestId('document-picker').click()
 
@@ -162,9 +146,7 @@ describe('DocumentTitle', () => {
 
   describe('Edge Cases', () => {
     it('should handle an empty document value', () => {
-      const { getByTestId } = render(
-        <DocumentTitle datasetId="dataset-1" />,
-      )
+      const { getByTestId } = render(<DocumentTitle datasetId="dataset-1" />)
 
       expect(getByTestId('document-picker')).toHaveAttribute('data-value-id', '')
     })

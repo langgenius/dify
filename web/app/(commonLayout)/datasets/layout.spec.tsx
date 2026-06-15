@@ -61,11 +61,11 @@ describe('DatasetsLayout', () => {
       currentWorkspace: { id: '' },
     })
 
-    render((
+    render(
       <DatasetsLayout>
         <div>datasets</div>
-      </DatasetsLayout>
-    ))
+      </DatasetsLayout>,
+    )
 
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
@@ -78,11 +78,11 @@ describe('DatasetsLayout', () => {
       isCurrentWorkspaceDatasetOperator: false,
     })
 
-    render((
+    render(
       <DatasetsLayout>
         <div>datasets</div>
-      </DatasetsLayout>
-    ))
+      </DatasetsLayout>,
+    )
 
     expect(screen.queryByText('datasets')).not.toBeInTheDocument()
     await waitFor(() => {
@@ -96,11 +96,11 @@ describe('DatasetsLayout', () => {
       isCurrentWorkspaceDatasetOperator: true,
     })
 
-    render((
+    render(
       <DatasetsLayout>
         <div>datasets</div>
-      </DatasetsLayout>
-    ))
+      </DatasetsLayout>,
+    )
 
     expect(screen.getByText('datasets')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()

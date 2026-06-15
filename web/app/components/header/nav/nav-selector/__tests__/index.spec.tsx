@@ -122,7 +122,7 @@ describe('NavSelector Component', () => {
         fireEvent.click(button)
       })
       const items = screen.getAllByText('Item 1')
-      const listItem = items.find(el => el.closest('[role="menuitem"]'))
+      const listItem = items.find((el) => el.closest('[role="menuitem"]'))
       if (listItem) {
         await act(async () => {
           fireEvent.click(listItem)

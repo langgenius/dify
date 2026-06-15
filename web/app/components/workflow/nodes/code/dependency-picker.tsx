@@ -1,13 +1,7 @@
 import type { FC } from 'react'
 import type { CodeDependency } from './types'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -20,32 +14,33 @@ type Props = Readonly<{
   onChange: (dependency: CodeDependency) => void
 }>
 
-const DependencyPicker: FC<Props> = ({
-  available_dependencies,
-  value,
-  onChange,
-}) => {
+const DependencyPicker: FC<Props> = ({ available_dependencies, value, onChange }) => {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
 
-  const handleChange = useCallback((dependency: CodeDependency) => {
-    return () => {
-      setOpen(false)
-      onChange(dependency)
-    }
-  }, [onChange])
+  const handleChange = useCallback(
+    (dependency: CodeDependency) => {
+      return () => {
+        setOpen(false)
+        onChange(dependency)
+      }
+    },
+    [onChange],
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <div className="grow cursor-pointer">
             <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-gray-100 px-2.5 text-[13px] text-gray-900">
-              <div className="w-0 grow truncate" title={value.name}>{value.name}</div>
+              <div className="w-0 grow truncate" title={value.name}>
+                {value.name}
+              </div>
               <RiArrowDownSLine className="size-3.5 shrink-0 text-gray-700" />
             </div>
           </div>
-        )}
+        }
       />
       <PopoverContent
         placement="bottom-start"
@@ -64,26 +59,29 @@ const DependencyPicker: FC<Props> = ({
               showClearIcon
               value={searchText}
               placeholder={t('nodes.code.searchDependencies', { ns: 'workflow' }) || ''}
-              onChange={e => setSearchText(e.target.value)}
+              onChange={(e) => setSearchText(e.target.value)}
               onClear={() => setSearchText('')}
               autoFocus
             />
           </div>
           <div className="max-h-[30vh] overflow-y-auto">
-            {available_dependencies.filter((v) => {
-              if (!searchText)
-                return true
-              return v.name.toLowerCase().includes(searchText.toLowerCase())
-            }).map(dependency => (
-              <div
-                key={dependency.name}
-                className="flex h-[30px] cursor-pointer items-center justify-between rounded-lg pr-2 pl-3 text-[13px] text-gray-900 hover:bg-gray-100"
-                onClick={handleChange(dependency)}
-              >
-                <div className="w-0 grow truncate">{dependency.name}</div>
-                {dependency.name === value.name && <Check className="size-4 shrink-0 text-primary-600" />}
-              </div>
-            ))}
+            {available_dependencies
+              .filter((v) => {
+                if (!searchText) return true
+                return v.name.toLowerCase().includes(searchText.toLowerCase())
+              })
+              .map((dependency) => (
+                <div
+                  key={dependency.name}
+                  className="flex h-[30px] cursor-pointer items-center justify-between rounded-lg pr-2 pl-3 text-[13px] text-gray-900 hover:bg-gray-100"
+                  onClick={handleChange(dependency)}
+                >
+                  <div className="w-0 grow truncate">{dependency.name}</div>
+                  {dependency.name === value.name && (
+                    <Check className="size-4 shrink-0 text-primary-600" />
+                  )}
+                </div>
+              ))}
           </div>
         </div>
       </PopoverContent>

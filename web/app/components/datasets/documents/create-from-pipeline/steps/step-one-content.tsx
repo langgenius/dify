@@ -49,9 +49,8 @@ const StepOneContent = ({
   onSelectAll,
   onNextStep,
 }: StepOneContentProps) => {
-  const showUpgradeCard = !supportBatchUpload
-    && datasourceType === DatasourceType.localFile
-    && localFileListLength > 0
+  const showUpgradeCard =
+    !supportBatchUpload && datasourceType === DatasourceType.localFile && localFileListLength > 0
 
   return (
     <div className="flex flex-col gap-y-5 pt-4">

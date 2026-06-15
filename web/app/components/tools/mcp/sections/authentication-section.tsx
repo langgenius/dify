@@ -35,7 +35,9 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
             checked={isDynamicRegistration}
             onCheckedChange={onDynamicRegistrationChange}
           />
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">
+            {t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}
+          </span>
         </div>
         {!isDynamicRegistration && (
           <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
@@ -51,22 +53,26 @@ const AuthenticationSection: FC<AuthenticationSectionProps> = ({
       </div>
       <div>
         <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientID', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">
+            {t('mcp.modal.clientID', { ns: 'tools' })}
+          </span>
         </div>
         <Input
           value={clientID}
-          onChange={e => onClientIDChange(e.target.value)}
+          onChange={(e) => onClientIDChange(e.target.value)}
           placeholder={t('mcp.modal.clientID', { ns: 'tools' })}
           disabled={isDynamicRegistration}
         />
       </div>
       <div>
         <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-          <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientSecret', { ns: 'tools' })}</span>
+          <span className="system-sm-medium text-text-secondary">
+            {t('mcp.modal.clientSecret', { ns: 'tools' })}
+          </span>
         </div>
         <Input
           value={credentials}
-          onChange={e => onCredentialsChange(e.target.value)}
+          onChange={(e) => onCredentialsChange(e.target.value)}
           placeholder={t('mcp.modal.clientSecretPlaceholder', { ns: 'tools' })}
           disabled={isDynamicRegistration}
         />

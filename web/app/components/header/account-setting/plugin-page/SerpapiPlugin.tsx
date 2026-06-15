@@ -14,32 +14,31 @@ type SerpapiPluginProps = {
 const SerpapiPlugin = ({ plugin, onUpdate }: SerpapiPluginProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const forms: Form[] = [{
-    key: 'api_key',
-    title: t('plugin.serpapi.apiKey', { ns: 'common' }),
-    placeholder: t('plugin.serpapi.apiKeyPlaceholder', { ns: 'common' }),
-    value: plugin.credentials?.api_key,
-    validate: {
-      before: (v) => {
-        if (v?.api_key)
-          return true
+  const forms: Form[] = [
+    {
+      key: 'api_key',
+      title: t('plugin.serpapi.apiKey', { ns: 'common' }),
+      placeholder: t('plugin.serpapi.apiKeyPlaceholder', { ns: 'common' }),
+      value: plugin.credentials?.api_key,
+      validate: {
+        before: (v) => {
+          if (v?.api_key) return true
+        },
+        run: async (v) => {
+          return validatePluginKey('serpapi', {
+            credentials: {
+              api_key: v?.api_key,
+            },
+          })
+        },
       },
-      run: async (v) => {
-        return validatePluginKey('serpapi', {
-          credentials: {
-            api_key: v?.api_key,
-          },
-        })
+      handleFocus: (v, dispatch) => {
+        if (v.api_key === plugin.credentials?.api_key) dispatch({ ...v, api_key: '' })
       },
     },
-    handleFocus: (v, dispatch) => {
-      if (v.api_key === plugin.credentials?.api_key)
-        dispatch({ ...v, api_key: '' })
-    },
-  }]
+  ]
   const handleSave = async (v: ValidateValue) => {
-    if (!v?.api_key || v?.api_key === plugin.credentials?.api_key)
-      return
+    if (!v?.api_key || v?.api_key === plugin.credentials?.api_key) return
     const res = await updatePluginKey('serpapi', {
       credentials: {
         api_key: v?.api_key,

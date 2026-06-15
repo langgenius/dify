@@ -28,10 +28,13 @@ export function NodeActionsDropdown({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    setOpen(nextOpen)
-    onOpenChange?.(nextOpen)
-  }, [onOpenChange])
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen)
+      onOpenChange?.(nextOpen)
+    },
+    [onOpenChange],
+  )
 
   const closeMenu = useCallback(() => {
     setOpen(false)
@@ -39,13 +42,9 @@ export function NodeActionsDropdown({
   }, [onOpenChange])
 
   return (
-    <DropdownMenu
-      modal={false}
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <button
             type="button"
             aria-label={t('operation.more', { ns: 'common' })}
@@ -57,7 +56,7 @@ export function NodeActionsDropdown({
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </button>
-        )}
+        }
       />
       <DropdownMenuContent
         placement="bottom-end"

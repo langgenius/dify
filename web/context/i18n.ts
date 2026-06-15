@@ -24,15 +24,17 @@ export const useGetPricingPageLanguage = () => {
 export const defaultDocBaseUrl = 'https://docs.dify.ai'
 export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 
-export const useDocLink = (baseUrl?: string): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
+export const useDocLink = (
+  baseUrl?: string,
+): ((path?: DocPathWithoutLang, pathMap?: DocPathMap) => string) => {
   let baseDocUrl = baseUrl || defaultDocBaseUrl
-  baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
+  baseDocUrl = baseDocUrl.endsWith('/') ? baseDocUrl.slice(0, -1) : baseDocUrl
   const locale = useLocale()
   return useCallback(
     (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
       const docLanguage = getDocLanguage(locale)
       const pathUrl = path || ''
-      let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
+      let targetPath = pathMap ? pathMap[locale] || pathUrl : pathUrl
       let languagePrefix = `/${docLanguage}`
 
       if (targetPath.startsWith('/api-reference/')) {

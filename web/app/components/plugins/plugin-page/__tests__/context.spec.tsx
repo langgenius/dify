@@ -32,17 +32,19 @@ const renderWithMarketplace = (ui: ReactElement, enableMarketplace: boolean) =>
 
 // Test component that uses the context
 const TestConsumer = () => {
-  const containerRef = usePluginPageContext(v => v.containerRef)
-  const options = usePluginPageContext(v => v.options)
-  const activeTab = usePluginPageContext(v => v.activeTab)
+  const containerRef = usePluginPageContext((v) => v.containerRef)
+  const options = usePluginPageContext((v) => v.options)
+  const activeTab = usePluginPageContext((v) => v.activeTab)
 
   return (
     <div>
       <span data-testid="has-container-ref">{containerRef ? 'true' : 'false'}</span>
       <span data-testid="options-count">{options.length}</span>
       <span data-testid="active-tab">{activeTab}</span>
-      {options.map((opt: { value: string, text: string }) => (
-        <span key={opt.value} data-testid={`option-${opt.value}`}>{opt.text}</span>
+      {options.map((opt: { value: string; text: string }) => (
+        <span key={opt.value} data-testid={`option-${opt.value}`}>
+          {opt.text}
+        </span>
       ))}
     </div>
   )

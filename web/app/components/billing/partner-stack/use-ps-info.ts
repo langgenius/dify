@@ -10,35 +10,35 @@ const usePSInfo = () => {
   const psInfoInCookie = (() => {
     try {
       return JSON.parse(Cookies.get(PARTNER_STACK_CONFIG.cookieName) || '{}')
-    }
-    catch (e) {
+    } catch (e) {
       console.error('Failed to parse partner stack info from cookie:', e)
       return {}
     }
   })()
   const psPartnerKey = searchParams.get('ps_partner_key') || psInfoInCookie?.partnerKey
   const psClickId = searchParams.get('ps_xid') || psInfoInCookie?.clickId
-  const isPSChanged = psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
-  const [hasBind, {
-    setTrue: setBind,
-  }] = useBoolean(false)
+  const isPSChanged =
+    psInfoInCookie?.partnerKey !== psPartnerKey || psInfoInCookie?.clickId !== psClickId
+  const [hasBind, { setTrue: setBind }] = useBoolean(false)
   const { mutateAsync } = useBindPartnerStackInfo()
   // Save to top domain. cloud.dify.ai => .dify.ai
   const domain = globalThis.location?.hostname.replace('cloud', '')
 
   const saveOrUpdate = useCallback(() => {
-    if (!psPartnerKey || !psClickId)
-      return
-    if (!isPSChanged)
-      return
-    Cookies.set(PARTNER_STACK_CONFIG.cookieName, JSON.stringify({
-      partnerKey: psPartnerKey,
-      clickId: psClickId,
-    }), {
-      expires: PARTNER_STACK_CONFIG.saveCookieDays,
-      path: '/',
-      domain,
-    })
+    if (!psPartnerKey || !psClickId) return
+    if (!isPSChanged) return
+    Cookies.set(
+      PARTNER_STACK_CONFIG.cookieName,
+      JSON.stringify({
+        partnerKey: psPartnerKey,
+        clickId: psClickId,
+      }),
+      {
+        expires: PARTNER_STACK_CONFIG.saveCookieDays,
+        path: '/',
+        domain,
+      },
+    )
   }, [psPartnerKey, psClickId, isPSChanged, domain])
 
   const bind = useCallback(async () => {
@@ -50,13 +50,10 @@ const usePSInfo = () => {
           clickId: psClickId,
         })
         shouldRemoveCookie = true
+      } catch (error: unknown) {
+        if ((error as { status: number })?.status === 400) shouldRemoveCookie = true
       }
-      catch (error: unknown) {
-        if ((error as { status: number })?.status === 400)
-          shouldRemoveCookie = true
-      }
-      if (shouldRemoveCookie)
-        Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/', domain })
+      if (shouldRemoveCookie) Cookies.remove(PARTNER_STACK_CONFIG.cookieName, { path: '/', domain })
       setBind()
     }
   }, [psPartnerKey, psClickId, hasBind, domain, setBind, mutateAsync])

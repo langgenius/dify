@@ -20,7 +20,10 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
-  default: (nodeId: string, options: { filterVar: (payload: { type: VarType }, selector: string[]) => boolean }) => {
+  default: (
+    nodeId: string,
+    options: { filterVar: (payload: { type: VarType }, selector: string[]) => boolean },
+  ) => {
     filterResults.push(
       options.filterVar({ type: VarType.string }, ['node-1']),
       options.filterVar({ type: VarType.file }, ['node-1']),
@@ -66,16 +69,21 @@ describe('InstructionEditorInWorkflow', () => {
 
     expect(screen.getByTestId('instruction-editor')).toHaveTextContent('editor-1')
     expect(filterResults).toEqual([true, false, false, false])
-    expect(mockUseAvailableVarList).toHaveBeenCalledWith('current-node', expect.objectContaining({
-      onlyLeafNodeVar: false,
-    }))
-    expect(mockInstructionEditor).toHaveBeenCalledWith(expect.objectContaining({
-      value: 'instruction',
-      availableVars: [{ variable: 'query' }],
-      availableNodes: [{ id: 'node-1', data: { title: 'Node 1', type: 'llm' } }],
-      getVarType: 'var-type-fn',
-      isShowCurrentBlock: true,
-      isShowLastRunBlock: true,
-    }))
+    expect(mockUseAvailableVarList).toHaveBeenCalledWith(
+      'current-node',
+      expect.objectContaining({
+        onlyLeafNodeVar: false,
+      }),
+    )
+    expect(mockInstructionEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: 'instruction',
+        availableVars: [{ variable: 'query' }],
+        availableNodes: [{ id: 'node-1', data: { title: 'Node 1', type: 'llm' } }],
+        getVarType: 'var-type-fn',
+        isShowCurrentBlock: true,
+        isShowLastRunBlock: true,
+      }),
+    )
   })
 })

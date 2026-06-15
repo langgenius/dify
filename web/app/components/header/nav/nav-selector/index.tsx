@@ -10,17 +10,18 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
+import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  FileArrow01,
+  FilePlus01,
+  FilePlus02,
+} from '@/app/components/base/icons/src/vender/line/files'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
@@ -67,13 +68,13 @@ const AppCreateMenu = ({
   return (
     <DropdownMenuSub>
       <div className="p-1">
-        <DropdownMenuSubTrigger
-          className="h-9 gap-2 px-3 py-[6px]"
-        >
+        <DropdownMenuSubTrigger className="h-9 gap-2 px-3 py-[6px]">
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
             <span className="i-ri-add-line size-4 text-text-primary" />
           </div>
-          <span className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</span>
+          <span className="grow text-left text-[14px] font-normal text-text-secondary">
+            {createText}
+          </span>
         </DropdownMenuSubTrigger>
       </div>
       <DropdownMenuSubContent
@@ -111,20 +112,30 @@ const AppCreateMenu = ({
   )
 }
 
-const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore, isLoadingMore }: INavSelectorProps) => {
+const NavSelector = ({
+  curNav,
+  navigationItems,
+  createText,
+  isApp,
+  onCreate,
+  onLoadMore,
+  isLoadingMore,
+}: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const setAppDetail = useAppStore((state) => state.setAppDetail)
 
-  const handleScroll = useCallback(debounce((e) => {
-    if (typeof onLoadMore === 'function') {
-      const { clientHeight, scrollHeight, scrollTop } = e.target
+  const handleScroll = useCallback(
+    debounce((e) => {
+      if (typeof onLoadMore === 'function') {
+        const { clientHeight, scrollHeight, scrollTop } = e.target
 
-      if (clientHeight + scrollTop > scrollHeight - 50)
-        onLoadMore()
-    }
-  }, 50), [])
+        if (clientHeight + scrollTop > scrollHeight - 50) onLoadMore()
+      }
+    }, 50),
+    [],
+  )
 
   return (
     <DropdownMenu modal={false}>
@@ -134,7 +145,9 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
           'focus-visible:bg-components-main-nav-nav-button-bg-active focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-main-nav-nav-button-bg-active',
         )}
       >
-        <div className="max-w-[157px] truncate" title={curNav?.name}>{curNav?.name}</div>
+        <div className="max-w-[157px] truncate" title={curNav?.name}>
+          {curNav?.name}
+        </div>
         <RiArrowDownSLine
           className="ml-1 size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
           aria-hidden="true"
@@ -146,37 +159,36 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
         popupClassName="w-60 max-w-80 divide-y divide-divider-regular bg-components-panel-bg-blur p-0"
       >
         <div className="max-h-[50vh] overflow-auto px-1 py-1" onScroll={handleScroll}>
-          {
-            navigationItems.map(nav => (
-              <DropdownMenuItem
-                key={nav.id}
-                className="h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary"
-                onClick={() => {
-                  if (curNav?.id === nav.id)
-                    return
-                  setAppDetail()
-                  router.push(nav.link)
-                }}
-                title={nav.name}
-              >
-                <div className="relative mr-2 size-6 shrink-0 rounded-md">
-                  <AppIcon
-                    size="tiny"
-                    iconType={nav.icon_type}
-                    icon={nav.icon}
-                    background={nav.icon_background}
-                    imageUrl={nav.icon_url}
+          {navigationItems.map((nav) => (
+            <DropdownMenuItem
+              key={nav.id}
+              className="h-auto truncate px-3 py-[6px] text-[14px] font-normal text-text-secondary"
+              onClick={() => {
+                if (curNav?.id === nav.id) return
+                setAppDetail()
+                router.push(nav.link)
+              }}
+              title={nav.name}
+            >
+              <div className="relative mr-2 size-6 shrink-0 rounded-md">
+                <AppIcon
+                  size="tiny"
+                  iconType={nav.icon_type}
+                  icon={nav.icon}
+                  background={nav.icon_background}
+                  imageUrl={nav.icon_url}
+                />
+                {!!nav.mode && (
+                  <AppTypeIcon
+                    type={nav.mode}
+                    wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm"
+                    className="size-2.5"
                   />
-                  {!!nav.mode && (
-                    <AppTypeIcon type={nav.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 shadow-sm" className="size-2.5" />
-                  )}
-                </div>
-                <div className="min-w-0 truncate">
-                  {nav.name}
-                </div>
-              </DropdownMenuItem>
-            ))
-          }
+                )}
+              </div>
+              <div className="min-w-0 truncate">{nav.name}</div>
+            </DropdownMenuItem>
+          ))}
           {isLoadingMore && (
             <div className="flex justify-center py-2">
               <Loading />
@@ -185,14 +197,13 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
         </div>
         {!isApp && isCurrentWorkspaceEditor && (
           <div className="p-1">
-            <DropdownMenuItem
-              className="h-9 gap-2 px-3 py-[6px]"
-              onClick={() => onCreate('')}
-            >
+            <DropdownMenuItem className="h-9 gap-2 px-3 py-[6px]" onClick={() => onCreate('')}>
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-background-default">
                 <RiAddLine className="size-4 text-text-primary" />
               </div>
-              <div className="grow text-left text-[14px] font-normal text-text-secondary">{createText}</div>
+              <div className="grow text-left text-[14px] font-normal text-text-secondary">
+                {createText}
+              </div>
             </DropdownMenuItem>
           </div>
         )}

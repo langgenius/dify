@@ -8,12 +8,14 @@ const createNodeData = (overrides: Partial<StartNodeType> = {}): StartNodeType =
   title: 'Start',
   desc: '',
   type: BlockEnum.Start,
-  variables: [{
-    label: 'Question',
-    variable: 'query',
-    type: InputVarType.textInput,
-    required: true,
-  }],
+  variables: [
+    {
+      label: 'Question',
+      variable: 'query',
+      type: InputVarType.textInput,
+      required: true,
+    },
+  ],
   ...overrides,
 })
 
@@ -25,22 +27,25 @@ describe('StartNode', () => {
   // Start variables should render required metadata and gracefully disappear when empty.
   describe('Rendering', () => {
     it('should render configured input variables and required markers', () => {
-      renderNodeComponent(Node, createNodeData({
-        variables: [
-          {
-            label: 'Question',
-            variable: 'query',
-            type: InputVarType.textInput,
-            required: true,
-          },
-          {
-            label: 'Count',
-            variable: 'count',
-            type: InputVarType.number,
-            required: false,
-          },
-        ],
-      }))
+      renderNodeComponent(
+        Node,
+        createNodeData({
+          variables: [
+            {
+              label: 'Question',
+              variable: 'query',
+              type: InputVarType.textInput,
+              required: true,
+            },
+            {
+              label: 'Count',
+              variable: 'count',
+              type: InputVarType.number,
+              required: false,
+            },
+          ],
+        }),
+      )
 
       expect(screen.getByText('query')).toBeInTheDocument()
       expect(screen.getByText('count')).toBeInTheDocument()
@@ -48,9 +53,12 @@ describe('StartNode', () => {
     })
 
     it('should render nothing when there are no start variables', () => {
-      const { container } = renderNodeComponent(Node, createNodeData({
-        variables: [],
-      }))
+      const { container } = renderNodeComponent(
+        Node,
+        createNodeData({
+          variables: [],
+        }),
+      )
 
       expect(container).toBeEmptyDOMElement()
     })

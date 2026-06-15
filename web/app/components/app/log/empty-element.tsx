@@ -10,8 +10,21 @@ import { basePath } from '@/utils/var'
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-      <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className ?? ''}
+    >
+      <path
+        d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -37,8 +50,20 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
             i18nKey="table.empty.element.content"
             ns="appLog"
             components={{
-              shareLink: <Link href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} className="text-util-colors-blue-blue-600" target="_blank" rel="noopener noreferrer" />,
-              testLink: <Link href={getRedirectionPath(true, appDetail)} className="text-util-colors-blue-blue-600" />,
+              shareLink: (
+                <Link
+                  href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`}
+                  className="text-util-colors-blue-blue-600"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              ),
+              testLink: (
+                <Link
+                  href={getRedirectionPath(true, appDetail)}
+                  className="text-util-colors-blue-blue-600"
+                />
+              ),
             }}
           />
         </div>

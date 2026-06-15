@@ -33,11 +33,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference
 let i18n: I18nType
 
 const renderWithI18n = (ui: ReactNode) => {
-  return render(
-    <I18nextProvider i18n={i18n}>
-      {ui}
-    </I18nextProvider>,
-  )
+  return render(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>)
 }
 
 describe('PrePopulate', () => {
@@ -74,13 +70,7 @@ describe('PrePopulate', () => {
 
   it('should show placeholder initially and switch out of placeholder on Tab key', async () => {
     const user = userEvent.setup()
-    renderWithI18n(
-      <PrePopulate
-        nodeId="node-1"
-        isVariable={false}
-        value=""
-      />,
-    )
+    renderWithI18n(<PrePopulate nodeId="node-1" isVariable={false} value="" />)
 
     expect(screen.getByText('Static Content'))!.toBeInTheDocument()
 
@@ -111,9 +101,7 @@ describe('PrePopulate', () => {
       )
     }
 
-    renderWithI18n(
-      <Wrapper />,
-    )
+    renderWithI18n(<Wrapper />)
 
     await user.clear(screen.getByRole('textbox'))
     await user.type(screen.getByRole('textbox'), 'next')
@@ -147,11 +135,7 @@ describe('PrePopulate', () => {
 
   it('should pass variable type filter to picker that allows string number and secret', () => {
     renderWithI18n(
-      <PrePopulate
-        nodeId="node-3"
-        isVariable
-        valueSelector={['node-3', 'existing']}
-      />,
+      <PrePopulate nodeId="node-3" isVariable valueSelector={['node-3', 'existing']} />,
     )
 
     const pickerProps = mockVarReferencePicker.mock.calls[0]![0] as VarReferencePickerProps

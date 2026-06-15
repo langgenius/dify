@@ -34,24 +34,32 @@ const List = () => {
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
+  const { run: handleSearch } = useDebounceFn(
+    () => {
+      setSearchKeywords(keywords)
+    },
+    { wait: 500 },
+  )
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
     handleSearch()
   }
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
-  const { run: handleTagsUpdate } = useDebounceFn(() => {
-    setTagIDs(tagFilterValue)
-  }, { wait: 500 })
+  const { run: handleTagsUpdate } = useDebounceFn(
+    () => {
+      setTagIDs(tagFilterValue)
+    },
+    { wait: 500 },
+  )
   const handleTagsChange = (value: string[]) => {
     setTagFilterValue(value)
     handleTagsUpdate()
   }
 
-  const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const isCurrentWorkspaceManager = useAppContextSelector(
+    (state) => state.isCurrentWorkspaceManager,
+  )
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
 
   return (
@@ -68,28 +76,29 @@ const List = () => {
               tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
             />
           )}
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-          <SearchInput
-            className="w-50"
-            value={keywords}
-            onValueChange={handleKeywordsChange}
+          <TagFilter
+            type="knowledge"
+            value={tagFilterValue}
+            onChange={handleTagsChange}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
           />
-          {
-            isCurrentWorkspaceManager && (
-              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
-            )
-          }
+          <SearchInput className="w-50" value={keywords} onValueChange={handleKeywordsChange} />
+          {isCurrentWorkspaceManager && <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />}
           <div className="h-4 w-px bg-divider-regular" />
-          <Button
-            className="gap-0.5 shadow-xs"
-            onClick={() => setShowExternalApiPanel(true)}
-          >
+          <Button className="gap-0.5 shadow-xs" onClick={() => setShowExternalApiPanel(true)}>
             <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
-            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
+            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">
+              {t('externalAPIPanelTitle', { ns: 'dataset' })}
+            </span>
           </Button>
         </div>
       </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
+      <Datasets
+        tags={tagIDs}
+        keywords={searchKeywords}
+        includeAll={includeAll}
+        onOpenTagManagement={() => setShowTagManagementModal(true)}
+      />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
       <TagManagementModal
         type="knowledge"

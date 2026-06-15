@@ -17,9 +17,12 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
+  useStore: (
+    selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown,
+  ) =>
+    selector({
+      setAppSidebarExpand: mockSetAppSidebarExpand,
+    }),
 }))
 
 vi.mock('@/context/app-context', () => ({
@@ -70,32 +73,37 @@ describe('DatasetDetailLayout', () => {
       replace: mockReplace,
       prefetch: vi.fn(),
     })
-    mockUseDatasetRelatedApps.mockReturnValue({ data: undefined } as ReturnType<typeof useDatasetRelatedApps>)
+    mockUseDatasetRelatedApps.mockReturnValue({ data: undefined } as ReturnType<
+      typeof useDatasetRelatedApps
+    >)
   })
 
   describe('Access Errors', () => {
-    it.each([403, 404])('should redirect to datasets page when dataset detail returns %s', async (status) => {
-      // Arrange
-      mockUseDatasetDetail.mockReturnValue({
-        data: undefined,
-        error: new Response(null, { status }),
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useDatasetDetail>)
+    it.each([403, 404])(
+      'should redirect to datasets page when dataset detail returns %s',
+      async (status) => {
+        // Arrange
+        mockUseDatasetDetail.mockReturnValue({
+          data: undefined,
+          error: new Response(null, { status }),
+          refetch: vi.fn(),
+        } as unknown as ReturnType<typeof useDatasetDetail>)
 
-      // Act
-      render(
-        <DatasetDetailLayout datasetId="dataset-1">
-          <div>Pipeline content</div>
-        </DatasetDetailLayout>,
-      )
+        // Act
+        render(
+          <DatasetDetailLayout datasetId="dataset-1">
+            <div>Pipeline content</div>
+          </DatasetDetailLayout>,
+        )
 
-      // Assert
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets')
-      })
-      expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: false })
-      expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
-    })
+        // Assert
+        await waitFor(() => {
+          expect(mockReplace).toHaveBeenCalledWith('/datasets')
+        })
+        expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: false })
+        expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
+      },
+    )
 
     it('should redirect when the dataset detail error exposes status without being a Response', async () => {
       // Arrange

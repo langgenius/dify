@@ -67,8 +67,8 @@ const Form = ({
       }}
     >
       <form.Subscribe
-        selector={state => state.isDirty}
-        children={isDirty => (
+        selector={(state) => state.isDirty}
+        children={(isDirty) => (
           <Header
             onReset={handleReset}
             resetDisabled={!isDirty}

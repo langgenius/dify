@@ -3,8 +3,10 @@ import { render, screen } from '@testing-library/react'
 import Loading from '../loading'
 
 vi.mock('@/app/components/base/skeleton', () => ({
-  SkeletonContainer: ({ children, className }: { children?: ReactNode, className?: string }) => (
-    <div data-testid="skeleton-container" className={className}>{children}</div>
+  SkeletonContainer: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <div data-testid="skeleton-container" className={className}>
+      {children}
+    </div>
   ),
   SkeletonRectangle: ({ className }: { className?: string }) => (
     <div data-testid="skeleton-rectangle" className={className} />

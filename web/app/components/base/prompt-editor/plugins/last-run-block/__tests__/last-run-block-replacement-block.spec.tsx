@@ -11,15 +11,11 @@ import {
 import { LastRunBlockNode } from '../index'
 import LastRunReplacementBlock from '../last-run-block-replacement-block'
 
-const renderReplacementPlugin = (props?: {
-  onInsert?: () => void
-}) => {
+const renderReplacementPlugin = (props?: { onInsert?: () => void }) => {
   return renderLexicalEditor({
     namespace: 'last-run-block-replacement-plugin-test',
     nodes: [CustomTextNode, LastRunBlockNode],
-    children: (
-      <LastRunReplacementBlock {...(props ?? {})} />
-    ),
+    children: <LastRunReplacementBlock {...(props ?? {})} />,
   })
 }
 
@@ -35,7 +31,11 @@ describe('LastRunReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, `prefix ${LAST_RUN_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
+      setEditorRootText(
+        editor,
+        `prefix ${LAST_RUN_PLACEHOLDER_TEXT} suffix`,
+        (text) => new CustomTextNode(text),
+      )
 
       await waitFor(() => {
         expect(getNodeCount(editor, LastRunBlockNode)).toBe(1)
@@ -49,7 +49,11 @@ describe('LastRunReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, 'plain text without placeholder', text => new CustomTextNode(text))
+      setEditorRootText(
+        editor,
+        'plain text without placeholder',
+        (text) => new CustomTextNode(text),
+      )
 
       await waitFor(() => {
         expect(getNodeCount(editor, LastRunBlockNode)).toBe(0)
@@ -62,7 +66,7 @@ describe('LastRunReplacementBlock', () => {
 
       const editor = await waitForEditorReady(getEditor)
 
-      setEditorRootText(editor, LAST_RUN_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
+      setEditorRootText(editor, LAST_RUN_PLACEHOLDER_TEXT, (text) => new CustomTextNode(text))
 
       await waitFor(() => {
         expect(getNodeCount(editor, LastRunBlockNode)).toBe(1)

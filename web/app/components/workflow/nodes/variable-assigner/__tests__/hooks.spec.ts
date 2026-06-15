@@ -31,11 +31,12 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) => selector({
-    configsMap: {
-      flowType: mockFlowType.value,
-    },
-  }),
+  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
+    selector({
+      configsMap: {
+        flowType: mockFlowType.value,
+      },
+    }),
 }))
 
 describe('variable-assigner/hooks', () => {
@@ -48,20 +49,24 @@ describe('variable-assigner/hooks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockFlowType.value = undefined
-    getNodes.mockReturnValue([{
-      id: 'assigner-1',
-      data: {
-        variables: [['start', 'foo']],
-        output_type: VarType.string,
-        advanced_settings: {
-          groups: [{
-            groupId: 'group-1',
-            variables: [],
-            output_type: VarType.string,
-          }],
+    getNodes.mockReturnValue([
+      {
+        id: 'assigner-1',
+        data: {
+          variables: [['start', 'foo']],
+          output_type: VarType.string,
+          advanced_settings: {
+            groups: [
+              {
+                groupId: 'group-1',
+                variables: [],
+                output_type: VarType.string,
+              },
+            ],
+          },
         },
       },
-    }])
+    ])
     mockUseStoreApi.mockReturnValue({
       getState: () => ({
         getNodes,
@@ -92,9 +97,18 @@ describe('variable-assigner/hooks', () => {
     const { result } = renderHook(() => useVariableAssigner())
 
     act(() => {
-      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'bar'], { type: VarType.number } as never)
-      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'foo'], { type: VarType.number } as never)
-      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'grouped'], { type: VarType.arrayString } as never, 'group-1')
+      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'bar'], {
+        type: VarType.number,
+      } as never)
+      result.current.handleAssignVariableValueChange('assigner-1', ['start', 'foo'], {
+        type: VarType.number,
+      } as never)
+      result.current.handleAssignVariableValueChange(
+        'assigner-1',
+        ['start', 'grouped'],
+        { type: VarType.arrayString } as never,
+        'group-1',
+      )
     })
 
     expect(mockHandleNodeDataUpdate).toHaveBeenNthCalledWith(1, {
@@ -111,11 +125,13 @@ describe('variable-assigner/hooks', () => {
       id: 'assigner-1',
       data: {
         advanced_settings: {
-          groups: [{
-            groupId: 'group-1',
-            variables: [['start', 'grouped']],
-            output_type: VarType.arrayString,
-          }],
+          groups: [
+            {
+              groupId: 'group-1',
+              variables: [['start', 'grouped']],
+              output_type: VarType.arrayString,
+            },
+          ],
         },
       },
     })
@@ -136,10 +152,12 @@ describe('variable-assigner/hooks', () => {
         data: {
           variables: [],
           advanced_settings: {
-            groups: [{
-              groupId: 'group-1',
-              variables: [],
-            }],
+            groups: [
+              {
+                groupId: 'group-1',
+                variables: [],
+              },
+            ],
           },
           _showAddVariablePopup: true,
           _holdAddVariablePopup: true,
@@ -180,11 +198,13 @@ describe('variable-assigner/hooks', () => {
       id: 'assigner-1',
       data: {
         advanced_settings: {
-          groups: [{
-            groupId: 'group-1',
-            variables: [['start', 'output']],
-            output_type: VarType.object,
-          }],
+          groups: [
+            {
+              groupId: 'group-1',
+              variables: [['start', 'output']],
+              output_type: VarType.object,
+            },
+          ],
         },
       },
     })
@@ -219,21 +239,24 @@ describe('variable-assigner/hooks', () => {
       { id: 'before-1' },
       { id: 'before-1' },
     ])
-    const getNodeAvailableVars = vi.fn()
-      .mockReturnValueOnce([{
-        isStartNode: true,
-        vars: [
-          { variable: 'sys.user_id' },
-          { variable: 'foo' },
-        ],
-      }, {
-        isStartNode: false,
-        vars: [],
-      }])
-      .mockReturnValueOnce([{
-        isStartNode: false,
-        vars: [{ variable: 'bar' }],
-      }])
+    const getNodeAvailableVars = vi
+      .fn()
+      .mockReturnValueOnce([
+        {
+          isStartNode: true,
+          vars: [{ variable: 'sys.user_id' }, { variable: 'foo' }],
+        },
+        {
+          isStartNode: false,
+          vars: [],
+        },
+      ])
+      .mockReturnValueOnce([
+        {
+          isStartNode: false,
+          vars: [{ variable: 'bar' }],
+        },
+      ])
 
     mockUseWorkflow.mockReturnValue({
       getBeforeNodesInSameBranchIncludeParent,
@@ -244,14 +267,18 @@ describe('variable-assigner/hooks', () => {
 
     const { result } = renderHook(() => useGetAvailableVars())
 
-    expect(result.current('current-node', 'target', () => true, true)).toEqual([{
-      isStartNode: true,
-      vars: [{ variable: 'foo' }],
-    }])
-    expect(result.current('current-node', 'target', () => true, false)).toEqual([{
-      isStartNode: false,
-      vars: [{ variable: 'bar' }],
-    }])
+    expect(result.current('current-node', 'target', () => true, true)).toEqual([
+      {
+        isStartNode: true,
+        vars: [{ variable: 'foo' }],
+      },
+    ])
+    expect(result.current('current-node', 'target', () => true, false)).toEqual([
+      {
+        isStartNode: false,
+        vars: [{ variable: 'bar' }],
+      },
+    ])
     expect(result.current('missing-node', 'target', () => true)).toEqual([])
   })
 
@@ -266,13 +293,12 @@ describe('variable-assigner/hooks', () => {
       },
     ])
     const getBeforeNodesInSameBranchIncludeParent = vi.fn(() => [{ id: 'before-1' }])
-    const getNodeAvailableVars = vi.fn(() => [{
-      isStartNode: false,
-      vars: [
-        { variable: 'sys.user_id' },
-        { variable: 'answer' },
-      ],
-    }])
+    const getNodeAvailableVars = vi.fn(() => [
+      {
+        isStartNode: false,
+        vars: [{ variable: 'sys.user_id' }, { variable: 'answer' }],
+      },
+    ])
 
     mockUseWorkflow.mockReturnValue({
       getBeforeNodesInSameBranchIncludeParent,
@@ -283,9 +309,11 @@ describe('variable-assigner/hooks', () => {
 
     const { result } = renderHook(() => useGetAvailableVars())
 
-    expect(result.current('current-node', 'target', () => true, false)).toEqual([{
-      isStartNode: false,
-      vars: [{ variable: 'answer' }],
-    }])
+    expect(result.current('current-node', 'target', () => true, false)).toEqual([
+      {
+        isStartNode: false,
+        vars: [{ variable: 'answer' }],
+      },
+    ])
   })
 })

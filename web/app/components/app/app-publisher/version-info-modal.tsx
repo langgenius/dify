@@ -14,7 +14,7 @@ type VersionInfoModalProps = {
   isOpen: boolean
   versionInfo?: VersionHistory
   onClose: () => void
-  onPublish: (params: { title: string, releaseNotes: string, id?: string }) => void
+  onPublish: (params: { title: string; releaseNotes: string; id?: string }) => void
 }
 
 const TITLE_MAX_LENGTH = 15
@@ -35,22 +35,25 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
   const handlePublish = () => {
     if (title.length > TITLE_MAX_LENGTH) {
       setTitleError(true)
-      toast.error(t('versionHistory.editField.titleLengthLimit', { ns: 'workflow', limit: TITLE_MAX_LENGTH }))
+      toast.error(
+        t('versionHistory.editField.titleLengthLimit', { ns: 'workflow', limit: TITLE_MAX_LENGTH }),
+      )
       return
-    }
-    else {
-      if (titleError)
-        setTitleError(false)
+    } else {
+      if (titleError) setTitleError(false)
     }
 
     if (releaseNotes.length > RELEASE_NOTES_MAX_LENGTH) {
       setReleaseNotesError(true)
-      toast.error(t('versionHistory.editField.releaseNotesLengthLimit', { ns: 'workflow', limit: RELEASE_NOTES_MAX_LENGTH }))
+      toast.error(
+        t('versionHistory.editField.releaseNotesLengthLimit', {
+          ns: 'workflow',
+          limit: RELEASE_NOTES_MAX_LENGTH,
+        }),
+      )
       return
-    }
-    else {
-      if (releaseNotesError)
-        setReleaseNotesError(false)
+    } else {
+      if (releaseNotesError) setReleaseNotesError(false)
     }
 
     onPublish({ title, releaseNotes, id: versionInfo?.id })
@@ -65,15 +68,15 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
-
         <div className="relative w-full p-6 pr-14 pb-4">
           <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
-            {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
+            {versionInfo?.marked_name
+              ? t('versionHistory.editVersionInfo', { ns: 'workflow' })
+              : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
           </div>
           <button
             type="button"
@@ -108,8 +111,12 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
         </div>
         <div className="flex justify-end p-6 pt-5">
           <div className="flex items-center gap-x-3">
-            <Button nativeButton={false} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-            <Button nativeButton={false} variant="primary" onClick={handlePublish}>{t('common.publish', { ns: 'workflow' })}</Button>
+            <Button nativeButton={false} onClick={onClose}>
+              {t('operation.cancel', { ns: 'common' })}
+            </Button>
+            <Button nativeButton={false} variant="primary" onClick={handlePublish}>
+              {t('common.publish', { ns: 'workflow' })}
+            </Button>
           </div>
         </div>
       </DialogContent>

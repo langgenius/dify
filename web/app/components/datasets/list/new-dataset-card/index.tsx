@@ -1,8 +1,5 @@
 'use client'
-import {
-  RiAddLine,
-  RiFunctionAddLine,
-} from '@remixicon/react'
+import { RiAddLine, RiFunctionAddLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'

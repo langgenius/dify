@@ -104,7 +104,10 @@ const createPlanData = (overrides: PlanOverrides = {}) => ({
   reset: { ...defaultPlan.reset, ...overrides.reset },
 })
 
-const setupProviderContext = (planOverrides: PlanOverrides = {}, extra: Record<string, unknown> = {}) => {
+const setupProviderContext = (
+  planOverrides: PlanOverrides = {},
+  extra: Record<string, unknown> = {},
+) => {
   mockProviderCtx = {
     plan: createPlanData(planOverrides),
     enableBilling: true,
@@ -300,10 +303,13 @@ describe('Plan Type Display Integration', () => {
   })
 
   it('should show education verify button when enableEducationPlan is true and not yet verified', () => {
-    setupProviderContext({ type: Plan.sandbox }, {
-      enableEducationPlan: true,
-      isEducationAccount: false,
-    })
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: false,
+      },
+    )
 
     render(<PlanComp loc="test" />)
 
@@ -432,14 +438,7 @@ describe('Upgrade Flow Integration', () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
 
-      render(
-        <PlanUpgradeModal
-          show={true}
-          onClose={onClose}
-          title="Test"
-          description="Test"
-        />,
-      )
+      render(<PlanUpgradeModal show={true} onClose={onClose} title="Test" description="Test" />)
 
       const dismissBtn = screen.getByText(/triggerLimitModal\.dismiss/i)
       await user.click(dismissBtn)
@@ -851,7 +850,9 @@ describe('Usage Display Edge Cases', () => {
       const { container } = render(<PlanComp loc="test" />)
 
       // 20% usage — at least one Meter indicator should carry the neutral tone
-      expect(container.querySelector('.bg-components-progress-bar-progress-solid')).toBeInTheDocument()
+      expect(
+        container.querySelector('.bg-components-progress-bar-progress-solid'),
+      ).toBeInTheDocument()
     })
   })
 

@@ -72,7 +72,7 @@ const FileUploader = ({
 
       {fileList.length > 0 && (
         <div className="max-w-[640px] cursor-default space-y-1">
-          {fileList.map(fileItem => (
+          {fileList.map((fileItem) => (
             <FileListItem
               key={fileItem.fileID}
               fileItem={fileItem}

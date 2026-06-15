@@ -5,11 +5,9 @@ import { useStore } from '@/app/components/workflow/store'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useActionMenu = (props: ActionMenuProps) => {
-  const {
-    isNamedVersion,
-  } = props
+  const { isNamedVersion } = props
   const { t } = useTranslation()
-  const pipelineId = useStore(s => s.pipelineId)
+  const pipelineId = useStore((s) => s.pipelineId)
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
@@ -33,10 +31,12 @@ const useActionMenu = (props: ActionMenuProps) => {
           },
       // todo: pipeline support export specific version DSL
       ...(!pipelineId
-        ? [{
-            key: VersionHistoryContextMenuOptions.exportDSL,
-            name: t('export', { ns: 'app' }),
-          }]
+        ? [
+            {
+              key: VersionHistoryContextMenuOptions.exportDSL,
+              name: t('export', { ns: 'app' }),
+            },
+          ]
         : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,

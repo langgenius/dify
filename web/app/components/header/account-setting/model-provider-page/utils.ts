@@ -5,7 +5,14 @@ import type {
   FormValue,
   ModelLoadBalancingConfig,
 } from './declarations'
-import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
+import {
+  AnthropicShortLight,
+  Deepseek,
+  Gemini,
+  Grok,
+  OpenaiSmall,
+  Tongyi,
+} from '@/app/components/base/icons/src/public/llm'
 import {
   deleteModelProvider,
   setModelProvider,
@@ -28,9 +35,19 @@ export const providerToPluginId = (providerKey: string): string => {
   return lastSlash > 0 ? providerKey.slice(0, lastSlash) : ''
 }
 
-export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
+export const MODEL_PROVIDER_QUOTA_GET_PAID = [
+  ModelProviderQuotaGetPaid.OPENAI,
+  ModelProviderQuotaGetPaid.ANTHROPIC,
+  ModelProviderQuotaGetPaid.GEMINI,
+  ModelProviderQuotaGetPaid.X,
+  ModelProviderQuotaGetPaid.DEEPSEEK,
+  ModelProviderQuotaGetPaid.TONGYI,
+]
 
-export const providerIconMap: Record<ModelProviderQuotaGetPaid, ComponentType<{ className?: string }>> = {
+export const providerIconMap: Record<
+  ModelProviderQuotaGetPaid,
+  ComponentType<{ className?: string }>
+> = {
   [ModelProviderQuotaGetPaid.OPENAI]: OpenaiSmall,
   [ModelProviderQuotaGetPaid.ANTHROPIC]: AnthropicShortLight,
   [ModelProviderQuotaGetPaid.GEMINI]: Gemini,
@@ -69,8 +86,7 @@ export const validateCredentials = async (predefined: boolean, provider: string,
       credentials: v,
     }
     url = `/workspaces/current/model-providers/${provider}/credentials/validate`
-  }
-  else {
+  } else {
     const { __model_name, __model_type, ...credentials } = v
     body = {
       model: __model_name,
@@ -81,18 +97,20 @@ export const validateCredentials = async (predefined: boolean, provider: string,
   }
   try {
     const res = await validateModelProvider({ url, body })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
-  }
-  catch (e: unknown) {
+    if (res.result === 'success') return Promise.resolve({ status: ValidatedStatus.Success })
+    else return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
+  } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return Promise.resolve({ status: ValidatedStatus.Error, message })
   }
 }
 
-export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue, id?: string): Promise<{
+export const validateLoadBalancingCredentials = async (
+  predefined: boolean,
+  provider: string,
+  v: FormValue,
+  id?: string,
+): Promise<{
   status: ValidatedStatus
   message?: string
 }> => {
@@ -106,18 +124,20 @@ export const validateLoadBalancingCredentials = async (predefined: boolean, prov
         credentials,
       },
     })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
-  }
-  catch (e: unknown) {
+    if (res.result === 'success') return Promise.resolve({ status: ValidatedStatus.Success })
+    else return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
+  } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return Promise.resolve({ status: ValidatedStatus.Error, message })
   }
 }
 
-export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
+export const saveCredentials = async (
+  predefined: boolean,
+  provider: string,
+  v: FormValue,
+  loadBalancing?: ModelLoadBalancingConfig,
+) => {
   let body, url
 
   if (predefined) {
@@ -129,8 +149,7 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
       name: __authorization_name__,
     }
     url = `/workspaces/current/model-providers/${provider}/credentials`
-  }
-  else {
+  } else {
     const { __model_name, __model_type, ...credentials } = v
     body = {
       model: __model_name,
@@ -144,7 +163,11 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
   return setModelProvider({ url, body })
 }
 
-export const savePredefinedLoadBalancingConfig = async (provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
+export const savePredefinedLoadBalancingConfig = async (
+  provider: string,
+  v: FormValue,
+  loadBalancing?: ModelLoadBalancingConfig,
+) => {
   const { __model_name, __model_type, ...credentials } = v
   const body = {
     config_from: ConfigurationMethodEnum.predefinedModel,
@@ -158,7 +181,12 @@ export const savePredefinedLoadBalancingConfig = async (provider: string, v: For
   return setModelProvider({ url, body })
 }
 
-export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue, credentialId?: string) => {
+export const removeCredentials = async (
+  predefined: boolean,
+  provider: string,
+  v: FormValue,
+  credentialId?: string,
+) => {
   let url = ''
   let body
 
@@ -169,10 +197,8 @@ export const removeCredentials = async (predefined: boolean, provider: string, v
         credential_id: credentialId,
       }
     }
-  }
-  else {
-    if (!v)
-      return
+  } else {
+    if (!v) return
 
     const { __model_name, __model_type } = v
     body = {
@@ -187,20 +213,19 @@ export const removeCredentials = async (predefined: boolean, provider: string, v
 
 export const sizeFormat = (size: number) => {
   const remainder = Math.floor(size / 1000)
-  if (remainder < 1)
-    return `${size}`
-  else
-    return `${remainder}K`
+  if (remainder < 1) return `${size}`
+  else return `${remainder}K`
 }
 
 export const modelTypeFormat = (modelType: ModelTypeEnum) => {
-  if (modelType === ModelTypeEnum.textEmbedding)
-    return 'TEXT EMBEDDING'
+  if (modelType === ModelTypeEnum.textEmbedding) return 'TEXT EMBEDDING'
 
   return modelType.toLocaleUpperCase()
 }
 
-export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]): Omit<CredentialFormSchemaSelect, 'name'> => {
+export const genModelTypeFormSchema = (
+  modelTypes: ModelTypeEnum[],
+): Omit<CredentialFormSchemaSelect, 'name'> => {
   return {
     type: FormTypeEnum.select,
     label: {
@@ -224,7 +249,9 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]): Omit<Creden
   }
 }
 
-export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>): Omit<CredentialFormSchemaTextInput, 'name'> => {
+export const genModelNameFormSchema = (
+  model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>,
+): Omit<CredentialFormSchemaTextInput, 'name'> => {
   return {
     type: FormTypeEnum.textInput,
     label: model?.label || {

@@ -37,8 +37,7 @@ const queryFileInput = () => {
 
 const getFileInput = () => {
   const input = queryFileInput()
-  if (!input)
-    throw new Error('Expected file input to exist')
+  if (!input) throw new Error('Expected file input to exist')
   return input
 }
 
@@ -145,9 +144,11 @@ describe('ChatImageUploader', () => {
       await user.upload(input, file)
 
       expect(mocks.handleLocalFileUpload).toHaveBeenCalledWith(file)
-      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({
-        type: TransferMethod.local_file,
-      }))
+      expect(onUpload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: TransferMethod.local_file,
+        }),
+      )
     })
 
     it('should open popover when uploader trigger is clicked', async () => {
@@ -174,11 +175,13 @@ describe('ChatImageUploader', () => {
       await user.type(screen.getByTestId('image-link-input'), 'https://example.com/image.png')
       await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
 
-      expect(onUpload).toHaveBeenCalledWith(expect.objectContaining({
-        type: TransferMethod.remote_url,
-        url: 'https://example.com/image.png',
-        progress: 0,
-      }))
+      expect(onUpload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: TransferMethod.remote_url,
+          url: 'https://example.com/image.png',
+          progress: 0,
+        }),
+      )
     })
 
     it('should not open popover when uploader trigger is disabled', async () => {
@@ -202,8 +205,7 @@ describe('ChatImageUploader', () => {
 
       const button = screen.getByRole('button')
       const triggerWrapper = button.parentElement
-      if (!triggerWrapper)
-        throw new Error('Expected trigger wrapper to exist')
+      if (!triggerWrapper) throw new Error('Expected trigger wrapper to exist')
 
       await user.click(triggerWrapper)
 
@@ -267,8 +269,7 @@ describe('ChatImageUploader', () => {
 
       const localInput = getFileInput()
       const hoverWrapper = localInput.parentElement
-      if (!hoverWrapper)
-        throw new Error('Expected local uploader wrapper to exist')
+      if (!hoverWrapper) throw new Error('Expected local uploader wrapper to exist')
 
       fireEvent.mouseEnter(hoverWrapper)
       expect(uploadFromComputer).toHaveClass('bg-primary-50')

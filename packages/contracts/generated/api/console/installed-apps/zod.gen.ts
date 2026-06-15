@@ -577,11 +577,11 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse =
+  zSimpleResultResponse
 
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody
-  = zCompletionMessageExplorePayload
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesBody =
+  zCompletionMessageExplorePayload
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object({
   installed_app_id: z.string(),
@@ -600,8 +600,8 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPat
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse =
+  zSimpleResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdConversationsPath = z.object({
   installed_app_id: z.string(),
@@ -616,8 +616,8 @@ export const zGetInstalledAppsByInstalledAppIdConversationsQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdConversationsResponse
-  = zConversationInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdConversationsResponse =
+  zConversationInfiniteScrollPagination
 
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.object({
   c_id: z.string(),
@@ -629,8 +629,8 @@ export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath = z.obje
  */
 export const zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse = z.void()
 
-export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody
-  = zConversationRenamePayload
+export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNameBody =
+  zConversationRenamePayload
 
 export const zPostInstalledAppsByInstalledAppIdConversationsByCIdNamePath = z.object({
   c_id: z.string(),
@@ -677,8 +677,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
  */
 export const zGetInstalledAppsByInstalledAppIdMessagesResponse = zMessageInfiniteScrollPagination
 
-export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody
-  = zMessageFeedbackPayload
+export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody =
+  zMessageFeedbackPayload
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath = z.object({
   installed_app_id: z.string(),
@@ -688,8 +688,8 @@ export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksPath 
 /**
  * Feedback submitted successfully
  */
-export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
-  = zResultResponse
+export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse =
+  zResultResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisPath = z.object({
   installed_app_id: z.string(),
@@ -703,8 +703,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQue
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = zGeneratedAppResponse
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse =
+  zGeneratedAppResponse
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   installed_app_id: z.string(),
@@ -714,8 +714,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuesti
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = zSuggestedQuestionsResponse
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  zSuggestedQuestionsResponse
 
 export const zGetInstalledAppsByInstalledAppIdMetaPath = z.object({
   installed_app_id: z.string(),
@@ -747,8 +747,8 @@ export const zGetInstalledAppsByInstalledAppIdSavedMessagesQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdSavedMessagesResponse
-  = zSavedMessageInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdSavedMessagesResponse =
+  zSavedMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdSavedMessagesBody = zSavedMessageCreatePayload
 
@@ -801,5 +801,5 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = 
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse
-  = zSimpleResultResponse
+export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse =
+  zSimpleResultResponse

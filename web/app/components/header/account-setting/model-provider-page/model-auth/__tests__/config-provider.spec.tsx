@@ -11,9 +11,7 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../authorized', () => ({
   default: ({ renderTrigger }: { renderTrigger: () => React.ReactNode }) => (
-    <div>
-      {renderTrigger()}
-    </div>
+    <div>{renderTrigger()}</div>
   ),
 }))
 

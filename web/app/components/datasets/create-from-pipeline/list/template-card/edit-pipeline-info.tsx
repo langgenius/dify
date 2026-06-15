@@ -17,17 +17,18 @@ type EditPipelineInfoProps = {
   pipeline: PipelineTemplate
 }
 
-const EditPipelineInfo = ({
-  onClose,
-  pipeline,
-}: EditPipelineInfoProps) => {
+const EditPipelineInfo = ({ onClose, pipeline }: EditPipelineInfoProps) => {
   const { t } = useTranslation()
   const [name, setName] = useState(pipeline.name)
   const iconInfo = pipeline.icon
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
     iconInfo.icon_type === 'image'
       ? { type: 'image' as const, url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
-      : { type: 'emoji' as const, icon: iconInfo.icon || '', background: iconInfo.icon_background || '' },
+      : {
+          type: 'emoji' as const,
+          icon: iconInfo.icon || '',
+          background: iconInfo.icon_background || '',
+        },
   )
   const [description, setDescription] = useState(pipeline.description)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
@@ -74,7 +75,15 @@ const EditPipelineInfo = ({
         onClose()
       },
     })
-  }, [name, appIcon, description, pipeline.id, updatePipeline, invalidCustomizedTemplateList, onClose])
+  }, [
+    name,
+    appIcon,
+    description,
+    pipeline.id,
+    updatePipeline,
+    invalidCustomizedTemplateList,
+    onClose,
+  ])
 
   return (
     <div className="relative flex flex-col">
@@ -129,25 +138,21 @@ const EditPipelineInfo = ({
       </div>
       {/* Actions */}
       <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
-        <Button
-          variant="secondary"
-          onClick={onClose}
-        >
+        <Button variant="secondary" onClick={onClose}>
           {t('operation.cancel', { ns: 'common' })}
         </Button>
-        <Button
-          variant="primary"
-          onClick={handleSave}
-        >
+        <Button variant="primary" onClick={handleSave}>
           {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
       {showAppIconPicker && (
         <AppIconPicker
           open={showAppIconPicker}
-          initialEmoji={appIcon.type === 'emoji'
-            ? { icon: appIcon.icon, background: appIcon.background }
-            : undefined}
+          initialEmoji={
+            appIcon.type === 'emoji'
+              ? { icon: appIcon.icon, background: appIcon.background }
+              : undefined
+          }
           onOpenChange={setShowAppIconPicker}
           onSelect={handleSelectAppIcon}
         />

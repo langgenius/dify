@@ -23,16 +23,14 @@
  * // Returns: '/datasets/123/documents'
  */
 export function createNavigationPath(basePath: string, preserveParams: boolean = true): string {
-  if (!preserveParams)
-    return basePath
+  if (!preserveParams) return basePath
 
   try {
     const searchParams = new URLSearchParams(window.location.search)
     const queryString = searchParams.toString()
     const separator = queryString ? '?' : ''
     return `${basePath}${separator}${queryString}`
-  }
-  catch (error) {
+  } catch (error) {
     // Fallback to base path if there's any error accessing location
     console.warn('Failed to preserve query parameters:', error)
     return basePath
@@ -83,13 +81,11 @@ export function extractQueryParams(paramNames: string[]): Record<string, string>
 
     paramNames.forEach((name) => {
       const value = searchParams.get(name)
-      if (value !== null)
-        extracted[name] = value
+      if (value !== null) extracted[name] = value
     })
 
     return extracted
-  }
-  catch (error) {
+  } catch (error) {
     console.warn('Failed to extract query parameters:', error)
     return {}
   }
@@ -125,8 +121,7 @@ export function createNavigationPathWithParams(
     const queryString = searchParams.toString()
     const separator = queryString ? '?' : ''
     return `${basePath}${separator}${queryString}`
-  }
-  catch (error) {
+  } catch (error) {
     console.warn('Failed to create navigation path with params:', error)
     return basePath
   }
@@ -153,10 +148,8 @@ export function mergeQueryParams(
     : new URLSearchParams()
 
   Object.entries(newParams).forEach(([key, value]) => {
-    if (value === null || value === undefined)
-      searchParams.delete(key)
-    else if (value !== '')
-      searchParams.set(key, String(value))
+    if (value === null || value === undefined) searchParams.delete(key)
+    else if (value !== '') searchParams.set(key, String(value))
   })
 
   return searchParams
@@ -176,14 +169,22 @@ export const datasetNavigation = {
   /**
    * Creates navigation to document detail
    */
-  toDocumentDetail: (router: { push: (path: string) => void }, datasetId: string, documentId: string) => {
+  toDocumentDetail: (
+    router: { push: (path: string) => void },
+    datasetId: string,
+    documentId: string,
+  ) => {
     return () => router.push(`/datasets/${datasetId}/documents/${documentId}`)
   },
 
   /**
    * Creates navigation to document settings
    */
-  toDocumentSettings: (router: { push: (path: string) => void }, datasetId: string, documentId: string) => {
+  toDocumentSettings: (
+    router: { push: (path: string) => void },
+    datasetId: string,
+    documentId: string,
+  ) => {
     return () => router.push(`/datasets/${datasetId}/documents/${documentId}/settings`)
   },
 }

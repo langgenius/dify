@@ -53,12 +53,7 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
             onClick={onChangeCategory}
           />
         </div>
-        {isCloud && (
-          <PlanRangeSwitcher
-            value={currentPlanRange}
-            onChange={onChangePlanRange}
-          />
-        )}
+        {isCloud && <PlanRangeSwitcher value={currentPlanRange} onChange={onChangePlanRange} />}
       </div>
     </div>
   )

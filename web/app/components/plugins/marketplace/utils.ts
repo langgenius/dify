@@ -6,9 +6,7 @@ import type {
 } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import {
-  MARKETPLACE_API_PREFIX,
-} from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { marketplaceClient } from '@/service/client'
 import { getMarketplaceUrl } from '@/utils/var'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -39,15 +37,17 @@ export const getFormattedPlugin = (bundle: Plugin): Plugin => {
   }
 }
 
-export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<string, string | undefined>) => {
+export const getPluginLinkInMarketplace = (
+  plugin: Plugin,
+  params?: Record<string, string | undefined>,
+) => {
   if (plugin.type === 'bundle')
     return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
 }
 
 export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
-  if (plugin.type === 'bundle')
-    return `/bundles/${plugin.org}/${plugin.name}`
+  if (plugin.type === 'bundle') return `/bundles/${plugin.org}/${plugin.name}`
   return `/plugins/${plugin.org}/${plugin.name}`
 }
 
@@ -59,18 +59,21 @@ export const getMarketplacePluginsByCollectionId = async (
   let plugins: Plugin[] = []
 
   try {
-    const marketplaceCollectionPluginsDataJson = await marketplaceClient.collectionPlugins({
-      params: {
-        collectionId,
+    const marketplaceCollectionPluginsDataJson = await marketplaceClient.collectionPlugins(
+      {
+        params: {
+          collectionId,
+        },
+        body: query ?? {},
       },
-      body: query ?? {},
-    }, {
-      signal: options?.signal,
-    })
-    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map(plugin => getFormattedPlugin(plugin))
-  }
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  catch (e) {
+      {
+        signal: options?.signal,
+      },
+    )
+    plugins = (marketplaceCollectionPluginsDataJson.data?.plugins || []).map((plugin) =>
+      getFormattedPlugin(plugin),
+    )
+  } catch (e) {
     plugins = []
   }
 
@@ -84,24 +87,27 @@ export const getMarketplaceCollectionsAndPlugins = async (
   let marketplaceCollections: MarketplaceCollection[] = []
   let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
   try {
-    const marketplaceCollectionsDataJson = await marketplaceClient.collections({
-      query: {
-        ...query,
-        page: 1,
-        page_size: 100,
+    const marketplaceCollectionsDataJson = await marketplaceClient.collections(
+      {
+        query: {
+          ...query,
+          page: 1,
+          page_size: 100,
+        },
       },
-    }, {
-      signal: options?.signal,
-    })
+      {
+        signal: options?.signal,
+      },
+    )
     marketplaceCollections = marketplaceCollectionsDataJson.data?.collections || []
-    await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const plugins = await getMarketplacePluginsByCollectionId(collection.name, query, options)
+    await Promise.all(
+      marketplaceCollections.map(async (collection: MarketplaceCollection) => {
+        const plugins = await getMarketplacePluginsByCollectionId(collection.name, query, options)
 
-      marketplaceCollectionPluginsMap[collection.name] = plugins
-    }))
-  }
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  catch (e) {
+        marketplaceCollectionPluginsMap[collection.name] = plugins
+      }),
+    )
+  } catch (e) {
     marketplaceCollections = []
     marketplaceCollectionPluginsMap = {}
   }
@@ -126,41 +132,35 @@ export const getMarketplacePlugins = async (
     }
   }
 
-  const {
-    query,
-    sort_by,
-    sort_order,
-    category,
-    tags,
-    type,
-    page_size = 40,
-  } = queryParams
+  const { query, sort_by, sort_order, category, tags, type, page_size = 40 } = queryParams
 
   try {
-    const res = await marketplaceClient.searchAdvanced({
-      params: {
-        kind: type === 'bundle' ? 'bundles' : 'plugins',
+    const res = await marketplaceClient.searchAdvanced(
+      {
+        params: {
+          kind: type === 'bundle' ? 'bundles' : 'plugins',
+        },
+        body: {
+          page: pageParam,
+          page_size,
+          query,
+          sort_by,
+          sort_order,
+          category: category !== 'all' ? category : '',
+          tags,
+        },
       },
-      body: {
-        page: pageParam,
-        page_size,
-        query,
-        sort_by,
-        sort_order,
-        category: category !== 'all' ? category : '',
-        tags,
-      },
-    }, { signal })
+      { signal },
+    )
     const resPlugins = res.data.bundles || res.data.plugins || []
 
     return {
-      plugins: resPlugins.map(plugin => getFormattedPlugin(plugin)),
+      plugins: resPlugins.map((plugin) => getFormattedPlugin(plugin)),
       total: res.data.total,
       page: pageParam,
       page_size,
     }
-  }
-  catch {
+  } catch {
     return {
       plugins: [],
       total: 0,
@@ -171,29 +171,35 @@ export const getMarketplacePlugins = async (
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if ([PluginCategoryEnum.tool, PluginCategoryEnum.agent, PluginCategoryEnum.model, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger].includes(pluginType as PluginCategoryEnum))
+  if (
+    [
+      PluginCategoryEnum.tool,
+      PluginCategoryEnum.agent,
+      PluginCategoryEnum.model,
+      PluginCategoryEnum.datasource,
+      PluginCategoryEnum.trigger,
+    ].includes(pluginType as PluginCategoryEnum)
+  )
     return `category=${pluginType}`
 
-  if (pluginType === PluginCategoryEnum.extension)
-    return 'category=endpoint'
+  if (pluginType === PluginCategoryEnum.extension) return 'category=endpoint'
 
-  if (pluginType === 'bundle')
-    return 'type=bundle'
+  if (pluginType === 'bundle') return 'type=bundle'
 
   return ''
 }
 
 export const getMarketplaceListFilterType = (category: ActivePluginType) => {
-  if (category === PLUGIN_TYPE_SEARCH_MAP.all)
-    return undefined
+  if (category === PLUGIN_TYPE_SEARCH_MAP.all) return undefined
 
-  if (category === PLUGIN_TYPE_SEARCH_MAP.bundle)
-    return 'bundle'
+  if (category === PLUGIN_TYPE_SEARCH_MAP.bundle) return 'bundle'
 
   return 'plugin'
 }
 
-export function getCollectionsParams(category: ActivePluginType): CollectionsAndPluginsSearchParams {
+export function getCollectionsParams(
+  category: ActivePluginType,
+): CollectionsAndPluginsSearchParams {
   if (category === PLUGIN_TYPE_SEARCH_MAP.all) {
     return {}
   }

@@ -7,10 +7,7 @@ type ActionsProps = {
   handleNextStep: () => void
 }
 
-const Actions = ({
-  disabled,
-  handleNextStep,
-}: ActionsProps) => {
+const Actions = ({ disabled, handleNextStep }: ActionsProps) => {
   const { t } = useTranslation()
 
   return (

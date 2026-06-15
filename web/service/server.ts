@@ -3,11 +3,7 @@ import type { JsonifiedClient } from '@orpc/openapi-client'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import {
-  API_PREFIX,
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-} from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
 import { consoleRouterContract } from '@/contract/router'
 
@@ -18,14 +14,13 @@ export type ServerConsoleClientContext = {
   csrfToken?: string
 }
 
-const withTrailingSlash = (value: string) => value.endsWith('/') ? value : `${value}/`
-const withoutLeadingSlash = (value: string) => value.startsWith('/') ? value.slice(1) : value
+const withTrailingSlash = (value: string) => (value.endsWith('/') ? value : `${value}/`)
+const withoutLeadingSlash = (value: string) => (value.startsWith('/') ? value.slice(1) : value)
 
 const resolveAbsoluteUrlPrefix = (value: string) => {
   try {
     return new URL(value).toString()
-  }
-  catch {
+  } catch {
     return null
   }
 }
@@ -41,16 +36,14 @@ export const resolveServerConsoleApiUrl = (
   publicApiPrefix = API_PREFIX,
 ) => {
   const apiPrefix = resolveServerConsoleApiPrefix(serverConsoleApiPrefix, publicApiPrefix)
-  if (!apiPrefix)
-    return null
+  if (!apiPrefix) return null
 
   return new URL(withoutLeadingSlash(pathname), withTrailingSlash(apiPrefix)).toString()
 }
 
 const getServerConsoleApiPrefix = () => {
   const apiPrefix = resolveServerConsoleApiPrefix()
-  if (!apiPrefix)
-    throw new Error('Server console API URL is not configured')
+  if (!apiPrefix) throw new Error('Server console API URL is not configured')
 
   return apiPrefix
 }
@@ -60,10 +53,8 @@ const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext |
     Accept: 'application/json',
   })
 
-  if (context?.cookie)
-    requestHeaders.set('cookie', context.cookie)
-  if (context?.csrfToken)
-    requestHeaders.set(CSRF_HEADER_NAME, context.csrfToken)
+  if (context?.cookie) requestHeaders.set('cookie', context.cookie)
+  if (context?.csrfToken) requestHeaders.set(CSRF_HEADER_NAME, context.csrfToken)
 
   return requestHeaders
 }
@@ -101,7 +92,9 @@ const serverConsoleLink = new OpenAPILink<ServerConsoleClientContext>(consoleRou
   ],
 })
 
-export const serverConsoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ServerConsoleClientContext>> = createORPCClient(serverConsoleLink)
+export const serverConsoleClient: JsonifiedClient<
+  ContractRouterClient<typeof consoleRouterContract, ServerConsoleClientContext>
+> = createORPCClient(serverConsoleLink)
 
 export const serverConsoleQuery = createTanstackQueryUtils(serverConsoleClient, {
   path: ['console'],

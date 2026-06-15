@@ -52,13 +52,17 @@ describe('PresetsParameter', () => {
   it('should render presets when at least one preset parameter is supported', () => {
     render(<PresetsParameter onSelect={vi.fn()} supportedParameterNames={['temperature']} />)
 
-    expect(screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.modelProvider\.loadPresets/i }),
+    ).toBeInTheDocument()
   })
 
   it('should not render presets when no preset parameters are supported', () => {
     render(<PresetsParameter onSelect={vi.fn()} supportedParameterNames={['max_tokens']} />)
 
-    expect(screen.queryByRole('button', { name: /common\.modelProvider\.loadPresets/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common\.modelProvider\.loadPresets/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('should return only supported preset config keys', () => {

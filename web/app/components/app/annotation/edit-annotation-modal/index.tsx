@@ -38,7 +38,12 @@ type Props = Readonly<{
   query: string
   answer: string
   onEdited: (editedQuery: string, editedAnswer: string) => void
-  onAdded: (annotationId: string, authorName: string, editedQuery: string, editedAnswer: string) => void
+  onAdded: (
+    annotationId: string,
+    authorName: string,
+    editedQuery: string,
+    editedAnswer: string,
+  ) => void
   createdAt?: number
   onRemove: () => void
   onlyEditResponse?: boolean
@@ -62,14 +67,13 @@ const EditAnnotationModal: FC<Props> = ({
   const { formatTime } = useTimestamp()
   const { plan, enableBilling } = useProviderContext()
   const isAdd = !annotationId
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const isAnnotationFull =
+    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
     let postAnswer = answer
-    if (type === EditItemType.Query)
-      postQuery = editedContent
-    else
-      postAnswer = editedContent
+    if (type === EditItemType.Query) postQuery = editedContent
+    else postAnswer = editedContent
     try {
       if (!isAdd) {
         await editAnnotation(appId, annotationId, {
@@ -78,8 +82,7 @@ const EditAnnotationModal: FC<Props> = ({
           answer: postAnswer,
         })
         onEdited(postQuery, postAnswer)
-      }
-      else {
+      } else {
         const res = await addAnnotation(appId, {
           question: postQuery,
           answer: postAnswer,
@@ -89,8 +92,7 @@ const EditAnnotationModal: FC<Props> = ({
       }
 
       toast.success(t('api.actionSuccess', { ns: 'common' }) as string)
-    }
-    catch (error) {
+    } catch (error) {
       const fallbackMessage = t('api.actionFailed', { ns: 'common' }) as string
       const message = error instanceof Error && error.message ? error.message : fallbackMessage
       toast.error(message)
@@ -99,8 +101,7 @@ const EditAnnotationModal: FC<Props> = ({
     }
   }
   const [showModal, setShowModal] = useState(false)
-  if (!isShow)
-    return null
+  if (!isShow) return null
 
   return (
     <div>
@@ -110,8 +111,7 @@ const EditAnnotationModal: FC<Props> = ({
         disablePointerDismissal
         swipeDirection="right"
         onOpenChange={(open) => {
-          if (!open)
-            onHide()
+          if (!open) onHide()
         }}
       >
         <DrawerPortal>
@@ -136,15 +136,18 @@ const EditAnnotationModal: FC<Props> = ({
                       type={EditItemType.Query}
                       content={query}
                       readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
-                      onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
+                      onSave={(editedContent) => handleSave(EditItemType.Query, editedContent)}
                     />
                     <EditItem
                       type={EditItemType.Answer}
                       content={answer}
                       readonly={isAdd && isAnnotationFull}
-                      onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
+                      onSave={(editedContent) => handleSave(EditItemType.Answer, editedContent)}
                     />
-                    <AlertDialog open={showModal} onOpenChange={open => !open && setShowModal(false)}>
+                    <AlertDialog
+                      open={showModal}
+                      onOpenChange={(open) => !open && setShowModal(false)}
+                    >
                       <AlertDialogContent>
                         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                           <AlertDialogTitle
@@ -180,28 +183,24 @@ const EditAnnotationModal: FC<Props> = ({
                     </div>
                   )}
 
-                  {
-                    annotationId
-                      ? (
-                          <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                            <div
-                              className="flex cursor-pointer items-center space-x-2 pl-3"
-                              onClick={() => setShowModal(true)}
-                            >
-                              <MessageCheckRemove />
-                              <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
-                            </div>
-                            {!!createdAt && (
-                              <div>
-                                {t('editModal.createdAt', { ns: 'appAnnotation' })}
-&nbsp;
-                                {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      : undefined
-                  }
+                  {annotationId ? (
+                    <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                      <div
+                        className="flex cursor-pointer items-center space-x-2 pl-3"
+                        onClick={() => setShowModal(true)}
+                      >
+                        <MessageCheckRemove />
+                        <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
+                      </div>
+                      {!!createdAt && (
+                        <div>
+                          {t('editModal.createdAt', { ns: 'appAnnotation' })}
+                          &nbsp;
+                          {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
+                        </div>
+                      )}
+                    </div>
+                  ) : undefined}
                 </div>
               </DrawerContent>
             </DrawerPopup>
@@ -209,7 +208,6 @@ const EditAnnotationModal: FC<Props> = ({
         </DrawerPortal>
       </Drawer>
     </div>
-
   )
 }
 export default React.memo(EditAnnotationModal)

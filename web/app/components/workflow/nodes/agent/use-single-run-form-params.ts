@@ -38,17 +38,18 @@ const useSingleRunFormParams = ({
     )
   }, [inputs.agent_parameters])
 
-  const {
-    strategy: currentStrategy,
-  } = useStrategyInfo(
+  const { strategy: currentStrategy } = useStrategyInfo(
     inputs.agent_strategy_provider_name,
     inputs.agent_strategy_name,
   )
 
   const allVarStrArr = (() => {
-    const arr = currentStrategy?.parameters.filter(item => item.type === 'string').map((item) => {
-      return formData[item.name]
-    }) || []
+    const arr =
+      currentStrategy?.parameters
+        .filter((item) => item.type === 'string')
+        .map((item) => {
+          return formData[item.name]
+        }) || []
     return arr
   })()
 
@@ -58,32 +59,30 @@ const useSingleRunFormParams = ({
     const forms: FormProps[] = []
 
     if (varInputs!.length > 0) {
-      forms.push(
-        {
-          label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
-          inputs: varInputs!,
-          values: runInputData,
-          onChange: setRunInputData,
-        },
-      )
+      forms.push({
+        label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
+        inputs: varInputs!,
+        values: runInputData,
+        onChange: setRunInputData,
+      })
     }
     return forms
   }, [runInputData, setRunInputData, t, varInputs])
 
   const nodeInfo = useMemo(() => {
-    if (!runResult)
-      return
+    if (!runResult) return
     return formatTracing([runResult], t)[0]
   }, [runResult, t])
 
   const getDependentVars = () => {
-    return varInputs.map((item) => {
-      // Guard against null/undefined variable to prevent app crash
-      if (!item.variable || typeof item.variable !== 'string')
-        return []
+    return varInputs
+      .map((item) => {
+        // Guard against null/undefined variable to prevent app crash
+        if (!item.variable || typeof item.variable !== 'string') return []
 
-      return item.variable.slice(1, -1).split('.')
-    }).filter(arr => arr.length > 0)
+        return item.variable.slice(1, -1).split('.')
+      })
+      .filter((arr) => arr.length > 0)
   }
 
   return {

@@ -11,7 +11,6 @@ on:
 
 jobs:
   stale:
-
     runs-on: depot-ubuntu-24.04
     permissions:
       issues: write
@@ -23,8 +22,8 @@ jobs:
           days-before-issue-stale: 15
           days-before-issue-close: 3
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          stale-issue-message: "Closed due to inactivity. If you have any questions, you can reopen it."
-          stale-pr-message: "Closed due to inactivity. If you have any questions, you can reopen it."
+          stale-issue-message: 'Closed due to inactivity. If you have any questions, you can reopen it.'
+          stale-pr-message: 'Closed due to inactivity. If you have any questions, you can reopen it.'
           stale-issue-label: 'no-issue-activity'
           stale-pr-label: 'no-pr-activity'
           any-of-labels: '🌚 invalid,🙋‍♂️ question,wont-fix,no-issue-activity,no-pr-activity,💪 enhancement,🤔 cant-reproduce,🙏 help wanted'

@@ -11,26 +11,20 @@ type PromptLogModalProps = {
   width: number
   onCancel: () => void
 }
-const PromptLogModal: FC<PromptLogModalProps> = ({
-  currentLogItem,
-  width,
-  onCancel,
-}) => {
+const PromptLogModal: FC<PromptLogModalProps> = ({ currentLogItem, width, onCancel }) => {
   const { t } = useTranslation()
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 
   useClickAway(() => {
-    if (mounted)
-      onCancel()
+    if (mounted) onCancel()
   }, ref)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!currentLogItem || !currentLogItem.log)
-    return null
+  if (!currentLogItem || !currentLogItem.log) return null
 
   return (
     <div
@@ -47,14 +41,12 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pr-5 pl-6">
         <div className="text-base font-semibold text-text-primary">PROMPT LOG</div>
         <div className="flex items-center">
-          {
-            currentLogItem.log?.length === 1 && (
-              <>
-                <CopyFeedbackNew className="size-6" content={currentLogItem.log[0]!.text} />
-                <div className="mx-2.5 h-[14px] w-px bg-divider-regular" />
-              </>
-            )
-          }
+          {currentLogItem.log?.length === 1 && (
+            <>
+              <CopyFeedbackNew className="size-6" content={currentLogItem.log[0]!.text} />
+              <div className="mx-2.5 h-[14px] w-px bg-divider-regular" />
+            </>
+          )}
           <button
             type="button"
             aria-label={t('operation.close', { ns: 'common' })}

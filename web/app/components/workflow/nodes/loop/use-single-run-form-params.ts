@@ -42,15 +42,22 @@ const useSingleRunFormParams = ({
   const { getLoopNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
   const loopChildrenNodes = getLoopNodeChildren(id)
   const beforeNodes = getBeforeNodesInSameBranch(id)
-  const canChooseVarNodes = useMemo(() => [...beforeNodes, ...loopChildrenNodes], [beforeNodes, loopChildrenNodes])
+  const canChooseVarNodes = useMemo(
+    () => [...beforeNodes, ...loopChildrenNodes],
+    [beforeNodes, loopChildrenNodes],
+  )
 
-  const { usedOutVars, allVarObject } = useMemo(() => buildUsedOutVars({
-    loopChildrenNodes,
-    currentNodeId: id,
-    canChooseVarNodes,
-    isNodeInLoop,
-    toVarInputs,
-  }), [loopChildrenNodes, id, canChooseVarNodes, isNodeInLoop, toVarInputs])
+  const { usedOutVars, allVarObject } = useMemo(
+    () =>
+      buildUsedOutVars({
+        loopChildrenNodes,
+        currentNodeId: id,
+        canChooseVarNodes,
+        isNodeInLoop,
+        toVarInputs,
+      }),
+    [loopChildrenNodes, id, canChooseVarNodes, isNodeInLoop, toVarInputs],
+  )
 
   const nodeInfo = useMemo(() => {
     const formattedNodeInfo = formatTracing(loopRunResult, t)[0]
@@ -68,9 +75,12 @@ const useSingleRunFormParams = ({
     return formattedNodeInfo
   }, [runResult, loopRunResult, t])
 
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
+  const setInputVarValues = useCallback(
+    (newPayload: Record<string, any>) => {
+      setRunInputData(newPayload)
+    },
+    [setRunInputData],
+  )
 
   const inputVarValues = useMemo(() => createInputVarValues(runInputData), [runInputData])
 
@@ -82,8 +92,7 @@ const useSingleRunFormParams = ({
     })
 
     payload.loop_variables?.forEach((loopVariable) => {
-      if (loopVariable.value_type === ValueType.variable)
-        allInputs.push(loopVariable.value)
+      if (loopVariable.value_type === ValueType.variable) allInputs.push(loopVariable.value)
     })
     const inputVarsFromValue: InputVar[] = []
     const varInputs = [...varSelectorsToVarInputs(allInputs), ...inputVarsFromValue]
@@ -95,14 +104,25 @@ const useSingleRunFormParams = ({
         onChange: setInputVarValues,
       },
     ]
-  }, [payload.break_conditions, payload.loop_variables, varSelectorsToVarInputs, usedOutVars, inputVarValues, setInputVarValues])
-
-  const getDependentVars = useCallback(() => getDependentVarsFromLoopPayload({
-    nodeId: id,
+  }, [
+    payload.break_conditions,
+    payload.loop_variables,
+    varSelectorsToVarInputs,
     usedOutVars,
-    breakConditions: payload.break_conditions,
-    loopVariables: payload.loop_variables,
-  }), [id, usedOutVars, payload.break_conditions, payload.loop_variables])
+    inputVarValues,
+    setInputVarValues,
+  ])
+
+  const getDependentVars = useCallback(
+    () =>
+      getDependentVarsFromLoopPayload({
+        nodeId: id,
+        usedOutVars,
+        breakConditions: payload.break_conditions,
+        loopVariables: payload.loop_variables,
+      }),
+    [id, usedOutVars, payload.break_conditions, payload.loop_variables],
+  )
 
   return {
     forms,

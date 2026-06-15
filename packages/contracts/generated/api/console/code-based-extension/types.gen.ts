@@ -22,5 +22,5 @@ export type GetCodeBasedExtensionResponses = {
   200: CodeBasedExtensionResponse
 }
 
-export type GetCodeBasedExtensionResponse
-  = GetCodeBasedExtensionResponses[keyof GetCodeBasedExtensionResponses]
+export type GetCodeBasedExtensionResponse =
+  GetCodeBasedExtensionResponses[keyof GetCodeBasedExtensionResponses]

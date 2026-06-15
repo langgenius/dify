@@ -26,10 +26,7 @@ type PopoverContentProps = {
     BasePopover.Positioner.Props,
     'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
   >
-  popupProps?: Omit<
-    BasePopover.Popup.Props,
-    'children' | 'className'
-  >
+  popupProps?: Omit<BasePopover.Popup.Props, 'children' | 'className'>
 }
 
 export function PopoverContent({

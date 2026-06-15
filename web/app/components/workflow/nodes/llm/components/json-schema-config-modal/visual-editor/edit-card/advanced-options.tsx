@@ -14,10 +14,7 @@ type AdvancedOptionsProps = {
   onChange: (options: AdvancedOptionsType) => void
 }
 
-const AdvancedOptions: FC<AdvancedOptionsProps> = ({
-  onChange,
-  options,
-}) => {
+const AdvancedOptions: FC<AdvancedOptionsProps> = ({ onChange, options }) => {
   const { t } = useTranslation()
   // const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [enumValue, setEnumValue] = useState(options.enum)
@@ -26,9 +23,12 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
     setEnumValue(value)
   }, [])
 
-  const handleEnumBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
-    onChange({ enum: e.target.value })
-  }, [onChange])
+  const handleEnumBlur = useCallback(
+    (e: React.FocusEvent<HTMLTextAreaElement>) => {
+      onChange({ enum: e.target.value })
+    },
+    [onChange],
+  )
 
   // const handleToggleAdvancedOptions = useCallback(() => {
   //   setShowAdvancedOptions(prev => !prev)

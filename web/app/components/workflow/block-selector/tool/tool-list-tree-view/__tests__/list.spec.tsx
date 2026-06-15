@@ -35,14 +35,18 @@ describe('ToolListTreeView', () => {
     render(
       <List
         payload={{
-          BuiltIn: [createToolProvider({
-            label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
-          })],
-          [CUSTOM_GROUP_NAME]: [createToolProvider({
-            id: 'custom-provider',
-            type: 'custom',
-            label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
-          })],
+          BuiltIn: [
+            createToolProvider({
+              label: { en_US: 'Built In Provider', zh_Hans: 'Built In Provider' },
+            }),
+          ],
+          [CUSTOM_GROUP_NAME]: [
+            createToolProvider({
+              id: 'custom-provider',
+              type: 'custom',
+              label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
+            }),
+          ],
         }}
         previewCardHandle={createPreviewCardHandle()}
         hasSearchText={false}

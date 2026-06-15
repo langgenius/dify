@@ -35,9 +35,7 @@ describe('ToolsNav', () => {
       expect(screen.queryByTestId('icon-hammer-fill')).not.toBeInTheDocument()
 
       expect(link).toHaveClass('text-components-main-nav-nav-button-text')
-      expect(link).toHaveClass(
-        'hover:bg-components-main-nav-nav-button-bg-hover',
-      )
+      expect(link).toHaveClass('hover:bg-components-main-nav-nav-button-bg-hover')
     })
 
     it('should render active state correctly', () => {
@@ -48,9 +46,7 @@ describe('ToolsNav', () => {
       const link = screen.getByRole('link')
 
       expect(link).toHaveClass('bg-components-main-nav-nav-button-bg-active')
-      expect(link).toHaveClass(
-        'text-components-main-nav-nav-button-text-active',
-      )
+      expect(link).toHaveClass('text-components-main-nav-nav-button-text-active')
       expect(link).toHaveClass('font-semibold')
       expect(link).toHaveClass('shadow-md')
 

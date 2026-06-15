@@ -12,13 +12,12 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
   const instance = createInstance()
   instance
     .use(initReactI18next)
-    .use(resourcesToBackend((
-      language: Locale,
-      namespace: NamespaceInFileName | Namespace,
-    ) => {
-      const namespaceKebab = kebabCase(namespace)
-      return import(`../i18n/${language}/${namespaceKebab}.json`)
-    }))
+    .use(
+      resourcesToBackend((language: Locale, namespace: NamespaceInFileName | Namespace) => {
+        const namespaceKebab = kebabCase(namespace)
+        return import(`../i18n/${language}/${namespaceKebab}.json`)
+      }),
+    )
     .init({
       ...getInitOptions(),
       lng,
@@ -28,8 +27,7 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
 }
 
 export const changeLanguage = async (lng?: Locale) => {
-  if (!lng)
-    return
+  if (!lng) return
   const i18n = getI18n()
   await i18n.changeLanguage(lng)
 }

@@ -20,16 +20,17 @@ const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null
 
 const getOrCreateI18next = async (lng: Locale) => {
   let instance = getI18nInstance()
-  if (instance)
-    return instance
+  if (instance) return instance
 
   instance = createInstance()
   await instance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: Namespace | NamespaceInFileName) => {
-      const fileNamespace = kebabCase(namespace)
-      return import(`../i18n/${language}/${fileNamespace}.json`)
-    }))
+    .use(
+      resourcesToBackend((language: Locale, namespace: Namespace | NamespaceInFileName) => {
+        const fileNamespace = kebabCase(namespace)
+        return import(`../i18n/${language}/${fileNamespace}.json`)
+      }),
+    )
     .init({
       ...getInitOptions(),
       lng,
@@ -41,8 +42,7 @@ const getOrCreateI18next = async (lng: Locale) => {
 export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
   const i18nextInstance = await getOrCreateI18next(lng)
 
-  if (ns && !i18nextInstance.hasLoadedNamespace(ns))
-    await i18nextInstance.loadNamespaces(ns)
+  if (ns && !i18nextInstance.hasLoadedNamespace(ns)) await i18nextInstance.loadNamespaces(ns)
 
   return {
     t: i18nextInstance.getFixedT(lng, ns),
@@ -52,8 +52,7 @@ export async function getTranslation<T extends Namespace>(lng: Locale, ns?: T) {
 
 export const getLocaleOnServer = async (): Promise<Locale> => {
   const cached = getLocaleCache()
-  if (cached)
-    return cached
+  if (cached) return cached
 
   const locales: string[] = i18n.locales
 
@@ -64,14 +63,18 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
 
   if (!languages.length) {
     // Negotiator expects plain object so we need to transform headers
-    const negotiatorHeaders: Record<string, string> = {};
-    (await headers()).forEach((value, key) => (negotiatorHeaders[key] = value))
+    const negotiatorHeaders: Record<string, string> = {}
+    ;(await headers()).forEach((value, key) => (negotiatorHeaders[key] = value))
     // Use negotiator and intl-localematcher to get best locale
     languages = new Negotiator({ headers: negotiatorHeaders }).languages()
   }
 
   // Validate languages
-  if (!Array.isArray(languages) || languages.length === 0 || !languages.every(lang => typeof lang === 'string' && /^[\w-]+$/.test(lang)))
+  if (
+    !Array.isArray(languages) ||
+    languages.length === 0 ||
+    !languages.every((lang) => typeof lang === 'string' && /^[\w-]+$/.test(lang))
+  )
     languages = [i18n.defaultLocale]
 
   // match locale
@@ -84,7 +87,7 @@ export const getResources = cache(async (lng: Locale): Promise<Resource> => {
   const messages = {} as ResourceLanguage
 
   await Promise.all(
-    (namespacesInFileName).map(async (ns) => {
+    namespacesInFileName.map(async (ns) => {
       const mod = await import(`../i18n/${lng}/${ns}.json`)
       messages[camelCase(ns)] = mod.default
     }),

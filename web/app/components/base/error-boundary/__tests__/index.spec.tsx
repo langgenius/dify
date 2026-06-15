@@ -2,7 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createReactI18nextMock } from '@/test/i18n-mock'
-import ErrorBoundary, { ErrorFallback, useAsyncError, useErrorHandler, withErrorBoundary } from '../index'
+import ErrorBoundary, {
+  ErrorFallback,
+  useAsyncError,
+  useErrorHandler,
+  withErrorBoundary,
+} from '../index'
 
 const mockConfig = vi.hoisted(() => ({
   isDev: false,
@@ -14,18 +19,20 @@ vi.mock('@/config', () => ({
   },
 }))
 
-vi.mock('react-i18next', () => createReactI18nextMock({
-  'error': 'Error',
-  'errorBoundary.componentStack': 'Component Stack:',
-  'errorBoundary.details': 'Error Details (Development Only)',
-  'errorBoundary.errorCount': 'This error has occurred {{count}} times',
-  'errorBoundary.fallbackTitle': 'Oops! Something went wrong',
-  'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
-  'errorBoundary.reloadPage': 'Reload Page',
-  'errorBoundary.title': 'Something went wrong',
-  'errorBoundary.tryAgain': 'Try Again',
-  'errorBoundary.tryAgainCompact': 'Try again',
-}))
+vi.mock('react-i18next', () =>
+  createReactI18nextMock({
+    error: 'Error',
+    'errorBoundary.componentStack': 'Component Stack:',
+    'errorBoundary.details': 'Error Details (Development Only)',
+    'errorBoundary.errorCount': 'This error has occurred {{count}} times',
+    'errorBoundary.fallbackTitle': 'Oops! Something went wrong',
+    'errorBoundary.message': 'An unexpected error occurred while rendering this component.',
+    'errorBoundary.reloadPage': 'Reload Page',
+    'errorBoundary.title': 'Something went wrong',
+    'errorBoundary.tryAgain': 'Try Again',
+    'errorBoundary.tryAgainCompact': 'Try again',
+  }),
+)
 
 type ThrowOnRenderProps = {
   message?: string
@@ -33,8 +40,7 @@ type ThrowOnRenderProps = {
 }
 
 const ThrowOnRender = ({ shouldThrow, message = 'render boom' }: ThrowOnRenderProps) => {
-  if (shouldThrow)
-    throw new Error(message)
+  if (shouldThrow) throw new Error(message)
 
   return <div>Child content rendered</div>
 }
@@ -72,7 +78,9 @@ describe('ErrorBoundary', () => {
       )
 
       expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
-      expect(screen.getByText('An unexpected error occurred while rendering this component.')).toBeInTheDocument()
+      expect(
+        screen.getByText('An unexpected error occurred while rendering this component.'),
+      ).toBeInTheDocument()
     })
 
     it('should render custom title, message, and className in fallback', async () => {
@@ -110,20 +118,14 @@ describe('ErrorBoundary', () => {
 
     it('should render function fallback with error message when fallback prop is a function', async () => {
       render(
-        <ErrorBoundary
-          fallback={error => (
-            <div>
-              Function fallback:
-              {' '}
-              {error.message}
-            </div>
-          )}
-        >
+        <ErrorBoundary fallback={(error) => <div>Function fallback: {error.message}</div>}>
           <ThrowOnRender message="function fallback boom" shouldThrow={true} />
         </ErrorBoundary>,
       )
 
-      expect(await screen.findByText('Function fallback: function fallback boom')).toBeInTheDocument()
+      expect(
+        await screen.findByText('Function fallback: function fallback boom'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -346,9 +348,7 @@ describe('ErrorBoundary utility exports', () => {
       const HookConsumer = () => {
         const setError = useErrorHandler()
         return (
-          <button onClick={() => setError(new Error('handler boom'))}>
-            Trigger hook error
-          </button>
+          <button onClick={() => setError(new Error('handler boom'))}>Trigger hook error</button>
         )
       }
 
@@ -396,8 +396,7 @@ describe('ErrorBoundary utility exports', () => {
       }
 
       const WrappedTarget = ({ shouldThrow }: WrappedProps) => {
-        if (shouldThrow)
-          throw new Error('wrapped boom')
+        if (shouldThrow) throw new Error('wrapped boom')
         return <div>Wrapped content</div>
       }
 

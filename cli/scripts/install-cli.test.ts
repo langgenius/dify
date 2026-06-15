@@ -41,18 +41,35 @@ const FETCH_STUB = [
 ].join('\n')
 /* eslint-enable no-template-curly-in-string */
 
-function runLib(program: string, env: Record<string, string> = {}): { code: number, stdout: string, stderr: string } {
+function runLib(
+  program: string,
+  env: Record<string, string> = {},
+): { code: number; stdout: string; stderr: string } {
   const full = `. "${SCRIPT}"\n${FETCH_STUB}\n${program}`
   const r = spawnSync('sh', ['-c', full], {
     encoding: 'utf8',
-    env: { ...process.env, DIFYCTL_INSTALL_LIB: '1', DIFY_VERSION: '', DIFYCTL_VERSION: '', ...env },
+    env: {
+      ...process.env,
+      DIFYCTL_INSTALL_LIB: '1',
+      DIFY_VERSION: '',
+      DIFYCTL_VERSION: '',
+      ...env,
+    },
   })
   return { code: r.status ?? 1, stdout: (r.stdout ?? '').trim(), stderr: r.stderr ?? '' }
 }
 
-const REL_1142 = JSON.stringify({ tag_name: '1.14.2', assets: [{ name: 'difyctl-v0.2.0-linux-x64' }, { name: 'difyctl-v0.2.0-checksums.txt' }] })
-const REL_1150 = JSON.stringify({ tag_name: '1.15.0', assets: [{ name: 'difyctl-v0.3.0-linux-x64' }] })
-const LIST_NEWEST_FIRST = JSON.stringify({ releases: [{ tag_name: '1.15.0' }, { tag_name: '1.14.2' }] })
+const REL_1142 = JSON.stringify({
+  tag_name: '1.14.2',
+  assets: [{ name: 'difyctl-v0.2.0-linux-x64' }, { name: 'difyctl-v0.2.0-checksums.txt' }],
+})
+const REL_1150 = JSON.stringify({
+  tag_name: '1.15.0',
+  assets: [{ name: 'difyctl-v0.3.0-linux-x64' }],
+})
+const LIST_NEWEST_FIRST = JSON.stringify({
+  releases: [{ tag_name: '1.15.0' }, { tag_name: '1.14.2' }],
+})
 
 const RELEASE = JSON.stringify({
   tag_name: '1.14.2',
@@ -117,7 +134,10 @@ describe('install-cli asset_version', () => {
 
 describe('install-cli resolve_release', () => {
   it('DIFY_VERSION pins the release directly', () => {
-    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', { DIFY_VERSION: '1.14.2', TAG_1_14_2: REL_1142 })
+    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', {
+      DIFY_VERSION: '1.14.2',
+      TAG_1_14_2: REL_1142,
+    })
     expect(r.code).toBe(0)
     expect(r.stdout).toBe('1.14.2')
   })
@@ -129,7 +149,9 @@ describe('install-cli resolve_release', () => {
   })
 
   it('blank resolves to the latest stable release', () => {
-    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', { LATEST_JSON: REL_1150 })
+    const r = runLib('resolve_release linux-x64; printf "%s" "$DIFY_TAG"', {
+      LATEST_JSON: REL_1150,
+    })
     expect(r.code).toBe(0)
     expect(r.stdout).toBe('1.15.0')
   })

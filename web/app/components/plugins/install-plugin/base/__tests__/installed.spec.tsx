@@ -3,8 +3,18 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../../card', () => ({
-  default: ({ installed, installFailed, titleLeft }: { installed: boolean, installFailed: boolean, titleLeft?: React.ReactNode }) => (
-    <div data-testid="card" data-installed={installed} data-failed={installFailed}>{titleLeft}</div>
+  default: ({
+    installed,
+    installFailed,
+    titleLeft,
+  }: {
+    installed: boolean
+    installFailed: boolean
+    titleLeft?: React.ReactNode
+  }) => (
+    <div data-testid="card" data-installed={installed} data-failed={installFailed}>
+      {titleLeft}
+    </div>
   ),
 }))
 

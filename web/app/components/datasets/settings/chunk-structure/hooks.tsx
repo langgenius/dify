@@ -36,11 +36,7 @@ export const useChunkStructure = () => {
     description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
   }
 
-  const options = [
-    GeneralOption,
-    ParentChildOption,
-    QuestionAnswerOption,
-  ]
+  const options = [GeneralOption, ParentChildOption, QuestionAnswerOption]
 
   return {
     options,

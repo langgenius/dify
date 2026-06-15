@@ -7,9 +7,7 @@ import { getNextExecutionTime } from './utils/execution-time-calculator'
 
 const i18nPrefix = 'nodes.triggerSchedule'
 
-const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({
-  data,
-}) => {
+const Node: FC<NodeProps<ScheduleTriggerNodeType>> = ({ data }) => {
   const { t } = useTranslation()
 
   return (

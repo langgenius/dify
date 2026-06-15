@@ -13,19 +13,19 @@ type AdvancedActionsProps = {
   onConfirm: () => void
 }
 
-const AdvancedActions: FC<AdvancedActionsProps> = ({
-  isConfirmDisabled,
-  onCancel,
-  onConfirm,
-}) => {
+const AdvancedActions: FC<AdvancedActionsProps> = ({ isConfirmDisabled, onCancel, onConfirm }) => {
   const { t } = useTranslation()
 
-  useHotkey(JSON_SCHEMA_CONFIRM_HOTKEY, () => {
-    onConfirm()
-  }, {
-    enabled: !isConfirmDisabled,
-    ignoreInputs: false,
-  })
+  useHotkey(
+    JSON_SCHEMA_CONFIRM_HOTKEY,
+    () => {
+      onConfirm()
+    },
+    {
+      enabled: !isConfirmDisabled,
+      ignoreInputs: false,
+    },
+  )
 
   return (
     <div className="flex items-center gap-x-1">

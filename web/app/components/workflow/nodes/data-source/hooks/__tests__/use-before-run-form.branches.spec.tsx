@@ -2,7 +2,10 @@ import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import {
+  useDataSourceStore,
+  useDataSourceStoreWithSelector,
+} from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
@@ -30,7 +33,7 @@ type DataSourceStoreState = {
   onlineDocuments: Array<Record<string, unknown>>
   websitePages: Array<Record<string, unknown>>
   selectedFileIds: string[]
-  onlineDriveFileList: Array<{ id: string, type: string }>
+  onlineDriveFileList: Array<{ id: string; type: string }>
   bucket?: string
 }
 
@@ -157,16 +160,22 @@ describe('data-source/hooks/use-before-run-form branches', () => {
       isPending: false,
     } as ReturnType<typeof useDatasourceSingleRun>)
     mockUseInvalidLastRunHook.mockReturnValue(mockInvalidLastRun)
-    mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) => mockFetchNodeInspectVars(...args))
+    mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) =>
+      mockFetchNodeInspectVars(...args),
+    )
     mockUseDataSourceStoreHook.mockImplementation(() => mockUseDataSourceStore())
-    mockUseDataSourceStoreWithSelectorHook.mockImplementation(selector =>
-      mockUseDataSourceStoreWithSelector(selector as unknown as (state: DataSourceStoreState) => unknown))
+    mockUseDataSourceStoreWithSelectorHook.mockImplementation((selector) =>
+      mockUseDataSourceStoreWithSelector(
+        selector as unknown as (state: DataSourceStoreState) => unknown,
+      ),
+    )
 
     mockUseDataSourceStore.mockImplementation(() => ({
       getState: () => dataSourceStoreState,
     }))
-    mockUseDataSourceStoreWithSelector.mockImplementation((selector: (state: DataSourceStoreState) => unknown) =>
-      selector(dataSourceStoreState))
+    mockUseDataSourceStoreWithSelector.mockImplementation(
+      (selector: (state: DataSourceStoreState) => unknown) => selector(dataSourceStoreState),
+    )
     mockFetchNodeInspectVars.mockResolvedValue([{ name: 'metadata' }] as VarInInspect[])
   })
 
@@ -182,11 +191,13 @@ describe('data-source/hooks/use-before-run-form branches', () => {
 
     expect(result.current.startRunBtnDisabled).toBe(true)
 
-    dataSourceStoreState.onlineDocuments = [{
-      workspace_id: 'workspace-1',
-      id: 'doc-1',
-      title: 'Document',
-    }]
+    dataSourceStoreState.onlineDocuments = [
+      {
+        workspace_id: 'workspace-1',
+        id: 'doc-1',
+        title: 'Document',
+      },
+    ]
     rerender({ payload: createData({ provider_type: DatasourceType.onlineDocument }) })
     expect(result.current.startRunBtnDisabled).toBe(false)
 
@@ -199,16 +210,18 @@ describe('data-source/hooks/use-before-run-form branches', () => {
   })
 
   it('returns the settled run result directly when chained single-run execution should stop', async () => {
-    dataSourceStoreState.localFileList = [{
-      file: {
-        id: 'file-1',
-        name: 'doc.pdf',
-        type: 'document',
-        size: 12,
-        extension: 'pdf',
-        mime_type: 'application/pdf',
+    dataSourceStoreState.localFileList = [
+      {
+        file: {
+          id: 'file-1',
+          name: 'doc.pdf',
+          type: 'document',
+          size: 12,
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+        },
       },
-    }]
+    ]
 
     mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
       options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
@@ -234,75 +247,95 @@ describe('data-source/hooks/use-before-run-form branches', () => {
   })
 
   it('builds online document datasource info before running', async () => {
-    dataSourceStoreState.onlineDocuments = [{
-      workspace_id: 'workspace-1',
-      id: 'doc-1',
-      title: 'Document',
-      url: 'https://example.com/doc',
-    }]
+    dataSourceStoreState.onlineDocuments = [
+      {
+        workspace_id: 'workspace-1',
+        id: 'doc-1',
+        title: 'Document',
+        url: 'https://example.com/doc',
+      },
+    ]
 
     mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
       options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
       return Promise.resolve(payload)
     })
 
-    const { result } = renderHook(() => useBeforeRunForm(createProps({
-      payload: createData({ provider_type: DatasourceType.onlineDocument }),
-    })))
+    const { result } = renderHook(() =>
+      useBeforeRunForm(
+        createProps({
+          payload: createData({ provider_type: DatasourceType.onlineDocument }),
+        }),
+      ),
+    )
 
     await act(async () => {
       result.current.handleRunWithSyncDraft()
       await Promise.resolve()
     })
 
-    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-      datasource_type: DatasourceType.onlineDocument,
-      datasource_info: {
-        workspace_id: 'workspace-1',
-        page: {
-          id: 'doc-1',
-          title: 'Document',
-          url: 'https://example.com/doc',
+    expect(mockMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasource_type: DatasourceType.onlineDocument,
+        datasource_info: {
+          workspace_id: 'workspace-1',
+          page: {
+            id: 'doc-1',
+            title: 'Document',
+            url: 'https://example.com/doc',
+          },
+          credential_id: 'credential-1',
         },
-        credential_id: 'credential-1',
-      },
-    }), expect.any(Object))
+      }),
+      expect.any(Object),
+    )
   })
 
   it('builds website crawl datasource info and skips the failure update while paused', async () => {
-    dataSourceStoreState.websitePages = [{
-      url: 'https://example.com',
-      title: 'Example',
-    }]
+    dataSourceStoreState.websitePages = [
+      {
+        url: 'https://example.com',
+        title: 'Example',
+      },
+    ]
 
     mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
       options.onError?.()
       return Promise.resolve(payload)
     })
 
-    const { result } = renderHook(() => useBeforeRunForm(createProps({
-      isPaused: true,
-      payload: createData({ provider_type: DatasourceType.websiteCrawl }),
-    })))
+    const { result } = renderHook(() =>
+      useBeforeRunForm(
+        createProps({
+          isPaused: true,
+          payload: createData({ provider_type: DatasourceType.websiteCrawl }),
+        }),
+      ),
+    )
 
     await act(async () => {
       result.current.handleRunWithSyncDraft()
       await Promise.resolve()
     })
 
-    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-      datasource_type: DatasourceType.websiteCrawl,
-      datasource_info: {
-        url: 'https://example.com',
-        title: 'Example',
-        credential_id: 'credential-1',
-      },
-    }), expect.any(Object))
-    expect(mockInvalidLastRun).toHaveBeenCalled()
-    expect(mockHandleNodeDataUpdate).not.toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        _singleRunningStatus: NodeRunningStatus.Failed,
+    expect(mockMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasource_type: DatasourceType.websiteCrawl,
+        datasource_info: {
+          url: 'https://example.com',
+          title: 'Example',
+          credential_id: 'credential-1',
+        },
       }),
-    }))
+      expect.any(Object),
+    )
+    expect(mockInvalidLastRun).toHaveBeenCalled()
+    expect(mockHandleNodeDataUpdate).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          _singleRunningStatus: NodeRunningStatus.Failed,
+        }),
+      }),
+    )
   })
 })

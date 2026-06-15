@@ -18,7 +18,7 @@ const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -37,11 +37,15 @@ type IFilterProps = {
   setQueryParams: (v: QueryParam) => void
 }
 
-const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({
+  isChatMode,
+  appId,
+  queryParams,
+  setQueryParams,
+}: IFilterProps) => {
   const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
-  if (isLoading || !data)
-    return null
+  if (isLoading || !data) return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
@@ -53,7 +57,10 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({
+          value: k,
+          name: t(`filter.period.${v.name}`, { ns: 'appLog' }),
+        }))}
       />
       <Chip
         className="min-w-[150px]"
@@ -66,7 +73,10 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
         items={[
           { value: 'all', name: t('filter.annotation.all', { ns: 'appLog' }) },
-          { value: 'annotated', name: t('filter.annotation.annotated', { ns: 'appLog', count: data?.count }) },
+          {
+            value: 'annotated',
+            name: t('filter.annotation.annotated', { ns: 'appLog', count: data?.count }),
+          },
           { value: 'not_annotated', name: t('filter.annotation.not_annotated', { ns: 'appLog' }) },
         ]}
       />

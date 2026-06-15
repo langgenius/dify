@@ -24,19 +24,25 @@ vi.mock('../use-activate-credential', () => ({
 }))
 
 vi.mock('../../use-trial-credits', () => ({
-  useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
+  useTrialCredits: () => ({
+    credits: 0,
+    totalCredits: 10_000,
+    isExhausted: true,
+    isLoading: false,
+  }),
 }))
 
-const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
-  provider: 'test',
-  custom_configuration: {
-    status: CustomConfigurationStatusEnum.active,
-    available_credentials: [],
-  },
-  system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
-  preferred_provider_type: PreferredProviderTypeEnum.system,
-  ...overrides,
-} as unknown as ModelProvider)
+const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
+  ({
+    provider: 'test',
+    custom_configuration: {
+      status: CustomConfigurationStatusEnum.active,
+      available_credentials: [],
+    },
+    system_configuration: { enabled: true, current_quota_type: 'trial', quota_configurations: [] },
+    preferred_provider_type: PreferredProviderTypeEnum.system,
+    ...overrides,
+  }) as unknown as ModelProvider
 
 const createState = (overrides: Partial<CredentialPanelState> = {}): CredentialPanelState => ({
   variant: 'credits-active',

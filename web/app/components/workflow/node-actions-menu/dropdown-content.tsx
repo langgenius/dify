@@ -30,9 +30,7 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
       {hasRunGroup && (
         <DropdownMenuGroup>
           {model.canRun && (
-            <DropdownMenuItem onClick={model.handleRun}>
-              {singleRunActionLabel}
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={model.handleRun}>{singleRunActionLabel}</DropdownMenuItem>
           )}
           {model.canChangeBlock && (
             <ChangeBlockMenuTrigger
@@ -43,7 +41,10 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
           )}
         </DropdownMenuGroup>
       )}
-      {hasRunGroup && (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
+      {hasRunGroup &&
+        (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+          <DropdownMenuSeparator />
+        )}
       {hasEditGroup && (
         <DropdownMenuGroup>
           <DropdownMenuItem
@@ -64,7 +65,9 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
       )}
-      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
+      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+        <DropdownMenuSeparator />
+      )}
       {hasDeleteGroup && (
         <DropdownMenuGroup>
           <DropdownMenuItem
@@ -80,7 +83,11 @@ export function NodeActionsDropdownContent(props: NodeActionsMenuProps) {
       {hasDeleteGroup && (model.workflowAppHref || model.helpLinkUri) && <DropdownMenuSeparator />}
       {model.workflowAppHref && (
         <DropdownMenuGroup>
-          <DropdownMenuLinkItem href={model.workflowAppHref} target="_blank" rel="noopener noreferrer">
+          <DropdownMenuLinkItem
+            href={model.workflowAppHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {t('panel.openWorkflow', { ns: 'workflow' })}
           </DropdownMenuLinkItem>
         </DropdownMenuGroup>

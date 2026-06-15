@@ -16,12 +16,11 @@ type ILogDetail = {
 
 const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
   const { t } = useTranslation()
-  const appDetail = useStore(state => state.appDetail)
+  const appDetail = useStore((state) => state.appDetail)
   const router = useRouter()
 
   const handleReplay = () => {
-    if (!appDetail?.id)
-      return
+    if (!appDetail?.id) return
     router.push(`/app/${appDetail.id}/workflow?replayRunId=${runID}`)
   }
 
@@ -36,11 +35,13 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
         <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <div className="flex items-center bg-components-panel-bg">
-        <h1 className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
+        <h1 className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">
+          {t('runDetail.workflowTitle', { ns: 'appLog' })}
+        </h1>
         {canReplay && (
           <Tooltip>
             <TooltipTrigger
-              render={(
+              render={
                 <button
                   type="button"
                   className="mr-1 flex size-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
@@ -49,7 +50,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
                 >
                   <RiPlayLargeLine className="size-4 text-text-tertiary" aria-hidden="true" />
                 </button>
-              )}
+              }
             />
             <TooltipContent className="rounded-xl">
               {t('runDetail.testWithParams', { ns: 'appLog' })}
@@ -60,7 +61,9 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
       <WorkflowContextProvider>
         <Run
           runDetailUrl={runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}` : ''}
-          tracingListUrl={runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions` : ''}
+          tracingListUrl={
+            runID ? `/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions` : ''
+          }
         />
       </WorkflowContextProvider>
     </div>

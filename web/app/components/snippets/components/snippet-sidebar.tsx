@@ -32,12 +32,7 @@ const toSnippetInputField = (field: InputVar): SnippetInputField => ({
   type: field.type as unknown as SnippetInputField['type'],
 })
 
-const SnippetSidebar = ({
-  snippet,
-  fields,
-  readonly,
-  onFieldsChange,
-}: SnippetSidebarProps) => {
+const SnippetSidebar = ({ snippet, fields, readonly, onFieldsChange }: SnippetSidebarProps) => {
   const { t } = useTranslation()
   const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
   const workflowInputVars = useMemo(() => fields.map(toWorkflowInputVar), [fields])
@@ -50,42 +45,48 @@ const SnippetSidebar = ({
     setIsShowAddVarModal(false)
   }, [])
 
-  const validateFields = useCallback((nextFields: SnippetInputField[]) => {
-    let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
-    let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
-    if (hasDuplicateStr(nextFields.map(item => item.variable))) {
-      errorMsgKey = 'varKeyError.keyAlreadyExists'
-      typeName = 'variableConfig.varName'
-    }
-    else if (hasDuplicateStr(nextFields.map(item => item.label as string))) {
-      errorMsgKey = 'varKeyError.keyAlreadyExists'
-      typeName = 'variableConfig.labelName'
-    }
+  const validateFields = useCallback(
+    (nextFields: SnippetInputField[]) => {
+      let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+      let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
+      if (hasDuplicateStr(nextFields.map((item) => item.variable))) {
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.varName'
+      } else if (hasDuplicateStr(nextFields.map((item) => item.label as string))) {
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.labelName'
+      }
 
-    if (errorMsgKey && typeName) {
-      toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
-      return false
-    }
+      if (errorMsgKey && typeName) {
+        toast.error(t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }))
+        return false
+      }
 
-    return true
-  }, [t])
+      return true
+    },
+    [t],
+  )
 
-  const handleAddVarConfirm = useCallback((payload: InputVar) => {
-    const nextFields = [...fields, toSnippetInputField(payload)]
-    if (!validateFields(nextFields))
-      return
+  const handleAddVarConfirm = useCallback(
+    (payload: InputVar) => {
+      const nextFields = [...fields, toSnippetInputField(payload)]
+      if (!validateFields(nextFields)) return
 
-    onFieldsChange(nextFields)
-    hideAddVarModal()
-  }, [fields, hideAddVarModal, onFieldsChange, validateFields])
+      onFieldsChange(nextFields)
+      hideAddVarModal()
+    },
+    [fields, hideAddVarModal, onFieldsChange, validateFields],
+  )
 
-  const handleVarListChange = useCallback((list: InputVar[]) => {
-    const nextFields = list.map(toSnippetInputField)
-    if (isEqual(nextFields, fields))
-      return
+  const handleVarListChange = useCallback(
+    (list: InputVar[]) => {
+      const nextFields = list.map(toSnippetInputField)
+      if (isEqual(nextFields, fields)) return
 
-    onFieldsChange(nextFields)
-  }, [fields, onFieldsChange])
+      onFieldsChange(nextFields)
+    },
+    [fields, onFieldsChange],
+  )
 
   return (
     <aside className="flex h-full w-90 shrink-0 flex-col overflow-hidden rounded-tl-2xl border-r border-divider-subtle bg-background-default">
@@ -102,9 +103,7 @@ const SnippetSidebar = ({
           <div className="min-w-0 grow">
             <div className="system-xl-semibold text-text-primary">{snippet.name}</div>
             {!!snippet.description && (
-              <div className="mt-3 system-sm-regular text-text-tertiary">
-                {snippet.description}
-              </div>
+              <div className="mt-3 system-sm-regular text-text-tertiary">{snippet.description}</div>
             )}
           </div>
           <SnippetInfoDropdown snippet={snippet} />
@@ -116,27 +115,23 @@ const SnippetSidebar = ({
       <div className="flex min-h-0 grow flex-col px-6 pt-7">
         <Field
           title={t('inputVariables', { ns: 'snippet' })}
-          operations={!readonly
-            ? (
-                <button
-                  type="button"
-                  aria-label={`${t('operation.add', { ns: 'common' })} ${t('inputVariables', { ns: 'snippet' })}`}
-                  className={cn(
-                    'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                    'cursor-pointer hover:bg-state-base-hover',
-                  )}
-                  onClick={showAddVarModal}
-                >
-                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-                </button>
-              )
-            : undefined}
+          operations={
+            !readonly ? (
+              <button
+                type="button"
+                aria-label={`${t('operation.add', { ns: 'common' })} ${t('inputVariables', { ns: 'snippet' })}`}
+                className={cn(
+                  'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                  'cursor-pointer hover:bg-state-base-hover',
+                )}
+                onClick={showAddVarModal}
+              >
+                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+              </button>
+            ) : undefined
+          }
         >
-          <VarList
-            readonly={readonly}
-            list={workflowInputVars}
-            onChange={handleVarListChange}
-          />
+          <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
         </Field>
       </div>
 
@@ -148,7 +143,7 @@ const SnippetSidebar = ({
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}
           showHiddenField={false}
-          varKeys={fields.map(v => v.variable)}
+          varKeys={fields.map((v) => v.variable)}
         />
       )}
     </aside>

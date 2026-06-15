@@ -2,10 +2,7 @@
 import type { FC } from 'react'
 import type { NodeTracing } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiArrowRightSLine,
-  RiCloseLine,
-} from '@remixicon/react'
+import { RiArrowRightSLine, RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,17 +19,12 @@ type Props = {
   readonly noWrap?: boolean
 }
 
-const LoopResultPanel: FC<Props> = ({
-  list,
-  onHide,
-  onBack,
-  noWrap,
-}) => {
+const LoopResultPanel: FC<Props> = ({ list, onHide, onBack, noWrap }) => {
   const { t } = useTranslation()
   const [expandedLoops, setExpandedLoops] = useState<Record<number, boolean>>([])
 
   const toggleLoop = useCallback((index: number) => {
-    setExpandedLoops(prev => ({
+    setExpandedLoops((prev) => ({
       ...prev,
       [index]: !prev[index],
     }))
@@ -43,7 +35,7 @@ const LoopResultPanel: FC<Props> = ({
       <div className={cn(!noWrap && 'shrink-0', 'px-4 pt-3')}>
         <div className="flex h-8 shrink-0 items-center justify-between">
           <div className="truncate system-xl-semibold text-text-primary">
-            {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
+            {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' })}
           </div>
           <button
             type="button"
@@ -64,9 +56,14 @@ const LoopResultPanel: FC<Props> = ({
         </button>
       </div>
       {/* List */}
-      <div className={cn(!noWrap ? 'grow overflow-auto' : 'max-h-full', 'bg-components-panel-bg p-2')}>
+      <div
+        className={cn(!noWrap ? 'grow overflow-auto' : 'max-h-full', 'bg-components-panel-bg p-2')}
+      >
         {list.map((loop, index) => (
-          <div key={index} className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}>
+          <div
+            key={index}
+            className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}
+          >
             <button
               type="button"
               className={cn(
@@ -81,9 +78,7 @@ const LoopResultPanel: FC<Props> = ({
                   <Loop className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
-                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
-                  {' '}
-                  {index + 1}
+                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })} {index + 1}
                 </span>
                 <RiArrowRightSLine
                   className={cn(
@@ -94,24 +89,14 @@ const LoopResultPanel: FC<Props> = ({
                 />
               </div>
             </button>
-            {expandedLoops[index] && (
-              <div
-                className="h-px grow bg-divider-subtle"
-              >
-              </div>
-            )}
-            <div className={cn(
-              'transition-all duration-200',
-              expandedLoops[index]
-                ? 'opacity-100'
-                : 'max-h-0 overflow-hidden opacity-0',
-            )}
+            {expandedLoops[index] && <div className="h-px grow bg-divider-subtle"></div>}
+            <div
+              className={cn(
+                'transition-all duration-200',
+                expandedLoops[index] ? 'opacity-100' : 'max-h-0 overflow-hidden opacity-0',
+              )}
             >
-              <TracingPanel
-                list={loop}
-                className="bg-background-section-burn"
-              />
-
+              <TracingPanel list={loop} className="bg-background-section-burn" />
             </div>
           </div>
         ))}
@@ -124,8 +109,7 @@ const LoopResultPanel: FC<Props> = ({
     e.nativeEvent.stopImmediatePropagation()
   }, [])
 
-  if (noWrap)
-    return main
+  if (noWrap) return main
 
   return (
     <div
@@ -135,9 +119,7 @@ const LoopResultPanel: FC<Props> = ({
       }}
       onClick={handleNotBubble}
     >
-      <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">
-        {main}
-      </div>
+      <div className="flex h-full flex-col rounded-2xl bg-components-panel-bg">{main}</div>
     </div>
   )
 }

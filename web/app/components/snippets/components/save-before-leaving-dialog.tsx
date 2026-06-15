@@ -38,9 +38,7 @@ const SaveBeforeLeavingDialog = ({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      {trigger && (
-        <AlertDialogTrigger render={trigger} />
-      )}
+      {trigger && <AlertDialogTrigger render={trigger} />}
       <AlertDialogContent className="w-165">
         <div className="space-y-2 p-8 pb-12">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">

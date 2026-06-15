@@ -52,7 +52,10 @@ export type FormattedOutput<TData extends FormattedPrintable> = {
   readonly data: TData
 }
 
-export type CommandOutput = RawOutput | TableOutput<TablePrintable> | FormattedOutput<FormattedPrintable>
+export type CommandOutput =
+  | RawOutput
+  | TableOutput<TablePrintable>
+  | FormattedOutput<FormattedPrintable>
 
 export function raw(data: string): RawOutput {
   return { kind: 'raw', data }
@@ -121,58 +124,57 @@ function renderTable(output: TableOutput<TablePrintable>): string {
   const keep: number[] = []
   for (let i = 0; i < columns.length; i++) {
     const column = columns[i]
-    if (column !== undefined && (column.priority === 0 || wide))
-      keep.push(i)
+    if (column !== undefined && (column.priority === 0 || wide)) keep.push(i)
   }
 
   const rows = [
-    keep.map(i => columns[i]?.name ?? ''),
-    ...output.data.tableRows().map(row => keep.map((idx) => {
-      const cell = row[idx]
-      return cell === null || cell === undefined ? '' : String(cell)
-    })),
+    keep.map((i) => columns[i]?.name ?? ''),
+    ...output.data.tableRows().map((row) =>
+      keep.map((idx) => {
+        const cell = row[idx]
+        return cell === null || cell === undefined ? '' : String(cell)
+      }),
+    ),
   ]
   return formatTable(rows)
 }
 
 function isWideCodePoint(cp: number): boolean {
   return (
-    (cp >= 0x1100 && cp <= 0x115F)
-    || cp === 0x2329 || cp === 0x232A
-    || (cp >= 0x2E80 && cp <= 0x3247)
-    || (cp >= 0x3250 && cp <= 0x4DBF)
-    || (cp >= 0x4E00 && cp <= 0xA4C6)
-    || (cp >= 0xA960 && cp <= 0xA97C)
-    || (cp >= 0xAC00 && cp <= 0xD7A3)
-    || (cp >= 0xF900 && cp <= 0xFAFF)
-    || (cp >= 0xFE10 && cp <= 0xFE19)
-    || (cp >= 0xFE30 && cp <= 0xFE6B)
-    || (cp >= 0xFF01 && cp <= 0xFF60)
-    || (cp >= 0xFFE0 && cp <= 0xFFE6)
-    || (cp >= 0x1B000 && cp <= 0x1B001)
-    || (cp >= 0x1F200 && cp <= 0x1F251)
-    || (cp >= 0x20000 && cp <= 0x3FFFD)
+    (cp >= 0x1100 && cp <= 0x115f) ||
+    cp === 0x2329 ||
+    cp === 0x232a ||
+    (cp >= 0x2e80 && cp <= 0x3247) ||
+    (cp >= 0x3250 && cp <= 0x4dbf) ||
+    (cp >= 0x4e00 && cp <= 0xa4c6) ||
+    (cp >= 0xa960 && cp <= 0xa97c) ||
+    (cp >= 0xac00 && cp <= 0xd7a3) ||
+    (cp >= 0xf900 && cp <= 0xfaff) ||
+    (cp >= 0xfe10 && cp <= 0xfe19) ||
+    (cp >= 0xfe30 && cp <= 0xfe6b) ||
+    (cp >= 0xff01 && cp <= 0xff60) ||
+    (cp >= 0xffe0 && cp <= 0xffe6) ||
+    (cp >= 0x1b000 && cp <= 0x1b001) ||
+    (cp >= 0x1f200 && cp <= 0x1f251) ||
+    (cp >= 0x20000 && cp <= 0x3fffd)
   )
 }
 
 function displayWidth(s: string): number {
   let w = 0
-  for (const ch of s)
-    w += isWideCodePoint(ch.codePointAt(0) ?? 0) ? 2 : 1
+  for (const ch of s) w += isWideCodePoint(ch.codePointAt(0) ?? 0) ? 2 : 1
   return w
 }
 
 function formatTable(rows: readonly (readonly string[])[]): string {
-  if (rows.length === 0)
-    return ''
+  if (rows.length === 0) return ''
   const colCount = rows[0]?.length ?? 0
   const widths: number[] = Array.from({ length: colCount }, () => 0)
   for (const row of rows) {
     for (let i = 0; i < colCount; i++) {
       const cell = row[i] ?? ''
       const w = displayWidth(cell)
-      if (w > (widths[i] ?? 0))
-        widths[i] = w
+      if (w > (widths[i] ?? 0)) widths[i] = w
     }
   }
   const lines = rows.map((row) => {
@@ -182,8 +184,7 @@ function formatTable(rows: readonly (readonly string[])[]): string {
       const isLast = i === colCount - 1
       if (isLast) {
         cells.push(cell)
-      }
-      else {
+      } else {
         const pad = (widths[i] ?? 0) - displayWidth(cell) + 2
         cells.push(cell + ' '.repeat(pad))
       }
@@ -194,11 +195,12 @@ function formatTable(rows: readonly (readonly string[])[]): string {
 }
 
 function toName(data: TablePrintable | FormattedPrintable): string {
-  if (!isNamePrintable(data))
-    throw new OutputFormatNotSupportedError('name')
+  if (!isNamePrintable(data)) throw new OutputFormatNotSupportedError('name')
   return data.name()
 }
 
-function isNamePrintable(data: TablePrintable | FormattedPrintable): data is (TablePrintable | FormattedPrintable) & NamePrintable {
+function isNamePrintable(
+  data: TablePrintable | FormattedPrintable,
+): data is (TablePrintable | FormattedPrintable) & NamePrintable {
   return typeof (data as { name?: unknown }).name === 'function'
 }

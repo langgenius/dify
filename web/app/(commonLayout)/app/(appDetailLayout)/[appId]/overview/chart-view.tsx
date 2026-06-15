@@ -7,7 +7,20 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
-import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/app-chart'
+import {
+  AvgResponseTime,
+  AvgSessionInteractions,
+  AvgUserInteractions,
+  ConversationsChart,
+  CostChart,
+  EndUsersChart,
+  MessagesChart,
+  TokenPerSecond,
+  UserSatisfactionRate,
+  WorkflowCostChart,
+  WorkflowDailyTerminalsChart,
+  WorkflowMessagesChart,
+} from '@/app/components/app/overview/app-chart'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { IS_CLOUD_EDITION } from '@/config'
 import LongTimeRangePicker from './long-time-range-picker'
@@ -19,7 +32,7 @@ const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
-const TIME_PERIOD_MAPPING: { value: number, name: TimePeriodName }[] = [
+const TIME_PERIOD_MAPPING: { value: number; name: TimePeriodName }[] = [
   { value: 0, name: 'today' },
   { value: 7, name: 'last7days' },
   { value: 30, name: 'last30days' },
@@ -34,37 +47,49 @@ type IChartViewProps = {
 
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
-  const appDetail = useAppStore(state => state.appDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
-    ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
-    : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
+  const [period, setPeriod] = useState<PeriodParams>(
+    IS_CLOUD_EDITION
+      ? {
+          name: t('filter.period.today', { ns: 'appLog' }),
+          query: {
+            start: today.startOf('day').format(queryDateFormat),
+            end: today.endOf('day').format(queryDateFormat),
+          },
+        }
+      : {
+          name: t('filter.period.last7days', { ns: 'appLog' }),
+          query: {
+            start: today.subtract(7, 'day').startOf('day').format(queryDateFormat),
+            end: today.endOf('day').format(queryDateFormat),
+          },
+        },
   )
 
-  if (!appDetail)
-    return null
+  if (!appDetail) return null
 
   return (
     <div>
       <div className="mb-4">
-        <div className="mb-2 system-xl-semibold text-text-primary">{t('appMenus.overview', { ns: 'common' })}</div>
+        <div className="mb-2 system-xl-semibold text-text-primary">
+          {t('appMenus.overview', { ns: 'common' })}
+        </div>
         <div className="flex items-center justify-between">
-          {IS_CLOUD_EDITION
-            ? (
-                <TimeRangePicker
-                  ranges={TIME_PERIOD_MAPPING}
-                  onSelect={setPeriod}
-                  queryDateFormat={queryDateFormat}
-                />
-              )
-            : (
-                <LongTimeRangePicker
-                  periodMapping={LONG_TIME_PERIOD_MAPPING}
-                  onSelect={setPeriod}
-                  queryDateFormat={queryDateFormat}
-                />
-              )}
+          {IS_CLOUD_EDITION ? (
+            <TimeRangePicker
+              ranges={TIME_PERIOD_MAPPING}
+              onSelect={setPeriod}
+              queryDateFormat={queryDateFormat}
+            />
+          ) : (
+            <LongTimeRangePicker
+              periodMapping={LONG_TIME_PERIOD_MAPPING}
+              onSelect={setPeriod}
+              queryDateFormat={queryDateFormat}
+            />
+          )}
 
           {headerRight}
         </div>
@@ -77,13 +102,11 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
       )}
       {!isWorkflow && (
         <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
-          {isChatApp
-            ? (
-                <AvgSessionInteractions period={period} id={appId} />
-              )
-            : (
-                <AvgResponseTime period={period} id={appId} />
-              )}
+          {isChatApp ? (
+            <AvgSessionInteractions period={period} id={appId} />
+          ) : (
+            <AvgResponseTime period={period} id={appId} />
+          )}
           <TokenPerSecond period={period} id={appId} />
         </div>
       )}

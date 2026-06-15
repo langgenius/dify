@@ -14,6 +14,8 @@ describe('NoDataPlaceholder', () => {
     const { container } = render(<NoDataPlaceholder className="min-h-10" noPlugins />)
 
     expect(container.querySelector('svg')).toBeInTheDocument()
-    expect(screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled')).toBeInTheDocument()
+    expect(
+      screen.getByText('plugin.autoUpdate.noPluginPlaceholder.noInstalled'),
+    ).toBeInTheDocument()
   })
 })

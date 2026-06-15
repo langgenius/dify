@@ -1,4 +1,11 @@
-import { DropdownMenuGroup, DropdownMenuItem, DropdownMenuLinkItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLinkItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
@@ -24,9 +31,7 @@ export default function Support() {
           label={t('userProfile.support', { ns: 'common' })}
         />
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent
-        popupClassName="w-[216px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs"
-      >
+      <DropdownMenuSubContent popupClassName="w-[216px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
         <DropdownMenuGroup className="py-1">
           {hasDedicatedChannel && hasZendeskWidget && (
             <DropdownMenuItem
@@ -44,7 +49,12 @@ export default function Support() {
           {hasDedicatedChannel && !hasZendeskWidget && (
             <DropdownMenuLinkItem
               className="justify-between"
-              href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo?.current_version, SUPPORT_EMAIL_ADDRESS)}
+              href={mailToSupport(
+                userProfile.email,
+                plan.type,
+                langGeniusVersionInfo?.current_version,
+                SUPPORT_EMAIL_ADDRESS,
+              )}
               rel="noopener noreferrer"
               target="_blank"
             >

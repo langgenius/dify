@@ -14,17 +14,13 @@ type DropdownProps = {
   onBreadcrumbClick: (index: number) => void
 }
 
-const Dropdown = ({
-  startIndex,
-  breadcrumbs,
-  onBreadcrumbClick,
-}: DropdownProps) => {
+const Dropdown = ({ startIndex, breadcrumbs, onBreadcrumbClick }: DropdownProps) => {
   const { t } = useTranslation()
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={(
+        render={
           <button
             type="button"
             aria-label={t('operation.more', { ns: 'common' })}
@@ -35,7 +31,7 @@ const Dropdown = ({
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
           </button>
-        )}
+        }
       />
       <DropdownMenuContent
         placement="bottom-start"

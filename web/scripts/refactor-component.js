@@ -60,8 +60,7 @@ class RefactorAnalyzer extends ComponentAnalyzer {
     let count = 0
     modalPatterns.forEach((pattern) => {
       const matches = code.match(pattern)
-      if (matches)
-        count += matches.length
+      if (matches) count += matches.length
     })
     return Math.floor(count / 3) // Rough estimate of actual modals
   }
@@ -142,7 +141,7 @@ Component metrics:
 - useState: ${analysis.stateCount}, useEffect: ${analysis.effectCount}
 
 Refactoring tasks:
-${refactorActions.map(action => `- ${action}`).join('\n')}
+${refactorActions.map((action) => `- ${action}`).join('\n')}
 
 Requirements:
 ${this.buildRequirements(analysis)}
@@ -168,50 +167,69 @@ After refactoring, verify:
 
     // Priority 1: Extract hooks for complex state management
     if (analysis.stateCount >= 3 || (analysis.stateCount >= 2 && analysis.effectCount >= 2)) {
-      actions.push(`🪝 EXTRACT CUSTOM HOOK: ${analysis.stateCount} useState + ${analysis.effectCount} useEffect detected. Extract related state and effects into a custom hook (e.g., \`use${analysis.name}State.ts\`)`)
+      actions.push(
+        `🪝 EXTRACT CUSTOM HOOK: ${analysis.stateCount} useState + ${analysis.effectCount} useEffect detected. Extract related state and effects into a custom hook (e.g., \`use${analysis.name}State.ts\`)`,
+      )
     }
 
     // Priority 2: Extract API/data logic
     if (analysis.hasAPI)
-      actions.push('🌐 EXTRACT DATA HOOK: Move API calls and data fetching logic into a dedicated hook using React Query')
+      actions.push(
+        '🌐 EXTRACT DATA HOOK: Move API calls and data fetching logic into a dedicated hook using React Query',
+      )
 
     // Priority 3: Split large components
     if (analysis.lineCount > 300) {
-      actions.push(`📦 SPLIT COMPONENT: ${analysis.lineCount} lines exceeds limit. Extract UI sections into sub-components`)
+      actions.push(
+        `📦 SPLIT COMPONENT: ${analysis.lineCount} lines exceeds limit. Extract UI sections into sub-components`,
+      )
     }
 
     // Priority 4: Extract modal management
     if (analysis.hasModals >= 2) {
-      actions.push(`🔲 EXTRACT MODAL MANAGEMENT: ${analysis.hasModals} modal-related patterns detected. Create a useModalState hook or separate modal components`)
+      actions.push(
+        `🔲 EXTRACT MODAL MANAGEMENT: ${analysis.hasModals} modal-related patterns detected. Create a useModalState hook or separate modal components`,
+      )
     }
 
     // Priority 5: Simplify conditionals
     if (analysis.conditionalBlocks > 10 || analysis.nestedTernaries >= 2) {
-      actions.push('🔀 SIMPLIFY CONDITIONALS: Use lookup tables, early returns, or extract complex conditions into named functions')
+      actions.push(
+        '🔀 SIMPLIFY CONDITIONALS: Use lookup tables, early returns, or extract complex conditions into named functions',
+      )
     }
 
     // Priority 6: Extract callbacks
     if (analysis.callbackCount >= 4) {
-      actions.push(`⚡ CONSOLIDATE CALLBACKS: ${analysis.callbackCount} useCallback calls. Consider extracting related callbacks into a custom hook`)
+      actions.push(
+        `⚡ CONSOLIDATE CALLBACKS: ${analysis.callbackCount} useCallback calls. Consider extracting related callbacks into a custom hook`,
+      )
     }
 
     // Priority 7: Context provider extraction
     if (analysis.hasContext && analysis.complexity > 50) {
-      actions.push('🎯 EXTRACT CONTEXT LOGIC: Move context provider logic into separate files or split into domain-specific contexts')
+      actions.push(
+        '🎯 EXTRACT CONTEXT LOGIC: Move context provider logic into separate files or split into domain-specific contexts',
+      )
     }
 
     // Priority 8: Memoization review
     if (analysis.memoCount >= 3 && analysis.complexity > 50) {
-      actions.push(`📝 REVIEW MEMOIZATION: ${analysis.memoCount} useMemo calls. Extract complex computations into utility functions or hooks`)
+      actions.push(
+        `📝 REVIEW MEMOIZATION: ${analysis.memoCount} useMemo calls. Extract complex computations into utility functions or hooks`,
+      )
     }
 
     // If no specific issues, provide general guidance
     if (actions.length === 0) {
       if (analysis.complexity > 50) {
-        actions.push('🔍 ANALYZE FUNCTIONS: Review individual functions for complexity and extract helper functions')
-      }
-      else {
-        actions.push('✅ Component complexity is acceptable. Consider minor improvements for maintainability')
+        actions.push(
+          '🔍 ANALYZE FUNCTIONS: Review individual functions for complexity and extract helper functions',
+        )
+      } else {
+        actions.push(
+          '✅ Component complexity is acceptable. Consider minor improvements for maintainability',
+        )
       }
     }
 
@@ -328,13 +346,14 @@ function main() {
     if (resolvedFile) {
       absolutePath = resolvedFile.absolutePath
       componentPath = resolvedFile.componentPath
-    }
-    else {
+    } else {
       const availableFiles = listAnalyzableFiles(absolutePath)
-      console.error(`❌ Error: Directory does not contain a recognizable entry file: ${componentPath}`)
+      console.error(
+        `❌ Error: Directory does not contain a recognizable entry file: ${componentPath}`,
+      )
       if (availableFiles.length > 0) {
         console.error(`\n   Available files to analyze:`)
-        availableFiles.forEach(f => console.error(`   - ${path.join(componentPath, f)}`))
+        availableFiles.forEach((f) => console.error(`   - ${path.join(componentPath, f)}`))
         console.error(`\n   Please specify the exact file path, e.g.:`)
         console.error(`   pnpm refactor-component ${path.join(componentPath, availableFiles[0])}`)
       }
@@ -384,11 +403,9 @@ You can proceed with testing using: pnpm analyze-component ${componentPath}
   // Copy to clipboard (macOS)
   try {
     const checkPbcopy = spawnSync('which', ['pbcopy'], { stdio: 'pipe' })
-    if (checkPbcopy.status !== 0)
-      return
+    if (checkPbcopy.status !== 0) return
     const copyContent = extractCopyContent(prompt)
-    if (!copyContent)
-      return
+    if (!copyContent) return
 
     const result = spawnSync('pbcopy', [], {
       input: copyContent,
@@ -402,8 +419,7 @@ You can proceed with testing using: pnpm analyze-component ${componentPath}
       console.log('   - GitHub Copilot Chat: Cmd+I')
       console.log('   - Or any other AI coding tool\n')
     }
-  }
-  catch {
+  } catch {
     // pbcopy failed, but don't break the script
   }
 }

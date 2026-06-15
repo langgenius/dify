@@ -13,14 +13,15 @@ type BootstrapScriptProps = {
 }
 
 vi.mock('@/config', () => ({
-  get IS_PROD() { return mockIsProd },
+  get IS_PROD() {
+    return mockIsProd
+  },
 }))
 
 vi.mock('@/next/headers', () => ({
   headers: vi.fn(() => ({
     get: vi.fn((name: string) => {
-      if (name === 'x-nonce')
-        return mockNonce
+      if (name === 'x-nonce') return mockNonce
       return null
     }),
   })),
@@ -47,7 +48,7 @@ describe('CreateAppAttributionBootstrap', () => {
 
   it('renders a beforeInteractive script element', async () => {
     const renderComponent = await loadComponent()
-    const element = await renderComponent() as ReactElement<BootstrapScriptProps>
+    const element = (await renderComponent()) as ReactElement<BootstrapScriptProps>
 
     expect(element).toBeTruthy()
     expect(element.props.id).toBe('create-app-attribution-bootstrap')
@@ -60,20 +61,26 @@ describe('CreateAppAttributionBootstrap', () => {
     mockNonce = 'prod-nonce'
 
     const renderComponent = await loadComponent()
-    const element = await renderComponent() as ReactElement<BootstrapScriptProps>
+    const element = (await renderComponent()) as ReactElement<BootstrapScriptProps>
 
     expect(element.props.nonce).toBe('prod-nonce')
   })
 
   it('stores external attribution and clears only attribution params from the url', () => {
-    window.history.replaceState({}, '', '/apps?action=keep&utm_source=dify_blog&slug=get-started-with-dif#preview')
+    window.history.replaceState(
+      {},
+      '',
+      '/apps?action=keep&utm_source=dify_blog&slug=get-started-with-dif#preview',
+    )
 
     runBootstrapScript()
 
-    expect(window.sessionStorage.getItem('create_app_external_attribution')).toBe(JSON.stringify({
-      utmSource: 'blog',
-      utmCampaign: 'get-started-with-dif',
-    }))
+    expect(window.sessionStorage.getItem('create_app_external_attribution')).toBe(
+      JSON.stringify({
+        utmSource: 'blog',
+        utmCampaign: 'get-started-with-dif',
+      }),
+    )
     expect(window.location.pathname).toBe('/apps')
     expect(window.location.search).toBe('?action=keep')
     expect(window.location.hash).toBe('#preview')

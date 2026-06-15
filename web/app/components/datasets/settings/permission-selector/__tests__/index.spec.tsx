@@ -16,10 +16,50 @@ vi.mock('@/context/app-context', () => ({
 
 describe('PermissionSelector', () => {
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'Current User', email: 'current@example.com', avatar: '', avatar_url: '', role: 'owner', last_login_at: '', created_at: '', status: 'active' }!,
-    { id: 'user-2', name: 'John Doe', email: 'john@example.com', avatar: '', avatar_url: '', role: 'admin', last_login_at: '', created_at: '', status: 'active' }!,
-    { id: 'user-3', name: 'Jane Smith', email: 'jane@example.com', avatar: '', avatar_url: '', role: 'editor', last_login_at: '', created_at: '', status: 'active' }!,
-    { id: 'user-4', name: 'Dataset Operator', email: 'operator@example.com', avatar: '', avatar_url: '', role: 'dataset_operator', last_login_at: '', created_at: '', status: 'active' }!,
+    {
+      id: 'user-1',
+      name: 'Current User',
+      email: 'current@example.com',
+      avatar: '',
+      avatar_url: '',
+      role: 'owner',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    }!,
+    {
+      id: 'user-2',
+      name: 'John Doe',
+      email: 'john@example.com',
+      avatar: '',
+      avatar_url: '',
+      role: 'admin',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    }!,
+    {
+      id: 'user-3',
+      name: 'Jane Smith',
+      email: 'jane@example.com',
+      avatar: '',
+      avatar_url: '',
+      role: 'editor',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    }!,
+    {
+      id: 'user-4',
+      name: 'Dataset Operator',
+      email: 'operator@example.com',
+      avatar: '',
+      avatar_url: '',
+      role: 'dataset_operator',
+      last_login_at: '',
+      created_at: '',
+      status: 'active',
+    }!,
   ]
 
   const defaultProps = {
@@ -91,7 +131,13 @@ describe('PermissionSelector', () => {
   describe('Permission Selection', () => {
     it('should call onChange with onlyMe when Only Me is selected', async () => {
       const handleChange = vi.fn()
-      render(<PermissionSelector {...defaultProps} onChange={handleChange} permission={DatasetPermission.allTeamMembers} />)
+      render(
+        <PermissionSelector
+          {...defaultProps}
+          onChange={handleChange}
+          permission={DatasetPermission.allTeamMembers}
+        />,
+      )
 
       const trigger = screen.getByText(/form\.permissionsAllMember/)
       fireEvent.click(trigger)
@@ -145,12 +191,7 @@ describe('PermissionSelector', () => {
 
   describe('Member Selection', () => {
     it('should show member list when partialMembers is selected', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -209,12 +250,7 @@ describe('PermissionSelector', () => {
 
   describe('Search Functionality', () => {
     it('should allow typing in search input', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -228,12 +264,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should render search input in partial members mode', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -244,12 +275,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should filter members after debounce completes', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -270,12 +296,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should handle clear search functionality', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -297,12 +318,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should filter members by email', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -323,12 +339,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should show no results message when search matches nothing', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -349,12 +360,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should show current user when search matches user name', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -375,12 +381,7 @@ describe('PermissionSelector', () => {
     })
 
     it('should show current user when search matches user email', async () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          permission={DatasetPermission.partialMembers}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} permission={DatasetPermission.partialMembers} />)
 
       const trigger = screen.getByTitle(/Current User/)
       fireEvent.click(trigger)
@@ -440,23 +441,13 @@ describe('PermissionSelector', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty member list', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          memberList={[]}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} memberList={[]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
 
     it('should handle member list with only current user', () => {
-      render(
-        <PermissionSelector
-          {...defaultProps}
-          memberList={[mockMemberList[0]!]}
-        />,
-      )
+      render(<PermissionSelector {...defaultProps} memberList={[mockMemberList[0]!]} />)
 
       expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
     })
@@ -467,7 +458,17 @@ describe('PermissionSelector', () => {
       // This is tested indirectly through the memberList filtering
       const memberListWithNormalUser: Member[] = [
         ...mockMemberList,
-        { id: 'user-5', name: 'Normal User', email: 'normal@example.com', avatar: '', avatar_url: '', role: 'normal', last_login_at: '', created_at: '', status: 'active' },
+        {
+          id: 'user-5',
+          name: 'Normal User',
+          email: 'normal@example.com',
+          avatar: '',
+          avatar_url: '',
+          role: 'normal',
+          last_login_at: '',
+          created_at: '',
+          status: 'active',
+        },
       ]
 
       render(
@@ -486,11 +487,15 @@ describe('PermissionSelector', () => {
 
   describe('Props', () => {
     it('should update when permission prop changes', () => {
-      const { rerender } = render(<PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />)
+      const { rerender } = render(
+        <PermissionSelector {...defaultProps} permission={DatasetPermission.onlyMe} />,
+      )
 
       expect(screen.getByText(/form\.permissionsOnlyMe/))!.toBeInTheDocument()
 
-      rerender(<PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />)
+      rerender(
+        <PermissionSelector {...defaultProps} permission={DatasetPermission.allTeamMembers} />,
+      )
 
       expect(screen.getByText(/form\.permissionsAllMember/))!.toBeInTheDocument()
     })

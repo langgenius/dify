@@ -39,13 +39,12 @@ export default function CheckCode() {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent((res as MailValidityResponse).token))
         router.push(`/signup/set-password?${params.toString()}`)
-      }
-      else {
+      } else {
         toast.error(t('checkCode.invalidCode', { ns: 'login' }))
       }
-    }
-    catch (error) { console.error(error) }
-    finally {
+    } catch (error) {
+      console.error(error)
+    } finally {
       setIsLoading(false)
     }
   }
@@ -60,8 +59,9 @@ export default function CheckCode() {
         setToken(newToken)
         router.replace(`/signup/check-code?${params.toString()}`)
       }
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
   }
 
   return (
@@ -70,7 +70,9 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">
+          {t('checkCode.checkYourEmail', { ns: 'login' })}
+        </h2>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t('checkCode.tipsPrefix', { ns: 'login' })}
@@ -82,15 +84,34 @@ export default function CheckCode() {
       </div>
 
       <form action="">
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
-        <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) as string} />
-        <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('checkCode.verify', { ns: 'login' })}</Button>
+        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
+          {t('checkCode.verificationCode', { ns: 'login' })}
+        </label>
+        <Input
+          value={code}
+          onChange={(e) => setVerifyCode(e.target.value)}
+          maxLength={6}
+          className="mt-1"
+          placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) as string}
+        />
+        <Button
+          loading={loading}
+          disabled={loading}
+          className="my-3 w-full"
+          variant="primary"
+          onClick={verify}
+        >
+          {t('checkCode.verify', { ns: 'login' })}
+        </Button>
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
-      <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
+      <div
+        onClick={() => router.back()}
+        className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary"
+      >
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
           <RiArrowLeftLine size={12} />
         </div>

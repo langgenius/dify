@@ -26,7 +26,7 @@ const ImageUploader = () => {
         className="hidden"
         type="file"
         multiple
-        accept={ACCEPT_TYPES.map(ext => `.${ext}`).join(',')}
+        accept={ACCEPT_TYPES.map((ext) => `.${ext}`).join(',')}
         onChange={fileChangeHandle}
       />
       <div
@@ -40,10 +40,7 @@ const ImageUploader = () => {
           <RiUploadCloud2Line className="size-5 text-text-tertiary" />
           <div>
             <span>{t('imageUploader.button', { ns: 'dataset' })}</span>
-            <span
-              className="ml-1 cursor-pointer text-text-accent"
-              onClick={selectHandle}
-            >
+            <span className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>
               {t('imageUploader.browse', { ns: 'dataset' })}
             </span>
           </div>

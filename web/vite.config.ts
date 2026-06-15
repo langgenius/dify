@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react'
 import vinext from 'vinext'
 import Inspect from 'vite-plugin-inspect'
 import { defineConfig } from 'vite-plus'
-import { createCodeInspectorPlugin, createForceInspectorClientInjectionPlugin } from './plugins/vite/code-inspector.ts'
+import {
+  createCodeInspectorPlugin,
+  createForceInspectorClientInjectionPlugin,
+} from './plugins/vite/code-inspector.ts'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
 import { getRootClientInjectTarget } from './plugins/vite/inject-target.ts'
 import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test.ts'
@@ -15,8 +18,9 @@ const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 
 export default defineConfig(({ mode }) => {
   const isTest = mode === 'test'
-  const isStorybook = process.env.STORYBOOK === 'true'
-    || process.argv.some(arg => arg.toLowerCase().includes('storybook'))
+  const isStorybook =
+    process.env.STORYBOOK === 'true' ||
+    process.argv.some((arg) => arg.toLowerCase().includes('storybook'))
 
   return {
     plugins: isTest
@@ -28,15 +32,12 @@ export default defineConfig(({ mode }) => {
             name: 'mdx-stub',
             enforce: 'pre',
             transform(_, id) {
-              if (id.endsWith('.mdx'))
-                return { code: 'export default () => null', map: null }
+              if (id.endsWith('.mdx')) return { code: 'export default () => null', map: null }
             },
           },
         ]
       : isStorybook
-        ? [
-            react(),
-          ]
+        ? [react()]
         : [
             Inspect(),
             createCodeInspectorPlugin({

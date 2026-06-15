@@ -7,7 +7,9 @@ vi.mock('../title', () => ({
 }))
 
 vi.mock('../../../../base/icons/src/vender/other', () => ({
-  Group: ({ className }: { className: string }) => <span data-testid="group-icon" className={className} />,
+  Group: ({ className }: { className: string }) => (
+    <span data-testid="group-icon" className={className} />
+  ),
 }))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({

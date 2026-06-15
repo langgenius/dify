@@ -10,7 +10,10 @@ const GlobalInputs = () => {
       <span className="system-sm-semibold-uppercase text-text-secondary">
         {t('inputFieldPanel.globalInputs.title', { ns: 'datasetPipeline' })}
       </span>
-      <Infotip aria-label={t('inputFieldPanel.globalInputs.tooltip', { ns: 'datasetPipeline' })} popupClassName="w-[240px]">
+      <Infotip
+        aria-label={t('inputFieldPanel.globalInputs.tooltip', { ns: 'datasetPipeline' })}
+        popupClassName="w-[240px]"
+      >
         {t('inputFieldPanel.globalInputs.tooltip', { ns: 'datasetPipeline' })}
       </Infotip>
     </div>

@@ -20,13 +20,7 @@ export type AppCardProps = {
   isExplore?: boolean
 }
 
-const AppCard = ({
-  app,
-  canCreate,
-  onCreate,
-  onTry,
-  isExplore = true,
-}: AppCardProps) => {
+const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardProps) => {
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
   const canViewApp = IS_CLOUD_EDITION
@@ -42,7 +36,11 @@ const AppCard = ({
   }
 
   return (
-    <div className={cn('group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg')}>
+    <div
+      className={cn(
+        'group relative col-span-1 flex cursor-pointer flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-2 shadow-sm transition-all duration-200 ease-in-out hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-lg',
+      )}
+    >
       <div className="flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pt-[14px] pb-3">
         <div className="relative shrink-0">
           <AppIcon
@@ -60,33 +58,50 @@ const AppCard = ({
         </div>
         <div className="w-0 grow py-px">
           <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-            <div className="truncate" title={appBasicInfo.name}>{appBasicInfo.name}</div>
+            <div className="truncate" title={appBasicInfo.name}>
+              {appBasicInfo.name}
+            </div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
-            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.CHAT && <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.WORKFLOW && <div className="truncate">{t('types.workflow', { ns: 'app' }).toUpperCase()}</div>}
-            {appBasicInfo.mode === AppModeEnum.COMPLETION && <div className="truncate">{t('types.completion', { ns: 'app' }).toUpperCase()}</div>}
+            {appBasicInfo.mode === AppModeEnum.ADVANCED_CHAT && (
+              <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.CHAT && (
+              <div className="truncate">{t('types.chatbot', { ns: 'app' }).toUpperCase()}</div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.AGENT_CHAT && (
+              <div className="truncate">{t('types.agent', { ns: 'app' }).toUpperCase()}</div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.WORKFLOW && (
+              <div className="truncate">{t('types.workflow', { ns: 'app' }).toUpperCase()}</div>
+            )}
+            {appBasicInfo.mode === AppModeEnum.COMPLETION && (
+              <div className="truncate">{t('types.completion', { ns: 'app' }).toUpperCase()}</div>
+            )}
           </div>
         </div>
       </div>
       <div className="description-wrapper h-[90px] px-[14px] system-xs-regular text-text-tertiary">
-        <div className="line-clamp-4 group-hover:line-clamp-2">
-          {app.description}
-        </div>
+        <div className="line-clamp-4 group-hover:line-clamp-2">{app.description}</div>
       </div>
       {isExplore && (canCreate || canViewApp) && (
-        <div className={cn('absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-          <div className={cn('grid h-8 w-full grid-cols-1 space-x-2', canCreate && canViewApp && 'grid-cols-2')}>
-            {
-              canCreate && (
-                <Button variant="primary" className="h-7" onClick={() => onCreate()}>
-                  <PlusIcon className="mr-1 size-4" />
-                  <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
-                </Button>
-              )
-            }
+        <div
+          className={cn(
+            'absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex',
+          )}
+        >
+          <div
+            className={cn(
+              'grid h-8 w-full grid-cols-1 space-x-2',
+              canCreate && canViewApp && 'grid-cols-2',
+            )}
+          >
+            {canCreate && (
+              <Button variant="primary" className="h-7" onClick={() => onCreate()}>
+                <PlusIcon className="mr-1 size-4" />
+                <span className="text-xs">{t('appCard.addToWorkspace', { ns: 'explore' })}</span>
+              </Button>
+            )}
             {canViewApp && (
               <Button className="h-7" onClick={handleTryApp}>
                 <RiInformation2Line className="mr-1 size-4" />

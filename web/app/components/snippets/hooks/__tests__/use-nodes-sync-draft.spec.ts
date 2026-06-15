@@ -34,10 +34,10 @@ vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-serial-async-callback', () => ({
-  useSerialAsyncCallback: (fn: (...args: unknown[]) => Promise<void>, checkFn?: () => boolean) =>
+  useSerialAsyncCallback:
+    (fn: (...args: unknown[]) => Promise<void>, checkFn?: () => boolean) =>
     (...args: unknown[]) => {
-      if (checkFn?.())
-        return
+      if (checkFn?.()) return
 
       if (deferSerialCallbacks) {
         queuedSerialCallbacks.push(() => fn(...args))
@@ -144,11 +144,13 @@ describe('snippet/use-nodes-sync-draft', () => {
     mockGetNodes.mockReturnValue([
       { id: 'late-node', position: { x: 9, y: 9 }, data: { title: 'Late' } },
     ])
-    reactFlowState.edges = [{ id: 'late-edge', source: 'late-node', target: 'late-target', data: { stable: false } }]
+    reactFlowState.edges = [
+      { id: 'late-edge', source: 'late-node', target: 'late-target', data: { stable: false } },
+    ]
     reactFlowState.transform = [99, 88, 0.5]
 
     await act(async () => {
-      await Promise.all(queuedSerialCallbacks.map(run => run()))
+      await Promise.all(queuedSerialCallbacks.map((run) => run()))
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({

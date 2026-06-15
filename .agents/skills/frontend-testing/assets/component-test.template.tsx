@@ -108,10 +108,8 @@ describe('ComponentName', () => {
     it('should render without crashing', () => {
       // Arrange - Setup data and mocks
       // const props = createMockProps()
-
       // Act - Render the component
       // render(<ComponentName {...props} />)
-
       // Assert - Verify expected output
       // Prefer getByRole for accessibility; it's what users "see"
       // expect(screen.getByRole('...')).toBeInTheDocument()

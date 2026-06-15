@@ -10,14 +10,14 @@ const PluginPage = () => {
   const { data: plugins, refetch: mutate } = usePluginProviders()
 
   const Plugin_MAP: Record<string, (plugin: PluginProvider) => React.JSX.Element> = {
-    serpapi: (plugin: PluginProvider) => <SerpapiPlugin key="serpapi" plugin={plugin} onUpdate={() => mutate()} />,
+    serpapi: (plugin: PluginProvider) => (
+      <SerpapiPlugin key="serpapi" plugin={plugin} onUpdate={() => mutate()} />
+    ),
   }
 
   return (
     <div className="pb-7">
-      <div>
-        {plugins?.map(plugin => Plugin_MAP[plugin.tool_name]!(plugin))}
-      </div>
+      <div>{plugins?.map((plugin) => Plugin_MAP[plugin.tool_name]!(plugin))}</div>
       <div className="fixed bottom-0 flex h-[42px] w-[472px] items-center bg-white text-xs text-gray-500">
         <LockClosedIcon className="mr-1 size-3" />
         {t('provider.encrypted.front', { ns: 'common' })}

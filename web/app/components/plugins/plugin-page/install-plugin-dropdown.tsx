@@ -30,20 +30,18 @@ type InstallMethod = {
   action: string
 }
 
-const InstallPluginDropdown = ({
-  onSwitchToMarketplaceTab,
-}: Props) => {
+const InstallPluginDropdown = ({ onSwitchToMarketplaceTab }: Props) => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+    select: (s) => s.enable_marketplace,
   })
   const { data: plugin_installation_permission } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
-    select: s => s.plugin_installation_permission,
+    select: (s) => s.plugin_installation_permission,
   })
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,8 +56,7 @@ const InstallPluginDropdown = ({
   const handleCloseLocalInstaller = () => {
     setSelectedAction(null)
     setSelectedFile(null)
-    if (fileInputRef.current)
-      fileInputRef.current.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   // TODO TEST INSTALL : uninstall
@@ -78,10 +75,13 @@ const InstallPluginDropdown = ({
   const installMethods = useMemo<InstallMethod[]>(() => {
     const methods: InstallMethod[] = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({
+        icon: MagicBox,
+        text: t('source.marketplace', { ns: 'plugin' }),
+        action: 'marketplace',
+      })
 
-    if (plugin_installation_permission.restrict_to_marketplace_only)
-      return methods
+    if (plugin_installation_permission.restrict_to_marketplace_only) return methods
 
     methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
     methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
@@ -115,11 +115,9 @@ const InstallPluginDropdown = ({
           accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
         />
         <DropdownMenuTrigger
-          render={(
-            <Button
-              className="size-full p-2 text-components-button-secondary-text data-popup-open:bg-state-base-hover"
-            />
-          )}
+          render={
+            <Button className="size-full p-2 text-components-button-secondary-text data-popup-open:bg-state-base-hover" />
+          }
         >
           <>
             <RiAddLine className="size-4" />
@@ -150,19 +148,15 @@ const InstallPluginDropdown = ({
         </DropdownMenuContent>
       </div>
       {selectedAction === 'github' && (
-        <InstallFromGitHub
+        <InstallFromGitHub onSuccess={noop} onClose={() => setSelectedAction(null)} />
+      )}
+      {selectedAction === 'local' && selectedFile && (
+        <InstallFromLocalPackage
+          file={selectedFile}
+          onClose={handleCloseLocalInstaller}
           onSuccess={noop}
-          onClose={() => setSelectedAction(null)}
         />
       )}
-      {selectedAction === 'local' && selectedFile
-        && (
-          <InstallFromLocalPackage
-            file={selectedFile}
-            onClose={handleCloseLocalInstaller}
-            onSuccess={noop}
-          />
-        )}
       {/* {pluginLists.map((item: any) => (
         <div key={item.id} onClick={() => handleUninstall(item.id)}>{item.name} 卸载</div>
       ))} */}

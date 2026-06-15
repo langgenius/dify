@@ -1,4 +1,8 @@
-import type { AppDescribeResponse, AppListResponse, AppMode } from '@dify/contracts/api/openapi/types.gen'
+import type {
+  AppDescribeResponse,
+  AppListResponse,
+  AppMode,
+} from '@dify/contracts/api/openapi/types.gen'
 import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
 import { createOpenApiClient } from '@/http/orpc'

@@ -7,9 +7,7 @@ import { useTranslation } from '#i18n'
 import { useSelector } from '@/context/app-context'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
-import {
-  renderI18nObject,
-} from '@/i18n-config'
+import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
@@ -52,7 +50,7 @@ const Card = ({
   const locale = useGetLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories(true)
-  const currentWorkspaceId = useSelector(s => s.currentWorkspace.id)
+  const currentWorkspaceId = useSelector((s) => s.currentWorkspace.id)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, from } = payload
   const badges = payload.badges ?? []
   const { theme } = useTheme()
@@ -65,37 +63,41 @@ const Card = ({
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
 
-  const wrapClassName = cn('hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', className)
+  const wrapClassName = cn(
+    'hover-bg-components-panel-on-panel-item-bg relative overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs',
+    className,
+  )
   if (isLoading) {
-    return (
-      <Placeholder
-        wrapClassName={wrapClassName}
-        loadingFileName={loadingFileName!}
-      />
-    )
+    return <Placeholder wrapClassName={wrapClassName} loadingFileName={loadingFileName!} />
   }
 
   return (
     <div className={wrapClassName}>
       <div className={cn('p-4 pb-3', limitedInstall && 'pb-1')}>
-        {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label!} />}
+        {!hideCornerMark && (
+          <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label!} />
+        )}
         {/* Header */}
         <div className="flex">
           <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
-              {isPartner && <Partner className="ml-0.5 size-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-              {verified && <Verified className="ml-0.5 size-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
-              {titleLeft}
-              {' '}
-              {/* This can be version badge */}
+              {isPartner && (
+                <Partner
+                  className="ml-0.5 size-4"
+                  text={t('marketplace.partnerTip', { ns: 'plugin' })}
+                />
+              )}
+              {verified && (
+                <Verified
+                  className="ml-0.5 size-4"
+                  text={t('marketplace.verifiedTip', { ns: 'plugin' })}
+                />
+              )}
+              {titleLeft} {/* This can be version badge */}
             </div>
-            <OrgInfo
-              className="mt-0.5"
-              orgName={org}
-              packageName={name}
-            />
+            <OrgInfo className="mt-0.5" orgName={org} packageName={name} />
           </div>
         </div>
         <Description
@@ -105,15 +107,14 @@ const Card = ({
         />
         {!!footer && <div>{footer}</div>}
       </div>
-      {limitedInstall
-        && (
-          <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:inset-0 after:bg-toast-warning-bg after:opacity-40">
-            <RiAlertFill className="size-3 shrink-0 text-text-warning-secondary" />
-            <p className="z-10 grow system-xs-regular text-text-secondary">
-              {t('installModal.installWarning', { ns: 'plugin' })}
-            </p>
-          </div>
-        )}
+      {limitedInstall && (
+        <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:inset-0 after:bg-toast-warning-bg after:opacity-40">
+          <RiAlertFill className="size-3 shrink-0 text-text-warning-secondary" />
+          <p className="z-10 grow system-xs-regular text-text-secondary">
+            {t('installModal.installWarning', { ns: 'plugin' })}
+          </p>
+        </div>
+      )}
     </div>
   )
 }

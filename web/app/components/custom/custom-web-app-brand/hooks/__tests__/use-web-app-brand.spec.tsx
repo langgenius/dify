@@ -89,7 +89,8 @@ const createProviderContext = ({
 
 const createAppContextValue = (overrides: Partial<AppContextValue> = {}): AppContextValue => {
   const { currentWorkspace: currentWorkspaceOverride, ...restOverrides } = overrides
-  const workspaceOverrides: Partial<AppContextValue['currentWorkspace']> = currentWorkspaceOverride ?? {}
+  const workspaceOverrides: Partial<AppContextValue['currentWorkspace']> =
+    currentWorkspaceOverride ?? {}
   const currentWorkspace = {
     ...initialWorkspaceInfo,
     ...workspaceOverrides,
@@ -144,10 +145,12 @@ describe('useWebAppBrand', () => {
     })
 
     it('should disable uploads in sandbox workspaces and when branding is removed', () => {
-      mockUseProviderContext.mockReturnValue(createProviderContext({
-        enableBilling: true,
-        planType: Plan.sandbox,
-      }))
+      mockUseProviderContext.mockReturnValue(
+        createProviderContext({
+          enableBilling: true,
+          planType: Plan.sandbox,
+        }),
+      )
       appContextValue = createAppContextValue({
         currentWorkspace: {
           ...initialWorkspaceInfo,

@@ -10,12 +10,15 @@ export const useCheckValidated = (form: AnyFormApi, FormSchemas: FormSchema[]) =
     if (allError) {
       const fields = allError.fields
       const errorArray = Object.keys(fields).reduce((acc: string[], key: string) => {
-        const currentSchema = FormSchemas.find(schema => schema.name === key)
+        const currentSchema = FormSchemas.find((schema) => schema.name === key)
         const { show_on = [] } = currentSchema || {}
-        const showOnValues = show_on.reduce((acc, condition) => {
-          acc[condition.variable] = values[condition.variable]
-          return acc
-        }, {} as Record<string, any>)
+        const showOnValues = show_on.reduce(
+          (acc, condition) => {
+            acc[condition.variable] = values[condition.variable]
+            return acc
+          },
+          {} as Record<string, any>,
+        )
         const show = show_on?.every((condition) => {
           const conditionValue = showOnValues[condition.variable]
           return conditionValue === condition.value

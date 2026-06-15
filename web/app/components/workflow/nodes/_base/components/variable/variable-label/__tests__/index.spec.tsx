@@ -5,7 +5,13 @@ import VariableIcon from '../base/variable-icon'
 import VariableLabel from '../base/variable-label'
 import VariableName from '../base/variable-name'
 import VariableNodeLabel from '../base/variable-node-label'
-import { VariableIconWithColor, VariableLabelInEditor, VariableLabelInNode, VariableLabelInSelect, VariableLabelInText } from '../index'
+import {
+  VariableIconWithColor,
+  VariableLabelInEditor,
+  VariableLabelInNode,
+  VariableLabelInSelect,
+  VariableLabelInText,
+} from '../index'
 
 describe('variable-label index', () => {
   beforeEach(() => {
@@ -83,10 +89,7 @@ describe('variable-label index', () => {
       const { container } = render(
         <div>
           <VariableIcon variables={['env', 'API_KEY']} />
-          <VariableIconWithColor
-            variables={['conversation', 'message']}
-            isExceptionVariable
-          />
+          <VariableIconWithColor variables={['conversation', 'message']} isExceptionVariable />
         </div>,
       )
 
@@ -94,12 +97,7 @@ describe('variable-label index', () => {
     })
 
     it('should render the base variable name with shortened path and title', () => {
-      render(
-        <VariableName
-          variables={['node-id', 'payload', 'answer']}
-          notShowFullPath
-        />,
-      )
+      render(<VariableName variables={['node-id', 'payload', 'answer']} notShowFullPath />)
 
       expect(screen.getByText('answer')).toHaveAttribute('title', 'answer')
     })
@@ -109,12 +107,7 @@ describe('variable-label index', () => {
 
       expect(container).toBeEmptyDOMElement()
 
-      rerender(
-        <VariableNodeLabel
-          nodeType={BlockEnum.Code}
-          nodeTitle="Code Node"
-        />,
-      )
+      rerender(<VariableNodeLabel nodeType={BlockEnum.Code} nodeTitle="Code Node" />)
 
       expect(screen.getByText('Code Node')).toBeInTheDocument()
     })

@@ -1,40 +1,32 @@
-import type {
-  FC,
-} from 'react'
-import type {
-  Node,
-} from '@/app/components/workflow/types'
+import type { FC } from 'react'
+import type { Node } from '@/app/components/workflow/types'
 import { useEventListener } from 'ahooks'
 import { produce } from 'immer'
-import {
-  memo,
-} from 'react'
-import {
-  useReactFlow,
-  useViewport,
-} from 'reactflow'
+import { memo } from 'react'
+import { useReactFlow, useViewport } from 'reactflow'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { CUSTOM_NODE } from './constants'
-import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from './hooks'
+import {
+  useAutoGenerateWebhookUrl,
+  useNodesInteractions,
+  useNodesSyncDraft,
+  useWorkflowHistory,
+  WorkflowHistoryEvent,
+} from './hooks'
 import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
-import {
-  useStore,
-  useWorkflowStore,
-} from './store'
+import { useStore, useWorkflowStore } from './store'
 import { BlockEnum } from './types'
 import { getIterationStartNode, getLoopStartNode } from './utils'
 
 type Props = Readonly<{
   candidateNode: Node
 }>
-const CandidateNodeMain: FC<Props> = ({
-  candidateNode,
-}) => {
+const CandidateNodeMain: FC<Props> = ({ candidateNode }) => {
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
-  const mousePosition = useStore(s => s.mousePosition)
+  const mousePosition = useStore((s) => s.mousePosition)
   const { zoom } = useViewport()
   const { handleNodeSelect } = useNodesInteractions()
   const { saveStateToHistory } = useWorkflowHistory()
@@ -62,19 +54,16 @@ const CandidateNodeMain: FC<Props> = ({
       if (candidateNode.data.type === BlockEnum.Iteration)
         draft.push(getIterationStartNode(candidateNode.id))
 
-      if (candidateNode.data.type === BlockEnum.Loop)
-        draft.push(getLoopStartNode(candidateNode.id))
+      if (candidateNode.data.type === BlockEnum.Loop) draft.push(getLoopStartNode(candidateNode.id))
     })
     setNodes(newNodes)
     if (candidateNode.type === CUSTOM_NOTE_NODE)
       saveStateToHistory(WorkflowHistoryEvent.NoteAdd, { nodeId: candidateNode.id })
-    else
-      saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: candidateNode.id })
+    else saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: candidateNode.id })
 
     workflowStore.setState({ candidateNode: undefined })
 
-    if (candidateNode.type === CUSTOM_NOTE_NODE)
-      handleNodeSelect(candidateNode.id)
+    if (candidateNode.type === CUSTOM_NOTE_NODE) handleNodeSelect(candidateNode.id)
 
     if (candidateNode.data.type === BlockEnum.TriggerWebhook) {
       handleSyncWorkflowDraft(true, true, {
@@ -98,16 +87,8 @@ const CandidateNodeMain: FC<Props> = ({
         transformOrigin: '0 0',
       }}
     >
-      {
-        candidateNode.type === CUSTOM_NODE && (
-          <CustomNode {...candidateNode as any} />
-        )
-      }
-      {
-        candidateNode.type === CUSTOM_NOTE_NODE && (
-          <CustomNoteNode {...candidateNode as any} />
-        )
-      }
+      {candidateNode.type === CUSTOM_NODE && <CustomNode {...(candidateNode as any)} />}
+      {candidateNode.type === CUSTOM_NOTE_NODE && <CustomNoteNode {...(candidateNode as any)} />}
     </div>
   )
 }

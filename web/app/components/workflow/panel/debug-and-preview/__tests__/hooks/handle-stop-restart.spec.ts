@@ -137,9 +137,12 @@ describe('useChat – handleStop', () => {
     )
 
     act(() => {
-      result.current.handleSend({ query: 'test' }, {
-        onGetSuggestedQuestions: mockGetSuggested,
-      })
+      result.current.handleSend(
+        { query: 'test' },
+        {
+          onGetSuggestedQuestions: mockGetSuggested,
+        },
+      )
     })
 
     await act(async () => {

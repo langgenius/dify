@@ -5,9 +5,10 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import List from '../index'
 
 let mockBrandingEnabled = false
-const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  systemFeatures: { branding: { enabled: mockBrandingEnabled } },
-})
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, {
+    systemFeatures: { branding: { enabled: mockBrandingEnabled } },
+  })
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -71,7 +72,15 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 
 // Mock Datasets component
 vi.mock('../datasets', () => ({
-  default: ({ tags, keywords, includeAll }: { tags: string[], keywords: string, includeAll: boolean }) => (
+  default: ({
+    tags,
+    keywords,
+    includeAll,
+  }: {
+    tags: string[]
+    keywords: string
+    includeAll: boolean
+  }) => (
     <div data-testid="datasets-component">
       <span data-testid="tags">{tags.join(',')}</span>
       <span data-testid="keywords">{keywords}</span>
@@ -104,12 +113,20 @@ vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
 
 // Mock TagManagementModal
 vi.mock('@/features/tag-management/components/tag-management-modal', () => ({
-  TagManagementModal: ({ show }: { show: boolean }) => show ? <div data-testid="tag-management-modal" /> : null,
+  TagManagementModal: ({ show }: { show: boolean }) =>
+    show ? <div data-testid="tag-management-modal" /> : null,
 }))
 
 // Mock TagFilter
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({ onChange, onOpenTagManagement }: { value: string[], onChange: (val: string[]) => void, onOpenTagManagement: () => void }) => (
+  TagFilter: ({
+    onChange,
+    onOpenTagManagement,
+  }: {
+    value: string[]
+    onChange: (val: string[]) => void
+    onOpenTagManagement: () => void
+  }) => (
     <div data-testid="tag-filter">
       <button onClick={() => onChange(['tag-1', 'tag-2'])}>Select Tags</button>
       <button onClick={onOpenTagManagement}>Manage Tags</button>
@@ -119,7 +136,15 @@ vi.mock('@/features/tag-management/components/tag-filter', () => ({
 
 // Mock CheckboxWithLabel
 vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
-  default: ({ isChecked, onChange, label }: { isChecked: boolean, onChange: () => void, label: string }) => (
+  default: ({
+    isChecked,
+    onChange,
+    label,
+  }: {
+    isChecked: boolean
+    onChange: () => void
+    label: string
+  }) => (
     <label>
       <input
         type="checkbox"

@@ -73,8 +73,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
   const hasParams = paramsFormSchemas.length > 0
   const isTeamAuthorized = currentProvider?.is_team_authorization
 
-  if ((!hasSettings && !hasParams) || !isTeamAuthorized)
-    return null
+  if ((!hasSettings && !hasParams) || !isTeamAuthorized) return null
 
   return (
     <>
@@ -89,8 +88,7 @@ const ToolSettingsPanel: FC<ToolSettingsPanelProps> = ({
           smallItem
           value={currType}
           onChange={(v) => {
-            if (v === 'settings' || v === 'params')
-              onCurrTypeChange(v)
+            if (v === 'settings' || v === 'params') onCurrTypeChange(v)
           }}
           options={[
             { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },

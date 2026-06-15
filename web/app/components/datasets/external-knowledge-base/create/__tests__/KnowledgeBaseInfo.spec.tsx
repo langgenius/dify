@@ -139,7 +139,9 @@ describe('KnowledgeBaseInfo', () => {
     })
 
     it('should apply filled text color class when description has content', () => {
-      const { container } = render(<KnowledgeBaseInfo {...defaultProps} description="has content" />)
+      const { container } = render(
+        <KnowledgeBaseInfo {...defaultProps} description="has content" />,
+      )
       const textarea = container.querySelector('textarea')
       expect(textarea).toHaveClass('text-components-input-text-filled')
     })

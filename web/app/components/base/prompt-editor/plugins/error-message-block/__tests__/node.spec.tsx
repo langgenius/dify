@@ -1,6 +1,10 @@
 import type { Klass, LexicalEditor, LexicalNode } from 'lexical'
 import { createEditor } from 'lexical'
-import { $createErrorMessageBlockNode, $isErrorMessageBlockNode, ErrorMessageBlockNode } from '../node'
+import {
+  $createErrorMessageBlockNode,
+  $isErrorMessageBlockNode,
+  ErrorMessageBlockNode,
+} from '../node'
 
 describe('ErrorMessageBlockNode', () => {
   let editor: LexicalEditor

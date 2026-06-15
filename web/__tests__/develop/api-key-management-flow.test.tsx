@@ -160,9 +160,7 @@ describe('API Key management flow', () => {
   it('renders correctly with different API URLs', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
 
-    const { rerender } = render(
-      <ApiServer apiBaseUrl="http://localhost:5001/v1" appId="app-dev" />,
-    )
+    const { rerender } = render(<ApiServer apiBaseUrl="http://localhost:5001/v1" appId="app-dev" />)
 
     expect(screen.getByText('http://localhost:5001/v1')).toBeInTheDocument()
 
@@ -183,9 +181,7 @@ describe('API Key management flow', () => {
     })
     await flushUI()
 
-    rerender(
-      <ApiServer apiBaseUrl="https://api.production.com/v1" appId="app-prod" />,
-    )
+    rerender(<ApiServer apiBaseUrl="https://api.production.com/v1" appId="app-prod" />)
 
     expect(screen.getByText('https://api.production.com/v1')).toBeInTheDocument()
   })

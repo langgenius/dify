@@ -69,7 +69,9 @@ vi.mock('../../hooks/use-hide-logic', () => ({
 }))
 
 // Mock child components
-let uploadingOnPackageUploaded: ((result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void) | null = null
+let uploadingOnPackageUploaded:
+  | ((result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void)
+  | null = null
 let uploadingOnBundleUploaded: ((result: Dependency[]) => void) | null = null
 let _uploadingOnFailed: ((errorMsg: string) => void) | null = null
 
@@ -85,7 +87,7 @@ vi.mock('../steps/uploading', () => ({
     isBundle: boolean
     file: File
     onCancel: () => void
-    onPackageUploaded: (result: { uniqueIdentifier: string, manifest: PluginDeclaration }) => void
+    onPackageUploaded: (result: { uniqueIdentifier: string; manifest: PluginDeclaration }) => void
     onBundleUploaded: (result: Dependency[]) => void
     onFailed: (errorMsg: string) => void
   }) => {
@@ -96,13 +98,17 @@ vi.mock('../steps/uploading', () => ({
       <div data-testid="uploading-step">
         <span data-testid="is-bundle">{isBundle ? 'true' : 'false'}</span>
         <span data-testid="file-name">{file.name}</span>
-        <button data-testid="cancel-upload-btn" onClick={onCancel}>Cancel</button>
+        <button data-testid="cancel-upload-btn" onClick={onCancel}>
+          Cancel
+        </button>
         <button
           data-testid="trigger-package-upload-btn"
-          onClick={() => onPackageUploaded({
-            uniqueIdentifier: 'test-unique-id',
-            manifest: createMockManifest(),
-          })}
+          onClick={() =>
+            onPackageUploaded({
+              uniqueIdentifier: 'test-unique-id',
+              manifest: createMockManifest(),
+            })
+          }
         >
           Trigger Package Upload
         </button>
@@ -158,8 +164,12 @@ vi.mock('../ready-to-install', () => ({
         <span data-testid="package-unique-identifier">{uniqueIdentifier || 'null'}</span>
         <span data-testid="package-manifest-name">{manifest?.name || 'null'}</span>
         <span data-testid="package-error-msg">{errorMsg || 'null'}</span>
-        <button data-testid="package-close-btn" onClick={onClose}>Close</button>
-        <button data-testid="package-start-install-btn" onClick={onStartToInstall}>Start Install</button>
+        <button data-testid="package-close-btn" onClick={onClose}>
+          Close
+        </button>
+        <button data-testid="package-start-install-btn" onClick={onStartToInstall}>
+          Start Install
+        </button>
         <button
           data-testid="package-step-installed-btn"
           onClick={() => onStepChange(InstallStep.installed)}
@@ -178,10 +188,7 @@ vi.mock('../ready-to-install', () => ({
         >
           Set Not Installing
         </button>
-        <button
-          data-testid="package-set-error-btn"
-          onClick={() => onError('Custom error message')}
-        >
+        <button data-testid="package-set-error-btn" onClick={() => onError('Custom error message')}>
           Set Error
         </button>
       </div>
@@ -214,8 +221,12 @@ vi.mock('../../install-bundle/ready-to-install', () => ({
       <div data-testid="ready-to-install-bundle">
         <span data-testid="bundle-step">{step}</span>
         <span data-testid="bundle-plugins-count">{allPlugins.length}</span>
-        <button data-testid="bundle-close-btn" onClick={onClose}>Close</button>
-        <button data-testid="bundle-start-install-btn" onClick={onStartToInstall}>Start Install</button>
+        <button data-testid="bundle-close-btn" onClick={onClose}>
+          Close
+        </button>
+        <button data-testid="bundle-start-install-btn" onClick={onStartToInstall}>
+          Start Install
+        </button>
         <button
           data-testid="bundle-step-installed-btn"
           onClick={() => onStepChange(InstallStep.installed)}
@@ -999,7 +1010,9 @@ describe('InstallFromLocalPackage', () => {
 
     it('should handle different file types correctly', () => {
       // Package file
-      const { rerender } = render(<InstallFromLocalPackage {...defaultProps} file={createMockFile('test.difypkg')} />)
+      const { rerender } = render(
+        <InstallFromLocalPackage {...defaultProps} file={createMockFile('test.difypkg')} />,
+      )
       expect(screen.getByTestId('is-bundle')).toHaveTextContent('false')
 
       // Bundle file

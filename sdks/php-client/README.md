@@ -15,12 +15,12 @@ In exist project, copy the `dify-client.php` to you project, and merge the follo
 
 ```json
 {
-    "require": {
-        "guzzlehttp/guzzle": "^7.9"
-    },
-    "autoload": {
-        "files": ["path/to/dify-client.php"]
-    }
+  "require": {
+    "guzzlehttp/guzzle": "^7.9"
+  },
+  "autoload": {
+    "files": ["path/to/dify-client.php"]
+  }
 }
 ```
 

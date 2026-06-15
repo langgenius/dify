@@ -1,4 +1,9 @@
-import type { ChunkInfo, GeneralChunks, ParentChildChunks, QAChunks } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
+import type {
+  ChunkInfo,
+  GeneralChunks,
+  ParentChildChunks,
+  QAChunks,
+} from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
@@ -14,8 +19,9 @@ import Tab from '../tabs/tab'
 let mockWorkflowRunningData: WorkflowRunningData | undefined
 
 vi.mock('@/app/components/workflow/store', () => ({
-  useStore: <T,>(selector: (state: { workflowRunningData: WorkflowRunningData | undefined }) => T) =>
-    selector({ workflowRunningData: mockWorkflowRunningData }),
+  useStore: <T,>(
+    selector: (state: { workflowRunningData: WorkflowRunningData | undefined }) => T,
+  ) => selector({ workflowRunningData: mockWorkflowRunningData }),
 }))
 
 vi.mock('@/app/components/workflow/run/result-panel', () => ({
@@ -61,7 +67,7 @@ vi.mock('@/app/components/workflow/run/result-panel', () => ({
 }))
 
 vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
-  default: ({ className, list }: { className?: string, list: unknown[] }) => (
+  default: ({ className, list }: { className?: string; list: unknown[] }) => (
     <div data-testid="tracing-panel" data-classname={className} data-list-length={list.length}>
       TracingPanel
     </div>
@@ -69,7 +75,7 @@ vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
 }))
 
 vi.mock('@/app/components/rag-pipeline/components/chunk-card-list', () => ({
-  ChunkCardList: ({ chunkType, chunkInfo }: { chunkType?: string, chunkInfo?: ChunkInfo }) => (
+  ChunkCardList: ({ chunkType, chunkInfo }: { chunkType?: string; chunkInfo?: ChunkInfo }) => (
     <div
       data-testid="chunk-card-list"
       data-chunk-type={chunkType}
@@ -148,7 +154,10 @@ const createGeneralChunkOutputs = (chunkCount: number = 5) => ({
   })),
 })
 
-const createParentChildChunkOutputs = (parentMode: 'paragraph' | 'full-doc', parentCount: number = 3) => ({
+const createParentChildChunkOutputs = (
+  parentMode: 'paragraph' | 'full-doc',
+  parentCount: number = 3,
+) => ({
   chunk_structure: ChunkingMode.parentChild,
   parent_mode: parentMode,
   preview: Array.from({ length: parentCount }, (_, i) => ({
@@ -316,22 +325,46 @@ describe('Tab', () => {
       const workflowData = createMockWorkflowRunningData()
 
       const { rerender } = render(
-        <Tab isActive={true} label="Tab" value="tab" workflowRunningData={workflowData} onClick={mockOnClick} />,
+        <Tab
+          isActive={true}
+          label="Tab"
+          value="tab"
+          workflowRunningData={workflowData}
+          onClick={mockOnClick}
+        />,
       )
       expect(screen.getByRole('button')).not.toBeDisabled()
 
       rerender(
-        <Tab isActive={false} label="Tab" value="tab" workflowRunningData={workflowData} onClick={mockOnClick} />,
+        <Tab
+          isActive={false}
+          label="Tab"
+          value="tab"
+          workflowRunningData={workflowData}
+          onClick={mockOnClick}
+        />,
       )
       expect(screen.getByRole('button')).not.toBeDisabled()
 
       rerender(
-        <Tab isActive={true} label="Tab" value="tab" workflowRunningData={undefined} onClick={mockOnClick} />,
+        <Tab
+          isActive={true}
+          label="Tab"
+          value="tab"
+          workflowRunningData={undefined}
+          onClick={mockOnClick}
+        />,
       )
       expect(screen.getByRole('button'))!.toBeDisabled()
 
       rerender(
-        <Tab isActive={false} label="Tab" value="tab" workflowRunningData={undefined} onClick={mockOnClick} />,
+        <Tab
+          isActive={false}
+          label="Tab"
+          value="tab"
+          workflowRunningData={undefined}
+          onClick={mockOnClick}
+        />,
       )
       expect(screen.getByRole('button'))!.toBeDisabled()
     })
@@ -441,13 +474,7 @@ describe('Tabs', () => {
     it('should disable all tabs when workflowRunningData is undefined', () => {
       const mockSwitchTab = vi.fn()
 
-      render(
-        <Tabs
-          currentTab="RESULT"
-          workflowRunningData={undefined}
-          switchTab={mockSwitchTab}
-        />,
-      )
+      render(<Tabs currentTab="RESULT" workflowRunningData={undefined} switchTab={mockSwitchTab} />)
 
       const buttons = screen.getAllByRole('button')
       buttons.forEach((button) => {
@@ -688,7 +715,11 @@ describe('ResultPreview', () => {
         />,
       )
 
-      expect(screen.getByText(`pipeline.result.resultPreview.footerTip:{"count":${RAG_PIPELINE_PREVIEW_CHUNK_NUM}}`))!.toBeInTheDocument()
+      expect(
+        screen.getByText(
+          `pipeline.result.resultPreview.footerTip:{"count":${RAG_PIPELINE_PREVIEW_CHUNK_NUM}}`,
+        ),
+      )!.toBeInTheDocument()
     })
 
     it('should not show loading when isRunning but outputs exist', () => {

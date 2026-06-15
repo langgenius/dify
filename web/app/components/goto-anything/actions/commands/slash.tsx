@@ -30,8 +30,7 @@ export const slashAction: ActionItem = {
     return i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' })
   },
   action: (result) => {
-    if (result.type !== 'command')
-      return
+    if (result.type !== 'command') return
     const { command, args } = result.data
     executeCommand(command, args)
   },

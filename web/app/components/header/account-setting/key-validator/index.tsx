@@ -48,8 +48,7 @@ const KeyValidator = ({
   }
 
   const handleSave = async () => {
-    if (await onSave(value))
-      eventEmitter?.emit('')
+    if (await onSave(value)) eventEmitter?.emit('')
   }
 
   const handleAdd = () => {
@@ -65,20 +64,17 @@ const KeyValidator = ({
   const handleChange = (form: Form, val: string) => {
     setValue({ ...value, [form.key]: val })
 
-    if (form.validate)
-      validate(form.validate)
+    if (form.validate) validate(form.validate)
   }
 
   const handleFocus = (form: Form) => {
-    if (form.handleFocus)
-      form.handleFocus(value, setValue)
+    if (form.handleFocus) form.handleFocus(value, setValue)
   }
 
   return (
     <div className="mb-2 rounded-md border-[0.5px] border-gray-200 bg-gray-50">
-      <div className={
-        `flex h-[52px] cursor-pointer items-center justify-between px-4 ${isOpen && 'border-b-[0.5px] border-b-gray-200'}`
-      }
+      <div
+        className={`flex h-[52px] cursor-pointer items-center justify-between px-4 ${isOpen && 'border-b-[0.5px] border-b-gray-200'}`}
       >
         {title}
         <Operate
@@ -91,31 +87,32 @@ const KeyValidator = ({
           disabled={disabled}
         />
       </div>
-      {
-        isOpen && !disabled && (
-          <div className="px-4 py-3">
-            {
-              forms.map(form => (
-                <KeyInput
-                  key={form.key}
-                  className="mb-4"
-                  name={form.title}
-                  placeholder={form.placeholder}
-                  value={value[form.key] as string || ''}
-                  onChange={v => handleChange(form, v)}
-                  onFocus={() => handleFocus(form)}
-                  validating={validating}
-                  validatedStatusState={validatedStatusState}
-                />
-              ))
-            }
-            <a className="flex cursor-pointer items-center text-xs text-primary-600" href={keyFrom.link} target="_blank" rel="noopener noreferrer">
-              {keyFrom.text}
-              <LinkExternal02 className="ml-1 size-3 text-primary-600" />
-            </a>
-          </div>
-        )
-      }
+      {isOpen && !disabled && (
+        <div className="px-4 py-3">
+          {forms.map((form) => (
+            <KeyInput
+              key={form.key}
+              className="mb-4"
+              name={form.title}
+              placeholder={form.placeholder}
+              value={(value[form.key] as string) || ''}
+              onChange={(v) => handleChange(form, v)}
+              onFocus={() => handleFocus(form)}
+              validating={validating}
+              validatedStatusState={validatedStatusState}
+            />
+          ))}
+          <a
+            className="flex cursor-pointer items-center text-xs text-primary-600"
+            href={keyFrom.link}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {keyFrom.text}
+            <LinkExternal02 className="ml-1 size-3 text-primary-600" />
+          </a>
+        </div>
+      )}
     </div>
   )
 }

@@ -26,15 +26,14 @@ type Props = Readonly<{
   className?: string
 }>
 
-const DocumentFileIcon: FC<Props> = ({
-  extension,
-  name,
-  size = 'md',
-  className,
-}) => {
+const DocumentFileIcon: FC<Props> = ({ extension, name, size = 'md', className }) => {
   const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
   return (
-    <FileTypeIcon type={extendToFileTypeMap[localExtension!] || FileAppearanceTypeEnum.document} size={size} className={className} />
+    <FileTypeIcon
+      type={extendToFileTypeMap[localExtension!] || FileAppearanceTypeEnum.document}
+      size={size}
+      className={className}
+    />
   )
 }
 export default React.memo(DocumentFileIcon)

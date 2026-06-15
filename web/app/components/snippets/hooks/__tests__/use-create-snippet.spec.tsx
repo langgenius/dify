@@ -2,19 +2,14 @@ import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from '../use-create-snippet'
 
-const {
-  mockMutateAsync,
-  mockPush,
-  mockSyncDraftWorkflow,
-  mockToastError,
-  mockToastSuccess,
-} = vi.hoisted(() => ({
-  mockMutateAsync: vi.fn(),
-  mockPush: vi.fn(),
-  mockSyncDraftWorkflow: vi.fn(),
-  mockToastError: vi.fn(),
-  mockToastSuccess: vi.fn(),
-}))
+const { mockMutateAsync, mockPush, mockSyncDraftWorkflow, mockToastError, mockToastSuccess } =
+  vi.hoisted(() => ({
+    mockMutateAsync: vi.fn(),
+    mockPush: vi.fn(),
+    mockSyncDraftWorkflow: vi.fn(),
+    mockToastError: vi.fn(),
+    mockToastSuccess: vi.fn(),
+  }))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
@@ -66,7 +61,11 @@ describe('useCreateSnippet', () => {
   describe('Create Flow', () => {
     it('should create snippet with graph and navigate on success', async () => {
       mockMutateAsync.mockResolvedValue({ id: 'snippet-123' })
-      mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
+      mockSyncDraftWorkflow.mockResolvedValue({
+        result: 'success',
+        hash: 'draft-hash',
+        updated_at: 1704067200,
+      })
       const graph = {
         nodes: [],
         edges: [],

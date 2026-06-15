@@ -16,14 +16,14 @@ export const useDocumentSelection = ({
   onSelectedIdChange,
 }: UseDocumentSelectionOptions) => {
   const hasErrorDocumentsSelected = useMemo(() => {
-    return documents.some(doc => selectedIds.includes(doc.id) && doc.display_status === 'error')
+    return documents.some((doc) => selectedIds.includes(doc.id) && doc.display_status === 'error')
   }, [documents, selectedIds])
 
   const downloadableSelectedIds = useMemo(() => {
     const selectedSet = new Set(selectedIds)
     return documents
-      .filter(doc => selectedSet.has(doc.id) && doc.data_source_type === DataSourceType.FILE)
-      .map(doc => doc.id)
+      .filter((doc) => selectedSet.has(doc.id) && doc.data_source_type === DataSourceType.FILE)
+      .map((doc) => doc.id)
   }, [documents, selectedIds])
 
   const clearSelection = useCallback(() => {

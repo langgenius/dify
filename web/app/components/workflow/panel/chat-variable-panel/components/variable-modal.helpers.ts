@@ -46,14 +46,10 @@ export const getEditorMinHeight = (type: ChatVarType) =>
   type === ChatVarTypeEnum.ArrayObject ? '240px' : '120px'
 
 export const getPlaceholderByType = (type: ChatVarType) => {
-  if (type === ChatVarTypeEnum.ArrayString)
-    return arrayStringPlaceholder
-  if (type === ChatVarTypeEnum.ArrayNumber)
-    return arrayNumberPlaceholder
-  if (type === ChatVarTypeEnum.ArrayObject)
-    return arrayObjectPlaceholder
-  if (type === ChatVarTypeEnum.ArrayBoolean)
-    return arrayBoolPlaceholder
+  if (type === ChatVarTypeEnum.ArrayString) return arrayStringPlaceholder
+  if (type === ChatVarTypeEnum.ArrayNumber) return arrayNumberPlaceholder
+  if (type === ChatVarTypeEnum.ArrayObject) return arrayObjectPlaceholder
+  if (type === ChatVarTypeEnum.ArrayBoolean) return arrayBoolPlaceholder
   return objectPlaceholder
 }
 
@@ -73,8 +69,7 @@ export const buildObjectValueItems = (chatVar?: ConversationVariable): ObjectVal
 
 export const formatObjectValueFromList = (list: ObjectValueItem[]) => {
   return list.reduce<Record<string, string | number | null>>((acc, curr) => {
-    if (curr.key)
-      acc[curr.key] = curr.value === '' || curr.value === undefined ? null : curr.value
+    if (curr.key) acc[curr.key] = curr.value === '' || curr.value === undefined ? null : curr.value
     return acc
   }, {})
 }
@@ -91,7 +86,7 @@ export const formatChatVariableValue = ({
   value: unknown
 }) => {
   const compactArrayValue = (items: unknown[]) =>
-    items.filter(item => item !== null && item !== undefined && item !== '')
+    items.filter((item) => item !== null && item !== undefined && item !== '')
   switch (type) {
     case ChatVarTypeEnum.String:
       return value || ''
@@ -123,7 +118,10 @@ export const validateVariableName = ({
   if (!isValid) {
     notify({
       type: 'error',
-      message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
+      message: t(`varKeyError.${errorMessageKey}`, {
+        ns: 'appDebug',
+        key: t('env.modal.name', { ns: 'workflow' }),
+      }),
     })
     return false
   }
@@ -144,25 +142,16 @@ export const getTypeChangeState = (nextType: ChatVarType) => {
   }
 }
 
-export const parseEditorContent = ({
-  content,
-  type,
-}: {
-  content: string
-  type: ChatVarType
-}) => {
+export const parseEditorContent = ({ content, type }: { content: string; type: ChatVarType }) => {
   const parsed = JSON.parse(content)
-  if (type !== ChatVarTypeEnum.ArrayBoolean)
-    return parsed
+  if (type !== ChatVarTypeEnum.ArrayBoolean) return parsed
 
   if (!Array.isArray(parsed))
     throw new TypeError('ArrayBoolean editor content must be a JSON array')
   return parsed
     .map((item: string | boolean) => {
-      if (item === 'True' || item === 'true' || item === true)
-        return true
-      if (item === 'False' || item === 'false' || item === false)
-        return false
+      if (item === 'True' || item === 'true' || item === true) return true
+      if (item === 'False' || item === 'false' || item === false) return false
       return undefined
     })
     .filter((item?: boolean) => item !== undefined)

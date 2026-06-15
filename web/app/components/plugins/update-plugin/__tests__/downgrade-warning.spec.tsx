@@ -24,7 +24,9 @@ describe('DowngradeWarningModal', () => {
       />,
     )
     expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.title')).toBeInTheDocument()
-    expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.description')).toBeInTheDocument()
+    expect(
+      screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.description'),
+    ).toBeInTheDocument()
   })
 
   it('renders three action buttons', () => {
@@ -36,7 +38,9 @@ describe('DowngradeWarningModal', () => {
       />,
     )
     expect(screen.getByText('app.newApp.Cancel')).toBeInTheDocument()
-    expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.downgrade')).toBeInTheDocument()
+    expect(
+      screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.downgrade'),
+    ).toBeInTheDocument()
     expect(screen.getByText('plugin.autoUpdate.pluginDowngradeWarning.exclude')).toBeInTheDocument()
   })
 

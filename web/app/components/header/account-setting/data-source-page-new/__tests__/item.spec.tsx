@@ -82,14 +82,10 @@ describe('Item Component', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(mockOnAction).toHaveBeenCalledWith(
-        'rename',
-        mockCredentialItem,
-        {
-          credential_id: 'test-id',
-          name: 'New Name',
-        },
-      )
+      expect(mockOnAction).toHaveBeenCalledWith('rename', mockCredentialItem, {
+        credential_id: 'test-id',
+        name: 'New Name',
+      })
       // Should switch back to view mode
       expect(screen.queryByPlaceholderText('common.placeholder.input')).not.toBeInTheDocument()
       expect(screen.getByText('Test Credential')).toBeInTheDocument()

@@ -31,21 +31,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 
 type InfotipProps = {
   /** Popup content. Rich nodes are allowed. */
-  'children': ReactNode
+  children: ReactNode
   /** Accessible name for the trigger. Required; should match the popup text. */
   'aria-label': string
   /** Placement of the popup relative to the trigger. Defaults to `top`. */
-  'placement'?: Placement
+  placement?: Placement
   /** Extra classes on the outer trigger wrapper (layout / margin). */
-  'className'?: string
+  className?: string
   /** Extra classes on the `?` icon itself (size / color overrides). */
-  'iconClassName'?: string
+  iconClassName?: string
   /** Extra classes on the popup body (width / padding / whitespace overrides). */
-  'popupClassName'?: string
+  popupClassName?: string
   /** Hover open delay in ms. Defaults to 300 to match the app-wide Tooltip delay. */
-  'delay'?: number
+  delay?: number
   /** Hover close delay in ms. Defaults to 200 to match the app-wide Tooltip delay. */
-  'closeDelay'?: number
+  closeDelay?: number
 }
 
 export function Infotip({
@@ -75,11 +75,20 @@ export function Infotip({
           className,
         )}
       >
-        <span aria-hidden className={cn('i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
+        <span
+          aria-hidden
+          className={cn(
+            'i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary',
+            iconClassName,
+          )}
+        />
       </PopoverTrigger>
       <PopoverContent
         placement={placement}
-        popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        popupClassName={cn(
+          'max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
+          popupClassName,
+        )}
       >
         {children}
       </PopoverContent>

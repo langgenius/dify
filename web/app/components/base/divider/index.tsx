@@ -28,7 +28,11 @@ type DividerProps = {
 
 const Divider: FC<DividerProps> = ({ type, bgStyle, className = '', style }) => {
   return (
-    <div className={cn(dividerVariants({ type, bgStyle }), 'shrink-0', className)} style={style} data-testid="divider"></div>
+    <div
+      className={cn(dividerVariants({ type, bgStyle }), 'shrink-0', className)}
+      style={style}
+      data-testid="divider"
+    ></div>
   )
 }
 

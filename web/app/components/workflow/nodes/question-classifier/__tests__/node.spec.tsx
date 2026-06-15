@@ -11,7 +11,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
     <div>{defaultModel ? `${defaultModel.provider}:${defaultModel.model}` : 'no-model'}</div>
   ),
 }))
@@ -34,7 +34,9 @@ const createTopic = (overrides: Partial<Topic> = {}): Topic => ({
   ...overrides,
 })
 
-const createData = (overrides: Partial<QuestionClassifierNodeType> = {}): QuestionClassifierNodeType => ({
+const createData = (
+  overrides: Partial<QuestionClassifierNodeType> = {},
+): QuestionClassifierNodeType => ({
   title: 'Question Classifier',
   desc: '',
   type: BlockEnum.QuestionClassifier,

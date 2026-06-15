@@ -6,16 +6,26 @@ import { TagItemEditor } from '../components/tag-item-editor'
 
 const tagMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
+  const api = vi.fn((message: unknown, options?: Record<string, unknown>) =>
+    record({ message, ...options }),
+  )
   return {
     updateTag: vi.fn(),
     deleteTag: vi.fn(),
     record,
     api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
       dismiss: vi.fn(),
       update: vi.fn(),
       promise: vi.fn(),
@@ -26,7 +36,7 @@ const tagMocks = vi.hoisted(() => {
 vi.mock('@tanstack/react-query', () => ({
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
     isPending: false,
-    mutate: (input: unknown, options?: { onSuccess?: () => void, onError?: () => void }) => {
+    mutate: (input: unknown, options?: { onSuccess?: () => void; onError?: () => void }) => {
       Promise.resolve(mutationOptions.mutationFn(input))
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
@@ -39,12 +49,14 @@ vi.mock('@/service/client', () => ({
     tags: {
       update: {
         mutationOptions: () => ({
-          mutationFn: ({ params, body }: { params: { tagId: string }, body: { name: string } }) => tagMocks.updateTag(params.tagId, body.name),
+          mutationFn: ({ params, body }: { params: { tagId: string }; body: { name: string } }) =>
+            tagMocks.updateTag(params.tagId, body.name),
         }),
       },
       delete: {
         mutationOptions: () => ({
-          mutationFn: ({ params }: { params: { tagId: string } }) => tagMocks.deleteTag(params.tagId),
+          mutationFn: ({ params }: { params: { tagId: string } }) =>
+            tagMocks.deleteTag(params.tagId),
         }),
       },
     },

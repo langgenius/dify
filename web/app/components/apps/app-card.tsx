@@ -24,11 +24,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@langgenius/dify-ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
@@ -66,9 +62,12 @@ const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-m
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,
 })
-const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
-  ssr: false,
-})
+const DSLExportConfirmModal = dynamic(
+  () => import('@/app/components/workflow/dsl-export-confirm-modal'),
+  {
+    ssr: false,
+  },
+)
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
   ssr: false,
 })
@@ -114,43 +113,50 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
     action()
   }, [])
 
-  const handleOpenInstalledApp = useCallback(async (e: React.MouseEvent<HTMLElement>) => {
-    e.stopPropagation()
-    e.preventDefault()
-    try {
-      await openAsyncWindow(async () => {
-        const { installed_apps } = await fetchInstalledAppList(app.id)
-        if (installed_apps?.length > 0)
-          return `${basePath}/explore/installed/${installed_apps[0]!.id}`
-        throw new Error('No app found in Explore')
-      }, {
-        onError: (err) => {
-          toast.error(`${err.message || err}`)
-        },
-      })
-    }
-    catch (e: unknown) {
-      const message = e instanceof Error ? e.message : `${e}`
-      toast.error(message)
-    }
-  }, [app.id, openAsyncWindow])
+  const handleOpenInstalledApp = useCallback(
+    async (e: React.MouseEvent<HTMLElement>) => {
+      e.stopPropagation()
+      e.preventDefault()
+      try {
+        await openAsyncWindow(
+          async () => {
+            const { installed_apps } = await fetchInstalledAppList(app.id)
+            if (installed_apps?.length > 0)
+              return `${basePath}/explore/installed/${installed_apps[0]!.id}`
+            throw new Error('No app found in Explore')
+          },
+          {
+            onError: (err) => {
+              toast.error(`${err.message || err}`)
+            },
+          },
+        )
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : `${e}`
+        toast.error(message)
+      }
+    },
+    [app.id, openAsyncWindow],
+  )
 
   return (
     <>
-      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onEdit)}>
+      <DropdownMenuItem className="gap-2 px-3" onClick={(e) => handleMenuAction(e, onEdit)}>
         <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
-      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onDuplicate)}>
-        <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
+      <DropdownMenuItem className="gap-2 px-3" onClick={(e) => handleMenuAction(e, onDuplicate)}>
+        <span className="system-sm-regular text-text-secondary">
+          {t('duplicate', { ns: 'app' })}
+        </span>
       </DropdownMenuItem>
-      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
+      <DropdownMenuItem className="gap-2 px-3" onClick={(e) => handleMenuAction(e, onExport)}>
         <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
       </DropdownMenuItem>
       {shouldShowSwitchOption && (
         <>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSwitch)}>
+          <DropdownMenuItem className="gap-2 px-3" onClick={(e) => handleMenuAction(e, onSwitch)}>
             <span className="text-sm/5 text-text-secondary">{t('switch', { ns: 'app' })}</span>
           </DropdownMenuItem>
         </>
@@ -159,15 +165,22 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenInstalledApp}>
-            <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
+            <span className="system-sm-regular text-text-secondary">
+              {t('openInExplore', { ns: 'app' })}
+            </span>
           </DropdownMenuItem>
         </>
       )}
       <DropdownMenuSeparator />
       {shouldShowAccessControlOption && (
         <>
-          <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onAccessControl)}>
-            <span className="text-sm/5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
+          <DropdownMenuItem
+            className="gap-2 px-3"
+            onClick={(e) => handleMenuAction(e, onAccessControl)}
+          >
+            <span className="text-sm/5 text-text-secondary">
+              {t('accessControl', { ns: 'app' })}
+            </span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
         </>
@@ -175,17 +188,18 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       <DropdownMenuItem
         variant="destructive"
         className="gap-2 px-3"
-        onClick={e => handleMenuAction(e, onDelete)}
+        onClick={(e) => handleMenuAction(e, onDelete)}
       >
-        <span className="system-sm-regular">
-          {t('operation.delete', { ns: 'common' })}
-        </span>
+        <span className="system-sm-regular">{t('operation.delete', { ns: 'common' })}</span>
       </DropdownMenuItem>
     </>
   )
 }
 
-type AppCardOperationsMenuContentProps = Omit<AppCardOperationsMenuProps, 'shouldShowOpenInExploreOption'>
+type AppCardOperationsMenuContentProps = Omit<
+  AppCardOperationsMenuProps,
+  'shouldShowOpenInExploreOption'
+>
 
 const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> = (props) => {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -194,11 +208,10 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
     enabled: systemFeatures.webapp_auth.enabled,
   })
 
-  const shouldShowOpenInExploreOption = !props.app.has_draft_trigger
-    && (
-      !systemFeatures.webapp_auth.enabled
-      || (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result))
-    )
+  const shouldShowOpenInExploreOption =
+    !props.app.has_draft_trigger &&
+    (!systemFeatures.webapp_auth.enabled ||
+      (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result)))
 
   return (
     <AppCardOperationsMenu
@@ -208,7 +221,12 @@ const AppCardOperationsMenuContent: React.FC<AppCardOperationsMenuContentProps> 
   )
 }
 
-const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) => {
+const AppCard = ({
+  app,
+  onlineUsers = [],
+  onRefresh,
+  onOpenTagManagement = () => {},
+}: AppCardProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -233,31 +251,33 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       onPlanInfoChanged()
       setShowConfirmDelete(false)
       setConfirmDeleteInput('')
-    }
-    catch (e) {
+    } catch (e) {
       const message = e instanceof Error ? e.message : ''
       toast.error(`${t('appDeleteFailed', { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
   }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
 
-  const onDeleteDialogOpenChange = useCallback((open: boolean) => {
-    if (isDeleting)
-      return
+  const onDeleteDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (isDeleting) return
 
-    setShowConfirmDelete(open)
-    if (!open)
-      setConfirmDeleteInput('')
-  }, [isDeleting])
+      setShowConfirmDelete(open)
+      if (!open) setConfirmDeleteInput('')
+    },
+    [isDeleting],
+  )
 
   const isDeleteConfirmDisabled = isDeleting || confirmDeleteInput !== app.name
 
-  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback((e) => {
-    e.preventDefault()
-    if (isDeleteConfirmDisabled)
-      return
+  const onDeleteDialogSubmit: React.FormEventHandler<HTMLFormElement> = useCallback(
+    (e) => {
+      e.preventDefault()
+      if (isDeleteConfirmDisabled) return
 
-    void onConfirmDelete()
-  }, [isDeleteConfirmDisabled, onConfirmDelete])
+      void onConfirmDelete()
+    },
+    [isDeleteConfirmDisabled, onConfirmDelete],
+  )
 
   const handleShowEditModal = useCallback(() => {
     setIsOperationsMenuOpen(false)
@@ -294,37 +314,43 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     })
   }, [])
 
-  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(
+    async ({
+      name,
+      icon_type,
+      icon,
+      icon_background,
+      description,
+      use_icon_as_answer_icon,
+      max_active_requests,
+    }) => {
+      try {
+        await updateAppInfo({
+          appID: app.id,
+          name,
+          icon_type,
+          icon,
+          icon_background,
+          description,
+          use_icon_as_answer_icon,
+          max_active_requests,
+        })
+        setShowEditModal(false)
+        toast.success(t('editDone', { ns: 'app' }))
+        if (onRefresh) onRefresh()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t('editFailed', { ns: 'app' }))
+      }
+    },
+    [app.id, onRefresh, t],
+  )
+
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({
     name,
     icon_type,
     icon,
     icon_background,
-    description,
-    use_icon_as_answer_icon,
-    max_active_requests,
   }) => {
-    try {
-      await updateAppInfo({
-        appID: app.id,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
-        use_icon_as_answer_icon,
-        max_active_requests,
-      })
-      setShowEditModal(false)
-      toast.success(t('editDone', { ns: 'app' }))
-      if (onRefresh)
-        onRefresh()
-    }
-    catch (e) {
-      toast.error(e instanceof Error ? e.message : t('editFailed', { ns: 'app' }))
-    }
-  }, [app.id, onRefresh, t])
-
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
       const newApp = await copyApp({
         appID: app.id,
@@ -337,12 +363,10 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       setShowDuplicateModal(false)
       toast.success(t('newApp.appCreated', { ns: 'app' }))
       setNeedRefresh('1')
-      if (onRefresh)
-        onRefresh()
+      if (onRefresh) onRefresh()
       onPlanInfoChanged()
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
-    }
-    catch {
+    } catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
@@ -355,8 +379,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
       })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${app.name}.yml` })
-    }
-    catch {
+    } catch {
       toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
@@ -369,32 +392,33 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     }
     try {
       const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      const list = (workflowDraft.environment_variables || []).filter(
+        (env) => env.value_type === 'secret',
+      )
       if (list.length === 0) {
         onExport()
         return
       }
       setSecretEnvList(list)
-    }
-    catch {
+    } catch {
       toast.error(t('exportFailed', { ns: 'app' }))
     }
   }
 
   const onSwitch = () => {
-    if (onRefresh)
-      onRefresh()
+    if (onRefresh) onRefresh()
     setShowSwitchModal(false)
   }
 
   const onUpdateAccessControl = useCallback(() => {
-    if (onRefresh)
-      onRefresh()
+    if (onRefresh) onRefresh()
     setShowAccessControl(false)
   }, [onRefresh, setShowAccessControl])
 
-  const shouldShowSwitchOption = app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
-  const shouldShowAccessControlOption = systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
+  const shouldShowSwitchOption =
+    app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT
+  const shouldShowAccessControlOption =
+    systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor
   const operationsMenuWidthClassName = shouldShowSwitchOption ? 'w-[256px]' : 'w-[216px]'
 
   const EditTimeText = useMemo(() => {
@@ -416,7 +440,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           avatar_url: user.avatar || null,
         }
       })
-      .filter(user => Boolean(user.id))
+      .filter((user) => Boolean(user.id))
   }, [app.id, onlineUsers])
 
   return (
@@ -437,67 +461,107 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
               background={app.icon_background}
               imageUrl={app.icon_url}
             />
-            <AppTypeIcon type={app.mode} wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm" className="size-3" />
+            <AppTypeIcon
+              type={app.mode}
+              wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
+              className="size-3"
+            />
           </div>
           <div className="w-0 grow py-px">
             <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-              <div className="truncate" title={app.name}>{app.name}</div>
+              <div className="truncate" title={app.name}>
+                {app.name}
+              </div>
             </div>
             <div className="flex items-center gap-1 text-[10px] leading-[18px] font-medium text-text-tertiary">
-              <div className="truncate" title={app.author_name}>{app.author_name}</div>
+              <div className="truncate" title={app.author_name}>
+                {app.author_name}
+              </div>
               <div>·</div>
-              <div className="truncate" title={EditTimeText}>{EditTimeText}</div>
+              <div className="truncate" title={EditTimeText}>
+                {EditTimeText}
+              </div>
             </div>
           </div>
           <div className="flex h-full shrink-0 flex-col items-end justify-between py-px">
             {onlinePresenceUsers.length > 0 && (
-              <UserAvatarList users={onlinePresenceUsers} size="xxs" maxVisible={3} className="justify-end" />
+              <UserAvatarList
+                users={onlinePresenceUsers}
+                size="xxs"
+                maxVisible={3}
+                className="justify-end"
+              />
             )}
             <div className="flex size-5 items-center justify-center">
               {app.access_mode === AccessMode.PUBLIC && (
                 <Tooltip>
                   <TooltipTrigger
                     aria-label={t('accessItemsDescription.anyone', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.anyone', { ns: 'app' })} className="i-ri-global-line size-4 text-text-quaternary" />}
+                    render={
+                      <span
+                        title={t('accessItemsDescription.anyone', { ns: 'app' })}
+                        className="i-ri-global-line size-4 text-text-quaternary"
+                      />
+                    }
                   />
-                  <TooltipContent>{t('accessItemsDescription.anyone', { ns: 'app' })}</TooltipContent>
+                  <TooltipContent>
+                    {t('accessItemsDescription.anyone', { ns: 'app' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
                 <Tooltip>
                   <TooltipTrigger
                     aria-label={t('accessItemsDescription.specific', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.specific', { ns: 'app' })} className="i-ri-lock-line size-4 text-text-quaternary" />}
+                    render={
+                      <span
+                        title={t('accessItemsDescription.specific', { ns: 'app' })}
+                        className="i-ri-lock-line size-4 text-text-quaternary"
+                      />
+                    }
                   />
-                  <TooltipContent>{t('accessItemsDescription.specific', { ns: 'app' })}</TooltipContent>
+                  <TooltipContent>
+                    {t('accessItemsDescription.specific', { ns: 'app' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {app.access_mode === AccessMode.ORGANIZATION && (
                 <Tooltip>
                   <TooltipTrigger
                     aria-label={t('accessItemsDescription.organization', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.organization', { ns: 'app' })} className="i-ri-building-line size-4 text-text-quaternary" />}
+                    render={
+                      <span
+                        title={t('accessItemsDescription.organization', { ns: 'app' })}
+                        className="i-ri-building-line size-4 text-text-quaternary"
+                      />
+                    }
                   />
-                  <TooltipContent>{t('accessItemsDescription.organization', { ns: 'app' })}</TooltipContent>
+                  <TooltipContent>
+                    {t('accessItemsDescription.organization', { ns: 'app' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
               {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
                 <Tooltip>
                   <TooltipTrigger
                     aria-label={t('accessItemsDescription.external', { ns: 'app' })}
-                    render={<span title={t('accessItemsDescription.external', { ns: 'app' })} className="i-ri-verified-badge-line size-4 text-text-quaternary" />}
+                    render={
+                      <span
+                        title={t('accessItemsDescription.external', { ns: 'app' })}
+                        className="i-ri-verified-badge-line size-4 text-text-quaternary"
+                      />
+                    }
                   />
-                  <TooltipContent>{t('accessItemsDescription.external', { ns: 'app' })}</TooltipContent>
+                  <TooltipContent>
+                    {t('accessItemsDescription.external', { ns: 'app' })}
+                  </TooltipContent>
                 </Tooltip>
               )}
             </div>
           </div>
         </div>
         <div className="h-[90px] px-[14px] text-xs leading-normal text-text-tertiary">
-          <div
-            className="line-clamp-2"
-            title={app.description}
-          >
+          <div className="line-clamp-2" title={app.description}>
             {app.description}
           </div>
         </div>
@@ -529,7 +593,11 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                 )}
               >
                 <div className="mx-1 h-[14px] w-px shrink-0 bg-divider-regular" />
-                <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+                <DropdownMenu
+                  modal={false}
+                  open={isOperationsMenuOpen}
+                  onOpenChange={setIsOperationsMenuOpen}
+                >
                   <DropdownMenuTrigger
                     aria-label={t('operation.more', { ns: 'common' })}
                     className={cn(
@@ -550,34 +618,32 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                     sideOffset={4}
                     popupClassName={operationsMenuWidthClassName}
                   >
-                    {systemFeatures.webapp_auth.enabled
-                      ? (
-                          <AppCardOperationsMenuContent
-                            app={app}
-                            shouldShowSwitchOption={shouldShowSwitchOption}
-                            shouldShowAccessControlOption={shouldShowAccessControlOption}
-                            onEdit={handleShowEditModal}
-                            onDuplicate={handleShowDuplicateModal}
-                            onExport={exportCheck}
-                            onSwitch={handleShowSwitchModal}
-                            onDelete={handleShowDeleteConfirm}
-                            onAccessControl={handleShowAccessControl}
-                          />
-                        )
-                      : (
-                          <AppCardOperationsMenu
-                            app={app}
-                            shouldShowSwitchOption={shouldShowSwitchOption}
-                            shouldShowOpenInExploreOption={!app.has_draft_trigger}
-                            shouldShowAccessControlOption={shouldShowAccessControlOption}
-                            onEdit={handleShowEditModal}
-                            onDuplicate={handleShowDuplicateModal}
-                            onExport={exportCheck}
-                            onSwitch={handleShowSwitchModal}
-                            onDelete={handleShowDeleteConfirm}
-                            onAccessControl={handleShowAccessControl}
-                          />
-                        )}
+                    {systemFeatures.webapp_auth.enabled ? (
+                      <AppCardOperationsMenuContent
+                        app={app}
+                        shouldShowSwitchOption={shouldShowSwitchOption}
+                        shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        onEdit={handleShowEditModal}
+                        onDuplicate={handleShowDuplicateModal}
+                        onExport={exportCheck}
+                        onSwitch={handleShowSwitchModal}
+                        onDelete={handleShowDeleteConfirm}
+                        onAccessControl={handleShowAccessControl}
+                      />
+                    ) : (
+                      <AppCardOperationsMenu
+                        app={app}
+                        shouldShowSwitchOption={shouldShowSwitchOption}
+                        shouldShowOpenInExploreOption={!app.has_draft_trigger}
+                        shouldShowAccessControlOption={shouldShowAccessControlOption}
+                        onEdit={handleShowEditModal}
+                        onDuplicate={handleShowDuplicateModal}
+                        onExport={exportCheck}
+                        onSwitch={handleShowSwitchModal}
+                        onDelete={handleShowDeleteConfirm}
+                        onAccessControl={handleShowAccessControl}
+                      />
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -639,7 +705,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                     ns="app"
                     values={{ appName: app.name }}
                     components={{
-                      appName: <span className="system-sm-semibold text-text-primary" translate="no" />,
+                      appName: (
+                        <span className="system-sm-semibold text-text-primary" translate="no" />
+                      ),
                     }}
                   />
                 </FieldLabel>
@@ -686,7 +754,11 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
         />
       )}
       {showAccessControl && (
-        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
+        <AccessControl
+          app={app}
+          onConfirm={onUpdateAccessControl}
+          onClose={() => setShowAccessControl(false)}
+        />
       )}
     </>
   )

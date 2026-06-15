@@ -36,13 +36,7 @@ vi.mock('@/service/use-snippets', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({
-    file,
-    updateFile,
-  }: {
-    file?: File
-    updateFile: (file?: File) => void
-  }) => (
+  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
       {file?.name || 'select-dsl-file'}
     </button>
@@ -67,7 +61,10 @@ describe('ImportSnippetDSLDialog', () => {
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
     await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
-    await user.type(screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'), 'https://example.com/snippet.yml')
+    await user.type(
+      screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
+      'https://example.com/snippet.yml',
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
 
     await waitFor(() => {

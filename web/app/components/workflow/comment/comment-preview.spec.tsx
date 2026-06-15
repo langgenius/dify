@@ -11,7 +11,7 @@ let capturedUsers: UserProfile[] = []
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: UserProfile[] }) => {
     capturedUsers = users
-    return <div data-testid="avatar-list">{users.map(user => user.id).join(',')}</div>
+    return <div data-testid="avatar-list">{users.map((user) => user.id).join(',')}</div>
   },
 }))
 
@@ -22,8 +22,9 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 }))
 
 vi.mock('../store', () => ({
-  useStore: (selector: (state: { setCommentPreviewHovering: (value: boolean) => void }) => unknown) =>
-    selector({ setCommentPreviewHovering: mockSetHovering }),
+  useStore: (
+    selector: (state: { setCommentPreviewHovering: (value: boolean) => void }) => unknown,
+  ) => selector({ setCommentPreviewHovering: mockSetHovering }),
 }))
 
 const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => {
@@ -58,7 +59,7 @@ describe('CommentPreview', () => {
 
     render(<CommentPreview comment={comment} />)
 
-    expect(capturedUsers.map(user => user.id)).toEqual(['user-1', 'user-2'])
+    expect(capturedUsers.map((user) => user.id)).toEqual(['user-1', 'user-2'])
     expect(screen.getByText('Hello')).toBeInTheDocument()
     expect(screen.getByText('time:10000')).toBeInTheDocument()
   })

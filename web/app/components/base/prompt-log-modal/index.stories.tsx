@@ -40,10 +40,7 @@ const PromptLogPreview = (props: PromptLogModalProps) => {
 
   return (
     <div className="relative min-h-[540px] w-full bg-background-default-subtle p-6">
-      <PromptLogModal
-        {...props}
-        currentLogItem={mockLogItem}
-      />
+      <PromptLogModal {...props} currentLogItem={mockLogItem} />
     </div>
   )
 }
@@ -55,7 +52,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Shows the prompt and message transcript used for a chat completion, with copy-to-clipboard support for single prompts.',
+        component:
+          'Shows the prompt and message transcript used for a chat completion, with copy-to-clipboard support for single prompts.',
       },
     },
   },

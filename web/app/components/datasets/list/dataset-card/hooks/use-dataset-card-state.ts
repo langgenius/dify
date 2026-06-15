@@ -32,15 +32,15 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
 
   // Modal handlers
   const openRenameModal = useCallback(() => {
-    setModalState(prev => ({ ...prev, showRenameModal: true }))
+    setModalState((prev) => ({ ...prev, showRenameModal: true }))
   }, [])
 
   const closeRenameModal = useCallback(() => {
-    setModalState(prev => ({ ...prev, showRenameModal: false }))
+    setModalState((prev) => ({ ...prev, showRenameModal: false }))
   }, [])
 
   const closeConfirmDelete = useCallback(() => {
-    setModalState(prev => ({ ...prev, showConfirmDelete: false }))
+    setModalState((prev) => ({ ...prev, showConfirmDelete: false }))
   }, [])
 
   // API mutations
@@ -49,27 +49,27 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
   // Export pipeline handler
-  const handleExportPipeline = useCallback(async (include: boolean = false) => {
-    const { pipeline_id, name } = dataset
-    if (!pipeline_id || exporting)
-      return
+  const handleExportPipeline = useCallback(
+    async (include: boolean = false) => {
+      const { pipeline_id, name } = dataset
+      if (!pipeline_id || exporting) return
 
-    try {
-      setExporting(true)
-      const { data } = await exportPipelineConfig({
-        pipelineId: pipeline_id,
-        include,
-      })
-      const file = new Blob([data], { type: 'application/yaml' })
-      downloadBlob({ data: file, fileName: `${name}.pipeline` })
-    }
-    catch {
-      toast.error(t('exportFailed', { ns: 'app' }))
-    }
-    finally {
-      setExporting(false)
-    }
-  }, [dataset, exportPipelineConfig, exporting, t])
+      try {
+        setExporting(true)
+        const { data } = await exportPipelineConfig({
+          pipelineId: pipeline_id,
+          include,
+        })
+        const file = new Blob([data], { type: 'application/yaml' })
+        downloadBlob({ data: file, fileName: `${name}.pipeline` })
+      } catch {
+        toast.error(t('exportFailed', { ns: 'app' }))
+      } finally {
+        setExporting(false)
+      }
+    },
+    [dataset, exportPipelineConfig, exporting, t],
+  )
 
   // Delete flow handlers
   const detectIsUsedByApp = useCallback(async () => {
@@ -78,18 +78,16 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
       const message = isUsedByApp
         ? t('datasetUsedByApp', { ns: 'dataset' })!
         : t('deleteDatasetConfirmContent', { ns: 'dataset' })!
-      setModalState(prev => ({
+      setModalState((prev) => ({
         ...prev,
         confirmMessage: message,
         showConfirmDelete: true,
       }))
-    }
-    catch (e: unknown) {
+    } catch (e: unknown) {
       if (e instanceof Response) {
         const res = await e.json()
         toast.error(res?.message || t('unknownError', { ns: 'dataset' }))
-      }
-      else {
+      } else {
         toast.error((e as Error)?.message || t('unknownError', { ns: 'dataset' }))
       }
     }
@@ -100,8 +98,7 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
       await deleteDatasetMutation(dataset.id)
       toast.success(t('datasetDeleted', { ns: 'dataset' }))
       onSuccess?.()
-    }
-    finally {
+    } finally {
       closeConfirmDelete()
     }
   }, [dataset.id, deleteDatasetMutation, onSuccess, t, closeConfirmDelete])

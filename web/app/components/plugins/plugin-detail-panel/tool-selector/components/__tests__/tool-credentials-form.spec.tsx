@@ -3,7 +3,8 @@ import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/hooks/use-i18n', () => ({
-  useRenderI18nObject: () => (obj: Record<string, string> | string) => typeof obj === 'string' ? obj : obj?.en_US || '',
+  useRenderI18nObject: () => (obj: Record<string, string> | string) =>
+    typeof obj === 'string' ? obj : obj?.en_US || '',
 }))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
@@ -37,12 +38,16 @@ vi.mock('@/service/tools', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  default: ({ value: _value, onChange }: { formSchemas: unknown[], value: Record<string, unknown>, onChange: (v: Record<string, unknown>) => void }) => (
+  default: ({
+    value: _value,
+    onChange,
+  }: {
+    formSchemas: unknown[]
+    value: Record<string, unknown>
+    onChange: (v: Record<string, unknown>) => void
+  }) => (
     <div data-testid="credential-form">
-      <input
-        data-testid="form-input"
-        onChange={e => onChange({ api_key: e.target.value })}
-      />
+      <input data-testid="form-input" onChange={(e) => onChange({ api_key: e.target.value })} />
     </div>
   ),
 }))

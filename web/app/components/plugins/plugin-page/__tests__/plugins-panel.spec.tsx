@@ -37,28 +37,37 @@ vi.mock('../../hooks', () => ({
 }))
 
 vi.mock('../context', () => ({
-  usePluginPageContext: (selector: (value: {
-    filters: typeof mockState.filters
-    setFilters: typeof mockSetFilters
-    currentPluginID: string | undefined
-    setCurrentPluginID: typeof mockSetCurrentPluginID
-  }) => unknown) => selector({
-    filters: mockState.filters,
-    setFilters: mockSetFilters,
-    currentPluginID: mockState.currentPluginID,
-    setCurrentPluginID: mockSetCurrentPluginID,
-  }),
+  usePluginPageContext: (
+    selector: (value: {
+      filters: typeof mockState.filters
+      setFilters: typeof mockSetFilters
+      currentPluginID: string | undefined
+      setCurrentPluginID: typeof mockSetCurrentPluginID
+    }) => unknown,
+  ) =>
+    selector({
+      filters: mockState.filters,
+      setFilters: mockSetFilters,
+      currentPluginID: mockState.currentPluginID,
+      setCurrentPluginID: mockSetCurrentPluginID,
+    }),
 }))
 
 vi.mock('../filter-management', () => ({
-  default: ({ onFilterChange }: { onFilterChange: (filters: typeof mockState.filters) => void }) => (
+  default: ({
+    onFilterChange,
+  }: {
+    onFilterChange: (filters: typeof mockState.filters) => void
+  }) => (
     <button
       data-testid="filter-management"
-      onClick={() => onFilterChange({
-        categories: [],
-        tags: [],
-        searchQuery: 'beta',
-      })}
+      onClick={() =>
+        onFilterChange({
+          categories: [],
+          tags: [],
+          searchQuery: 'beta',
+        })
+      }
     >
       filter
     </button>
@@ -70,11 +79,17 @@ vi.mock('../empty', () => ({
 }))
 
 vi.mock('../list', () => ({
-  default: ({ pluginList }: { pluginList: PluginDetail[] }) => <div data-testid="plugin-list">{pluginList.map(plugin => plugin.plugin_id).join(',')}</div>,
+  default: ({ pluginList }: { pluginList: PluginDetail[] }) => (
+    <div data-testid="plugin-list">{pluginList.map((plugin) => plugin.plugin_id).join(',')}</div>
+  ),
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
-  default: ({ detail, onHide, onUpdate }: {
+  default: ({
+    detail,
+    onHide,
+    onUpdate,
+  }: {
     detail?: PluginDetail
     onHide: () => void
     onUpdate: () => void
@@ -87,32 +102,33 @@ vi.mock('@/app/components/plugins/plugin-detail-panel', () => ({
   ),
 }))
 
-const createPlugin = (pluginId: string, label: string, tags: string[] = []): PluginDetail => ({
-  id: pluginId,
-  created_at: '2024-01-01',
-  updated_at: '2024-01-02',
-  name: label,
-  plugin_id: pluginId,
-  plugin_unique_identifier: `${pluginId}-uid`,
-  declaration: {
-    category: 'tool',
-    name: pluginId,
-    label: { en_US: label },
-    description: { en_US: `${label} description` },
-    tags,
-  } as PluginDetail['declaration'],
-  installation_id: `${pluginId}-install`,
-  tenant_id: 'tenant-1',
-  endpoints_setups: 0,
-  endpoints_active: 0,
-  version: '1.0.0',
-  latest_version: '1.0.0',
-  latest_unique_identifier: `${pluginId}-uid`,
-  source: 'marketplace' as PluginDetail['source'],
-  status: 'active',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
-}) as PluginDetail
+const createPlugin = (pluginId: string, label: string, tags: string[] = []): PluginDetail =>
+  ({
+    id: pluginId,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-02',
+    name: label,
+    plugin_id: pluginId,
+    plugin_unique_identifier: `${pluginId}-uid`,
+    declaration: {
+      category: 'tool',
+      name: pluginId,
+      label: { en_US: label },
+      description: { en_US: `${label} description` },
+      tags,
+    } as PluginDetail['declaration'],
+    installation_id: `${pluginId}-install`,
+    tenant_id: 'tenant-1',
+    endpoints_setups: 0,
+    endpoints_active: 0,
+    version: '1.0.0',
+    latest_version: '1.0.0',
+    latest_unique_identifier: `${pluginId}-uid`,
+    source: 'marketplace' as PluginDetail['source'],
+    status: 'active',
+    deprecated_reason: '',
+    alternative_plugin_id: '',
+  }) as PluginDetail
 
 describe('PluginsPanel', () => {
   beforeEach(() => {
@@ -182,9 +198,7 @@ describe('PluginsPanel', () => {
   it('renders the empty state and keeps the current plugin detail in sync', () => {
     mockState.currentPluginID = 'beta-tool'
     mockState.filters.searchQuery = 'missing'
-    mockPluginListWithLatestVersion.mockReturnValue([
-      createPlugin('beta-tool', 'Beta Tool'),
-    ])
+    mockPluginListWithLatestVersion.mockReturnValue([createPlugin('beta-tool', 'Beta Tool')])
 
     render(<PluginsPanel />)
 

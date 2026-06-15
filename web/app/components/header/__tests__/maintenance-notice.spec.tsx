@@ -8,12 +8,9 @@ vi.mock('@/app/components/base/icons/src/vender/line/general', () => ({
   X: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
 }))
 
-vi.mock(
-  '@/app/components/header/account-setting/model-provider-page/hooks',
-  () => ({
-    useLanguage: vi.fn(),
-  }),
-)
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useLanguage: vi.fn(),
+}))
 
 vi.mock('@/i18n-config/language', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
@@ -34,9 +31,7 @@ vi.mock('@/i18n-config/language', async (importOriginal) => {
 })
 
 describe('MaintenanceNotice', () => {
-  const windowOpenSpy = vi
-    .spyOn(window, 'open')
-    .mockImplementation(() => null)
+  const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
   const setNoticeHref = (href: string) => {
     NOTICE_I18N.href = href
   }
@@ -91,10 +86,7 @@ describe('MaintenanceNotice', () => {
       const desc = screen.getByRole('button', { name: 'Notice Description' })
       fireEvent.click(desc)
 
-      expect(windowOpenSpy).toHaveBeenCalledWith(
-        'https://dify.ai/notice',
-        '_blank',
-      )
+      expect(windowOpenSpy).toHaveBeenCalledWith('https://dify.ai/notice', '_blank')
     })
 
     it('should not jump when href is #', () => {

@@ -12,11 +12,7 @@ import PluginList from '../index'
 // Mock PluginItem component to avoid complex dependency chain
 vi.mock('../../../plugin-item', () => ({
   default: ({ plugin }: { plugin: PluginDetail }) => (
-    <div
-      data-testid="plugin-item"
-      data-plugin-id={plugin.plugin_id}
-      data-plugin-name={plugin.name}
-    >
+    <div data-testid="plugin-item" data-plugin-id={plugin.plugin_id} data-plugin-name={plugin.name}>
       {plugin.name}
     </div>
   ),
@@ -27,7 +23,9 @@ vi.mock('../../../plugin-item', () => ({
 /**
  * Factory function to create a PluginDeclaration with defaults
  */
-const createPluginDeclaration = (overrides: Partial<PluginDeclaration> = {}): PluginDeclaration => ({
+const createPluginDeclaration = (
+  overrides: Partial<PluginDeclaration> = {},
+): PluginDeclaration => ({
   plugin_unique_identifier: 'test-plugin-id',
   version: '1.0.0',
   author: 'test-author',
@@ -86,14 +84,19 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
 /**
  * Factory function to create a list of plugins
  */
-const createPluginList = (count: number, baseOverrides: Partial<PluginDetail> = {}): PluginDetail[] => {
-  return Array.from({ length: count }, (_, index) => createPluginDetail({
-    id: `plugin-${index + 1}`,
-    plugin_id: `plugin-${index + 1}`,
-    name: `plugin-${index + 1}`,
-    plugin_unique_identifier: `test-author/plugin-${index + 1}@1.0.0`,
-    ...baseOverrides,
-  }))
+const createPluginList = (
+  count: number,
+  baseOverrides: Partial<PluginDetail> = {},
+): PluginDetail[] => {
+  return Array.from({ length: count }, (_, index) =>
+    createPluginDetail({
+      id: `plugin-${index + 1}`,
+      plugin_id: `plugin-${index + 1}`,
+      name: `plugin-${index + 1}`,
+      plugin_unique_identifier: `test-author/plugin-${index + 1}@1.0.0`,
+      ...baseOverrides,
+    }),
+  )
 }
 
 // ==================== Tests ====================

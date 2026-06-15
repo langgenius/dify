@@ -30,9 +30,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasRunGroup && (
         <ContextMenuGroup>
           {model.canRun && (
-            <ContextMenuItem onClick={model.handleRun}>
-              {singleRunActionLabel}
-            </ContextMenuItem>
+            <ContextMenuItem onClick={model.handleRun}>{singleRunActionLabel}</ContextMenuItem>
           )}
           {model.canChangeBlock && (
             <ChangeBlockMenuTrigger
@@ -43,7 +41,10 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
           )}
         </ContextMenuGroup>
       )}
-      {hasRunGroup && (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <ContextMenuSeparator />}
+      {hasRunGroup &&
+        (hasEditGroup || hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+          <ContextMenuSeparator />
+        )}
       {hasEditGroup && (
         <ContextMenuGroup>
           <ContextMenuItem
@@ -64,7 +65,9 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
           </ContextMenuItem>
         </ContextMenuGroup>
       )}
-      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && <ContextMenuSeparator />}
+      {hasEditGroup && (hasDeleteGroup || model.workflowAppHref || model.helpLinkUri) && (
+        <ContextMenuSeparator />
+      )}
       {hasDeleteGroup && (
         <ContextMenuGroup>
           <ContextMenuItem
@@ -80,7 +83,11 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
       {hasDeleteGroup && (model.workflowAppHref || model.helpLinkUri) && <ContextMenuSeparator />}
       {model.workflowAppHref && (
         <ContextMenuGroup>
-          <ContextMenuLinkItem href={model.workflowAppHref} target="_blank" rel="noopener noreferrer">
+          <ContextMenuLinkItem
+            href={model.workflowAppHref}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {t('panel.openWorkflow', { ns: 'workflow' })}
           </ContextMenuLinkItem>
         </ContextMenuGroup>

@@ -8,14 +8,13 @@ const createCreateCtxFunction = (
   useContextImpl: UseContextImpl,
   createContextImpl: typeof createContext,
 ) => {
-  return function<T>({ name, defaultValue }: CreateCtxOptions<T> = {}): CreateCtxReturn<T> {
+  return function <T>({ name, defaultValue }: CreateCtxOptions<T> = {}): CreateCtxReturn<T> {
     const emptySymbol = Symbol(`empty ${name}`)
     // @ts-expect-error it's ok here
     const context = createContextImpl<T>(defaultValue ?? emptySymbol)
     const useContextValue = () => {
       const ctx = useContextImpl(context)
-      if (ctx === emptySymbol)
-        throw new Error(`No ${name ?? 'related'} context found.`)
+      if (ctx === emptySymbol) throw new Error(`No ${name ?? 'related'} context found.`)
 
       return ctx
     }

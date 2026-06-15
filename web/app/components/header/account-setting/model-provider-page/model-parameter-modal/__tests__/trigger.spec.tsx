@@ -10,10 +10,12 @@ vi.mock('../../hooks', () => ({
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
-    modelProviders: [{
-      provider: 'openai',
-      label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-    }],
+    modelProviders: [
+      {
+        provider: 'openai',
+        label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+      },
+    ],
   }),
 }))
 
@@ -88,12 +90,7 @@ describe('Trigger', () => {
     })
 
     it('should render fallback model id when current model is missing', () => {
-      render(
-        <Trigger
-          modelId="gpt-4"
-          providerName="openai"
-        />,
-      )
+      render(<Trigger modelId="gpt-4" providerName="openai" />)
 
       expect(screen.getByText('gpt-4')).toBeInTheDocument()
     })
@@ -169,7 +166,9 @@ describe('Trigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.apiKeyUnavailable'),
+      ).toBeInTheDocument()
     })
 
     it('should render credits exhausted badge in workflow mode', () => {
@@ -209,17 +208,13 @@ describe('Trigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.apiKeyUnavailable')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.apiKeyUnavailable'),
+      ).toBeInTheDocument()
     })
 
     it('should render incompatible badge when model is deprecated (currentModel missing)', () => {
-      render(
-        <Trigger
-          currentProvider={currentProvider}
-          providerName="openai"
-          modelId="gpt-4"
-        />,
-      )
+      render(<Trigger currentProvider={currentProvider} providerName="openai" modelId="gpt-4" />)
 
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     })
@@ -234,13 +229,7 @@ describe('Trigger', () => {
         credentialName: undefined,
       })
 
-      render(
-        <Trigger
-          currentProvider={currentProvider}
-          providerName="openai"
-          modelId="gpt-4"
-        />,
-      )
+      render(<Trigger currentProvider={currentProvider} providerName="openai" modelId="gpt-4" />)
 
       expect(screen.getByText('common.modelProvider.selector.creditsExhausted')).toBeInTheDocument()
     })
@@ -255,7 +244,9 @@ describe('Trigger', () => {
         />,
       )
 
-      expect(screen.getByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+      expect(
+        screen.getByText('common.modelProvider.selector.configureRequired'),
+      ).toBeInTheDocument()
     })
 
     it('should render disabled badge when model status is disabled', () => {
@@ -272,12 +263,7 @@ describe('Trigger', () => {
     })
 
     it('should render incompatible badge when provider plugin is not installed', () => {
-      render(
-        <Trigger
-          modelId="gpt-4"
-          providerName="unknown-provider"
-        />,
-      )
+      render(<Trigger modelId="gpt-4" providerName="unknown-provider" />)
 
       expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
     })

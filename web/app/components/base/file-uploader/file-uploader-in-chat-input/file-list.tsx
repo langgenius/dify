@@ -27,24 +27,10 @@ export const FileList = ({
 }: FileListProps) => {
   return (
     <div className={cn('flex flex-wrap gap-2', className)} data-testid="file-list">
-      {
-        files.map((file) => {
-          if (file.supportFileType === SupportUploadFileTypes.image) {
-            return (
-              <FileImageItem
-                key={file.id}
-                file={file}
-                showDeleteAction={showDeleteAction}
-                showDownloadAction={showDownloadAction}
-                onRemove={onRemove}
-                onReUpload={onReUpload}
-                canPreview={canPreview}
-              />
-            )
-          }
-
+      {files.map((file) => {
+        if (file.supportFileType === SupportUploadFileTypes.image) {
           return (
-            <FileItem
+            <FileImageItem
               key={file.id}
               file={file}
               showDeleteAction={showDeleteAction}
@@ -54,8 +40,20 @@ export const FileList = ({
               canPreview={canPreview}
             />
           )
-        })
-      }
+        }
+
+        return (
+          <FileItem
+            key={file.id}
+            file={file}
+            showDeleteAction={showDeleteAction}
+            showDownloadAction={showDownloadAction}
+            onRemove={onRemove}
+            onReUpload={onReUpload}
+            canPreview={canPreview}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -63,20 +61,9 @@ export const FileList = ({
 type FileListInChatInputProps = {
   fileConfig: FileUpload
 }
-export const FileListInChatInput = ({
-  fileConfig,
-}: FileListInChatInputProps) => {
-  const files = useStore(s => s.files)
-  const {
-    handleRemoveFile,
-    handleReUploadFile,
-  } = useFile(fileConfig)
+export const FileListInChatInput = ({ fileConfig }: FileListInChatInputProps) => {
+  const files = useStore((s) => s.files)
+  const { handleRemoveFile, handleReUploadFile } = useFile(fileConfig)
 
-  return (
-    <FileList
-      files={files}
-      onReUpload={handleReUploadFile}
-      onRemove={handleRemoveFile}
-    />
-  )
+  return <FileList files={files} onReUpload={handleReUploadFile} onRemove={handleRemoveFile} />
 }

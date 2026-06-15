@@ -16,7 +16,7 @@ type MetadataState = {
  * Normalize raw doc_type: treat 'others' as empty string.
  */
 const normalizeDocType = (rawDocType: string): DocType | '' => {
-  return rawDocType === 'others' ? '' : rawDocType as DocType | ''
+  return rawDocType === 'others' ? '' : (rawDocType as DocType | '')
 }
 type UseMetadataStateOptions = {
   docDetail?: FullDocumentDetail
@@ -27,13 +27,15 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
   const rawDocType = docDetail?.doc_type ?? ''
   const docType = normalizeDocType(rawDocType)
   const { t } = useTranslation()
-  const datasetId = useDocumentContext(s => s.datasetId)
-  const documentId = useDocumentContext(s => s.documentId)
+  const datasetId = useDocumentContext((s) => s.datasetId)
+  const documentId = useDocumentContext((s) => s.documentId)
   // If no documentType yet, start in editing + showDocTypes mode
   const [editStatus, setEditStatus] = useState(!docType)
-  const [metadataParams, setMetadataParams] = useState<MetadataState>(docType
-    ? { documentType: docType, metadata: (doc_metadata || {}) as Record<string, string> }
-    : { metadata: {} })
+  const [metadataParams, setMetadataParams] = useState<MetadataState>(
+    docType
+      ? { documentType: docType, metadata: (doc_metadata || {}) as Record<string, string> }
+      : { metadata: {} },
+  )
   const [showDocTypes, setShowDocTypes] = useState(!docType)
   const [tempDocType, setTempDocType] = useState<DocType | ''>('')
   const [saveLoading, setSaveLoading] = useState(false)
@@ -56,8 +58,7 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
     }
   }, [docDetail?.doc_type, docDetail?.doc_metadata, docType])
   const confirmDocType = () => {
-    if (!tempDocType)
-      return
+    if (!tempDocType) return
     setMetadataParams({
       documentType: tempDocType,
       // Clear metadata when switching to a different doc type
@@ -77,29 +78,28 @@ export function useMetadataState({ docDetail, onUpdate }: UseMetadataStateOption
   const cancelEdit = () => {
     setMetadataParams({ documentType: docType || '', metadata: { ...docDetail?.doc_metadata } })
     setEditStatus(!docType)
-    if (!docType)
-      setShowDocTypes(true)
+    if (!docType) setShowDocTypes(true)
   }
   const saveMetadata = async () => {
     setSaveLoading(true)
-    const [e] = await asyncRunSafe<CommonResponse>(modifyDocMetadata({
-      datasetId,
-      documentId,
-      body: {
-        doc_type: metadataParams.documentType || docType || '',
-        doc_metadata: metadataParams.metadata,
-      },
-    }) as Promise<CommonResponse>)
-    if (!e)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-    else
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+    const [e] = await asyncRunSafe<CommonResponse>(
+      modifyDocMetadata({
+        datasetId,
+        documentId,
+        body: {
+          doc_type: metadataParams.documentType || docType || '',
+          doc_metadata: metadataParams.metadata,
+        },
+      }) as Promise<CommonResponse>,
+    )
+    if (!e) toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+    else toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     onUpdate?.()
     setEditStatus(false)
     setSaveLoading(false)
   }
   const updateMetadataField = (field: string, value: string) => {
-    setMetadataParams(prev => ({ ...prev, metadata: { ...prev.metadata, [field]: value } }))
+    setMetadataParams((prev) => ({ ...prev, metadata: { ...prev.metadata, [field]: value } }))
   }
   return {
     docType,

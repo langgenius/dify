@@ -5,11 +5,12 @@ import type { LLMNodeType } from '../../nodes/llm/types'
 import type { LoopNodeType } from '../../nodes/loop/types'
 import type { ParameterExtractorNodeType } from '../../nodes/parameter-extractor/types'
 import type { ToolNodeType } from '../../nodes/tool/types'
-import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
-import { CUSTOM_NODE, DEFAULT_RETRY_INTERVAL, DEFAULT_RETRY_MAX } from '@/app/components/workflow/constants'
+import type { Edge, Node } from '@/app/components/workflow/types'
+import {
+  CUSTOM_NODE,
+  DEFAULT_RETRY_INTERVAL,
+  DEFAULT_RETRY_MAX,
+} from '@/app/components/workflow/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { BlockEnum, ErrorHandleMode } from '@/app/components/workflow/types'
@@ -22,20 +23,22 @@ vi.mock('reactflow', async (importOriginal) => {
     ...actual,
     getConnectedEdges: vi.fn((_nodes: Node[], edges: Edge[]) => {
       const node = _nodes[0]
-      return edges.filter(e => e.source === node!.id || e.target === node!.id)
+      return edges.filter((e) => e.source === node!.id || e.target === node!.id)
     }),
   }
 })
 
 vi.mock('@/utils', () => ({
-  correctModelProvider: vi.fn((p: string) => p ? `corrected/${p}` : ''),
+  correctModelProvider: vi.fn((p: string) => (p ? `corrected/${p}` : '')),
 }))
 
 vi.mock('@/app/components/workflow/nodes/if-else/utils', () => ({
-  branchNameCorrect: vi.fn((branches: Array<Record<string, unknown>>) => branches.map((b: Record<string, unknown>, i: number) => ({
-    ...b,
-    name: b.id === 'false' ? 'ELSE' : branches.length === 2 ? 'IF' : `CASE ${i + 1}`,
-  }))),
+  branchNameCorrect: vi.fn((branches: Array<Record<string, unknown>>) =>
+    branches.map((b: Record<string, unknown>, i: number) => ({
+      ...b,
+      name: b.id === 'false' ? 'ELSE' : branches.length === 2 ? 'IF' : `CASE ${i + 1}`,
+    })),
+  ),
 }))
 
 beforeEach(() => {
@@ -55,7 +58,7 @@ describe('preprocessNodesAndEdges', () => {
       createNode({ id: 'iter-1', data: { type: BlockEnum.Iteration, title: '', desc: '' } }),
     ]
     const result = preprocessNodesAndEdges(nodes as Node[], [])
-    const startNodes = result.nodes.filter(n => n.data.type === BlockEnum.IterationStart)
+    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
     expect(startNodes[0]!.parentId).toBe('iter-1')
   })
@@ -69,7 +72,7 @@ describe('preprocessNodesAndEdges', () => {
       createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
     const result = preprocessNodesAndEdges(nodes as Node[], [])
-    const startNodes = result.nodes.filter(n => n.data.type === BlockEnum.IterationStart)
+    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.IterationStart)
     expect(startNodes).toHaveLength(1)
   })
 
@@ -94,7 +97,7 @@ describe('preprocessNodesAndEdges', () => {
       createNode({ id: 'loop-1', data: { type: BlockEnum.Loop, title: '', desc: '' } }),
     ]
     const result = preprocessNodesAndEdges(nodes as Node[], [])
-    const startNodes = result.nodes.filter(n => n.data.type === BlockEnum.LoopStart)
+    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
     expect(startNodes).toHaveLength(1)
   })
 
@@ -107,7 +110,7 @@ describe('preprocessNodesAndEdges', () => {
       createNode({ id: 'some-node', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
     const result = preprocessNodesAndEdges(nodes as Node[], [])
-    const startNodes = result.nodes.filter(n => n.data.type === BlockEnum.LoopStart)
+    const startNodes = result.nodes.filter((n) => n.data.type === BlockEnum.LoopStart)
     expect(startNodes).toHaveLength(1)
   })
 
@@ -178,8 +181,8 @@ describe('preprocessNodesAndEdges', () => {
       }),
     ]
     const result = preprocessNodesAndEdges(nodes as Node[], [])
-    const iterNode = result.nodes.find(n => n.id === 'iter-1')
-    const loopNode = result.nodes.find(n => n.id === 'loop-1')
+    const iterNode = result.nodes.find((n) => n.id === 'iter-1')
+    const loopNode = result.nodes.find((n) => n.id === 'loop-1')
     expect((iterNode!.data as IterationNodeType).start_node_id).toBeTruthy()
     expect((loopNode!.data as LoopNodeType).start_node_id).toBeTruthy()
   })
@@ -191,7 +194,7 @@ describe('initialNodes', () => {
       createNode({ id: 'n1', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       createNode({ id: 'n2', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    nodes.forEach(n => Reflect.deleteProperty(n, 'position'))
+    nodes.forEach((n) => Reflect.deleteProperty(n, 'position'))
 
     const result = initialNodes(nodes, [])
     expect(result[0]!.position).toBeDefined()
@@ -200,9 +203,7 @@ describe('initialNodes', () => {
   })
 
   it('should set type to CUSTOM_NODE when type is missing', () => {
-    const nodes = [
-      createNode({ id: 'n1', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-    ]
+    const nodes = [createNode({ id: 'n1', data: { type: BlockEnum.Start, title: '', desc: '' } })]
     Reflect.deleteProperty(nodes[0]!, 'type')
 
     const result = initialNodes(nodes, [])
@@ -231,9 +232,7 @@ describe('initialNodes', () => {
           type: BlockEnum.IfElse,
           title: '',
           desc: '',
-          cases: [
-            { case_id: 'case-1', logical_operator: 'and', conditions: [] },
-          ],
+          cases: [{ case_id: 'case-1', logical_operator: 'and', conditions: [] }],
         },
       }),
     ]
@@ -318,7 +317,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const iterNode = result.find(n => n.id === 'iter-1')!
+    const iterNode = result.find((n) => n.id === 'iter-1')!
     const data = iterNode.data as IterationNodeType
     expect(data.is_parallel).toBe(false)
     expect(data.parallel_nums).toBe(10)
@@ -339,7 +338,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const loopNode = result.find(n => n.id === 'loop-1')!
+    const loopNode = result.find((n) => n.id === 'loop-1')!
     const data = loopNode.data as LoopNodeType
     expect(data.error_handle_mode).toBe(ErrorHandleMode.Terminated)
     expect(data._children).toBeDefined()
@@ -359,7 +358,7 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    const iterNode = result.find(n => n.id === 'iter-1')!
+    const iterNode = result.find((n) => n.id === 'iter-1')!
     const data = iterNode.data as IterationNodeType
     expect(data._children).toEqual(
       expect.arrayContaining([
@@ -401,7 +400,10 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect((result[0]!.data as KnowledgeRetrievalNodeType).multiple_retrieval_config!.reranking_model!.provider).toBe('corrected/cohere')
+    expect(
+      (result[0]!.data as KnowledgeRetrievalNodeType).multiple_retrieval_config!.reranking_model!
+        .provider,
+    ).toBe('corrected/cohere')
   })
 
   it('should correct model provider for ParameterExtractor nodes', () => {
@@ -418,7 +420,9 @@ describe('initialNodes', () => {
     ]
 
     const result = initialNodes(nodes, [])
-    expect((result[0]!.data as ParameterExtractorNodeType).model.provider).toBe('corrected/anthropic')
+    expect((result[0]!.data as ParameterExtractorNodeType).model.provider).toBe(
+      'corrected/anthropic',
+    )
   })
 
   it('should add default retry_config for HttpRequest nodes', () => {
@@ -628,11 +632,9 @@ describe('initialEdges', () => {
 
     const result = initialEdges(edges, nodes)
     const hasCycleEdge = result.some(
-      e => (e.source === 'b' && e.target === 'c') || (e.source === 'c' && e.target === 'b'),
+      (e) => (e.source === 'b' && e.target === 'c') || (e.source === 'c' && e.target === 'b'),
     )
-    const hasABEdge = result.some(
-      e => e.source === 'a' && e.target === 'b',
-    )
+    const hasABEdge = result.some((e) => e.source === 'a' && e.target === 'b')
     expect(hasCycleEdge).toBe(false)
     // In this specific graph, getCycleEdges treats all nodes remaining in the DFS stack (a, b, c)
     // as part of the cycle, so a→b is also filtered. This assertion documents that behaviour.
@@ -653,17 +655,13 @@ describe('initialEdges', () => {
   })
 
   it('should handle empty edges', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-    ]
+    const nodes = [createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
     const result = initialEdges([], nodes)
     expect(result).toHaveLength(0)
   })
 
   it('should handle edges where source/target node is missing from nodesMap', () => {
-    const nodes = [
-      createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-    ]
+    const nodes = [createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } })]
     const edges = [createEdge({ source: 'a', target: 'missing' })]
 
     const result = initialEdges(edges, nodes)
@@ -686,7 +684,14 @@ describe('initialEdges', () => {
       createNode({ id: 'a', data: { type: BlockEnum.Start, title: '', desc: '' } }),
       createNode({ id: 'b', data: { type: BlockEnum.Code, title: '', desc: '' } }),
     ]
-    const edges = [createEdge({ source: 'a', target: 'b', sourceHandle: 'custom-src', targetHandle: 'custom-tgt' })]
+    const edges = [
+      createEdge({
+        source: 'a',
+        target: 'b',
+        sourceHandle: 'custom-src',
+        targetHandle: 'custom-tgt',
+      }),
+    ]
 
     const result = initialEdges(edges, nodes)
     expect(result[0]!.sourceHandle).toBe('custom-src')
@@ -718,7 +723,7 @@ describe('initialEdges', () => {
     ]
 
     const result = initialEdges(edges, nodes)
-    const selfLoop = result.find(e => e.source === 'b' && e.target === 'b')
+    const selfLoop = result.find((e) => e.source === 'b' && e.target === 'b')
     expect(selfLoop).toBeUndefined()
   })
 

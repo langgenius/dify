@@ -4,7 +4,7 @@ import { ToolIcon } from '../tool-icon'
 type ToolProvider = {
   id?: string
   name?: string
-  icon?: string | { content: string, background: string }
+  icon?: string | { content: string; background: string }
   is_team_authorization?: boolean
 }
 
@@ -12,7 +12,7 @@ let mockBuiltInTools: ToolProvider[] | undefined
 let mockCustomTools: ToolProvider[] | undefined
 let mockWorkflowTools: ToolProvider[] | undefined
 let mockMcpTools: ToolProvider[] | undefined
-let mockMarketplaceIcon: string | { content: string, background: string } | undefined
+let mockMarketplaceIcon: string | { content: string; background: string } | undefined
 
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
@@ -56,11 +56,13 @@ describe('agent/tool-icon', () => {
   })
 
   it('should render a string icon, recover from fetch errors, and keep installed tools warning-free', () => {
-    mockBuiltInTools = [{
-      name: 'author/tool-a',
-      icon: 'https://example.com/tool-a.png',
-      is_team_authorization: true,
-    }]
+    mockBuiltInTools = [
+      {
+        name: 'author/tool-a',
+        icon: 'https://example.com/tool-a.png',
+        is_team_authorization: true,
+      },
+    ]
 
     render(<ToolIcon id="tool-1" providerName="author/tool-a" />)
 
@@ -76,19 +78,23 @@ describe('agent/tool-icon', () => {
   })
 
   it('should render authorization and installation warnings with the correct icon sources', () => {
-    mockWorkflowTools = [{
-      id: 'author/tool-b',
-      icon: {
-        content: 'B',
-        background: '#fff',
+    mockWorkflowTools = [
+      {
+        id: 'author/tool-b',
+        icon: {
+          content: 'B',
+          background: '#fff',
+        },
+        is_team_authorization: false,
       },
-      is_team_authorization: false,
-    }]
+    ]
 
     const { rerender } = render(<ToolIcon id="tool-2" providerName="author/tool-b" />)
 
     expect(screen.getByText('indicator:warning')).toBeInTheDocument()
-    expect(screen.getByLabelText('workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"tool-b"}')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('workflow.nodes.agent.toolNotAuthorizedTooltip:{"tool":"tool-b"}'),
+    ).toBeInTheDocument()
 
     mockWorkflowTools = []
     mockMarketplaceIcon = 'https://example.com/market-tool.png'
@@ -97,7 +103,9 @@ describe('agent/tool-icon', () => {
     const marketplaceIcon = screen.getByRole('img', { name: 'tool icon' })
     expect(marketplaceIcon).toHaveAttribute('src', 'https://example.com/market-tool.png')
     expect(screen.getByText('indicator:error')).toBeInTheDocument()
-    expect(screen.getByLabelText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('workflow.nodes.agent.toolNotInstallTooltip:{"tool":"tool-c"}'),
+    ).toBeInTheDocument()
   })
 
   it('should fall back to the group icon while tool data is still loading', () => {

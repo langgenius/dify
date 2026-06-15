@@ -12,5 +12,5 @@ export const useIndexStatus = () => {
     enabled: { status: 'success', text: t('list.status.enabled', { ns: 'datasetDocuments' }) },
     disabled: { status: 'disabled', text: t('list.status.disabled', { ns: 'datasetDocuments' }) },
     archived: { status: 'disabled', text: t('list.status.archived', { ns: 'datasetDocuments' }) },
-  } satisfies Record<string, { status: StatusDotStatus, text: string }>
+  } satisfies Record<string, { status: StatusDotStatus; text: string }>
 }

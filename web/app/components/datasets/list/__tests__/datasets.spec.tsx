@@ -80,9 +80,7 @@ vi.mock('../../rename-modal', () => ({
 
 vi.mock('../dataset-card', () => ({
   default: ({ dataset }: { dataset: DataSet }) => (
-    <article data-testid={`dataset-card-${dataset.id}`}>
-      {dataset.name}
-    </article>
+    <article data-testid={`dataset-card-${dataset.id}`}>{dataset.name}</article>
   ),
 }))
 

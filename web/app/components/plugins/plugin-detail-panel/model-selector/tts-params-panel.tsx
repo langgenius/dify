@@ -1,4 +1,12 @@
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,19 +19,13 @@ type Props = Readonly<{
   onChange: (language: string, voice: string) => void
 }>
 
-const supportedLanguages = languages.filter(item => item.supported)
+const supportedLanguages = languages.filter((item) => item.supported)
 
-const TTSParamsPanel = ({
-  currentModel,
-  language,
-  voice,
-  onChange,
-}: Props) => {
+const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
   const { t } = useTranslation()
-  const voiceList = useMemo<Array<{ label: string, value: string }>>(() => {
-    if (!currentModel)
-      return []
-    return currentModel.model_properties.voices.map((item: { mode: string, name: string }) => ({
+  const voiceList = useMemo<Array<{ label: string; value: string }>>(() => {
+    if (!currentModel) return []
+    return currentModel.model_properties.voices.map((item: { mode: string; name: string }) => ({
       label: item.name,
       value: item.mode,
     }))
@@ -43,8 +45,7 @@ const TTSParamsPanel = ({
         <Select
           value={language}
           onValueChange={(value) => {
-            if (value == null)
-              return
+            if (value == null) return
             setLanguage(value)
           }}
         >
@@ -56,7 +57,7 @@ const TTSParamsPanel = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent popupClassName="w-[354px]">
-            {supportedLanguages.map(item => (
+            {supportedLanguages.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
                 <SelectItemIndicator />
@@ -72,8 +73,7 @@ const TTSParamsPanel = ({
         <Select
           value={voice}
           onValueChange={(value) => {
-            if (value == null)
-              return
+            if (value == null) return
             setVoice(value)
           }}
         >
@@ -85,7 +85,7 @@ const TTSParamsPanel = ({
             <SelectValue />
           </SelectTrigger>
           <SelectContent popupClassName="w-[354px]">
-            {voiceList.map(item => (
+            {voiceList.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.label}</SelectItemText>
                 <SelectItemIndicator />

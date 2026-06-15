@@ -63,7 +63,11 @@ describe('HistoryBlockReplacementBlock', () => {
 
     const editor = await waitForEditorReady(getEditor)
 
-    setEditorRootText(editor, `prefix ${HISTORY_PLACEHOLDER_TEXT} suffix`, text => new CustomTextNode(text))
+    setEditorRootText(
+      editor,
+      `prefix ${HISTORY_PLACEHOLDER_TEXT} suffix`,
+      (text) => new CustomTextNode(text),
+    )
 
     await waitFor(() => {
       expect(getNodeCount(editor, HistoryBlockNode)).toBe(1)
@@ -78,7 +82,11 @@ describe('HistoryBlockReplacementBlock', () => {
 
     const editor = await waitForEditorReady(getEditor)
 
-    setEditorRootText(editor, 'plain text without history placeholder', text => new CustomTextNode(text))
+    setEditorRootText(
+      editor,
+      'plain text without history placeholder',
+      (text) => new CustomTextNode(text),
+    )
 
     await waitFor(() => {
       expect(getNodeCount(editor, HistoryBlockNode)).toBe(0)
@@ -91,7 +99,7 @@ describe('HistoryBlockReplacementBlock', () => {
 
     const editor = await waitForEditorReady(getEditor)
 
-    setEditorRootText(editor, HISTORY_PLACEHOLDER_TEXT, text => new CustomTextNode(text))
+    setEditorRootText(editor, HISTORY_PLACEHOLDER_TEXT, (text) => new CustomTextNode(text))
 
     await waitFor(() => {
       expect(getNodeCount(editor, HistoryBlockNode)).toBe(1)

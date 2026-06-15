@@ -1,9 +1,6 @@
 'use client'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiClipboardFill,
-  RiClipboardLine,
-} from '@remixicon/react'
+import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,16 +34,14 @@ const CopyFeedback = ({ content }: Props) => {
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <ActionButton aria-label={safeText} onClick={handleCopy}>
             {copied && <RiClipboardFill className="size-4" aria-hidden="true" />}
             {!copied && <RiClipboardLine className="size-4" aria-hidden="true" />}
           </ActionButton>
-        )}
+        }
       />
-      <TooltipContent>
-        {safeText}
-      </TooltipContent>
+      <TooltipContent>{safeText}</TooltipContent>
     </Tooltip>
   )
 }
@@ -70,7 +65,7 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
   return (
     <Tooltip>
       <TooltipTrigger
-        render={(
+        render={
           <button
             type="button"
             aria-label={safeText}
@@ -79,14 +74,11 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
           >
             <div
               className={`size-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
-            >
-            </div>
+            ></div>
           </button>
-        )}
+        }
       />
-      <TooltipContent>
-        {safeText}
-      </TooltipContent>
+      <TooltipContent>{safeText}</TooltipContent>
     </Tooltip>
   )
 }

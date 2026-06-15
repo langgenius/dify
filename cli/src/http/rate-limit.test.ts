@@ -20,7 +20,9 @@ function headers(init?: Record<string, string>): Headers {
 
 describe('classifyRateLimit', () => {
   it('throttle (code too_many_requests) is retryable and reads the Retry-After header', async () => {
-    const d = await classifyRateLimit(res429({ code: 'too_many_requests', status: 429 }, { 'retry-after': '2' }))
+    const d = await classifyRateLimit(
+      res429({ code: 'too_many_requests', status: 429 }, { 'retry-after': '2' }),
+    )
     expect(d).toEqual({ retryable: true, retryAfterMs: 2000 })
   })
 
@@ -30,7 +32,9 @@ describe('classifyRateLimit', () => {
   })
 
   it('quota (code rate_limit_error) is not retryable', async () => {
-    const d = await classifyRateLimit(res429({ code: 'rate_limit_error', status: 429 }, { 'retry-after': '5' }))
+    const d = await classifyRateLimit(
+      res429({ code: 'rate_limit_error', status: 429 }, { 'retry-after': '5' }),
+    )
     expect(d.retryable).toBe(false)
     expect(d.retryAfterMs).toBeUndefined()
   })
@@ -58,8 +62,12 @@ describe('parseRetryAfterMs', () => {
 
   it('reads an HTTP-date relative to the injected now, clamped at 0', () => {
     const now = Date.parse('2026-06-11T00:00:00Z')
-    expect(parseRetryAfterMs(headers({ 'retry-after': 'Thu, 11 Jun 2026 00:00:05 GMT' }), now)).toBe(5000)
-    expect(parseRetryAfterMs(headers({ 'retry-after': 'Thu, 11 Jun 2026 00:00:00 GMT' }), now + 10_000)).toBe(0)
+    expect(
+      parseRetryAfterMs(headers({ 'retry-after': 'Thu, 11 Jun 2026 00:00:05 GMT' }), now),
+    ).toBe(5000)
+    expect(
+      parseRetryAfterMs(headers({ 'retry-after': 'Thu, 11 Jun 2026 00:00:00 GMT' }), now + 10_000),
+    ).toBe(0)
   })
 
   it('returns undefined when absent or unparseable', () => {

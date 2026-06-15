@@ -4,7 +4,15 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import CrawledResult from '../crawled-result'
 
 vi.mock('../checkbox-with-label', () => ({
-  default: ({ isChecked, onChange, label }: { isChecked: boolean, onChange: () => void, label: string }) => (
+  default: ({
+    isChecked,
+    onChange,
+    label,
+  }: {
+    isChecked: boolean
+    onChange: () => void
+    label: string
+  }) => (
     <label>
       <input
         type="checkbox"
@@ -86,9 +94,7 @@ describe('CrawledResult', () => {
     })
 
     it('should apply custom className', () => {
-      const { container } = render(
-        <CrawledResult {...defaultProps} className="my-custom-class" />,
-      )
+      const { container } = render(<CrawledResult {...defaultProps} className="my-custom-class" />)
 
       expect(container.firstChild)!.toHaveClass('my-custom-class')
     })
@@ -197,13 +203,7 @@ describe('CrawledResult', () => {
   describe('Preview', () => {
     it('should call onPreview with correct item and index', () => {
       const onPreview = vi.fn()
-      render(
-        <CrawledResult
-          {...defaultProps}
-          onPreview={onPreview}
-          showPreview={true}
-        />,
-      )
+      render(<CrawledResult {...defaultProps} onPreview={onPreview} showPreview={true} />)
 
       fireEvent.click(screen.getByTestId(`preview-${defaultList[1]!.source_url}`))
 

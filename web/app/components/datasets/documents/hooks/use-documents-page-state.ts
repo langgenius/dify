@@ -19,39 +19,51 @@ export function useDocumentsPageState() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
-  const handlePageChange = useCallback((newPage: number) => {
-    updateQuery({ page: newPage + 1 })
-  }, [updateQuery])
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      updateQuery({ page: newPage + 1 })
+    },
+    [updateQuery],
+  )
 
-  const handleLimitChange = useCallback((newLimit: number) => {
-    updateQuery({ limit: newLimit, page: 1 })
-  }, [updateQuery])
+  const handleLimitChange = useCallback(
+    (newLimit: number) => {
+      updateQuery({ limit: newLimit, page: 1 })
+    },
+    [updateQuery],
+  )
 
-  const handleInputChange = useCallback((value: string) => {
-    if (value !== query.keyword)
+  const handleInputChange = useCallback(
+    (value: string) => {
+      if (value !== query.keyword) setSelectedIds([])
+      updateQuery({ keyword: value, page: 1 })
+    },
+    [query.keyword, updateQuery],
+  )
+
+  const handleStatusFilterChange = useCallback(
+    (value: string) => {
+      const selectedValue = sanitizeStatusValue(value)
       setSelectedIds([])
-    updateQuery({ keyword: value, page: 1 })
-  }, [query.keyword, updateQuery])
-
-  const handleStatusFilterChange = useCallback((value: string) => {
-    const selectedValue = sanitizeStatusValue(value)
-    setSelectedIds([])
-    updateQuery({ status: selectedValue, page: 1 })
-  }, [updateQuery])
+      updateQuery({ status: selectedValue, page: 1 })
+    },
+    [updateQuery],
+  )
 
   const handleStatusFilterClear = useCallback(() => {
-    if (statusFilterValue === 'all')
-      return
+    if (statusFilterValue === 'all') return
     setSelectedIds([])
     updateQuery({ status: 'all', page: 1 })
   }, [statusFilterValue, updateQuery])
 
-  const handleSortChange = useCallback((value: string) => {
-    const next = value as SortType
-    if (next === sortValue)
-      return
-    updateQuery({ sort: next, page: 1 })
-  }, [sortValue, updateQuery])
+  const handleSortChange = useCallback(
+    (value: string) => {
+      const next = value as SortType
+      if (next === sortValue) return
+      updateQuery({ sort: next, page: 1 })
+    },
+    [sortValue, updateQuery],
+  )
 
   return {
     inputValue,

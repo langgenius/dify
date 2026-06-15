@@ -24,27 +24,26 @@ const CrawledResultItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'rounded-lg p-2')}>
+    <div
+      className={cn(
+        isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover',
+        'rounded-lg p-2',
+      )}
+    >
       <div className="relative flex">
         <label className="flex min-w-0 grow cursor-pointer">
           <div className="flex h-5 items-center">
             <Checkbox
               className="mr-2 shrink-0"
               checked={isChecked}
-              onCheckedChange={checked => onCheckChange(checked)}
+              onCheckedChange={(checked) => onCheckChange(checked)}
             />
           </div>
           <div className="flex min-w-0 grow flex-col">
-            <div
-              className="truncate text-sm font-medium text-text-secondary"
-              title={payload.title}
-            >
+            <div className="truncate text-sm font-medium text-text-secondary" title={payload.title}>
               {payload.title}
             </div>
-            <div
-              className="mt-0.5 truncate text-xs text-text-tertiary"
-              title={payload.source_url}
-            >
+            <div className="mt-0.5 truncate text-xs text-text-tertiary" title={payload.source_url}>
               {payload.source_url}
             </div>
           </div>

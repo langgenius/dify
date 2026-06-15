@@ -1,9 +1,7 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiAddCircleFill,
-} from '@remixicon/react'
+import { RiAddCircleFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
@@ -30,12 +28,17 @@ const Contribute = ({ onRefreshData }: Props) => {
     <>
       {isCurrentWorkspaceManager && (
         <div className="col-span-1 flex min-h-[135px] cursor-pointer flex-col rounded-xl bg-background-default-dimmed transition-all duration-200 ease-in-out">
-          <div className="group grow rounded-t-xl" onClick={() => setIsShowEditCustomCollectionModal(true)}>
+          <div
+            className="group grow rounded-t-xl"
+            onClick={() => setIsShowEditCustomCollectionModal(true)}
+          >
             <div className="flex shrink-0 items-center p-4 pb-3">
               <div className="flex size-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
                 <RiAddCircleFill className="size-4 text-text-quaternary group-hover:text-text-accent" />
               </div>
-              <div className="ml-3 system-md-semibold text-text-secondary group-hover:text-text-accent">{t('createCustomTool', { ns: 'tools' })}</div>
+              <div className="ml-3 system-md-semibold text-text-secondary group-hover:text-text-accent">
+                {t('createCustomTool', { ns: 'tools' })}
+              </div>
             </div>
           </div>
         </div>

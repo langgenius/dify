@@ -1,5 +1,9 @@
 import type { AppContextValue } from '@/context/app-context'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 
 import { fireEvent, render, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
@@ -36,8 +40,12 @@ vi.mock('@/config', async (importOriginal) => {
   return {
     ...actual,
     IS_CE_EDITION: false,
-    get ZENDESK_WIDGET_KEY() { return mockZendeskKey.value || '' },
-    get SUPPORT_EMAIL_ADDRESS() { return mockSupportEmailKey.value || '' },
+    get ZENDESK_WIDGET_KEY() {
+      return mockZendeskKey.value || ''
+    },
+    get SUPPORT_EMAIL_ADDRESS() {
+      return mockSupportEmailKey.value || ''
+    },
   }
 })
 
@@ -100,7 +108,7 @@ describe('Support', () => {
 
   const renderSupport = () => {
     return render(
-      <DropdownMenu open={true} onOpenChange={() => { }}>
+      <DropdownMenu open={true} onOpenChange={() => {}}>
         <DropdownMenuTrigger>open</DropdownMenuTrigger>
         <DropdownMenuContent>
           <Support />

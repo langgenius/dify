@@ -8,7 +8,7 @@ const mockMoreClick = vi.fn()
 
 vi.mock('#i18n', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
+    t: (key: string, options?: { ns?: string }) => (options?.ns ? `${options.ns}.${key}` : key),
   }),
   useLocale: () => 'en-US',
 }))
@@ -92,7 +92,11 @@ describe('ListWithCollection', () => {
       <ListWithCollection
         marketplaceCollections={collections}
         marketplaceCollectionPluginsMap={pluginsMap}
-        cardRender={plugin => <div key={plugin.plugin_id} data-testid="custom-card">{plugin.name}</div>}
+        cardRender={(plugin) => (
+          <div key={plugin.plugin_id} data-testid="custom-card">
+            {plugin.name}
+          </div>
+        )}
       />,
     )
 

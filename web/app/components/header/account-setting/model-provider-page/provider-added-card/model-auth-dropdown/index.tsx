@@ -1,11 +1,7 @@
 import type { ModelProvider, PreferredProviderTypeEnum } from '../../declarations'
 import type { CardVariant, CredentialPanelState } from '../use-credential-panel-state'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DropdownContent from './dropdown-content'
@@ -17,7 +13,11 @@ type ModelAuthDropdownProps = {
   onChangePriority: (key: PreferredProviderTypeEnum) => void
 }
 
-function getButtonConfig(variant: CardVariant, hasCredentials: boolean, t: (key: string, opts?: Record<string, string>) => string) {
+function getButtonConfig(
+  variant: CardVariant,
+  hasCredentials: boolean,
+  t: (key: string, opts?: Record<string, string>) => string,
+) {
   if (variant === 'api-required-add') {
     return {
       text: t('modelProvider.auth.addApiKey', { ns: 'common' }),
@@ -55,7 +55,7 @@ function ModelAuthDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={(
+        render={
           <Button
             className="flex grow"
             size="small"
@@ -63,11 +63,9 @@ function ModelAuthDropdown({
             title={buttonConfig.text}
           >
             <span className="mr-1 i-ri-equalizer-2-line size-3.5 shrink-0" />
-            <span className="w-0 grow truncate text-left">
-              {buttonConfig.text}
-            </span>
+            <span className="w-0 grow truncate text-left">{buttonConfig.text}</span>
           </Button>
-        )}
+        }
       />
       <PopoverContent placement="bottom-end">
         <DropdownContent

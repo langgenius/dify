@@ -8,7 +8,12 @@ const mockHandleOpenModalForAddNewCustomModel = vi.fn()
 const mockHandleOpenModalForAddCustomModelToModelList = vi.fn()
 
 vi.mock('../hooks/use-auth', () => ({
-  useAuth: (_provider: unknown, _configMethod: unknown, _fixedFields: unknown, options: { mode: string }) => {
+  useAuth: (
+    _provider: unknown,
+    _configMethod: unknown,
+    _fixedFields: unknown,
+    options: { mode: string },
+  ) => {
     if (options.mode === 'config-custom-model') {
       return { handleOpenModal: mockHandleOpenModalForAddNewCustomModel }
     }
@@ -19,7 +24,7 @@ vi.mock('../hooks/use-auth', () => ({
   },
 }))
 
-let mockCanAddedModels: { model: string, model_type: string }[] = []
+let mockCanAddedModels: { model: string; model_type: string }[] = []
 vi.mock('../hooks/use-custom-models', () => ({
   useCanAddedModels: () => mockCanAddedModels,
 }))
@@ -36,9 +41,7 @@ vi.mock('@remixicon/react', () => ({
 
 vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-mock">
-      {children}
-    </div>
+    <div data-testid="tooltip-mock">{children}</div>
   ),
   TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
   TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

@@ -656,9 +656,7 @@ describe('FireCrawl', () => {
       const limitInput = screen.getByDisplayValue('10')
       fireEvent.change(limitInput, { target: { value: '20' } })
 
-      expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 20 }),
-      )
+      expect(mockOnCrawlOptionsChange).toHaveBeenCalledWith(expect.objectContaining({ limit: 20 }))
     })
 
     it('should call onCrawlOptionsChange when checkbox changes', () => {

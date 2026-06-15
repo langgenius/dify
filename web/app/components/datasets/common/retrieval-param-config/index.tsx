@@ -16,13 +16,12 @@ import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import RadioCard from '@/app/components/base/radio-card'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
-  DEFAULT_WEIGHTED_SCORE,
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
+  useCurrentProviderAndModel,
+  useModelListAndDefaultModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import ProgressIndicator from '../../create/assets/progress-indicator.svg'
 import Reranking from '../../create/assets/rerank.svg'
@@ -34,38 +33,29 @@ type Props = Readonly<{
   onChange: (value: RetrievalConfig) => void
 }>
 
-const RetrievalParamConfig: FC<Props> = ({
-  type,
-  value,
-  showMultiModalTip = false,
-  onChange,
-}) => {
+const RetrievalParamConfig: FC<Props> = ({ type, value, showMultiModalTip = false, onChange }) => {
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const isEconomical = type === RETRIEVE_METHOD.keywordSearch
   const isHybridSearch = type === RETRIEVE_METHOD.hybrid
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
+  const { modelList: rerankModelList } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
 
-  const {
-    currentModel,
-  } = useCurrentProviderAndModel(
-    rerankModelList,
-    {
-      provider: value.reranking_model?.reranking_provider_name ?? '',
-      model: value.reranking_model?.reranking_model_name ?? '',
+  const { currentModel } = useCurrentProviderAndModel(rerankModelList, {
+    provider: value.reranking_model?.reranking_provider_name ?? '',
+    model: value.reranking_model?.reranking_model_name ?? '',
+  })
+
+  const handleToggleRerankEnable = useCallback(
+    (enable: boolean) => {
+      if (enable && !currentModel)
+        toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
+      onChange({
+        ...value,
+        reranking_enable: enable,
+      })
     },
+    [currentModel, onChange, value],
   )
-
-  const handleToggleRerankEnable = useCallback((enable: boolean) => {
-    if (enable && !currentModel)
-      toast.error(t('errorMsg.rerankModelRequired', { ns: 'workflow' }))
-    onChange({
-      ...value,
-      reranking_enable: enable,
-    })
-  }, [currentModel, onChange, value])
 
   const rerankModel = useMemo(() => {
     return {
@@ -75,8 +65,7 @@ const RetrievalParamConfig: FC<Props> = ({
   }, [value.reranking_model])
 
   const handleChangeRerankMode = (v: RerankingModeEnum) => {
-    if (v === value.reranking_mode)
-      return
+    if (v === value.reranking_mode) return
 
     const result = {
       ...value,
@@ -127,7 +116,9 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className="flex items-center">
-              <span className="mr-0.5 system-sm-semibold text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
+              <span className="mr-0.5 system-sm-semibold text-text-secondary">
+                {t('modelProvider.rerankModel.key', { ns: 'common' })}
+              </span>
               <Infotip
                 aria-label={t('modelProvider.rerankModel.tip', { ns: 'common' })}
                 popupClassName="w-[200px]"
@@ -136,53 +127,56 @@ const RetrievalParamConfig: FC<Props> = ({
               </Infotip>
             </div>
           </div>
-          {
-            value.reranking_enable && (
-              <>
-                <ModelSelector
-                  defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
-                  modelList={rerankModelList}
-                  onSelect={(v) => {
-                    onChange({
-                      ...value,
-                      reranking_model: {
-                        reranking_provider_name: v.provider,
-                        reranking_model_name: v.model,
-                      },
-                    })
-                  }}
-                />
-                {showMultiModalTip && (
-                  <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                    <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-                    <div className="p-1">
-                      <AlertTriangle className="size-4 text-text-warning-secondary" />
-                    </div>
-                    <span className="system-xs-medium text-text-primary">
-                      {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
-                    </span>
+          {value.reranking_enable && (
+            <>
+              <ModelSelector
+                defaultModel={
+                  rerankModel && {
+                    provider: rerankModel.provider_name,
+                    model: rerankModel.model_name,
+                  }
+                }
+                modelList={rerankModelList}
+                onSelect={(v) => {
+                  onChange({
+                    ...value,
+                    reranking_model: {
+                      reranking_provider_name: v.provider,
+                      reranking_model_name: v.model,
+                    },
+                  })
+                }}
+              />
+              {showMultiModalTip && (
+                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
+                  <div className="p-1">
+                    <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>
-                )}
-              </>
-            )
-          }
+                  <span className="system-xs-medium text-text-primary">
+                    {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
-      {
-        !isHybridSearch && (
-          <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-4')}>
-            <TopKItem
-              className="grow"
-              value={value.top_k}
-              onChange={(_key, v) => {
-                onChange({
-                  ...value,
-                  top_k: v,
-                })
-              }}
-              enable={true}
-            />
-            {(!isEconomical && !(value.search_method === RETRIEVE_METHOD.fullText && !value.reranking_enable)) && (
+      {!isHybridSearch && (
+        <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-4')}>
+          <TopKItem
+            className="grow"
+            value={value.top_k}
+            onChange={(_key, v) => {
+              onChange({
+                ...value,
+                top_k: v,
+              })
+            }}
+            enable={true}
+          />
+          {!isEconomical &&
+            !(value.search_method === RETRIEVE_METHOD.fullText && !value.reranking_enable) && (
               <ScoreThresholdItem
                 className="grow"
                 value={value.score_threshold}
@@ -202,132 +196,128 @@ const RetrievalParamConfig: FC<Props> = ({
                 }}
               />
             )}
+        </div>
+      )}
+      {isHybridSearch && (
+        <>
+          <RadioGroup<RerankingModeEnum>
+            aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
+            value={value.reranking_mode}
+            onValueChange={handleChangeRerankMode}
+            className="mb-4 flex gap-2"
+          >
+            {rerankingModeOptions.map((option) => (
+              <RadioCard
+                key={option.value}
+                value={option.value}
+                icon={
+                  <img
+                    src={
+                      option.value === RerankingModeEnum.WeightedScore
+                        ? ProgressIndicator.src
+                        : Reranking.src
+                    }
+                    alt=""
+                  />
+                }
+                title={option.label}
+                description={option.tips}
+                className="flex-1"
+              />
+            ))}
+          </RadioGroup>
+          {value.reranking_mode === RerankingModeEnum.WeightedScore && (
+            <WeightedScore
+              value={{
+                value: [
+                  value.weights!.vector_setting.vector_weight,
+                  value.weights!.keyword_setting.keyword_weight,
+                ],
+              }}
+              onChange={(v) => {
+                onChange({
+                  ...value,
+                  weights: {
+                    ...value.weights!,
+                    vector_setting: {
+                      ...value.weights!.vector_setting,
+                      vector_weight: v.value[0]!,
+                    },
+                    keyword_setting: {
+                      ...value.weights!.keyword_setting,
+                      keyword_weight: v.value[1]!,
+                    },
+                  },
+                })
+              }}
+            />
+          )}
+          {value.reranking_mode !== RerankingModeEnum.WeightedScore && (
+            <>
+              <ModelSelector
+                defaultModel={
+                  rerankModel && {
+                    provider: rerankModel.provider_name,
+                    model: rerankModel.model_name,
+                  }
+                }
+                modelList={rerankModelList}
+                onSelect={(v) => {
+                  onChange({
+                    ...value,
+                    reranking_model: {
+                      reranking_provider_name: v.provider,
+                      reranking_model_name: v.model,
+                    },
+                  })
+                }}
+              />
+              {showMultiModalTip && (
+                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                  <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
+                  <div className="p-1">
+                    <AlertTriangle className="size-4 text-text-warning-secondary" />
+                  </div>
+                  <span className="system-xs-medium text-text-primary">
+                    {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+          <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-6')}>
+            <TopKItem
+              className="grow"
+              value={value.top_k}
+              onChange={(_key, v) => {
+                onChange({
+                  ...value,
+                  top_k: v,
+                })
+              }}
+              enable={true}
+            />
+            <ScoreThresholdItem
+              className="grow"
+              value={value.score_threshold}
+              onChange={(_key, v) => {
+                onChange({
+                  ...value,
+                  score_threshold: v,
+                })
+              }}
+              enable={value.score_threshold_enabled}
+              hasSwitch={true}
+              onSwitchChange={(_key, v) => {
+                onChange({
+                  ...value,
+                  score_threshold_enabled: v,
+                })
+              }}
+            />
           </div>
-        )
-      }
-      {
-        isHybridSearch && (
-          <>
-            <RadioGroup<RerankingModeEnum>
-              aria-label={t('modelProvider.rerankModel.key', { ns: 'common' })}
-              value={value.reranking_mode}
-              onValueChange={handleChangeRerankMode}
-              className="mb-4 flex gap-2"
-            >
-              {
-                rerankingModeOptions.map(option => (
-                  <RadioCard
-                    key={option.value}
-                    value={option.value}
-                    icon={(
-                      <img
-                        src={
-                          option.value === RerankingModeEnum.WeightedScore
-                            ? ProgressIndicator.src
-                            : Reranking.src
-                        }
-                        alt=""
-                      />
-                    )}
-                    title={option.label}
-                    description={option.tips}
-                    className="flex-1"
-                  />
-                ))
-              }
-            </RadioGroup>
-            {
-              value.reranking_mode === RerankingModeEnum.WeightedScore && (
-                <WeightedScore
-                  value={{
-                    value: [
-                      value.weights!.vector_setting.vector_weight,
-                      value.weights!.keyword_setting.keyword_weight,
-                    ],
-                  }}
-                  onChange={(v) => {
-                    onChange({
-                      ...value,
-                      weights: {
-                        ...value.weights!,
-                        vector_setting: {
-                          ...value.weights!.vector_setting,
-                          vector_weight: v.value[0]!,
-                        },
-                        keyword_setting: {
-                          ...value.weights!.keyword_setting,
-                          keyword_weight: v.value[1]!,
-                        },
-                      },
-                    })
-                  }}
-                />
-              )
-            }
-            {
-              value.reranking_mode !== RerankingModeEnum.WeightedScore && (
-                <>
-                  <ModelSelector
-                    defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
-                    modelList={rerankModelList}
-                    onSelect={(v) => {
-                      onChange({
-                        ...value,
-                        reranking_model: {
-                          reranking_provider_name: v.provider,
-                          reranking_model_name: v.model,
-                        },
-                      })
-                    }}
-                  />
-                  {showMultiModalTip && (
-                    <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
-                      <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40" />
-                      <div className="p-1">
-                        <AlertTriangle className="size-4 text-text-warning-secondary" />
-                      </div>
-                      <span className="system-xs-medium text-text-primary">
-                        {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )
-            }
-            <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-6')}>
-              <TopKItem
-                className="grow"
-                value={value.top_k}
-                onChange={(_key, v) => {
-                  onChange({
-                    ...value,
-                    top_k: v,
-                  })
-                }}
-                enable={true}
-              />
-              <ScoreThresholdItem
-                className="grow"
-                value={value.score_threshold}
-                onChange={(_key, v) => {
-                  onChange({
-                    ...value,
-                    score_threshold: v,
-                  })
-                }}
-                enable={value.score_threshold_enabled}
-                hasSwitch={true}
-                onSwitchChange={(_key, v) => {
-                  onChange({
-                    ...value,
-                    score_threshold_enabled: v,
-                  })
-                }}
-              />
-            </div>
-          </>
-        )
-      }
+        </>
+      )}
     </div>
   )
 }

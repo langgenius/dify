@@ -39,7 +39,10 @@ describe('CalendarItem', () => {
 
       render(<Item {...props} />)
       const button = screen.getByRole('button', { name: '15' })
-      expect(button).toHaveClass('bg-components-button-primary-bg', 'text-components-button-primary-text')
+      expect(button).toHaveClass(
+        'bg-components-button-primary-bg',
+        'text-components-button-primary-text',
+      )
     })
 
     it('should not have selected styles when date does not match selectedDate', () => {
@@ -48,7 +51,10 @@ describe('CalendarItem', () => {
 
       render(<Item {...props} />)
       const button = screen.getByRole('button', { name: '15' })
-      expect(button).not.toHaveClass('bg-components-button-primary-bg', 'text-components-button-primary-text')
+      expect(button).not.toHaveClass(
+        'bg-components-button-primary-bg',
+        'text-components-button-primary-text',
+      )
     })
 
     it('should have different styles when day is not in current month', () => {

@@ -2,32 +2,19 @@
   "name": "dify-client",
   "version": "3.1.0",
   "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "files": [
-    "dist/index.js",
-    "dist/index.d.ts",
-    "README.md",
-    "LICENSE"
-  ],
   "keywords": [
+    "AI",
+    "API",
     "Dify",
     "Dify.AI",
     "LLM",
-    "AI",
-    "SDK",
-    "API"
+    "SDK"
   ],
+  "homepage": "https://dify.ai",
+  "bugs": {
+    "url": "https://github.com/langgenius/dify/issues"
+  },
+  "license": "MIT",
   "author": "LangGenius",
   "contributors": [
     "Joel <iamjoel007@gmail.com> (https://github.com/iamjoel)",
@@ -39,11 +26,21 @@
     "url": "https://github.com/langgenius/dify.git",
     "directory": "sdks/nodejs-client"
   },
-  "bugs": {
-    "url": "https://github.com/langgenius/dify/issues"
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
-  "homepage": "https://dify.ai",
-  "license": "MIT",
   "scripts": {
     "build": "vp pack",
     "lint": "eslint",
@@ -67,5 +64,8 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

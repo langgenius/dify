@@ -6,18 +6,17 @@ type Props = Readonly<{
   tags: string[]
 }>
 
-const CardMoreInfoComponent = ({
-  downloadCount,
-  tags,
-}: Props) => {
+const CardMoreInfoComponent = ({ downloadCount, tags }: Props) => {
   return (
     <div className="flex h-5 items-center">
       {downloadCount !== undefined && <DownloadCount downloadCount={downloadCount} />}
-      {downloadCount !== undefined && tags && tags.length > 0 && <div className="mx-2 system-xs-regular text-text-quaternary">·</div>}
+      {downloadCount !== undefined && tags && tags.length > 0 && (
+        <div className="mx-2 system-xs-regular text-text-quaternary">·</div>
+      )}
       {tags && tags.length > 0 && (
         <>
           <div className="flex h-4 flex-wrap space-x-2 overflow-hidden">
-            {tags.map(tag => (
+            {tags.map((tag) => (
               <div
                 key={tag}
                 className="flex max-w-[120px] space-x-1 overflow-hidden system-xs-regular"

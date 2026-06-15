@@ -29,10 +29,7 @@ describe('ResultItem', () => {
 
   it('renders description when provided', () => {
     renderInCommandRoot(
-      <ResultItem
-        result={createResult({ description: 'A great app' })}
-        onSelect={vi.fn()}
-      />,
+      <ResultItem result={createResult({ description: 'A great app' })} onSelect={vi.fn()} />,
     )
 
     expect(screen.getByText('A great app')).toBeInTheDocument()
@@ -42,27 +39,21 @@ describe('ResultItem', () => {
     const result = createResult()
     delete (result as Record<string, unknown>).description
 
-    renderInCommandRoot(
-      <ResultItem result={result} onSelect={vi.fn()} />,
-    )
+    renderInCommandRoot(<ResultItem result={result} onSelect={vi.fn()} />)
 
     expect(screen.getByText('Test Result')).toBeInTheDocument()
     expect(screen.getByText('app')).toBeInTheDocument()
   })
 
   it('renders result type label', () => {
-    renderInCommandRoot(
-      <ResultItem result={createResult({ type: 'plugin' })} onSelect={vi.fn()} />,
-    )
+    renderInCommandRoot(<ResultItem result={createResult({ type: 'plugin' })} onSelect={vi.fn()} />)
 
     expect(screen.getByText('plugin')).toBeInTheDocument()
   })
 
   it('renders icon when provided', () => {
     const icon = <span data-testid="custom-icon">icon</span>
-    renderInCommandRoot(
-      <ResultItem result={createResult({ icon })} onSelect={vi.fn()} />,
-    )
+    renderInCommandRoot(<ResultItem result={createResult({ icon })} onSelect={vi.fn()} />)
 
     expect(screen.getByTestId('custom-icon')).toBeInTheDocument()
   })
@@ -71,9 +62,7 @@ describe('ResultItem', () => {
     const user = userEvent.setup()
     const onSelect = vi.fn()
 
-    renderInCommandRoot(
-      <ResultItem result={createResult()} onSelect={onSelect} />,
-    )
+    renderInCommandRoot(<ResultItem result={createResult()} onSelect={onSelect} />)
 
     await user.click(screen.getByText('Test Result'))
 

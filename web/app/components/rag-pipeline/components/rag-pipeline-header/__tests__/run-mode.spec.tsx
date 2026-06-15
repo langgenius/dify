@@ -8,7 +8,7 @@ const mockHandleStopRun = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
 
-let mockWorkflowRunningData: { task_id: string, result: { status: string } } | undefined
+let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
 vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowRun: () => ({
@@ -50,7 +50,7 @@ vi.mock('@/context/event-emitter', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
-  cn: (...args: unknown[]) => args.filter(a => typeof a === 'string').join(' '),
+  cn: (...args: unknown[]) => args.filter((a) => typeof a === 'string').join(' '),
 }))
 
 vi.mock('@remixicon/react', () => ({

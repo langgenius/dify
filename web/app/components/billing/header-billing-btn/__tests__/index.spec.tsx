@@ -12,8 +12,7 @@ function getHeaderGlobal(): HeaderGlobal {
 
 const ensureProviderContextMock = () => {
   const globals = getHeaderGlobal()
-  if (!globals.__mockProviderContext)
-    throw new Error('Provider context mock not set')
+  if (!globals.__mockProviderContext) throw new Error('Provider context mock not set')
   return globals.__mockProviderContext
 }
 
@@ -27,7 +26,11 @@ vi.mock('@/context/provider-context', () => {
 })
 
 vi.mock('../../upgrade-btn', () => ({
-  default: () => <button data-testid="upgrade-btn" type="button">Upgrade</button>,
+  default: () => (
+    <button data-testid="upgrade-btn" type="button">
+      Upgrade
+    </button>
+  ),
 }))
 
 describe('HeaderBillingBtn', () => {

@@ -26,37 +26,55 @@ describe('Plugin Marketplace to Install Flow', () => {
     }
 
     it('should allow marketplace plugin when all sources allowed', () => {
-      const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
+      const plugin = {
+        from: 'marketplace' as const,
+        verification: { authorized_category: 'langgenius' },
+      }
       const result = pluginInstallLimit(plugin as never, systemFeaturesAll as never)
       expect(result.canInstall).toBe(true)
     })
 
     it('should allow github plugin when all sources allowed', () => {
-      const plugin = { from: 'github' as const, verification: { authorized_category: 'langgenius' } }
+      const plugin = {
+        from: 'github' as const,
+        verification: { authorized_category: 'langgenius' },
+      }
       const result = pluginInstallLimit(plugin as never, systemFeaturesAll as never)
       expect(result.canInstall).toBe(true)
     })
 
     it('should block github plugin when marketplace only', () => {
-      const plugin = { from: 'github' as const, verification: { authorized_category: 'langgenius' } }
+      const plugin = {
+        from: 'github' as const,
+        verification: { authorized_category: 'langgenius' },
+      }
       const result = pluginInstallLimit(plugin as never, systemFeaturesMarketplaceOnly as never)
       expect(result.canInstall).toBe(false)
     })
 
     it('should allow marketplace plugin when marketplace only', () => {
-      const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'partner' } }
+      const plugin = {
+        from: 'marketplace' as const,
+        verification: { authorized_category: 'partner' },
+      }
       const result = pluginInstallLimit(plugin as never, systemFeaturesMarketplaceOnly as never)
       expect(result.canInstall).toBe(true)
     })
 
     it('should allow official plugin when official only', () => {
-      const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'langgenius' } }
+      const plugin = {
+        from: 'marketplace' as const,
+        verification: { authorized_category: 'langgenius' },
+      }
       const result = pluginInstallLimit(plugin as never, systemFeaturesOfficialOnly as never)
       expect(result.canInstall).toBe(true)
     })
 
     it('should block community plugin when official only', () => {
-      const plugin = { from: 'marketplace' as const, verification: { authorized_category: 'community' } }
+      const plugin = {
+        from: 'marketplace' as const,
+        verification: { authorized_category: 'community' },
+      }
       const result = pluginInstallLimit(plugin as never, systemFeaturesOfficialOnly as never)
       expect(result.canInstall).toBe(false)
     })
@@ -72,7 +90,7 @@ describe('Plugin Marketplace to Install Flow', () => {
         },
       }
 
-      const results = sources.map(source => ({
+      const results = sources.map((source) => ({
         source,
         canInstall: pluginInstallLimit(
           { from: source, verification: { authorized_category: 'langgenius' } } as never,
@@ -80,9 +98,9 @@ describe('Plugin Marketplace to Install Flow', () => {
         ).canInstall,
       }))
 
-      expect(results.find(r => r.source === 'marketplace')?.canInstall).toBe(true)
-      expect(results.find(r => r.source === 'github')?.canInstall).toBe(false)
-      expect(results.find(r => r.source === 'package')?.canInstall).toBe(false)
+      expect(results.find((r) => r.source === 'marketplace')?.canInstall).toBe(true)
+      expect(results.find((r) => r.source === 'github')?.canInstall).toBe(false)
+      expect(results.find((r) => r.source === 'package')?.canInstall).toBe(false)
     })
   })
 })

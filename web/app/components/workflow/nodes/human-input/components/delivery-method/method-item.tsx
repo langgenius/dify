@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import type { DeliveryMethod, EmailConfig, FormInputItem } from '../../types'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -51,7 +48,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
   readonly,
 }) => {
   const { t } = useTranslation()
-  const email = useAppContextWithSelector(s => s.userProfile.email)
+  const email = useAppContextWithSelector((s) => s.userProfile.email)
   const [isHovering, setIsHovering] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showTestEmailModal, setShowTestEmailModal] = useState(false)
@@ -75,7 +72,10 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
       return ''
     }
     if (method.config?.debug_mode) {
-      return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTipInDebugMode`, { ns: 'workflow', email })
+      return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTipInDebugMode`, {
+        ns: 'workflow',
+        email,
+      })
     }
     return t(`${i18nPrefix}.deliveryMethod.emailSender.testSendTip`, { ns: 'workflow' })
   }, [method.type, method.config?.debug_mode, t, email])
@@ -92,7 +92,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
       <div
         className={cn(
           'group flex h-8 items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg pr-2 pl-1.5 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
-          isHovering && 'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
+          isHovering &&
+            'border-state-destructive-border bg-state-destructive-hover hover:bg-state-destructive-hover',
         )}
       >
         <div className="flex items-center gap-1.5">
@@ -107,9 +108,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
             </div>
           )}
           <div className="system-xs-medium text-text-secondary capitalize">{method.type}</div>
-          {method.type === DeliveryMethodType.Email
-            && (method.config as EmailConfig)?.debug_mode
-            && <Badge size="s" className="px-1! py-0.5!">DEBUG</Badge>}
+          {method.type === DeliveryMethodType.Email &&
+            (method.config as EmailConfig)?.debug_mode && (
+              <Badge size="s" className="px-1! py-0.5!">
+                DEBUG
+              </Badge>
+            )}
         </div>
         <div className="flex items-center gap-1">
           {!readonly && (
@@ -118,27 +122,27 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                 <>
                   <Tooltip>
                     <TooltipTrigger
-                      render={(
+                      render={
                         <ActionButton
                           aria-label={emailSenderTooltipContent}
                           onClick={() => setShowTestEmailModal(true)}
                         >
                           <RiSendPlane2Line className="size-4" />
                         </ActionButton>
-                      )}
+                      }
                     />
                     <TooltipContent>{emailSenderTooltipContent}</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger
-                      render={(
+                      render={
                         <ActionButton
                           aria-label={configureLabel}
                           onClick={() => setShowEmailModal(true)}
                         >
                           <RiEqualizer2Line className="size-4" />
                         </ActionButton>
-                      )}
+                      }
                     />
                     <TooltipContent>{configureLabel}</TooltipContent>
                   </Tooltip>
@@ -146,7 +150,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
               )}
               <Tooltip>
                 <TooltipTrigger
-                  render={(
+                  render={
                     <ActionButton
                       aria-label={removeLabel}
                       state={isHovering ? ActionButtonState.Destructive : ActionButtonState.Default}
@@ -156,7 +160,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                     >
                       <RiDeleteBinLine className="size-4" />
                     </ActionButton>
-                  )}
+                  }
                 />
                 <TooltipContent>{removeLabel}</TooltipContent>
               </Tooltip>

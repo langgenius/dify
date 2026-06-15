@@ -6,7 +6,11 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
-import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import {
+  useDocumentList,
+  useInvalidDocumentDetail,
+  useInvalidDocumentList,
+} from '@/service/knowledge/use-document'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
@@ -28,7 +32,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === 'sandbox'
 
-  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
 
   // Use custom hook for page state management
@@ -61,12 +65,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       sort: sortValue,
     },
     refetchInterval: (query) => {
-      const shouldForcePolling = normalizedStatusFilterValue !== 'all'
-        && FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
+      const shouldForcePolling =
+        normalizedStatusFilterValue !== 'all' &&
+        FORCED_POLLING_STATUSES.has(normalizedStatusFilterValue)
       const documents = query.state.data?.data
-      if (!documents)
-        return POLLING_INTERVAL
-      const hasIncompleteDocuments = documents.some(({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status))
+      if (!documents) return POLLING_INTERVAL
+      const hasIncompleteDocuments = documents.some(
+        ({ indexing_status }) => !TERMINAL_INDEXING_STATUSES.has(indexing_status),
+      )
       return shouldForcePolling || hasIncompleteDocuments ? POLLING_INTERVAL : false
     },
   })
@@ -118,8 +124,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   // Render content based on loading and data state
   const renderContent = () => {
-    if (isListLoading && !documentsRes)
-      return <Loading type="app" />
+    if (isListLoading && !documentsRes) return <Loading type="app" />
 
     if (total > 0) {
       return (
@@ -180,9 +185,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         onBuiltInEnabledChange={setBuiltInEnabled}
         onAddDocument={routeToDocCreate}
       />
-      <div className="flex h-0 grow flex-col px-6 pt-4">
-        {renderContent()}
-      </div>
+      <div className="flex h-0 grow flex-col px-6 pt-4">{renderContent()}</div>
     </div>
   )
 }

@@ -80,7 +80,9 @@ describe('FieldInfo', () => {
 
     it('should call onUpdate when input value changes', () => {
       const onUpdate = vi.fn()
-      render(<FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />)
+      render(
+        <FieldInfo label="Title" value="" showEdit={true} inputType="input" onUpdate={onUpdate} />,
+      )
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'New' } })
 
@@ -89,7 +91,15 @@ describe('FieldInfo', () => {
 
     it('should call onUpdate when textarea value changes', () => {
       const onUpdate = vi.fn()
-      render(<FieldInfo label="Desc" value="" showEdit={true} inputType="textarea" onUpdate={onUpdate} />)
+      render(
+        <FieldInfo
+          label="Desc"
+          value=""
+          showEdit={true}
+          inputType="textarea"
+          onUpdate={onUpdate}
+        />,
+      )
 
       fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Updated' } })
 

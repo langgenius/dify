@@ -17,19 +17,28 @@ vi.mock('next-themes', () => ({
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode, href: string }) => (
-    <a href={href} data-testid="mock-link">{children}</a>
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
+    <a href={href} data-testid="mock-link">
+      {children}
+    </a>
   ),
 }))
 
 vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn((path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`),
+  getMarketplaceUrl: vi.fn(
+    (path: string, { theme }: { theme: string }) => `https://marketplace.url${path}?theme=${theme}`,
+  ),
 }))
 
 // Mock marketplace components
 
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  default: ({ plugins, cardRender, cardContainerClassName, emptyClassName }: {
+  default: ({
+    plugins,
+    cardRender,
+    cardContainerClassName,
+    emptyClassName,
+  }: {
     plugins: Plugin[]
     cardRender: (p: Plugin) => React.ReactNode
     cardContainerClassName?: string
@@ -37,7 +46,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
   }) => (
     <div data-testid="mock-list" className={cardContainerClassName}>
       {plugins.length === 0 && <div className={emptyClassName} aria-label="empty-state" />}
-      {plugins.map(plugin => (
+      {plugins.map((plugin) => (
         <div key={plugin.plugin_id} data-testid={`list-item-${plugin.plugin_id}`}>
           {cardRender(plugin)}
         </div>
@@ -48,9 +57,7 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
 
 vi.mock('@/app/components/plugins/provider-card', () => ({
   default: ({ payload }: { payload: Plugin }) => (
-    <div data-testid={`mock-provider-card-${payload.plugin_id}`}>
-      {payload.name}
-    </div>
+    <div data-testid={`mock-provider-card-${payload.plugin_id}`}>{payload.name}</div>
   ),
 }))
 
@@ -114,7 +121,10 @@ describe('InstallFromMarketplace Component', () => {
       // Assert
       expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
+      expect(screen.getByTestId('mock-link')).toHaveAttribute(
+        'href',
+        'https://marketplace.url?theme=light',
+      )
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()

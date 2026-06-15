@@ -10,12 +10,7 @@ import type {
   ModelTypeEnum,
 } from './declarations'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
@@ -48,28 +43,37 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   modelList,
 ) => {
   const currentDefaultModel = useMemo(() => {
-    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
-    const currentDefaultModel = currentProvider && currentModel && {
-      model: currentModel.model,
-      provider: currentProvider.provider,
-    }
+    const currentProvider = modelList.find(
+      (provider) => provider.provider === defaultModel?.provider.provider,
+    )
+    const currentModel = currentProvider?.models.find(
+      (model) => model.model === defaultModel?.model,
+    )
+    const currentDefaultModel = currentProvider &&
+      currentModel && {
+        model: currentModel.model,
+        provider: currentProvider.provider,
+      }
 
     return currentDefaultModel
   }, [defaultModel, modelList])
   const currentDefaultModelKey = currentDefaultModel
     ? `${currentDefaultModel.provider}:${currentDefaultModel.model}`
     : ''
-  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(currentDefaultModel)
+  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(
+    currentDefaultModel,
+  )
   const [defaultModelSourceKey, setDefaultModelSourceKey] = useState(currentDefaultModelKey)
-  const selectedDefaultModel = defaultModelSourceKey === currentDefaultModelKey
-    ? defaultModelState
-    : currentDefaultModel
+  const selectedDefaultModel =
+    defaultModelSourceKey === currentDefaultModelKey ? defaultModelState : currentDefaultModel
 
-  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
-    setDefaultModelSourceKey(currentDefaultModelKey)
-    setDefaultModelState(model)
-  }, [currentDefaultModelKey])
+  const handleDefaultModelChange = useCallback(
+    (model: DefaultModel) => {
+      setDefaultModelSourceKey(currentDefaultModelKey)
+      setDefaultModelState(model)
+    },
+    [currentDefaultModelKey],
+  )
 
   return [selectedDefaultModel, handleDefaultModelChange]
 }
@@ -87,23 +91,37 @@ export const useProviderCredentialsAndLoadBalancing = (
   credentialId?: string,
 ) => {
   const queryClient = useQueryClient()
-  const predefinedEnabled = configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && !!credentialId
-  const customEnabled = configurationMethod === ConfigurationMethodEnum.customizableModel && !!currentCustomConfigurationModelFixedFields && !!credentialId
+  const predefinedEnabled =
+    configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && !!credentialId
+  const customEnabled =
+    configurationMethod === ConfigurationMethodEnum.customizableModel &&
+    !!currentCustomConfigurationModelFixedFields &&
+    !!credentialId
 
-  const { data: predefinedFormSchemasValue, isPending: isPredefinedLoading } = useQuery(
-    {
-      queryKey: ['model-providers', 'credentials', provider, credentialId],
-      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
-      enabled: predefinedEnabled,
-    },
-  )
-  const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
-    {
-      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
-      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
-      enabled: customEnabled,
-    },
-  )
+  const { data: predefinedFormSchemasValue, isPending: isPredefinedLoading } = useQuery({
+    queryKey: ['model-providers', 'credentials', provider, credentialId],
+    queryFn: () =>
+      fetchModelProviderCredentials(
+        `/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`,
+      ),
+    enabled: predefinedEnabled,
+  })
+  const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery({
+    queryKey: [
+      'model-providers',
+      'models',
+      'credentials',
+      provider,
+      currentCustomConfigurationModelFixedFields?.__model_type,
+      currentCustomConfigurationModelFixedFields?.__model_name,
+      credentialId,
+    ],
+    queryFn: () =>
+      fetchModelProviderCredentials(
+        `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`,
+      ),
+    enabled: customEnabled,
+  })
 
   const credentials = useMemo(() => {
     return configurationMethod === ConfigurationMethodEnum.predefinedModel
@@ -124,10 +142,30 @@ export const useProviderCredentialsAndLoadBalancing = (
 
   const mutate = useCallback(() => {
     if (predefinedEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
+      queryClient.invalidateQueries({
+        queryKey: ['model-providers', 'credentials', provider, credentialId],
+      })
     if (customEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
-  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, currentCustomConfigurationModelFixedFields?.__model_type, predefinedEnabled, provider, queryClient])
+      queryClient.invalidateQueries({
+        queryKey: [
+          'model-providers',
+          'models',
+          'credentials',
+          provider,
+          currentCustomConfigurationModelFixedFields?.__model_type,
+          currentCustomConfigurationModelFixedFields?.__model_name,
+          credentialId,
+        ],
+      })
+  }, [
+    customEnabled,
+    credentialId,
+    currentCustomConfigurationModelFixedFields?.__model_name,
+    currentCustomConfigurationModelFixedFields?.__model_type,
+    predefinedEnabled,
+    provider,
+    queryClient,
+  ])
 
   return {
     credentials,
@@ -168,8 +206,8 @@ export const useDefaultModel = (type: ModelTypeEnum) => {
 }
 
 export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: DefaultModel) => {
-  const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider)
-  const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+  const currentProvider = modelList.find((provider) => provider.provider === defaultModel?.provider)
+  const currentModel = currentProvider?.models.find((model) => model.model === defaultModel?.model)
 
   return {
     currentProvider,
@@ -177,13 +215,17 @@ export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: De
   }
 }
 
-export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultModel?: DefaultModel) => {
+export const useTextGenerationCurrentProviderAndModelAndModelList = (
+  defaultModel?: DefaultModel,
+) => {
   const { textGenerationModelList } = useProviderContext()
-  const activeTextGenerationModelList = textGenerationModelList.filter(model => model.status === ModelStatusEnum.active)
-  const {
-    currentProvider,
-    currentModel,
-  } = useCurrentProviderAndModel(textGenerationModelList, defaultModel)
+  const activeTextGenerationModelList = textGenerationModelList.filter(
+    (model) => model.status === ModelStatusEnum.active,
+  )
+  const { currentProvider, currentModel } = useCurrentProviderAndModel(
+    textGenerationModelList,
+    defaultModel,
+  )
 
   return {
     currentProvider,
@@ -205,10 +247,10 @@ export const useModelListAndDefaultModel = (type: ModelTypeEnum) => {
 
 export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: ModelTypeEnum) => {
   const { modelList, defaultModel } = useModelListAndDefaultModel(type)
-  const { currentProvider, currentModel } = useCurrentProviderAndModel(
-    modelList,
-    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
-  )
+  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, {
+    provider: defaultModel?.provider.provider || '',
+    model: defaultModel?.model || '',
+  })
 
   return {
     modelList,
@@ -221,9 +263,12 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
 export const useUpdateModelList = () => {
   const queryClient = useQueryClient()
 
-  const updateModelList = useCallback((type: ModelTypeEnum) => {
-    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
-  }, [queryClient])
+  const updateModelList = useCallback(
+    (type: ModelTypeEnum) => {
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
+    },
+    [queryClient],
+  )
 
   return updateModelList
 }
@@ -231,25 +276,26 @@ export const useUpdateModelList = () => {
 export const useInvalidateDefaultModel = () => {
   const queryClient = useQueryClient()
 
-  return useCallback((type: ModelTypeEnum) => {
-    queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
-  }, [queryClient])
+  return useCallback(
+    (type: ModelTypeEnum) => {
+      queryClient.invalidateQueries({ queryKey: commonQueryKeys.defaultModel(type) })
+    },
+    [queryClient],
+  )
 }
 
 export const useAnthropicBuyQuota = () => {
   const [loading, setLoading] = useState(false)
 
   const handleGetPayUrl = async () => {
-    if (loading)
-      return
+    if (loading) return
 
     setLoading(true)
     try {
       const res = await getPayUrl('/workspaces/current/model-providers/anthropic/checkout-url')
 
       window.location.href = res.url
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -267,14 +313,16 @@ export const useUpdateModelProviders = () => {
   return updateModelProviders
 }
 
-export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string, enabled = true) => {
+export const useMarketplaceAllPlugins = (
+  providers: ModelProvider[],
+  searchText: string,
+  enabled = true,
+) => {
   const exclude = useMemo(() => {
-    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
+    return providers.map((provider) => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
   }, [providers])
-  const {
-    plugins: collectionPlugins = [],
-    isLoading: isCollectionLoading,
-  } = useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
+  const { plugins: collectionPlugins = [], isLoading: isCollectionLoading } =
+    useMarketplacePluginsByCollectionId(enabled ? '__model-settings-pinned-models' : undefined)
   const {
     plugins,
     queryPlugins,
@@ -300,8 +348,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         sort_by: 'install_count',
         sort_order: 'DESC',
       })
-    }
-    else {
+    } else {
       queryPlugins({
         query: '',
         category: PluginCategoryEnum.model,
@@ -312,19 +359,26 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
         sort_order: 'DESC',
       })
     }
-  }, [cancelQueryPluginsWithDebounced, enabled, queryPlugins, queryPluginsWithDebounced, resetPlugins, searchText, exclude])
+  }, [
+    cancelQueryPluginsWithDebounced,
+    enabled,
+    queryPlugins,
+    queryPluginsWithDebounced,
+    resetPlugins,
+    searchText,
+    exclude,
+  ])
 
   const allPlugins = useMemo(() => {
-    if (!enabled)
-      return []
+    if (!enabled) return []
 
-    const allPlugins = collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))
+    const allPlugins = collectionPlugins.filter((plugin) => !exclude.includes(plugin.plugin_id))
 
     if (plugins?.length) {
       for (let i = 0; i < plugins.length; i++) {
         const plugin = plugins[i]
 
-        if (plugin!.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin!.plugin_id))
+        if (plugin!.type !== 'bundle' && !allPlugins.find((p) => p.plugin_id === plugin!.plugin_id))
           allPlugins.push(plugin!)
       }
     }
@@ -343,42 +397,48 @@ export const useRefreshModel = () => {
   const queryClient = useQueryClient()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const handleRefreshModel = useCallback((
-    provider: ModelProvider,
-    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-    refreshModelList?: boolean,
-  ) => {
-    const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
-      input: {
-        params: {
-          provider: provider.provider,
+  const handleRefreshModel = useCallback(
+    (
+      provider: ModelProvider,
+      CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+      refreshModelList?: boolean,
+    ) => {
+      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+        input: {
+          params: {
+            provider: provider.provider,
+          },
         },
-      },
-    })
-    queryClient.invalidateQueries({
-      queryKey: modelProviderModelListQueryKey,
-      exact: true,
-      refetchType: 'none',
-    })
-
-    updateModelProviders()
-
-    provider.supported_model_types.forEach((type) => {
-      updateModelList(type)
-    })
-
-    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-      expandModelProviderList(provider.provider)
+      })
       queryClient.invalidateQueries({
         queryKey: modelProviderModelListQueryKey,
         exact: true,
-        refetchType: 'active',
+        refetchType: 'none',
       })
 
-      if (CustomConfigurationModelFixedFields?.__model_type)
-        updateModelList(CustomConfigurationModelFixedFields.__model_type)
-    }
-  }, [expandModelProviderList, queryClient, updateModelList, updateModelProviders])
+      updateModelProviders()
+
+      provider.supported_model_types.forEach((type) => {
+        updateModelList(type)
+      })
+
+      if (
+        refreshModelList &&
+        provider.custom_configuration.status === CustomConfigurationStatusEnum.active
+      ) {
+        expandModelProviderList(provider.provider)
+        queryClient.invalidateQueries({
+          queryKey: modelProviderModelListQueryKey,
+          exact: true,
+          refetchType: 'active',
+        })
+
+        if (CustomConfigurationModelFixedFields?.__model_type)
+          updateModelList(CustomConfigurationModelFixedFields.__model_type)
+      }
+    },
+    [expandModelProviderList, queryClient, updateModelList, updateModelProviders],
+  )
 
   return {
     handleRefreshModel,
@@ -386,7 +446,7 @@ export const useRefreshModel = () => {
 }
 
 export const useModelModalHandler = () => {
-  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+  const setShowModelModal = useModalContextSelector((state) => state.setShowModelModal)
 
   return (
     provider: ModelProvider,

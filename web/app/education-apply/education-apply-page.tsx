@@ -20,17 +20,11 @@ import { useProviderContext } from '@/context/provider-context'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { WorkspaceProvider } from '@/context/workspace-context-provider'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
-import {
-  useRouter,
-  useSearchParams,
-} from '@/next/navigation'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { switchWorkspace } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
-import {
-  useEducationAdd,
-  useInvalidateEducationStatus,
-} from '@/service/use-education'
+import { useEducationAdd, useInvalidateEducationStatus } from '@/service/use-education'
 import DifyLogo from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -51,10 +45,7 @@ const EducationApplyAgeContent = () => {
   const [inSchoolChecked, setInSchoolChecked] = useState(false)
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
-  const {
-    isPending,
-    mutateAsync: educationAdd,
-  } = useEducationAdd({ onSuccess: noop })
+  const { isPending, mutateAsync: educationAdd } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
   const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const updateEducationStatus = useInvalidateEducationStatus()
@@ -63,16 +54,16 @@ const EducationApplyAgeContent = () => {
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
-  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
+  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, {
+    raw: true,
+  })
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const appliedEducationCase = (() => {
-    if (!isCurrentWorkspaceManager)
-      return AppliedEducationCase.noPaymentPermission
+    if (!isCurrentWorkspaceManager) return AppliedEducationCase.noPaymentPermission
 
-    if (plan.type === Plan.sandbox)
-      return AppliedEducationCase.eligible
+    if (plan.type === Plan.sandbox) return AppliedEducationCase.eligible
 
     return AppliedEducationCase.activeSubscription
   })()
@@ -87,31 +78,30 @@ const EducationApplyAgeContent = () => {
         updateEducationStatus()
         setEducationVerifying(null)
         setHasSubmittedEducation(true)
-      }
-      else {
+      } else {
         toast.error(t('submitError', { ns: 'education' }))
       }
     })
   }
   const handleOpenBillingPortal = async () => {
-    if (isOpeningBillingPortal)
-      return
+    if (isOpeningBillingPortal) return
 
     setIsOpeningBillingPortal(true)
     try {
-      await openAsyncWindow(async () => {
-        const res = await consoleClient.billing.invoices()
-        if (res.url)
-          return res.url
+      await openAsyncWindow(
+        async () => {
+          const res = await consoleClient.billing.invoices()
+          if (res.url) return res.url
 
-        throw new Error('Failed to open billing page')
-      }, {
-        onError: (err) => {
-          toast.error(err.message || String(err))
+          throw new Error('Failed to open billing page')
         },
-      })
-    }
-    finally {
+        {
+          onError: (err) => {
+            toast.error(err.message || String(err))
+          },
+        },
+      )
+    } finally {
       setIsOpeningBillingPortal(false)
     }
   }
@@ -125,8 +115,7 @@ const EducationApplyAgeContent = () => {
     </Button>
   )
   const handleSwitchWorkspace = async (tenantId: string) => {
-    if (tenantId === currentWorkspace?.id)
-      return
+    if (tenantId === currentWorkspace?.id) return
 
     try {
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id: tenantId } })
@@ -136,8 +125,7 @@ const EducationApplyAgeContent = () => {
       ])
       onPlanInfoChanged()
       updateEducationStatus()
-    }
-    catch {
+    } catch {
       toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
     }
   }
@@ -199,18 +187,21 @@ const EducationApplyAgeContent = () => {
           style={{
             backgroundImage: 'url(/education/bg.png)',
           }}
-        >
-        </div>
+        ></div>
         <div className="mt-[-349px] box-content flex h-7 items-center justify-between p-6">
           <DifyLogo size="large" style="monochromeWhite" />
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
           <div className="mb-2 flex h-[192px] flex-col justify-end pt-3 pb-4 text-text-primary-on-surface">
-            <div className="mb-2 title-5xl-bold shadow-xs">{t('toVerified', { ns: 'education' })}</div>
+            <div className="mb-2 title-5xl-bold shadow-xs">
+              {t('toVerified', { ns: 'education' })}
+            </div>
             <div className="system-md-medium shadow-xs">
               {t('toVerifiedTip.front', { ns: 'education' })}
               &nbsp;
-              <span className="system-md-semibold underline">{t('toVerifiedTip.coupon', { ns: 'education' })}</span>
+              <span className="system-md-semibold underline">
+                {t('toVerifiedTip.coupon', { ns: 'education' })}
+              </span>
               &nbsp;
               {t('toVerifiedTip.end', { ns: 'education' })}
             </div>
@@ -218,90 +209,94 @@ const EducationApplyAgeContent = () => {
           <div className="mb-7">
             <UserInfo />
           </div>
-          {isEducationAccount || hasSubmittedEducation
-            ? (
-                <div className="flex">
-                  <AppliedEducationWorkspaceBlock
-                    currentWorkspace={currentWorkspace}
-                    plan={plan.type}
-                    action={renderAppliedEducationAction()}
-                    onSwitchWorkspace={(value) => {
-                      void handleSwitchWorkspace(value)
-                    }}
-                  />
+          {isEducationAccount || hasSubmittedEducation ? (
+            <div className="flex">
+              <AppliedEducationWorkspaceBlock
+                currentWorkspace={currentWorkspace}
+                plan={plan.type}
+                action={renderAppliedEducationAction()}
+                onSwitchWorkspace={(value) => {
+                  void handleSwitchWorkspace(value)
+                }}
+              />
+            </div>
+          ) : (
+            <>
+              <div className="mb-7">
+                <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
+                  {t('form.schoolName.title', { ns: 'education' })}
                 </div>
-              )
-            : (
-                <>
-                  <div className="mb-7">
-                    <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
-                      {t('form.schoolName.title', { ns: 'education' })}
-                    </div>
-                    <SearchInput
-                      value={schoolName}
-                      onChange={setSchoolName}
-                    />
-                  </div>
-                  <div className="mb-7">
-                    <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
-                      {t('form.schoolRole.title', { ns: 'education' })}
-                    </div>
-                    <RoleSelector
-                      value={role}
-                      onChange={setRole}
-                    />
-                  </div>
-                  <div className="mb-7">
-                    <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
-                      {t('form.terms.title', { ns: 'education' })}
-                    </div>
-                    <div className="mb-1 system-md-regular text-text-tertiary">
-                      {t('form.terms.desc.front', { ns: 'education' })}
-                      &nbsp;
-                      <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
-                      &nbsp;
-                      {t('form.terms.desc.and', { ns: 'education' })}
-                      &nbsp;
-                      <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
-                      {t('form.terms.desc.end', { ns: 'education' })}
-                    </div>
-                    <div className="py-2 system-md-regular text-text-primary">
-                      <label className="mb-2 flex">
-                        <Checkbox
-                          className="mr-2 shrink-0"
-                          checked={ageChecked}
-                          onCheckedChange={setAgeChecked}
-                        />
-                        {t('form.terms.option.age', { ns: 'education' })}
-                      </label>
-                      <label className="flex">
-                        <Checkbox
-                          className="mr-2 shrink-0"
-                          checked={inSchoolChecked}
-                          onCheckedChange={setInSchoolChecked}
-                        />
-                        {t('form.terms.option.inSchool', { ns: 'education' })}
-                      </label>
-                    </div>
-                  </div>
-                  <Button
-                    variant="primary"
-                    disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
-                    onClick={handleSubmit}
-                  >
-                    {t('submit', { ns: 'education' })}
-                  </Button>
-                  <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
+                <SearchInput value={schoolName} onChange={setSchoolName} />
+              </div>
+              <div className="mb-7">
+                <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
+                  {t('form.schoolRole.title', { ns: 'education' })}
+                </div>
+                <RoleSelector value={role} onChange={setRole} />
+              </div>
+              <div className="mb-7">
+                <div className="mb-1 flex h-6 items-center system-md-semibold text-text-secondary">
+                  {t('form.terms.title', { ns: 'education' })}
+                </div>
+                <div className="mb-1 system-md-regular text-text-tertiary">
+                  {t('form.terms.desc.front', { ns: 'education' })}
+                  &nbsp;
                   <a
-                    className="flex items-center system-xs-regular text-text-accent"
-                    href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
+                    href="https://dify.ai/terms"
                     target="_blank"
+                    className="text-text-secondary hover:underline"
                   >
-                    {t('learn', { ns: 'education' })}
-                    <span className="ml-1 i-ri-external-link-line size-3" />
+                    {t('form.terms.desc.termsOfService', { ns: 'education' })}
                   </a>
-                </>
-              )}
+                  &nbsp;
+                  {t('form.terms.desc.and', { ns: 'education' })}
+                  &nbsp;
+                  <a
+                    href="https://dify.ai/privacy"
+                    target="_blank"
+                    className="text-text-secondary hover:underline"
+                  >
+                    {t('form.terms.desc.privacyPolicy', { ns: 'education' })}
+                  </a>
+                  {t('form.terms.desc.end', { ns: 'education' })}
+                </div>
+                <div className="py-2 system-md-regular text-text-primary">
+                  <label className="mb-2 flex">
+                    <Checkbox
+                      className="mr-2 shrink-0"
+                      checked={ageChecked}
+                      onCheckedChange={setAgeChecked}
+                    />
+                    {t('form.terms.option.age', { ns: 'education' })}
+                  </label>
+                  <label className="flex">
+                    <Checkbox
+                      className="mr-2 shrink-0"
+                      checked={inSchoolChecked}
+                      onCheckedChange={setInSchoolChecked}
+                    />
+                    {t('form.terms.option.inSchool', { ns: 'education' })}
+                  </label>
+                </div>
+              </div>
+              <Button
+                variant="primary"
+                disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
+                onClick={handleSubmit}
+              >
+                {t('submit', { ns: 'education' })}
+              </Button>
+              <div className="mt-5 mb-4 h-px bg-linear-to-r from-[rgba(16,24,40,0.08)]"></div>
+              <a
+                className="flex items-center system-xs-regular text-text-accent"
+                href={docLink('/use-dify/workspace/subscription-management#dify-for-education')}
+                target="_blank"
+              >
+                {t('learn', { ns: 'education' })}
+                <span className="ml-1 i-ri-external-link-line size-3" />
+              </a>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -346,4 +341,4 @@ const EducationApplyAge = () => <EducationApplyAgeContent />
 
 export default EducationApplyAge
 
-type AppliedEducationCase = typeof AppliedEducationCase[keyof typeof AppliedEducationCase]
+type AppliedEducationCase = (typeof AppliedEducationCase)[keyof typeof AppliedEducationCase]

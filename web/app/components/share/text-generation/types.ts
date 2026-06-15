@@ -17,15 +17,15 @@ export enum TaskStatus {
   failed = 'failed',
 }
 
-export type InputValueTypes
-  = | string
-    | boolean
-    | number
-    | string[]
-    | Record<string, unknown>
-    | FileEntity
-    | FileEntity[]
-    | undefined
+export type InputValueTypes =
+  | string
+  | boolean
+  | number
+  | string[]
+  | Record<string, unknown>
+  | FileEntity
+  | FileEntity[]
+  | undefined
 
 export type TextGenerationRunControl = {
   onStop: () => Promise<void> | void

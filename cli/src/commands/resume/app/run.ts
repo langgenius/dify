@@ -50,8 +50,7 @@ async function resolveInputs(
     let parsed: unknown
     try {
       parsed = JSON.parse(inputsJson)
-    }
-    catch {
+    } catch {
       throw new Error('--inputs must be valid JSON')
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
@@ -63,8 +62,7 @@ async function resolveInputs(
     let parsed: unknown
     try {
       parsed = JSON.parse(await readFile(inputsFile, 'utf8'))
-    }
-    catch {
+    } catch {
       throw new Error('--inputs-file must contain valid JSON')
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
@@ -90,11 +88,9 @@ export async function resumeApp(opts: ResumeAppOptions, deps: ResumeAppDeps): Pr
     )
     if (formResp.user_actions.length === 1) {
       action = formResp.user_actions[0]?.id ?? ''
-    }
-    else if (formResp.user_actions.length === 0) {
+    } else if (formResp.user_actions.length === 0) {
       action = ''
-    }
-    else {
+    } else {
       throw new Error('--action required: form has multiple user actions')
     }
   }

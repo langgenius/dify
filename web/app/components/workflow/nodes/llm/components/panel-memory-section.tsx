@@ -60,8 +60,7 @@ const PanelMemorySection: FC<Props> = ({
   const shouldCheckSysQuery = !isSnippetFlow
   const defaultMemory = isSnippetFlow ? SNIPPET_DEFAULT_MEMORY : DEFAULT_MEMORY
 
-  if (!isChatMode)
-    return null
+  if (!isChatMode) return null
 
   return (
     <>
@@ -69,7 +68,9 @@ const PanelMemorySection: FC<Props> = ({
         <div className="mt-4">
           <div className="flex h-8 items-center justify-between rounded-lg bg-components-input-bg-normal pr-2 pl-3">
             <div className="flex items-center space-x-1">
-              <div className="text-xs font-semibold text-text-secondary uppercase">{t('nodes.common.memories.title', { ns: 'workflow' })}</div>
+              <div className="text-xs font-semibold text-text-secondary uppercase">
+                {t('nodes.common.memories.title', { ns: 'workflow' })}
+              </div>
               <Infotip aria-label={t('nodes.common.memories.tip', { ns: 'workflow' })}>
                 {t('nodes.common.memories.tip', { ns: 'workflow' })}
               </Infotip>
@@ -80,7 +81,7 @@ const PanelMemorySection: FC<Props> = ({
           </div>
           <div className="mt-4">
             <Editor
-              title={(
+              title={
                 <div className="flex items-center space-x-1">
                   <div className="text-xs font-semibold text-text-secondary uppercase">user</div>
                   <Infotip
@@ -90,7 +91,7 @@ const PanelMemorySection: FC<Props> = ({
                     {t('nodes.llm.roleDescription.user', { ns: 'workflow' })}
                   </Infotip>
                 </div>
-              )}
+              }
               value={inputs.memory.query_prompt_template || defaultMemory.query_prompt_template}
               onChange={handleSyeQueryChange}
               readOnly={readOnly}
@@ -103,11 +104,13 @@ const PanelMemorySection: FC<Props> = ({
               isSupportFileVar
             />
 
-            {shouldCheckSysQuery && inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
-              <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
-                {t(`${i18nPrefix}.sysQueryInUser`, { ns: 'workflow' })}
-              </div>
-            )}
+            {shouldCheckSysQuery &&
+              inputs.memory.query_prompt_template &&
+              !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
+                <div className="text-xs leading-[18px] font-normal text-[#DC6803]">
+                  {t(`${i18nPrefix}.sysQueryInUser`, { ns: 'workflow' })}
+                </div>
+              )}
           </div>
         </div>
       )}

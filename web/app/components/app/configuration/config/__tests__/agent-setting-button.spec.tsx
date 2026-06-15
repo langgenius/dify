@@ -15,9 +15,7 @@ vi.mock('../agent/agent-setting', () => ({
         <button onClick={() => props.onSave({ ...props.payload, max_iteration: 9 })}>
           save-agent
         </button>
-        <button onClick={props.onCancel}>
-          cancel-agent
-        </button>
+        <button onClick={props.onCancel}>cancel-agent</button>
       </div>
     )
   },

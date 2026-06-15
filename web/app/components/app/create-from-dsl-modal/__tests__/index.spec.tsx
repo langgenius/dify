@@ -18,7 +18,7 @@ const toastMocks = vi.hoisted(() => ({
   warning: vi.fn(),
 }))
 const hotkeyMocks = vi.hoisted(() => ({
-  handlers: new Map<string, { handler: () => void, options?: { enabled?: boolean } }>(),
+  handlers: new Map<string, { handler: () => void; options?: { enabled?: boolean } }>(),
 }))
 let mockPlanUsage = 0
 let mockPlanTotal = 10
@@ -47,8 +47,7 @@ vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
 
 const triggerHotkey = (hotkey: string) => {
   const registration = hotkeyMocks.handlers.get(hotkey)
-  if (registration?.options?.enabled === false)
-    return
+  if (registration?.options?.enabled === false) return
   registration?.handler()
 }
 
@@ -98,14 +97,11 @@ vi.mock('@/utils/app-redirection', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign(
-    (...args: unknown[]) => toastMocks.call(...args),
-    {
-      success: (...args: unknown[]) => toastMocks.success(...args),
-      error: (...args: unknown[]) => toastMocks.error(...args),
-      warning: (...args: unknown[]) => toastMocks.warning(...args),
-    },
-  ),
+  toast: Object.assign((...args: unknown[]) => toastMocks.call(...args), {
+    success: (...args: unknown[]) => toastMocks.success(...args),
+    error: (...args: unknown[]) => toastMocks.error(...args),
+    warning: (...args: unknown[]) => toastMocks.warning(...args),
+  }),
 }))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
@@ -156,12 +152,7 @@ describe('CreateFromDSLModal', () => {
 
   it('should switch tabs, close from the header icon, and ignore shortcuts without valid input', async () => {
     const handleClose = vi.fn()
-    render(
-      <CreateFromDSLModal
-        show
-        onClose={handleClose}
-      />,
-    )
+    render(<CreateFromDSLModal show onClose={handleClose} />)
 
     triggerHotkey('Mod+Enter')
     expect(mockImportDSL).not.toHaveBeenCalled()
@@ -171,7 +162,9 @@ describe('CreateFromDSLModal', () => {
     })
     expect(screen.getByPlaceholderText('importFromDSLUrlPlaceholder'))!.toBeInTheDocument()
 
-    const closeTrigger = screen.getByText('importApp').parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
+    const closeTrigger = screen
+      .getByText('importApp')
+      .parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
     fireEvent.click(closeTrigger)
     expect(handleClose).toHaveBeenCalledTimes(1)
   })
@@ -221,7 +214,10 @@ describe('CreateFromDSLModal', () => {
       mode: DSLImportMode.YAML_URL,
       yaml_url: 'https://example.com/app.yml',
     })
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload', appMode: AppModeEnum.CHAT })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_upload',
+      appMode: AppModeEnum.CHAT,
+    })
     expect(handleSuccess).toHaveBeenCalledTimes(1)
     expect(handleClose).toHaveBeenCalledTimes(1)
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
@@ -272,7 +268,10 @@ describe('CreateFromDSLModal', () => {
       expect(screen.getByText('demo.yml'))!.toBeInTheDocument()
     })
 
-    const removeButton = screen.getByText('demo.yml').closest('.group')?.querySelector('button') as HTMLButtonElement
+    const removeButton = screen
+      .getByText('demo.yml')
+      .closest('.group')
+      ?.querySelector('button') as HTMLButtonElement
     await act(async () => {
       fireEvent.click(removeButton)
     })
@@ -327,7 +326,10 @@ describe('CreateFromDSLModal', () => {
     expect(mockImportDSLConfirm).toHaveBeenCalledWith({
       import_id: 'import-3',
     })
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_upload', appMode: AppModeEnum.WORKFLOW })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_upload',
+      appMode: AppModeEnum.WORKFLOW,
+    })
   })
 
   it('should close the DSL mismatch modal when dialog requests close', async () => {
@@ -403,10 +405,18 @@ describe('CreateFromDSLModal', () => {
   })
 
   it('should ignore empty import responses and prevent duplicate submissions while a request is in flight', async () => {
-    let resolveImport!: (value: { id: string, status: DSLImportStatus, app_id: string, app_mode: string }) => void
-    mockImportDSL.mockImplementationOnce(() => new Promise((resolve) => {
-      resolveImport = resolve as typeof resolveImport
-    }))
+    let resolveImport!: (value: {
+      id: string
+      status: DSLImportStatus
+      app_id: string
+      app_mode: string
+    }) => void
+    mockImportDSL.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveImport = resolve as typeof resolveImport
+        }),
+    )
 
     render(
       <CreateFromDSLModal

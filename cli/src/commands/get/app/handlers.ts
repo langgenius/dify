@@ -59,11 +59,11 @@ export class AppListOutput {
   }
 
   tableRows(): readonly (readonly TableCell[])[] {
-    return this.rows.map(row => row.tableRow())
+    return this.rows.map((row) => row.tableRow())
   }
 
   name(): string {
-    return this.rows.map(row => row.name()).join('\n')
+    return this.rows.map((row) => row.name()).join('\n')
   }
 
   json(): AppListResponse {
@@ -72,5 +72,5 @@ export class AppListOutput {
 }
 
 function joinTags(tags: readonly TagItem[]): string {
-  return tags.map(t => t.name).join(',')
+  return tags.map((t) => t.name).join(',')
 }

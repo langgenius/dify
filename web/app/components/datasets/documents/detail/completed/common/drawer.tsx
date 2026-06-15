@@ -48,17 +48,14 @@ export function CompletedDrawer({
   modal = false,
 }: CompletedDrawerProps) {
   const handleOpenChange: DrawerOpenChange = (nextOpen, eventDetails) => {
-    if (nextOpen)
-      return
+    if (nextOpen) return
 
-    if (eventDetails.reason === 'focus-out' || eventDetails.reason === 'outside-press')
-      return
+    if (eventDetails.reason === 'focus-out' || eventDetails.reason === 'outside-press') return
 
     onClose()
   }
 
-  if (!open)
-    return null
+  if (!open) return null
 
   return (
     <Drawer
@@ -69,11 +66,7 @@ export function CompletedDrawer({
       onOpenChange={handleOpenChange}
     >
       <DrawerPortal>
-        {modal && (
-          <DrawerBackdrop
-            onClick={onClose}
-          />
-        )}
+        {modal && <DrawerBackdrop onClick={onClose} />}
         <DrawerViewport className="pointer-events-none">
           <DrawerPopup
             aria-modal={modal ? 'true' : 'false'}

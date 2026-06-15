@@ -34,8 +34,7 @@ type IAppDetailLayoutProps = {
 }
 
 const getResponseStatus = (error: unknown) => {
-  if (error instanceof Response)
-    return error.status
+  if (error instanceof Response) return error.status
 
   if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
     return error.status
@@ -47,23 +46,29 @@ const shouldRedirectToDatasetList = (error: unknown) => {
 }
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
-  const {
-    children,
-    datasetId,
-  } = props
+  const { children, datasetId } = props
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
+  const hideSideBar =
+    pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const isPipelineCanvas = pathname.endsWith('/pipeline')
   const [storedHideHeader] = useLocalStorage<boolean>('workflow-canvas-maximize', false)
-  const [storedAppSidebarMode] = useLocalStorage<string>('app-detail-collapse-or-expand', 'expand', { raw: true })
+  const [storedAppSidebarMode] = useLocalStorage<string>(
+    'app-detail-collapse-or-expand',
+    'expand',
+    { raw: true },
+  )
   const [eventHideHeader, setEventHideHeader] = useState<boolean | null>(null)
   const hideHeader = eventHideHeader ?? storedHideHeader
   const { eventEmitter } = useEventEmitterContextContext()
 
   eventEmitter?.useSubscription((value: EventEmitterValue) => {
-    if (typeof value === 'object' && value.type === 'workflow-canvas-maximize' && typeof value.payload === 'boolean')
+    if (
+      typeof value === 'object' &&
+      value.type === 'workflow-canvas-maximize' &&
+      typeof value.payload === 'boolean'
+    )
       setEventHideHeader(value.payload)
   })
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -74,15 +79,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
   const shouldRedirect = shouldRedirectToDatasetList(error)
 
-  const { data: relatedApps } = useDatasetRelatedApps(datasetId, { enabled: !!datasetRes && !shouldRedirect })
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId, {
+    enabled: !!datasetRes && !shouldRedirect,
+  })
 
   const isButtonDisabledWithPipeline = useMemo(() => {
-    if (!datasetRes)
-      return true
-    if (datasetRes.provider === 'external')
-      return false
-    if (datasetRes.runtime_mode === 'general')
-      return false
+    if (!datasetRes) return true
+    if (datasetRes.provider === 'external') return false
+    if (datasetRes.runtime_mode === 'general') return false
     return !datasetRes.is_published
   }, [datasetRes])
 
@@ -126,7 +130,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
-  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
+  const setAppSidebarExpand = useStore((state) => state.setAppSidebarExpand)
 
   useEffect(() => {
     const mode = isMobile ? 'collapse' : 'expand'
@@ -134,15 +138,12 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [isMobile, setAppSidebarExpand, storedAppSidebarMode])
 
   useEffect(() => {
-    if (shouldRedirect)
-      router.replace('/datasets')
+    if (shouldRedirect) router.replace('/datasets')
   }, [router, shouldRedirect])
 
-  if (!datasetRes && !error)
-    return <Loading type="app" />
+  if (!datasetRes && !error) return <Loading type="app" />
 
-  if (shouldRedirect)
-    return <Loading type="app" />
+  if (shouldRedirect) return <Loading type="app" />
 
   return (
     <div
@@ -151,18 +152,25 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
       )}
     >
-      <DatasetDetailContext.Provider value={{
-        indexingTechnique: datasetRes?.indexing_technique,
-        dataset: datasetRes,
-        mutateDatasetRes,
-      }}
+      <DatasetDetailContext.Provider
+        value={{
+          indexingTechnique: datasetRes?.indexing_technique,
+          dataset: datasetRes,
+          mutateDatasetRes,
+        }}
       >
         {!hideSideBar && (
           <AppSideBar
             navigation={navigation}
             extraInfo={
               !isCurrentWorkspaceDatasetOperator
-                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
+                ? (mode) => (
+                    <ExtraInfo
+                      relatedApps={relatedApps}
+                      expand={mode === 'expand'}
+                      documentCount={datasetRes?.document_count}
+                    />
+                  )
                 : undefined
             }
             iconType="dataset"

@@ -7,8 +7,9 @@ import ProcessDocuments from '../index'
 // Mock dataset detail context - required for useInputVariables hook
 const mockPipelineId = 'pipeline-123'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string } }) => string) =>
-    selector({ dataset: { pipeline_id: mockPipelineId } }),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { pipeline_id: string } }) => string,
+  ) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock API call for pipeline processing params
@@ -33,7 +34,7 @@ vi.mock('../../../../../create-from-pipeline/process-documents/form', () => ({
   }: {
     ref: React.RefObject<{ submit: () => void }>
     initialData: Record<string, unknown>
-    configurations: Array<{ variable: string, label: string, type: string }>
+    configurations: Array<{ variable: string; label: string; type: string }>
     schema: unknown
     onSubmit: (data: Record<string, unknown>) => void
     onPreview: () => void
@@ -41,7 +42,7 @@ vi.mock('../../../../../create-from-pipeline/process-documents/form', () => ({
   }) {
     // Expose submit method via ref for parent component control
     if (ref && typeof ref === 'object' && 'current' in ref) {
-      (ref as React.MutableRefObject<{ submit: () => void }>).current = {
+      ;(ref as React.MutableRefObject<{ submit: () => void }>).current = {
         submit: () => onSubmit(initialData),
       }
     }
@@ -82,11 +83,7 @@ const createQueryClient = () =>
 
 const renderWithProviders = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 // Factory function for creating mock variables - matches RAGPipelineVariable type
@@ -100,15 +97,17 @@ const createMockVariable = (overrides: Partial<RAGPipelineVariable> = {}): RAGPi
 })
 
 // Default props factory
-const createDefaultProps = (overrides: Partial<{
-  datasourceNodeId: string
-  lastRunInputData: Record<string, unknown>
-  isRunning: boolean
-  ref: React.RefObject<{ submit: () => void } | null>
-  onProcess: () => void
-  onPreview: () => void
-  onSubmit: (data: Record<string, unknown>) => void
-}> = {}) => ({
+const createDefaultProps = (
+  overrides: Partial<{
+    datasourceNodeId: string
+    lastRunInputData: Record<string, unknown>
+    isRunning: boolean
+    ref: React.RefObject<{ submit: () => void } | null>
+    onProcess: () => void
+    onPreview: () => void
+    onSubmit: (data: Record<string, unknown>) => void
+  }> = {},
+) => ({
   datasourceNodeId: 'node-123',
   lastRunInputData: {},
   isRunning: false,
@@ -136,7 +135,9 @@ describe('ProcessDocuments', () => {
 
       // Assert - verify both Form and Actions are rendered
       expect(screen.getByTestId('process-form')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      ).toBeInTheDocument()
     })
 
     it('should render with correct container structure', () => {
@@ -150,8 +151,16 @@ describe('ProcessDocuments', () => {
 
     it('should render form fields based on variables configuration', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'chunk_size', label: 'Chunk Size', type: PipelineInputVarType.number }),
-        createMockVariable({ variable: 'separator', label: 'Separator', type: PipelineInputVarType.textInput }),
+        createMockVariable({
+          variable: 'chunk_size',
+          label: 'Chunk Size',
+          type: PipelineInputVarType.number,
+        }),
+        createMockVariable({
+          variable: 'separator',
+          label: 'Separator',
+          type: PipelineInputVarType.textInput,
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const props = createDefaultProps()
@@ -172,7 +181,12 @@ describe('ProcessDocuments', () => {
     describe('lastRunInputData', () => {
       it('should use lastRunInputData as initial form values', () => {
         const variables: RAGPipelineVariable[] = [
-          createMockVariable({ variable: 'chunk_size', label: 'Chunk Size', type: PipelineInputVarType.number, default_value: '100' }),
+          createMockVariable({
+            variable: 'chunk_size',
+            label: 'Chunk Size',
+            type: PipelineInputVarType.number,
+            default_value: '100',
+          }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
         const lastRunInputData = { chunk_size: 500 }
@@ -187,7 +201,12 @@ describe('ProcessDocuments', () => {
 
       it('should use default_value when lastRunInputData is empty', () => {
         const variables: RAGPipelineVariable[] = [
-          createMockVariable({ variable: 'chunk_size', label: 'Chunk Size', type: PipelineInputVarType.number, default_value: '100' }),
+          createMockVariable({
+            variable: 'chunk_size',
+            label: 'Chunk Size',
+            type: PipelineInputVarType.number,
+            default_value: '100',
+          }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
         const props = createDefaultProps({ lastRunInputData: {} })
@@ -205,7 +224,9 @@ describe('ProcessDocuments', () => {
 
         renderWithProviders(<ProcessDocuments {...props} />)
 
-        const processButton = screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' })
+        const processButton = screen.getByRole('button', {
+          name: 'datasetPipeline.operations.saveAndProcess',
+        })
         expect(processButton).not.toBeDisabled()
       })
 
@@ -214,7 +235,9 @@ describe('ProcessDocuments', () => {
 
         renderWithProviders(<ProcessDocuments {...props} />)
 
-        const processButton = screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' })
+        const processButton = screen.getByRole('button', {
+          name: 'datasetPipeline.operations.saveAndProcess',
+        })
         expect(processButton).toBeDisabled()
       })
 
@@ -256,7 +279,9 @@ describe('ProcessDocuments', () => {
         const props = createDefaultProps({ onProcess })
 
         renderWithProviders(<ProcessDocuments {...props} />)
-        fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+        )
 
         expect(onProcess).toHaveBeenCalledTimes(1)
       })
@@ -266,7 +291,9 @@ describe('ProcessDocuments', () => {
         const props = createDefaultProps({ onProcess, isRunning: true })
 
         renderWithProviders(<ProcessDocuments {...props} />)
-        fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+        fireEvent.click(
+          screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+        )
 
         expect(onProcess).not.toHaveBeenCalled()
       })
@@ -287,7 +314,12 @@ describe('ProcessDocuments', () => {
     describe('onSubmit', () => {
       it('should call onSubmit with form data when form is submitted', () => {
         const variables: RAGPipelineVariable[] = [
-          createMockVariable({ variable: 'chunk_size', label: 'Chunk Size', type: PipelineInputVarType.number, default_value: '100' }),
+          createMockVariable({
+            variable: 'chunk_size',
+            label: 'Chunk Size',
+            type: PipelineInputVarType.number,
+            default_value: '100',
+          }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
         const onSubmit = vi.fn()
@@ -308,7 +340,12 @@ describe('ProcessDocuments', () => {
   describe('Data Transformation', () => {
     it('should transform text-input variable to string initial value', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'name', label: 'Name', type: PipelineInputVarType.textInput, default_value: 'default' }),
+        createMockVariable({
+          variable: 'name',
+          label: 'Name',
+          type: PipelineInputVarType.textInput,
+          default_value: 'default',
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const props = createDefaultProps()
@@ -321,7 +358,12 @@ describe('ProcessDocuments', () => {
 
     it('should transform number variable to number initial value', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'count', label: 'Count', type: PipelineInputVarType.number, default_value: '42' }),
+        createMockVariable({
+          variable: 'count',
+          label: 'Count',
+          type: PipelineInputVarType.number,
+          default_value: '42',
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const props = createDefaultProps()
@@ -334,7 +376,11 @@ describe('ProcessDocuments', () => {
 
     it('should use empty string for text-input without default value', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'name', label: 'Name', type: PipelineInputVarType.textInput }),
+        createMockVariable({
+          variable: 'name',
+          label: 'Name',
+          type: PipelineInputVarType.textInput,
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const props = createDefaultProps()
@@ -347,7 +393,12 @@ describe('ProcessDocuments', () => {
 
     it('should prioritize lastRunInputData over default_value', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'size', label: 'Size', type: PipelineInputVarType.number, default_value: '100' }),
+        createMockVariable({
+          variable: 'size',
+          label: 'Size',
+          type: PipelineInputVarType.number,
+          default_value: '100',
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const props = createDefaultProps({ lastRunInputData: { size: 999 } })
@@ -397,9 +448,24 @@ describe('ProcessDocuments', () => {
     describe('Multiple variables', () => {
       it('should handle multiple variables of different types', () => {
         const variables: RAGPipelineVariable[] = [
-          createMockVariable({ variable: 'text_field', label: 'Text', type: PipelineInputVarType.textInput, default_value: 'hello' }),
-          createMockVariable({ variable: 'number_field', label: 'Number', type: PipelineInputVarType.number, default_value: '123' }),
-          createMockVariable({ variable: 'select_field', label: 'Select', type: PipelineInputVarType.select, default_value: 'option1' }),
+          createMockVariable({
+            variable: 'text_field',
+            label: 'Text',
+            type: PipelineInputVarType.textInput,
+            default_value: 'hello',
+          }),
+          createMockVariable({
+            variable: 'number_field',
+            label: 'Number',
+            type: PipelineInputVarType.number,
+            default_value: '123',
+          }),
+          createMockVariable({
+            variable: 'select_field',
+            label: 'Select',
+            type: PipelineInputVarType.select,
+            default_value: 'option1',
+          }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
         const props = createDefaultProps()
@@ -414,8 +480,18 @@ describe('ProcessDocuments', () => {
 
       it('should submit all variables data correctly', () => {
         const variables: RAGPipelineVariable[] = [
-          createMockVariable({ variable: 'field1', label: 'Field 1', type: PipelineInputVarType.textInput, default_value: 'value1' }),
-          createMockVariable({ variable: 'field2', label: 'Field 2', type: PipelineInputVarType.number, default_value: '42' }),
+          createMockVariable({
+            variable: 'field1',
+            label: 'Field 1',
+            type: PipelineInputVarType.textInput,
+            default_value: 'value1',
+          }),
+          createMockVariable({
+            variable: 'field2',
+            label: 'Field 2',
+            type: PipelineInputVarType.number,
+            default_value: '42',
+          }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
         const onSubmit = vi.fn()
@@ -460,7 +536,12 @@ describe('ProcessDocuments', () => {
   describe('Integration', () => {
     it('should coordinate form submission flow correctly', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'setting', label: 'Setting', type: PipelineInputVarType.textInput, default_value: 'initial' }),
+        createMockVariable({
+          variable: 'setting',
+          label: 'Setting',
+          type: PipelineInputVarType.textInput,
+          default_value: 'initial',
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const onProcess = vi.fn()
@@ -474,7 +555,9 @@ describe('ProcessDocuments', () => {
       expect(input.defaultValue).toBe('initial')
 
       // Act - click process button
-      fireEvent.click(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }))
+      fireEvent.click(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      )
 
       // Assert - onProcess is called
       expect(onProcess).toHaveBeenCalled()
@@ -482,7 +565,11 @@ describe('ProcessDocuments', () => {
 
     it('should render complete UI with all interactive elements', () => {
       const variables: RAGPipelineVariable[] = [
-        createMockVariable({ variable: 'test', label: 'Test Field', type: PipelineInputVarType.textInput }),
+        createMockVariable({
+          variable: 'test',
+          label: 'Test Field',
+          type: PipelineInputVarType.textInput,
+        }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
       const props = createDefaultProps()
@@ -493,7 +580,9 @@ describe('ProcessDocuments', () => {
       expect(screen.getByTestId('process-form')).toBeInTheDocument()
       expect(screen.getByText('Test Field')).toBeInTheDocument()
       expect(screen.getByTestId('preview-btn')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
+      ).toBeInTheDocument()
     })
   })
 })

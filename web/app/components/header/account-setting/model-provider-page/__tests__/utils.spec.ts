@@ -7,11 +7,7 @@ import {
   validateModelProvider,
 } from '@/service/common'
 import { ValidatedStatus } from '../../key-validator/declarations'
-import {
-  ConfigurationMethodEnum,
-  FormTypeEnum,
-  ModelTypeEnum,
-} from '../declarations'
+import { ConfigurationMethodEnum, FormTypeEnum, ModelTypeEnum } from '../declarations'
 import {
   genModelNameFormSchema,
   genModelTypeFormSchema,
@@ -70,7 +66,7 @@ describe('utils', () => {
 
   describe('validateCredentials', () => {
     it('should validate predefined credentials successfully', async () => {
-      (validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'success' })
+      ;(validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'success' })
       const result = await validateCredentials(true, 'provider', { key: 'value' })
       expect(result).toEqual({ status: ValidatedStatus.Success })
       expect(validateModelProvider).toHaveBeenCalledWith({
@@ -80,7 +76,7 @@ describe('utils', () => {
     })
 
     it('should validate custom credentials successfully', async () => {
-      (validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'success' })
+      ;(validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'success' })
       const result = await validateCredentials(false, 'provider', {
         __model_name: 'model',
         __model_type: 'type',
@@ -98,25 +94,28 @@ describe('utils', () => {
     })
 
     it('should handle validation failure', async () => {
-      (validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'error', error: 'failed' })
+      ;(validateModelProvider as unknown as Mock).mockResolvedValue({
+        result: 'error',
+        error: 'failed',
+      })
       const result = await validateCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'failed' })
     })
 
     it('should handle exception', async () => {
-      (validateModelProvider as unknown as Mock).mockRejectedValue(new Error('network error'))
+      ;(validateModelProvider as unknown as Mock).mockRejectedValue(new Error('network error'))
       const result = await validateCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'network error' })
     })
 
     it('should return Unknown error when non-Error is thrown', async () => {
-      (validateModelProvider as unknown as Mock).mockRejectedValue('string error')
+      ;(validateModelProvider as unknown as Mock).mockRejectedValue('string error')
       const result = await validateCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'Unknown error' })
     })
 
     it('should return default error message when error field is empty', async () => {
-      (validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'error', error: '' })
+      ;(validateModelProvider as unknown as Mock).mockResolvedValue({ result: 'error', error: '' })
       const result = await validateCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'error' })
     })
@@ -124,7 +123,9 @@ describe('utils', () => {
 
   describe('validateLoadBalancingCredentials', () => {
     it('should validate load balancing credentials successfully', async () => {
-      (validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({ result: 'success' })
+      ;(validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({
+        result: 'success',
+      })
       const result = await validateLoadBalancingCredentials(true, 'provider', {
         __model_name: 'model',
         __model_type: 'type',
@@ -141,12 +142,19 @@ describe('utils', () => {
       })
     })
     it('should validate load balancing credentials successfully with id', async () => {
-      (validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({ result: 'success' })
-      const result = await validateLoadBalancingCredentials(true, 'provider', {
-        __model_name: 'model',
-        __model_type: 'type',
-        key: 'value',
-      }, 'id')
+      ;(validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({
+        result: 'success',
+      })
+      const result = await validateLoadBalancingCredentials(
+        true,
+        'provider',
+        {
+          __model_name: 'model',
+          __model_type: 'type',
+          key: 'value',
+        },
+        'id',
+      )
       expect(result).toEqual({ status: ValidatedStatus.Success })
       expect(validateModelLoadBalancingCredentials).toHaveBeenCalledWith({
         url: '/workspaces/current/model-providers/provider/models/load-balancing-configs/id/credentials-validate',
@@ -159,25 +167,33 @@ describe('utils', () => {
     })
 
     it('should handle validation failure', async () => {
-      (validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({ result: 'error', error: 'failed' })
+      ;(validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({
+        result: 'error',
+        error: 'failed',
+      })
       const result = await validateLoadBalancingCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'failed' })
     })
 
     it('should return Unknown error when non-Error is thrown', async () => {
-      (validateModelLoadBalancingCredentials as unknown as Mock).mockRejectedValue(42)
+      ;(validateModelLoadBalancingCredentials as unknown as Mock).mockRejectedValue(42)
       const result = await validateLoadBalancingCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'Unknown error' })
     })
 
     it('should handle exception with Error', async () => {
-      (validateModelLoadBalancingCredentials as unknown as Mock).mockRejectedValue(new Error('Timeout'))
+      ;(validateModelLoadBalancingCredentials as unknown as Mock).mockRejectedValue(
+        new Error('Timeout'),
+      )
       const result = await validateLoadBalancingCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'Timeout' })
     })
 
     it('should return default error message when error field is empty', async () => {
-      (validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({ result: 'error', error: '' })
+      ;(validateModelLoadBalancingCredentials as unknown as Mock).mockResolvedValue({
+        result: 'error',
+        error: '',
+      })
       const result = await validateLoadBalancingCredentials(true, 'provider', {})
       expect(result).toEqual({ status: ValidatedStatus.Error, message: 'error' })
     })

@@ -4,7 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MenuBar from '../menu-bar'
 
 vi.mock('../../display-toggle', () => ({
-  default: ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean, toggleCollapsed: () => void }) => (
+  default: ({
+    isCollapsed,
+    toggleCollapsed,
+  }: {
+    isCollapsed: boolean
+    toggleCollapsed: () => void
+  }) => (
     <button data-testid="display-toggle" onClick={toggleCollapsed}>
       {isCollapsed ? 'collapsed' : 'expanded'}
     </button>
@@ -55,7 +61,9 @@ describe('MenuBar', () => {
   it('should not render select all checkbox when there are no selectable segments', () => {
     renderMenuBar({ hasSelectableSegments: false })
 
-    expect(screen.queryByRole('checkbox', { name: 'common.operation.selectAll' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('checkbox', { name: 'common.operation.selectAll' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should call onInputChange when input changes', () => {

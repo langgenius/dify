@@ -9,25 +9,24 @@ import { formatFileSize, formatNumber, formatTime } from '@/utils/format'
 export type inputType = 'input' | 'select' | 'textarea'
 export type metadataType = DocType | 'originInfo' | 'technicalParameters'
 
-type MetadataMap
-  = Record<
-    metadataType,
-    {
-      text: string
-      allowEdit?: boolean
-      icon?: React.ReactNode
-      iconName?: string
-      subFieldsMap: Record<
-        string,
-        {
-          label: string
-          inputType?: inputType
-          field?: string
-          render?: (value: any, total?: number) => React.ReactNode | string
-        }
-      >
-    }
-  >
+type MetadataMap = Record<
+  metadataType,
+  {
+    text: string
+    allowEdit?: boolean
+    icon?: React.ReactNode
+    iconName?: string
+    subFieldsMap: Record<
+      string,
+      {
+        label: string
+        inputType?: inputType
+        field?: string
+        render?: (value: any, total?: number) => React.ReactNode | string
+      }
+    >
+  }
+>
 
 const fieldPrefix = 'metadata.field'
 
@@ -47,7 +46,9 @@ export const useMetadataMap = (): MetadataMap => {
         },
         author: { label: t(`${fieldPrefix}.book.author`, { ns: 'datasetDocuments' }) },
         publisher: { label: t(`${fieldPrefix}.book.publisher`, { ns: 'datasetDocuments' }) },
-        publication_date: { label: t(`${fieldPrefix}.book.publicationDate`, { ns: 'datasetDocuments' }) },
+        publication_date: {
+          label: t(`${fieldPrefix}.book.publicationDate`, { ns: 'datasetDocuments' }),
+        },
         isbn: { label: t(`${fieldPrefix}.book.ISBN`, { ns: 'datasetDocuments' }) },
         category: {
           label: t(`${fieldPrefix}.book.category`, { ns: 'datasetDocuments' }),
@@ -59,36 +60,46 @@ export const useMetadataMap = (): MetadataMap => {
       text: t('metadata.type.webPage', { ns: 'datasetDocuments' }),
       iconName: 'globe',
       subFieldsMap: {
-        'title': { label: t(`${fieldPrefix}.webPage.title`, { ns: 'datasetDocuments' }) },
-        'url': { label: t(`${fieldPrefix}.webPage.url`, { ns: 'datasetDocuments' }) },
-        'language': {
+        title: { label: t(`${fieldPrefix}.webPage.title`, { ns: 'datasetDocuments' }) },
+        url: { label: t(`${fieldPrefix}.webPage.url`, { ns: 'datasetDocuments' }) },
+        language: {
           label: t(`${fieldPrefix}.webPage.language`, { ns: 'datasetDocuments' }),
           inputType: 'select',
         },
-        'author/publisher': { label: t(`${fieldPrefix}.webPage.authorPublisher`, { ns: 'datasetDocuments' }) },
-        'publish_date': { label: t(`${fieldPrefix}.webPage.publishDate`, { ns: 'datasetDocuments' }) },
-        'topic/keywords': { label: t(`${fieldPrefix}.webPage.topicKeywords`, { ns: 'datasetDocuments' }) },
-        'description': { label: t(`${fieldPrefix}.webPage.description`, { ns: 'datasetDocuments' }) },
+        'author/publisher': {
+          label: t(`${fieldPrefix}.webPage.authorPublisher`, { ns: 'datasetDocuments' }),
+        },
+        publish_date: {
+          label: t(`${fieldPrefix}.webPage.publishDate`, { ns: 'datasetDocuments' }),
+        },
+        'topic/keywords': {
+          label: t(`${fieldPrefix}.webPage.topicKeywords`, { ns: 'datasetDocuments' }),
+        },
+        description: { label: t(`${fieldPrefix}.webPage.description`, { ns: 'datasetDocuments' }) },
       },
     },
     paper: {
       text: t('metadata.type.paper', { ns: 'datasetDocuments' }),
       iconName: 'graduationHat',
       subFieldsMap: {
-        'title': { label: t(`${fieldPrefix}.paper.title`, { ns: 'datasetDocuments' }) },
-        'language': {
+        title: { label: t(`${fieldPrefix}.paper.title`, { ns: 'datasetDocuments' }) },
+        language: {
           label: t(`${fieldPrefix}.paper.language`, { ns: 'datasetDocuments' }),
           inputType: 'select',
         },
-        'author': { label: t(`${fieldPrefix}.paper.author`, { ns: 'datasetDocuments' }) },
-        'publish_date': { label: t(`${fieldPrefix}.paper.publishDate`, { ns: 'datasetDocuments' }) },
+        author: { label: t(`${fieldPrefix}.paper.author`, { ns: 'datasetDocuments' }) },
+        publish_date: { label: t(`${fieldPrefix}.paper.publishDate`, { ns: 'datasetDocuments' }) },
         'journal/conference_name': {
           label: t(`${fieldPrefix}.paper.journalConferenceName`, { ns: 'datasetDocuments' }),
         },
-        'volume/issue/page_numbers': { label: t(`${fieldPrefix}.paper.volumeIssuePage`, { ns: 'datasetDocuments' }) },
-        'doi': { label: t(`${fieldPrefix}.paper.DOI`, { ns: 'datasetDocuments' }) },
-        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicsKeywords`, { ns: 'datasetDocuments' }) },
-        'abstract': {
+        'volume/issue/page_numbers': {
+          label: t(`${fieldPrefix}.paper.volumeIssuePage`, { ns: 'datasetDocuments' }),
+        },
+        doi: { label: t(`${fieldPrefix}.paper.DOI`, { ns: 'datasetDocuments' }) },
+        'topic/keywords': {
+          label: t(`${fieldPrefix}.paper.topicsKeywords`, { ns: 'datasetDocuments' }),
+        },
+        abstract: {
           label: t(`${fieldPrefix}.paper.abstract`, { ns: 'datasetDocuments' }),
           inputType: 'textarea',
         },
@@ -98,28 +109,36 @@ export const useMetadataMap = (): MetadataMap => {
       text: t('metadata.type.socialMediaPost', { ns: 'datasetDocuments' }),
       iconName: 'atSign',
       subFieldsMap: {
-        'platform': { label: t(`${fieldPrefix}.socialMediaPost.platform`, { ns: 'datasetDocuments' }) },
+        platform: {
+          label: t(`${fieldPrefix}.socialMediaPost.platform`, { ns: 'datasetDocuments' }),
+        },
         'author/username': {
           label: t(`${fieldPrefix}.socialMediaPost.authorUsername`, { ns: 'datasetDocuments' }),
         },
-        'publish_date': { label: t(`${fieldPrefix}.socialMediaPost.publishDate`, { ns: 'datasetDocuments' }) },
-        'post_url': { label: t(`${fieldPrefix}.socialMediaPost.postURL`, { ns: 'datasetDocuments' }) },
-        'topics/tags': { label: t(`${fieldPrefix}.socialMediaPost.topicsTags`, { ns: 'datasetDocuments' }) },
+        publish_date: {
+          label: t(`${fieldPrefix}.socialMediaPost.publishDate`, { ns: 'datasetDocuments' }),
+        },
+        post_url: {
+          label: t(`${fieldPrefix}.socialMediaPost.postURL`, { ns: 'datasetDocuments' }),
+        },
+        'topics/tags': {
+          label: t(`${fieldPrefix}.socialMediaPost.topicsTags`, { ns: 'datasetDocuments' }),
+        },
       },
     },
     personal_document: {
       text: t('metadata.type.personalDocument', { ns: 'datasetDocuments' }),
       iconName: 'file',
       subFieldsMap: {
-        'title': { label: t(`${fieldPrefix}.personalDocument.title`, { ns: 'datasetDocuments' }) },
-        'author': { label: t(`${fieldPrefix}.personalDocument.author`, { ns: 'datasetDocuments' }) },
-        'creation_date': {
+        title: { label: t(`${fieldPrefix}.personalDocument.title`, { ns: 'datasetDocuments' }) },
+        author: { label: t(`${fieldPrefix}.personalDocument.author`, { ns: 'datasetDocuments' }) },
+        creation_date: {
           label: t(`${fieldPrefix}.personalDocument.creationDate`, { ns: 'datasetDocuments' }),
         },
-        'last_modified_date': {
+        last_modified_date: {
           label: t(`${fieldPrefix}.personalDocument.lastModifiedDate`, { ns: 'datasetDocuments' }),
         },
-        'document_type': {
+        document_type: {
           label: t(`${fieldPrefix}.personalDocument.documentType`, { ns: 'datasetDocuments' }),
           inputType: 'select',
         },
@@ -132,15 +151,15 @@ export const useMetadataMap = (): MetadataMap => {
       text: t('metadata.type.businessDocument', { ns: 'datasetDocuments' }),
       iconName: 'briefcase',
       subFieldsMap: {
-        'title': { label: t(`${fieldPrefix}.businessDocument.title`, { ns: 'datasetDocuments' }) },
-        'author': { label: t(`${fieldPrefix}.businessDocument.author`, { ns: 'datasetDocuments' }) },
-        'creation_date': {
+        title: { label: t(`${fieldPrefix}.businessDocument.title`, { ns: 'datasetDocuments' }) },
+        author: { label: t(`${fieldPrefix}.businessDocument.author`, { ns: 'datasetDocuments' }) },
+        creation_date: {
           label: t(`${fieldPrefix}.businessDocument.creationDate`, { ns: 'datasetDocuments' }),
         },
-        'last_modified_date': {
+        last_modified_date: {
           label: t(`${fieldPrefix}.businessDocument.lastModifiedDate`, { ns: 'datasetDocuments' }),
         },
-        'document_type': {
+        document_type: {
           label: t(`${fieldPrefix}.businessDocument.documentType`, { ns: 'datasetDocuments' }),
           inputType: 'select',
         },
@@ -153,34 +172,40 @@ export const useMetadataMap = (): MetadataMap => {
       text: t('metadata.type.IMChat', { ns: 'datasetDocuments' }),
       iconName: 'messageTextCircle',
       subFieldsMap: {
-        'chat_platform': { label: t(`${fieldPrefix}.IMChat.chatPlatform`, { ns: 'datasetDocuments' }) },
+        chat_platform: {
+          label: t(`${fieldPrefix}.IMChat.chatPlatform`, { ns: 'datasetDocuments' }),
+        },
         'chat_participants/group_name': {
           label: t(`${fieldPrefix}.IMChat.chatPartiesGroupName`, { ns: 'datasetDocuments' }),
         },
-        'start_date': { label: t(`${fieldPrefix}.IMChat.startDate`, { ns: 'datasetDocuments' }) },
-        'end_date': { label: t(`${fieldPrefix}.IMChat.endDate`, { ns: 'datasetDocuments' }) },
-        'participants': { label: t(`${fieldPrefix}.IMChat.participants`, { ns: 'datasetDocuments' }) },
-        'topicKeywords': {
+        start_date: { label: t(`${fieldPrefix}.IMChat.startDate`, { ns: 'datasetDocuments' }) },
+        end_date: { label: t(`${fieldPrefix}.IMChat.endDate`, { ns: 'datasetDocuments' }) },
+        participants: {
+          label: t(`${fieldPrefix}.IMChat.participants`, { ns: 'datasetDocuments' }),
+        },
+        topicKeywords: {
           label: t(`${fieldPrefix}.IMChat.topicsKeywords`, { ns: 'datasetDocuments' }),
           inputType: 'textarea',
         },
-        'fileType': { label: t(`${fieldPrefix}.IMChat.fileType`, { ns: 'datasetDocuments' }) },
+        fileType: { label: t(`${fieldPrefix}.IMChat.fileType`, { ns: 'datasetDocuments' }) },
       },
     },
     wikipedia_entry: {
       text: t('metadata.type.wikipediaEntry', { ns: 'datasetDocuments' }),
       allowEdit: false,
       subFieldsMap: {
-        'title': { label: t(`${fieldPrefix}.wikipediaEntry.title`, { ns: 'datasetDocuments' }) },
-        'language': {
+        title: { label: t(`${fieldPrefix}.wikipediaEntry.title`, { ns: 'datasetDocuments' }) },
+        language: {
           label: t(`${fieldPrefix}.wikipediaEntry.language`, { ns: 'datasetDocuments' }),
           inputType: 'select',
         },
-        'web_page_url': { label: t(`${fieldPrefix}.wikipediaEntry.webpageURL`, { ns: 'datasetDocuments' }) },
+        web_page_url: {
+          label: t(`${fieldPrefix}.wikipediaEntry.webpageURL`, { ns: 'datasetDocuments' }),
+        },
         'editor/contributor': {
           label: t(`${fieldPrefix}.wikipediaEntry.editorContributor`, { ns: 'datasetDocuments' }),
         },
-        'last_edit_date': {
+        last_edit_date: {
           label: t(`${fieldPrefix}.wikipediaEntry.lastEditDate`, { ns: 'datasetDocuments' }),
         },
         'summary/introduction': {
@@ -193,32 +218,47 @@ export const useMetadataMap = (): MetadataMap => {
       text: t('metadata.type.notion', { ns: 'datasetDocuments' }),
       allowEdit: false,
       subFieldsMap: {
-        'title': { label: t(`${fieldPrefix}.notion.title`, { ns: 'datasetDocuments' }) },
-        'language': { label: t(`${fieldPrefix}.notion.language`, { ns: 'datasetDocuments' }), inputType: 'select' },
+        title: { label: t(`${fieldPrefix}.notion.title`, { ns: 'datasetDocuments' }) },
+        language: {
+          label: t(`${fieldPrefix}.notion.language`, { ns: 'datasetDocuments' }),
+          inputType: 'select',
+        },
         'author/creator': { label: t(`${fieldPrefix}.notion.author`, { ns: 'datasetDocuments' }) },
-        'creation_date': { label: t(`${fieldPrefix}.notion.createdTime`, { ns: 'datasetDocuments' }) },
-        'last_modified_date': {
+        creation_date: {
+          label: t(`${fieldPrefix}.notion.createdTime`, { ns: 'datasetDocuments' }),
+        },
+        last_modified_date: {
           label: t(`${fieldPrefix}.notion.lastModifiedTime`, { ns: 'datasetDocuments' }),
         },
-        'notion_page_link': { label: t(`${fieldPrefix}.notion.url`, { ns: 'datasetDocuments' }) },
+        notion_page_link: { label: t(`${fieldPrefix}.notion.url`, { ns: 'datasetDocuments' }) },
         'category/tags': { label: t(`${fieldPrefix}.notion.tag`, { ns: 'datasetDocuments' }) },
-        'description': { label: t(`${fieldPrefix}.notion.description`, { ns: 'datasetDocuments' }) },
+        description: { label: t(`${fieldPrefix}.notion.description`, { ns: 'datasetDocuments' }) },
       },
     },
     synced_from_github: {
       text: t('metadata.type.github', { ns: 'datasetDocuments' }),
       allowEdit: false,
       subFieldsMap: {
-        'repository_name': { label: t(`${fieldPrefix}.github.repoName`, { ns: 'datasetDocuments' }) },
-        'repository_description': { label: t(`${fieldPrefix}.github.repoDesc`, { ns: 'datasetDocuments' }) },
-        'repository_owner/organization': { label: t(`${fieldPrefix}.github.repoOwner`, { ns: 'datasetDocuments' }) },
-        'code_filename': { label: t(`${fieldPrefix}.github.fileName`, { ns: 'datasetDocuments' }) },
-        'code_file_path': { label: t(`${fieldPrefix}.github.filePath`, { ns: 'datasetDocuments' }) },
-        'programming_language': { label: t(`${fieldPrefix}.github.programmingLang`, { ns: 'datasetDocuments' }) },
-        'github_link': { label: t(`${fieldPrefix}.github.url`, { ns: 'datasetDocuments' }) },
-        'open_source_license': { label: t(`${fieldPrefix}.github.license`, { ns: 'datasetDocuments' }) },
-        'commit_date': { label: t(`${fieldPrefix}.github.lastCommitTime`, { ns: 'datasetDocuments' }) },
-        'commit_author': {
+        repository_name: { label: t(`${fieldPrefix}.github.repoName`, { ns: 'datasetDocuments' }) },
+        repository_description: {
+          label: t(`${fieldPrefix}.github.repoDesc`, { ns: 'datasetDocuments' }),
+        },
+        'repository_owner/organization': {
+          label: t(`${fieldPrefix}.github.repoOwner`, { ns: 'datasetDocuments' }),
+        },
+        code_filename: { label: t(`${fieldPrefix}.github.fileName`, { ns: 'datasetDocuments' }) },
+        code_file_path: { label: t(`${fieldPrefix}.github.filePath`, { ns: 'datasetDocuments' }) },
+        programming_language: {
+          label: t(`${fieldPrefix}.github.programmingLang`, { ns: 'datasetDocuments' }),
+        },
+        github_link: { label: t(`${fieldPrefix}.github.url`, { ns: 'datasetDocuments' }) },
+        open_source_license: {
+          label: t(`${fieldPrefix}.github.license`, { ns: 'datasetDocuments' }),
+        },
+        commit_date: {
+          label: t(`${fieldPrefix}.github.lastCommitTime`, { ns: 'datasetDocuments' }),
+        },
+        commit_author: {
           label: t(`${fieldPrefix}.github.lastCommitAuthor`, { ns: 'datasetDocuments' }),
         },
       },
@@ -227,22 +267,37 @@ export const useMetadataMap = (): MetadataMap => {
       text: '',
       allowEdit: false,
       subFieldsMap: {
-        'name': { label: t(`${fieldPrefix}.originInfo.originalFilename`, { ns: 'datasetDocuments' }) },
+        name: {
+          label: t(`${fieldPrefix}.originInfo.originalFilename`, { ns: 'datasetDocuments' }),
+        },
         'data_source_info.upload_file.size': {
           label: t(`${fieldPrefix}.originInfo.originalFileSize`, { ns: 'datasetDocuments' }),
-          render: value => formatFileSize(value),
+          render: (value) => formatFileSize(value),
         },
-        'created_at': {
+        created_at: {
           label: t(`${fieldPrefix}.originInfo.uploadDate`, { ns: 'datasetDocuments' }),
-          render: value => formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' }) as string),
+          render: (value) =>
+            formatTimestamp(
+              value,
+              t('metadata.dateTimeFormat', { ns: 'datasetDocuments' }) as string,
+            ),
         },
-        'completed_at': {
+        completed_at: {
           label: t(`${fieldPrefix}.originInfo.lastUpdateDate`, { ns: 'datasetDocuments' }),
-          render: value => formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' }) as string),
+          render: (value) =>
+            formatTimestamp(
+              value,
+              t('metadata.dateTimeFormat', { ns: 'datasetDocuments' }) as string,
+            ),
         },
-        'data_source_type': {
+        data_source_type: {
           label: t(`${fieldPrefix}.originInfo.source`, { ns: 'datasetDocuments' }),
-          render: (value: I18nKeysByPrefix<'datasetDocuments', 'metadata.source.'> | 'notion_import') => t(`metadata.source.${value === 'notion_import' ? 'notion' : value}`, { ns: 'datasetDocuments' }),
+          render: (
+            value: I18nKeysByPrefix<'datasetDocuments', 'metadata.source.'> | 'notion_import',
+          ) =>
+            t(`metadata.source.${value === 'notion_import' ? 'notion' : value}`, {
+              ns: 'datasetDocuments',
+            }),
         },
       },
     },
@@ -250,13 +305,13 @@ export const useMetadataMap = (): MetadataMap => {
       text: t('metadata.type.technicalParameters', { ns: 'datasetDocuments' }),
       allowEdit: false,
       subFieldsMap: {
-        'doc_form': {
-          label: t(`${fieldPrefix}.technicalParameters.segmentSpecification`, { ns: 'datasetDocuments' }),
+        doc_form: {
+          label: t(`${fieldPrefix}.technicalParameters.segmentSpecification`, {
+            ns: 'datasetDocuments',
+          }),
           render: (value) => {
-            if (value === ChunkingMode.text)
-              return t('chunkingMode.general', { ns: 'dataset' })
-            if (value === ChunkingMode.qa)
-              return t('chunkingMode.qa', { ns: 'dataset' })
+            if (value === ChunkingMode.text) return t('chunkingMode.general', { ns: 'dataset' })
+            if (value === ChunkingMode.qa) return t('chunkingMode.qa', { ns: 'dataset' })
             if (value === ChunkingMode.parentChild)
               return t('chunkingMode.parentChild', { ns: 'dataset' })
             return '--'
@@ -264,30 +319,32 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'dataset_process_rule.rules.segmentation.max_tokens': {
           label: t(`${fieldPrefix}.technicalParameters.segmentLength`, { ns: 'datasetDocuments' }),
-          render: value => formatNumber(value),
+          render: (value) => formatNumber(value),
         },
-        'average_segment_length': {
-          label: t(`${fieldPrefix}.technicalParameters.avgParagraphLength`, { ns: 'datasetDocuments' }),
-          render: value => `${formatNumber(value)} characters`,
+        average_segment_length: {
+          label: t(`${fieldPrefix}.technicalParameters.avgParagraphLength`, {
+            ns: 'datasetDocuments',
+          }),
+          render: (value) => `${formatNumber(value)} characters`,
         },
-        'segment_count': {
+        segment_count: {
           label: t(`${fieldPrefix}.technicalParameters.paragraphs`, { ns: 'datasetDocuments' }),
-          render: value => `${formatNumber(value)} paragraphs`,
+          render: (value) => `${formatNumber(value)} paragraphs`,
         },
-        'hit_count': {
+        hit_count: {
           label: t(`${fieldPrefix}.technicalParameters.hitCount`, { ns: 'datasetDocuments' }),
           render: (value, total) => {
             const v = value || 0
             return `${!total ? 0 : ((v / total) * 100).toFixed(2)}% (${v}/${total})`
           },
         },
-        'indexing_latency': {
+        indexing_latency: {
           label: t(`${fieldPrefix}.technicalParameters.embeddingTime`, { ns: 'datasetDocuments' }),
-          render: value => formatTime(value),
+          render: (value) => formatTime(value),
         },
-        'tokens': {
+        tokens: {
           label: t(`${fieldPrefix}.technicalParameters.embeddedSpend`, { ns: 'datasetDocuments' }),
-          render: value => `${formatNumber(value)} tokens`,
+          render: (value) => `${formatNumber(value)} tokens`,
         },
       },
     },
@@ -356,8 +413,7 @@ export const useBookCategories = () => {
   }
 }
 
-const personalDocCategoryPrefix
-  = 'metadata.categoryMap.personalDoc.'
+const personalDocCategoryPrefix = 'metadata.categoryMap.personalDoc.'
 
 export const usePersonalDocCategories = () => {
   const { t } = useTranslation()
@@ -379,8 +435,7 @@ export const usePersonalDocCategories = () => {
   }
 }
 
-const businessDocCategoryPrefix
-  = 'metadata.categoryMap.businessDoc.'
+const businessDocCategoryPrefix = 'metadata.categoryMap.businessDoc.'
 
 export const useBusinessDocCategories = () => {
   const { t } = useTranslation()
@@ -389,17 +444,29 @@ export const useBusinessDocCategories = () => {
     researchReport: t(`${businessDocCategoryPrefix}researchReport`, { ns: 'datasetDocuments' }),
     proposal: t(`${businessDocCategoryPrefix}proposal`, { ns: 'datasetDocuments' }),
     employeeHandbook: t(`${businessDocCategoryPrefix}employeeHandbook`, { ns: 'datasetDocuments' }),
-    trainingMaterials: t(`${businessDocCategoryPrefix}trainingMaterials`, { ns: 'datasetDocuments' }),
-    requirementsDocument: t(`${businessDocCategoryPrefix}requirementsDocument`, { ns: 'datasetDocuments' }),
+    trainingMaterials: t(`${businessDocCategoryPrefix}trainingMaterials`, {
+      ns: 'datasetDocuments',
+    }),
+    requirementsDocument: t(`${businessDocCategoryPrefix}requirementsDocument`, {
+      ns: 'datasetDocuments',
+    }),
     designDocument: t(`${businessDocCategoryPrefix}designDocument`, { ns: 'datasetDocuments' }),
-    productSpecification: t(`${businessDocCategoryPrefix}productSpecification`, { ns: 'datasetDocuments' }),
+    productSpecification: t(`${businessDocCategoryPrefix}productSpecification`, {
+      ns: 'datasetDocuments',
+    }),
     financialReport: t(`${businessDocCategoryPrefix}financialReport`, { ns: 'datasetDocuments' }),
     marketAnalysis: t(`${businessDocCategoryPrefix}marketAnalysis`, { ns: 'datasetDocuments' }),
     projectPlan: t(`${businessDocCategoryPrefix}projectPlan`, { ns: 'datasetDocuments' }),
     teamStructure: t(`${businessDocCategoryPrefix}teamStructure`, { ns: 'datasetDocuments' }),
-    policiesProcedures: t(`${businessDocCategoryPrefix}policiesProcedures`, { ns: 'datasetDocuments' }),
-    contractsAgreements: t(`${businessDocCategoryPrefix}contractsAgreements`, { ns: 'datasetDocuments' }),
-    emailCorrespondence: t(`${businessDocCategoryPrefix}emailCorrespondence`, { ns: 'datasetDocuments' }),
+    policiesProcedures: t(`${businessDocCategoryPrefix}policiesProcedures`, {
+      ns: 'datasetDocuments',
+    }),
+    contractsAgreements: t(`${businessDocCategoryPrefix}contractsAgreements`, {
+      ns: 'datasetDocuments',
+    }),
+    emailCorrespondence: t(`${businessDocCategoryPrefix}emailCorrespondence`, {
+      ns: 'datasetDocuments',
+    }),
     other: t(`${businessDocCategoryPrefix}other`, { ns: 'datasetDocuments' }),
   }
 }

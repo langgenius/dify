@@ -10,12 +10,7 @@ type HeaderProps = {
   onPreview?: () => void
 }
 
-const Header = ({
-  onReset,
-  resetDisabled,
-  previewDisabled,
-  onPreview,
-}: HeaderProps) => {
+const Header = ({ onReset, resetDisabled, previewDisabled, onPreview }: HeaderProps) => {
   const { t } = useTranslation()
 
   return (
@@ -33,7 +28,9 @@ const Header = ({
         disabled={previewDisabled}
       >
         <RiSearchEyeLine className="size-4" />
-        <span className="px-0.5">{t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}</span>
+        <span className="px-0.5">
+          {t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}
+        </span>
       </Button>
     </div>
   )

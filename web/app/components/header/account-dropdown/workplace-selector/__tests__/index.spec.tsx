@@ -73,13 +73,7 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
     SelectGroup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectGroupLabel: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-    SelectItem: ({
-      children,
-      value,
-    }: {
-      children: ReactNode
-      value: string
-    }) => (
+    SelectItem: ({ children, value }: { children: ReactNode; value: string }) => (
       <button
         data-testid={`workspace-option-${value}`}
         type="button"
@@ -94,8 +88,22 @@ vi.mock('@langgenius/dify-ui/select', async (importOriginal) => {
 
 describe('WorkplaceSelector', () => {
   const mockWorkspaces: IWorkspace[] = [
-    { id: '1', name: 'Workspace 1', current: true, plan: 'professional', status: 'normal', created_at: Date.now() },
-    { id: '2', name: 'Workspace 2', current: false, plan: 'sandbox', status: 'normal', created_at: Date.now() },
+    {
+      id: '1',
+      name: 'Workspace 1',
+      current: true,
+      plan: 'professional',
+      status: 'normal',
+      created_at: Date.now(),
+    },
+    {
+      id: '2',
+      name: 'Workspace 2',
+      current: false,
+      plan: 'sandbox',
+      status: 'normal',
+      created_at: Date.now(),
+    },
   ]
 
   const { mockNotify } = toastMocks
@@ -134,10 +142,12 @@ describe('WorkplaceSelector', () => {
       renderComponent()
       fireEvent.click(screen.getByTestId('workspace-option-2'))
 
-      await waitFor(() => expect(switchWorkspace).toHaveBeenCalledWith({
-        url: '/workspaces/switch',
-        body: { tenant_id: '2' },
-      }))
+      await waitFor(() =>
+        expect(switchWorkspace).toHaveBeenCalledWith({
+          url: '/workspaces/switch',
+          body: { tenant_id: '2' },
+        }),
+      )
 
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
@@ -174,7 +184,14 @@ describe('WorkplaceSelector', () => {
     it('should not crash when no workspace has current value', () => {
       vi.mocked(useWorkspacesContext).mockReturnValue({
         workspaces: [
-          { id: '1', name: 'Workspace 1', current: false, plan: 'professional', status: 'normal', created_at: Date.now() },
+          {
+            id: '1',
+            name: 'Workspace 1',
+            current: false,
+            plan: 'professional',
+            status: 'normal',
+            created_at: Date.now(),
+          },
         ],
       })
 
@@ -184,7 +201,14 @@ describe('WorkplaceSelector', () => {
     it('should not crash when workspace name is empty string', () => {
       vi.mocked(useWorkspacesContext).mockReturnValue({
         workspaces: [
-          { id: '1', name: '', current: true, plan: 'sandbox', status: 'normal', created_at: Date.now() },
+          {
+            id: '1',
+            name: '',
+            current: true,
+            plan: 'sandbox',
+            status: 'normal',
+            created_at: Date.now(),
+          },
         ],
       })
 

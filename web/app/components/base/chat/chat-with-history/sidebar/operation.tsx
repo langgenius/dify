@@ -38,25 +38,23 @@ const Operation: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const [isHovering, { setTrue: setIsHovering, setFalse: setNotHovering }] = useBoolean(false)
   useEffect(() => {
-    if (!isItemHovering && !isHovering)
-      setOpen(false)
+    if (!isItemHovering && !isHovering) setOpen(false)
   }, [isItemHovering, isHovering])
   const handleDeferredAction = useCallback((action?: () => void) => {
-    if (!action)
-      return
+    if (!action) return
     setOpen(false)
     queueMicrotask(action)
   }, [])
   return (
-    <DropdownMenu
-      modal={false}
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={(
+        render={
           <ActionButton
-            className={cn((isItemHovering || open) ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0')}
+            className={cn(
+              isItemHovering || open
+                ? 'pointer-events-auto opacity-100'
+                : 'pointer-events-none opacity-0',
+            )}
             state={
               isActive
                 ? ActionButtonState.Active
@@ -67,8 +65,8 @@ const Operation: FC<Props> = ({
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
           </ActionButton>
-        )}
-        onClick={e => e.stopPropagation()}
+        }
+        onClick={(e) => e.stopPropagation()}
       />
       <DropdownMenuContent
         placement="bottom-end"
@@ -77,7 +75,7 @@ const Operation: FC<Props> = ({
         popupProps={{
           onMouseEnter: setIsHovering,
           onMouseLeave: setNotHovering,
-          onClick: e => e.stopPropagation(),
+          onClick: (e) => e.stopPropagation(),
         }}
       >
         <DropdownMenuItem
@@ -87,9 +85,17 @@ const Operation: FC<Props> = ({
             togglePin()
           }}
         >
-          {isPinned && <span aria-hidden className="i-ri-unpin-line size-4 shrink-0 text-text-tertiary" />}
-          {!isPinned && <span aria-hidden className="i-ri-pushpin-line size-4 shrink-0 text-text-tertiary" />}
-          <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
+          {isPinned && (
+            <span aria-hidden className="i-ri-unpin-line size-4 shrink-0 text-text-tertiary" />
+          )}
+          {!isPinned && (
+            <span aria-hidden className="i-ri-pushpin-line size-4 shrink-0 text-text-tertiary" />
+          )}
+          <span className="grow">
+            {isPinned
+              ? t('sidebar.action.unpin', { ns: 'explore' })
+              : t('sidebar.action.pin', { ns: 'explore' })}
+          </span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem

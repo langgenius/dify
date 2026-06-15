@@ -5,7 +5,10 @@ import CrawledResultItem from '../crawled-result-item'
 
 describe('CrawledResultItem', () => {
   const defaultProps = {
-    payload: { title: 'Example Page', source_url: 'https://example.com/page' } as CrawlResultItemType,
+    payload: {
+      title: 'Example Page',
+      source_url: 'https://example.com/page',
+    } as CrawlResultItemType,
     isChecked: false,
     isPreview: false,
     onCheckChange: vi.fn(),

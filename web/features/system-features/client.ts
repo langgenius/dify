@@ -34,8 +34,7 @@ export const systemFeaturesQueryOptions = () => {
     queryFn: async () => {
       try {
         return await consoleClient.systemFeatures.get()
-      }
-      catch (err) {
+      } catch (err) {
         console.error('[systemFeatures] fetch failed, using defaults', err)
         return defaultSystemFeatures
       }

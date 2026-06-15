@@ -19,14 +19,19 @@ const RoleSelectorWrapper = ({ initialRole = 'normal' }: WrapperProps) => {
 
 const getTrigger = () => screen.getByRole('button', { name: /members\.invitedAsRole/i })
 const getRoleDialog = () => screen.getByRole('dialog')
-const getRoleOption = (role: string) => within(getRoleDialog()).getByRole('button', { name: new RegExp(`common\\.members\\.${role}`, 'i') })
+const getRoleOption = (role: string) =>
+  within(getRoleDialog()).getByRole('button', {
+    name: new RegExp(`common\\.members\\.${role}`, 'i'),
+  })
 
 describe('RoleSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      datasetOperatorEnabled: true,
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        datasetOperatorEnabled: true,
+      }),
+    )
   })
 
   it('should show current role in trigger text', () => {
@@ -62,40 +67,42 @@ describe('RoleSelector', () => {
     expect(getRoleOption('editor')).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it.each([
-    ['normal'],
-    ['editor'],
-    ['admin'],
-    ['datasetOperator'],
-  ])('should update selected role after user chooses %s', async (roleKey) => {
-    const user = userEvent.setup()
+  it.each([['normal'], ['editor'], ['admin'], ['datasetOperator']])(
+    'should update selected role after user chooses %s',
+    async (roleKey) => {
+      const user = userEvent.setup()
 
-    render(<RoleSelectorWrapper initialRole="normal" />)
+      render(<RoleSelectorWrapper initialRole="normal" />)
 
-    await user.click(getTrigger())
-    await user.click(getRoleOption(roleKey))
+      await user.click(getTrigger())
+      await user.click(getRoleOption(roleKey))
 
-    // Verify dropdown closed
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    })
+      // Verify dropdown closed
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
 
-    // Verify trigger text updated (using translation key pattern from global mock)
-    expect(screen.getByText(/members\.invitedAsRole/i)).toBeInTheDocument()
-  })
+      // Verify trigger text updated (using translation key pattern from global mock)
+      expect(screen.getByText(/members\.invitedAsRole/i)).toBeInTheDocument()
+    },
+  )
 
   it('should hide dataset operator option when feature is disabled', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
-      datasetOperatorEnabled: false,
-    }))
+    vi.mocked(useProviderContext).mockReturnValue(
+      createMockProviderContextValue({
+        datasetOperatorEnabled: false,
+      }),
+    )
 
     render(<RoleSelectorWrapper />)
 
     await user.click(getTrigger())
 
-    expect(within(getRoleDialog()).queryByRole('button', { name: /common\.members\.datasetOperator/i })).not.toBeInTheDocument()
+    expect(
+      within(getRoleDialog()).queryByRole('button', { name: /common\.members\.datasetOperator/i }),
+    ).not.toBeInTheDocument()
     expect(getRoleOption('normal')).toBeInTheDocument()
   })
 })

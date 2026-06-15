@@ -10,13 +10,11 @@ export const ragPipelineNodesAction: ActionItem = {
   search: async (_, searchTerm = '', _locale) => {
     try {
       // Use the searchFn if available (set by useRagPipelineSearch hook)
-      if (ragPipelineNodesAction.searchFn)
-        return ragPipelineNodesAction.searchFn(searchTerm)
+      if (ragPipelineNodesAction.searchFn) return ragPipelineNodesAction.searchFn(searchTerm)
 
       // If not in RAG pipeline context, return empty array
       return []
-    }
-    catch (error) {
+    } catch (error) {
       console.warn('RAG pipeline nodes search failed:', error)
       return []
     }

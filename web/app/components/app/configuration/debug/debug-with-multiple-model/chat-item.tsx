@@ -3,11 +3,7 @@ import type { ModelAndParameter } from '../types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
@@ -23,37 +19,26 @@ import {
   stopChatMessageResponding,
 } from '@/service/debug'
 import { canFindTool } from '@/utils'
-import {
-  useConfigFromDebugContext,
-  useFormattingChangedSubscription,
-} from '../hooks'
-import {
-  APP_CHAT_WITH_MULTIPLE_MODEL,
-  APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
-} from '../types'
+import { useConfigFromDebugContext, useFormattingChangedSubscription } from '../hooks'
+import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../types'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
 }
-const ChatItem: FC<ChatItemProps> = ({
-  modelAndParameter,
-}) => {
+const ChatItem: FC<ChatItemProps> = ({ modelAndParameter }) => {
   const { userProfile } = useAppContext()
-  const {
-    modelConfig,
-    appId,
-    inputs,
-    collectionList,
-  } = useDebugConfigurationContext()
+  const { modelConfig, appId, inputs, collectionList } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
-  const features = useFeatures(s => s.features)
+  const features = useFeatures((s) => s.features)
   const configTemplate = useConfigFromDebugContext()
   const config = useMemo(() => {
     return {
       ...configTemplate,
       more_like_this: features.moreLikeThis,
-      opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
-      suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
+      opening_statement: features.opening?.enabled ? features.opening?.opening_statement || '' : '',
+      suggested_questions: features.opening?.enabled
+        ? features.opening?.suggested_questions || []
+        : [],
       sensitive_word_avoidance: features.moderation,
       speech_to_text: features.speech2text,
       text_to_speech: features.text2speech,
@@ -64,78 +49,87 @@ const ChatItem: FC<ChatItemProps> = ({
     } as ChatConfig
   }, [configTemplate, features])
   const inputsForm = useMemo(() => {
-    return modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
+    return modelConfig.configs.prompt_variables
+      .filter((item) => item.type !== 'api')
+      .map((item) => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
   }, [modelConfig.configs.prompt_variables])
-  const {
-    chatList,
-    isResponding,
-    handleSend,
-    suggestedQuestions,
-    handleRestart,
-  } = useChat(
+  const { chatList, isResponding, handleSend, suggestedQuestions, handleRestart } = useChat(
     config,
     {
       inputs,
       inputsForm,
     },
     [],
-    taskId => stopChatMessageResponding(appId, taskId),
+    (taskId) => stopChatMessageResponding(appId, taskId),
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files) => {
-    const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
-    const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
+  const doSend: OnSend = useCallback(
+    (message, files) => {
+      const currentProvider = textGenerationModelList.find(
+        (item) => item.provider === modelAndParameter.provider,
+      )
+      const currentModel = currentProvider?.models.find(
+        (model) => model.model === modelAndParameter.model,
+      )
+      const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
-    const configData = {
-      ...config,
-      model: {
-        provider: modelAndParameter.provider,
-        name: modelAndParameter.model,
-        mode: currentModel?.model_properties.mode,
-        completion_params: modelAndParameter.parameters,
-      },
-    }
+      const configData = {
+        ...config,
+        model: {
+          provider: modelAndParameter.provider,
+          name: modelAndParameter.model,
+          mode: currentModel?.model_properties.mode,
+          completion_params: modelAndParameter.parameters,
+        },
+      }
 
-    const data: any = {
-      query: message,
+      const data: any = {
+        query: message,
+        inputs,
+        model_config: configData,
+        parent_message_id: getLastAnswer(chatList)?.id || null,
+      }
+
+      if ((config.file_upload as any).enabled && files?.length && supportVision) data.files = files
+
+      handleSend(`apps/${appId}/chat-messages`, data, {
+        onGetConversationMessages: (conversationId, getAbortController) =>
+          fetchConversationMessages(appId, conversationId, getAbortController),
+        onGetSuggestedQuestions: (responseItemId, getAbortController) =>
+          fetchSuggestedQuestions(appId, responseItemId, getAbortController),
+      })
+    },
+    [
+      appId,
+      chatList,
+      config,
+      handleSend,
       inputs,
-      model_config: configData,
-      parent_message_id: getLastAnswer(chatList)?.id || null,
-    }
-
-    if ((config.file_upload as any).enabled && files?.length && supportVision)
-      data.files = files
-
-    handleSend(
-      `apps/${appId}/chat-messages`,
-      data,
-      {
-        onGetConversationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
-        onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
-      },
-    )
-  }, [appId, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
+      modelAndParameter.model,
+      modelAndParameter.parameters,
+      modelAndParameter.provider,
+      textGenerationModelList,
+    ],
+  )
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
-    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL)
-      doSend(v.payload.message, v.payload.files)
-    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL_RESTART)
-      handleRestart()
+    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL) doSend(v.payload.message, v.payload.files)
+    if (v.type === APP_CHAT_WITH_MULTIPLE_MODEL_RESTART) handleRestart()
   })
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) => canFindTool(collection.id, item.provider_id))?.icon
+      icons[item.tool_name] = collectionList.find((collection: any) =>
+        canFindTool(collection.id, item.provider_id),
+      )?.icon
     })
     return icons
   }, [collectionList, modelConfig.agentConfig.tools])
 
-  if (!chatList.length)
-    return null
+  if (!chatList.length) return null
 
   return (
     <Chat
