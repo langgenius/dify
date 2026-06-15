@@ -6,7 +6,7 @@ import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRuleRowMenu from './access-rule-row-menu'
 
-export type AccessRuleRowProps = {
+type AccessRuleRowProps = {
   rule: AccessPolicyWithBindings
   canManage: boolean
   className?: string

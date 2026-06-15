@@ -15,7 +15,7 @@ const NAME_SPACE = 'workspace-access-rules'
 
 type WorkspaceAccessRulesQueryParams = Omit<WorkspaceAccessRulesRequest, 'page'>
 
-export const workspaceAccessRulesQueryKeys = {
+const workspaceAccessRulesQueryKeys = {
   app: (params?: WorkspaceAccessRulesQueryParams) => params ? [NAME_SPACE, 'app', params] as const : [NAME_SPACE, 'app'] as const,
   dataset: (params?: WorkspaceAccessRulesQueryParams) => params ? [NAME_SPACE, 'dataset', params] as const : [NAME_SPACE, 'dataset'] as const,
 }

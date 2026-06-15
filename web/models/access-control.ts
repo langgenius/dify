@@ -145,8 +145,6 @@ export type UpdateAccessPolicyRequest = {
   permission_keys?: PermissionKey[]
 }
 
-export type BindingType = 'role' | 'account'
-
 type Bindings = {
   roles: Array<{
     role_id: string
@@ -162,11 +160,6 @@ type Bindings = {
     is_locked: boolean
     avatar?: string
   }>
-}
-
-export type BindingsPayload = {
-  role_ids: string[]
-  account_ids: string[]
 }
 
 export type AccessPolicyWithBindings = {
@@ -202,11 +195,6 @@ export type UpdateRolesOfMemberRequest = {
   memberId: string
   roleIds: string[]
 }
-
-export type RemoveBindingPayload = {
-  policy_id: string
-  resource_type: AccessPolicyResourceType
-} & BindingsPayload
 
 type WorkspacePermissionKeys = {
   permission_keys: string[]
