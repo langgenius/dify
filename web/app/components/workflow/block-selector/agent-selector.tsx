@@ -104,7 +104,7 @@ export function AgentSelectorContent({
   const isLoading = agentsQuery.isPending || !!validatingAgentId
 
   return (
-    <div className="w-90 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+    <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
       <Combobox<AgentInviteOptionResponse>
         filter={null}
         inputValue={searchText}
@@ -154,13 +154,24 @@ export function AgentSelectorContent({
           )}
         </div>
       </Combobox>
-      <div className="border-t border-divider-subtle px-4 py-2">
+      <div className="border-t border-divider-subtle p-1">
         <Link
           href="/roster"
-          className="inline-flex items-center gap-0.5 rounded-sm system-xs-medium text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
-          {t('roster.nodeSelector.manageInAgentConsole', { ns: 'agentV2' })}
-          <span aria-hidden className="i-ri-arrow-right-up-line size-3" />
+          <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+          <span className="min-w-0 flex-1 truncate">
+            {t('roster.nodeSelector.startFromScratch', { ns: 'agentV2' })}
+          </span>
+        </Link>
+        <Link
+          href="/roster"
+          className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        >
+          <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
+          <span className="min-w-0 flex-1 truncate">
+            {t('roster.nodeSelector.manageInAgentConsole', { ns: 'agentV2' })}
+          </span>
         </Link>
       </div>
     </div>

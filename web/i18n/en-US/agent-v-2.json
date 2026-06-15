@@ -342,6 +342,7 @@
   "roster.nodeSelector.dialogLabel": "Select an agent",
   "roster.nodeSelector.manageInAgentConsole": "Manage in Agent Console",
   "roster.nodeSelector.searchPlaceholder": "Search…",
+  "roster.nodeSelector.startFromScratch": "Start from Scratch",
   "roster.references.label": "Workflows using {{name}}",
   "roster.references.trigger": "Workflows using {{name}}",
   "roster.searchLabel": "Search agents",
