@@ -11,13 +11,14 @@ import AppIcon from '@/app/components/base/app-icon'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
 import { getButtonStyle, getRenderedFormInputs, hasInvalidRequiredHumanInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
+import BrandingFooter from './branding-footer'
 
 type LoadedFormContentProps = {
   formData: FormData
   isSubmitting: boolean
   onSubmit: (inputs: Record<string, HumanInputFieldValue>, actionID: string, formInputs: FormData['inputs']) => void
   removeWebappBrand?: boolean
+  replaceWebappLogo?: string | null
 }
 
 const LoadedFormContent = ({
@@ -25,6 +26,7 @@ const LoadedFormContent = ({
   isSubmitting,
   onSubmit,
   removeWebappBrand,
+  replaceWebappLogo,
 }: LoadedFormContentProps) => {
   const { t } = useTranslation()
   const renderedFormInputs = getRenderedFormInputs(formData.inputs, formData.form_content)
@@ -86,14 +88,10 @@ const LoadedFormContent = ({
           </div>
           <ExpirationTime expirationTime={formData.expiration_time * 1000} />
         </div>
-        {!removeWebappBrand && (
-          <div className="flex flex-row-reverse px-2 py-3">
-            <div className="flex shrink-0 items-center gap-1.5 px-1">
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-              <DifyLogo size="small" />
-            </div>
-          </div>
-        )}
+        <BrandingFooter
+          removeWebappBrand={removeWebappBrand}
+          replaceWebappLogo={replaceWebappLogo}
+        />
       </div>
     </div>
   )
