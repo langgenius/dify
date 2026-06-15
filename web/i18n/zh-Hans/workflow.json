@@ -419,6 +419,8 @@
   "nodes.agent.pluginNotInstalledDesc": "此集成安装自 GitHub。请前往集成重新安装",
   "nodes.agent.roster.change": "更换",
   "nodes.agent.roster.editInConsole": "在 Agent Console 中编辑",
+  "nodes.agent.roster.inlineSetup.name": "内联配置",
+  "nodes.agent.roster.inlineSetup.type": "仅在此节点中",
   "nodes.agent.roster.label": "Agent",
   "nodes.agent.roster.makeCopy": "创建副本",
   "nodes.agent.roster.more": "更多 Agent 操作",

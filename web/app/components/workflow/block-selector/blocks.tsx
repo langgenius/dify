@@ -125,6 +125,14 @@ const Blocks = ({
                       agent_roster: agent,
                       version: '2',
                     })}
+                  onStartFromScratch={() =>
+                    onSelect(BlockEnum.AgentV2, {
+                      agent_binding: {
+                        binding_type: 'inline_agent',
+                      },
+                      agent_node_kind: 'dify_agent',
+                      version: '2',
+                    })}
                 />
               )
             }

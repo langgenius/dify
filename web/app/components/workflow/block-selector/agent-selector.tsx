@@ -36,10 +36,12 @@ export function AgentSelectorContent({
   open,
   onOpenChange,
   onSelect,
+  onStartFromScratch,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelect: (agent: AgentRosterNodeData) => void
+  onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation(['agentV2', 'common', 'workflow'])
   const queryClient = useQueryClient()
@@ -154,15 +156,18 @@ export function AgentSelectorContent({
         </div>
       </Combobox>
       <div className="border-t border-divider-subtle p-1">
-        <Link
-          href="/roster"
-          className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-          <span className="min-w-0 flex-1 truncate">
-            {t('roster.nodeSelector.startFromScratch', { ns: 'agentV2' })}
-          </span>
-        </Link>
+        {onStartFromScratch && (
+          <button
+            type="button"
+            className="flex min-h-7 w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            onClick={onStartFromScratch}
+          >
+            <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
+            <span className="min-w-0 flex-1 truncate">
+              {t('roster.nodeSelector.startFromScratch', { ns: 'agentV2' })}
+            </span>
+          </button>
+        )}
         <Link
           href="/roster"
           className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
@@ -285,9 +290,11 @@ function AgentSelectorItem({
 export function AgentBlockItem({
   block,
   onSelect,
+  onStartFromScratch,
 }: {
   block: NodeDefault
   onSelect: (agent: AgentRosterNodeData) => void
+  onStartFromScratch: () => void
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
@@ -324,7 +331,15 @@ export function AgentBlockItem({
         <PopoverTitle className="sr-only">
           {t('roster.nodeSelector.dialogLabel')}
         </PopoverTitle>
-        <AgentSelectorContent open={open} onOpenChange={setOpen} onSelect={handleSelect} />
+        <AgentSelectorContent
+          open={open}
+          onOpenChange={setOpen}
+          onSelect={handleSelect}
+          onStartFromScratch={() => {
+            setOpen(false)
+            onStartFromScratch()
+          }}
+        />
       </PopoverContent>
     </Popover>
   )

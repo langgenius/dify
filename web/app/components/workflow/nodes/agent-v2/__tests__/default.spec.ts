@@ -81,6 +81,20 @@ describe('agent/default', () => {
     })
   })
 
+  it('passes validation for inline agent binding', () => {
+    const result = nodeDefault.checkValid(createPayload({
+      agent_binding: {
+        binding_type: 'inline_agent',
+      },
+      agent_roster: undefined,
+    }), t)
+
+    expect(result).toEqual({
+      isValid: true,
+      errorMessage: '',
+    })
+  })
+
   it('creates Agent v2 graph data by default', () => {
     expect(nodeDefault.defaultValue).toMatchObject({
       agent_node_kind: 'dify_agent',
@@ -88,7 +102,7 @@ describe('agent/default', () => {
     })
   })
 
-  it('identifies only roster-backed version 2 agent data as Agent v2', () => {
+  it('identifies version 2 agent data as Agent v2', () => {
     expect(isAgentV2NodeData(createPayload({ type: BlockEnum.Agent }))).toBe(true)
     expect(isAgentV2NodeData({
       title: 'Old Agent',

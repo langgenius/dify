@@ -51,14 +51,35 @@ describe('agent/node', () => {
   })
 
   it('renders the selected roster agent', () => {
-    render(
+    const { container } = render(
       <AgentV2Node
         id="agent-node"
         data={createData()}
       />,
     )
 
-    expect(screen.getByText(/workflow.nodes.agent.roster.label:normal:/)).toHaveTextContent('Nadia')
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toHaveClass('system-2xs-medium-uppercase')
+    expect(screen.getByText('Nadia')).toHaveClass('system-xs-regular', 'text-text-secondary')
+    expect(screen.getByText('Researcher')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
+    expect(container.querySelector('.bg-workflow-block-parma-bg')).toHaveClass('rounded-lg')
+  })
+
+  it('renders the inline setup agent style', () => {
+    const { container } = render(
+      <AgentV2Node
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          agent_roster: undefined,
+        })}
+      />,
+    )
+
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toHaveClass('system-xs-regular', 'text-text-secondary')
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
+    expect(container.querySelector('.i-custom-vender-solid-mediaAndDevices-robot')).toHaveClass('size-5')
   })
 
   it('renders an error state when no roster agent is selected', () => {

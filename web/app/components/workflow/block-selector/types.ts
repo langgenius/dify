@@ -87,10 +87,18 @@ export type AgentRosterBinding = {
   agent_id: string
 }
 
+export type AgentInlineBinding = {
+  binding_type: 'inline_agent'
+  agent_id?: string | null
+  current_snapshot_id?: string | null
+}
+
+export type AgentBinding = AgentRosterBinding | AgentInlineBinding
+
 export type AgentDefaultValue = {
-  agent_binding: AgentRosterBinding
+  agent_binding: AgentBinding
   agent_node_kind: 'dify_agent'
-  agent_roster: AgentRosterNodeData
+  agent_roster?: AgentRosterNodeData
   version: '2'
 }
 

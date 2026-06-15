@@ -2,7 +2,7 @@ import type { NodeDefault } from '../../types'
 import type { AgentV2NodeType } from './types'
 import { BlockEnum } from '../../types'
 import { genNodeMetaData } from '../../utils'
-import { hasValidRosterAgentBinding } from './types'
+import { hasValidAgentBinding } from './types'
 
 const metaData = genNodeMetaData({
   sort: 3,
@@ -16,7 +16,7 @@ const nodeDefault: NodeDefault<AgentV2NodeType> = {
     version: '2',
   },
   checkValid(payload, t) {
-    if (!hasValidRosterAgentBinding(payload)) {
+    if (!hasValidAgentBinding(payload)) {
       return {
         isValid: false,
         errorMessage: t('errorMsg.fieldRequired', {

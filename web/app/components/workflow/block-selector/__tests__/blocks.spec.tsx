@@ -356,6 +356,56 @@ describe('Blocks', () => {
     expect(onSelect).not.toHaveBeenCalled()
   })
 
+  it('inserts an inline Agent v2 node from the selector start action', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    queryMocks.inviteOptionsQueryFn.mockResolvedValue({
+      data: [],
+      has_more: false,
+      limit: 8,
+      page: 1,
+      total: 0,
+    })
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+    const hooksStore = createHooksStore({
+      configsMap: {
+        flowId: 'app-1',
+        flowType: FlowType.appFlow,
+        fileSettings: {} as never,
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HooksStoreContext value={hooksStore}>
+          <Blocks
+            searchText=""
+            onSelect={onSelect}
+            availableBlocksTypes={[BlockEnum.AgentV2]}
+            blocks={[createBlock(BlockEnum.AgentV2, 'Agent', BlockClassificationEnum.Default, 3)]}
+          />
+        </HooksStoreContext>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(await screen.findByRole('button', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
+
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
+      agent_binding: {
+        binding_type: 'inline_agent',
+      },
+      agent_node_kind: 'dify_agent',
+      version: '2',
+    })
+  })
+
   it('closes the agent selector when Escape closes the combobox', async () => {
     const user = userEvent.setup()
     queryMocks.inviteOptionsQueryFn.mockResolvedValue({

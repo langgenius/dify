@@ -1,9 +1,9 @@
-import type { AgentRosterBinding, AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
+import type { AgentBinding, AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 export type AgentV2NodeType = CommonNodeType & {
-  agent_binding?: AgentRosterBinding
+  agent_binding?: AgentBinding
   agent_node_kind: 'dify_agent'
   agent_roster?: AgentRosterNodeData
   agent_task?: string
@@ -21,4 +21,12 @@ export function hasValidRosterAgentBinding(data: AgentV2NodeType) {
   return data.agent_binding?.binding_type === 'roster_agent'
     && !!data.agent_roster
     && data.agent_binding.agent_id === data.agent_roster.id
+}
+
+export function hasInlineAgentBinding(data: AgentV2NodeType) {
+  return data.agent_binding?.binding_type === 'inline_agent'
+}
+
+export function hasValidAgentBinding(data: AgentV2NodeType) {
+  return hasInlineAgentBinding(data) || hasValidRosterAgentBinding(data)
 }
