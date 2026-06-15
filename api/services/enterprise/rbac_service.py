@@ -226,6 +226,20 @@ class ResourceUserAccessPolicies(_RBACModel):
     roles: list[RBACRole] = Field(default_factory=list)
     access_policies: list[AccessPolicy] = Field(default_factory=list)
 
+    @field_validator("access_policies", mode="before")
+    @classmethod
+    def _coerce_resource_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+    @field_validator("roles", mode="before")
+    @classmethod
+    def _coerce_resource_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
 
 class ResourceUserAccessPoliciesResponse(_RBACModel):
     data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
