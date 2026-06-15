@@ -495,6 +495,17 @@ class _ReplaceBindingsRequest(BaseModel):
         return value
 
 
+class _DeleteMemberBindingsRequest(BaseModel):
+    account_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("account_ids", mode="before")
+    @classmethod
+    def _coerce_account_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
 @console_ns.route("/workspaces/current/rbac/my-permissions")
 class RBACMyPermissionsApi(Resource):
     @login_required
@@ -583,6 +594,19 @@ class RBACAppMemberBindingsApi(Resource):
         tenant_id, account_id = _current_ids()
         return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
 
+    @login_required
+    def delete(self, app_id, policy_id):
+        tenant_id, account_id = _current_ids()
+        request_body = _payload(_DeleteMemberBindingsRequest)
+        svc.RBACService.AppAccess.delete_member_bindings(
+            tenant_id,
+            account_id,
+            str(app_id),
+            str(policy_id),
+            svc.DeleteMemberBindings(account_ids=request_body.account_ids),
+        )
+        return {"result": "success"}
+
 
 # ---------------------------------------------------------------------------
 # Per-dataset access (Knowledge Base Access Config).
@@ -667,6 +691,19 @@ class RBACDatasetMemberBindingsApi(Resource):
         return _dump(
             svc.RBACService.DatasetAccess.list_member_bindings(tenant_id, account_id, str(dataset_id), str(policy_id))
         )
+
+    @login_required
+    def delete(self, dataset_id, policy_id):
+        tenant_id, account_id = _current_ids()
+        request_body = _payload(_DeleteMemberBindingsRequest)
+        svc.RBACService.DatasetAccess.delete_member_bindings(
+            tenant_id,
+            account_id,
+            str(dataset_id),
+            str(policy_id),
+            svc.DeleteMemberBindings(account_ids=request_body.account_ids),
+        )
+        return {"result": "success"}
 
 
 # ---------------------------------------------------------------------------

@@ -290,6 +290,50 @@ class TestResourceAccessScopeBindings:
         )
         assert payload.access_policy_ids == ["policy-1", "policy-2"]
 
+    def test_app_member_bindings_delete_forwards_account_ids(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/apps/app-1/access-policies/policy-1/member-bindings",
+                method="DELETE",
+                json={"account_ids": ["acct-2", "acct-3"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.svc.RBACService.AppAccess.delete_member_bindings") as mock_delete,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACAppMemberBindingsApi.delete)(
+                rbac_mod.RBACAppMemberBindingsApi(),
+                "app-1",
+                "policy-1",
+            )
+
+        assert response == {"result": "success"}
+        tenant_id, actor_id, app_id, policy_id, payload = mock_delete.call_args.args
+        assert (tenant_id, actor_id, app_id, policy_id) == ("tenant-1", "acct-actor", "app-1", "policy-1")
+        assert payload.account_ids == ["acct-2", "acct-3"]
+
+    def test_dataset_member_bindings_delete_forwards_account_ids(self, app):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/access-policies/policy-1/member-bindings",
+                method="DELETE",
+                json={"account_ids": ["acct-2"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.delete_member_bindings"
+            ) as mock_delete,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACDatasetMemberBindingsApi.delete)(
+                rbac_mod.RBACDatasetMemberBindingsApi(),
+                "dataset-1",
+                "policy-1",
+            )
+
+        assert response == {"result": "success"}
+        tenant_id, actor_id, dataset_id, policy_id, payload = mock_delete.call_args.args
+        assert (tenant_id, actor_id, dataset_id, policy_id) == ("tenant-1", "acct-actor", "dataset-1", "policy-1")
+        assert payload.account_ids == ["acct-2"]
+
 class TestPaginationForwarding:
     def test_role_members_get_forwards_outer_pagination_params(self, app):
         with (

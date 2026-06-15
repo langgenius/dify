@@ -583,6 +583,17 @@ class ReplaceMemberBindings(_RBACModel):
         raise ValueError(f"invalid scope: {value}")
 
 
+class DeleteMemberBindings(_RBACModel):
+    account_ids: list[str] = Field(default_factory=list)
+
+    @field_validator("account_ids", mode="before")
+    @classmethod
+    def _coerce_account_ids(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
+
 class ReplaceBindings(_RBACModel):
     role_ids: list[str] = Field(default_factory=list)
     account_ids: list[str] = Field(default_factory=list)
@@ -1074,6 +1085,23 @@ class RBACService:
             )
             return MemberBindingsResponse.model_validate(data or {})
 
+        @staticmethod
+        def delete_member_bindings(
+            tenant_id: str,
+            account_id: str | None,
+            app_id: str,
+            policy_id: str,
+            payload: DeleteMemberBindings,
+        ) -> None:
+            _inner_call(
+                "DELETE",
+                f"{_INNER_PREFIX}/apps/access-policy/member-bindings",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id, "policy_id": policy_id},
+                json=payload.model_dump(mode="json"),
+            )
+
 
         @staticmethod
         def replace_bindings(
@@ -1226,6 +1254,23 @@ class RBACService:
                 params={"dataset_id": dataset_id, "policy_id": policy_id},
             )
             return MemberBindingsResponse.model_validate(data or {})
+
+        @staticmethod
+        def delete_member_bindings(
+            tenant_id: str,
+            account_id: str | None,
+            dataset_id: str,
+            policy_id: str,
+            payload: DeleteMemberBindings,
+        ) -> None:
+            _inner_call(
+                "DELETE",
+                f"{_INNER_PREFIX}/datasets/access-policy/member-bindings",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id, "policy_id": policy_id},
+                json=payload.model_dump(mode="json"),
+            )
 
         @staticmethod
         def replace_bindings(

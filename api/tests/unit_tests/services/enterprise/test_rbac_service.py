@@ -410,6 +410,16 @@ class TestResourceAccess:
 
         assert out.data[0].account_name == "Alice"
 
+    def test_app_delete_member_bindings_uses_delete_method(self, mock_send: MagicMock):
+        mock_send.return_value = None
+        payload = svc.DeleteMemberBindings(account_ids=["acct-2", "acct-3"])
+        svc.RBACService.AppAccess.delete_member_bindings("tenant-1", "acct-1", "app-1", "policy-1", payload)
+        call = _call_args(mock_send)
+        assert call.method == "DELETE"
+        assert call.endpoint == "/rbac/apps/access-policy/member-bindings"
+        assert call.params == {"app_id": "app-1", "policy_id": "policy-1"}
+        assert call.json == {"account_ids": ["acct-2", "acct-3"]}
+
     def test_app_replace_bindings(self, mock_send: MagicMock):
         mock_send.return_value = {"data": []}
         payload = svc.ReplaceBindings(role_ids=["workspace.owner"], account_ids=["acct-2"])
@@ -429,6 +439,16 @@ class TestResourceAccess:
         assert call.endpoint == "/rbac/datasets/access-policy/bindings"
         assert call.params == {"dataset_id": "ds-1", "policy_id": "policy-1"}
         assert call.json == {"role_ids": ["workspace.editor"], "account_ids": ["acct-2"]}
+
+    def test_dataset_delete_member_bindings_uses_delete_method(self, mock_send: MagicMock):
+        mock_send.return_value = None
+        payload = svc.DeleteMemberBindings(account_ids=["acct-2"])
+        svc.RBACService.DatasetAccess.delete_member_bindings("tenant-1", "acct-1", "ds-1", "policy-1", payload)
+        call = _call_args(mock_send)
+        assert call.method == "DELETE"
+        assert call.endpoint == "/rbac/datasets/access-policy/member-bindings"
+        assert call.params == {"dataset_id": "ds-1", "policy_id": "policy-1"}
+        assert call.json == {"account_ids": ["acct-2"]}
 
 
 class TestWorkspaceAccess:
