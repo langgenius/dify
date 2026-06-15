@@ -794,6 +794,8 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch):
     assert found_agent.id == "agent-1"
     assert found_version.id == "version-1"
     assert loaded_versions["version-1"].agent_id == "agent-1"
+    assert fake_session.commits == 0
+    assert fake_session.flushes >= 3
 
 
 def test_validator_dict_helpers_wrap_validation_errors():

@@ -236,7 +236,6 @@ class AgentRosterService:
         try:
             self._session.flush()
         except IntegrityError as exc:
-            self._session.rollback()
             raise AgentNameConflictError() from exc
 
         version = AgentConfigSnapshot(
@@ -264,9 +263,8 @@ class AgentRosterService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
 
         try:
-            self._session.commit()
+            self._session.flush()
         except IntegrityError as exc:
-            self._session.rollback()
             raise AgentNameConflictError() from exc
         return agent
 
@@ -387,9 +385,8 @@ class AgentRosterService:
         agent.updated_by = account_id
 
         try:
-            self._session.commit()
+            self._session.flush()
         except IntegrityError as exc:
-            self._session.rollback()
             raise AgentNameConflictError() from exc
         return self.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
 
@@ -401,7 +398,7 @@ class AgentRosterService:
         agent.archived_by = account_id
         agent.archived_at = naive_utc_now()
         agent.updated_by = account_id
-        self._session.commit()
+        self._session.flush()
 
     def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
         self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)

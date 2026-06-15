@@ -3,9 +3,11 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
@@ -13,7 +15,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user_id,
 )
-from extensions.ext_database import db
 from fields.agent_fields import (
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
@@ -55,8 +56,8 @@ register_response_schema_models(
 )
 
 
-def _agent_roster_service() -> AgentRosterService:
-    return AgentRosterService(db.session)
+def _agent_roster_service(session: Session) -> AgentRosterService:
+    return AgentRosterService(session)
 
 
 @console_ns.route("/agents")
@@ -66,12 +67,13 @@ class AgentRosterListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str):
+    def get(self, tenant_id: str, session: Session):
         query = RosterListQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             AgentRosterListResponse,
-            _agent_roster_service().list_roster_agents(
+            _agent_roster_service(session).list_roster_agents(
                 tenant_id=tenant_id, page=query.page, limit=query.limit, keyword=query.keyword
             ),
         )
@@ -82,11 +84,12 @@ class AgentRosterListApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_session
     @with_current_user_id
     @with_current_tenant_id
-    def post(self, tenant_id: str, account_id: str):
+    def post(self, tenant_id: str, account_id: str, session: Session):
         payload = RosterAgentCreatePayload.model_validate(console_ns.payload or {})
-        service = _agent_roster_service()
+        service = _agent_roster_service(session)
         agent = service.create_roster_agent(tenant_id=tenant_id, account_id=account_id, payload=payload)
         return dump_response(
             AgentRosterResponse,
@@ -101,12 +104,13 @@ class AgentInviteOptionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str):
+    def get(self, tenant_id: str, session: Session):
         query = AgentInviteOptionsQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             AgentInviteOptionsResponse,
-            _agent_roster_service().list_invite_options(
+            _agent_roster_service(session).list_invite_options(
                 tenant_id=tenant_id,
                 page=query.page,
                 limit=query.limit,
@@ -122,11 +126,12 @@ class AgentRosterDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    def get(self, tenant_id: str, session: Session, agent_id: UUID):
         return dump_response(
             AgentRosterResponse,
-            _agent_roster_service().get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id)),
+            _agent_roster_service(session).get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id)),
         )
 
     @console_ns.expect(console_ns.models[RosterAgentUpdatePayload.__name__])
@@ -135,13 +140,14 @@ class AgentRosterDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_session
     @with_current_user_id
     @with_current_tenant_id
-    def patch(self, tenant_id: str, account_id: str, agent_id: UUID):
+    def patch(self, tenant_id: str, account_id: str, session: Session, agent_id: UUID):
         payload = RosterAgentUpdatePayload.model_validate(console_ns.payload or {})
         return dump_response(
             AgentRosterResponse,
-            _agent_roster_service().update_roster_agent(
+            _agent_roster_service(session).update_roster_agent(
                 tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id, payload=payload
             ),
         )
@@ -151,10 +157,13 @@ class AgentRosterDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @with_session
     @with_current_user_id
     @with_current_tenant_id
-    def delete(self, tenant_id: str, account_id: str, agent_id: UUID):
-        _agent_roster_service().archive_roster_agent(tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id)
+    def delete(self, tenant_id: str, account_id: str, session: Session, agent_id: UUID):
+        _agent_roster_service(session).archive_roster_agent(
+            tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id
+        )
         return "", 204
 
 
@@ -164,11 +173,12 @@ class AgentRosterVersionsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    def get(self, tenant_id: str, session: Session, agent_id: UUID):
         return dump_response(
             AgentConfigSnapshotListResponse,
-            {"data": _agent_roster_service().list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
+            {"data": _agent_roster_service(session).list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
         )
 
 
@@ -178,11 +188,12 @@ class AgentRosterVersionDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID, version_id: UUID):
+    def get(self, tenant_id: str, session: Session, agent_id: UUID, version_id: UUID):
         return dump_response(
             AgentConfigSnapshotDetailResponse,
-            _agent_roster_service().get_agent_version_detail(
+            _agent_roster_service(session).get_agent_version_detail(
                 tenant_id=tenant_id,
                 agent_id=str(agent_id),
                 version_id=str(version_id),
