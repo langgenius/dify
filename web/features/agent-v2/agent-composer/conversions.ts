@@ -397,7 +397,23 @@ const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
   return {
     provider: modelProvider,
     model,
+    plugin_id: config?.model?.plugin_id,
   }
+}
+
+const getModelProviderPluginId = (model: DefaultModel, baseModel?: AgentSoulConfig['model']) => {
+  if (model.plugin_id)
+    return model.plugin_id
+
+  if (baseModel?.model_provider === model.provider && baseModel.plugin_id)
+    return baseModel.plugin_id
+
+  const [organization, pluginName] = model.provider.split('/').filter(Boolean)
+
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
+
+  return model.provider ? `langgenius/${model.provider}` : ''
 }
 
 export const formStateToAgentSoulConfig = ({
@@ -419,7 +435,7 @@ export const formStateToAgentSoulConfig = ({
         ...baseConfig?.model,
         model_provider: currentModel.provider,
         model: currentModel.model,
-        plugin_id: baseConfig?.model?.plugin_id ?? '',
+        plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
       }
     : baseConfig?.model,
   skills_files: {

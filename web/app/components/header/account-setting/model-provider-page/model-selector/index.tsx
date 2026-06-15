@@ -11,6 +11,15 @@ import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
 import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 
+const getModelProviderPluginId = (provider: string) => {
+  const [organization, pluginName] = provider.split('/').filter(Boolean)
+
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
+
+  return provider ? `langgenius/${provider}` : ''
+}
+
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
@@ -76,8 +85,13 @@ function ModelSelector({
     setOpen(false)
     setInputValue('')
 
-    if (onSelect)
-      onSelect({ provider, model: model.model })
+    if (onSelect) {
+      onSelect({
+        provider,
+        model: model.model,
+        plugin_id: getModelProviderPluginId(provider),
+      })
+    }
   }, [onSelect])
 
   const handleValueChange = useCallback((value: ModelSelectorValue | null) => {

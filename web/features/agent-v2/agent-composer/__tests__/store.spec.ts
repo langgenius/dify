@@ -110,6 +110,7 @@ describe('agent composer store conversions', () => {
       model: {
         model: 'gpt-4.1',
         provider: 'openai',
+        plugin_id: 'openai',
       },
       skills: [
         {
@@ -216,6 +217,29 @@ describe('agent composer store conversions', () => {
           ref: 'secret-1',
         }),
       ],
+    })
+  })
+
+  it('should derive model plugin_id from the selected provider when publishing', () => {
+    const publishConfig = formStateToAgentSoulConfig({
+      baseConfig: {
+        model: {
+          model: 'gpt-4.1',
+          model_provider: 'langgenius/openai/openai',
+          plugin_id: 'langgenius/openai',
+        },
+      },
+      formState: defaultAgentSoulConfigFormState,
+      currentModel: {
+        provider: 'langgenius/anthropic/anthropic',
+        model: 'claude-sonnet-4',
+      },
+    })
+
+    expect(publishConfig.model).toMatchObject({
+      model: 'claude-sonnet-4',
+      model_provider: 'langgenius/anthropic/anthropic',
+      plugin_id: 'langgenius/anthropic',
     })
   })
 
