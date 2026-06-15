@@ -73,3 +73,35 @@ describe('release-naming github-env', () => {
       expect(stdout).toMatch(new RegExp(`^${key}=`, 'm'))
   })
 })
+
+describe('release-naming edge channel', () => {
+  it('lists edge among channels', () => {
+    expect(run(['channels']).stdout).toMatch(/^edge$/m)
+  })
+
+  it('edge-version derives <pkgcore>-edge.<sha> stripping the rc prerelease', () => {
+    // package.json version is 0.1.0-rc.1 -> core 0.1.0
+    expect(run(['edge-version', '2fd7b82']).stdout.trim()).toBe('0.1.0-edge.2fd7b82')
+  })
+
+  it('edge-version accepts a 40-char sha', () => {
+    const sha = '2fd7b829e1f0aaaabbbbccccddddeeeeffff0000'
+    expect(run(['edge-version', sha]).stdout.trim()).toBe(`0.1.0-edge.${sha}`)
+  })
+
+  it('edge-version rejects a non-hex sha', () => {
+    expect(run(['edge-version', 'nothex!']).code).not.toBe(0)
+  })
+
+  it('edge-version requires a sha argument', () => {
+    expect(run(['edge-version']).code).not.toBe(0)
+  })
+
+  it('the edge version form matches a computed edge version', () => {
+    expect(run(['validate-version', '0.1.0-edge.2fd7b82', 'edge']).code).toBe(0)
+  })
+
+  it('validate-version rejects an rc string under the edge channel', () => {
+    expect(run(['validate-version', '0.1.0-rc.1', 'edge']).code).not.toBe(0)
+  })
+})
