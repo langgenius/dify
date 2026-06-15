@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
@@ -21,6 +21,7 @@ from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapt
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore, WorkflowAgentSessionScope
 from graphon.entities import GraphInitParams
+from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
@@ -462,10 +463,21 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     store = FakeSessionStore()
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
+    # ENG-636: the PAUSED scenario emits a dify.ask_human deferred call, so the
+    # node now builds a HITL form and pauses with HumanInputRequired. Stub the
+    # form repository so the unit test stays DB-free.
+    fake_repo = MagicMock()
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
+    node._build_human_input_form_repository = lambda *, dify_ctx, workflow_run_id: fake_repo  # type: ignore[assignment]
+
     events = list(node._run())
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
+    assert isinstance(events[0].reason, HumanInputRequired)
+    assert events[0].reason.form_id == "form-1"
+    assert events[0].reason.node_id == "agent-node"
+    fake_repo.create_form.assert_called_once()
     assert store.saved
     assert store.saved[0][1] == "fake-run-1"
     assert store.saved[0][3], "paused agent run should still persist replayable layer specs"

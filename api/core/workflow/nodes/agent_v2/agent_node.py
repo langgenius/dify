@@ -24,13 +24,15 @@ from clients.agent_backend import (
     extract_runtime_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import SchedulingPause
+from graphon.entities.pause_reason import HumanInputRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 
+from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
 from .output_adapter import WorkflowAgentOutputAdapter
@@ -258,12 +260,35 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
                     metadata=metadata,
                 )
-                yield PauseRequestedEvent(
-                    reason=SchedulingPause(
+                # ENG-636: a dify.ask_human deferred call pauses the *outer*
+                # workflow through the existing HITL form path. Any other deferred
+                # tool (none today) falls back to a generic scheduling pause.
+                try:
+                    pause_reason: HumanInputRequired | SchedulingPause | None = build_ask_human_pause_reason(
+                        deferred_tool_call=terminal_event.deferred_tool_call,
+                        node_id=self._node_id,
+                        default_node_title=bundle.agent.name or self._node_id,
+                        workflow_run_id=workflow_run_id,
+                        contacts=AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict).human.contacts,
+                        repository=self._build_human_input_form_repository(
+                            dify_ctx=dify_ctx, workflow_run_id=workflow_run_id
+                        ),
+                    )
+                except AskHumanFormBuildError as error:
+                    yield self._failure_event(
+                        inputs=inputs,
+                        process_data=process_data,
+                        metadata=metadata,
+                        error=str(error),
+                        error_type="agent_ask_human_form_build_error",
+                    )
+                    return
+                if pause_reason is None:
+                    pause_reason = SchedulingPause(
                         message=terminal_event.message
                         or "Agent backend run requested workflow pause for external input."
                     )
-                )
+                yield PauseRequestedEvent(reason=pause_reason)
                 return
 
             # Non-success terminal (failed / cancelled) skips per-output
@@ -447,6 +472,27 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 for r in outcome.results
             ],
         }
+
+    def _build_human_input_form_repository(
+        self,
+        *,
+        dify_ctx: DifyRunContext,
+        workflow_run_id: str | None,
+    ) -> HumanInputFormRepository:
+        """Construct the existing HITL form repository for ask_human form creation.
+
+        Mirrors the Human Input node's repository wiring (``node_runtime``) so the
+        ask_human form shares the same delivery/debug/console behavior: a
+        submission actor is only attributed for debugger/explore surfaces.
+        """
+        invoke_source = dify_ctx.invoke_from.value
+        return HumanInputFormRepositoryImpl(
+            tenant_id=dify_ctx.tenant_id,
+            app_id=dify_ctx.app_id,
+            workflow_execution_id=workflow_run_id,
+            invoke_source=invoke_source,
+            submission_actor_id=dify_ctx.user_id if invoke_source in {"debugger", "explore"} else None,
+        )
 
     def _save_session_snapshot(
         self,
