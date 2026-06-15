@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-from typing import Any, Optional
 import codecs
 import re
 from collections.abc import Set as AbstractSet
