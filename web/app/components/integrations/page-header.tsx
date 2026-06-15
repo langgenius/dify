@@ -19,12 +19,13 @@ export function IntegrationPageHeader({
   toolbar,
 }: IntegrationPageHeaderProps) {
   const showDescription = description !== undefined && description !== null
+  const showToolbar = toolbar !== undefined && toolbar !== null
 
   return (
     <div className={cn('flex shrink-0', align === 'start' ? 'items-start' : 'min-h-14 items-center justify-between')}>
       <div className={cn(
         'flex min-w-0 flex-1',
-        toolbar ? 'flex-col gap-3' : 'justify-between',
+        showToolbar ? 'flex-col gap-3' : 'justify-between',
         align === 'start' ? 'items-start pt-3 pb-2' : 'items-center py-2',
         frameClassName,
       )}
@@ -39,7 +40,7 @@ export function IntegrationPageHeader({
             </div>
           )}
         </div>
-        {toolbar && (
+        {showToolbar && (
           <div className="flex w-full items-center justify-between">
             {toolbar}
           </div>

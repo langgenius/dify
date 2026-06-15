@@ -109,6 +109,7 @@ function WorkspaceCardTrigger({
 }) {
   const { t } = useTranslation()
   const creditsUnit = t('mainNav.workspace.creditsUnit', { ns: 'common' })
+  const showStatus = status !== undefined && status !== null
 
   return (
     <div className="overflow-hidden rounded-xl border border-components-card-border bg-components-card-bg text-left shadow-xs transition-colors hover:bg-components-card-bg-alt">
@@ -124,7 +125,7 @@ function WorkspaceCardTrigger({
         <div className="min-w-0 grow">
           <div className="flex min-w-0 items-center gap-1 pr-0.5">
             <span className="max-w-[120px] min-w-0 shrink truncate system-sm-medium text-text-primary" title={name}>{name}</span>
-            {status && <span className="flex shrink-0 items-center">{status}</span>}
+            {showStatus && <span className="flex shrink-0 items-center">{status}</span>}
           </div>
         </div>
         <span aria-hidden className="i-ri-expand-up-down-line h-4 w-4 shrink-0 text-text-tertiary" />
