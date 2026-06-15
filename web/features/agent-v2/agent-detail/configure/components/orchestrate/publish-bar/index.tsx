@@ -6,9 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useStore } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { isAgentComposerDirtyAtom, useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
+import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import { agentComposerDraftAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
@@ -82,12 +83,8 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const store = useStore()
   const isDirty = useAtomValue(isAgentComposerDirtyAtom)
-  const publishPayload = useConfigPublishPayload({
-    agentId,
-    baseConfig: agentSoulConfig,
-    currentModel,
-  })
   const publishState = getPublishState({
     activeConfigSnapshot,
     isDirty,
@@ -98,6 +95,15 @@ export function AgentConfigurePublishBar({
   const handlePublish = () => {
     if (!canPublish)
       return
+
+    const publishPayload = {
+      agent_id: agentId,
+      config_snapshot: formStateToAgentSoulConfig({
+        baseConfig: agentSoulConfig,
+        formState: store.get(agentComposerDraftAtom),
+        currentModel,
+      }),
+    }
 
     // eslint-disable-next-line no-console
     console.log('[AgentConfigurePublishBar] publish payload', publishPayload)

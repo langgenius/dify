@@ -51,7 +51,6 @@ function AgentConfigurePageContent({
     activeConfigSnapshot,
     agentSoulConfig,
   } = useAgentConfigureData(agentId)
-  const draftAppFeatures = useAgentConfigureAppFeatures()
 
   useHydrateAgentConfigureDraft({
     agentId,
@@ -73,7 +72,6 @@ function AgentConfigurePageContent({
     currentModel,
     enabled: composerQuery.isSuccess,
   })
-  const previewAgentSoulConfig = getPreviewAgentSoulConfig(agentSoulConfig, draftAppFeatures)
 
   return (
     <section
@@ -106,13 +104,13 @@ function AgentConfigurePageContent({
           />
 
           <div className="min-h-0 flex-1">
-            <AgentPreviewChat
+            <AgentPreviewChatWithDraftConfig
               appId={agentQuery.data?.app_id}
               agentIcon={agentQuery.data?.icon}
               agentIconBackground={agentQuery.data?.icon_background}
               agentIconType={agentQuery.data?.icon_type}
               agentName={agentQuery.data?.name}
-              agentSoulConfig={previewAgentSoulConfig}
+              agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
               onClearChatListChange={setClearPreviewChat}
             />
@@ -134,6 +132,23 @@ function AgentConfigurePageContent({
         />
       </div>
     </section>
+  )
+}
+
+function AgentPreviewChatWithDraftConfig({
+  agentSoulConfig,
+  ...props
+}: Omit<Parameters<typeof AgentPreviewChat>[0], 'agentSoulConfig'> & {
+  agentSoulConfig?: AgentSoulConfig
+}) {
+  const draftAppFeatures = useAgentConfigureAppFeatures()
+  const previewAgentSoulConfig = getPreviewAgentSoulConfig(agentSoulConfig, draftAppFeatures)
+
+  return (
+    <AgentPreviewChat
+      {...props}
+      agentSoulConfig={previewAgentSoulConfig}
+    />
   )
 }
 
