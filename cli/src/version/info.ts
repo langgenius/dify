@@ -1,7 +1,7 @@
 import { arch, platform } from '@/sys/index'
 import { compatString } from './compat'
 
-export type Channel = 'dev' | 'rc' | 'stable'
+export type Channel = 'dev' | 'edge' | 'rc' | 'stable'
 
 export type VersionInfo = {
   version: string
