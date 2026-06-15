@@ -3,12 +3,13 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, computed_field, field_validator
+from pydantic import BaseModel, Field, RootModel, computed_field, field_validator
 
 from constants.languages import languages
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, with_current_user
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from libs.login import login_required
@@ -65,6 +66,10 @@ class RecommendedAppListResponse(ResponseModel):
     categories: list[str]
 
 
+class RecommendedAppDetailResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 register_schema_models(
     console_ns,
     RecommendedAppsQuery,
@@ -72,6 +77,7 @@ register_schema_models(
     RecommendedAppResponse,
     RecommendedAppListResponse,
 )
+register_response_schema_models(console_ns, RecommendedAppDetailResponse)
 
 
 @console_ns.route("/explore/apps")
@@ -93,14 +99,15 @@ class RecommendedAppListApi(Resource):
             language_prefix = languages[0]
 
         return RecommendedAppListResponse.model_validate(
-            RecommendedAppService.get_recommended_apps_and_categories(language_prefix),
+            RecommendedAppService.get_recommended_apps_and_categories(db.session, language_prefix),
             from_attributes=True,
         ).model_dump(mode="json")
 
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):
-        return RecommendedAppService.get_recommend_app_detail(str(app_id))
+        return RecommendedAppService.get_recommend_app_detail(db.session, str(app_id))

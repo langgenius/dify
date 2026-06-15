@@ -38,6 +38,8 @@ class AgentScope(StrEnum):
 class AgentSource(StrEnum):
     """Origin that created or imported the Agent."""
 
+    # Created directly as a reusable Agent Roster asset.
+    ROSTER = "roster"
     # Created from an Agent App composer.
     AGENT_APP = "agent_app"
     # Created from a Workflow Agent Composer flow.
@@ -131,6 +133,14 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
         Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
+        Index(
+            "agent_tenant_invitable_idx",
+            "tenant_id",
+            "scope",
+            "status",
+            "active_config_has_model",
+            "updated_at",
+        ),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -153,6 +163,9 @@ class Agent(DefaultFieldsMixin, Base):
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    active_config_has_model: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
     status: Mapped[AgentStatus] = mapped_column(
         EnumText(AgentStatus, length=32), nullable=False, default=AgentStatus.ACTIVE
     )

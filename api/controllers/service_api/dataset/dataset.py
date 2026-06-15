@@ -23,6 +23,7 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -84,7 +85,7 @@ class DatasetCreatePayload(BaseModel):
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
-    summary_index_setting: dict | None = None
+    summary_index_setting: dict | None = Field(default=None)
 
 
 class DatasetUpdatePayload(BaseModel):
@@ -96,9 +97,13 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model_provider: str | None = None
     retrieval_model: RetrievalModel | None = None
     partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
+
+
+class DocumentStatusPayload(BaseModel):
+    document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
 
 
 class TagNamePayload(BaseModel):
@@ -202,6 +207,7 @@ register_schema_models(
     service_api_ns,
     DatasetCreatePayload,
     DatasetUpdatePayload,
+    DocumentStatusPayload,
     TagCreatePayload,
     TagUpdatePayload,
     TagDeletePayload,
@@ -557,6 +563,7 @@ class DocumentStatusApi(DatasetApiResource):
             400: "Bad request - invalid action",
         }
     )
+    @service_api_ns.expect(service_api_ns.models[DocumentStatusPayload.__name__])
     def patch(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
@@ -624,7 +631,7 @@ class DatasetTagsApi(DatasetApiResource):
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
-        tags = TagService.get_tags("knowledge", cid)
+        tags = TagService.get_tags(db.session(), "knowledge", cid)
         return dump_response(KnowledgeTagListResponse, tags), 200
 
     @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])

@@ -8,10 +8,8 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
-    edit_permission_required,
     setup_required,
     with_current_tenant_id,
-    with_current_user_id,
 )
 from extensions.ext_database import db
 from fields.agent_fields import (
@@ -25,7 +23,7 @@ from fields.agent_fields import (
 from libs.helper import dump_response
 from libs.login import login_required
 from services.agent.roster_service import AgentRosterService
-from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload, RosterListQuery
+from services.entities.agent_entities import RosterListQuery
 
 
 class AgentInviteOptionsQuery(RosterListQuery):
@@ -40,8 +38,6 @@ register_schema_models(
     console_ns,
     AgentInviteOptionsQuery,
     AgentIdPath,
-    RosterAgentCreatePayload,
-    RosterAgentUpdatePayload,
     RosterListQuery,
 )
 register_response_schema_models(
@@ -75,23 +71,6 @@ class AgentRosterListApi(Resource):
                 tenant_id=tenant_id, page=query.page, limit=query.limit, keyword=query.keyword
             ),
         )
-
-    @console_ns.expect(console_ns.models[RosterAgentCreatePayload.__name__])
-    @console_ns.response(201, "Agent created", console_ns.models[AgentRosterResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user_id
-    @with_current_tenant_id
-    def post(self, tenant_id: str, account_id: str):
-        payload = RosterAgentCreatePayload.model_validate(console_ns.payload or {})
-        service = _agent_roster_service()
-        agent = service.create_roster_agent(tenant_id=tenant_id, account_id=account_id, payload=payload)
-        return dump_response(
-            AgentRosterResponse,
-            service.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent.id),
-        ), 201
 
 
 @console_ns.route("/agents/invite-options")
@@ -128,34 +107,6 @@ class AgentRosterDetailApi(Resource):
             AgentRosterResponse,
             _agent_roster_service().get_roster_agent_detail(tenant_id=tenant_id, agent_id=str(agent_id)),
         )
-
-    @console_ns.expect(console_ns.models[RosterAgentUpdatePayload.__name__])
-    @console_ns.response(200, "Agent updated", console_ns.models[AgentRosterResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user_id
-    @with_current_tenant_id
-    def patch(self, tenant_id: str, account_id: str, agent_id: UUID):
-        payload = RosterAgentUpdatePayload.model_validate(console_ns.payload or {})
-        return dump_response(
-            AgentRosterResponse,
-            _agent_roster_service().update_roster_agent(
-                tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id, payload=payload
-            ),
-        )
-
-    @console_ns.response(204, "Agent archived")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user_id
-    @with_current_tenant_id
-    def delete(self, tenant_id: str, account_id: str, agent_id: UUID):
-        _agent_roster_service().archive_roster_agent(tenant_id=tenant_id, agent_id=str(agent_id), account_id=account_id)
-        return "", 204
 
 
 @console_ns.route("/agents/<uuid:agent_id>/versions")

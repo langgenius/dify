@@ -7,6 +7,7 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -32,7 +33,7 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
-from ..common.schema import register_schema_models
+from ..common.schema import register_response_schema_models, register_schema_models
 
 
 class TextToAudioPayload(TextToAudioPayloadBase):
@@ -45,6 +46,7 @@ class TextToAudioPayload(TextToAudioPayloadBase):
 
 
 register_schema_models(web_ns, TextToAudioPayload)
+register_response_schema_models(web_ns, AudioBinaryResponse, AudioTranscriptResponse)
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,7 @@ class AudioApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[AudioTranscriptResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
         file = request.files["file"]
@@ -117,6 +120,7 @@ class TextApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[AudioBinaryResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:

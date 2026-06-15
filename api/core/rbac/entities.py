@@ -1,14 +1,4 @@
-"""RBAC resource scopes and permission points.
-
-These enums describe the access-control vocabulary shared across editions; they
-are *not* enterprise-specific. The enterprise RBAC service
-(``services.enterprise.rbac_service``) consumes their values when talking to the
-external ``check-access`` endpoint, while the ``rbac_permission_required``
-decorator uses them as its argument types.
-"""
-
 from enum import StrEnum
-
 
 class RBACResourceScope(StrEnum):
     """Resource scopes accepted by the ``rbac_permission_required`` decorator.

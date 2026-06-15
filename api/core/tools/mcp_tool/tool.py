@@ -374,6 +374,7 @@ class MCPTool(Tool):
         """Return "account" for console-authenticated callers (debugger/explore),
         "end_user" for webapp / service-api / trigger callers — so the enterprise
         side routes to the console store vs the published-webapp store."""
-        if self.runtime.invoke_from in _ACCOUNT_INVOKE_FROMS:
+        invoke_from = self.runtime.invoke_from
+        if invoke_from is not None and invoke_from.runs_as_account():
             return "account"
         return "end_user"

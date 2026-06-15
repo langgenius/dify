@@ -1,14 +1,15 @@
 from typing import Any
 
 from flask import request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.app.wraps import get_app_model
+
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -16,6 +17,8 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+
+from fields.base import ResponseModel
 from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
@@ -27,10 +30,27 @@ class TraceProviderQuery(BaseModel):
 
 class TraceConfigPayload(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider name")
-    tracing_config: dict[str, Any] = Field(..., description="Tracing configuration data")
+    tracing_config: dict[str, Any] = Field(
+        ...,
+        description="Tracing configuration data",
+    )
+
+
+class TraceAppConfigResponse(ResponseModel):
+    result: str | None = None
+    error: str | None = None
+    has_not_configured: bool | None = None
+    id: str | None = None
+    app_id: str | None = None
+    tracing_provider: str | None = None
+    tracing_config: dict[str, Any] | None = Field(default=None)
+    is_active: bool | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 register_schema_models(console_ns, TraceProviderQuery, TraceConfigPayload)
+register_response_schema_models(console_ns, TraceAppConfigResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/trace-config")
@@ -42,9 +62,11 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc("get_trace_app_config")
     @console_ns.doc(description="Get tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceProviderQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(
-        200, "Tracing configuration retrieved successfully", fields.Raw(description="Tracing configuration data")
+        200,
+        "Tracing configuration retrieved successfully",
+        console_ns.models[TraceAppConfigResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -70,7 +92,9 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
     @console_ns.response(
-        201, "Tracing configuration created successfully", fields.Raw(description="Created configuration data")
+        201,
+        "Tracing configuration created successfully",
+        console_ns.models[TraceAppConfigResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters or configuration already exists")
     @setup_required
@@ -97,7 +121,11 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc(description="Update an existing tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[TraceConfigPayload.__name__])
-    @console_ns.response(200, "Tracing configuration updated successfully", fields.Raw(description="Success response"))
+    @console_ns.response(
+        200,
+        "Tracing configuration updated successfully",
+        console_ns.models[TraceAppConfigResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters or configuration not found")
     @setup_required
     @login_required
@@ -120,7 +148,7 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc("delete_trace_app_config")
     @console_ns.doc(description="Delete an existing tracing configuration for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[TraceProviderQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(204, "Tracing configuration deleted successfully")
     @console_ns.response(400, "Invalid request parameters or configuration not found")
     @setup_required

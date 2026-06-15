@@ -6,8 +6,8 @@ import { agents } from './agents/orpc.gen'
 import { allWorkspaces } from './all-workspaces/orpc.gen'
 import { apiBasedExtension } from './api-based-extension/orpc.gen'
 import { apiKeyAuth } from './api-key-auth/orpc.gen'
-import { appDslVersion } from './app-dsl-version/orpc.gen'
 import { app } from './app/orpc.gen'
+import { appDslVersion } from './app-dsl-version/orpc.gen'
 import { apps } from './apps/orpc.gen'
 import { auth } from './auth/orpc.gen'
 import { billing } from './billing/orpc.gen'
@@ -27,7 +27,6 @@ import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
 import { login } from './login/orpc.gen'
 import { logout } from './logout/orpc.gen'
-import { mcp } from './mcp/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
@@ -47,8 +46,8 @@ import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
 import { trialModels } from './trial-models/orpc.gen'
 import { website } from './website/orpc.gen'
-import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
+import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workspaces } from './workspaces/orpc.gen'
 
 export const contract = {
@@ -79,7 +78,6 @@ export const contract = {
   instructionGenerate,
   login,
   logout,
-  mcp,
   notification,
   notion,
   oauth,

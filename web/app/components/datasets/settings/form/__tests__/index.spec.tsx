@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { expectLoadingButton } from '@/test/button'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../create/step-two'
@@ -396,9 +397,8 @@ describe('Form', () => {
       const saveButton = screen.getByRole('button', { name: /form\.save/i })
       fireEvent.click(saveButton)
 
-      // Button should be disabled during loading
       await waitFor(() => {
-        expect(saveButton).toBeDisabled()
+        expectLoadingButton(saveButton)
       })
     })
 

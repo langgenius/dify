@@ -1,7 +1,7 @@
 'use client'
 
 import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { cn } from '../cn'
 
@@ -87,7 +87,7 @@ export function Radio<Value = string>({
 }
 
 export type RadioSkeletonProps
-  = Omit<HTMLAttributes<HTMLDivElement>, 'className'>
+  = Omit<React.ComponentProps<'div'>, 'className'>
     & {
       className?: string
     }

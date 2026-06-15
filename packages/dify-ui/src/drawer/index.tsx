@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
 
@@ -90,7 +90,7 @@ export function DrawerContent({
 }
 
 type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children'> & {
-  children?: ReactNode
+  children?: React.ReactNode
 }
 
 export function DrawerCloseButton({

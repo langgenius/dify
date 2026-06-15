@@ -32,6 +32,8 @@ from models.dataset import Dataset
 from models.model import App
 from services.enterprise.rbac_service import RBACService
 
+from core.rbac import RBACPermission, RBACResourceScope
+
 __all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
 

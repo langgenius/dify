@@ -1,7 +1,8 @@
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../index'
 
-const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,

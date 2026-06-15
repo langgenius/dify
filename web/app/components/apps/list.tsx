@@ -217,16 +217,6 @@ function List({
                 placeholder={t('operation.search', { ns: 'common' })}
                 aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
               />
-              {!!keywords && (
-                <button
-                  type="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
-                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                  onClick={() => setKeywords('')}
-                >
-                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                </button>
-              )}
             </div>
           </div>
           <Link

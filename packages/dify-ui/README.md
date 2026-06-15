@@ -61,6 +61,12 @@ Utilities:
 - `./cn` — `clsx` + `tailwind-merge` wrapper. Use this for conditional class composition.
 - `./styles.css` — the one CSS entry that ships the design tokens, theme variables, and project utilities/components. Import it once from the app root.
 
+## Button loading and disabled contract
+
+`Button` keeps normal `disabled` controls native-disabled by default so unavailable actions are removed from the keyboard focus order.
+
+When `loading` is true, `Button` defaults `focusableWhenDisabled` to true. Loading represents an action that has already been triggered and is temporarily pending, so the button remains focusable while Base UI still suppresses click, pointer, keyboard activation, and submit-button activation. Pass `focusableWhenDisabled={false}` only when a loading button should use native disabled behavior.
+
 ## Segmented control contract
 
 `SegmentedControl` is Dify's design-system primitive for mode, filter, and view selection. It is built on Base UI `ToggleGroup` + `Toggle`, so use `Tabs` instead when the UI needs `tablist` / `tabpanel` semantics.
