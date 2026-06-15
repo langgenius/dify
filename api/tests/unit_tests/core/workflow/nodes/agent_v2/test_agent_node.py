@@ -120,6 +120,8 @@ class FakeSessionStore:
                 str,
                 CompositorSessionSnapshot | None,
                 list[RuntimeLayerSpec],
+                str | None,
+                str | None,
             ]
         ] = []
         self.cleaned: list[tuple[WorkflowAgentSessionScope, str | None]] = []
@@ -134,8 +136,12 @@ class FakeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
-        self.saved.append((scope, backend_run_id, snapshot, list(runtime_layer_specs)))
+        self.saved.append(
+            (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
+        )
 
     def mark_cleaned(
         self,
@@ -379,10 +385,13 @@ def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
 
     assert len(events) == 1
     assert store.saved
-    scope, backend_run_id, saved_snapshot, saved_specs = store.saved[0]
+    scope, backend_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
     assert scope.workflow_run_id == "workflow-run-1"
     assert backend_run_id == "fake-run-1"
     assert saved_snapshot is not None
+    # A successful terminal carries no ask_human pause correlation.
+    assert pending_form_id is None
+    assert pending_tool_call_id is None
     assert client.request is not None
     assert client.request.session_snapshot is existing_snapshot
     # Persist enough composition shape to replay a cleanup run; plugin layers
@@ -481,6 +490,9 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     assert store.saved
     assert store.saved[0][1] == "fake-run-1"
     assert store.saved[0][3], "paused agent run should still persist replayable layer specs"
+    # ENG-637: the awaiting form + deferred tool_call correlation is persisted.
+    assert store.saved[0][4] == "form-1"
+    assert store.saved[0][5] == "fake-ask-human-1"
 
 
 def test_agent_node_records_stream_usage_metadata():

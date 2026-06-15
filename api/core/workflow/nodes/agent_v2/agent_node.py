@@ -253,16 +253,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 return
 
             if isinstance(terminal_event, AgentBackendDeferredToolCallInternalEvent):
-                self._save_session_snapshot(
-                    session_scope=session_scope,
-                    backend_run_id=terminal_event.run_id,
-                    snapshot=terminal_event.session_snapshot,
-                    runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
-                    metadata=metadata,
-                )
                 # ENG-636: a dify.ask_human deferred call pauses the *outer*
                 # workflow through the existing HITL form path. Any other deferred
-                # tool (none today) falls back to a generic scheduling pause.
+                # tool (none today) falls back to a generic scheduling pause. The
+                # form is built *before* the snapshot is saved so its id can be
+                # persisted as the pause correlation (ENG-637).
                 try:
                     pause_reason: HumanInputRequired | SchedulingPause | None = build_ask_human_pause_reason(
                         deferred_tool_call=terminal_event.deferred_tool_call,
@@ -283,11 +278,29 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         error_type="agent_ask_human_form_build_error",
                     )
                     return
-                if pause_reason is None:
+
+                # ENG-637: persist the awaiting-form id + deferred tool_call id
+                # next to the snapshot so the resumed node can rebuild
+                # deferred_tool_results from the submitted form.
+                pending_form_id: str | None = None
+                pending_tool_call_id: str | None = None
+                if isinstance(pause_reason, HumanInputRequired):
+                    pending_form_id = pause_reason.form_id
+                    pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
+                else:
                     pause_reason = SchedulingPause(
                         message=terminal_event.message
                         or "Agent backend run requested workflow pause for external input."
                     )
+                self._save_session_snapshot(
+                    session_scope=session_scope,
+                    backend_run_id=terminal_event.run_id,
+                    snapshot=terminal_event.session_snapshot,
+                    runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
+                    metadata=metadata,
+                    pending_form_id=pending_form_id,
+                    pending_tool_call_id=pending_tool_call_id,
+                )
                 yield PauseRequestedEvent(reason=pause_reason)
                 return
 
@@ -502,6 +515,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
         metadata: dict[str, Any],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
         if self._session_store is None:
             return
@@ -511,6 +526,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
                 runtime_layer_specs=runtime_layer_specs,
+                pending_form_id=pending_form_id,
+                pending_tool_call_id=pending_tool_call_id,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = snapshot is not None
