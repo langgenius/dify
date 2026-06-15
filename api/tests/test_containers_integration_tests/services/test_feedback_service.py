@@ -97,8 +97,9 @@ class TestFeedbackService:
         )
 
         # Test CSV export
-        result = FeedbackService.export_feedbacks(mock_db_session, app_id=sample_data["app"].id, format_type="csv")
-
+        result = FeedbackService.export_feedbacks(
+            app_id=sample_data["app"].id, session=mock_db_session, format_type="csv"
+        )
         # Verify response structure
         assert hasattr(result, "headers")
         assert "text/csv" in result.headers["Content-Type"]
@@ -128,7 +129,9 @@ class TestFeedbackService:
         )
 
         # Test JSON export
-        result = FeedbackService.export_feedbacks(mock_db_session, app_id=sample_data["app"].id, format_type="json")
+        result = FeedbackService.export_feedbacks(
+            app_id=sample_data["app"].id, session=mock_db_session, format_type="json"
+        )
 
         # Verify response structure
         assert hasattr(result, "headers")
@@ -160,6 +163,7 @@ class TestFeedbackService:
         result = FeedbackService.export_feedbacks(
             mock_db_session,
             app_id=sample_data["app"].id,
+            session=mock_db_session,
             from_source=FeedbackFromSource.ADMIN,
             rating=FeedbackRating.DISLIKE,
             has_comment=True,
@@ -175,7 +179,9 @@ class TestFeedbackService:
         """Test exporting feedback when no data exists."""
         mock_db_session.execute.return_value = _execute_result([])
 
-        result = FeedbackService.export_feedbacks(mock_db_session, app_id=sample_data["app"].id, format_type="csv")
+        result = FeedbackService.export_feedbacks(
+            app_id=sample_data["app"].id, session=mock_db_session, format_type="csv"
+        )
 
         # Should return an empty CSV with headers only
         assert hasattr(result, "headers")
@@ -194,13 +200,13 @@ class TestFeedbackService:
         # Test with invalid start_date
         with pytest.raises(ValueError, match="Invalid start_date format"):
             FeedbackService.export_feedbacks(
-                mock_db_session, app_id=sample_data["app"].id, start_date="invalid-date-format"
+                app_id=sample_data["app"].id, session=mock_db_session, start_date="invalid-date-format"
             )
 
         # Test with invalid end_date
         with pytest.raises(ValueError, match="Invalid end_date format"):
             FeedbackService.export_feedbacks(
-                mock_db_session, app_id=sample_data["app"].id, end_date="invalid-date-format"
+                app_id=sample_data["app"].id, session=mock_db_session, end_date="invalid-date-format"
             )
 
     def test_export_feedbacks_invalid_format(self, mock_db_session, sample_data):
@@ -210,6 +216,7 @@ class TestFeedbackService:
             FeedbackService.export_feedbacks(
                 mock_db_session,
                 app_id=sample_data["app"].id,
+                session=mock_db_session,
                 format_type="xml",  # Unsupported format
             )
 
@@ -239,7 +246,9 @@ class TestFeedbackService:
         )
 
         # Test export
-        result = FeedbackService.export_feedbacks(mock_db_session, app_id=sample_data["app"].id, format_type="json")
+        result = FeedbackService.export_feedbacks(
+            app_id=sample_data["app"].id, session=mock_db_session, format_type="json"
+        )
 
         # Check JSON content
         json_content = json.loads(result.get_data(as_text=True))
@@ -290,7 +299,9 @@ class TestFeedbackService:
         )
 
         # Test export
-        result = FeedbackService.export_feedbacks(mock_db_session, app_id=sample_data["app"].id, format_type="csv")
+        result = FeedbackService.export_feedbacks(
+            app_id=sample_data["app"].id, session=mock_db_session, format_type="csv"
+        )
 
         # Check that unicode content is preserved
         csv_content = result.get_data(as_text=True)
@@ -320,7 +331,9 @@ class TestFeedbackService:
         )
 
         # Test export
-        result = FeedbackService.export_feedbacks(mock_db_session, app_id=sample_data["app"].id, format_type="json")
+        result = FeedbackService.export_feedbacks(
+            app_id=sample_data["app"].id, session=mock_db_session, format_type="json"
+        )
 
         # Check JSON content for emoji ratings
         json_content = json.loads(result.get_data(as_text=True))
