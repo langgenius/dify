@@ -2,6 +2,7 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
+import { memo } from 'react'
 
 type OpenScopeOptionProps = {
   value: ResourceOpenScope
@@ -12,7 +13,7 @@ type OpenScopeOptionProps = {
   onChange?: (openScope: ResourceOpenScope) => void
 }
 
-export default function OpenScopeOption({
+function OpenScopeOption({
   value,
   selected,
   disabled,
@@ -26,7 +27,7 @@ export default function OpenScopeOption({
       aria-pressed={selected}
       disabled={disabled || !onChange}
       className={cn(
-        'min-h-[76px] rounded-xl border bg-components-panel-bg px-7 py-3 text-left shadow-xs outline-hidden transition-colors',
+        'flex min-h-19 flex-col items-start rounded-xl border bg-components-panel-bg px-7 py-3 text-left shadow-xs outline-hidden transition-colors',
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         selected
           ? 'border-[1.5px] border-state-accent-solid'
@@ -40,3 +41,5 @@ export default function OpenScopeOption({
     </button>
   )
 }
+
+export default memo(OpenScopeOption)

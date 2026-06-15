@@ -82,6 +82,7 @@ describe('MemberMenu', () => {
       <MemberMenu
         member={member}
         isCurrentUser={false}
+        allowMultipleRoles={false}
         onOperate={vi.fn()}
       />,
       {

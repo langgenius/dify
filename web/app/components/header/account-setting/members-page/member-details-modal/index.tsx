@@ -58,11 +58,11 @@ const MemberDetailsModal = ({
     setAssignOpen(false)
   }, [allowMultipleRoles])
 
-  const handleRemove = useCallback((role: Role) => {
+  const handleRemove = useCallback((roleId: string) => {
     if (!allowMultipleRoles && selectedRoles.length <= 1)
       return
 
-    setPendingRoles(selectedRoles.filter(selectedRole => selectedRole.id !== role.id))
+    setPendingRoles(selectedRoles.filter(selectedRole => selectedRole.id !== roleId))
   }, [allowMultipleRoles, selectedRoles])
 
   const handleSave = useCallback(() => {
@@ -162,7 +162,7 @@ const MemberDetailsModal = ({
                               label={role.name}
                               isOwner={role.role_tag === 'owner'}
                               permissionKeys={role.permission_keys}
-                              onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
+                              onRemove={canAssignRoles ? handleRemove : undefined}
                             />
                           ))}
                         </div>
@@ -183,7 +183,7 @@ const MemberDetailsModal = ({
                               label={role.name}
                               isOwner={role.role_tag === 'owner'}
                               permissionKeys={role.permission_keys}
-                              onRemove={canAssignRoles ? () => handleRemove(role) : undefined}
+                              onRemove={canAssignRoles ? handleRemove : undefined}
                             />
                           ))}
                         </div>

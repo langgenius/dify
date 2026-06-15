@@ -8,7 +8,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import AddAccessSubjectPopover from './add-access-subject-popover'
@@ -44,7 +44,6 @@ export default function AccessRulesEditor({
   onAddAccessSubject,
 }: AccessRulesEditorProps) {
   const { t } = useTranslation()
-  const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false)
   const isLoading = isLoadingRules || isLoadingUserAccessSettings
   const individualPermissionSettingsTip = t('accessRule.individualPermissionSettingsTip', { ns: 'permission' })
   const policyOptions = useMemo(() => {
@@ -86,19 +85,8 @@ export default function AccessRulesEditor({
         {onAddAccessSubject
           ? (
               <AddAccessSubjectPopover
-                open={isAddPopoverOpen}
-                trigger={(
-                  <Button
-                    variant="primary"
-                    size="medium"
-                  >
-                    <span className="i-ri-add-line size-3.5" aria-hidden />
-                    <span>{t('operation.add', { ns: 'common' })}</span>
-                  </Button>
-                )}
                 userAccessSettings={userAccessSettings}
                 updatingAccountId={updatingAccountId}
-                onOpenChange={setIsAddPopoverOpen}
                 onAddAccessSubject={onAddAccessSubject}
               />
             )

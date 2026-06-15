@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
 
@@ -28,7 +29,7 @@ type UserAccessPolicyRowProps = {
   onChange?: (accountId: string, accessPolicyIds: string[]) => void
 }
 
-export default function UserAccessPolicyRow({
+function UserAccessPolicyRow({
   setting,
   policyOptions,
   disabled,
@@ -38,19 +39,21 @@ export default function UserAccessPolicyRow({
   const { t } = useTranslation()
   const accountId = setting.account.account_id
   const selectedPolicyId = setting.access_policies[0]?.id ?? DEFAULT_ACCESS_POLICY_ID
-  const roleNames = setting.roles.map(role => role.name).filter(Boolean)
+  const roleNames = useMemo(() => {
+    return setting.roles.map(role => role.name).filter(Boolean)
+  }, [setting.roles])
   const primaryRoleName = roleNames[0]
 
-  const handlePolicyChange = (nextPolicyId: string | null) => {
+  const handlePolicyChange = useCallback((nextPolicyId: string | null) => {
     if (!nextPolicyId || nextPolicyId === selectedPolicyId)
       return
 
     onChange?.(accountId, nextPolicyId === DEFAULT_ACCESS_POLICY_ID ? [] : [nextPolicyId])
-  }
+  }, [accountId, onChange, selectedPolicyId])
 
-  const handleRemove = () => {
+  const handleRemove = useCallback(() => {
     onChange?.(accountId, [])
-  }
+  }, [accountId, onChange])
 
   return (
     <div className={cn('grid min-h-19 items-center gap-4 px-6 py-4', ACCESS_RULE_TABLE_GRID, className)}>
@@ -117,3 +120,5 @@ export default function UserAccessPolicyRow({
     </div>
   )
 }
+
+export default memo(UserAccessPolicyRow)

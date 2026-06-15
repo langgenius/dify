@@ -48,7 +48,7 @@ const DatasetAccessRuleSection = ({
   const { mutateAsync: createAccessRule } = useCreateAccessRule()
   const { mutateAsync: updateAccessRule } = useUpdateAccessRule()
 
-  const datasetAccessRules = datasetAccessRulesResponse?.pages.flatMap(page => page.items) || []
+  const datasetAccessRules = useMemo(() => datasetAccessRulesResponse?.pages.flatMap(page => page.items) || [], [datasetAccessRulesResponse?.pages])
   const totalCount = datasetAccessRulesResponse?.pages[0]?.pagination.total_count || 0
 
   const closePermissionSetModal = useCallback(() => {

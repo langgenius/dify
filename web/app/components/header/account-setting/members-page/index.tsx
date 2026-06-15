@@ -162,6 +162,7 @@ const MembersPage = () => {
                 isCurrentUser={userProfile.email === account.email}
                 canManage={canManageMembers}
                 canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
+                allowMultipleRoles={systemFeatures.rbac_enabled}
                 onOpenDetails={handleOpenDetails}
                 onOperate={refetch}
                 onTransferOwnership={handleTransferOwnership}

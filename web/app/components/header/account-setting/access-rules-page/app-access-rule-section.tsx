@@ -48,7 +48,7 @@ const AppAccessRuleSection = ({
   const { mutateAsync: createAccessRule } = useCreateAccessRule()
   const { mutateAsync: updateAccessRule } = useUpdateAccessRule()
 
-  const appAccessRules = appAccessRulesResponse?.pages.flatMap(page => page.items) || []
+  const appAccessRules = useMemo(() => appAccessRulesResponse?.pages.flatMap(page => page.items) || [], [appAccessRulesResponse?.pages])
   const totalCount = appAccessRulesResponse?.pages[0]?.pagination.total_count || 0
 
   const closePermissionSetModal = useCallback(() => {

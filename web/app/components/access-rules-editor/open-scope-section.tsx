@@ -1,7 +1,7 @@
 'use client'
 
 import type { ResourceOpenScope } from '@/models/access-control'
-import { useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OpenScopeConfirmDialog from './open-scope-confirm-dialog'
 import OpenScopeOption from './open-scope-option'
@@ -12,7 +12,7 @@ type ResourceOpenScopeSectionProps = {
   onChange?: (openScope: ResourceOpenScope) => void
 }
 
-export default function ResourceOpenScopeSection({
+function ResourceOpenScopeSection({
   value,
   disabled,
   onChange,
@@ -20,24 +20,24 @@ export default function ResourceOpenScopeSection({
   const { t } = useTranslation()
   const [pendingOpenScope, setPendingOpenScope] = useState<ResourceOpenScope | null>(null)
 
-  const handleRequestChange = (nextOpenScope: ResourceOpenScope) => {
+  const handleRequestChange = useCallback((nextOpenScope: ResourceOpenScope) => {
     if (nextOpenScope === value)
       return
 
     setPendingOpenScope(nextOpenScope)
-  }
+  }, [value])
 
-  const handleCancelChange = () => {
+  const handleCancelChange = useCallback(() => {
     setPendingOpenScope(null)
-  }
+  }, [])
 
-  const handleConfirmChange = () => {
+  const handleConfirmChange = useCallback(() => {
     if (!pendingOpenScope)
       return
 
     onChange?.(pendingOpenScope)
     setPendingOpenScope(null)
-  }
+  }, [onChange, pendingOpenScope])
 
   return (
     <section className="flex flex-col gap-1">
@@ -73,3 +73,5 @@ export default function ResourceOpenScopeSection({
     </section>
   )
 }
+
+export default memo(ResourceOpenScopeSection)

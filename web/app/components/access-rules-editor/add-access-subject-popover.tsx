@@ -1,9 +1,9 @@
 'use client'
 
-import type { ReactElement } from 'react'
 import type { ResourceUserAccessSetting } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -11,30 +11,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import { useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useMembers } from '@/service/use-common'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 
 type AddAccessSubjectPopoverProps = {
-  open: boolean
-  trigger: ReactElement
   userAccessSettings: ResourceUserAccessSetting[]
   updatingAccountId: string | null
-  onOpenChange: (open: boolean) => void
   onAddAccessSubject: (accountId: string, accessPolicyIds: string[]) => void
 }
 
-export default function AddAccessSubjectPopover({
-  open,
-  trigger,
+function AddAccessSubjectPopover({
   userAccessSettings,
   updatingAccountId,
-  onOpenChange,
   onAddAccessSubject,
 }: AddAccessSubjectPopoverProps) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const { data: membersData, isLoading } = useMembers()
   const existingAccountIds = useMemo(() => {
@@ -57,22 +52,32 @@ export default function AddAccessSubjectPopover({
     })
   }, [existingAccountIds, membersData?.accounts, searchValue])
 
-  const handleAddMember = (member: Member) => {
+  const handleAddMember = useCallback((member: Member) => {
     onAddAccessSubject(member.id, [DEFAULT_ACCESS_POLICY_ID])
-  }
+  }, [onAddAccessSubject])
 
-  const handleOpenChange = (nextOpen: boolean) => {
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!nextOpen)
       setSearchValue('')
 
-    onOpenChange(nextOpen)
-  }
+    setOpen(nextOpen)
+  }, [])
 
   const addLabel = t('operation.add', { ns: 'common' })
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger render={trigger} />
+      <PopoverTrigger
+        render={(
+          <Button
+            variant="primary"
+            size="medium"
+          >
+            <span className="i-ri-add-line size-3.5" aria-hidden />
+            <span>{addLabel}</span>
+          </Button>
+        )}
+      />
       <PopoverContent
         placement="bottom-end"
         sideOffset={8}
@@ -158,3 +163,5 @@ export default function AddAccessSubjectPopover({
     </Popover>
   )
 }
+
+export default memo(AddAccessSubjectPopover)

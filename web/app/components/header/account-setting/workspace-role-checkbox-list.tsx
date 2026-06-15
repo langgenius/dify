@@ -7,7 +7,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
@@ -23,6 +23,7 @@ type WorkspaceRoleCheckboxListProps = {
 }
 
 const PAGE_SIZE = 20
+const EMPTY_DISABLED_ROLE_IDS: string[] = []
 
 const createSelectedRolePlaceholder = (id: string): Role => ({
   id,
@@ -40,7 +41,7 @@ const WorkspaceRoleCheckboxList = ({
   selectedRoleIds,
   selectedRoles,
   allowMultipleRoles = true,
-  disabledRoleIds = [],
+  disabledRoleIds = EMPTY_DISABLED_ROLE_IDS,
   onSelectedRolesChange,
   includeOwner = false,
 }: WorkspaceRoleCheckboxListProps) => {
@@ -89,13 +90,17 @@ const WorkspaceRoleCheckboxList = ({
   }, [rolesLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const roles = useMemo(() => rolesData?.pages.flatMap(page => page.data) ?? [], [rolesData])
+  const roleById = useMemo(() => {
+    return new Map(roles.map(role => [role.id, role]))
+  }, [roles])
+  const selectedRoleIdSet = useMemo(() => new Set(selectedRoleIds), [selectedRoleIds])
+  const disabledRoleIdSet = useMemo(() => new Set(disabledRoleIds), [disabledRoleIds])
   const selectedRoleObjects = useMemo(() => {
     if (selectedRoles)
       return selectedRoles
 
-    const roleById = new Map(roles.map(role => [role.id, role]))
     return selectedRoleIds.map(roleId => roleById.get(roleId) ?? createSelectedRolePlaceholder(roleId))
-  }, [roles, selectedRoleIds, selectedRoles])
+  }, [roleById, selectedRoleIds, selectedRoles])
 
   const filteredRoles = useMemo(() => {
     const trimmed = keyword.trim().toLowerCase()
@@ -109,29 +114,29 @@ const WorkspaceRoleCheckboxList = ({
     )
   }, [roles, keyword])
 
-  const toggleRole = (role: Role) => {
-    if (disabledRoleIds.includes(role.id))
+  const toggleRole = useCallback((role: Role) => {
+    if (disabledRoleIdSet.has(role.id))
       return
 
     if (!allowMultipleRoles) {
-      onSelectedRolesChange(selectedRoleIds.includes(role.id) ? selectedRoleObjects : [role])
+      onSelectedRolesChange(selectedRoleIdSet.has(role.id) ? selectedRoleObjects : [role])
       return
     }
 
     onSelectedRolesChange(
-      selectedRoleIds.includes(role.id)
+      selectedRoleIdSet.has(role.id)
         ? selectedRoleObjects.filter(selectedRole => selectedRole.id !== role.id)
         : [...selectedRoleObjects, role],
     )
-  }
+  }, [allowMultipleRoles, disabledRoleIdSet, onSelectedRolesChange, selectedRoleIdSet, selectedRoleObjects])
 
-  const handleRadioValueChange = (roleId: string) => {
-    const role = roles.find(role => role.id === roleId)
-    if (!role || disabledRoleIds.includes(role.id))
+  const handleRadioValueChange = useCallback((roleId: string) => {
+    const role = roleById.get(roleId)
+    if (!role || disabledRoleIdSet.has(role.id))
       return
 
     onSelectedRolesChange([role])
-  }
+  }, [disabledRoleIdSet, onSelectedRolesChange, roleById])
 
   const renderRoleText = (role: Role) => (
     <div className="min-w-0 flex-1">
@@ -194,8 +199,8 @@ const WorkspaceRoleCheckboxList = ({
                     ? (
                         <ul className="flex flex-col gap-0.5 pb-2">
                           {filteredRoles.map((role) => {
-                            const checked = selectedRoleIds.includes(role.id)
-                            const disabled = disabledRoleIds.includes(role.id)
+                            const checked = selectedRoleIdSet.has(role.id)
+                            const disabled = disabledRoleIdSet.has(role.id)
                             const handleToggle = () => toggleRole(role)
 
                             return (
@@ -238,8 +243,8 @@ const WorkspaceRoleCheckboxList = ({
                           render={<ul />}
                         >
                           {filteredRoles.map((role) => {
-                            const checked = selectedRoleIds.includes(role.id)
-                            const disabled = disabledRoleIds.includes(role.id)
+                            const checked = selectedRoleIdSet.has(role.id)
+                            const disabled = disabledRoleIdSet.has(role.id)
 
                             return (
                               <li key={role.id}>

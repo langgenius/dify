@@ -10,11 +10,9 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'
 import AssignRolesModal from './assign-roles-modal'
@@ -23,6 +21,7 @@ type MemberMenuProps = {
   member: Member
   isCurrentUser: boolean
   canTransferOwnership?: boolean
+  allowMultipleRoles?: boolean
   onOperate: () => void
   onTransferOwnership?: () => void
 }
@@ -31,11 +30,11 @@ const MemberMenu = ({
   member,
   isCurrentUser,
   canTransferOwnership = false,
+  allowMultipleRoles = true,
   onOperate,
   onTransferOwnership,
 }: MemberMenuProps) => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
 
@@ -54,7 +53,7 @@ const MemberMenu = ({
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
 
   const handleAssignRolesSubmit = useCallback((roles: Role[]) => {
-    const roleIds = systemFeatures.rbac_enabled
+    const roleIds = allowMultipleRoles
       ? roles.map(role => role.id)
       : roles.slice(0, 1).map(role => role.id)
 
@@ -67,7 +66,7 @@ const MemberMenu = ({
         onOperate()
       },
     })
-  }, [member.id, onOperate, systemFeatures.rbac_enabled, t, updateRolesOfMember])
+  }, [allowMultipleRoles, member.id, onOperate, t, updateRolesOfMember])
 
   const handleRemove = useCallback(async () => {
     setOpen(false)
@@ -149,7 +148,7 @@ const MemberMenu = ({
       {assignModalOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}
-          allowMultipleRoles={systemFeatures.rbac_enabled}
+          allowMultipleRoles={allowMultipleRoles}
           onClose={() => setAssignModalOpen(false)}
           onSubmit={handleAssignRolesSubmit}
         />

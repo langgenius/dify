@@ -2,6 +2,7 @@
 
 import type { Role, RoleCategory } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Row from './row'
@@ -74,4 +75,4 @@ const RoleList = ({
   )
 }
 
-export default RoleList
+export default memo(RoleList)

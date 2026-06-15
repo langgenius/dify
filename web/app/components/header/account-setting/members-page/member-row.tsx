@@ -17,6 +17,7 @@ type MemberRowProps = {
   isCurrentUser: boolean
   canManage: boolean
   canTransferOwnership: boolean
+  allowMultipleRoles: boolean
   onOpenDetails: (member: Member) => void
   onOperate: () => void
   onTransferOwnership: () => void
@@ -28,6 +29,7 @@ const MemberRow = ({
   isCurrentUser,
   canManage,
   canTransferOwnership,
+  allowMultipleRoles,
   onOpenDetails,
   onOperate,
   onTransferOwnership,
@@ -97,6 +99,7 @@ const MemberRow = ({
             member={member}
             isCurrentUser={isCurrentUser}
             canTransferOwnership={canTransferOwnership}
+            allowMultipleRoles={allowMultipleRoles}
             onOperate={onOperate}
             onTransferOwnership={onTransferOwnership}
           />

@@ -9,6 +9,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type OpenScopeConfirmDialogProps = {
@@ -17,22 +18,23 @@ type OpenScopeConfirmDialogProps = {
   onConfirm: () => void
 }
 
-export default function OpenScopeConfirmDialog({
+function OpenScopeConfirmDialog({
   open,
   onCancel,
   onConfirm,
 }: OpenScopeConfirmDialogProps) {
   const { t } = useTranslation()
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen)
+      onCancel()
+  }, [onCancel])
 
   return (
     <AlertDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen)
-          onCancel()
-      }}
+      onOpenChange={handleOpenChange}
     >
-      <AlertDialogContent className="w-[480px] overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-lg">
+      <AlertDialogContent className="w-120 overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-lg">
         <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {t('accessRule.changeOpenScopeTitle', { ns: 'permission' })}
@@ -53,3 +55,5 @@ export default function OpenScopeConfirmDialog({
     </AlertDialog>
   )
 }
+
+export default memo(OpenScopeConfirmDialog)
