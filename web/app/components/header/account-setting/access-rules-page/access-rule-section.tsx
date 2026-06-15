@@ -1,9 +1,9 @@
 'use client'
 
-import type { AccessPolicyWithBindings, RemoveBindingPayload } from '@/models/access-control'
+import type { AccessPolicyWithBindings } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
@@ -24,9 +24,6 @@ type AccessRuleSectionProps = {
   onCreate?: () => void
   onViewRule?: (rule: AccessPolicyWithBindings) => void
   onEditRule?: (rule: AccessPolicyWithBindings) => void
-  onAddRole?: (rule: AccessPolicyWithBindings) => void
-  onRemoveBinding?: (payload: RemoveBindingPayload) => void
-  onToggleLockStatus?: (bindingId: string, newStatus: boolean) => void
   className?: string
 }
 
@@ -43,9 +40,6 @@ const AccessRuleSection = ({
   onCreate,
   onViewRule,
   onEditRule,
-  onAddRole,
-  onRemoveBinding,
-  onToggleLockStatus,
   className,
 }: AccessRuleSectionProps) => {
   const { t } = useTranslation()
@@ -54,21 +48,6 @@ const AccessRuleSection = ({
   const anchorRef = useRef<HTMLDivElement>(null)
   const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
   const canManage = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
-  const lockedCount = useMemo(() => {
-    let count = 0
-    rules.forEach((rule) => {
-      const { accounts, roles } = rule
-      accounts.forEach((account) => {
-        if (account.is_locked)
-          count += 1
-      })
-      roles.forEach((role) => {
-        if (role.is_locked)
-          count += 1
-      })
-    })
-    return count
-  }, [rules])
   const ruleCount = totalCount ?? rules.length
 
   useEffect(() => {
@@ -110,12 +89,6 @@ const AccessRuleSection = ({
             </span>
             <span className="shrink-0 system-xs-regular text-text-tertiary">
               {t('accessRule.summary', { ns: 'permission', count: ruleCount })}
-              {lockedCount > 0 && (
-                <>
-                  {' '}
-                  {t('accessRule.lockedSummary', { ns: 'permission', count: lockedCount })}
-                </>
-              )}
             </span>
           </div>
         </button>
@@ -173,9 +146,6 @@ const AccessRuleSection = ({
                         className={cn(index > 0 && 'border-t border-divider-regular')}
                         onView={onViewRule}
                         onEdit={onEditRule}
-                        onAddRole={onAddRole}
-                        onRemove={onRemoveBinding}
-                        onToggleLockStatus={onToggleLockStatus}
                       />
                     ))}
                     <div ref={anchorRef} className="h-1" />

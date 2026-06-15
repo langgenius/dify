@@ -7,10 +7,6 @@ const mockAppAccessRules = vi.hoisted(() => ({
   isLoading: false,
 }))
 
-const mockAppPermissionKeys = vi.hoisted(() => ({
-  value: [] as string[],
-}))
-
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
 }))
@@ -22,20 +18,12 @@ vi.mock('@/service/access-control/use-app-access-config', () => ({
   })),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail?: { permission_keys?: string[] } }) => T): T => selector({
-    appDetail: { permission_keys: mockAppPermissionKeys.value },
-  }),
-}))
-
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
     return (
       <div data-testid="access-rules-editor">
-        {props.resourceId}
-        :
-        {String(props.canManage)}
+        {props.title}
       </div>
     )
   },
@@ -46,17 +34,16 @@ describe('AppAccessConfigPage', () => {
     vi.clearAllMocks()
     mockAppAccessRules.items = []
     mockAppAccessRules.isLoading = false
-    mockAppPermissionKeys.value = []
     mockAccessRulesEditor.props = null
   })
 
   // Rendering wires the app access rules into the shared editor.
   describe('Rendering', () => {
-    it('should render access config title and pass app id to the editor', () => {
+    it('should render access config title and pass app rules to the editor', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.appAccessPermissions' })).toBeInTheDocument()
-      expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('app-1:false')
+      expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('permission.accessRule.appTitle')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
     })
 
@@ -66,14 +53,6 @@ describe('AppAccessConfigPage', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
       expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
-    })
-
-    it('should allow management when app ACL includes access config permission', () => {
-      mockAppPermissionKeys.value = ['app.acl.access_config']
-
-      render(<AppAccessConfigPage appId="app-1" />)
-
-      expect(mockAccessRulesEditor.props?.canManage).toBe(true)
     })
   })
 })

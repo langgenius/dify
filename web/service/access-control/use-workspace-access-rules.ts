@@ -1,8 +1,6 @@
 import type {
   AccessPolicy,
   AccessPolicyResourceType,
-  AccessPolicyWithBindings,
-  BindingsPayload,
   CreateAccessPolicyRequest,
   GetAppAccessPoliciesResponse,
   GetDatasetAccessPoliciesResponse,
@@ -136,62 +134,6 @@ export const useDeleteAccessRule = (resourceType: AccessPolicyResourceType) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: resourceType === 'app' ? workspaceAccessRulesQueryKeys.app() : workspaceAccessRulesQueryKeys.dataset() })
-    },
-  })
-}
-
-export const useUpdateAppAccessRuleBindings = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-app-bindings'],
-    mutationFn: (data: BindingsPayload & { id: string }) => {
-      const { id, ...rest } = data
-      return put<AccessPolicyWithBindings>(`/workspaces/current/rbac/workspace/apps/access-policies/${id}/bindings`, {
-        body: {
-          ...rest,
-        },
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceAccessRulesQueryKeys.app() })
-    },
-  })
-}
-
-export const useUpdateDatasetAccessRuleBindings = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'update-dataset-bindings'],
-    mutationFn: (data: BindingsPayload & { id: string }) => {
-      const { id, ...rest } = data
-      return put<AccessPolicyWithBindings>(`/workspaces/current/rbac/workspace/datasets/access-policies/${id}/bindings`, {
-        body: {
-          ...rest,
-        },
-      })
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: workspaceAccessRulesQueryKeys.dataset() })
-    },
-  })
-}
-
-export const useBindingLock = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'binding-lock'],
-    mutationFn: (bindingId: string) => {
-      return put(`/workspaces/current/rbac/access-policy-bindings/${bindingId}/lock`)
-    },
-  })
-}
-
-export const useBindingUnlock = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'binding-unlock'],
-    mutationFn: (bindingId: string) => {
-      return put(`/workspaces/current/rbac/access-policy-bindings/${bindingId}/unlock`)
     },
   })
 }

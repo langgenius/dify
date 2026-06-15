@@ -197,7 +197,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       )}
       {appACLCapabilities.canAccessConfig && (
         <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenAccessConfig}>
-          <span className="text-sm leading-5 text-text-secondary">{t('settings.appAccess', { ns: 'common' })}</span>
+          <span className="text-sm leading-5 text-text-secondary">{t('settings.resourceAccess', { ns: 'common' })}</span>
         </DropdownMenuItem>
       )}
       {appACLCapabilities.canDelete && (
