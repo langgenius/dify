@@ -9,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname } from '@/next/navigation'
 import Divider from '../base/divider'
 import AppInfo, { AppInfoView } from './app-info'
@@ -69,12 +70,14 @@ const AppDetailNav = ({
       setHideHeader(v.payload)
   })
 
+  const setLocalStorageExpand = useSetLocalStorage<string>('app-detail-collapse-or-expand', { raw: true })
+
   useEffect(() => {
     if (appSidebarExpand) {
-      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      setLocalStorageExpand(appSidebarExpand)
       setAppSidebarExpand(appSidebarExpand)
     }
-  }, [appSidebarExpand, setAppSidebarExpand])
+  }, [appSidebarExpand, setAppSidebarExpand, setLocalStorageExpand])
 
   useHotkey('Mod+B', (e) => {
     e.preventDefault()

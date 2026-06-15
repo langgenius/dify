@@ -153,9 +153,6 @@
     }
   },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "no-restricted-globals": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 2
     },
@@ -396,7 +393,7 @@
   },
   "web/app/components/app-sidebar/index.tsx": {
     "no-restricted-globals": {
-      "count": 2
+      "count": 1
     },
     "ts/no-explicit-any": {
       "count": 1
@@ -831,9 +828,6 @@
     }
   },
   "web/app/components/app/configuration/debug/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "ts/no-explicit-any": {
       "count": 3
     }
