@@ -146,7 +146,7 @@ describe('List', () => {
 
     it('should render the search input', () => {
       render(<List />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox')).toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -195,7 +195,7 @@ describe('List', () => {
     it('should update search input value', () => {
       render(<List />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(input).toHaveValue('test search')
@@ -259,7 +259,7 @@ describe('List', () => {
     it('should clear search input when onClear is called', () => {
       render(<List />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       // First set a value
       fireEvent.change(input, { target: { value: 'test search' } })
       expect(input).toHaveValue('test search')

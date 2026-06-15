@@ -8,6 +8,10 @@ import type {
 import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
+  FieldLabel,
+  FieldRoot,
+} from '../../field'
+import {
   NumberField,
   NumberFieldControls,
   NumberFieldDecrement,
@@ -44,11 +48,7 @@ const renderNumberField = ({
   return render(
     <NumberField defaultValue={defaultValue}>
       <NumberFieldGroup data-testid="group" {...groupProps}>
-        <NumberFieldInput
-          aria-label="Amount"
-          data-testid="input"
-          {...inputProps}
-        />
+        <NumberFieldInput aria-label="Amount" {...inputProps} />
         {unitProps && (
           <NumberFieldUnit data-testid="unit" {...restUnitProps}>
             {unitChildren}
@@ -75,6 +75,7 @@ describe('NumberField wrapper', () => {
       })
 
       await expect.element(screen.getByTestId('group')).toHaveClass('rounded-lg')
+      await expect.element(screen.getByTestId('group')).toHaveClass('focus-within:border-components-input-border-active')
       await expect.element(screen.getByTestId('group')).toHaveClass('custom-group')
     })
 
@@ -89,8 +90,25 @@ describe('NumberField wrapper', () => {
       })
 
       await expect.element(screen.getByTestId('group')).toHaveClass('rounded-[10px]')
-      await expect.element(screen.getByTestId('input')).toHaveClass('px-4')
-      await expect.element(screen.getByTestId('input')).toHaveClass('py-2')
+      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('px-4')
+      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveClass('py-2')
+    })
+
+    it('should surface field invalid state on the visual group', async () => {
+      const screen = await render(
+        <FieldRoot name="amount" invalid>
+          <FieldLabel>Amount</FieldLabel>
+          <NumberField defaultValue={8}>
+            <NumberFieldGroup data-testid="group">
+              <NumberFieldInput />
+            </NumberFieldGroup>
+          </NumberField>
+        </FieldRoot>,
+      )
+
+      await expect.element(screen.getByTestId('group')).toHaveAttribute('data-invalid')
+      await expect.element(screen.getByTestId('group')).toHaveClass('data-invalid:border-components-input-border-destructive')
+      await expect.element(screen.getByRole('textbox', { name: 'Amount' })).toHaveAttribute('aria-invalid', 'true')
     })
 
     it('should set input defaults and forward passthrough props', async () => {
