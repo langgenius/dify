@@ -434,6 +434,7 @@ class AppDslService:
             app.enable_api = True
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
+            app.maintainer = account.id
             app.updated_by = account.id
 
             self._session.add(app)

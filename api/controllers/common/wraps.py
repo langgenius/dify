@@ -32,8 +32,6 @@ from models.dataset import Dataset
 from models.model import App
 from services.enterprise.rbac_service import RBACService
 
-from core.rbac import RBACPermission, RBACResourceScope
-
 __all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
 
@@ -93,23 +91,23 @@ def _is_resource_owned_by_current_user(
     tenant_id: str, account_id: str, resource_type: RBACResourceScope, resource_id: str
 ) -> bool:
     if resource_type == RBACResourceScope.APP:
-        created_by = db.session.scalar(
-            select(App.created_by).where(
+        maintainer = db.session.scalar(
+            select(App.maintainer).where(
                 App.id == resource_id,
                 App.tenant_id == tenant_id,
                 App.status == "normal",
             )
         )
-        return created_by == account_id
+        return maintainer == account_id
 
     if resource_type == RBACResourceScope.DATASET:
-        created_by = db.session.scalar(
-            select(Dataset.created_by).where(
+        maintainer = db.session.scalar(
+            select(Dataset.maintainer).where(
                 Dataset.id == resource_id,
                 Dataset.tenant_id == tenant_id,
             )
         )
-        return created_by == account_id
+        return maintainer == account_id
 
     return False
 

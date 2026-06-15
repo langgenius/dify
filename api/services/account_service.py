@@ -35,7 +35,8 @@ from models.account import (
     TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
-from models.model import DifySetup
+from models.dataset import Dataset
+from models.model import App, DifySetup
 from services.billing_service import BillingService
 from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
@@ -199,6 +200,24 @@ class AccountService:
     def get_workspace_permission_keys(tenant_id: str, account_id: str) -> set[str]:
         permissions = RBACService.MyPermissions.get(tenant_id, account_id)
         return set(getattr(getattr(permissions, "workspace", None), "permission_keys", []) or [])
+
+    @staticmethod
+    def get_rbac_workspace_owner_account_id(tenant_id: str, actor_account_id: str) -> str:
+        """Return the account id bound to the workspace owner RBAC role."""
+        owner_role_id = AccountService.resolve_workspace_rbac_role_id(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            role_identifier=TenantAccountRole.OWNER.value,
+        )
+        owner_members = RBACService.Roles.members(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            role_id=owner_role_id,
+            options=ListOption(page_number=1, results_per_page=1),
+        ).data
+        if not owner_members:
+            raise ValueError(f"Workspace RBAC owner not found for tenant {tenant_id}.")
+        return owner_members[0].account_id
 
     @staticmethod
     def is_rbac_workspace_owner(tenant_id: str, actor_account_id: str, member_account_id: str) -> bool:
@@ -1654,6 +1673,8 @@ class TenantService:
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
         """Remove member from tenant.
 
+        Apps and datasets maintained by the removed member are reassigned to
+        the workspace owner without changing their immutable creator records.
         If the removed member has ``AccountStatus.PENDING`` (invited but never
         activated) and no remaining workspace memberships, the orphaned account
         record is deleted as well.
@@ -1676,6 +1697,36 @@ class TenantService:
         account_id = account.id
         account_email = account.email
 
+        if dify_config.RBAC_ENABLED:
+            owner_id = AccountService.get_rbac_workspace_owner_account_id(str(tenant.id), str(operator.id))
+        else:
+            owner_id = db.session.scalar(
+                select(TenantAccountJoin.account_id)
+                .where(
+                    TenantAccountJoin.tenant_id == tenant.id,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+                .limit(1)
+            )
+            if owner_id is None:
+                raise ValueError(f"Workspace owner not found for tenant {tenant.id}.")
+
+        db.session.execute(
+            update(App)
+            .where(
+                App.tenant_id == tenant.id,
+                App.maintainer == account_id,
+            )
+            .values(maintainer=owner_id)
+        )
+        db.session.execute(
+            update(Dataset)
+            .where(
+                Dataset.tenant_id == tenant.id,
+                Dataset.maintainer == account_id,
+            )
+            .values(maintainer=owner_id)
+        )
         db.session.delete(ta)
 
         # Clean up orphaned pending accounts (invited but never activated)

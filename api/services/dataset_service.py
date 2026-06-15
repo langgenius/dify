@@ -261,7 +261,7 @@ class DatasetService:
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if include_own_datasets and user:
-                accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
+                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             query = query.where(accessible_filter)
 
         if user:
@@ -299,7 +299,7 @@ class DatasetService:
                                     Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                                     sa.and_(
                                         Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.created_by == user.id,
+                                        Dataset.maintainer == user.id,
                                     ),
                                     sa.and_(
                                         Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
@@ -313,7 +313,7 @@ class DatasetService:
                                     Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                                     sa.and_(
                                         Dataset.permission == DatasetPermissionEnum.ONLY_ME,
-                                        Dataset.created_by == user.id,
+                                        Dataset.maintainer == user.id,
                                     ),
                                 )
                             )
@@ -386,7 +386,7 @@ class DatasetService:
             ]
             accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
             if include_own_datasets and user:
-                accessible_filter = sa.or_(Dataset.created_by == user.id, accessible_filter)
+                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
@@ -446,6 +446,7 @@ class DatasetService:
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.description = description
         dataset.created_by = account.id
+        dataset.maintainer = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
@@ -521,6 +522,7 @@ class DatasetService:
             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
             icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
             created_by=current_user.id,
+            maintainer=current_user.id,
             pipeline_id=pipeline.id,
         )
         db.session.add(dataset)
@@ -1319,12 +1321,12 @@ class DatasetService:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
-            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
+            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.maintainer != user.id:
                 logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-                # For partial team permission, user needs explicit permission or be the creator
-                if dataset.created_by != user.id:
+                # For partial team permission, user needs explicit permission or be the maintainer.
+                if dataset.maintainer != user.id:
                     user_permission = db.session.scalar(
                         select(DatasetPermission)
                         .where(DatasetPermission.dataset_id == dataset.id, DatasetPermission.account_id == user.id)
@@ -1344,7 +1346,7 @@ class DatasetService:
 
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
-                if dataset.created_by != user.id:
+                if dataset.maintainer != user.id:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
             elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
@@ -2916,6 +2918,7 @@ class DocumentService:
             data_source_type=knowledge_config.data_source.info_list.data_source_type,
             indexing_technique=IndexTechniqueType(knowledge_config.indexing_technique),
             created_by=account.id,
+            maintainer=account.id,
             embedding_model=knowledge_config.embedding_model,
             embedding_model_provider=knowledge_config.embedding_model_provider,
             collection_binding_id=dataset_collection_binding_id,

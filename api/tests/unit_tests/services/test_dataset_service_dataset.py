@@ -171,7 +171,7 @@ class TestDatasetServiceValidation:
 class TestDatasetServiceRetrievalPermissions:
     """Unit tests for dataset list permission branching."""
 
-    def test_get_datasets_filters_by_creator_and_rbac_overrides(self):
+    def test_get_datasets_filters_by_maintainer_and_rbac_overrides(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
         mock_db.paginate.return_value.items = []
@@ -197,7 +197,7 @@ class TestDatasetServiceRetrievalPermissions:
 
         select_stmt = mock_db.paginate.call_args.kwargs["select"]
         visibility_clause = str(select_stmt._where_criteria[1])
-        assert "created_by" in visibility_clause
+        assert "maintainer" in visibility_clause
         assert "IN" in visibility_clause
 
     def test_get_datasets_filters_only_by_rbac_overrides_without_manage_own_permission(self):
@@ -225,7 +225,7 @@ class TestDatasetServiceRetrievalPermissions:
 
         select_stmt = mock_db.paginate.call_args.kwargs["select"]
         visibility_clause = str(select_stmt._where_criteria[1])
-        assert "created_by" not in visibility_clause
+        assert "maintainer" not in visibility_clause
         assert "IN" in visibility_clause
 
     def test_get_datasets_by_ids_applies_rbac_visibility(self):
@@ -248,7 +248,7 @@ class TestDatasetServiceRetrievalPermissions:
 
         select_stmt = mock_db.paginate.call_args.kwargs["select"]
         visibility_clause = str(select_stmt._where_criteria[-1])
-        assert "created_by" in visibility_clause
+        assert "maintainer" in visibility_clause
         assert "IN" in visibility_clause
         visibility_params = select_stmt._where_criteria[-1].compile().params
         assert ["dataset-shared"] in visibility_params.values()

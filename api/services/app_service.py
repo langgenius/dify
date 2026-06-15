@@ -145,7 +145,7 @@ class AppService:
         elif params.accessible_app_ids is not None:
             accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
             if params.include_own_apps:
-                accessible_filter = sa.or_(App.created_by == user_id, accessible_filter)
+                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
             filters.append(accessible_filter)
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
@@ -247,6 +247,7 @@ class AppService:
         app.api_rpm = params.api_rpm
         app.max_active_requests = params.max_active_requests
         app.created_by = account.id
+        app.maintainer = account.id
         app.updated_by = account.id
 
         db.session.add(app)

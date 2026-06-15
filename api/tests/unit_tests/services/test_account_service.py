@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -1182,6 +1183,29 @@ class TestTenantService:
         ):
             with pytest.raises(NoPermissionError):
                 TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+
+    def test_get_rbac_workspace_owner_account_id(self):
+        mock_roles = MagicMock()
+        mock_roles.data = [SimpleNamespace(account_id="owner-account")]
+        mock_rbac_roles = MagicMock()
+        mock_rbac_roles.members.return_value = mock_roles
+
+        with (
+            patch(
+                "services.account_service.AccountService.resolve_workspace_rbac_role_id",
+                return_value="owner-role-id",
+            ),
+            patch("services.account_service.RBACService.Roles", mock_rbac_roles),
+        ):
+            owner_account_id = AccountService.get_rbac_workspace_owner_account_id("tenant-1", "acct-1")
+
+        assert owner_account_id == "owner-account"
+        call = mock_rbac_roles.members.call_args
+        assert call.kwargs["tenant_id"] == "tenant-1"
+        assert call.kwargs["account_id"] == "acct-1"
+        assert call.kwargs["role_id"] == "owner-role-id"
+        assert call.kwargs["options"].page_number == 1
+        assert call.kwargs["options"].results_per_page == 1
 
 
 class TestRegisterService:
