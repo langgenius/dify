@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -10,6 +10,7 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { isAgentComposerDirtyAtom, useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { AgentPublishImpactPopover } from './publish-impact-popover'
 
 const PUBLISH_AGENT_HOTKEY = 'Mod+Shift+P'
 
@@ -24,11 +25,14 @@ type AgentConfigurePublishBarProps = {
   agentId: string
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
+  agentName?: string | null
   currentModel?: {
     provider: string
     model: string
   }
   isPublishing?: boolean
+  publishedReferenceCount?: number
+  publishedReferences?: AgentPublishedReferenceResponse[]
   onPublish?: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onOpenVersions: () => void
 }
@@ -68,8 +72,11 @@ export function AgentConfigurePublishBar({
   agentId,
   activeConfigSnapshot,
   agentSoulConfig,
+  agentName,
   currentModel,
   isPublishing = false,
+  publishedReferenceCount = 0,
+  publishedReferences = [],
   onPublish,
   onOpenVersions,
 }: AgentConfigurePublishBarProps) {
@@ -172,19 +179,29 @@ export function AgentConfigurePublishBar({
         >
           <span aria-hidden className="i-ri-history-line size-4" />
         </button>
-        <Button
-          type="button"
-          variant="primary"
-          aria-disabled={!canPublish}
-          className="h-8 gap-1 rounded-lg px-3 aria-disabled:cursor-not-allowed"
-          onClick={handlePublish}
-        >
-          {currentStateMeta.actionIcon && (
-            <span aria-hidden className={cn('size-4 shrink-0', currentStateMeta.actionIcon)} />
+        <AgentPublishImpactPopover
+          actionLabel={currentStateMeta.actionLabel}
+          agentName={agentName}
+          disabled={!canPublish}
+          publishedReferenceCount={publishedReferenceCount}
+          publishedReferences={publishedReferences}
+          onPublish={handlePublish}
+          trigger={(
+            <Button
+              type="button"
+              variant="primary"
+              aria-disabled={!canPublish}
+              className="h-8 gap-1 rounded-lg px-3 aria-disabled:cursor-not-allowed"
+              onClick={handlePublish}
+            >
+              {currentStateMeta.actionIcon && (
+                <span aria-hidden className={cn('size-4 shrink-0', currentStateMeta.actionIcon)} />
+              )}
+              <span className="shrink-0">{currentStateMeta.actionLabel}</span>
+              {currentStateMeta.showShortcut && <PublishShortcut />}
+            </Button>
           )}
-          <span className="shrink-0">{currentStateMeta.actionLabel}</span>
-          {currentStateMeta.showShortcut && <PublishShortcut />}
-        </Button>
+        />
       </div>
     </div>
   )

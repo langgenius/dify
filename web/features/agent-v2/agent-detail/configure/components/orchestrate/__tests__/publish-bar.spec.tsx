@@ -1,7 +1,7 @@
-import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agents/types.gen'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerOriginalDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -36,6 +36,64 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
   }),
 }))
 
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext<{
+    open: boolean
+    onOpenChange?: (open: boolean) => void
+  }>({
+    open: false,
+  })
+
+  return {
+    Popover: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      open?: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
+      <PopoverContext.Provider value={{ open: !!open, onOpenChange }}>
+        {children}
+      </PopoverContext.Provider>
+    ),
+    PopoverContent: ({
+      children,
+    }: {
+      children: React.ReactNode
+    }) => {
+      const context = React.useContext(PopoverContext)
+      if (!context.open)
+        return null
+
+      return <div data-testid="publish-impact-popover">{children}</div>
+    },
+    PopoverTrigger: ({
+      render: trigger,
+    }: {
+      render: React.ReactElement
+      openOnHover?: boolean
+      delay?: number
+      closeDelay?: number
+    }) => {
+      const context = React.useContext(PopoverContext)
+      if (!React.isValidElement(trigger))
+        return trigger
+
+      const triggerProps = trigger.props as React.HTMLAttributes<HTMLElement>
+      return React.cloneElement(trigger, {
+        onClick: triggerProps.onClick,
+        onMouseEnter: (event: React.MouseEvent<HTMLElement>) => {
+          triggerProps.onMouseEnter?.(event)
+          context.onOpenChange?.(true)
+        },
+      } as React.HTMLAttributes<HTMLElement>)
+    },
+  }
+})
+
 const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   id: 'snapshot-1',
   agent_id: 'agent-1',
@@ -54,17 +112,38 @@ const originalDraftWithFile = {
   ],
 } satisfies typeof defaultAgentSoulConfigFormState
 
+const publishedReferences: AgentPublishedReferenceResponse[] = [
+  {
+    app_id: 'app-python',
+    app_mode: 'workflow',
+    app_name: 'Python bug fixer',
+    workflow_id: 'workflow-python',
+    workflow_version: '1',
+  },
+  {
+    app_id: 'app-translation',
+    app_mode: 'workflow',
+    app_name: 'Translation Workflow',
+    workflow_id: 'workflow-translation',
+    workflow_version: '1',
+  },
+]
+
 function renderPublishBar({
   activeConfigSnapshot,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   prompt = '',
+  publishedReferenceCount,
+  publishedReferences,
   setupStore,
 }: {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isPublishing?: boolean
   onPublish?: PublishMock
   prompt?: string
+  publishedReferenceCount?: number
+  publishedReferences?: AgentPublishedReferenceResponse[]
   setupStore?: (store: ReturnType<typeof createStore>) => void
 } = {}) {
   const store = createStore()
@@ -76,7 +155,10 @@ function renderPublishBar({
       <AgentConfigurePublishBar
         agentId="agent-1"
         activeConfigSnapshot={activeConfigSnapshot}
+        agentName="Iris"
         isPublishing={isPublishing}
+        publishedReferenceCount={publishedReferenceCount}
+        publishedReferences={publishedReferences}
         onPublish={onPublish}
         onOpenVersions={vi.fn()}
       />
@@ -175,5 +257,43 @@ describe('AgentConfigurePublishBar', () => {
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: true }),
     )
+  })
+
+  it('should show affected workflow references when hovering a publishable agent in use', () => {
+    renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      publishedReferenceCount: 2,
+      publishedReferences,
+    })
+
+    expect(screen.queryByTestId('publish-impact-popover')).not.toBeInTheDocument()
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+
+    expect(screen.getByTestId('publish-impact-popover')).toBeInTheDocument()
+    expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.title/)).toBeInTheDocument()
+    expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.descriptionPrefix/)).toBeInTheDocument()
+    expect(screen.getByText(/agentV2\.agentDetail\.configure\.publishImpact\.workflowCount/)).toBeInTheDocument()
+    expect(screen.getByText('Python bug fixer')).toBeInTheDocument()
+    expect(screen.getByText('Translation Workflow')).toBeInTheDocument()
+  })
+
+  it('should publish from the affected workflow popover action', () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      publishedReferenceCount: 2,
+      publishedReferences,
+    })
+
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+    fireEvent.click(within(screen.getByTestId('publish-impact-popover')).getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/,
+    }))
+
+    expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+      agent_id: 'agent-1',
+    }))
   })
 })

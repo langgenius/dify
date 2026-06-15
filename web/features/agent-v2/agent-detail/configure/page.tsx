@@ -85,9 +85,12 @@ function AgentConfigurePageContent({
         agentId={agentId}
         activeConfigSnapshot={activeConfigSnapshot}
         agentSoulConfig={agentSoulConfig}
+        agentName={agentQuery.data?.name}
         currentModel={currentModel}
         textGenerationModelList={textGenerationModelList}
         isPublishing={isPublishing}
+        publishedReferenceCount={agentQuery.data?.published_reference_count}
+        publishedReferences={agentQuery.data?.published_references}
         onSelectModel={setConfigureModel}
         onPublish={publishDraft}
         onOpenVersions={() => setShowPreviewVersions(true)}
