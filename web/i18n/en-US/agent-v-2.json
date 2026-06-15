@@ -318,7 +318,7 @@
   "roster.editDialog.description": "Update the roster name, description, and role for this agent.",
   "roster.editDialog.title": "Edit agent",
   "roster.editInfo": "Edit Info",
-  "roster.empty": "No agents yet",
+  "roster.empty": "No agent yet",
   "roster.emptyDescription": "Agents saved to this workspace will appear here.",
   "roster.emptySearch": "No matching agents",
   "roster.emptySearchDescription": "Try another agent name.",

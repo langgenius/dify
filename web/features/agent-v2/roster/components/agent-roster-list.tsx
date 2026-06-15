@@ -33,6 +33,7 @@ type AgentRosterListProps = {
 }
 
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
+const emptyPlaceholderCardIds = Array.from({ length: 16 }, (_, index) => `agent-roster-placeholder-card-${index}`)
 const workflowReferenceAvatarClassNames = [
   'bg-components-icon-bg-green-soft text-components-icon-bg-green-solid',
   'bg-components-icon-bg-orange-dark-soft text-components-icon-bg-orange-dark-solid',
@@ -72,21 +73,31 @@ function AgentRosterSkeleton() {
   )
 }
 
-function AgentRosterEmptyState({ isSearch }: { isSearch: boolean }) {
-  const { t } = useTranslation('agentV2')
-
+function AgentRosterEmptyState({ title }: { title: string }) {
   return (
-    <div className="col-span-full rounded-xl border border-components-card-border bg-components-card-bg px-4 py-10 text-center shadow-xs">
-      <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-state-base-hover text-text-tertiary">
-        <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-5" />
+    <section
+      aria-labelledby="agent-roster-empty-title"
+      className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
+    >
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {emptyPlaceholderCardIds.map(id => (
+          <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
+        ))}
       </div>
-      <p className="mt-3 system-sm-semibold text-text-primary">
-        {isSearch ? t('roster.emptySearch') : t('roster.empty')}
-      </p>
-      <p className="mt-1 system-xs-regular text-text-tertiary">
-        {isSearch ? t('roster.emptySearchDescription') : t('roster.emptyDescription')}
-      </p>
-    </div>
+      <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-background-body/0 to-background-body" />
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden p-2">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex size-14 items-center justify-center rounded-[10px]">
+            <div className="flex size-full min-w-px items-center justify-center overflow-hidden rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 backdrop-blur-md">
+              <span aria-hidden className="i-ri-robot-2-line size-6 text-text-tertiary" />
+            </div>
+          </div>
+          <h2 id="agent-roster-empty-title" className="system-sm-regular whitespace-nowrap text-text-tertiary">
+            {title}
+          </h2>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -266,7 +277,7 @@ export function AgentRosterList({
         </div>
       )}
       {!isPending && !isError && agents.length === 0 && (
-        <AgentRosterEmptyState isSearch={isEmptySearch} />
+        <AgentRosterEmptyState title={isEmptySearch ? t('roster.emptySearch') : t('roster.empty')} />
       )}
       {!isPending && !isError && agents.map(agent => (
         <AgentRosterItem key={agent.id} agent={agent} />

@@ -1,4 +1,5 @@
 import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -25,7 +26,10 @@ const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterR
   ...overrides,
 })
 
-const renderList = (agents: AgentRosterResponse[]) => {
+const renderList = (
+  agents: AgentRosterResponse[],
+  overrides: Partial<ComponentProps<typeof AgentRosterList>> = {},
+) => {
   const queryClient = new QueryClient()
 
   return render(
@@ -40,6 +44,7 @@ const renderList = (agents: AgentRosterResponse[]) => {
         isPending={false}
         label="Agent roster list"
         onLoadMore={vi.fn()}
+        {...overrides}
       />
     </QueryClientProvider>,
   )
@@ -82,6 +87,23 @@ describe('AgentRosterList', () => {
     expect(screen.getByText('agentV2.roster.usageStatus.inUse')).toBeInTheDocument()
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.status.active')).not.toBeInTheDocument()
+  })
+
+  it('renders the Figma-aligned empty roster overlay', () => {
+    const { container } = renderList([])
+
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.empty' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
+    expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
+    expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
+    expect(container.querySelector('.i-ri-robot-2-line')).toHaveClass('size-6', 'text-text-tertiary')
+  })
+
+  it('uses the same overlay treatment for empty search results', () => {
+    const { container } = renderList([], { isEmptySearch: true })
+
+    expect(screen.getByRole('heading', { name: 'agentV2.roster.emptySearch' })).toBeInTheDocument()
+    expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
+    expect(screen.queryByText('agentV2.roster.emptySearchDescription')).not.toBeInTheDocument()
   })
 
   it('opens published workflow references from the card reference trigger', async () => {
