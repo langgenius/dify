@@ -4,6 +4,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,7 +19,7 @@ from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelInstance
-from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
+from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
@@ -38,6 +39,8 @@ from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
+    LLMPollingResult,
+    LLMPollingStatus,
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
@@ -54,6 +57,7 @@ from graphon.nodes.human_input.entities import (
     HumanInputNodeData,
 )
 from graphon.nodes.llm.runtime_protocols import (
+    LLMPollingCapableProtocol,
     LLMProtocol,
     PromptMessageSerializerProtocol,
     RetrieverAttachmentLoaderProtocol,
@@ -276,6 +280,66 @@ class DifyPreparedLLM(LLMProtocol):
     @override
     def is_structured_output_parse_error(self, error: Exception) -> bool:
         return isinstance(error, OutputParserError)
+
+
+class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
+    """Prepared workflow LLM adapter that forwards plugin polling APIs to graphon."""
+
+    def __init__(self, model_instance: ModelInstance) -> None:
+        from core.plugin.impl.model_runtime import PluginModelRuntime
+
+        super().__init__(model_instance)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise TypeError("Polling wrapper requires a large-language-model instance.")
+
+        plugin_model_runtime = model_type_instance.model_runtime
+        if not isinstance(plugin_model_runtime, PluginModelRuntime):
+            raise TypeError("Polling wrapper requires a plugin-backed model runtime.")
+
+        self._plugin_model_runtime = plugin_model_runtime
+
+    @override
+    def start_llm_polling(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        json_schema: Mapping[str, Any] | None,
+        workflow_run_id: str,
+        node_id: str,
+    ) -> LLMPollingResult:
+        return self._plugin_model_runtime.start_llm_polling(
+            provider=self.provider,
+            model=self.model_name,
+            credentials=self._model_instance.credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=dict(model_parameters),
+            tools=tools,
+            stop=stop,
+            json_schema=dict(json_schema) if json_schema is not None else None,
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+        )
+
+    @override
+    def check_llm_polling(
+        self,
+        *,
+        plugin_state: Mapping[str, JsonValue],
+        workflow_run_id: str,
+        node_id: str,
+    ) -> LLMPollingResult:
+        return self._plugin_model_runtime.check_llm_polling(
+            provider=self.provider,
+            model=self.model_name,
+            credentials=self._model_instance.credentials,
+            plugin_state=dict(plugin_state),
+            workflow_run_id=workflow_run_id,
+            node_id=node_id,
+        )
 
 
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):

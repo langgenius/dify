@@ -20,6 +20,7 @@ from core.plugin.impl.exc import (
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
     PluginInvokeError,
+    PluginLLMPollingUnsupportedError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
     PluginUniqueIdentifierError,
@@ -370,6 +371,8 @@ class BasePluginClient:
                         raise TriggerInvokeError(error_object.get("message"))
                     case EventIgnoreError.__name__:
                         raise EventIgnoreError(description=error_object.get("message"))
+                    case PluginLLMPollingUnsupportedError.__name__:
+                        raise PluginLLMPollingUnsupportedError(description=message)
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:
