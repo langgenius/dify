@@ -5,12 +5,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
+import { BUILTIN_TOOLS_ARRAY } from '@/app/components/plugins/readme-panel/constants'
+import { useReadmePanelStore } from '@/app/components/plugins/readme-panel/store'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import { API_PREFIX } from '@/config'
 import { useGetLanguage, useLocale } from '@/context/i18n'
@@ -73,6 +75,7 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
+  const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
   const { data: timezone } = useQuery({
     ...userProfileQueryOptions(),
     select: data => data.profile.timezone ?? undefined,
@@ -80,7 +83,8 @@ const DetailHeader = ({
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const currentLocale = useLocale()
-  const { referenceSetting } = useReferenceSetting()
+  const detailCategory = detail.declaration?.category ?? PluginCategoryEnum.tool
+  const { referenceSetting } = useReferenceSetting(detailCategory)
 
   const {
     source,
@@ -128,7 +132,14 @@ const DetailHeader = ({
 
   const iconSrc = getIconSrc(icon, icon_dark, theme, tenant_id)
   const detailUrl = getDetailUrl(source, meta, author, name, currentLocale, theme)
+  const canViewReadme = !!detail.plugin_unique_identifier && !BUILTIN_TOOLS_ARRAY.includes(detail.id)
   const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
+  const handleViewReadme = useCallback(() => {
+    openReadmePanel({
+      detail,
+      presentation: 'drawer',
+    })
+  }, [detail, openReadmePanel])
 
   const handleVersionSelect = (state: { version: string, unique_identifier: string, isDowngrade?: boolean }) => {
     versionPicker.setTargetVersion(state)
@@ -251,6 +262,7 @@ const DetailHeader = ({
               onInfo={modalStates.showPluginInfo}
               onCheckVersion={handleUpdate}
               onRemove={modalStates.showDeleteConfirm}
+              onViewReadme={canViewReadme ? handleViewReadme : undefined}
               detailUrl={detailUrl}
             />
             <ActionButton onClick={onHide}>

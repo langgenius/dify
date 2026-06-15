@@ -50,10 +50,6 @@ vi.mock('@/app/components/header/plan-badge', () => ({
   ),
 }))
 
-vi.mock('@/context/workspace-context-provider', () => ({
-  WorkspaceProvider: ({ children }: { children?: React.ReactNode }) => children,
-}))
-
 vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }) => <a href={href} {...props}>{children}</a>,
 }))

@@ -466,7 +466,7 @@ describe('InputVarList', () => {
 
     await user.click(screen.getAllByText('app.appSelector.placeholder')[0]!)
     await user.click(screen.getAllByText('app.appSelector.placeholder')[1]!)
-    await user.click(screen.getByTitle('Weather Assistant (app-1)'))
+    await user.click(await screen.findByRole('option', { name: /Weather Assistant/ }))
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       assistant: {

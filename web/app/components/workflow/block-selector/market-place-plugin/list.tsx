@@ -6,8 +6,8 @@ import { RiArrowRightUpLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Link from '@/next/link'
-import { getMarketplaceUrl } from '@/utils/var'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
 
@@ -39,7 +39,7 @@ const List = ({
   const { t } = useTranslation()
   const noFilter = !searchText && tags.length === 0
   const hasRes = list.length > 0
-  const urlWithSearchText = getMarketplaceUrl('', { q: searchText, tags: tags.join(',') })
+  const urlWithSearchText = getMarketplaceCategoryUrl(category, { q: searchText, tags: tags.join(',') })
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
 
   const { handleScroll, scrollPosition } = useStickyScroll({
@@ -80,7 +80,7 @@ const List = ({
     return (
       <Link
         className="sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 system-sm-medium text-text-accent-light-mode-only shadow-lg"
-        href={getMarketplaceUrl('', { category })}
+        href={getMarketplaceCategoryUrl(category)}
         target="_blank"
         rel="noopener noreferrer"
       >
