@@ -1140,6 +1140,62 @@ class TestListWorkflowsReferencingAppAgent:
 
 
 class TestWorkflowAgentDraftBindingSync:
+    def test_projects_binding_declared_outputs_to_draft_graph_response(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ],
+                    "edges": [],
+                }
+            ),
+        )
+        binding = WorkflowAgentNodeBinding(
+            id="binding-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            node_job_config=WorkflowNodeJobConfig(
+                workflow_prompt="Summarize the upstream result.",
+                declared_outputs=[
+                    DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary")
+                ],
+            ),
+        )
+        session = FakeSession(scalars=[[binding]])
+
+        graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=session,
+            draft_workflow=workflow,
+        )
+
+        node_data = graph["nodes"][0]["data"]
+        assert node_data["agent_task"] == "Summarize the upstream result."
+        assert node_data["agent_declared_outputs"][0]["name"] == "summary"
+        assert node_data["agent_declared_outputs"][0]["type"] == "string"
+        assert node_data["agent_declared_outputs"][0]["description"] == "Short summary"
+        assert "agent_declared_outputs" not in workflow.graph_dict["nodes"][0]["data"]
+
     def test_creates_roster_binding_from_agent_node_graph(self):
         workflow = Workflow(
             id="workflow-1",
