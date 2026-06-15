@@ -94,7 +94,7 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         if is_learn_dify is not None:
             filters.append(RecommendedApp.is_learn_dify.is_(is_learn_dify))
 
-        return db.session.scalars(select(RecommendedApp).where(*filters)).all()
+        return list(db.session.scalars(select(RecommendedApp).where(*filters)).all())
 
     @classmethod
     def _format_recommended_apps(

@@ -479,7 +479,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
         for app in apps:
             if str(app.id) in res:
-                app.access_mode = res[str(app.id)].access_mode
+                app.access_mode = res[str(app.id)].access_mode  # pyrefly: ignore[missing-attribute]
 
     workflow_capable_app_ids = [str(app.id) for app in apps if app.mode in {"workflow", "advanced-chat"}]
     draft_trigger_app_ids: set[str] = set()
@@ -508,7 +508,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
                 continue
 
     for app in apps:
-        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
+        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids  # pyrefly: ignore[missing-attribute]
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
