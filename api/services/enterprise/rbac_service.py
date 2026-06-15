@@ -118,6 +118,13 @@ class AccessPolicy(_RBACModel):
     created_at: int = 0
     updated_at: int = 0
 
+    @field_validator("permission_keys", mode="before")
+    @classmethod
+    def _coerce_permission_keys(cls, value: Any) -> list[str]:
+        if value is None:
+            return []
+        return value
+
 
 class AccessPolicyRoleBinding(_RBACModel):
     id: str
