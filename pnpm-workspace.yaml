@@ -228,7 +228,7 @@ catalog:
   tsx: 4.22.4
   typescript: 6.0.3
   uglify-js: 3.19.3
-  undici: 8.4.1
+  undici: 7.27.2
   unist-util-visit: 5.1.0
   use-context-selector: 2.0.0
   uuid: 14.0.0
