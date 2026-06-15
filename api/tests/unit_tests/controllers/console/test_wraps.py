@@ -180,11 +180,11 @@ class TestRbacPermissionRequired:
             return "ok"
 
         with (
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
-            patch("controllers.console.wraps._extract_resource_id", return_value="app-123") as mock_extract,
-            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
-            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
+            patch("controllers.common.wraps._extract_resource_id", return_value="app-123") as mock_extract,
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view(app_id="app-123") == "ok"
 
@@ -208,11 +208,11 @@ class TestRbacPermissionRequired:
             return "ok"
 
         with (
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-2")),
-            patch("controllers.console.wraps._extract_resource_id") as mock_extract,
-            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
-            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-2")),
+            patch("controllers.common.wraps._extract_resource_id") as mock_extract,
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view() == "ok"
 
@@ -236,9 +236,9 @@ class TestRbacPermissionRequired:
             return "ok"
 
         with (
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-3")),
-            patch("controllers.console.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-3")),
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
         ):
             assert protected_view() == "ok"
 
@@ -258,11 +258,11 @@ class TestRbacPermissionRequired:
             return "ok"
 
         with (
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
-            patch("controllers.console.wraps._extract_resource_id", return_value="app-123"),
-            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
-            patch("controllers.console.wraps.RBACService.CheckAccess.check") as mock_check,
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
+            patch("controllers.common.wraps._extract_resource_id", return_value="app-123"),
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
         ):
             assert protected_view(app_id="app-123") == "ok"
 
@@ -277,11 +277,11 @@ class TestRbacPermissionRequired:
             return "ok"
 
         with (
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
-            patch("controllers.console.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
-            patch("controllers.console.wraps._extract_resource_id", return_value="dataset-123"),
-            patch("controllers.console.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
-            patch("controllers.console.wraps.RBACService.CheckAccess.check") as mock_check,
+            patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
+            patch("controllers.common.wraps._extract_resource_id", return_value="dataset-123"),
+            patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
         ):
             assert protected_view(dataset_id="dataset-123") == "ok"
 

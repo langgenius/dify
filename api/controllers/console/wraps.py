@@ -9,12 +9,18 @@ from typing import Any, Concatenate, overload
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
+from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    _extract_resource_id,
+    _is_resource_owned_by_current_user,
+    rbac_permission_required,
+)
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
-from core.rbac import RBACPermission, RBACResourceScope
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -22,17 +28,17 @@ from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant
 from models import Account
 from models.account import AccountStatus
-from models.dataset import Dataset, RateLimitLog
-from models.model import App, DifySetup
+from models.dataset import RateLimitLog
+from models.model import DifySetup
 from services.enterprise.rbac_service import RBACService
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
-# Re-exported so controllers can import the RBAC enums alongside
-# ``rbac_permission_required`` from this module.
-__all__ = ["RBACPermission", "RBACResourceScope"]
+# Re-exported so controllers can import the RBAC enums and decorator alongside
+# other console wraps from this module.
+__all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
 
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
@@ -371,112 +377,6 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     return decorated_function
 
 
-def rbac_permission_required[**P, R](
-    resource_type: RBACResourceScope,
-    scene: RBACPermission,
-    *,
-    resource_required: bool = True,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    """Check enterprise RBAC permissions for the current user.
-
-    When ``RBAC_ENABLED`` is ``False`` the decorator is a no-op and the
-    request passes through unchanged. When enabled it extracts the resource ID
-    from ``request.view_args`` for resource-scoped checks, calls the RBAC
-    service ``check-access`` endpoint, and raises ``Forbidden`` if the access
-    is denied. For workspace-level checks, set ``resource_required=False`` so
-    the RBAC request omits ``resource_id``.
-
-    Args:
-        resource_type: The :class:`RBACResourceScope` member (app/dataset/workspace).
-        scene: The :class:`RBACPermission` permission point, e.g. ``RBACPermission.APP_DELETE``.
-        resource_required: Whether a concrete resource ID is required.
-    """
-
-    def decorator(view: Callable[P, R]) -> Callable[P, R]:
-        @wraps(view)
-        def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
-            if not dify_config.RBAC_ENABLED:
-                return view(*args, **kwargs)
-
-            current_user, current_tenant_id = current_account_with_tenant()
-            check_resource_type = None if resource_type == RBACResourceScope.WORKSPACE else resource_type
-            resource_id = None
-            if resource_required and check_resource_type:
-                resource_id = _extract_resource_id(resource_type, kwargs)
-                if _is_resource_owned_by_current_user(current_tenant_id, current_user.id, resource_type, resource_id):
-                    return view(*args, **kwargs)
-            allowed = RBACService.CheckAccess.check(
-                current_tenant_id,
-                current_user.id,
-                scene=scene,
-                resource_type=check_resource_type,
-                resource_id=resource_id,
-            )
-
-            if not allowed:
-                raise Forbidden()
-
-            return view(*args, **kwargs)
-
-        return decorated
-
-    return decorator
-
-
-def _is_resource_owned_by_current_user(
-    tenant_id: str, account_id: str, resource_type: RBACResourceScope, resource_id: str
-) -> bool:
-    if resource_type == RBACResourceScope.APP:
-        created_by = db.session.scalar(
-            select(App.created_by).where(
-                App.id == resource_id,
-                App.tenant_id == tenant_id,
-                App.status == "normal",
-            )
-        )
-        return created_by == account_id
-
-    if resource_type == RBACResourceScope.DATASET:
-        created_by = db.session.scalar(
-            select(Dataset.created_by).where(
-                Dataset.id == resource_id,
-                Dataset.tenant_id == tenant_id,
-            )
-        )
-        return created_by == account_id
-
-    return False
-
-
-def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, object] | None = None) -> str:
-    """Extract the resource ID from matched path arguments.
-
-    For dataset endpoints behind a rag-pipeline route the URL contains
-    ``pipeline_id`` instead of ``dataset_id``.  In that case we look up the
-    associated ``Dataset`` row via ``Dataset.pipeline_id``.
-    """
-    view_args = request.view_args or {}
-    matched_args = {**view_args, **(path_args or {})}
-
-    if resource_type == RBACResourceScope.APP:
-        app_id = matched_args.get("app_id")
-        if not app_id:
-            raise ValueError("Missing app_id in request path")
-        return str(app_id)
-
-    if resource_type == RBACResourceScope.DATASET:
-        dataset_id = matched_args.get("dataset_id")
-        if dataset_id:
-            return str(dataset_id)
-
-        pipeline_id = matched_args.get("pipeline_id")
-        if pipeline_id:
-            dataset = db.session.scalar(select(Dataset).where(Dataset.pipeline_id == str(pipeline_id)))
-            if not dataset:
-                raise NotFound("Dataset not found for pipeline")
-            return str(dataset.id)
-        raise ValueError("Missing dataset_id or pipeline_id in request path")
-    raise ValueError(f"Unknown resource_type: {resource_type}")
 
 
 def annotation_import_rate_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]:
