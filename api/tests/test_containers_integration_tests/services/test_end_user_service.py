@@ -211,7 +211,7 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.type == InvokeFrom.WEB_APP
 
     def test_upgrade_legacy_end_user_type(
-        self, caplog: pytest.LogCaptureFixture, db_session_with_containers: Session, factory
+        self, caplog: pytest.LogCaptureFixture, db_session_with_containers: Session, factory: TestEndUserServiceFactory
     ):
         """Test upgrading legacy end user with different type."""
         # Arrange
