@@ -17,12 +17,14 @@ type LoadedFormContentProps = {
   formData: FormData
   isSubmitting: boolean
   onSubmit: (inputs: Record<string, HumanInputFieldValue>, actionID: string, formInputs: FormData['inputs']) => void
+  removeWebappBrand?: boolean
 }
 
 const LoadedFormContent = ({
   formData,
   isSubmitting,
   onSubmit,
+  removeWebappBrand,
 }: LoadedFormContentProps) => {
   const { t } = useTranslation()
   const renderedFormInputs = getRenderedFormInputs(formData.inputs, formData.form_content)
@@ -84,12 +86,14 @@ const LoadedFormContent = ({
           </div>
           <ExpirationTime expirationTime={formData.expiration_time * 1000} />
         </div>
-        <div className="flex flex-row-reverse px-2 py-3">
-          <div className="flex shrink-0 items-center gap-1.5 px-1">
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-            <DifyLogo size="small" />
+        {!removeWebappBrand && (
+          <div className="flex flex-row-reverse px-2 py-3">
+            <div className="flex shrink-0 items-center gap-1.5 px-1">
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <DifyLogo size="small" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
