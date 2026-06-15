@@ -536,9 +536,7 @@ def test_agent_node_resumes_with_deferred_tool_results_after_submitted_form(monk
 
     def _fake_resolve(*, form_id: str, tenant_id: str, node_id: str) -> AskHumanResumeOutcome:
         assert form_id == "form-1"
-        return AskHumanResumeOutcome(
-            deferred_result=AskHumanToolResult(status="submitted", values={"note": "ok"})
-        )
+        return AskHumanResumeOutcome(deferred_result=AskHumanToolResult(status="submitted", values={"note": "ok"}))
 
     monkeypatch.setattr("core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form", _fake_resolve)
 
