@@ -3,7 +3,7 @@ import { expect } from '@playwright/test'
 
 export const waitForAppsConsole = async (page: Page, timeout?: number) => {
   await expect(page).toHaveURL(/\/apps(?:\?.*)?$/, timeout === undefined ? undefined : { timeout })
-  await expect(page.getByRole('heading', { name: 'Apps' })).toBeVisible(
+  await expect(page.getByRole('heading', { name: 'Studio' })).toBeVisible(
     timeout === undefined ? undefined : { timeout },
   )
 }
