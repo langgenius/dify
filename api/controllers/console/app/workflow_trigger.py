@@ -20,6 +20,8 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from .. import console_ns
 from ..app.wraps import get_app_model
 from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     rbac_permission_required,
@@ -97,7 +99,7 @@ class WebhookTriggerApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
@@ -131,7 +133,7 @@ class AppTriggersApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
     @with_current_tenant_id
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, current_tenant_id: str, app_model: App):
         """Get app triggers list"""

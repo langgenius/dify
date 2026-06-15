@@ -939,9 +939,7 @@ class RBACService:
     # ------------------------------------------------------------------
     class AppAccess:
         @staticmethod
-        def whitelist_resources(
-            tenant_id: str, account_id: str | None
-        ) -> ResourceWhitelistResources:
+        def whitelist_resources(tenant_id: str, account_id: str | None) -> ResourceWhitelistResources:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/apps/whitelist/resources",
@@ -1111,9 +1109,7 @@ class RBACService:
     # ------------------------------------------------------------------
     class DatasetAccess:
         @staticmethod
-        def whitelist_resources(
-            tenant_id: str, account_id: str | None
-        ) -> ResourceWhitelistResources:
+        def whitelist_resources(tenant_id: str, account_id: str | None) -> ResourceWhitelistResources:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/datasets/whitelist/resources",

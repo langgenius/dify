@@ -33,7 +33,13 @@ from flask_restx import Resource
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
 from libs.exception import BaseHTTPException
 from libs.login import login_required
 from models import App, AppMode
@@ -144,7 +150,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return _serve_snapshot(app_model, run_id)
@@ -168,7 +174,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
         return _serve_node_detail(app_model, run_id, node_id)
@@ -195,7 +201,7 @@ class WorkflowDraftRunNodeOutputPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
         return _serve_output_preview(app_model, run_id, node_id, output_name)
@@ -335,7 +341,7 @@ class WorkflowDraftRunNodeOutputEventsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return Response(
@@ -366,7 +372,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return _serve_snapshot(app_model, run_id)
@@ -390,7 +396,7 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str):
         return _serve_node_detail(app_model, run_id, node_id)
@@ -418,7 +424,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID, node_id: str, output_name: str):
         return _serve_output_preview(app_model, run_id, node_id, output_name)
@@ -436,7 +442,7 @@ class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         return Response(

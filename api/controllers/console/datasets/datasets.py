@@ -17,6 +17,8 @@ from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
@@ -519,7 +521,9 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_create_and_management", resource_required=False)
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+    )
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
@@ -578,7 +582,7 @@ class DatasetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_readonly")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
@@ -643,7 +647,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required("dataset", "dataset_edit")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def patch(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -699,7 +703,7 @@ class DatasetApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(204, "Dataset deleted successfully")
     @with_current_user
-    @rbac_permission_required("dataset", "dataset_edit")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def delete(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
 
@@ -729,7 +733,7 @@ class DatasetUseCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
 
@@ -751,7 +755,7 @@ class DatasetQueryApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -892,7 +896,7 @@ class DatasetRelatedAppListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -929,7 +933,7 @@ class DatasetIndexingStatusApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, current_tenant_id: str, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         documents = db.session.scalars(
@@ -1073,7 +1077,7 @@ class DatasetEnableApiApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @rbac_permission_required("dataset", "dataset_edit")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def post(self, dataset_id: UUID, status: str):
         dataset_id_str = str(dataset_id)
 
@@ -1143,7 +1147,7 @@ class DatasetErrorDocs(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -1170,7 +1174,7 @@ class DatasetPermissionUserListApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -1200,7 +1204,7 @@ class DatasetAutoDisableLogApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("dataset", "dataset_create_and_management")
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

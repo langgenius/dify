@@ -4,7 +4,7 @@ import os
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, Literal, overload
+from typing import Any, Concatenate, overload
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
@@ -14,6 +14,7 @@ from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 from configs import dify_config
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
+from core.rbac import RBACPermission, RBACResourceScope
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -28,6 +29,10 @@ from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+
+# Re-exported so controllers can import the RBAC enums alongside
+# ``rbac_permission_required`` from this module.
+__all__ = ["RBACPermission", "RBACResourceScope"]
 
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
@@ -367,8 +372,8 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 
 
 def rbac_permission_required[**P, R](
-    resource_type: Literal["app", "dataset", "workspace"],
-    scene: str,
+    resource_type: RBACResourceScope,
+    scene: RBACPermission,
     *,
     resource_required: bool = True,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
@@ -382,8 +387,8 @@ def rbac_permission_required[**P, R](
     the RBAC request omits ``resource_id``.
 
     Args:
-        resource_type: ``"app"``, ``"dataset"``, or ``"workspace"``.
-        scene: The RBAC scene name, e.g. ``"app_delete"``.
+        resource_type: The :class:`RBACResourceScope` member (app/dataset/workspace).
+        scene: The :class:`RBACPermission` permission point, e.g. ``RBACPermission.APP_DELETE``.
         resource_required: Whether a concrete resource ID is required.
     """
 
@@ -394,7 +399,7 @@ def rbac_permission_required[**P, R](
                 return view(*args, **kwargs)
 
             current_user, current_tenant_id = current_account_with_tenant()
-            check_resource_type = None if resource_type == "workspace" else resource_type
+            check_resource_type = None if resource_type == RBACResourceScope.WORKSPACE else resource_type
             resource_id = None
             if resource_required and check_resource_type:
                 resource_id = _extract_resource_id(resource_type, kwargs)
@@ -418,8 +423,10 @@ def rbac_permission_required[**P, R](
     return decorator
 
 
-def _is_resource_owned_by_current_user(tenant_id: str, account_id: str, resource_type: str, resource_id: str) -> bool:
-    if resource_type == "app":
+def _is_resource_owned_by_current_user(
+    tenant_id: str, account_id: str, resource_type: RBACResourceScope, resource_id: str
+) -> bool:
+    if resource_type == RBACResourceScope.APP:
         created_by = db.session.scalar(
             select(App.created_by).where(
                 App.id == resource_id,
@@ -429,7 +436,7 @@ def _is_resource_owned_by_current_user(tenant_id: str, account_id: str, resource
         )
         return created_by == account_id
 
-    if resource_type == "dataset":
+    if resource_type == RBACResourceScope.DATASET:
         created_by = db.session.scalar(
             select(Dataset.created_by).where(
                 Dataset.id == resource_id,
@@ -441,7 +448,7 @@ def _is_resource_owned_by_current_user(tenant_id: str, account_id: str, resource
     return False
 
 
-def _extract_resource_id(resource_type: str, path_args: dict[str, object] | None = None) -> str:
+def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, object] | None = None) -> str:
     """Extract the resource ID from matched path arguments.
 
     For dataset endpoints behind a rag-pipeline route the URL contains
@@ -451,13 +458,13 @@ def _extract_resource_id(resource_type: str, path_args: dict[str, object] | None
     view_args = request.view_args or {}
     matched_args = {**view_args, **(path_args or {})}
 
-    if resource_type == "app":
+    if resource_type == RBACResourceScope.APP:
         app_id = matched_args.get("app_id")
         if not app_id:
             raise ValueError("Missing app_id in request path")
         return str(app_id)
 
-    if resource_type == "dataset":
+    if resource_type == RBACResourceScope.DATASET:
         dataset_id = matched_args.get("dataset_id")
         if dataset_id:
             return str(dataset_id)

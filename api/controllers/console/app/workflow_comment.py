@@ -8,6 +8,8 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     rbac_permission_required,
@@ -220,7 +222,7 @@ class WorkflowCommentListApi(Resource):
     @setup_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required("app", "app_view_layout")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model()
     def get(self, current_tenant_id: str, app_model: App):
         """Get all comments for a workflow."""
@@ -269,7 +271,7 @@ class WorkflowCommentDetailApi(Resource):
     @setup_required
     @account_initialization_required
     @with_current_tenant_id
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model()
     def get(self, current_tenant_id: str, app_model: App, comment_id: str):
         """Get a specific workflow comment."""
@@ -473,7 +475,7 @@ class WorkflowCommentMentionUsersApi(Resource):
     @setup_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model()
     def get(self, current_user: Account, app_model: App):
         """Get all users in current tenant for mentions."""

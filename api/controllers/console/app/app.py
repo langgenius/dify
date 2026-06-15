@@ -20,6 +20,8 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_resource_check,
     edit_permission_required,
@@ -644,7 +646,7 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_create_and_management", resource_required=False)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT, resource_required=False)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     @with_current_user
@@ -686,7 +688,7 @@ class AppApi(Resource):
     @enterprise_license_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required("app", "app_view_layout")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=None)
     def get(self, current_tenant_id: str, current_user: Account, app_model: App):
         """Get app detail"""
@@ -750,7 +752,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required("app", "app_delete")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
     @get_app_model
     def delete(self, app_model: App):
         """Delete app"""
@@ -847,7 +849,7 @@ class AppExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required("app", "app_import_export_dsl")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @get_app_model
     def get(self, app_model: App):
         """Export app"""
@@ -948,7 +950,7 @@ class AppSiteStatus(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required("app", "app_release_and_version")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
@@ -971,7 +973,7 @@ class AppApiStatus(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @rbac_permission_required("app", "app_release_and_version")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @get_app_model(mode=None)
     def post(self, app_model: App):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
@@ -992,7 +994,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @with_session
-    @rbac_permission_required("app", "app_create_and_management")
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model
     def get(self, session: Session, app_model: App):
         """Get app trace"""
