@@ -7,8 +7,18 @@ const mockAppAccessRules = vi.hoisted(() => ({
   isLoading: false,
 }))
 
+const mockAppUserAccessSettings = vi.hoisted(() => ({
+  data: [] as NonNullable<AccessRulesEditorProps['userAccessSettings']>,
+  isLoading: false,
+}))
+
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
+}))
+
+const mockMutations = vi.hoisted(() => ({
+  updateOpenScope: vi.fn(),
+  updateUserAccessSettings: vi.fn(),
 }))
 
 vi.mock('@/service/access-control/use-app-access-config', () => ({
@@ -16,15 +26,24 @@ vi.mock('@/service/access-control/use-app-access-config', () => ({
     data: { items: mockAppAccessRules.items },
     isLoading: mockAppAccessRules.isLoading,
   })),
+  useAppUserAccessSettings: vi.fn(() => ({
+    data: { data: mockAppUserAccessSettings.data },
+    isLoading: mockAppUserAccessSettings.isLoading,
+  })),
+  useUpdateAppOpenScope: vi.fn(() => ({
+    mutate: mockMutations.updateOpenScope,
+    isPending: false,
+  })),
+  useUpdateAppUserAccessSettings: vi.fn(() => ({
+    mutate: mockMutations.updateUserAccessSettings,
+  })),
 }))
 
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
     return (
-      <div data-testid="access-rules-editor">
-        {props.title}
-      </div>
+      <div data-testid="access-rules-editor" />
     )
   },
 }))
@@ -34,6 +53,8 @@ describe('AppAccessConfigPage', () => {
     vi.clearAllMocks()
     mockAppAccessRules.items = []
     mockAppAccessRules.isLoading = false
+    mockAppUserAccessSettings.data = []
+    mockAppUserAccessSettings.isLoading = false
     mockAccessRulesEditor.props = null
   })
 
@@ -43,16 +64,39 @@ describe('AppAccessConfigPage', () => {
       render(<AppAccessConfigPage appId="app-1" />)
 
       expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
-      expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('permission.accessRule.appTitle')
+      expect(screen.getByText('permission.accessRule.appDescription')).toBeInTheDocument()
+      expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
+      expect(mockAccessRulesEditor.props?.className).toBe('w-full max-w-200')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
+      expect(mockAccessRulesEditor.props?.userAccessSettings).toEqual([])
+      expect(mockAccessRulesEditor.props?.openScope).toBe('specific')
     })
 
     it('should pass access rule loading state to the editor', () => {
       mockAppAccessRules.isLoading = true
+      mockAppUserAccessSettings.isLoading = true
 
       render(<AppAccessConfigPage appId="app-1" />)
 
       expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
+      expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
+    })
+
+    it('should wire open scope and user policy updates', () => {
+      render(<AppAccessConfigPage appId="app-1" />)
+
+      mockAccessRulesEditor.props?.onOpenScopeChange?.('all')
+      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith('all', expect.objectContaining({
+        onError: expect.any(Function),
+      }))
+
+      mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        accountId: 'account-1',
+        accessPolicyIds: ['policy-1'],
+      }, expect.objectContaining({
+        onSettled: expect.any(Function),
+      }))
     })
   })
 })

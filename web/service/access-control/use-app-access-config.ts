@@ -1,49 +1,76 @@
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
-  GetAccessPolicyDetailResponse,
-  GetAppAccessPolicyByAppIdResponse,
-  GetAppUserAccessSettingsResponse,
   ResourceOpenScope,
   UpdateAppUserAccessSettingsRequest,
 } from '@/models/access-control'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { get, put } from '../base'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { consoleClient, consoleQuery } from '@/service/client'
 
 const NAME_SPACE = 'app-access-config'
 
 export const useAppAccessRules = (appId: string, language: AccessControlTemplateLanguage) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'app-access-rules', appId, language],
-    queryFn: () => get<GetAppAccessPolicyByAppIdResponse>(`/workspaces/current/rbac/apps/${appId}/access-policy`, {
+  return useQuery(consoleQuery.rbacAccessConfig.apps.accessRules.queryOptions({
+    input: {
       params: {
+        appId,
+      },
+      query: {
         language,
       },
-    }),
-  })
+    },
+  }))
 }
 
 export const useAppUserAccessSettings = (appId: string) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'app-user-access-settings', appId],
-    queryFn: () => get<GetAppUserAccessSettingsResponse>(`/apps/${appId}/user-access-policies`),
-  })
+  return useQuery(consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryOptions({
+    input: {
+      params: {
+        appId,
+      },
+    },
+  }))
 }
 
 export const useUpdateAppUserAccessSettings = (appId: string) => {
+  const queryClient = useQueryClient()
+
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-app-user-access-settings', appId],
-    mutationFn: (payload: UpdateAppUserAccessSettingsRequest) => put<GetAccessPolicyDetailResponse>(`/apps/${appId}/user-access-policies`, {
+    mutationFn: (payload: UpdateAppUserAccessSettingsRequest) => consoleClient.rbacAccessConfig.apps.updateUserAccessSettings({
+      params: {
+        appId,
+        accountId: payload.accountId,
+      },
       body: {
         access_policy_ids: payload.accessPolicyIds,
       },
     }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.apps.userAccessSettings.queryKey({
+            input: {
+              params: {
+                appId,
+              },
+            },
+          }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.rbacAccessConfig.apps.accessRules.key(),
+        }),
+      ])
+    },
   })
 }
 
 export const useUpdateAppOpenScope = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-app-open-scope', appId],
-    mutationFn: (openScope: ResourceOpenScope) => put(`/apps/${appId}/open-scope`, {
+    mutationFn: (openScope: ResourceOpenScope) => consoleClient.rbacAccessConfig.apps.updateOpenScope({
+      params: {
+        appId,
+      },
       body: {
         scope: openScope,
       },

@@ -1,94 +1,129 @@
 'use client'
 
-import type { AccessPolicyWithBindings } from '@/models/access-control'
+import type {
+  AccessPolicyWithBindings,
+  ResourceOpenScope,
+  ResourceUserAccessSetting,
+} from '@/models/access-control'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { ACCESS_RULE_TABLE_GRID } from './constants'
+import ResourceOpenScopeSection from './open-scope-section'
+import UserAccessPolicyRow from './user-access-policy-row'
 
 export type AccessRulesEditorProps = {
   rules: AccessPolicyWithBindings[]
-  isLoadingRules?: boolean
-  title?: string
+  userAccessSettings: ResourceUserAccessSetting[]
+  isLoadingRules: boolean
+  isLoadingUserAccessSettings: boolean
+  openScope: ResourceOpenScope
+  isUpdatingOpenScope: boolean
+  updatingAccountId: string | null
   className?: string
+  onOpenScopeChange?: (openScope: ResourceOpenScope) => void
+  onUserAccessPoliciesChange?: (accountId: string, accessPolicyIds: string[]) => void
+  onAddAccessSubject?: () => void
 }
 
-const AccessRulesEditor = ({
+export default function AccessRulesEditor({
   rules,
-  isLoadingRules = false,
-  title,
+  userAccessSettings,
+  isLoadingRules,
+  isLoadingUserAccessSettings,
+  openScope,
+  isUpdatingOpenScope,
+  updatingAccountId,
   className,
-}: AccessRulesEditorProps) => {
+  onOpenScopeChange,
+  onUserAccessPoliciesChange,
+  onAddAccessSubject,
+}: AccessRulesEditorProps) {
   const { t } = useTranslation()
-  const permissionSetCount = rules.length
-  const lockedCount = useMemo(() => {
-    let lockedCount = 0
-    rules.forEach((rule) => {
-      rule.roles.forEach((role) => {
-        if (role.is_locked)
-          lockedCount += 1
-      })
-      rule.accounts.forEach((account) => {
-        if (account.is_locked)
-          lockedCount += 1
-      })
-    })
-    return lockedCount
+  const isLoading = isLoadingRules || isLoadingUserAccessSettings
+  const individualPermissionSettingsTip = t('accessRule.individualPermissionSettingsTip', { ns: 'permission' })
+  const policyOptions = useMemo(() => {
+    return rules.map(rule => ({
+      id: rule.policy.id,
+      name: rule.policy.name,
+    }))
   }, [rules])
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg', className)}>
-      <div className="flex min-h-12 items-center gap-3 border-b border-divider-deep p-4">
-        <h2 className="min-w-0 truncate system-sm-semibold text-text-primary">
-          {title}
-        </h2>
-        <div className="flex shrink-0 items-center gap-1 system-xs-regular text-text-tertiary">
-          <span>
-            {t('accessRule.summary', { ns: 'permission', count: permissionSetCount })}
-          </span>
-          {lockedCount > 0 && (
-            <span>
-              {t('accessRule.lockedSummary', { ns: 'permission', count: lockedCount })}
-            </span>
-          )}
+    <div className={cn('flex flex-col gap-4', className)}>
+      <ResourceOpenScopeSection
+        value={openScope}
+        disabled={isUpdatingOpenScope}
+        onChange={onOpenScopeChange}
+      />
+      <div className="flex min-h-8 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <h2 className="system-sm-semibold text-text-secondary">
+            {t('accessRule.individualPermissionSettings', { ns: 'permission' })}
+          </h2>
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <button
+                  type="button"
+                  aria-label={individualPermissionSettingsTip}
+                  className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  <span className="i-ri-question-line size-3.5" aria-hidden />
+                </button>
+              )}
+            />
+            <TooltipContent className="max-w-64 system-xs-regular text-text-secondary">
+              {individualPermissionSettingsTip}
+            </TooltipContent>
+          </Tooltip>
         </div>
+        <Button
+          variant="primary"
+          size="medium"
+          disabled={!onAddAccessSubject}
+          onClick={onAddAccessSubject}
+        >
+          <span className="i-ri-add-line size-3.5" aria-hidden />
+          <span>{t('operation.add', { ns: 'common' })}</span>
+        </Button>
       </div>
-
-      {isLoadingRules
-        ? (
-            <div className="px-4 py-8 text-center">
-              <Loading type="app" />
-            </div>
-          )
-        : rules.length === 0
+      <section className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
+        <div className={cn('grid items-center gap-4 border-b border-divider-deep px-10 py-4 system-sm-semibold text-text-tertiary', ACCESS_RULE_TABLE_GRID)}>
+          <div>{t('accessRule.collaborator', { ns: 'permission' })}</div>
+          <div>{t('accessRule.exceptionPermission', { ns: 'permission' })}</div>
+          <div>{t('accessRule.actions', { ns: 'permission' })}</div>
+        </div>
+        {isLoading
           ? (
-              <div className="px-4 py-8 text-center system-sm-regular text-text-tertiary">
-                {t('accessRule.noRules', { ns: 'permission' })}
+              <div className="px-4 py-8 text-center">
+                <Loading type="app" />
               </div>
             )
-          : (
-              <div className="px-4">
-                {
-                  rules.map((rule, index) => (
-                    <div
-                      key={rule.policy.id}
+          : userAccessSettings.length === 0
+            ? (
+                <div className="px-4 py-8 text-center system-sm-regular text-text-tertiary">
+                  {t('accessRule.noUserAccessSettings', { ns: 'permission' })}
+                </div>
+              )
+            : (
+                <div className="px-4">
+                  {userAccessSettings.map((setting, index) => (
+                    <UserAccessPolicyRow
+                      key={setting.account.account_id}
+                      setting={setting}
+                      policyOptions={policyOptions}
+                      disabled={!onUserAccessPoliciesChange || updatingAccountId === setting.account.account_id}
                       className={cn(index > 0 && 'border-t border-divider-subtle')}
-                    >
-                      <div className="px-1 py-3.5">
-                        <div className="flex h-6 items-center system-sm-semibold text-text-primary">
-                          {rule.policy.name}
-                        </div>
-                        <p className="system-xs-regular leading-4 text-text-tertiary">
-                          {rule.policy.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                }
-              </div>
-            )}
+                      onChange={onUserAccessPoliciesChange}
+                    />
+                  ))}
+                </div>
+              )}
+      </section>
     </div>
   )
 }
-
-export default AccessRulesEditor

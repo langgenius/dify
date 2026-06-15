@@ -1,12 +1,18 @@
 'use client'
 
+import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
-import { useAppAccessRules } from '@/service/access-control/use-app-access-config'
+import {
+  useAppAccessRules,
+  useAppUserAccessSettings,
+  useUpdateAppOpenScope,
+  useUpdateAppUserAccessSettings,
+} from '@/service/access-control/use-app-access-config'
 
 type AppAccessConfigPageProps = {
   appId: string
@@ -17,24 +23,59 @@ const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const { data: appAccessRulesResponse, isLoading: isLoadingAppAccessRules } = useAppAccessRules(appId, language)
+  const { data: appUserAccessSettingsResponse, isLoading: isLoadingAppUserAccessSettings } = useAppUserAccessSettings(appId)
+  const { mutate: updateAppOpenScope, isPending: isUpdatingAppOpenScope } = useUpdateAppOpenScope(appId)
+  const { mutate: updateAppUserAccessSettings } = useUpdateAppUserAccessSettings(appId)
+  const [openScope, setOpenScope] = useState<ResourceOpenScope>('specific')
+  const [updatingAccountId, setUpdatingAccountId] = useState<string | null>(null)
 
   const appAccessRules = appAccessRulesResponse?.items || []
+  const appUserAccessSettings = appUserAccessSettingsResponse?.data || []
+
+  const handleOpenScopeChange = useCallback((nextOpenScope: ResourceOpenScope) => {
+    if (nextOpenScope === openScope)
+      return
+
+    const previousOpenScope = openScope
+    setOpenScope(nextOpenScope)
+    updateAppOpenScope(nextOpenScope, {
+      onError: () => setOpenScope(previousOpenScope),
+    })
+  }, [openScope, updateAppOpenScope])
+
+  const handleUserAccessPoliciesChange = useCallback((accountId: string, accessPolicyIds: string[]) => {
+    setUpdatingAccountId(accountId)
+    updateAppUserAccessSettings(
+      { accountId, accessPolicyIds },
+      { onSettled: () => setUpdatingAccountId(null) },
+    )
+  }, [updateAppUserAccessSettings])
 
   return (
     <ScrollArea
-      className="h-full bg-background-body"
+      className="h-full bg-background-default-subtle"
       slotClassNames={{ viewport: 'overscroll-contain' }}
     >
-      <div className="w-full max-w-304 px-8 py-6">
-        <h1 className="system-sm-semibold text-text-primary">{t('settings.resourceAccess', { ns: 'common' })}</h1>
-        <div className="mt-4">
-          <AccessRulesEditor
-            rules={appAccessRules}
-            isLoadingRules={isLoadingAppAccessRules}
-            title={t('accessRule.appTitle', { ns: 'permission' })}
-          />
-        </div>
-      </div>
+      <header className="flex min-h-15.5 flex-col justify-center px-6 py-3">
+        <h1 className="system-xl-semibold text-text-primary">{t('settings.resourceAccess', { ns: 'common' })}</h1>
+        <p className="mt-0.5 system-sm-regular text-text-tertiary">
+          {t('accessRule.appDescription', { ns: 'permission' })}
+        </p>
+      </header>
+      <main className="w-full px-6 pt-8 pb-10 sm:px-10 lg:pl-20">
+        <AccessRulesEditor
+          className="w-full max-w-200"
+          rules={appAccessRules}
+          userAccessSettings={appUserAccessSettings}
+          isLoadingRules={isLoadingAppAccessRules}
+          isLoadingUserAccessSettings={isLoadingAppUserAccessSettings}
+          openScope={openScope}
+          isUpdatingOpenScope={isUpdatingAppOpenScope}
+          updatingAccountId={updatingAccountId}
+          onOpenScopeChange={handleOpenScopeChange}
+          onUserAccessPoliciesChange={handleUserAccessPoliciesChange}
+        />
+      </main>
     </ScrollArea>
   )
 }

@@ -7,8 +7,18 @@ const mockDatasetAccessRules = vi.hoisted(() => ({
   isLoading: false,
 }))
 
+const mockDatasetUserAccessSettings = vi.hoisted(() => ({
+  data: [] as NonNullable<AccessRulesEditorProps['userAccessSettings']>,
+  isLoading: false,
+}))
+
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
+}))
+
+const mockMutations = vi.hoisted(() => ({
+  updateOpenScope: vi.fn(),
+  updateUserAccessSettings: vi.fn(),
 }))
 
 vi.mock('@/service/access-control/use-dataset-access-config', () => ({
@@ -16,15 +26,24 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
     data: { items: mockDatasetAccessRules.items },
     isLoading: mockDatasetAccessRules.isLoading,
   })),
+  useDatasetUserAccessSettings: vi.fn(() => ({
+    data: { data: mockDatasetUserAccessSettings.data },
+    isLoading: mockDatasetUserAccessSettings.isLoading,
+  })),
+  useUpdateDatasetOpenScope: vi.fn(() => ({
+    mutate: mockMutations.updateOpenScope,
+    isPending: false,
+  })),
+  useUpdateDatasetUserAccessSettings: vi.fn(() => ({
+    mutate: mockMutations.updateUserAccessSettings,
+  })),
 }))
 
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
     return (
-      <div data-testid="access-rules-editor">
-        {props.title}
-      </div>
+      <div data-testid="access-rules-editor" />
     )
   },
 }))
@@ -34,6 +53,8 @@ describe('DatasetAccessConfigPage', () => {
     vi.clearAllMocks()
     mockDatasetAccessRules.items = []
     mockDatasetAccessRules.isLoading = false
+    mockDatasetUserAccessSettings.data = []
+    mockDatasetUserAccessSettings.isLoading = false
     mockAccessRulesEditor.props = null
   })
 
@@ -43,16 +64,39 @@ describe('DatasetAccessConfigPage', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
-      expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('permission.accessRule.datasetTitle')
+      expect(screen.getByText('permission.accessRule.datasetDescription')).toBeInTheDocument()
+      expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
+      expect(mockAccessRulesEditor.props?.className).toBe('w-full max-w-200')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
+      expect(mockAccessRulesEditor.props?.userAccessSettings).toEqual([])
+      expect(mockAccessRulesEditor.props?.openScope).toBe('specific')
     })
 
     it('should pass access rule loading state to the editor', () => {
       mockDatasetAccessRules.isLoading = true
+      mockDatasetUserAccessSettings.isLoading = true
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
+      expect(mockAccessRulesEditor.props?.isLoadingUserAccessSettings).toBe(true)
+    })
+
+    it('should wire open scope and user policy updates', () => {
+      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+
+      mockAccessRulesEditor.props?.onOpenScopeChange?.('all')
+      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith('all', expect.objectContaining({
+        onError: expect.any(Function),
+      }))
+
+      mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
+        accountId: 'account-1',
+        accessPolicyIds: ['policy-1'],
+      }, expect.objectContaining({
+        onSettled: expect.any(Function),
+      }))
     })
   })
 })

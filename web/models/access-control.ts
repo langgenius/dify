@@ -233,6 +233,17 @@ export type GetMembersOfRoleRequest = {
 type Account = {
   account_id: string
   account_name: string
+  avatar?: string
+}
+
+export type ResourceUserAccessSetting = {
+  account: Account
+  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
+  access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
+}
+
+type ResourceUserAccessSettingsResponse = {
+  data: ResourceUserAccessSetting[]
 }
 
 export type GetMembersOfRoleResponse = {
@@ -240,17 +251,12 @@ export type GetMembersOfRoleResponse = {
   pagination: Pagination
 }
 
-type ResourceUserAccessSettingsResponse = {
-  account: Account
-  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
-  access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
-}
-
 export type GetAppUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
 
 export type GetDatasetUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
 
 type UpdateResourceUserAccessSettingsRequest = {
+  accountId: string
   accessPolicyIds: string[]
 }
 
