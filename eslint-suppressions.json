@@ -2579,11 +2579,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/search-input/index.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/base/svg-gallery/index.tsx": {
     "node/prefer-global/buffer": {
       "count": 1
@@ -3508,11 +3503,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
