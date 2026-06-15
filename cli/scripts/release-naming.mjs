@@ -17,7 +17,8 @@
 //   validate               -> exit 1 if difyctl.release, version, or channel is malformed
 //   compat-check <difyVer> -> exit 1 if difyVer outside compat.minDify..maxDify
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 const BUN_TARGET_RE = /^bun-(linux|darwin|windows)-(x64|arm64)$/
 const SEMVER_CORE_LEN = 3
@@ -30,6 +31,7 @@ const SEMVER_CORE_LEN = 3
 const CHANNELS = [
   { name: 'stable', prerelease: false, versionForm: /^\d+\.\d+\.\d+(\+[0-9A-Z.-]+)?$/i },
   { name: 'rc', prerelease: true, versionForm: /^\d+\.\d+\.\d+-rc\.\d+$/ },
+  { name: 'edge', prerelease: true, versionForm: /^\d+\.\d+\.\d+-edge\.[0-9a-f]{7,40}$/ },
 ]
 
 const channelByName = name => CHANNELS.find(c => c.name === name)
@@ -41,6 +43,30 @@ function parsePrecedence(v) {
   const core = i === -1 ? s : s.slice(0, i)
   const pre = i === -1 ? '' : s.slice(i + 1)
   return { nums: core.split('.').map(Number), pre }
+}
+
+function versionCore(v) {
+  return String(v).replace(/^v/, '').replace(/\+.*$/, '').split('-')[0]
+}
+
+function edgeVersion(sha) {
+  if (!/^[0-9a-f]{7,40}$/.test(sha ?? ''))
+    die('edge-version requires a git short sha (7-40 hex chars)')
+  const core = versionCore(loadPkg().version)
+  if (!/^\d+\.\d+\.\d+$/.test(core))
+    die(`cannot derive edge base from version: ${loadPkg().version}`)
+  return `${core}-edge.${sha}`
+}
+
+// die-now sibling of validateVersionChannel (which collects problems for the
+// `validate` gate). Used by release-r2-edge.mjs to fail a publish fast.
+function validateVersionForChannel(version, channelName) {
+  const ch = channelByName(channelName)
+  if (!ch)
+    die(`unknown channel: ${channelName} (expected one of: ${channelNames()})`)
+  if (!ch.versionForm.test(version))
+    die(`version ${version} does not match the ${channelName} channel form`)
+  return `valid: ${version} is a ${channelName} version`
 }
 
 function comparePre(a, b) {
@@ -223,9 +249,21 @@ function main(argv) {
         die(`invalid difyctl release config:\n  - ${problems.join('\n  - ')}`)
       return `difyctl release valid: version=${version} channel=${channel} targets=${release.targets.length}`
     }
+    case 'edge-version':
+      return edgeVersion(rest[0])
+    case 'validate-version':
+      return validateVersionForChannel(
+        requireVersion(rest[0]),
+        rest[1] ?? die('channel argument is required'),
+      )
     default:
       die(`unknown subcommand: ${cmd ?? '(none)'}`)
   }
 }
 
-process.stdout.write(`${main(process.argv.slice(2))}\n`)
+const invokedDirectly = process.argv[1]
+  && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
+if (invokedDirectly)
+  process.stdout.write(`${main(process.argv.slice(2))}\n`)
+
+export { assetName, channelByName, CHANNELS, edgeVersion, loadPkg, validateVersionForChannel, versionCore }
