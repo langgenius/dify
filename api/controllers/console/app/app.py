@@ -581,7 +581,7 @@ class AppListApi(Resource):
     @console_ns.doc("create_app")
     @console_ns.doc(description="Create a new application")
     @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
-    @console_ns.response(201, "App created successfully", console_ns.models[AppDetail.__name__])
+    @console_ns.response(201, "App created successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -605,7 +605,7 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user)
-        app_detail = AppDetail.model_validate(app, from_attributes=True)
+        app_detail = AppDetailWithSite.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
 
