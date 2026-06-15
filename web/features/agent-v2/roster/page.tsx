@@ -76,7 +76,6 @@ export default function RosterPage() {
   })
 
   const rosterItems = rosterPages?.pages.flatMap(page => page.data) ?? []
-  const totalAgents = rosterPages?.pages[0]?.total ?? 0
   const inUseAgents = rosterItems.filter(isAgentInUse).length
   const draftAgents = Math.max(rosterItems.length - inUseAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
@@ -112,7 +111,6 @@ export default function RosterPage() {
               filter={rosterFilter}
               inUseAgents={inUseAgents}
               keyword={keyword}
-              totalAgents={totalAgents}
               onFilterChange={(value) => {
                 void setRosterFilter(value)
               }}

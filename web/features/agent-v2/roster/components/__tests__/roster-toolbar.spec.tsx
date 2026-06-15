@@ -20,7 +20,6 @@ const renderToolbar = ({
         filter={filter}
         inUseAgents={1}
         keyword=""
-        totalAgents={3}
         onFilterChange={onFilterChange}
         onKeywordChange={vi.fn()}
       />
@@ -46,14 +45,19 @@ describe('RosterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith('in-use')
   })
 
-  it('renders filter count badges with the compact badge style', () => {
+  it('renders stable filter count badges and omits the all count', () => {
     renderToolbar()
 
-    expect(screen.getByText('1')).toHaveClass(
+    expect(screen.getByRole('button', { name: /agentV2\.roster\.filters\.all/ })).not.toHaveTextContent('3')
+
+    expect(screen.getByText('1').parentElement).toHaveClass(
       'min-w-4',
+      'shrink-0',
       'border-divider-deep',
       'py-0.5',
       'system-2xs-medium-uppercase',
+      'tabular-nums',
     )
+    expect(screen.getByText('1')).toHaveClass('min-w-px', 'flex-1', 'text-center')
   })
 })
