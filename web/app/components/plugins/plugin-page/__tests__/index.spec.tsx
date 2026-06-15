@@ -76,6 +76,21 @@ vi.mock('@/service/use-plugins', () => ({
       debug_permission: 'admins',
     },
   }),
+  useMutationPluginPermissionSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  usePluginAutoUpgradeSettings: () => ({
+    data: {
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+  }),
   useMutationReferenceSettings: () => ({
     mutate: vi.fn(),
     isPending: false,

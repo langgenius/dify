@@ -245,7 +245,7 @@ describe('TaskStatusIndicator', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should keep success state non-interactive', () => {
+    it('should keep success state clickable so completed tasks can be reviewed', () => {
       render(
         <TaskStatusIndicator
           {...defaultProps}
@@ -255,7 +255,7 @@ describe('TaskStatusIndicator', () => {
         />,
       )
       const button = document.getElementById('plugin-task-trigger')!
-      expect(button.className).toContain('cursor-default')
+      expect(button.className).toContain('cursor-pointer')
     })
 
     it('should apply cursor-pointer for error states', () => {

@@ -179,6 +179,7 @@ const PluginItem: FC<Props> = ({
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
+                  title={t('endpointsEnabled', { ns: 'plugin', num: endpointCount })}
                 >
                   {t('endpointsEnabled', { ns: 'plugin', num: endpointCount })}
                 </span>
