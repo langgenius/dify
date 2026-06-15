@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -14,7 +15,12 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentFileRefConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import (
+    AgentFileRefConfig,
+    DeclaredOutputConfig,
+    DeclaredOutputType,
+    WorkflowNodeJobConfig,
+)
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -1115,7 +1121,31 @@ class TestWorkflowAgentDraftBindingSync:
             tenant_id="tenant-1",
             app_id="app-1",
             version=Workflow.VERSION_DRAFT,
-            graph='{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2","agent_binding":{"binding_type":"roster_agent","agent_id":"agent-1"}}}]}',
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_task": "Summarize the upstream result.",
+                                "agent_declared_outputs": [
+                                    {
+                                        "name": "summary",
+                                        "type": "string",
+                                        "description": "Short summary",
+                                    }
+                                ],
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
         )
         agent = Agent(
             id="agent-1",
@@ -1139,7 +1169,151 @@ class TestWorkflowAgentDraftBindingSync:
         assert binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
         assert binding.agent_id == "agent-1"
         assert binding.current_snapshot_id == "snapshot-2"
-        assert binding.node_job_config_dict == WorkflowNodeJobConfig().model_dump(mode="json")
+        assert binding.node_job_config_dict == WorkflowNodeJobConfig(
+            workflow_prompt="Summarize the upstream result.",
+            declared_outputs=[
+                DeclaredOutputConfig(
+                    name="summary",
+                    type=DeclaredOutputType.STRING,
+                    description="Short summary",
+                )
+            ],
+        ).model_dump(mode="json")
+
+    def test_updates_existing_roster_binding_prompt_from_agent_node_graph(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_task": "Use the latest tender context.",
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Agent",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="snapshot-2",
+        )
+        existing_binding = WorkflowAgentNodeBinding(
+            id="binding-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            node_job_config=WorkflowNodeJobConfig(
+                workflow_prompt="Old prompt",
+                declared_outputs=[
+                    DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary")
+                ],
+            ),
+        )
+        session = FakeSession(scalar=[agent], scalars=[[existing_binding]])
+
+        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        node_job = WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
+        assert node_job.workflow_prompt == "Use the latest tender context."
+        assert [output.name for output in node_job.declared_outputs] == ["summary"]
+        assert existing_binding.current_snapshot_id == "snapshot-2"
+
+    def test_updates_existing_roster_binding_declared_outputs_from_agent_node_graph(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_task": "Keep the prompt.",
+                                "agent_declared_outputs": [],
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Agent",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="snapshot-2",
+        )
+        existing_binding = WorkflowAgentNodeBinding(
+            id="binding-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            node_job_config=WorkflowNodeJobConfig(
+                workflow_prompt="Old prompt",
+                declared_outputs=[
+                    DeclaredOutputConfig(
+                        name="summary",
+                        type=DeclaredOutputType.STRING,
+                        description="Short summary",
+                    )
+                ],
+            ),
+        )
+        session = FakeSession(scalar=[agent], scalars=[[existing_binding]])
+
+        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        node_job = WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
+        assert node_job.workflow_prompt == "Keep the prompt."
+        assert node_job.declared_outputs == []
+        assert existing_binding.current_snapshot_id == "snapshot-2"
 
     def test_deletes_draft_binding_when_agent_node_removed(self):
         workflow = Workflow(
