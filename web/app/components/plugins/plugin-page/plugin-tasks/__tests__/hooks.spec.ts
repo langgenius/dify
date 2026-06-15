@@ -4,6 +4,7 @@ import { TaskStatus } from '@/app/components/plugins/types'
 import { usePluginTaskStatus } from '../hooks'
 
 const mockClearTask = vi.fn().mockResolvedValue({})
+const mockStopAllTask = vi.fn().mockResolvedValue({})
 const mockRefetch = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
@@ -27,6 +28,9 @@ vi.mock('@/service/use-plugins', () => ({
   }),
   useMutationClearTaskPlugin: () => ({
     mutateAsync: mockClearTask,
+  }),
+  useMutationStopAllTaskPlugins: () => ({
+    mutateAsync: mockStopAllTask,
   }),
 }))
 
@@ -72,6 +76,15 @@ describe('usePluginTaskStatus', () => {
       taskId: 'task-2',
       pluginId: 'plugin-3',
     })
+    expect(mockRefetch).toHaveBeenCalled()
+  })
+
+  it('should handle stop all plugins', async () => {
+    const { result } = renderHook(() => usePluginTaskStatus())
+
+    await result.current.handleStopAllPlugins()
+
+    expect(mockStopAllTask).toHaveBeenCalled()
     expect(mockRefetch).toHaveBeenCalled()
   })
 })

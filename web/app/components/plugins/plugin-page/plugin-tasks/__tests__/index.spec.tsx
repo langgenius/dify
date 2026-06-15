@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginSource, TaskStatus } from '@/app/components/plugins/types'
 // Import mocked modules
-import { useMutationClearTaskPlugin, usePluginTaskList } from '@/service/use-plugins'
+import { useMutationClearTaskPlugin, useMutationStopAllTaskPlugins, usePluginTaskList } from '@/service/use-plugins'
 import PluginTaskList from '../components/plugin-task-list'
 import TaskStatusIndicator from '../components/task-status-indicator'
 import { usePluginTaskStatus } from '../hooks'
@@ -14,6 +14,7 @@ import PluginTasks from '../index'
 vi.mock('@/service/use-plugins', () => ({
   usePluginTaskList: vi.fn(),
   useMutationClearTaskPlugin: vi.fn(),
+  useMutationStopAllTaskPlugins: vi.fn(),
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/base/use-get-icon', () => ({
@@ -45,6 +46,7 @@ const createMockPlugin = (overrides: Partial<PluginStatus> = {}): PluginStatus =
 // Helper to setup mock hook returns
 const setupMocks = (plugins: PluginStatus[] = []) => {
   const mockMutateAsync = vi.fn().mockResolvedValue({})
+  const mockStopAllMutateAsync = vi.fn().mockResolvedValue({})
   const mockHandleRefetch = vi.fn()
 
   vi.mocked(usePluginTaskList).mockReturnValue({
@@ -58,7 +60,11 @@ const setupMocks = (plugins: PluginStatus[] = []) => {
     mutateAsync: mockMutateAsync,
   } as unknown as ReturnType<typeof useMutationClearTaskPlugin>)
 
-  return { mockMutateAsync, mockHandleRefetch }
+  vi.mocked(useMutationStopAllTaskPlugins).mockReturnValue({
+    mutateAsync: mockStopAllMutateAsync,
+  } as unknown as ReturnType<typeof useMutationStopAllTaskPlugins>)
+
+  return { mockMutateAsync, mockStopAllMutateAsync, mockHandleRefetch }
 }
 
 const getTaskMenuTrigger = () =>
@@ -273,6 +279,31 @@ describe('usePluginTaskStatus Hook', () => {
       })
     })
   })
+
+  describe('handleStopAllPlugins', () => {
+    it('should call stop all mutateAsync and handleRefetch', async () => {
+      const { mockStopAllMutateAsync, mockHandleRefetch } = setupMocks([
+        createMockPlugin({ status: TaskStatus.running }),
+      ])
+
+      const TestComponent = () => {
+        const { handleStopAllPlugins } = usePluginTaskStatus()
+        return (
+          <button onClick={handleStopAllPlugins}>
+            Stop all
+          </button>
+        )
+      }
+
+      render(<TestComponent />)
+      fireEvent.click(screen.getByRole('button'))
+
+      await waitFor(() => {
+        expect(mockStopAllMutateAsync).toHaveBeenCalledWith()
+        expect(mockHandleRefetch).toHaveBeenCalled()
+      })
+    })
+  })
 })
 
 // ============================================================================
@@ -424,6 +455,7 @@ describe('PluginTaskList Component', () => {
     onClearAll: vi.fn(),
     onClearErrors: vi.fn(),
     onClearSingle: vi.fn(),
+    onStopAll: vi.fn(),
   }
 
   beforeEach(() => {
@@ -493,6 +525,23 @@ describe('PluginTaskList Component', () => {
       fireEvent.click(screen.getByRole('button', { name: /task\.clearAll/i }))
 
       expect(handleClearAll).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onStopAll when stop all button is clicked in running section', () => {
+      const handleStopAll = vi.fn()
+      const runningPlugins = [createMockPlugin({ status: TaskStatus.running })]
+
+      render(
+        <PluginTaskList
+          {...defaultProps}
+          runningPlugins={runningPlugins}
+          onStopAll={handleStopAll}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: /task\.stopAll/i }))
+
+      expect(handleStopAll).toHaveBeenCalledTimes(1)
     })
 
     it('should call onClearErrors when clear all button is clicked in error section', () => {
