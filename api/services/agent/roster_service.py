@@ -213,7 +213,7 @@ class AgentRosterService:
         tenant_id: str,
         account_id: str,
         payload: RosterAgentCreatePayload,
-        source: AgentSource = AgentSource.AGENT_APP,
+        source: AgentSource = AgentSource.ROSTER,
     ) -> Agent:
         ComposerConfigValidator.validate_agent_soul(payload.agent_soul)
 
