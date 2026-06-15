@@ -71,8 +71,8 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
-    reg.save()
+    await store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
+    await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl on desktop', all: false })
@@ -136,13 +136,13 @@ describe('runDevicesRevoke', () => {
     const io = bufferStreams()
     const store = new MemStore()
     const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
-    store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
-    reg.save()
+    await store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
+    await reg.save()
     const http = testHttpClient(mock.url, 'dfoa_test')
 
     await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-1', all: false })
     expect(store.entries.size).toBe(0)
-    const saved = Registry.load()
+    const saved = await Registry.load()
     expect(saved?.hosts[mock.url]).toBeUndefined()
   })
 
