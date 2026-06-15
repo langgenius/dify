@@ -93,7 +93,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
   return (
     <Dialog modal={modal} open={isShow} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-100 overflow-hidden">
+      <DialogContent backdropProps={{ forceRender: true }} className="w-100 overflow-hidden">
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t('feature.dataSet.selectTitle', { ns: 'appDebug' })}
         </DialogTitle>
