@@ -1,7 +1,7 @@
 """add ask_human pause correlation to agent_runtime_sessions
 
 Revision ID: c167a72a00eb
-Revises: 9f4b7c2d1a80
+Revises: c4d5e6f7a8b9
 Create Date: 2026-06-15 10:52:15.736666
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'c167a72a00eb'
-down_revision = '9f4b7c2d1a80'
+down_revision = 'c4d5e6f7a8b9'
 branch_labels = None
 depends_on = None
 
