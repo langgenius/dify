@@ -4,6 +4,8 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
+  zDeleteAgentsByAgentIdPath,
+  zDeleteAgentsByAgentIdResponse,
   zGetAgentsByAgentIdPath,
   zGetAgentsByAgentIdResponse,
   zGetAgentsByAgentIdVersionsByVersionIdPath,
@@ -14,6 +16,11 @@ import {
   zGetAgentsInviteOptionsResponse,
   zGetAgentsQuery,
   zGetAgentsResponse,
+  zPatchAgentsByAgentIdBody,
+  zPatchAgentsByAgentIdPath,
+  zPatchAgentsByAgentIdResponse,
+  zPostAgentsBody,
+  zPostAgentsResponse,
 } from './zod.gen'
 
 export const get = oc
@@ -62,6 +69,18 @@ export const versions = {
   byVersionId,
 }
 
+export const delete_ = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteAgentsByAgentId',
+    path: '/agents/{agent_id}',
+    successStatus: 204,
+    tags: ['console'],
+  })
+  .input(z.object({ params: zDeleteAgentsByAgentIdPath }))
+  .output(zDeleteAgentsByAgentIdResponse)
+
 export const get4 = oc
   .route({
     inputStructure: 'detailed',
@@ -73,8 +92,21 @@ export const get4 = oc
   .input(z.object({ params: zGetAgentsByAgentIdPath }))
   .output(zGetAgentsByAgentIdResponse)
 
+export const patch = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchAgentsByAgentId',
+    path: '/agents/{agent_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPatchAgentsByAgentIdBody, params: zPatchAgentsByAgentIdPath }))
+  .output(zPatchAgentsByAgentIdResponse)
+
 export const byAgentId = {
+  delete: delete_,
   get: get4,
+  patch,
   versions,
 }
 
@@ -89,8 +121,21 @@ export const get5 = oc
   .input(z.object({ query: zGetAgentsQuery.optional() }))
   .output(zGetAgentsResponse)
 
+export const post = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgents',
+    path: '/agents',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostAgentsBody }))
+  .output(zPostAgentsResponse)
+
 export const agents = {
   get: get5,
+  post,
   inviteOptions,
   byAgentId,
 }

@@ -3,6 +3,25 @@
 import * as z from 'zod'
 
 /**
+ * AgentIconType
+ *
+ * Supported icon storage formats for Agent roster entries.
+ */
+export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
+ * RosterAgentUpdatePayload
+ */
+export const zRosterAgentUpdatePayload = z.object({
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  name: z.string().min(1).max(255).nullish(),
+  role: z.string().max(255).nullish(),
+})
+
+/**
  * AgentConfigSnapshotSummaryResponse
  */
 export const zAgentConfigSnapshotSummaryResponse = z.object({
@@ -31,13 +50,6 @@ export const zAgentConfigSnapshotListResponse = z.object({
  * the current roster/workflow APIs scoped to Dify Agent.
  */
 export const zAgentKind = z.enum(['dify_agent'])
-
-/**
- * AgentIconType
- *
- * Supported icon storage formats for Agent roster entries.
- */
-export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
 
 /**
  * AgentPublishedReferenceResponse
@@ -677,6 +689,21 @@ export const zAgentSoulConfig = z.object({
 })
 
 /**
+ * RosterAgentCreatePayload
+ */
+export const zRosterAgentCreatePayload = z.object({
+  agent_soul: zAgentSoulConfig.optional(),
+  description: z.string().optional().default(''),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
+  mode: z.literal('agent').optional().default('agent'),
+  name: z.string().min(1).max(255),
+  role: z.string().max(255).optional().default(''),
+  version_note: z.string().nullish(),
+})
+
+/**
  * AgentConfigSnapshotDetailResponse
  */
 export const zAgentConfigSnapshotDetailResponse = z.object({
@@ -702,6 +729,13 @@ export const zGetAgentsQuery = z.object({
  */
 export const zGetAgentsResponse = zAgentRosterListResponse
 
+export const zPostAgentsBody = zRosterAgentCreatePayload
+
+/**
+ * Agent created
+ */
+export const zPostAgentsResponse = zAgentRosterResponse
+
 export const zGetAgentsInviteOptionsQuery = z.object({
   app_id: z.string().optional(),
   keyword: z.string().optional(),
@@ -714,6 +748,15 @@ export const zGetAgentsInviteOptionsQuery = z.object({
  */
 export const zGetAgentsInviteOptionsResponse = zAgentInviteOptionsResponse
 
+export const zDeleteAgentsByAgentIdPath = z.object({
+  agent_id: z.string(),
+})
+
+/**
+ * Agent archived
+ */
+export const zDeleteAgentsByAgentIdResponse = z.void()
+
 export const zGetAgentsByAgentIdPath = z.object({
   agent_id: z.string(),
 })
@@ -722,6 +765,17 @@ export const zGetAgentsByAgentIdPath = z.object({
  * Agent detail
  */
 export const zGetAgentsByAgentIdResponse = zAgentRosterResponse
+
+export const zPatchAgentsByAgentIdBody = zRosterAgentUpdatePayload
+
+export const zPatchAgentsByAgentIdPath = z.object({
+  agent_id: z.string(),
+})
+
+/**
+ * Agent updated
+ */
+export const zPatchAgentsByAgentIdResponse = zAgentRosterResponse
 
 export const zGetAgentsByAgentIdVersionsPath = z.object({
   agent_id: z.string(),

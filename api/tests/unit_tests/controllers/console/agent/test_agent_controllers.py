@@ -149,10 +149,77 @@ def test_roster_list_get_parses_query_and_calls_service(app: Flask, monkeypatch:
     assert captured == {"tenant_id": "tenant-1", "page": 2, "limit": 5, "keyword": "analyst"}
 
 
-def test_roster_direct_mutation_endpoints_are_not_exposed() -> None:
-    assert not hasattr(AgentRosterListApi, "post")
-    assert not hasattr(AgentRosterDetailApi, "patch")
-    assert not hasattr(AgentRosterDetailApi, "delete")
+def test_roster_create_validates_payload_and_calls_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+    agent = SimpleNamespace(id="agent-1")
+
+    def create_roster_agent(_self: object, **kwargs: object) -> object:
+        captured.update(kwargs)
+        return agent
+
+    monkeypatch.setattr(roster_controller.AgentRosterService, "create_roster_agent", create_roster_agent)
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_roster_agent_detail",
+        lambda _self, **kwargs: _agent_response(cast(str, kwargs["agent_id"])),
+    )
+
+    payload = {
+        "name": "Analyst",
+        "description": "Research markets",
+        "role": "Researcher",
+        "icon_type": "emoji",
+        "icon": "🧸",
+        "icon_background": "#F5F3FF",
+    }
+    with app.test_request_context(json=payload):
+        response, status = unwrap(AgentRosterListApi.post)(AgentRosterListApi(), "tenant-1", "account-1")
+
+    assert status == 201
+    assert response["id"] == "agent-1"
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["account_id"] == "account-1"
+    assert captured["payload"].name == "Analyst"
+    assert captured["payload"].role == "Researcher"
+
+
+def test_roster_update_validates_payload_and_calls_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+    agent_id = "00000000-0000-0000-0000-000000000001"
+
+    def update_roster_agent(_self: object, **kwargs: object) -> dict:
+        captured.update(kwargs)
+        return _agent_response(cast(str, kwargs["agent_id"]))
+
+    monkeypatch.setattr(roster_controller.AgentRosterService, "update_roster_agent", update_roster_agent)
+
+    with app.test_request_context(json={"name": "Updated Analyst", "role": "Planner"}):
+        response = unwrap(AgentRosterDetailApi.patch)(AgentRosterDetailApi(), "tenant-1", "account-1", agent_id)
+
+    assert response["id"] == agent_id
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["account_id"] == "account-1"
+    assert captured["agent_id"] == agent_id
+    assert captured["payload"].name == "Updated Analyst"
+    assert captured["payload"].role == "Planner"
+
+
+def test_roster_delete_archives_agent(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+    agent_id = "00000000-0000-0000-0000-000000000001"
+
+    def archive_roster_agent(_self: object, **kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr(roster_controller.AgentRosterService, "archive_roster_agent", archive_roster_agent)
+
+    with app.test_request_context():
+        response, status = unwrap(AgentRosterDetailApi.delete)(
+            AgentRosterDetailApi(), "tenant-1", "account-1", agent_id
+        )
+
+    assert (response, status) == ("", 204)
+    assert captured == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": "account-1"}
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
