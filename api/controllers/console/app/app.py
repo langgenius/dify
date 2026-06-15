@@ -479,7 +479,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
         for app in apps:
             if str(app.id) in res:
-                app.access_mode = res[str(app.id)].access_mode  # pyrefly: ignore[missing-attribute]
+                app.access_mode = res[str(app.id)].access_mode
 
     workflow_capable_app_ids = [str(app.id) for app in apps if app.mode in {"workflow", "advanced-chat"}]
     draft_trigger_app_ids: set[str] = set()
@@ -508,7 +508,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
                 continue
 
     for app in apps:
-        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids  # pyrefly: ignore[missing-attribute]
+        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
@@ -718,7 +718,7 @@ class AppApi(Resource):
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
-            app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
+            app_model.access_mode = app_setting.access_mode
 
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")

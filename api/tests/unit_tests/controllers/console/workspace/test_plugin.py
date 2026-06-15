@@ -46,7 +46,7 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from models.account import Account, TenantAccountRole, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 
 
-def _plugin_category_list_item() -> dict[str, Any]:
+def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
     now = datetime(2023, 1, 1, 0, 0, 0)
     return {
         "id": "entity-1",
@@ -71,6 +71,7 @@ def _plugin_category_list_item() -> dict[str, Any]:
             "description": {"en_US": "Test plugin"},
             "icon": "icon.svg",
             "label": {"en_US": "Test Plugin"},
+            "category": category,
             "created_at": now,
             "resource": {"memory": 268435456, "permission": None},
             "plugins": {"tools": ["provider/test.yaml"]},
@@ -243,7 +244,7 @@ class TestPluginCategoryListApi:
     def test_non_tool_category_does_not_include_builtin_tools(self, app: Flask):
         api = PluginCategoryListApi()
         method = unwrap(api.get)
-        mock_list = MagicMock(list=[_plugin_category_list_item()], has_more=False)
+        mock_list = MagicMock(list=[_plugin_category_list_item(category="datasource")], has_more=False)
 
         with (
             app.test_request_context("/?page=1&page_size=10"),

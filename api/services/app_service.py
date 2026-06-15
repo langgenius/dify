@@ -223,7 +223,7 @@ class AppService:
             app_ids=app_ids,
         )
         for app in app_models.items:
-            app.is_starred = str(app.id) in starred_app_ids  # type: ignore[attr-defined]
+            app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
 
@@ -256,7 +256,7 @@ class AppService:
         )
 
         for app in app_models.items:
-            app.is_starred = True  # type: ignore[attr-defined]
+            app.is_starred = True
 
         return app_models
 
@@ -703,7 +703,7 @@ class AppService:
         :param app: App instance
         """
         app_was_deleted.send(app)
- 
+
         backing_agent = self._get_backing_agent_for_update(app)
         if backing_agent is not None:
             now = naive_utc_now()
@@ -714,7 +714,6 @@ class AppService:
             backing_agent.updated_by = account_id
             backing_agent.updated_at = now
 
-        db.session.execute(sa.delete(AppStar).where(AppStar.tenant_id == app.tenant_id, AppStar.app_id == app.id))
         db.session.delete(app)
         db.session.commit()
 

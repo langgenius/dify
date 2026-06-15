@@ -397,6 +397,12 @@ class App(Base):
     __tablename__ = "apps"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
 
+    if TYPE_CHECKING:
+        # Response-only attributes attached by app list/detail enrichers.
+        access_mode: str | None
+        has_draft_trigger: bool
+        is_starred: bool
+
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
