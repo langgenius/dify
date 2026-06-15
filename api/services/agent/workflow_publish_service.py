@@ -3,12 +3,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import Agent, AgentScope, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import DeclaredOutputConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 
 
@@ -17,6 +18,8 @@ class WorkflowAgentPublishService:
 
     _DRAFT_WORKFLOW_VERSION = Workflow.VERSION_DRAFT
     _AGENT_BINDING_KEY = "agent_binding"
+    _AGENT_TASK_KEY = "agent_task"
+    _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
 
     @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
@@ -126,8 +129,9 @@ class WorkflowAgentPublishService:
         binding.current_snapshot_id = agent.active_config_snapshot_id
         binding.updated_by = account_id
 
-    @staticmethod
+    @classmethod
     def _node_job_config_from_node_data(
+        cls,
         *,
         existing_binding: WorkflowAgentNodeBinding | None,
         node_data: Mapping[str, Any],
@@ -137,9 +141,20 @@ class WorkflowAgentPublishService:
         else:
             node_job = WorkflowNodeJobConfig()
 
-        agent_task = node_data.get("agent_task")
+        agent_task = node_data.get(cls._AGENT_TASK_KEY)
         if isinstance(agent_task, str):
             node_job.workflow_prompt = agent_task
+
+        declared_outputs_payload = node_data.get(cls._AGENT_DECLARED_OUTPUTS_KEY)
+        if declared_outputs_payload is not None:
+            if not isinstance(declared_outputs_payload, list):
+                raise ValueError("Workflow Agent node agent_declared_outputs must be a list.")
+            try:
+                node_job.declared_outputs = [
+                    DeclaredOutputConfig.model_validate(output) for output in declared_outputs_payload
+                ]
+            except ValidationError as exc:
+                raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
         return node_job
 
