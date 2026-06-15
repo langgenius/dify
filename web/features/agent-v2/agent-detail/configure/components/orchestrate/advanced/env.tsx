@@ -4,10 +4,12 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEnvVariables } from '@/features/agent-v2/agent-composer/store-modules/env'
+import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
 import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
 
@@ -425,8 +427,24 @@ export function AgentEnvEditor() {
 
     setEnvVariables([...envVariables, ...importedVariables])
   }
+  const checkEnvVariableKey = (key: string) => {
+    const { isValid, errorMessageKey } = checkKeys([key], false)
+    if (!isValid) {
+      toast.error(t(`varKeyError.${errorMessageKey}`, {
+        ns: 'appDebug',
+        key: t('agentDetail.configure.advancedSettings.envEditor.keyColumn'),
+      }))
+      return false
+    }
+
+    return true
+  }
   const updateVariableKey = (id: string, key: string) => {
-    updateVariable(id, variable => ({ ...variable, key }))
+    const normalizedKey = key.replaceAll(' ', '_')
+    if (normalizedKey && !checkEnvVariableKey(normalizedKey))
+      return
+
+    updateVariable(id, variable => ({ ...variable, key: normalizedKey }))
   }
   const updateVariableScope = (id: string, scope: EnvScope) => {
     updateVariable(id, variable => ({ ...variable, scope }))

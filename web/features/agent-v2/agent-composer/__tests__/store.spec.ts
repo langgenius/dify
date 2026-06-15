@@ -1,6 +1,7 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
+import { defaultAgentSoulConfigFormState } from '../form-state'
 
 describe('agent composer store conversions', () => {
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in publish payload', () => {
@@ -215,6 +216,131 @@ describe('agent composer store conversions', () => {
           ref: 'secret-1',
         }),
       ],
+    })
+  })
+
+  it('should omit incomplete environment variables from the publish payload', () => {
+    const publishConfig = formStateToAgentSoulConfig({
+      formState: {
+        ...defaultAgentSoulConfigFormState,
+        envVariables: [
+          {
+            id: 'empty-env',
+            key: '',
+            value: '',
+            scope: 'plain',
+          },
+          {
+            id: 'empty-value-env',
+            key: 'EMPTY_VALUE',
+            value: '',
+            scope: 'plain',
+          },
+          {
+            id: 'empty-key-env',
+            key: '',
+            value: 'secret',
+            scope: 'plain',
+          },
+          {
+            id: 'invalid-key-env',
+            key: '1BAD',
+            value: 'secret',
+            scope: 'plain',
+          },
+          {
+            id: 'valid-env',
+            key: ' REGION ',
+            value: 'us-east-1',
+            scope: 'plain',
+          },
+          {
+            id: 'empty-secret',
+            key: '',
+            value: '',
+            scope: 'secret',
+          },
+          {
+            id: 'empty-secret-value',
+            key: 'EMPTY_SECRET_VALUE',
+            value: '',
+            scope: 'secret',
+          },
+          {
+            id: 'invalid-secret-key',
+            key: 'BAD-SECRET',
+            value: 'secret',
+            scope: 'secret',
+          },
+          {
+            id: 'valid-secret',
+            key: ' OPENAI_API_KEY ',
+            value: '********',
+            scope: 'secret',
+            masked: true,
+          },
+        ],
+        tools: [
+          {
+            id: 'run-tests',
+            name: 'Run Tests',
+            kind: 'cli',
+            envVariables: [
+              {
+                id: 'empty-cli-env',
+                key: '',
+                value: '',
+                scope: 'plain',
+              },
+              {
+                id: 'invalid-cli-env',
+                key: 'BAD-CLI',
+                value: 'test',
+                scope: 'plain',
+              },
+              {
+                id: 'valid-cli-env',
+                key: 'NODE_ENV',
+                value: 'test',
+                scope: 'plain',
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    expect(publishConfig.env).toEqual({
+      variables: [
+        {
+          id: 'valid-env',
+          key: 'REGION',
+          name: 'REGION',
+          value: 'us-east-1',
+          variable: 'REGION',
+        },
+      ],
+      secret_refs: [
+        {
+          id: 'valid-secret',
+          key: 'OPENAI_API_KEY',
+          name: 'OPENAI_API_KEY',
+          ref: 'valid-secret',
+          variable: 'OPENAI_API_KEY',
+        },
+      ],
+    })
+    expect(publishConfig.tools?.cli_tools?.[0]?.env).toEqual({
+      variables: [
+        {
+          id: 'valid-cli-env',
+          key: 'NODE_ENV',
+          name: 'NODE_ENV',
+          value: 'test',
+          variable: 'NODE_ENV',
+        },
+      ],
+      secret_refs: [],
     })
   })
 })

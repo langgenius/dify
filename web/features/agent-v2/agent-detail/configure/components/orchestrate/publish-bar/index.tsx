@@ -99,6 +99,8 @@ export function AgentConfigurePublishBar({
     if (!canPublish)
       return
 
+    // eslint-disable-next-line no-console
+    console.log('[AgentConfigurePublishBar] publish payload', publishPayload)
     void onPublish?.(publishPayload)
   }
 

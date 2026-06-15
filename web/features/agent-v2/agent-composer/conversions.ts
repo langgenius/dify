@@ -5,6 +5,7 @@ import type { AgentSkill } from '../agent-detail/configure/components/orchestrat
 import type { AgentCliTool, AgentProviderTool, AgentTool } from '../agent-detail/configure/components/orchestrate/tools/types'
 import type { AgentSoulConfigFormState } from './form-state'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
@@ -275,6 +276,18 @@ const toCliToolFormState = (config?: AgentSoulConfig): AgentCliTool[] => (
   }]
 })
 
+const hasValidEnvKey = (variable: EnvVariable) => checkKey(variable.key.trim(), false) === true
+
+const hasEnvValue = (variable: EnvVariable) => variable.value.trim().length > 0
+
+const isPublishablePlainEnvVariable = (variable: EnvVariable) => (
+  variable.scope === 'plain' && hasValidEnvKey(variable) && hasEnvValue(variable)
+)
+
+const isPublishableSecretEnvVariable = (variable: EnvVariable) => (
+  variable.scope === 'secret' && hasValidEnvKey(variable) && hasEnvValue(variable)
+)
+
 const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
   if (tool.kind !== 'cli')
     return []
@@ -285,22 +298,22 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
     enabled: true,
     env: {
       variables: envVariables
-        .filter(variable => variable.scope === 'plain')
+        .filter(isPublishablePlainEnvVariable)
         .map(variable => ({
           id: variable.id,
-          key: variable.key,
-          name: variable.key,
+          key: variable.key.trim(),
+          name: variable.key.trim(),
           value: variable.value,
-          variable: variable.key,
+          variable: variable.key.trim(),
         })),
       secret_refs: envVariables
-        .filter(variable => variable.scope === 'secret')
+        .filter(isPublishableSecretEnvVariable)
         .map(variable => ({
           id: variable.id,
-          key: variable.key,
-          name: variable.key,
+          key: variable.key.trim(),
+          name: variable.key.trim(),
           ref: variable.id,
-          variable: variable.key,
+          variable: variable.key.trim(),
         })),
     },
     install_command: tool.installCommand,
@@ -335,22 +348,22 @@ const toEnvVariableFormState = (config?: AgentSoulConfig): EnvVariable[] => [
 
 const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
   variables: variables
-    .filter(variable => variable.scope === 'plain')
+    .filter(isPublishablePlainEnvVariable)
     .map(variable => ({
       id: variable.id,
-      key: variable.key,
-      name: variable.key,
+      key: variable.key.trim(),
+      name: variable.key.trim(),
       value: variable.value,
-      variable: variable.key,
+      variable: variable.key.trim(),
     })),
   secret_refs: variables
-    .filter(variable => variable.scope === 'secret')
+    .filter(isPublishableSecretEnvVariable)
     .map(variable => ({
       id: variable.id,
-      key: variable.key,
-      name: variable.key,
+      key: variable.key.trim(),
+      name: variable.key.trim(),
       ref: variable.id,
-      variable: variable.key,
+      variable: variable.key.trim(),
     })),
 })
 

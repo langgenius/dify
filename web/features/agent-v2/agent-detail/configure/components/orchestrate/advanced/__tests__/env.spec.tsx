@@ -1,10 +1,19 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { AgentEnvEditor } from '../env'
 import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
+
+const mockToastError = vi.mocked(toast.error)
 
 function renderAgentEnvEditor() {
   return render(
@@ -54,11 +63,24 @@ describe('AgentEnvEditor', () => {
       const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
       const valueInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
 
-      await user.type(keyInput, 'API_KEY')
+      await user.type(keyInput, 'API KEY')
       await user.type(valueInput, 'secret-value')
 
       expect(screen.getByDisplayValue('API_KEY')).toBeInTheDocument()
       expect(screen.getByDisplayValue('secret-value')).toBeInTheDocument()
+    })
+
+    it('should reject environment variable keys that do not match workflow variable rules', () => {
+      renderAgentEnvEditor()
+
+      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+
+      fireEvent.change(keyInput, {
+        target: { value: '1BAD' },
+      })
+
+      expect(keyInput).toHaveValue('')
+      expect(mockToastError).toHaveBeenCalledWith('appDebug.varKeyError.notStartWithNumber:{"key":"agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn"}')
     })
 
     it('should add another editable variable row from the add button', async () => {
