@@ -1,14 +1,13 @@
-import type { DeclaredOutputConfig, WorkflowNodeJobConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { consoleQuery } from '@/service/client'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import useNodeCrud from '../_base/hooks/use-node-crud'
@@ -74,21 +73,6 @@ function getOutputDescription(
   return output.description || ''
 }
 
-function toNodeJobWithPrompt(
-  nodeJob: WorkflowNodeJobConfig | undefined,
-  workflowPrompt: string,
-): WorkflowNodeJobConfig {
-  return {
-    schema_version: nodeJob?.schema_version ?? 1,
-    mode: nodeJob?.mode ?? 'tell_agent_what_to_do',
-    workflow_prompt: workflowPrompt,
-    previous_node_output_refs: nodeJob?.previous_node_output_refs ?? [],
-    declared_outputs: nodeJob?.declared_outputs ?? [],
-    human_contacts: nodeJob?.human_contacts ?? [],
-    metadata: nodeJob?.metadata ?? {},
-  }
-}
-
 export function AgentV2Panel({
   id,
   data,
@@ -117,38 +101,9 @@ export function AgentV2Panel({
         },
       })
     : undefined
-  const composerQueryOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({ input: composerQueryInput })
-  const composerQuery = useQuery(composerQueryOptions)
-  const saveComposerMutation = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
-      onSuccess: (composerState, variables) => {
-        queryClient.setQueryData(
-          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({ input: { params: variables.params } }),
-          composerState,
-        )
-      },
-    }),
-  )
-  const saveNodeJob = useSerialAsyncCallback(async (workflowPrompt: string) => {
-    if (!appId || !composerQuery.data?.binding)
-      return
-
-    await saveComposerMutation.mutateAsync({
-      params: {
-        app_id: appId,
-        node_id: id,
-      },
-      body: {
-        variant: 'workflow',
-        save_strategy: 'node_job_only',
-        node_job: toNodeJobWithPrompt(composerQuery.data.node_job, workflowPrompt),
-      },
-    })
-  })
-  const taskData = useMemo<AgentV2NodeType>(() => ({
-    ...inputs,
-    agent_task: composerQuery.data?.node_job.workflow_prompt ?? inputs.agent_task,
-  }), [composerQuery.data?.node_job.workflow_prompt, inputs])
+  const composerQuery = useQuery(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryOptions({
+    input: composerQueryInput,
+  }))
   const effectiveOutputs = composerQuery.data?.effective_declared_outputs?.length
     ? composerQuery.data.effective_declared_outputs
     : defaultEffectiveOutputs
@@ -158,8 +113,7 @@ export function AgentV2Panel({
       draft.agent_task = value
     })
     setInputs(newInputs)
-    void saveNodeJob(value)
-  }, [inputs, saveNodeJob, setInputs])
+  }, [inputs, setInputs])
 
   const handleRosterChange = useCallback((agent: AgentRosterNodeData) => {
     const newInputs = produce(inputs, (draft) => {
@@ -199,7 +153,7 @@ export function AgentV2Panel({
       <div className="border-b border-divider-subtle">
         <AgentTaskField
           id={id}
-          data={taskData}
+          data={inputs}
           onChange={handleTaskChange}
         />
       </div>

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Panel } from '../panel'
 
@@ -12,9 +12,7 @@ const {
   mockHandleNodeDataUpdateWithSyncDraft,
   mockInvalidateQueries,
   mockInsertNodes,
-  mockMutateAsync,
   mockPromptEditorProps,
-  mockSetQueryData,
   mockSetInputs,
   mockUseComposerQuery,
   mockUseNodeCrud,
@@ -24,9 +22,7 @@ const {
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn((_payload, options) => options?.callback?.onSuccess?.()),
   mockInvalidateQueries: vi.fn(),
   mockInsertNodes: vi.fn(),
-  mockMutateAsync: vi.fn(),
   mockPromptEditorProps: [] as PromptEditorProps[],
-  mockSetQueryData: vi.fn(),
   mockSetInputs: vi.fn(),
   mockUseComposerQuery: vi.fn(),
   mockUseNodeCrud: vi.fn(),
@@ -34,13 +30,9 @@ const {
 
 vi.mock('@tanstack/react-query', () => ({
   skipToken: Symbol('skipToken'),
-  useMutation: () => ({
-    mutateAsync: mockMutateAsync,
-  }),
   useQuery: () => mockUseComposerQuery(),
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
-    setQueryData: mockSetQueryData,
   }),
 }))
 
@@ -58,9 +50,6 @@ vi.mock('@/service/client', () => ({
                     queryOptions: (options: unknown) => ({
                       queryKey: ['workflow-agent-composer', options],
                     }),
-                  },
-                  put: {
-                    mutationOptions: (options?: unknown) => options ?? {},
                   },
                 },
               },
@@ -205,36 +194,10 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
 const panelProps = {} as NodePanelProps<AgentV2NodeType>['panelProps']
 
 const createComposerState = (overrides: Record<string, unknown> = {}) => ({
-  variant: 'workflow',
-  agent: {
-    id: 'agent-1',
-    name: 'Nadia',
-    description: 'Clarification Drafter',
-    scope: 'roster',
-    status: 'active',
-    active_config_snapshot_id: 'version-1',
-  },
-  active_config_snapshot: {
-    id: 'version-1',
-    version: 1,
-  },
-  binding: {
-    id: 'binding-1',
-    binding_type: 'roster_agent',
-    agent_id: 'agent-1',
-    current_snapshot_id: 'version-1',
-    workflow_id: 'workflow-1',
-    node_id: 'agent-node',
-  },
-  soul_lock: {
-    locked: true,
-    can_unlock: true,
-  },
-  agent_soul: {},
   node_job: {
     schema_version: 1,
     mode: 'tell_agent_what_to_do',
-    workflow_prompt: '',
+    workflow_prompt: 'Composer task',
     previous_node_output_refs: [],
     declared_outputs: [],
     human_contacts: [],
@@ -263,7 +226,6 @@ const createComposerState = (overrides: Record<string, unknown> = {}) => ({
       description: 'Free-form JSON object.',
     },
   ],
-  save_options: ['node_job_only'],
   ...overrides,
 })
 
@@ -271,7 +233,6 @@ describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
-    mockMutateAsync.mockResolvedValue(createComposerState())
     mockUseComposerQuery.mockReturnValue({
       data: createComposerState(),
     })
@@ -421,7 +382,7 @@ describe('agent/panel', () => {
     )
 
     const editor = screen.getByRole('textbox', { name: 'workflow.nodes.agent.task.label' })
-    expect(editor).toHaveValue('Composer task')
+    expect(editor).toHaveValue('Graph task')
 
     fireEvent.change(editor, { target: { value: 'Clarify {{#start.question#}}' } })
 
@@ -441,7 +402,7 @@ describe('agent/panel', () => {
     expect(mockInsertNodes.mock.calls[1]?.[0]?.[0]?.getTextContent()).toBe('{')
   })
 
-  it('saves agent task to the workflow composer node job', async () => {
+  it('saves agent task to workflow draft node data', () => {
     render(
       <AgentV2Panel
         id="agent-node"
@@ -456,28 +417,12 @@ describe('agent/panel', () => {
       },
     })
 
-    await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith({
-      params: {
-        app_id: 'app-1',
-        node_id: 'agent-node',
-      },
-      body: {
-        variant: 'workflow',
-        save_strategy: 'node_job_only',
-        node_job: {
-          schema_version: 1,
-          mode: 'tell_agent_what_to_do',
-          workflow_prompt: 'Use the previous result',
-          previous_node_output_refs: [],
-          declared_outputs: [],
-          human_contacts: [],
-          metadata: {},
-        },
-      },
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      agent_task: 'Use the previous result',
     }))
   })
 
-  it('renders effective declared outputs from the workflow composer', () => {
+  it('renders effective declared outputs from the workflow composer until outputs are graph-backed', () => {
     mockUseComposerQuery.mockReturnValue({
       data: createComposerState({
         effective_declared_outputs: [
