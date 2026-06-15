@@ -8,6 +8,7 @@ import StepOne from '../index'
 
 // Mock config for website crawl features
 vi.mock('@/config', () => ({
+  IS_CLOUD_EDITION: false,
   ENABLE_WEBSITE_FIRECRAWL: true,
   ENABLE_WEBSITE_JINAREADER: false,
   ENABLE_WEBSITE_WATERCRAWL: false,

@@ -2,6 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Given, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp, syncMinimalWorkflowDraft } from '../../../support/api'
+import { waitForAppsConsole } from '../../../support/apps'
 
 Given('a {string} app has been created via API', async function (this: DifyWorld, mode: string) {
   const app = await createTestApp(`E2E ${Date.now()}`, mode)
@@ -17,6 +18,8 @@ Given('a minimal workflow draft has been synced', async function (this: DifyWorl
 When('I open the app from the app list', async function (this: DifyWorld) {
   const page = this.getPage()
   await page.goto('/apps')
-  await expect(page.getByRole('button', { name: 'Create from Blank' })).toBeVisible()
-  await page.getByText(this.lastCreatedAppName!).click()
+  await waitForAppsConsole(page)
+  const appLink = page.getByRole('link', { name: this.lastCreatedAppName!, exact: true })
+  await expect(appLink).toBeVisible()
+  await appLink.click()
 })

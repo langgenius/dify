@@ -1,6 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import TriggerEventsLimitModal from '../index'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const mockOnClose = vi.fn()
 const mockOnUpgrade = vi.fn()
 

@@ -29,7 +29,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/triggers',
+    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
 
@@ -165,7 +165,7 @@ describe('FeaturedTriggers', () => {
         />,
       )
 
-      expect(screen.getByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' })).toHaveAttribute('href', 'https://marketplace.test/triggers')
+      expect(screen.getByRole('link', { name: 'workflow.tabs.noFeaturedTriggers' })).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
     })
 
     it('should select an installed trigger event from the featured list', async () => {

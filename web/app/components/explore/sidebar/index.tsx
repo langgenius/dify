@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
-import { useSelectedLayoutSegments } from '@/next/navigation'
+import { usePathname, useSelectedLayoutSegments } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import Item from './app-nav-item'
 import NoApps from './no-apps'
@@ -31,9 +31,10 @@ const expandedSidebarScrollAreaClassNames = {
 
 const SideBar = () => {
   const { t } = useTranslation()
+  const pathname = usePathname()
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
-  const isDiscoverySelected = lastSegment === 'apps'
+  const isDiscoverySelected = pathname === '/' || lastSegment === 'apps'
   const { data, isPending } = useGetInstalledApps()
   const installedApps = data?.installed_apps ?? []
   const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
@@ -89,7 +90,7 @@ const SideBar = () => {
     <div className={cn('flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
-          href="/explore/apps"
+          href="/"
           aria-label={isMobile || isFold ? t('sidebar.title', { ns: 'explore' }) : undefined}
           className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 items-center gap-2 rounded-lg px-1 mobile:w-fit mobile:justify-center pc:w-full pc:justify-start')}
         >

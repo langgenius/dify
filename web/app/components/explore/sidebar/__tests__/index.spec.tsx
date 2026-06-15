@@ -19,6 +19,7 @@ let mockInstalledApps: InstalledApp[] = []
 let mockMediaType: string = MediaType.pc
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/',
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,

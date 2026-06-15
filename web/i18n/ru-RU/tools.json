@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "добавлено",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Нет доступной стратегии агента",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Посмотреть руководство",
   "copyToolName": "Копировать имя",
   "createCustomTool": "Создать пользовательский инструмент",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Тип авторизации",
   "createTool.authHeaderPrefix.types.basic": "Базовый",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Настройка",
   "setBuiltInTools.string": "строка",
   "setBuiltInTools.toolDescription": "Описание инструмента",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Параметры",
   "test.parametersValue": "Параметры и значение",
   "test.testResult": "Результаты теста",
@@ -211,5 +214,12 @@
   "toolRemoved": "Инструмент удален",
   "type.builtIn": "Встроенные",
   "type.custom": "Пользовательские",
-  "type.workflow": "Рабочий процесс"
+  "type.workflow": "Рабочий процесс",
+  "workflowToolEmpty.description": "Чтобы использовать рабочий процесс как инструмент, сначала опубликуйте его в Studio. После этого он появится здесь и его можно будет добавить в любое приложение.",
+  "workflowToolEmpty.goToStudio": "Перейти в Studio",
+  "workflowToolEmpty.learnMore": "Нужна помощь? Узнайте, как опубликовать рабочий процесс как инструмент →",
+  "workflowToolEmpty.step1": "Создайте рабочий процесс в Studio",
+  "workflowToolEmpty.step2": "Нажмите «Workflow as Tool» в меню публикации, чтобы сделать его доступным как инструмент",
+  "workflowToolEmpty.step3": "Вернитесь сюда, чтобы управлять им и использовать повторно",
+  "workflowToolEmpty.title": "Пока нет рабочих процессов, опубликованных как инструменты"
 }

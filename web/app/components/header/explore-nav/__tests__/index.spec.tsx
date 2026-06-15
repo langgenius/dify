@@ -1,15 +1,17 @@
 import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { useSelectedLayoutSegment } from '@/next/navigation'
+import { usePathname, useSelectedLayoutSegment } from '@/next/navigation'
 import ExploreNav from '../index'
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: vi.fn(),
   useSelectedLayoutSegment: vi.fn(),
 }))
 
 describe('ExploreNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    ;(usePathname as Mock).mockReturnValue('/apps')
   })
 
   it('should render correctly when not active', () => {
@@ -18,14 +20,15 @@ describe('ExploreNav', () => {
 
     const link = screen.getByRole('link')
     expect(link).toBeInTheDocument()
-    expect(link).toHaveAttribute('href', '/explore/apps')
+    expect(link).toHaveAttribute('href', '/')
     expect(link).toHaveClass('text-components-main-nav-nav-button-text')
     expect(link).not.toHaveClass('bg-components-main-nav-nav-button-bg-active')
     expect(screen.getByText('common.menus.explore')).toBeInTheDocument()
   })
 
   it('should render correctly when active', () => {
-    (useSelectedLayoutSegment as Mock).mockReturnValue('explore')
+    ;(usePathname as Mock).mockReturnValue('/')
+    ;(useSelectedLayoutSegment as Mock).mockReturnValue('explore')
     render(<ExploreNav />)
 
     const link = screen.getByRole('link')

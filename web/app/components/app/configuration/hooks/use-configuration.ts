@@ -40,9 +40,9 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
@@ -109,7 +109,7 @@ export type ConfigurationViewModel = {
 export const useConfiguration = (): ConfigurationViewModel => {
   const { t } = useTranslation()
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -669,7 +669,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onCloseSelectDataSet: hideSelectDataSet,
     onCompletionParamsChange: setCompletionParams,
     onConfirmUseGPT4: () => {
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+      openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
       setShowUseGPT4Confirm(false)
     },
     onEnableMultipleModelDebug: handleDebugWithMultipleModelChange,
@@ -677,7 +677,7 @@ export const useConfiguration = (): ConfigurationViewModel => {
     onHideDebugPanel: hideDebugPanel,
     onModelChange: setModel,
     onMultipleModelConfigsChange: handleMultipleModelConfigsChange,
-    onOpenAccountSettings: () => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
+    onOpenAccountSettings: () => openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER }),
     onOpenDebugPanel: showDebugPanel,
     onSaveHistory: (data) => {
       setConversationHistoriesRole(data)

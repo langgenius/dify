@@ -59,13 +59,18 @@ describe('Installed', () => {
       <Installed
         list={plugins}
         installStatus={installStatus}
+        versionInfo={[
+          { hasInstalled: true, installedVersion: '0.9.0', toInstallVersion: '1.0.0' },
+          { hasInstalled: false, toInstallVersion: '2.0.0' },
+        ]}
         onCancel={vi.fn()}
       />,
     )
 
     expect(screen.getAllByTestId('card')).toHaveLength(2)
+    expect(screen.getByText('plugin.installModal.installedSuccessfullyCountDesc:{"num":2}')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
-    expect(screen.getByText('1.0.0')).toBeInTheDocument()
+    expect(screen.getByText('0.9.0 -> 1.0.0')).toBeInTheDocument()
     expect(screen.getByText('2.0.0')).toBeInTheDocument()
     expect(mockCard).toHaveBeenNthCalledWith(1, expect.objectContaining({
       installed: true,

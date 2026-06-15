@@ -239,7 +239,9 @@ describe('SnippetList', () => {
   it('renders the dedicated snippets list layout', () => {
     renderList()
 
-    expect(screen.getByText('app.studio.filters.allCreators')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
+    expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('workflow.tabs.searchSnippets')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
@@ -286,7 +288,7 @@ describe('SnippetList', () => {
   it('updates the creator query state as a multi creator filter', () => {
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
+    fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
     fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
     expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
@@ -365,12 +367,6 @@ describe('SnippetList', () => {
       { isIntersecting: true } as IntersectionObserverEntry,
     ], {} as IntersectionObserver)
     expect(mockFetchNextPage).not.toHaveBeenCalled()
-  })
-
-  it('hides the community footer when branding is enabled', () => {
-    renderList({ brandingEnabled: true })
-
-    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
   })
 
   it('opens tag management from filters and snippet cards and forwards tag refreshes', () => {

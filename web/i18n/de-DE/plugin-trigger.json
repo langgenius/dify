@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} ENTHALTEN",
-  "events.description": "Ereignisse, auf die dieses Trigger-Plugin reagieren kann",
+  "events.description": "Ereignisse, auf die dieses Trigger-Integration reagieren kann",
   "events.empty": "Keine Veranstaltungen verfügbar",
   "events.event": "Veranstaltung",
   "events.events": "Veranstaltungen",

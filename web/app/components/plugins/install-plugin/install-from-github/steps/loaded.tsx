@@ -55,7 +55,7 @@ const Loaded: React.FC<LoadedProps> = ({
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
   const { check } = checkTaskStatus()
 
   useEffect(() => {
@@ -74,39 +74,45 @@ const Loaded: React.FC<LoadedProps> = ({
       let taskId
       let isInstalled
       if (updatePayload) {
-        const { all_installed, task_id } = await updateFromGitHub(
+        const response = await updateFromGitHub(
           `${owner}/${repo}`,
           selectedVersion,
           selectedPackage,
           updatePayload.originalPackageInfo.id,
           uniqueIdentifier,
         )
+        const { all_installed, task_id } = response
+        handleInstallTaskStart(response)
 
         taskId = task_id
         isInstalled = all_installed
       }
       else {
         if (hasInstalled) {
-          const {
-            all_installed,
-            task_id,
-          } = await updateFromGitHub(
+          const response = await updateFromGitHub(
             `${owner}/${repo}`,
             selectedVersion,
             selectedPackage,
             installedInfoPayload.uniqueIdentifier,
             uniqueIdentifier,
           )
+          const {
+            all_installed,
+            task_id,
+          } = response
+          handleInstallTaskStart(response)
           taskId = task_id
           isInstalled = all_installed
         }
         else {
-          const { all_installed, task_id } = await installPackageFromGitHub({
+          const response = await installPackageFromGitHub({
             repoUrl: `${owner}/${repo}`,
             selectedVersion,
             selectedPackage,
             uniqueIdentifier,
           })
+          const { all_installed, task_id } = response
+          handleInstallTaskStart(response)
 
           taskId = task_id
           isInstalled = all_installed
@@ -116,8 +122,6 @@ const Loaded: React.FC<LoadedProps> = ({
         onInstalled()
         return
       }
-
-      handleRefetch()
 
       const { status, error } = await check({
         taskId,

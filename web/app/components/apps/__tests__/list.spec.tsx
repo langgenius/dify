@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -6,7 +7,23 @@ import { AppModeEnum } from '@/types/app'
 
 import List from '../list'
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'app.types.all': 'All',
+    'app.studio.filters.types': 'Types',
+    'app.studio.filters.creators': 'Creators',
+    'app.studio.allApps': 'All Apps',
+    'app.studio.sort.earliestCreated': 'Earliest created',
+    'app.studio.sort.lastModified': 'Last modified',
+    'app.studio.sort.recentlyCreated': 'Recently created',
+    'app.studio.sort.sortBy': 'Sort by',
+    'app.studio.starred': 'Starred',
+  })
+})
+
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
+const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
   onlineUsersMap: {},
 })))
@@ -30,6 +47,9 @@ vi.mock('@/service/client', () => ({
     apps: {
       list: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
+      },
+      starredList: {
+        queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
       },
     },
     tags: {
@@ -55,6 +75,13 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
+const mockOnPlanInfoChanged = vi.fn()
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    onPlanInfoChanged: mockOnPlanInfoChanged,
+  }),
+}))
+
 const mockSetKeywords = vi.fn()
 const mockSetCreatorIDs = vi.fn()
 const mockSetCategory = vi.fn()
@@ -64,7 +91,6 @@ const mockQueryState = {
   creatorIDs: [] as string[],
 }
 vi.mock('../hooks/use-apps-query-state', () => ({
-  isAppListCategory: (value: string) => value === 'all' || Object.values(AppModeEnum).includes(value as AppModeEnum),
   useAppsQueryState: () => ({
     query: mockQueryState,
     setCategory: mockSetCategory,
@@ -81,7 +107,6 @@ vi.mock('@/service/use-common', () => ({
         { id: 'creator-2', name: 'Bob', avatar_url: null, status: 'active' },
       ],
     },
-    setCreatorIDs: mockSetCreatorIDs,
   }),
 }))
 
@@ -109,6 +134,7 @@ vi.mock('../hooks/use-workflow-online-users', () => ({
 }))
 
 const mockRefetch = vi.fn()
+const mockRefetchStarredAppList = vi.fn()
 const mockFetchNextPage = vi.fn()
 
 const mockServiceState = {
@@ -152,13 +178,35 @@ const defaultAppData = {
     total: 2,
   }],
 }
+let mockAppData = defaultAppData
+
+type MockStarredAppData = {
+  data: Array<Record<string, unknown>>
+  total: number
+  page: number
+  limit: number
+  has_more: boolean
+}
+
+let mockStarredAppData: MockStarredAppData = {
+  data: [],
+  total: 0,
+  page: 1,
+  limit: 100,
+  has_more: false,
+}
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
+    useQuery: () => ({
+      data: mockStarredAppData,
+      isLoading: false,
+      refetch: mockRefetchStarredAppList,
+    }),
     useInfiniteQuery: () => ({
-      data: defaultAppData,
+      data: mockAppData,
       isLoading: mockServiceState.isLoading,
       isFetching: mockServiceState.isFetching,
       isFetchingNextPage: mockServiceState.isFetchingNextPage,
@@ -172,6 +220,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useToggleAppStarMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
@@ -205,19 +257,34 @@ vi.mock('@/next/dynamic', () => ({
         return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
       }
     }
+    if (fnString.includes('create-app-modal')) {
+      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromTemplate: () => void }) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'))
+      }
+    }
+    if (fnString.includes('create-app-dialog')) {
+      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromBlank: () => void }) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'template-dialog' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'))
+      }
+    }
     return () => null
   },
 }))
 
 vi.mock('../app-card', () => ({
+  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
+    return React.createElement('button', {
+      'data-testid': `app-card-action-bar-${app.id}`,
+      'type': 'button',
+      'onClick': onRefresh,
+    })
+  },
   default: ({ app }: { app: { id: string, name: string } }) => {
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
-  },
-}))
-
-vi.mock('../new-app-card', () => ({
-  default: (_props: { ref?: React.Ref<unknown> }) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
   },
 }))
 
@@ -227,13 +294,11 @@ vi.mock('../empty', () => ({
   },
 }))
 
-vi.mock('../footer', () => ({
-  default: () => {
-    return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
-  },
+vi.mock('@/app/components/explore/learn-dify', () => ({
+  default: ({ title }: { title?: string }) => React.createElement('section', null, title),
 }))
 
-let intersectionCallbacks: IntersectionObserverCallback[] = []
+const intersectionCallbacks: IntersectionObserverCallback[] = []
 const mockObserve = vi.fn()
 const mockDisconnect = vi.fn()
 
@@ -263,13 +328,25 @@ const renderList = (searchParams = '') => {
   return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
 
-const openTypeFilter = () => {
-  fireEvent.click(screen.getByRole('button', { name: /^app\.(studio\.filters\.types|types\.)/ }))
-}
-
 type AppListInfiniteOptions = {
   input: (pageParam: number) => { query: Record<string, unknown> }
   getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+}
+
+type AppStarredListQueryOptions = {
+  input: {
+    query: Record<string, unknown>
+  }
+}
+
+const openAppTypeSelect = async (user = userEvent.setup()) => {
+  await user.click(screen.getByRole('button', { name: /^(Types|app\.types\.)/ }))
+  return user
+}
+
+const openAppSortSelect = async (user = userEvent.setup()) => {
+  await user.click(screen.getByRole('button', { name: 'Sort by Last modified' }))
+  return user
 }
 
 describe('List', () => {
@@ -286,27 +363,38 @@ describe('List', () => {
     mockQueryState.category = 'all'
     mockQueryState.keywords = ''
     mockQueryState.creatorIDs = []
+    mockAppData = defaultAppData
+    mockStarredAppData = {
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 100,
+      has_more: false,
+    }
     mockUseWorkflowOnlineUsers.mockClear()
-    intersectionCallbacks = []
+    mockRefetchStarredAppList.mockClear()
+    intersectionCallbacks.length = 0
     localStorage.clear()
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      renderList()
-      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
+      const { container } = renderList()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
     })
 
-    it('should render app type dropdown with all app types', () => {
+    it('should render app type select with all app types', async () => {
       renderList()
-      openTypeFilter()
+      await openAppTypeSelect()
 
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('menuitemradio', { name: 'Types' })).not.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
@@ -321,13 +409,24 @@ describe('List', () => {
 
     it('should render creators filter', () => {
       renderList()
-      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
 
-    it('should render link to snippets on apps page', () => {
+    it('should render create button for editors', () => {
+      renderList()
+      expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
+    })
+
+    it('should render link to snippets before the create button', () => {
       renderList()
 
-      expect(screen.getByRole('link', { name: 'app.studio.viewSnippets' })).toHaveAttribute('href', '/snippets')
+      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
+      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
+      const createButton = screen.getByRole('button', { name: 'common.operation.create' })
+
+      expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(sortButton.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('should render app cards when apps exist', () => {
@@ -337,19 +436,112 @@ describe('List', () => {
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
-    it('should render new app card for editors', () => {
+    it('should hide starred section when there are no starred apps', () => {
       renderList()
-      expect(screen.getByTestId('new-app-card'))!.toBeInTheDocument()
+
+      expect(screen.queryByText('Starred')).not.toBeInTheDocument()
+      expect(screen.queryByText('All Apps')).not.toBeInTheDocument()
     })
 
-    it('should render footer when branding is disabled', () => {
+    it('should render starred apps before all app cards when starred apps exist', () => {
+      mockStarredAppData = {
+        data: [{
+          id: 'starred-app-1',
+          name: 'Starred App',
+          description: 'Starred description',
+          mode: AppModeEnum.CHAT,
+          icon: '⭐',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          icon_url: null,
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        }],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
       renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
+
+      const starredLabel = screen.getByText('Starred')
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const allAppsLabel = screen.getByText('All Apps')
+      const firstAppCard = screen.getByTestId('app-card-app-1')
+      const actionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+
+      expect(starredCard).toBeInTheDocument()
+      expect(actionBar).toBeInTheDocument()
+      expect(starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(starredCard.compareDocumentPosition(allAppsLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(allAppsLabel.compareDocumentPosition(firstAppCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+      fireEvent.click(actionBar)
+
+      expect(mockRefetch).toHaveBeenCalledTimes(1)
+      expect(mockRefetchStarredAppList).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not render new app card in the app grid', () => {
+      renderList()
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
     it('should render drop DSL hint for editors', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
+    })
+
+    it('should render first empty state when there are no apps and no active filters', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList()
+
+      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.or'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+    })
+
+    it('should not render first empty state before the first app list page resolves', () => {
+      mockAppData = { pages: [] }
+
+      renderList()
+
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+    })
+
+    it('should keep the regular empty state for empty filtered results', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      mockQueryState.keywords = 'missing app'
+
+      renderList()
+
+      expect(screen.getByTestId('empty-state'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
+      expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+    })
+
+    it('should open create flows from first empty state actions', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
+      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
+      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: /app\.importDSL/ }))
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
     it('should pass workflow app ids to online users hook', () => {
@@ -362,22 +554,32 @@ describe('List', () => {
     })
   })
 
-  describe('Type Filter', () => {
-    it('should update category when workflow type is selected', () => {
-      renderList()
-      openTypeFilter()
+  describe('App Type Select', () => {
+    it('should render selected category in the trigger', () => {
+      mockQueryState.category = AppModeEnum.WORKFLOW
 
-      fireEvent.click(screen.getByRole('menuitemradio', { name: 'app.types.workflow' }))
+      renderList()
+
+      expect(screen.getByRole('button', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+    })
+
+    it('should update category when workflow option is selected', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await openAppTypeSelect(user)
+
+      await user.click(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
 
-    it('should update category when all type is selected', () => {
+    it('should update category when all option is selected', async () => {
+      const user = userEvent.setup()
       mockQueryState.category = AppModeEnum.WORKFLOW
       renderList()
-      openTypeFilter()
+      await openAppTypeSelect(user)
 
-      fireEvent.click(screen.getByRole('menuitemradio', { name: 'app.types.all' }))
+      await user.click(await screen.findByRole('menuitemradio', { name: 'All' }))
 
       expect(mockSetCategory).toHaveBeenCalledWith('all')
     })
@@ -403,7 +605,10 @@ describe('List', () => {
 
       renderList()
 
-      fireEvent.click(screen.getAllByRole('button', { name: 'common.operation.clear' }).at(-1)!)
+      const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
+      expect(clearButton)!.toBeInTheDocument()
+      if (clearButton)
+        fireEvent.click(clearButton)
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -412,7 +617,7 @@ describe('List', () => {
   describe('App List Query', () => {
     it('should build paged query input from active filters', () => {
       mockQueryState.keywords = 'sales'
-      mockQueryState.creatorIDs = ['creator-1', 'creator-2']
+      mockQueryState.creatorIDs = ['creator-1']
       mockQueryState.category = AppModeEnum.WORKFLOW
 
       renderList()
@@ -425,8 +630,9 @@ describe('List', () => {
           page: 2,
           limit: 30,
           name: 'sales',
+          sort_by: 'last_modified',
           tag_ids: ['tag-1'],
-          creator_ids: ['creator-1', 'creator-2'],
+          creator_ids: ['creator-1'],
           mode: AppModeEnum.WORKFLOW,
         },
       })
@@ -434,12 +640,35 @@ describe('List', () => {
       expect(options.getNextPageParam({ has_more: false, page: 2 })).toBeUndefined()
     })
 
+    it('should build starred query input from active filters with the starred limit', () => {
+      mockQueryState.keywords = 'sales'
+      mockQueryState.creatorIDs = ['creator-1']
+      mockQueryState.category = AppModeEnum.WORKFLOW
+
+      renderList()
+      fireEvent.click(screen.getByText('common.tag.placeholder'))
+
+      const options = mockAppStarredListQueryOptions.mock.calls.at(-1)?.[0] as AppStarredListQueryOptions
+
+      expect(options.input).toEqual({
+        query: {
+          page: 1,
+          limit: 100,
+          name: 'sales',
+          sort_by: 'last_modified',
+          tag_ids: ['tag-1'],
+          creator_ids: ['creator-1'],
+          mode: AppModeEnum.WORKFLOW,
+        },
+      })
+    })
+
     it('should remove legacy tagIDs from URL while preserving other filters', async () => {
-      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales&isCreatedByMe=true')
+      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales')
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith(
-          '/apps?category=workflow&keywords=sales&isCreatedByMe=true',
+          '/apps?category=workflow&keywords=sales',
           { scroll: false },
         )
       })
@@ -456,16 +685,64 @@ describe('List', () => {
   describe('Creators Filter', () => {
     it('should render creators filter with correct label', () => {
       renderList()
-      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
 
-    it('should handle creator selection as a multi creator filter', () => {
+    it('should handle creator selection', () => {
       renderList()
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.allCreators' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Creators' }))
       fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 
       expect(mockSetCreatorIDs).toHaveBeenCalledWith(['creator-2'])
+    })
+  })
+
+  describe('Create Menu', () => {
+    it('should render all create menu options', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+      expect(await screen.findByText('app.newApp.startFromBlank'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.newApp.startFromTemplate'))!.toBeInTheDocument()
+      expect(await screen.findByText('app.importDSL'))!.toBeInTheDocument()
+      expect(await screen.findAllByText('app.newApp.dropDSLToCreateApp')).toHaveLength(2)
+    })
+
+    it('should open blank app modal from create menu', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(await screen.findByText('app.newApp.startFromBlank'))
+
+      expect(screen.getByTestId('create-app-modal'))!.toBeInTheDocument()
+    })
+
+    it('should open template dialog from create menu', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(await screen.findByText('app.newApp.startFromTemplate'))
+
+      expect(screen.getByTestId('template-dialog'))!.toBeInTheDocument()
+    })
+
+    it('should open DSL import modal from create menu', async () => {
+      renderList()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      fireEvent.click(await screen.findByText('app.importDSL'))
+
+      expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+    })
+
+    it('should not render create button for non-editors', () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+
+      renderList()
+
+      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
     })
   })
 
@@ -511,11 +788,11 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { unmount } = renderList()
-      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
 
       unmount()
       renderList()
-      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -528,10 +805,9 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByText('app.studio.filters.types'))!.toBeInTheDocument()
-      expect(screen.getByText('app.studio.filters.allCreators'))!.toBeInTheDocument()
       expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
   })
 
@@ -548,36 +824,48 @@ describe('List', () => {
     })
   })
 
-  describe('App Type Dropdown', () => {
-    it('should render all app type options', () => {
+  describe('App Type Select Options', () => {
+    it('should render all app type options', async () => {
       renderList()
-      openTypeFilter()
+      await openAppTypeSelect()
 
-      expect(screen.getByText('app.types.all'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.agent'))!.toBeInTheDocument()
-      expect(screen.getByText('app.types.completion'))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
     })
 
-    it('should update category for each app type option click', () => {
+    it('should update category for each app type option click', async () => {
       const appTypeTexts = [
         { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
         { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
         { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
         { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
-        { mode: AppModeEnum.COMPLETION, text: 'app.types.completion' },
+        { mode: AppModeEnum.COMPLETION, text: 'app.newApp.completeApp' },
       ]
 
       for (const { mode, text } of appTypeTexts) {
-        mockSetCategory.mockClear()
+        const user = userEvent.setup()
         const { unmount } = renderList()
-        openTypeFilter()
-        fireEvent.click(screen.getByRole('menuitemradio', { name: text }))
+        await openAppTypeSelect(user)
+        mockSetCategory.mockClear()
+        await user.click(await screen.findByRole('menuitemradio', { name: text }))
         expect(mockSetCategory).toHaveBeenCalledWith(mode)
         unmount()
       }
+    })
+
+    it('should update app list query when sort option changes', async () => {
+      const user = userEvent.setup()
+      renderList()
+      await openAppSortSelect(user)
+
+      await user.click(await screen.findByRole('menuitemradio', { name: 'Recently created' }))
+
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+      expect(options.input(1).query.sort_by).toBe('recently_created')
     })
   })
 
@@ -594,13 +882,6 @@ describe('List', () => {
 
       expect(screen.getByText('Test App 1'))!.toBeInTheDocument()
       expect(screen.getByText('Test App 2'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Footer Visibility', () => {
-    it('should render footer when branding is disabled', () => {
-      renderList()
-      expect(screen.getByTestId('footer'))!.toBeInTheDocument()
     })
   })
 
@@ -656,14 +937,16 @@ describe('List', () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      await waitFor(() => expect(mockObserve).toHaveBeenCalled())
+      await waitFor(() => {
+        expect(mockObserve).toHaveBeenCalled()
+      })
 
-      if (intersectionCallbacks.length) {
+      for (const callback of intersectionCallbacks) {
         act(() => {
-          intersectionCallbacks.forEach(callback => callback(
+          callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          ))
+          )
         })
       }
 
@@ -674,12 +957,12 @@ describe('List', () => {
       mockServiceState.hasNextPage = true
       renderList()
 
-      if (intersectionCallbacks.length) {
+      for (const callback of intersectionCallbacks) {
         act(() => {
-          intersectionCallbacks.forEach(callback => callback(
+          callback(
             [{ isIntersecting: false } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          ))
+          )
         })
       }
 
@@ -691,12 +974,12 @@ describe('List', () => {
       mockServiceState.isLoading = true
       renderList()
 
-      if (intersectionCallbacks.length) {
+      for (const callback of intersectionCallbacks) {
         act(() => {
-          intersectionCallbacks.forEach(callback => callback(
+          callback(
             [{ isIntersecting: true } as IntersectionObserverEntry],
             {} as IntersectionObserver,
-          ))
+          )
         })
       }
 

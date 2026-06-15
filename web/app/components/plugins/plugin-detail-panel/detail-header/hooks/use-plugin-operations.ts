@@ -6,13 +6,12 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
-import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
-import { PluginCategoryEnum, PluginSource } from '../../../types'
+import { PluginSource } from '../../../types'
 
 type UsePluginOperationsParams = {
   detail: PluginDetail
@@ -40,9 +39,8 @@ export const usePluginOperations = ({
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
   const { t } = useTranslation()
   const { setShowUpdatePluginModal } = useModalContext()
-  const { refreshModelProviders } = useProviderContext()
+  const { refreshPluginList } = useRefreshPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
-  const invalidateAllToolProviders = useInvalidateAllToolProviders()
 
   const { id, meta, plugin_id } = detail
   const { author, category, name } = detail.declaration || detail
@@ -120,12 +118,7 @@ export const usePluginOperations = ({
       modalStates.hideDeleteConfirm()
       toast.success(t('action.deleteSuccess', { ns: 'plugin' }))
       handlePluginUpdated(true)
-
-      if (PluginCategoryEnum.model.includes(category))
-        refreshModelProviders()
-
-      if (PluginCategoryEnum.tool.includes(category))
-        invalidateAllToolProviders()
+      refreshPluginList({ category })
 
       trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
     }
@@ -136,8 +129,7 @@ export const usePluginOperations = ({
     name,
     modalStates,
     handlePluginUpdated,
-    refreshModelProviders,
-    invalidateAllToolProviders,
+    refreshPluginList,
   ])
 
   return {
