@@ -813,7 +813,7 @@ class WebhookService:
                 type=InvokeFrom.TRIGGER,
                 tenant_id=webhook_trigger.tenant_id,
                 app_id=webhook_trigger.app_id,
-                user_id=None,
+                user_id="",
             )
 
             try:

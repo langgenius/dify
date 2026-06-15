@@ -96,7 +96,7 @@ def validate_app_token[**P, R](
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
+                end_user = EndUserService.get_or_create_end_user(app_model, user_id or "")
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
