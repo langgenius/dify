@@ -27,6 +27,7 @@ export type RunAppOptions = {
   readonly format?: string
   readonly stream?: boolean
   readonly think?: boolean
+  readonly retryOnRateLimit?: boolean
 }
 
 export type RunAppDeps = {

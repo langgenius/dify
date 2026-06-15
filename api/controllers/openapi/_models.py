@@ -87,12 +87,8 @@ class AppDescribeInfo(AppInfoResponse):
 
 class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
-    # `parameters` (the app-config blob) and `input_schema` (a Draft 2020-12 JSON Schema derived
-    # per-app) are deliberately open JSON, not under-annotated. The `x-dify-opaque` marker tells the
-    # contract generator's readiness detector to treat them as intentional, so the route is not
-    # flagged "annotations incomplete". CLI/web consume them as opaque objects either way.
-    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
-    input_schema: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    parameters: dict[str, Any] | None = Field(default=None)
+    input_schema: dict[str, Any] | None = Field(default=None)
 
 
 class ChatMessageResponse(BaseModel):
@@ -148,6 +144,18 @@ class WorkspacePayload(BaseModel):
     id: str
     name: str
     role: str
+
+
+class DeviceTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    subject_type: Literal["account", "external_sso"]
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
 
 
 class AccountResponse(BaseModel):
@@ -292,7 +300,7 @@ class AppListQuery(BaseModel):
 class AppRunRequest(BaseModel):
     inputs: dict[str, Any]
     query: str | None = None
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
@@ -469,3 +477,11 @@ class FormSubmitResponse(BaseModel):
     than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    expiration_time: int | None = None
