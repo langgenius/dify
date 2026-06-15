@@ -6,7 +6,6 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from './client'
 import {
   fetchAppList,
-  fetchBanners,
   fetchInstalledAppList,
   fetchInstalledAppMeta,
   fetchInstalledAppParams,
@@ -148,19 +147,5 @@ export const useGetInstalledAppMeta = (appId: string | null) => {
       return fetchInstalledAppMeta(installedAppId)
     },
     enabled: !!installedAppId,
-  })
-}
-
-export const useGetBanners = (locale?: string) => {
-  const bannersInput = locale
-    ? { query: { language: locale } }
-    : {}
-  const bannersLanguage = bannersInput?.query?.language
-
-  return useQuery({
-    queryKey: [...consoleQuery.explore.banners.queryKey({ input: bannersInput }), bannersLanguage],
-    queryFn: () => {
-      return fetchBanners(bannersLanguage)
-    },
   })
 }

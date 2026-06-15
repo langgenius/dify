@@ -36,7 +36,7 @@ const TEXT_LABEL_VARIANTS = new Set<CardVariant>([
   'api-required-configure',
 ])
 
-export const CredentialPanelContent = ({
+const CredentialPanelContent = ({
   provider,
   state,
   isChangingPriority,

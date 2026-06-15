@@ -1858,7 +1858,7 @@
   },
   "web/app/components/base/icons/src/vender/line/alertsAndFeedback/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/base/icons/src/vender/line/arrows/index.ts": {
@@ -1893,7 +1893,7 @@
   },
   "web/app/components/base/icons/src/vender/line/financeAndECommerce/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/base/icons/src/vender/line/general/index.ts": {
