@@ -301,7 +301,9 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
     )
     agent_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     current_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    node_job_config: Mapped[WorkflowNodeJobConfig] = mapped_column(JSONModelColumn(WorkflowNodeJobConfig), nullable=False)
+    node_job_config: Mapped[WorkflowNodeJobConfig] = mapped_column(
+        JSONModelColumn(WorkflowNodeJobConfig), nullable=False
+    )
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
