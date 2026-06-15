@@ -24,14 +24,19 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 
-class BasedGenerateTaskPipeline:
+class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
     """
     BasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
+
+    The type parameter preserves the concrete application generate entity for
+    subclasses after the shared initializer stores it on ``_application_generate_entity``.
     """
+
+    _application_generate_entity: AppGenerateEntityT
 
     def __init__(
         self,
-        application_generate_entity: AppGenerateEntity,
+        application_generate_entity: AppGenerateEntityT,
         queue_manager: AppQueueManager,
         stream: bool,
     ):

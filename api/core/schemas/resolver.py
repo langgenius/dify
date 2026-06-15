@@ -125,10 +125,11 @@ class SchemaResolver:
 
     def _process_queue_item(self, queue: deque, item: QueueItem) -> None:
         """Process a single queue item"""
-        if isinstance(item.current, dict):
-            self._process_dict(queue, item)
-        elif isinstance(item.current, list):
-            self._process_list(queue, item)
+        match item.current:
+            case dict():
+                self._process_dict(queue, item)
+            case list():
+                self._process_list(queue, item)
 
     def _process_dict(self, queue: deque, item: QueueItem) -> None:
         """Process a dictionary item"""

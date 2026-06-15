@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -53,7 +53,7 @@ def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None
 class CompletionRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str = Field(default="")
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="dev")
     trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
@@ -62,7 +62,7 @@ class CompletionRequestPayload(BaseModel):
 class ChatRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Conversation UUID")
     retriever_from: str = Field(default="dev")
@@ -87,7 +87,7 @@ class ChatRequestPayload(BaseModel):
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
-register_response_schema_models(service_api_ns, SimpleResultResponse)
+register_response_schema_models(service_api_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @service_api_ns.route("/completion-messages")
@@ -103,6 +103,11 @@ class CompletionApi(Resource):
             404: "Conversation not found",
             500: "Internal server error",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Completion created successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
@@ -204,6 +209,11 @@ class ChatApi(Resource):
             429: "Rate limit exceeded",
             500: "Internal server error",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Message sent successfully",
+        service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):

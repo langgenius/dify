@@ -1,8 +1,8 @@
-"""Compatibility helpers for Dify's Flask-RESTX Swagger integration.
+"""Compatibility helpers for Dify's Flask-RESTX OpenAPI integration.
 
 These helpers are temporary bridges for legacy Flask-RESTX field contracts
 while controllers migrate their request and response documentation to Pydantic
-models. Keep the behavior centralized so live Swagger endpoints and offline
+models. Keep the behavior centralized so live OpenAPI endpoints and offline
 spec export fail or succeed in the same way.
 """
 
@@ -91,7 +91,7 @@ def _inline_model_signature(nested_fields: dict[object, object]) -> object:
 
 
 def _inline_model_name(nested_fields: dict[object, object]) -> str:
-    """Return a stable Swagger model name for an anonymous inline field map."""
+    """Return a stable OpenAPI model name for an anonymous inline field map."""
 
     signature = json.dumps(_inline_model_signature(nested_fields), sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha1(signature.encode("utf-8")).hexdigest()[:12]
@@ -99,11 +99,11 @@ def _inline_model_name(nested_fields: dict[object, object]) -> str:
 
 
 def patch_swagger_for_inline_nested_dicts() -> None:
-    """Allow Swagger generation to handle legacy inline Flask-RESTX field dicts.
+    """Allow OpenAPI generation to handle legacy inline Flask-RESTX field dicts.
 
     Some existing controllers use raw field mappings in `fields.Nested({...})`
     or directly in `@namespace.response(...)`. Runtime marshalling accepts that,
-    but Flask-RESTX Swagger registration expects a named model. Convert those
+    but Flask-RESTX registration expects a named model. Convert those
     anonymous mappings into temporary named models during docs generation.
     """
 

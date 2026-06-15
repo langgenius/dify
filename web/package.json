@@ -204,6 +204,7 @@
     "eslint-markdown": "catalog:",
     "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-hyoban": "catalog:",
+    "eslint-plugin-jsx-a11y": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
     "eslint-plugin-no-barrel-files": "catalog:",
     "eslint-plugin-react-refresh": "catalog:",

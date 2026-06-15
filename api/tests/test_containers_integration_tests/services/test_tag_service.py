@@ -246,7 +246,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags("knowledge", tenant.id)
+        result = TagService.get_tags(db_session_with_containers, "knowledge", tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -299,7 +299,7 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test with keyword filter
-        result = TagService.get_tags("app", tenant.id, keyword="development")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="development")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -310,7 +310,7 @@ class TestTagService:
             assert "development" in tag_result.name.lower()
 
         # Verify no results for non-matching keyword
-        result_no_match = TagService.get_tags("app", tenant.id, keyword="nonexistent")
+        result_no_match = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="nonexistent")
         assert len(result_no_match) == 0
 
     def test_get_tags_with_special_characters_in_keyword(
@@ -371,22 +371,22 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act & Assert: Test 1 - Search with % character
-        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="50%")
         assert len(result) == 1
         assert result[0].name == "50% discount"
 
         # Test 2 - Search with _ character
-        result = TagService.get_tags("app", tenant.id, keyword="test_data")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="test_data")
         assert len(result) == 1
         assert result[0].name == "test_data_tag"
 
         # Test 3 - Search with \ character
-        result = TagService.get_tags("app", tenant.id, keyword="path\\to\\tag")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="path\\to\\tag")
         assert len(result) == 1
         assert result[0].name == "path\\to\\tag"
 
         # Test 4 - Search with % should NOT match 100% (verifies escaping works)
-        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="50%")
         assert len(result) == 1
         assert all("50%" in item.name for item in result)
 
@@ -405,7 +405,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags("knowledge", tenant.id)
+        result = TagService.get_tags(db_session_with_containers, "knowledge", tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None

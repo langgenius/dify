@@ -1,4 +1,5 @@
 import uuid
+from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -14,19 +15,13 @@ from controllers.console.datasets.metadata import (
     DatasetMetadataCreateApi,
     DocumentMetadataEditApi,
 )
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
-
-
-def unwrap(func):
-    """Recursively unwrap decorated functions."""
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture
@@ -37,8 +32,8 @@ def app():
 
 
 @pytest.fixture
-def current_user():
-    user = MagicMock()
+def current_user() -> Account:
+    user = Account(name="Test User", email="test@example.com")
     user.id = "user-1"
     return user
 
@@ -116,7 +111,7 @@ class TestDatasetMetadataCreateApi:
                 return_value={"id": "m1", "type": "string", "name": "author"},
             ),
         ):
-            result, status = method(api, current_user, dataset_id)
+            result, status = method(api, "tenant-1", current_user, dataset_id)
 
         assert status == 201
         assert result["type"] == "string"
@@ -151,7 +146,7 @@ class TestDatasetMetadataCreateApi:
             ),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, current_user, dataset_id)
+                method(api, "tenant-1", current_user, dataset_id)
 
 
 class TestDatasetMetadataGetApi:
@@ -227,7 +222,7 @@ class TestDatasetMetadataApi:
                 return_value={"id": "m1", "type": "string", "name": "updated-name"},
             ),
         ):
-            result, status = method(api, current_user, dataset_id, metadata_id)
+            result, status = method(api, "tenant-1", current_user, dataset_id, metadata_id)
 
         assert status == 200
         assert result["type"] == "string"
