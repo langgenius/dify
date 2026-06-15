@@ -2,10 +2,6 @@
 // release-r2-edge.mjs — edge/R2 release metadata generator. Two subcommands:
 //   manifest  -> the per-channel pointer manifest.json (the installer reads this)
 //   index     -> the per-channel build-history ledger index.json (+ prune list)
-// Pure logic, no network. Consumed only by release-r2-publish.sh. Asset names
-// come from release-naming.mjs (the shared naming SSOT). NOT related to
-// release-validate-manifest.sh (that validates the GitHub-release artifact set).
-// See cli/docs/specs/r2-distribution.md §6.
 import { existsSync, readFileSync } from 'node:fs'
 import { assetName, loadPkg, validateVersionForChannel } from './release-naming.mjs'
 
@@ -48,7 +44,7 @@ function shaMap(checksumsPath) {
 
 function emitManifest(args) {
   requireArgs(args, ['channel', 'version', 'commit', 'build-date', 'base-url', 'checksums'])
-  validateVersionForChannel(args.version, args.channel) // dies on mismatch
+  validateVersionForChannel(args.version, args.channel)
   const { release, compat } = loadPkg()
   const shas = shaMap(args.checksums)
 
@@ -57,7 +53,7 @@ function emitManifest(args) {
     const sha = shas.get(asset)
     if (!sha)
       die(`no sha256 for ${asset} in ${args.checksums}`)
-    // spaced single-line so the test regex matches and the POSIX installer can sed it
+    // one target per line: install-r2.sh grep/sed depends on this layout
     return `    ${JSON.stringify(t.id)}: { "asset": ${JSON.stringify(asset)}, "sha256": ${JSON.stringify(sha)} }`
   }).join(',\n')
 
@@ -78,8 +74,7 @@ function emitManifest(args) {
 function emitIndex(args) {
   requireArgs(args, ['current', 'channel', 'version', 'commit', 'build-date'])
 
-  // empty / "-" / missing all mean "no ledger yet" — keeps the bash curl-to-file
-  // plumbing correct on the first publish without a separate sentinel arg.
+  // empty / "-" / missing = no ledger yet (first publish)
   let current = { schema: 1, channel: args.channel, builds: [] }
   if (args.current !== '-' && existsSync(args.current)) {
     const raw = readFileSync(args.current, 'utf8').trim()

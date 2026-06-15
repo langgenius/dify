@@ -34,8 +34,7 @@ detect_target() {
   printf '%s-%s' "$_os" "$_arch"
 }
 
-# Parse OUR manifest with grep/sed (no jq). Correct ONLY because
-# release-r2-edge.mjs renders one key per line and each target on a single line.
+# grep/sed (no jq). Correct only because release-r2-edge.mjs renders one key per line.
 # manifest_str <file> <key>  -> value of a top-level string field
 manifest_str() {
   grep "\"$2\"[[:space:]]*:" "$1" | head -1 \
@@ -48,11 +47,10 @@ manifest_target_field() {
     | sed -E "s/.*\"$3\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\\1/"
 }
 
-# Resolve a pinned build from index.json (no jq). Correct ONLY because
-# release-r2-edge.mjs renders each build's fields one per line in the order
-# version, commit, …, dir. Prints "<version>\t<dir>" of the first match, nothing
-# if none. <kind> = version (exact) | commit (prefix; first/newest wins).
-# index_resolve <index-file> <kind> <value>
+# Resolve a pinned build from index.json (no jq). Correct only because
+# release-r2-edge.mjs renders each build's fields one per line, dir last.
+# Prints "<version>\t<dir>" of the first match, nothing if none.
+# index_resolve <index-file> <kind:version|commit> <value>   (commit = prefix match)
 index_resolve() {
   awk -v kind="$2" -v want="$3" '
     function val(s) { sub(/^[^:]*:[[:space:]]*"/, "", s); sub(/".*$/, "", s); return s }
@@ -68,8 +66,7 @@ index_resolve() {
 }
 
 # checksums_target <checksums-file> <target-id>  -> "<sha256>\t<asset>"
-# release-write-checksums.sh lines are "<sha>  <asset>"; match the asset whose
-# name ends in -<target> (POSIX) or -<target>.exe (windows), then split.
+# checksums lines are "<sha>  <asset>"; match asset ending -<target> or -<target>.exe.
 checksums_target() {
   grep -E "[[:space:]]difyctl-v.*-$2(\.exe)?\$" "$1" | head -1 \
     | awk '{ print $1 "\t" $NF }'
@@ -84,7 +81,6 @@ sha256_check() {
 }
 
 # fetch_verify_install <download-url> <expected-sha> <version> <channel>
-# prefix is set by install_main. Verifies before placing the binary.
 fetch_verify_install() {
   tmp_b="$(mktemp)"
   # NOTE: no --compressed — must hash the raw bytes
@@ -126,7 +122,6 @@ resolve_pinned() {
 # Resolve the channel pointer (latest) into download url + sha. Sets the same.
 resolve_pointer() {
   murl="${base}/difyctl/${channel}/manifest.json"
-  # branch on http status: 404 = unpublished channel; other = transient
   _code="$(curl -fsS -o "$tmp_m" -w '%{http_code}' "$murl" 2>/dev/null || true)"
   if [ ! -s "$tmp_m" ]; then
     case "$_code" in

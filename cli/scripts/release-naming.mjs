@@ -23,11 +23,7 @@ import { fileURLToPath } from 'node:url'
 const BUN_TARGET_RE = /^bun-(linux|darwin|windows)-(x64|arm64)$/
 const SEMVER_CORE_LEN = 3
 
-// Channel registry — single source for which version forms are releasable and
-// resolvable. Each `versionForm` is pinned to exactly what the installers'
-// channel filters accept (stable = no prerelease; rc = -rc.N with nothing
-// trailing), so any version that passes `validate` is guaranteed resolvable at
-// install time. Extend by adding an entry: { name, prerelease, versionForm }.
+// Add channels here: { name, prerelease, versionForm }.
 const CHANNELS = [
   { name: 'stable', prerelease: false, versionForm: /^\d+\.\d+\.\d+(\+[0-9A-Z.-]+)?$/i },
   { name: 'rc', prerelease: true, versionForm: /^\d+\.\d+\.\d+-rc\.\d+$/ },
@@ -52,20 +48,31 @@ function versionCore(v) {
 function edgeVersion(sha) {
   if (!/^[0-9a-f]{7,40}$/.test(sha ?? ''))
     die('edge-version requires a git short sha (7-40 hex chars)')
-  const core = versionCore(loadPkg().version)
+  const { version } = loadPkg()
+  const core = versionCore(version)
   if (!/^\d+\.\d+\.\d+$/.test(core))
-    die(`cannot derive edge base from version: ${loadPkg().version}`)
+    die(`cannot derive edge base from version: ${version}`)
   return `${core}-edge.${sha}`
 }
 
-// die-now sibling of validateVersionChannel (which collects problems for the
-// `validate` gate). Used by release-r2-edge.mjs to fail a publish fast.
-function validateVersionForChannel(version, channelName) {
-  const ch = channelByName(channelName)
+// Returns a problem string if `version` cannot be resolved under `channel`, else
+// null. Shared by validateVersionForChannel (die-now) and validateVersionChannel
+// (collect for the `validate` gate).
+function channelVersionProblem(version, channel) {
+  if (typeof version !== 'string' || version.length === 0)
+    return 'version must be a non-empty string'
+  const ch = channelByName(channel)
   if (!ch)
-    die(`unknown channel: ${channelName} (expected one of: ${channelNames()})`)
+    return `unknown channel: ${channel} (expected one of: ${channelNames()})`
   if (!ch.versionForm.test(version))
-    die(`version ${version} does not match the ${channelName} channel form`)
+    return `version ${version} does not match the ${channel} channel form`
+  return null
+}
+
+function validateVersionForChannel(version, channelName) {
+  const problem = channelVersionProblem(version, channelName)
+  if (problem)
+    die(problem)
   return `valid: ${version} is a ${channelName} version`
 }
 
@@ -131,9 +138,7 @@ function loadPkg() {
   }
 }
 
-// Every field downstream CI needs, as `key=value` lines for $GITHUB_ENV. Each
-// job pipes this once into the environment, then references ${{ env.<field> }}
-// at use sites.
+// Emits key=value lines for $GITHUB_ENV.
 function githubEnv() {
   const { version, channel, compat, release } = loadPkg()
   const fields = {
@@ -193,19 +198,9 @@ function validateRelease(release) {
   return problems
 }
 
-// Enforce that the version matches the form its declared channel can resolve.
-// Rejects e.g. channel=rc + 1.2.3-rc5 (no dot), channel=stable + 1.2.3-rc.1,
-// or any unknown channel — before a release that no installer could find ships.
 function validateVersionChannel(version, channel) {
-  const problems = []
-  if (typeof version !== 'string' || version.length === 0)
-    return ['package.json version must be a non-empty string']
-  const ch = channelByName(channel)
-  if (!ch)
-    return [`difyctl.channel ${JSON.stringify(channel)} is not a known channel (expected one of: ${channelNames()})`]
-  if (!ch.versionForm.test(version))
-    problems.push(`version "${version}" does not match the ${channel} channel form ${ch.versionForm}; an installer could not resolve it`)
-  return problems
+  const problem = channelVersionProblem(version, channel)
+  return problem ? [problem] : []
 }
 
 function main(argv) {

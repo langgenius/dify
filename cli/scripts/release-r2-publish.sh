@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # release-r2-publish.sh — direct-publish difyctl binaries + manifest + index to R2.
-# Strict order so the pointer never references missing bytes (spec §8):
+# Strict order so the pointer never references missing bytes:
 #   sync binaries -> HEAD-verify -> put index.json -> put manifest.json -> put installers -> prune.
 # Usage: release-r2-publish.sh <channel> <version>
 # Env: R2_S3_ENDPOINT R2_BUCKET R2_PUBLIC_BASE (+ AWS creds, AWS_REQUEST_CHECKSUM_CALCULATION).
@@ -25,10 +25,8 @@ publish_main() {
     --content-type application/octet-stream \
     --cache-control "public, max-age=31536000, immutable"
 
-  # 2. HEAD-verify each expected target asset exists on R2. Materialize targets
-  #    first: a process-substitution producer failure is NOT caught by set -e,
-  #    which would let us flip the pointer having verified nothing. Asset names
-  #    come from release-naming.mjs (the SSOT) — never re-encoded here.
+  # 2. HEAD-verify each expected target asset exists on R2. Capture targets into
+  #    a variable first; a process-substitution producer failure bypasses set -e.
   local targets
   targets="$(node "${_dir}/release-naming.mjs" targets)"
   [ -n "$targets" ] || { echo "release-r2-publish: no release targets resolved" >&2; exit 1; }
@@ -41,7 +39,6 @@ publish_main() {
   [ "$verified" -gt 0 ] || { echo "release-r2-publish: verified zero targets" >&2; exit 1; }
 
   # 3. index.json: fetch current, prepend, truncate; capture prune dirs on stderr.
-  #    release-r2-edge.mjs treats an empty/"-"/missing file as "no ledger yet".
   current="$(mktemp)"
   curl -fsSL "${R2_PUBLIC_BASE}/${pointer_prefix}/index.json" -o "$current" 2>/dev/null || echo '-' > "$current"
   new_index="$(mktemp)"; prune_list="$(mktemp)"
@@ -51,7 +48,7 @@ publish_main() {
   aws_s3 s3 cp "$new_index" "s3://${R2_BUCKET}/${pointer_prefix}/index.json" \
     --content-type application/json --cache-control "public, max-age=60, must-revalidate"
 
-  # 4. manifest.json — THE COMMIT POINT (pointer flips last)
+  # 4. manifest.json — pointer; written last so it never references missing binaries
   manifest="$(mktemp)"
   node "${_dir}/release-r2-edge.mjs" manifest --channel "$channel" --version "$version" \
     --commit "${DIFYCTL_COMMIT:-unknown}" --build-date "${DIFYCTL_BUILD_DATE:-unknown}" \
