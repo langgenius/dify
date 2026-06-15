@@ -314,6 +314,39 @@ def test_app_list_query_rejects_flat_tag_ids(app_module):
         app_module.AppListQuery.model_validate(normalized)
 
 
+def test_create_agent_app_response_includes_bound_agent_id(app_module, monkeypatch: pytest.MonkeyPatch):
+    payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
+    app_obj = SimpleNamespace(
+        id="app-1",
+        name="Iris",
+        description="Agent app",
+        mode_compatible_with_agent="agent",
+        icon_type="emoji",
+        icon="robot",
+        icon_background="#fff",
+        enable_site=False,
+        enable_api=False,
+        created_at=_ts(),
+        updated_at=_ts(),
+        bound_agent_id="agent-1",
+    )
+    app_service = MagicMock()
+    app_service.create_app.return_value = app_obj
+    monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+
+    app_module.console_ns.payload = payload
+    try:
+        response, status = _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+    finally:
+        app_module.console_ns.payload = None
+
+    assert status == 201
+    assert response["id"] == "app-1"
+    assert response["bound_agent_id"] == "agent-1"
+    created_params = app_service.create_app.call_args.args[1]
+    assert created_params.mode == "agent"
+
+
 def test_app_partial_serialization_uses_aliases(app_models):
     AppPartial = app_models.AppPartial
     created_at = _ts()
@@ -389,6 +422,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         max_active_requests=5,
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
         site=site,
+        bound_agent_id="agent-1",
     )
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -398,6 +432,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["bound_agent_id"] == "agent-1"
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):

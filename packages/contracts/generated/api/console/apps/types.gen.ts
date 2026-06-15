@@ -21,19 +21,25 @@ export type CreateAppPayload = {
   name: string
 }
 
-export type AppDetail = {
+export type AppDetailWithSite = {
   access_mode?: string | null
+  api_base_url?: string | null
   app_model_config?: ModelConfig | null
+  bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
   enable_site: boolean
   icon?: string | null
   icon_background?: string | null
+  icon_type?: string | null
   id: string
+  max_active_requests?: number | null
   mode_compatible_with_agent: string
   name: string
+  site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -74,33 +80,6 @@ export type WorkflowOnlineUsersPayload = {
 
 export type WorkflowOnlineUsersResponse = {
   data: Array<WorkflowOnlineUsersByApp>
-}
-
-export type AppDetailWithSite = {
-  access_mode?: string | null
-  api_base_url?: string | null
-  app_model_config?: ModelConfig | null
-  bound_agent_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  deleted_tools?: Array<DeletedTool>
-  description?: string | null
-  enable_api: boolean
-  enable_site: boolean
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  id: string
-  max_active_requests?: number | null
-  mode_compatible_with_agent: string
-  name: string
-  site?: Site | null
-  tags?: Array<Tag>
-  tracing?: JsonValue | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
-  workflow?: WorkflowPartial | null
 }
 
 export type UpdateAppPayload = {
@@ -402,6 +381,27 @@ export type AnnotationHitHistoryList = {
 
 export type AppApiStatusPayload = {
   enable_api: boolean
+}
+
+export type AppDetail = {
+  access_mode?: string | null
+  app_model_config?: ModelConfig | null
+  created_at?: number | null
+  created_by?: string | null
+  description?: string | null
+  enable_api: boolean
+  enable_site: boolean
+  icon?: string | null
+  icon_background?: string | null
+  id: string
+  mode_compatible_with_agent: string
+  name: string
+  tags?: Array<Tag>
+  tracing?: JsonValue | null
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+  workflow?: WorkflowPartial | null
 }
 
 export type AudioTranscriptResponse = {
@@ -1212,6 +1212,29 @@ export type ModelConfig = {
   provider: string
 }
 
+export type DeletedTool = {
+  provider_id: string
+  tool_name: string
+  type: string
+}
+
+export type Site = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
+  privacy_policy?: string | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
+}
+
 export type Tag = {
   id: string
   name: string
@@ -1248,29 +1271,6 @@ export type PluginDependency = {
 export type WorkflowOnlineUsersByApp = {
   app_id: string
   users: Array<WorkflowOnlineUser>
-}
-
-export type DeletedTool = {
-  provider_id: string
-  tool_name: string
-  type: string
-}
-
-export type Site = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted: boolean
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language: string
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  readonly icon_url: string | null
-  privacy_policy?: string | null
-  show_workflow_steps: boolean
-  title: string
-  use_icon_as_answer_icon: boolean
 }
 
 export type AdvancedChatWorkflowRunForListResponse = {
@@ -2707,7 +2707,7 @@ export type PostAppsErrors = {
 }
 
 export type PostAppsResponses = {
-  201: AppDetail
+  201: AppDetailWithSite
 }
 
 export type PostAppsResponse = PostAppsResponses[keyof PostAppsResponses]
