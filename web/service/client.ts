@@ -1,4 +1,4 @@
-import type { AgentRosterListResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
@@ -93,28 +93,28 @@ export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleR
 export const consoleQuery = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
   experimental_defaults: {
-    agents: {
+    agent: {
       post: {
         mutationOptions: {
           onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
             context.client.invalidateQueries({
-              queryKey: consoleQuery.agents.get.key(),
+              queryKey: consoleQuery.agent.get.key(),
             })
             context.client.invalidateQueries({
-              queryKey: consoleQuery.agents.inviteOptions.get.key(),
+              queryKey: consoleQuery.agent.inviteOptions.get.key(),
             })
           },
         },
       },
       byAgentId: {
-        patch: {
+        put: {
           mutationOptions: {
             onSuccess: (updatedAgent, variables, _onMutateResult, context) => {
               context.client.setQueriesData(
                 {
-                  queryKey: consoleQuery.agents.get.key({ type: 'query' }),
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
                 },
-                (oldList: AgentRosterListResponse | undefined) => {
+                (oldList: AppPagination | undefined) => {
                   if (!oldList?.data.some(item => item.id === updatedAgent.id))
                     return oldList
 
@@ -126,9 +126,9 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
               )
               context.client.setQueriesData(
                 {
-                  queryKey: consoleQuery.agents.get.key({ type: 'infinite' }),
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
                 },
-                (oldList: InfiniteData<AgentRosterListResponse, unknown> | undefined) => {
+                (oldList: InfiniteData<AppPagination, unknown> | undefined) => {
                   if (!oldList?.pages.some(page => page.data.some(item => item.id === updatedAgent.id)))
                     return oldList
 
@@ -142,7 +142,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 },
               )
               context.client.setQueryData(
-                consoleQuery.agents.byAgentId.get.queryKey({
+                consoleQuery.agent.byAgentId.get.queryKey({
                   input: {
                     params: {
                       agent_id: variables.params.agent_id,
@@ -152,7 +152,7 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 updatedAgent,
               )
               context.client.invalidateQueries({
-                queryKey: consoleQuery.agents.inviteOptions.get.key(),
+                queryKey: consoleQuery.agent.inviteOptions.get.key(),
               })
             },
           },
@@ -162,9 +162,9 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
             onSuccess: (_data, variables, _onMutateResult, context) => {
               context.client.setQueriesData(
                 {
-                  queryKey: consoleQuery.agents.get.key({ type: 'query' }),
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
                 },
-                (oldList: AgentRosterListResponse | undefined) => {
+                (oldList: AppPagination | undefined) => {
                   if (!oldList?.data.some(item => item.id === variables.params.agent_id))
                     return oldList
 
@@ -177,9 +177,9 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
               )
               context.client.setQueriesData(
                 {
-                  queryKey: consoleQuery.agents.get.key({ type: 'infinite' }),
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
                 },
-                (oldList: InfiniteData<AgentRosterListResponse, unknown> | undefined) => {
+                (oldList: InfiniteData<AppPagination, unknown> | undefined) => {
                   if (!oldList?.pages.some(page => page.data.some(item => item.id === variables.params.agent_id)))
                     return oldList
 
@@ -199,10 +199,10 @@ export const consoleQuery = createTanstackQueryUtils(consoleClient, {
                 },
               )
               context.client.invalidateQueries({
-                queryKey: consoleQuery.agents.get.key(),
+                queryKey: consoleQuery.agent.get.key(),
               })
               context.client.invalidateQueries({
-                queryKey: consoleQuery.agents.inviteOptions.get.key(),
+                queryKey: consoleQuery.agent.inviteOptions.get.key(),
               })
             },
           },

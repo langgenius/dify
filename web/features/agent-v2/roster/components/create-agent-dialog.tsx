@@ -1,6 +1,6 @@
 'use client'
 
-import type { RosterAgentCreatePayload } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentAppCreatePayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -18,7 +18,6 @@ import { consoleQuery } from '@/service/client'
 type AgentFormValues = {
   description?: string
   name?: string
-  role?: string
 }
 
 const defaultAgentIcon = {
@@ -34,7 +33,7 @@ export function CreateAgentDialog() {
   const [formKey, setFormKey] = useState(0)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AppIconSelection>(defaultAgentIcon)
-  const createAgentMutation = useMutation(consoleQuery.agents.post.mutationOptions())
+  const createAgentMutation = useMutation(consoleQuery.agent.post.mutationOptions())
 
   const resetForm = () => {
     setFormKey(key => key + 1)
@@ -55,13 +54,11 @@ export function CreateAgentDialog() {
 
     const body = {
       name: trimmedName,
-      mode: 'agent',
       description: formValues.description?.trim() ?? '',
-      role: formValues.role?.trim() ?? '',
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-    } satisfies RosterAgentCreatePayload
+    } satisfies AgentAppCreatePayload
 
     createAgentMutation.mutate({
       body,
@@ -123,7 +120,7 @@ export function CreateAgentDialog() {
                     imageUrl={agentIcon.type === 'image' ? agentIcon.url : undefined}
                   />
                 </button>
-                <div className="flex min-w-0 flex-1 gap-3 pb-1">
+                <div className="flex min-w-0 flex-1 pb-1">
                   <FieldRoot name="name" className="min-w-0 flex-1">
                     <FieldLabel>
                       {t('roster.createForm.nameLabel')}
@@ -139,16 +136,6 @@ export function CreateAgentDialog() {
                     <FieldError match="valueMissing">
                       {t('roster.createForm.nameRequired')}
                     </FieldError>
-                  </FieldRoot>
-                  <FieldRoot name="role" className="min-w-0 flex-1">
-                    <FieldLabel>
-                      {t('roster.createForm.roleLabel')}
-                    </FieldLabel>
-                    <FieldControl
-                      autoComplete="off"
-                      maxLength={255}
-                      placeholder={t('roster.createForm.rolePlaceholder')}
-                    />
                   </FieldRoot>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditAgentDialog } from '../edit-agent-dialog'
@@ -37,9 +37,9 @@ vi.mock('@/app/components/base/app-icon-picker', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    agents: {
+    agent: {
       byAgentId: {
-        patch: {
+        put: {
           mutationOptions: vi.fn(() => ({})),
         },
       },
@@ -47,7 +47,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterResponse => ({
+const createAgent = (overrides: Partial<AgentInviteOptionResponse> = {}): AgentInviteOptionResponse => ({
   agent_kind: 'dify_agent',
   description: 'Find and summarize market materials.',
   icon: '🧸',
@@ -85,13 +85,13 @@ describe('EditAgentDialog', () => {
     mutationMock.isPending = false
   })
 
-  it('submits changed roster fields without resending unchanged icon fields', async () => {
+  it('submits changed app fields without resending unchanged icon fields', async () => {
     const user = userEvent.setup()
     renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
-    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Analyst ')
+    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), ' Market Agent ')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledWith({
@@ -99,9 +99,8 @@ describe('EditAgentDialog', () => {
         agent_id: 'agent-1',
       },
       body: {
-        name: 'Research Agent',
+        name: 'Market Agent',
         description: 'Find and summarize market materials.',
-        role: 'Analyst',
       },
     }, expect.objectContaining({
       onError: expect.any(Function),
@@ -125,7 +124,6 @@ describe('EditAgentDialog', () => {
       body: {
         name: 'Research Agent',
         description: 'Find and summarize market materials.',
-        role: 'Researcher',
         icon_type: 'emoji',
         icon: '🧠',
         icon_background: '#E0F2FE',

@@ -1,4 +1,4 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'

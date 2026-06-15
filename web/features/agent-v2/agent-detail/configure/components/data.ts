@@ -1,4 +1,4 @@
-import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type {
   MetadataFilteringConditions,

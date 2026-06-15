@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'

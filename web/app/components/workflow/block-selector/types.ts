@@ -1,4 +1,4 @@
-import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'

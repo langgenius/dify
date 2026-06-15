@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
 import type { AgentDetailSectionKey } from './section'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
@@ -172,7 +173,7 @@ export function AgentDetailSection({
   const { t } = useTranslation('agentV2')
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
-  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+  const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
     input: agentId
       ? {
           params: {
@@ -188,7 +189,7 @@ export function AgentDetailSection({
   const navigation = getAgentDetailNavigation(agentId)
   const agent = agentQuery.data
   const imageUrl = (agent?.icon_type === 'image' || agent?.icon_type === 'link') ? agent.icon : undefined
-  const iconType = imageUrl ? 'image' : agent?.icon_type
+  const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
@@ -228,7 +229,7 @@ export function AgentDetailSection({
               {agent?.name ?? t('agentDetail.title')}
             </div>
             <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
-              {agent?.role ?? t('agentDetail.type')}
+              {agent?.mode ?? t('agentDetail.type')}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../agent-detail/configure/components/data'
 import type { EnvVariable } from '../agent-detail/configure/components/orchestrate/advanced/env'
 import type { AgentSkill } from '../agent-detail/configure/components/orchestrate/skills/item'

@@ -62,7 +62,7 @@ export default function RosterPage() {
     hasNextPage,
     error,
   } = useInfiniteQuery({
-    ...consoleQuery.agents.get.infiniteOptions({
+    ...consoleQuery.agent.inviteOptions.get.infiniteOptions({
       input: pageParam => ({
         query: {
           ...rosterQueryInput,

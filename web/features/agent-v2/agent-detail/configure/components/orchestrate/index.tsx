@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'

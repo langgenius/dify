@@ -16,7 +16,7 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    agents: {
+    agent: {
       post: {
         mutationOptions: vi.fn(() => ({})),
       },
@@ -30,7 +30,7 @@ describe('CreateAgentDialog', () => {
     mutationMock.isPending = false
   })
 
-  it('submits roster role and default icon fields when creating an agent', async () => {
+  it('submits agent app fields and default icon fields when creating an agent', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
@@ -38,16 +38,13 @@ describe('CreateAgentDialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
     await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), ' Research Agent ')
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Researcher ')
     await user.type(within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'), ' Find and summarize market materials. ')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledWith({
       body: {
         name: 'Research Agent',
-        mode: 'agent',
         description: 'Find and summarize market materials.',
-        role: 'Researcher',
         icon_type: 'emoji',
         icon: '🧸',
         icon_background: '#F5F3FF',

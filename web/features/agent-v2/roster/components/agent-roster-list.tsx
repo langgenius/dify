@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentPublishedReferenceResponse, AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentInviteOptionResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,7 +21,7 @@ import { DeleteAgentDialog } from './delete-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
 type AgentRosterListProps = {
-  agents: AgentRosterResponse[]
+  agents: AgentInviteOptionResponse[]
   hasMore: boolean
   isEmptySearch: boolean
   isError: boolean
@@ -104,7 +104,7 @@ function AgentRosterEmptyState({ title }: { title: string }) {
 function AgentRosterItem({
   agent,
 }: {
-  agent: AgentRosterResponse
+  agent: AgentInviteOptionResponse
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')

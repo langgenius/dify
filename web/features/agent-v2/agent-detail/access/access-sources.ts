@@ -1,4 +1,4 @@
-import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type AgentAccessSource = {
@@ -10,37 +10,23 @@ export type AgentAccessSource = {
   icon: string
 }
 
-const getStatus = (agent: AgentRosterResponse): AgentAccessSource['status'] =>
-  agent.status === 'active' ? 'enabled' : 'disabled'
+const getStatus = (agent: AppDetailWithSite): AgentAccessSource['status'] =>
+  agent.id ? 'enabled' : 'disabled'
 
-export const getAgentAccessSources = (agent?: AgentRosterResponse): AgentAccessSource[] => {
+export const getAgentAccessSources = (agent?: AppDetailWithSite): AgentAccessSource[] => {
   if (!agent)
     return []
 
   const sources: AgentAccessSource[] = []
 
-  if (agent.app_id) {
+  if (agent.id) {
     sources.push({
       id: 'agent-app',
       nameKey: 'agentDetail.access.entries.agentApp.name',
       descriptionKey: 'agentDetail.access.entries.agentApp.description',
-      reference: agent.app_id,
+      reference: agent.id,
       status: getStatus(agent),
       icon: 'i-ri-window-line',
-    })
-  }
-
-  if (agent.workflow_id || agent.workflow_node_id) {
-    sources.push({
-      id: 'workflow',
-      nameKey: 'agentDetail.access.entries.workflow.name',
-      descriptionKey: 'agentDetail.access.entries.workflow.description',
-      reference: [
-        agent.workflow_id,
-        agent.workflow_node_id,
-      ].filter(Boolean).join(' / '),
-      status: getStatus(agent),
-      icon: 'i-ri-git-branch-line',
     })
   }
 

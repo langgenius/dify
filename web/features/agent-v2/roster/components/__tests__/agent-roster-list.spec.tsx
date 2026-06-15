@@ -1,4 +1,4 @@
-import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
@@ -11,7 +11,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterResponse => ({
+const createAgent = (overrides: Partial<AgentInviteOptionResponse> = {}): AgentInviteOptionResponse => ({
   agent_kind: 'dify_agent',
   description: 'Find and summarize market materials.',
   id: 'agent-1',
@@ -27,7 +27,7 @@ const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterR
 })
 
 const renderList = (
-  agents: AgentRosterResponse[],
+  agents: AgentInviteOptionResponse[],
   overrides: Partial<ComponentProps<typeof AgentRosterList>> = {},
 ) => {
   const queryClient = new QueryClient()

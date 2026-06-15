@@ -1,4 +1,4 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from './form-state'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import isEqual from 'fast-deep-equal'
