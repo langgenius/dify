@@ -1,7 +1,7 @@
 """add app stars
 
 Revision ID: c4d5e6f7a8b9
-Revises: b7c2d9e8a1f4
+Revises: f5e8a9c0d2b3
 Create Date: 2026-06-08 12:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models.types
 
 # revision identifiers, used by Alembic.
 revision = "c4d5e6f7a8b9"
-down_revision = "b7c2d9e8a1f4"
+down_revision = "f5e8a9c0d2b3"
 branch_labels = None
 depends_on = None
 
