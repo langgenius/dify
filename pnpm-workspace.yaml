@@ -30,6 +30,8 @@ overrides:
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.27.2: 0.27.2
+  esbuild@>=0.17.0 <0.28.1: ^0.28.1
+  esbuild@>=0.27.3 <0.28.1: ^0.28.1
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
   picomatch@>=4.0.0 <4.0.4: 4.0.4
   postcss@<8.5.10: ^8.5.10
