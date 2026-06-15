@@ -58,10 +58,11 @@ describe('agent/node', () => {
       />,
     )
 
-    expect(screen.getByText('workflow.nodes.agent.roster.label')).toHaveClass('system-2xs-medium-uppercase')
+    expect(screen.getByText('workflow.nodes.agent.roster.label')).toHaveClass('px-2.5', 'py-0.5', 'system-2xs-medium-uppercase')
     expect(screen.getByText('Nadia')).toHaveClass('system-xs-regular', 'text-text-secondary')
     expect(screen.getByText('Researcher')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
-    expect(container.querySelector('.bg-workflow-block-parma-bg')).toHaveClass('rounded-lg')
+    expect(container.querySelector('.bg-workflow-block-parma-bg')).toHaveClass('gap-1', 'rounded-lg', 'p-1')
+    expect(container.querySelector('.h-1.px-3')).not.toBeInTheDocument()
   })
 
   it('renders the inline setup agent style', () => {
@@ -79,7 +80,9 @@ describe('agent/node', () => {
 
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toHaveClass('system-xs-regular', 'text-text-secondary')
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
-    expect(container.querySelector('.i-custom-vender-solid-mediaAndDevices-robot')).toHaveClass('size-5')
+    const robotIcon = container.querySelector('.i-custom-vender-agent-v2-robot-3')
+    expect(robotIcon).toHaveClass('size-5')
+    expect(robotIcon?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
   })
 
   it('renders an error state when no roster agent is selected', () => {

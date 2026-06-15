@@ -16,7 +16,7 @@ function AgentNodeAvatar({
   if (hasInlineAgentBinding(data)) {
     return (
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background-default-burn text-text-tertiary">
-        <span aria-hidden className="i-custom-vender-solid-mediaAndDevices-robot size-5" />
+        <span aria-hidden className="i-custom-vender-agent-v2-robot-3 size-5" />
       </span>
     )
   }
@@ -52,22 +52,24 @@ function AgentNodeModel({
   const isInlineAgent = hasInlineAgentBinding(data)
 
   return (
-    <div className="mb-1 px-3 py-1">
-      <div className="mb-0.5 px-0.5 system-2xs-medium-uppercase text-text-tertiary">
+    <div className="flex flex-col gap-0.5 py-1">
+      <div className="px-2.5 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
         {t('nodes.agent.roster.label', { ns: 'workflow' })}
       </div>
-      <div className="flex min-w-0 items-center gap-1 rounded-lg bg-workflow-block-parma-bg p-1">
-        <AgentNodeAvatar data={data} />
-        <div className="flex min-w-0 flex-1 flex-col justify-center">
-          <div className="truncate system-xs-regular text-text-secondary">
-            {isInlineAgent
-              ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' })
-              : data.agent_roster?.name}
-          </div>
-          <div className="truncate system-2xs-regular text-text-tertiary">
-            {isInlineAgent
-              ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' })
-              : data.agent_roster?.role}
+      <div className="px-2.5">
+        <div className="flex min-w-0 items-center gap-1 rounded-lg bg-workflow-block-parma-bg p-1">
+          <AgentNodeAvatar data={data} />
+          <div className="flex min-w-0 flex-1 flex-col justify-center">
+            <div className="truncate system-xs-regular text-text-secondary">
+              {isInlineAgent
+                ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' })
+                : data.agent_roster?.name}
+            </div>
+            <div className="truncate system-2xs-regular text-text-tertiary">
+              {isInlineAgent
+                ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' })
+                : data.agent_roster?.role}
+            </div>
           </div>
         </div>
       </div>

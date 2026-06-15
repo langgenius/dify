@@ -1,7 +1,7 @@
 {
   "prefix": "custom-vender",
   "name": "Dify Custom Vender",
-  "total": 325,
+  "total": 326,
   "version": "0.0.0-private",
   "author": {
     "name": "LangGenius, Inc.",
@@ -17,8 +17,8 @@
     "agent-v2-end-user-auth",
     "agent-v2-plan",
     "agent-v2-prompt-insert",
-    "features-citations",
-    "features-content-moderation"
+    "agent-v2-robot-3",
+    "features-citations"
   ],
   "palette": false
 }
