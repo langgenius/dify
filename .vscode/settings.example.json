@@ -1,10 +1,6 @@
 {
-  "cucumber.features": [
-    "e2e/features/**/*.feature",
-  ],
-  "cucumber.glue": [
-    "e2e/features/**/*.ts",
-  ],
+  "cucumber.features": ["e2e/features/**/*.feature"],
+  "cucumber.glue": ["e2e/features/**/*.ts"],
 
   "tailwindCSS.experimental.configFile": "web/app/styles/globals.css",
 
@@ -14,7 +10,7 @@
 
   // Lint fix
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit",
+    "source.fixAll.eslint": "explicit"
   },
 
   // Enable eslint for all supported languages

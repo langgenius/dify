@@ -1,12 +1,12 @@
 name: autofix.ci
 on:
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   merge_group:
-    branches: ["main"]
+    branches: ['main']
     types: [checks_requested]
   push:
-    branches: ["main"]
+    branches: ['main']
 permissions:
   contents: read
 
@@ -70,7 +70,7 @@ jobs:
       - if: github.event_name != 'merge_group'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - if: github.event_name != 'merge_group'
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0

@@ -1,7 +1,13 @@
 // @ts-check
 
 import path from 'node:path'
-import antfu, { GLOB_MARKDOWN, GLOB_MARKDOWN_CODE, GLOB_TESTS, GLOB_TS, GLOB_TSX } from '@antfu/eslint-config'
+import antfu, {
+  GLOB_MARKDOWN,
+  GLOB_MARKDOWN_CODE,
+  GLOB_TESTS,
+  GLOB_TS,
+  GLOB_TSX,
+} from '@antfu/eslint-config'
 import pluginQuery from '@tanstack/eslint-plugin-query'
 import md from 'eslint-markdown'
 import tailwindcss from 'eslint-plugin-better-tailwindcss'
@@ -79,10 +85,7 @@ export default antfu(
           minLinks: 1,
         },
       ],
-      'markdown-preferences/ordered-list-marker-sequence': [
-        'error',
-        { increment: 'never' },
-      ],
+      'markdown-preferences/ordered-list-marker-sequence': ['error', { increment: 'never' }],
       'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/sort-definitions': 'error',
     },
@@ -159,34 +162,36 @@ export default antfu(
     files: [GLOB_TS, GLOB_TSX],
     ignores: ['next/**'],
     rules: {
-      'no-restricted-imports': ['error', {
-        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+          patterns: WEB_RESTRICTED_IMPORT_PATTERNS,
+        },
+      ],
     },
   },
   {
     name: 'dify/service-base-restricted-imports',
     files: ['service/**/*.ts', 'service/**/*.tsx'],
     rules: {
-      'no-restricted-imports': ['error', {
-        paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
-        patterns: [
-          ...WEB_RESTRICTED_IMPORT_PATTERNS,
-          ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
-          ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: NEXT_PLATFORM_RESTRICTED_IMPORT_PATHS,
+          patterns: [
+            ...WEB_RESTRICTED_IMPORT_PATTERNS,
+            ...WEB_SERVICE_BASE_RESTRICTED_IMPORT_PATTERNS,
+            ...WEB_SERVICE_FETCH_RESTRICTED_IMPORT_PATTERNS,
+          ],
+        },
+      ],
     },
   },
   {
     name: 'dify/restricted-local-storage-access',
     files: [GLOB_TS, GLOB_TSX],
-    ignores: [
-      ...GLOB_TESTS,
-      'vitest.setup.ts',
-      'instrumentation-client.ts',
-    ],
+    ignores: [...GLOB_TESTS, 'vitest.setup.ts', 'instrumentation-client.ts'],
     rules: {
       'no-restricted-globals': [
         'error',
@@ -205,13 +210,15 @@ export default antfu(
         {
           object: 'globalThis',
           property: 'localStorage',
-          message: 'Do not use globalThis.localStorage directly. Use foxact/use-local-storage instead.',
+          message:
+            'Do not use globalThis.localStorage directly. Use foxact/use-local-storage instead.',
         },
       ],
       'no-restricted-syntax': [
         'error',
         {
-          selector: 'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
+          selector:
+            'ImportDeclaration[source.value="ahooks"] ImportSpecifier[imported.name="useLocalStorageState"]',
           message: 'Do not use ahooks useLocalStorageState. Use foxact/use-local-storage instead.',
         },
       ],

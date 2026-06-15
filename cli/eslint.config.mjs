@@ -8,13 +8,7 @@ import { antfuWithoutFormatting, disableJsonSortFormatting } from '../eslint.sha
 export default antfu(
   {
     ...antfuWithoutFormatting,
-    ignores: original => [
-      'context/**',
-      'docs/**',
-      'dist/**',
-      'coverage/**',
-      ...original,
-    ],
+    ignores: (original) => ['context/**', 'docs/**', 'dist/**', 'coverage/**', ...original],
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
@@ -42,10 +36,7 @@ export default antfu(
           minLinks: 1,
         },
       ],
-      'markdown-preferences/ordered-list-marker-sequence': [
-        'error',
-        { increment: 'never' },
-      ],
+      'markdown-preferences/ordered-list-marker-sequence': ['error', { increment: 'never' }],
       'markdown-preferences/definitions-last': 'error',
       'markdown-preferences/sort-definitions': 'error',
     },
@@ -64,14 +55,18 @@ export default antfu(
   {
     files: ['src/**/*.ts'],
     rules: {
-      'no-restricted-imports': ['error', {
-        patterns: [
-          {
-            group: ['../**', './*/**', '..'],
-            message: 'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
-          },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../**', './*/**', '..'],
+              message:
+                'Use the @/ (or @test/) alias for parent-directory or nested relative imports; keep ./ only for same-folder siblings.',
+            },
+          ],
+        },
+      ],
     },
   },
   disableJsonSortFormatting,
