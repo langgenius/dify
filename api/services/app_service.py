@@ -223,7 +223,7 @@ class AppService:
             app_ids=app_ids,
         )
         for app in app_models.items:
-            app.is_starred = str(app.id) in starred_app_ids  # type: ignore[attr-defined]
+            app.is_starred = str(app.id) in starred_app_ids
 
         return app_models
 
@@ -256,7 +256,7 @@ class AppService:
         )
 
         for app in app_models.items:
-            app.is_starred = True  # type: ignore[attr-defined]
+            app.is_starred = True
 
         return app_models
 
