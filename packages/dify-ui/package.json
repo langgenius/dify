@@ -157,9 +157,9 @@
   "scripts": {
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "test": "vp test",
-    "test:storybook": "vp test --config vitest.storybook.config.ts --run",
-    "test:watch": "vp test --watch",
+    "test": "vp test --config vite.config.ts",
+    "test:storybook": "vp test --config vitest.config.ts --run",
+    "test:watch": "vp test --config vite.config.ts --watch",
     "type-check": "tsgo"
   },
   "peerDependencies": {
