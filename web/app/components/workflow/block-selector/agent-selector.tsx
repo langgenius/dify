@@ -3,6 +3,7 @@ import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobo
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
   ComboboxEmpty,
@@ -129,9 +130,7 @@ export function AgentSelectorContent({
         </div>
         <div className="max-h-54 overflow-y-auto p-1">
           {isLoading && (
-            <ComboboxStatus className="px-3 py-2 system-xs-regular">
-              {t('loading', { ns: 'common' })}
-            </ComboboxStatus>
+            <AgentSelectorLoadingSkeleton label={t('loading', { ns: 'common' })} />
           )}
           {!isLoading && agentsQuery.isError && (
             <ComboboxStatus className="px-3 py-2 system-xs-regular">
@@ -175,6 +174,38 @@ export function AgentSelectorContent({
         </Link>
       </div>
     </div>
+  )
+}
+
+function AgentSelectorLoadingSkeleton({
+  label,
+}: {
+  label: string
+}) {
+  return (
+    <ComboboxStatus className="p-0">
+      <span className="sr-only">{label}</span>
+      <div className="relative overflow-hidden" aria-hidden>
+        <div className="p-1">
+          {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4'].map((key, index) => (
+            <div
+              key={key}
+              className={cn(
+                'flex items-center gap-2 py-1.5 pr-3 pl-2 opacity-20',
+                index === 3 && 'opacity-10',
+              )}
+            >
+              <div className="size-8 shrink-0 rounded-full bg-text-quaternary" />
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <div className="h-2 w-20 rounded-xs bg-text-quaternary" />
+                <div className="h-2 w-28 rounded-xs bg-text-quaternary" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-components-panel-bg-transparent to-background-default-subtle" />
+      </div>
+    </ComboboxStatus>
   )
 }
 
