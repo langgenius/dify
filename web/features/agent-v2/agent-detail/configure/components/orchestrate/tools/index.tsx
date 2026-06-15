@@ -1,13 +1,21 @@
 'use client'
 
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
+import type { AgentCliTool, AgentProviderToolDefaultValue, AgentTool, ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
+import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -27,6 +35,7 @@ function AgentToolItem({
   onDeleteProviderTool,
   onDeleteProviderToolAction,
   onEditCliTool,
+  onCredentialChange,
 }: {
   tool: AgentTool
   isExpanded: boolean
@@ -36,6 +45,7 @@ function AgentToolItem({
   onDeleteProviderTool: (toolId: string) => void
   onDeleteProviderToolAction: (toolId: string, actionId: string) => void
   onEditCliTool: (tool: AgentCliTool) => void
+  onCredentialChange: (toolId: string, credentialId?: string) => void
 }) {
   const handleOpenChange = useCallback((open: boolean) => {
     onOpenChange(tool, open)
@@ -58,6 +68,10 @@ function AgentToolItem({
       onEditCliTool(tool)
   }, [onEditCliTool, tool])
 
+  const handleCredentialChange = useCallback((credentialId?: string) => {
+    onCredentialChange(tool.id, credentialId)
+  }, [onCredentialChange, tool.id])
+
   if (tool.kind === 'provider') {
     return (
       <AgentProviderToolItem
@@ -67,6 +81,7 @@ function AgentToolItem({
         onConfigureAction={onConfigureAction}
         onRemoveAction={handleRemoveProviderAction}
         onRemoveProvider={handleRemoveProvider}
+        onCredentialChange={handleCredentialChange}
       />
     )
   }
@@ -125,12 +140,38 @@ function AddToolMenu({
   selectedTools,
 }: {
   onAddCliTool: () => void
-  onAddTools: (tools: ToolDefaultValue[]) => void
+  onAddTools: (tools: AgentProviderToolDefaultValue[]) => void
   selectedTools: ToolValue[]
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'menu' | 'tool-picker'>('menu')
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+  const providerById = useMemo(() => {
+    const providers = new Map<string, ToolWithProvider>()
+    const buildInToolList = Array.isArray(buildInTools) ? buildInTools : []
+    const customToolList = Array.isArray(customTools) ? customTools : []
+    const workflowToolList = Array.isArray(workflowTools) ? workflowTools : []
+    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : []
+    const allProviders = [
+      ...buildInToolList,
+      ...customToolList,
+      ...workflowToolList,
+      ...mcpToolList,
+    ]
+
+    allProviders.forEach((provider) => {
+      providers.set(provider.id, provider)
+      providers.set(provider.name, provider)
+      if (provider.plugin_id)
+        providers.set(provider.plugin_id, provider)
+    })
+
+    return providers
+  }, [buildInTools, customTools, workflowTools, mcpTools])
 
   const openToolPicker = useCallback(() => {
     setView('tool-picker')
@@ -148,9 +189,20 @@ function AddToolMenu({
       setView('menu')
   }, [])
 
+  const toAgentToolDefaultValue = useCallback((tool: ToolDefaultValue): AgentProviderToolDefaultValue => ({
+    ...tool,
+    allowDelete: (providerById.get(tool.provider_id)
+      ?? providerById.get(tool.provider_name)
+      ?? (tool.plugin_id ? providerById.get(tool.plugin_id) : undefined))?.allow_delete,
+  }), [providerById])
+
   const handleSelectTool = useCallback((tool: ToolDefaultValue) => {
-    onAddTools([tool])
-  }, [onAddTools])
+    onAddTools([toAgentToolDefaultValue(tool)])
+  }, [onAddTools, toAgentToolDefaultValue])
+
+  const handleSelectMultipleTools = useCallback((tools: ToolDefaultValue[]) => {
+    onAddTools(tools.map(toAgentToolDefaultValue))
+  }, [onAddTools, toAgentToolDefaultValue])
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -191,7 +243,7 @@ function AddToolMenu({
                 supportAddCustomTool
                 selectedTools={selectedTools}
                 onSelect={handleSelectTool}
-                onSelectMultiple={onAddTools}
+                onSelectMultiple={handleSelectMultipleTools}
               />
             )}
       </PopoverContent>
@@ -201,6 +253,7 @@ function AddToolMenu({
 
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
+  const setProviderToolCredential = useSetProviderToolCredential()
   const {
     tools,
     selectedTools,
@@ -277,6 +330,7 @@ export function AgentTools() {
                 onDeleteProviderTool={deleteProviderTool}
                 onDeleteProviderToolAction={deleteProviderToolAction}
                 onEditCliTool={editCliTool}
+                onCredentialChange={setProviderToolCredential}
               />
             ))}
       </ConfigureSection>

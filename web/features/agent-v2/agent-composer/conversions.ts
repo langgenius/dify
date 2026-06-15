@@ -158,6 +158,16 @@ const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) 
 
 const getDifyToolActionId = (tool: AgentSoulDifyToolConfig) => `${tool.provider_id ?? tool.provider ?? tool.plugin_id ?? 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
 
+const toCredentialVariant = (credentialType: AgentSoulDifyToolConfig['credential_type']) => {
+  if (credentialType === 'api-key')
+    return 'authorized' as const
+
+  if (credentialType === 'unauthorized')
+    return 'unauthorized' as const
+
+  return 'none' as const
+}
+
 const toProviderToolFormState = (config?: AgentSoulConfig): {
   tools: AgentProviderTool[]
   toolSettings: AgentSoulConfigFormState['toolSettings']
@@ -193,10 +203,13 @@ const toProviderToolFormState = (config?: AgentSoulConfig): {
       kind: 'provider',
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       providerType: tool.provider_type,
-      credentialKey: tool.credential_type === 'oauth2'
-        ? 'agentDetail.configure.tools.credential.endUserOAuth'
-        : 'agentDetail.configure.tools.credential.authOne',
-      credentialVariant: tool.credential_type === 'oauth2' ? 'endUser' : 'authorized',
+      allowDelete: tool.credential_type === 'api-key' || tool.credential_type === 'unauthorized',
+      credentialId: tool.credential_ref?.id ?? undefined,
+      credentialKey: tool.credential_type === 'api-key'
+        ? 'agentDetail.configure.tools.credential.authOne'
+        : undefined,
+      credentialType: tool.credential_type,
+      credentialVariant: toCredentialVariant(tool.credential_type),
       actions: [action],
     })
   }
@@ -222,7 +235,14 @@ const toDifyToolConfigs = (
     provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
     runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
-    credential_type: tool.credentialVariant === 'endUser' ? 'oauth2' as const : 'api-key' as const,
+    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : undefined),
+    credential_ref: tool.credentialId
+      ? {
+          id: tool.credentialId,
+          provider: tool.id,
+          type: 'provider' as const,
+        }
+      : undefined,
   }))
 })
 

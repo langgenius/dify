@@ -1,7 +1,7 @@
 'use client'
 
-import type { AgentCliTool, AgentTool, ToolSettingTarget } from './types'
-import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { AgentCliTool, AgentProviderToolDefaultValue, AgentTool, ToolSettingTarget } from './types'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useMemo, useState } from 'react'
 import { useRemoveProviderTool, useRemoveProviderToolAction, useTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
 
@@ -17,19 +17,30 @@ const toSelectedToolValue = (tool: AgentTool): ToolValue[] => {
   }))
 }
 
-const toProviderToolAction = (tool: ToolDefaultValue) => ({
+const toProviderToolAction = (tool: AgentProviderToolDefaultValue) => ({
   id: `${tool.provider_id}:${tool.tool_name}`,
   name: tool.tool_label || tool.title || tool.tool_name,
   toolName: tool.tool_name,
   description: tool.tool_description || '',
 })
 
-const getCredentialVariant = (tool: ToolDefaultValue) =>
-  tool.is_team_authorization ? 'authorized' as const : 'endUser' as const
+const getCredentialVariant = (tool: AgentProviderToolDefaultValue) => {
+  if (!tool.allowDelete)
+    return 'none' as const
+
+  return tool.is_team_authorization ? 'authorized' as const : 'unauthorized' as const
+}
+
+const getCredentialType = (tool: AgentProviderToolDefaultValue) => {
+  if (!tool.allowDelete)
+    return undefined
+
+  return tool.is_team_authorization ? 'api-key' as const : 'unauthorized' as const
+}
 
 export const addProviderTools = (
   currentTools: AgentTool[],
-  selectedTools: ToolDefaultValue[],
+  selectedTools: AgentProviderToolDefaultValue[],
 ): AgentTool[] => {
   if (selectedTools.length === 0)
     return currentTools
@@ -50,6 +61,7 @@ export const addProviderTools = (
         displayName: existingTool.displayName ?? selectedTool.provider_show_name,
         icon: existingTool.icon ?? selectedTool.provider_icon,
         iconDark: existingTool.iconDark ?? selectedTool.provider_icon_dark,
+        allowDelete: existingTool.allowDelete ?? selectedTool.allowDelete,
         actions: [...existingTool.actions, action],
       }
       return
@@ -64,9 +76,12 @@ export const addProviderTools = (
       icon: selectedTool.provider_icon,
       iconDark: selectedTool.provider_icon_dark,
       providerType: selectedTool.provider_type,
+      allowDelete: selectedTool.allowDelete,
+      credentialId: selectedTool.credential_id,
       credentialKey: selectedTool.is_team_authorization
         ? 'agentDetail.configure.tools.credential.authOne'
-        : 'agentDetail.configure.tools.credential.endUserOAuth',
+        : undefined,
+      credentialType: getCredentialType(selectedTool),
       credentialVariant: getCredentialVariant(selectedTool),
       actions: [action],
     })
@@ -99,7 +114,7 @@ export function useAgentToolsOperations() {
     })
   }, [])
 
-  const addTools = useCallback((selectedTools: ToolDefaultValue[]) => {
+  const addTools = useCallback((selectedTools: AgentProviderToolDefaultValue[]) => {
     setTools(addProviderTools(tools, selectedTools))
   }, [setTools, tools])
 

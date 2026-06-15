@@ -32,8 +32,11 @@ export type AgentToolAction = {
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
   iconClassName: string
-  credentialKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
-  credentialVariant: 'authorized' | 'endUser'
+  allowDelete?: boolean
+  credentialId?: string
+  credentialKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
+  credentialType?: 'api-key' | 'oauth2' | 'unauthorized'
+  credentialVariant: 'authorized' | 'unauthorized' | 'none'
   actions: AgentToolAction[]
 }
 

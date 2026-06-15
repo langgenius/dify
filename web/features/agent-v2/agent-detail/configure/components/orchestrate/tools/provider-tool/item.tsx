@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentProviderTool, AgentToolAction, ToolSettingTarget } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   CollapsiblePanel,
@@ -13,8 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useCallback } from 'react'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  AuthCategory,
+} from '@/app/components/plugins/plugin-auth'
+import ApiKeyModal from '@/app/components/plugins/plugin-auth/authorize/api-key-modal'
+import AuthorizedInNode from '@/app/components/plugins/plugin-auth/authorized-in-node'
+import { useInvalidPluginCredentialInfoHook } from '@/app/components/plugins/plugin-auth/hooks/use-credential'
+import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
@@ -44,26 +53,93 @@ function ProviderIcon({
   )
 }
 
-function CredentialStatus({
-  credentialKey,
-  variant,
+function UnauthorizedCredentialStatus({
+  tool,
+  onCredentialChange,
 }: {
-  credentialKey: AgentProviderTool['credentialKey']
-  variant: AgentProviderTool['credentialVariant']
+  tool: AgentProviderTool
+  onCredentialChange: (credentialId?: string) => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation()
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false)
+  const pluginPayload = useMemo(() => ({
+    provider: tool.id,
+    category: AuthCategory.tool,
+    providerType: tool.providerType ?? CollectionType.builtIn,
+  }), [tool.id, tool.providerType])
+  const invalidPluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
+  const handleApiKeyModalOpen = useCallback(() => {
+    setIsApiKeyModalOpen(true)
+  }, [])
+  const handleApiKeyModalClose = useCallback(() => {
+    setIsApiKeyModalOpen(false)
+  }, [])
+  const handleCredentialUpdate = useCallback(() => {
+    invalidPluginCredentialInfo()
+    onCredentialChange()
+  }, [invalidPluginCredentialInfo, onCredentialChange])
 
   return (
-    <button
-      type="button"
-      className="flex shrink-0 items-center justify-center rounded-md px-1.5 py-1 text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-    >
-      {variant === 'authorized'
-        ? <span aria-hidden className="mr-1 size-2 rounded-[3px] border border-components-badge-status-light-success-border-inner bg-components-badge-status-light-success-bg shadow-status-indicator-green-shadow" />
-        : <span aria-hidden className="mr-1 i-ri-user-settings-line size-3.5 text-text-secondary" />}
-      <span className="truncate system-xs-medium">{t(credentialKey)}</span>
-      <span aria-hidden className="ml-0.5 i-custom-vender-solid-arrows-arrow-down-round-fill size-3.5 text-text-tertiary" />
-    </button>
+    <>
+      <Button
+        variant="secondary"
+        size="small"
+        className="shrink-0"
+        onClick={handleApiKeyModalOpen}
+      >
+        {t('notAuthorized', { ns: 'tools' })}
+        <StatusDot className="ml-2" status="warning" />
+      </Button>
+      <ApiKeyModal
+        pluginPayload={pluginPayload}
+        open={isApiKeyModalOpen}
+        onOpenChange={setIsApiKeyModalOpen}
+        onClose={handleApiKeyModalClose}
+        onUpdate={handleCredentialUpdate}
+      />
+    </>
+  )
+}
+
+function CredentialStatus({
+  tool,
+  onCredentialChange,
+}: {
+  tool: AgentProviderTool
+  onCredentialChange: (credentialId?: string) => void
+}) {
+  const canSwitchCredential = (tool.providerType ?? CollectionType.builtIn) === CollectionType.builtIn && tool.allowDelete
+  const handleAuthorizationItemClick = useCallback((id: string) => {
+    onCredentialChange(id === '__workspace_default__' ? undefined : id || undefined)
+  }, [onCredentialChange])
+
+  if (tool.credentialVariant === 'none')
+    return null
+
+  if (tool.credentialVariant === 'unauthorized') {
+    return (
+      <UnauthorizedCredentialStatus
+        tool={tool}
+        onCredentialChange={onCredentialChange}
+      />
+    )
+  }
+
+  if (!canSwitchCredential)
+    return null
+
+  return (
+    <div className="shrink-0">
+      <AuthorizedInNode
+        pluginPayload={{
+          provider: tool.id,
+          category: AuthCategory.tool,
+          providerType: tool.providerType ?? CollectionType.builtIn,
+        }}
+        credentialId={tool.credentialId}
+        onAuthorizationItemClick={handleAuthorizationItemClick}
+      />
+    </div>
   )
 }
 
@@ -123,6 +199,7 @@ export function AgentProviderToolItem({
   onConfigureAction,
   onRemoveAction,
   onRemoveProvider,
+  onCredentialChange,
 }: {
   tool: AgentProviderTool
   isExpanded: boolean
@@ -130,6 +207,7 @@ export function AgentProviderToolItem({
   onConfigureAction: (target: ToolSettingTarget) => void
   onRemoveAction: (actionId: string) => void
   onRemoveProvider: () => void
+  onCredentialChange: (credentialId?: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const { theme } = useTheme()
@@ -178,7 +256,7 @@ export function AgentProviderToolItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <CredentialStatus credentialKey={tool.credentialKey} variant={tool.credentialVariant} />
+        <CredentialStatus tool={tool} onCredentialChange={onCredentialChange} />
       </div>
 
       <CollapsiblePanel>
