@@ -293,22 +293,42 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ActivationCheckResponse](#activationcheckresponse)<br> |
 
-### [GET] /agents
+### [GET] /agent
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
+| creator_ids | query | Filter by creator account IDs | No | [ string ] |
+| is_created_by_me | query | Filter by creator | No | boolean |
+| limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
+| name | query | Filter by app name | No | string |
+| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
+| tag_ids | query | Filter by tag IDs | No | [ string ] |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent roster list | **application/json**: [AgentRosterListResponse](#agentrosterlistresponse)<br> |
+| 200 | Agent app list | **application/json**: [AppPagination](#apppagination)<br> |
 
-### [GET] /agents/invite-options
+### [POST] /agent
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppCreatePayload](#agentappcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent app created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/invite-options
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -324,7 +344,21 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent invite options | **application/json**: [AgentInviteOptionsResponse](#agentinviteoptionsresponse)<br> |
 
-### [GET] /agents/{agent_id}
+### [DELETE] /agent/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Agent app deleted successfully |
+| 403 | Insufficient permissions |
+
+### [GET] /agent/{agent_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -335,9 +369,337 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent detail | **application/json**: [AgentRosterResponse](#agentrosterresponse)<br> |
+| 200 | Agent app detail | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 
-### [GET] /agents/{agent_id}/versions
+### [PUT] /agent/{agent_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [UpdateAppPayload](#updateapppayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [PUT] /agent/{agent_id}/composer
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+
+### [GET] /agent/{agent_id}/composer/candidates
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
+
+### [POST] /agent/{agent_id}/composer/validate
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/files
+List agent drive entries for an Agent App
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/files/download
+Time-limited external signed URL for one Agent App drive value
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/files/preview
+Truncated text preview of one Agent App drive value
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
+
+### [POST] /agent/{agent_id}/features
+Update an Agent App's presentation features (opener, follow-up, citations, ...)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppFeaturesPayload](#agentappfeaturespayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Invalid configuration |  |
+| 404 | Agent not found |  |
+
+### [DELETE] /agent/{agent_id}/files
+Delete one Agent App drive file by key
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| key | query | Drive key, e.g. files/sample.pdf | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | File removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
+
+### [POST] /agent/{agent_id}/files
+Commit an uploaded file into the Agent App drive under files/<name>
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
+
+### [GET] /agent/{agent_id}/referencing-workflows
+List workflow apps that reference this Agent App's bound Agent (read-only)
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
+| 404 | Agent not found |  |
+
+### [GET] /agent/{agent_id}/sandbox/files
+List a directory in an Agent App conversation sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| conversation_id | query | Agent App conversation ID | Yes | string |
+| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
+
+### [GET] /agent/{agent_id}/sandbox/files/read
+Read a text/binary preview file in an Agent App conversation sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| conversation_id | query | Agent App conversation ID | Yes | string |
+| path | query | File path relative to the sandbox workspace | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
+
+### [POST] /agent/{agent_id}/sandbox/files/upload
+Upload one Agent App sandbox file as a Dify ToolFile mapping
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentSandboxUploadPayload](#agentsandboxuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
+
+### [POST] /agent/{agent_id}/skills/standardize
+Validate + standardize a Skill into an Agent App drive
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
+
+### [POST] /agent/{agent_id}/skills/upload
+Upload + validate a Skill package for an Agent App
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package |  |
+
+### [DELETE] /agent/{agent_id}/skills/{slug}
+Delete a standardized skill from an Agent App drive
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| slug | path | Skill slug (single path segment) | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
+
+### [POST] /agent/{agent_id}/skills/{slug}/infer-tools
+Infer CLI tool + ENV suggestions from a standardized Agent App skill
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string |
+| slug | path | Skill slug (single path segment) | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
+
+### [GET] /agent/{agent_id}/versions
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -350,7 +712,7 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent versions | **application/json**: [AgentConfigSnapshotListResponse](#agentconfigsnapshotlistresponse)<br> |
 
-### [GET] /agents/{agent_id}/versions/{version_id}
+### [GET] /agent/{agent_id}/versions/{version_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -861,164 +1223,6 @@ Run draft workflow for advanced chat application
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Permission denied |  |
-
-### [GET] /apps/{app_id}/agent-composer
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-
-### [PUT] /apps/{app_id}/agent-composer
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-
-### [GET] /apps/{app_id}/agent-composer/candidates
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
-
-### [POST] /apps/{app_id}/agent-composer/validate
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
-
-### [POST] /apps/{app_id}/agent-features
-Update an Agent App's presentation features (opener, follow-up, citations, ...)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentAppFeaturesPayload](#agentappfeaturespayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid configuration |  |
-| 404 | App not found |  |
-
-### [GET] /apps/{app_id}/agent-referencing-workflows
-List workflow apps that reference this Agent App's bound Agent (read-only)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
-| 404 | App not found |  |
-
-### [GET] /apps/{app_id}/agent-sandbox/files
-List a directory in an Agent App conversation sandbox
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
-
-### [GET] /apps/{app_id}/agent-sandbox/files/read
-Read a text/binary preview file in an Agent App conversation sandbox
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | query | Agent App conversation ID | Yes | string |
-| path | query | File path relative to the sandbox workspace | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-
-### [POST] /apps/{app_id}/agent-sandbox/files/upload
-Upload one Agent App sandbox file as a Dify ToolFile mapping
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentSandboxUploadPayload](#agentsandboxuploadpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/drive/files
 List agent drive entries (read-only inspector; one endpoint for both tabs)
@@ -10982,6 +11186,16 @@ Default namespace
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
+#### AgentAppCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Agent description (max 400 chars) | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| name | string | Agent name | Yes |
+
 #### AgentAppFeaturesPayload
 
 Presentation features configurable on an Agent App.
@@ -11238,6 +11452,12 @@ Audit operation recorded for Agent Soul version/revision changes.
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
+
+#### AgentDriveDeleteFileByAgentQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| key | string | Drive key, e.g. files/sample.pdf | Yes |
 
 #### AgentDriveDeleteResponse
 
@@ -12182,7 +12402,6 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
 | api_base_url | string |  | No |
-| app_model_config | [ModelConfig](#modelconfig) |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12193,9 +12412,11 @@ Enum class for api provider schema type.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | max_active_requests | integer |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -12290,10 +12511,10 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [AppPartial](#apppartial) ] |  | Yes |
+| data | [ [AppPartial](#apppartial) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### AppPartial
@@ -12301,20 +12522,22 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| app_model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | author_name | string |  | No |
+| bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| desc_or_prompt | string |  | No |
+| description | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
 | max_active_requests | integer |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
@@ -13109,7 +13332,7 @@ Enum class for configurate method of provider model.
 | icon | string | Icon | No |
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
-| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" | App mode<br>*Enum:* `"advanced-chat"`, `"agent-chat"`, `"chat"`, `"completion"`, `"workflow"` | Yes |
 | name | string | App name | Yes |
 
 #### CreateSnippetPayload
@@ -15562,7 +15785,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| model_dict | [JSONValue](#jsonvalue) |  | No |
+| model | [JSONValue](#jsonvalue) |  | No |
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |

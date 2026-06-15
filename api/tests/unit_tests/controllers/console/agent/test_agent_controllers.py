@@ -455,8 +455,7 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
 
     with app.test_request_context(json=payload):
         assert (
-            unwrap(AgentComposerApi.put)(AgentComposerApi(), "tenant-1", account_id, agent_id)["variant"]
-            == "agent_app"
+            unwrap(AgentComposerApi.put)(AgentComposerApi(), "tenant-1", account_id, agent_id)["variant"] == "agent_app"
         )
         assert cast(dict[str, object], captured["save"])["app_id"] == "app-1"
         assert unwrap(AgentComposerValidateApi.post)(AgentComposerValidateApi(), "tenant-1", agent_id) == {

@@ -272,11 +272,11 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
     config_version_id = AgentComposerService.add_drive_file_ref(
         tenant_id=app_model.tenant_id,
         agent_id=agent_id,
-            account_id=current_user.id,
-            file_ref=file_ref,
-            app_id=app_model.id,
-            node_id=node_id,
-        )
+        account_id=current_user.id,
+        file_ref=file_ref,
+        app_id=app_model.id,
+        node_id=node_id,
+    )
     return {
         "file": {
             "name": upload_file.name,
