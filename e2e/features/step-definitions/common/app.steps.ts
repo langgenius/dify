@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp, syncMinimalWorkflowDraft } from '../../../support/api.ts'
+import { createTestApp, syncMinimalWorkflowDraft } from '../../../support/api'
 
 Given('a {string} app has been created via API', async function (this: DifyWorld, mode: string) {
   const app = await createTestApp(`E2E ${Date.now()}`, mode)

@@ -1,5 +1,5 @@
 import type { ManagedProcess } from './process'
-import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process.ts'
+import { isPortReachable, startLoggedProcess, stopManagedProcess, waitForUrl } from './process'
 
 type WebServerStartOptions = {
   baseURL: string

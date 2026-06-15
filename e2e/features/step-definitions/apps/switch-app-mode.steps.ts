@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api.ts'
+import { createTestApp } from '../../../support/api'
 
 Given(
   'there is an existing E2E completion app available for testing',

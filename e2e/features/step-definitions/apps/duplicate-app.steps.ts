@@ -1,6 +1,6 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, When } from '@cucumber/cucumber'
-import { createTestApp } from '../../../support/api.ts'
+import { createTestApp } from '../../../support/api'
 
 Given('there is an existing E2E app available for testing', async function (this: DifyWorld) {
   const name = `E2E Test App ${Date.now()}`
