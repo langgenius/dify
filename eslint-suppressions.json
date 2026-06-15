@@ -7721,9 +7721,6 @@
     }
   },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    },
     "react/set-state-in-effect": {
       "count": 3
     }
