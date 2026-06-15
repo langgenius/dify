@@ -314,6 +314,10 @@ const VarReferencePicker: FC<Props> = ({
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
 
+  const isPluginDynamicSelectSchema = schema?.type === FormTypeEnum.dynamicSelect
+  const isPluginDynamicTreeSelectSchema = schema?.type === FormTypeEnum.dynamicTreeSelect
+  const isPluginLazyDynamicSchema = isPluginDynamicSelectSchema || isPluginDynamicTreeSelectSchema
+
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const dynamicOptionsLazyResetKey = useMemo(() => {
@@ -321,7 +325,7 @@ const VarReferencePicker: FC<Props> = ({
     return `${currentTool?.name ?? ''}|${currentProvider?.name ?? ''}|${v}`
   }, [schema, currentTool?.name, currentProvider?.name])
   const [dynamicOptionsLazyKeyTracker, setDynamicOptionsLazyKeyTracker] = useState(dynamicOptionsLazyResetKey)
-  if (dynamicSelectLazy && dynamicOptionsLazyResetKey !== dynamicOptionsLazyKeyTracker) {
+  if (isPluginLazyDynamicSchema && dynamicOptionsLazyResetKey !== dynamicOptionsLazyKeyTracker) {
     setDynamicOptionsLazyKeyTracker(dynamicOptionsLazyResetKey)
     setDynamicOptions(null)
   }
@@ -345,10 +349,6 @@ const VarReferencePicker: FC<Props> = ({
     credential_id: providerCredentialId,
     parameter_values: dynamicSelectParameterValues,
   })
-
-  const isPluginDynamicSelectSchema = schema?.type === FormTypeEnum.dynamicSelect
-  const isPluginDynamicTreeSelectSchema = schema?.type === FormTypeEnum.dynamicTreeSelect
-  const isPluginLazyDynamicSchema = isPluginDynamicSelectSchema || isPluginDynamicTreeSelectSchema
 
   const handleFetchPluginDynamicFormOptions = useCallback(async () => {
     if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider)
@@ -380,14 +380,11 @@ const VarReferencePicker: FC<Props> = ({
   useEffect(() => {
     if (!isPluginLazyDynamicSchema || !currentTool || !currentProvider)
       return
-    if (dynamicSelectLazy)
-      return
     void handleFetchPluginDynamicFormOptions()
   }, [
     isPluginLazyDynamicSchema,
     currentTool,
     currentProvider,
-    dynamicSelectLazy,
     handleFetchPluginDynamicFormOptions,
   ])
 
