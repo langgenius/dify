@@ -1,4 +1,4 @@
-import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EditAgentDialog } from '../edit-agent-dialog'
@@ -47,21 +47,15 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createAgent = (overrides: Partial<AgentInviteOptionResponse> = {}): AgentInviteOptionResponse => ({
-  agent_kind: 'dify_agent',
+const createAgent = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   description: 'Find and summarize market materials.',
   icon: '🧸',
   icon_background: '#F5F3FF',
   icon_type: 'emoji',
   id: 'agent-1',
+  icon_url: null,
+  mode: 'agent',
   name: 'Research Agent',
-  published_node_reference_count: 0,
-  published_reference_count: 0,
-  published_references: [],
-  role: 'Researcher',
-  scope: 'roster',
-  source: 'agent_app',
-  status: 'active',
   ...overrides,
 })
 

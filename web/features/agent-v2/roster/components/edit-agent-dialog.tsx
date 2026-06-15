@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentInviteOptionResponse, UpdateAppPayload } from '@dify/contracts/api/console/agent/types.gen'
+import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -16,7 +16,7 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { consoleQuery } from '@/service/client'
 
 type EditAgentDialogProps = {
-  agent: AgentInviteOptionResponse
+  agent: AppPartial
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -38,7 +38,7 @@ const defaultAgentIcon = {
   background: '#F5F3FF',
 } satisfies AppIconSelection
 
-const createAgentIconSelection = (agent: AgentInviteOptionResponse): AgentIconSelection => {
+const createAgentIconSelection = (agent: AppPartial): AgentIconSelection => {
   if (agent.icon_type === 'image' && agent.icon) {
     return {
       type: 'image',

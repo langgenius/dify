@@ -1,5 +1,5 @@
-import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
+import type { AgentRosterListItem } from '../agent-roster-list'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -11,23 +11,19 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-const createAgent = (overrides: Partial<AgentInviteOptionResponse> = {}): AgentInviteOptionResponse => ({
-  agent_kind: 'dify_agent',
+const createAgent = (overrides: Partial<AgentRosterListItem> = {}): AgentRosterListItem => ({
   description: 'Find and summarize market materials.',
   id: 'agent-1',
+  icon_url: null,
+  mode: 'agent',
   name: 'Research Agent',
-  published_node_reference_count: 0,
   published_reference_count: 0,
   published_references: [],
-  role: 'Researcher',
-  scope: 'roster',
-  source: 'agent_app',
-  status: 'active',
   ...overrides,
 })
 
 const renderList = (
-  agents: AgentInviteOptionResponse[],
+  agents: AgentRosterListItem[],
   overrides: Partial<ComponentProps<typeof AgentRosterList>> = {},
 ) => {
   const queryClient = new QueryClient()
@@ -55,18 +51,18 @@ describe('AgentRosterList', () => {
     vi.clearAllMocks()
   })
 
-  it('renders role under the card title instead of the agent source', () => {
+  it('renders mode under the card title instead of the agent source', () => {
     renderList([createAgent()])
 
-    expect(screen.getByText('Researcher')).toBeInTheDocument()
+    expect(screen.getByText('agent')).toBeInTheDocument()
     expect(screen.queryByText('agentV2.roster.sources.agent_app')).not.toBeInTheDocument()
   })
 
-  it('uses the Figma-aligned card title and role typography', () => {
+  it('uses the Figma-aligned card title and mode typography', () => {
     renderList([createAgent()])
 
     expect(screen.getByRole('heading', { name: 'Research Agent' })).toHaveClass('system-md-semibold')
-    expect(screen.getByText('Researcher')).toHaveClass('system-xs-regular')
+    expect(screen.getByText('agent')).toHaveClass('system-xs-regular')
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
   })
 

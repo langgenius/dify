@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentInviteOptionResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentIconType, AgentPublishedReferenceResponse, AppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -21,7 +21,7 @@ import { DeleteAgentDialog } from './delete-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
 type AgentRosterListProps = {
-  agents: AgentInviteOptionResponse[]
+  agents: AgentRosterListItem[]
   hasMore: boolean
   isEmptySearch: boolean
   isError: boolean
@@ -30,6 +30,11 @@ type AgentRosterListProps = {
   isPending: boolean
   label: string
   onLoadMore: () => void
+}
+
+export type AgentRosterListItem = AppPartial & {
+  published_reference_count?: number
+  published_references?: AgentPublishedReferenceResponse[]
 }
 
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
@@ -104,7 +109,7 @@ function AgentRosterEmptyState({ title }: { title: string }) {
 function AgentRosterItem({
   agent,
 }: {
-  agent: AgentInviteOptionResponse
+  agent: AgentRosterListItem
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -121,7 +126,7 @@ function AgentRosterItem({
   const hasPublishedReferences = publishedReferences.length > 0
   const usageStatus = referenceCount > 0 ? 'inUse' : 'draft'
   const imageUrl = (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
-  const iconType = imageUrl ? 'image' : agent.icon_type
+  const iconType = (imageUrl ? 'image' : agent.icon_type) as AgentIconType | null | undefined
 
   return (
     <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
@@ -148,7 +153,7 @@ function AgentRosterItem({
                 {agent.name}
               </h2>
               <p className="truncate system-xs-regular text-text-tertiary">
-                {agent.role}
+                {agent.mode}
               </p>
             </div>
           </div>
