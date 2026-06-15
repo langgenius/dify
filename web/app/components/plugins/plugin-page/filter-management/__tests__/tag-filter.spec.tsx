@@ -24,10 +24,10 @@ describe('TagFilter', () => {
     vi.clearAllMocks()
   })
 
-  it('renders the all tags placeholder when nothing is selected', () => {
+  it('renders the tags placeholder when nothing is selected', () => {
     render(<TagFilter value={[]} onChange={vi.fn()} />)
 
-    expect(screen.getByText('pluginTags.allTags')).toBeInTheDocument()
+    expect(screen.getByText('common.tag.tags')).toBeInTheDocument()
   })
 
   it('renders selected tag labels and the overflow counter', () => {
@@ -59,7 +59,7 @@ describe('TagFilter', () => {
     render(<TagFilter value={['agent']} onChange={onChange} />)
 
     const trigger = screen.getByTestId('popover-trigger')
-    fireEvent.click(trigger.querySelector('svg')!)
+    fireEvent.click(trigger.querySelector('.i-ri-close-circle-fill')!)
 
     expect(onChange).toHaveBeenCalledWith([])
   })

@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "Додано",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "Немає доступної стратегії агента",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "Переглянути інструкцію",
   "copyToolName": "Ім'я копії",
   "createCustomTool": "Створити власний інструмент",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "Тип аутентифікації",
   "createTool.authHeaderPrefix.types.basic": "Basic",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "Налаштування",
   "setBuiltInTools.string": "Рядок",
   "setBuiltInTools.toolDescription": "Опис інструменту",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "Параметри",
   "test.parametersValue": "Параметри та значення",
   "test.testResult": "Результати тесту",
@@ -211,5 +214,12 @@
   "toolRemoved": "Інструмент видалено",
   "type.builtIn": "Вбудовані",
   "type.custom": "Користувацькі",
-  "type.workflow": "Робочий процес"
+  "type.workflow": "Робочий процес",
+  "workflowToolEmpty.description": "Щоб використовувати workflow як інструмент, спочатку опублікуйте його в Studio. Після цього він з’явиться тут і його можна буде додати до будь-якого застосунку.",
+  "workflowToolEmpty.goToStudio": "Перейти до Studio",
+  "workflowToolEmpty.learnMore": "Потрібна допомога? Дізнайтеся, як опублікувати workflow як інструмент →",
+  "workflowToolEmpty.step1": "Створіть workflow у Studio",
+  "workflowToolEmpty.step2": "Натисніть «Workflow as Tool» у меню публікації, щоб зробити його доступним як інструмент",
+  "workflowToolEmpty.step3": "Поверніться сюди, щоб керувати ним і використовувати повторно",
+  "workflowToolEmpty.title": "Ще немає workflow, опублікованих як інструменти"
 }

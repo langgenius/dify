@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -18,7 +18,7 @@ type PluginSectionProps = {
   onClearSingle?: (taskId: string, pluginId: string) => void
 }
 
-const PluginSection: FC<PluginSectionProps> = ({
+function PluginSection({
   title,
   count,
   plugins,
@@ -30,22 +30,24 @@ const PluginSection: FC<PluginSectionProps> = ({
   headerAction,
   renderItemAction,
   onClearSingle,
-}) => {
+}: PluginSectionProps) {
   if (plugins.length === 0)
     return null
 
   return (
     <>
-      <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
-        {title}
-        {' '}
-        (
-        {count}
-        )
+      <div className="sticky top-0 flex items-start justify-between pt-1 pr-1 pl-2 system-sm-semibold-uppercase text-text-secondary">
+        <span className="flex h-6 items-center">
+          {title}
+          {' '}
+          (
+          {count}
+          )
+        </span>
         {headerAction}
       </div>
       <ScrollArea
-        className="max-h-[300px] overflow-hidden"
+        className="overflow-hidden"
         label={title}
         slotClassNames={{
           viewport: 'overscroll-contain',

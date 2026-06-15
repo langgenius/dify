@@ -44,7 +44,7 @@ const Label = ({ children, className }: { children: ReactNode, className?: strin
   const variant = use(VariantContext)
   return (
     <div className={cn(
-      'relative z-1 flex items-center gap-1 truncate px-1.5 pt-1 system-xs-medium',
+      'relative z-1 flex min-w-0 items-center gap-1 overflow-hidden px-1.5 pt-1 system-xs-medium',
       className ?? labelVariants[variant],
     )}
     >
@@ -55,7 +55,7 @@ const Label = ({ children, className }: { children: ReactNode, className?: strin
 
 const Actions = ({ children }: { children: ReactNode }) => {
   return (
-    <div className="relative z-1 flex items-center gap-0.5">
+    <div className="relative z-1 flex w-full min-w-0 items-center gap-0.5">
       {children}
     </div>
   )

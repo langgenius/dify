@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} VKLJUČENO",
-  "events.description": "Dogodki, na katere se lahko ta vtičnik sprožilnika naroči",
+  "events.description": "Dogodki, na katere se lahko ta integracija sprožilnika naroči",
   "events.empty": "Ni razpoložljivih dogodkov",
   "events.event": "Dogodek",
   "events.events": "Dogodki",

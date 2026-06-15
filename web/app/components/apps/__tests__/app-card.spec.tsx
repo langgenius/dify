@@ -85,11 +85,17 @@ vi.mock('@/service/apps', () => ({
 }))
 
 const mockDeleteAppMutation = vi.fn(() => Promise.resolve())
+const mockToggleAppStarMutation = vi.fn(() => Promise.resolve())
 let mockDeleteMutationPending = false
+let mockToggleStarMutationPending = false
 vi.mock('@/service/use-apps', () => ({
   useDeleteAppMutation: () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
+  }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: mockToggleAppStarMutation,
+    isPending: mockToggleStarMutationPending,
   }),
 }))
 
@@ -120,6 +126,7 @@ const { mockGetRedirection } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
+  getRedirectionPath: (_isCurrentWorkspaceEditor: boolean, app: { id: string }) => `/app/${app.id}/configuration`,
   getRedirection: mockGetRedirection,
 }))
 
@@ -342,28 +349,28 @@ describe('AppCard', () => {
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
     mockDeleteMutationPending = false
+    mockToggleStarMutationPending = false
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<AppCard app={mockApp} />)
-      // Use title attribute to target specific element
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should display app name', () => {
       render(<AppCard app={mockApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByText('Test App')).toBeInTheDocument()
     })
 
     it('should display app description', () => {
       render(<AppCard app={mockApp} />)
-      expect(screen.getByTitle('Test app description')).toBeInTheDocument()
+      expect(screen.getByText('Test app description')).toBeInTheDocument()
     })
 
     it('should display author name', () => {
       render(<AppCard app={mockApp} />)
-      expect(screen.getByTitle('Test Author')).toBeInTheDocument()
+      expect(screen.getByText('Test Author')).toBeInTheDocument()
     })
 
     it('should render app icon', () => {
@@ -389,7 +396,7 @@ describe('AppCard', () => {
     it('should handle different app modes', () => {
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
       render(<AppCard app={workflowApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should handle app with tags', () => {
@@ -421,52 +428,88 @@ describe('AppCard', () => {
 
     it('should render with onRefresh callback', () => {
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 
   describe('Access Mode Icons', () => {
-    it('should show public icon for public access mode', () => {
+    it('should show public icon on the bottom right of the card', () => {
       const publicApp = { ...mockApp, access_mode: AccessMode.PUBLIC }
-      const { container } = render(<AppCard app={publicApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.anyone"]')
-      expect(tooltip).toBeInTheDocument()
+      render(<AppCard app={publicApp} />)
+      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.anyone' })
+      expect(icon).toBeInTheDocument()
+      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
 
-    it('should show lock icon for specific groups access mode', () => {
+    it('should show lock icon on the bottom right of the card', () => {
       const specificApp = { ...mockApp, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }
-      const { container } = render(<AppCard app={specificApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.specific"]')
-      expect(tooltip).toBeInTheDocument()
+      render(<AppCard app={specificApp} />)
+      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.specific' })
+      expect(icon).toBeInTheDocument()
+      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
 
-    it('should show organization icon for organization access mode', () => {
+    it('should show organization icon on the bottom right of the card', () => {
       const orgApp = { ...mockApp, access_mode: AccessMode.ORGANIZATION }
-      const { container } = render(<AppCard app={orgApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.organization"]')
-      expect(tooltip).toBeInTheDocument()
+      render(<AppCard app={orgApp} />)
+      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.organization' })
+      expect(icon).toBeInTheDocument()
+      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
 
-    it('should show external icon for external access mode', () => {
+    it('should show external icon on the bottom right of the card', () => {
       const externalApp = { ...mockApp, access_mode: AccessMode.EXTERNAL_MEMBERS }
-      const { container } = render(<AppCard app={externalApp} />)
-      const tooltip = container.querySelector('[title="app.accessItemsDescription.external"]')
-      expect(tooltip).toBeInTheDocument()
+      render(<AppCard app={externalApp} />)
+      const icon = screen.getByRole('img', { name: 'app.accessItemsDescription.external' })
+      expect(icon).toBeInTheDocument()
+      expect(icon.closest('.right-3.bottom-3')).toBeInTheDocument()
     })
   })
 
   describe('Card Interaction', () => {
-    it('should handle card click', () => {
+    it('should render card navigation as a link', () => {
       render(<AppCard app={mockApp} />)
-      const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')
-      expect(card).toBeInTheDocument()
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+
+      expect(cardLink).toHaveAttribute('href', '/app/test-app-id/configuration')
     })
 
-    it('should call getRedirection on card click', () => {
+    it('should expose a visible focus ring on the card link', () => {
       render(<AppCard app={mockApp} />)
-      const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')!
-      fireEvent.click(card)
-      expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
+      const cardLink = screen.getByRole('link', { name: 'Test App' })
+
+      expect(cardLink).toHaveClass('focus-visible:ring-2')
+      expect(cardLink).toHaveClass('focus-visible:ring-state-accent-solid')
+    })
+
+    it('should star the app from the card action without navigating', async () => {
+      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
+
+      await waitFor(() => {
+        expect(mockToggleAppStarMutation).toHaveBeenCalledWith({
+          appId: mockApp.id,
+          isStarred: false,
+        })
+      })
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
+      expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('should unstar the app from the filled star action', async () => {
+      const starredApp = createMockApp({ is_starred: true })
+      render(<AppCard app={starredApp} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
+
+      await waitFor(() => {
+        expect(mockToggleAppStarMutation).toHaveBeenCalledWith({
+          appId: starredApp.id,
+          isStarred: true,
+        })
+      })
+      expect(mockOnRefresh).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -485,9 +528,13 @@ describe('AppCard', () => {
       render(<AppCard app={mockApp} />)
       const operationsTriggerWrapper = screen.getByTestId('dropdown-menu-trigger').closest('.absolute')
 
+      expect(operationsTriggerWrapper).toHaveClass('top-2')
+      expect(operationsTriggerWrapper).toHaveClass('right-2')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:pointer-events-auto')
       expect(operationsTriggerWrapper).toHaveClass('group-focus-within:opacity-100')
-      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-1')
+      expect(operationsTriggerWrapper).not.toHaveClass('w-[120px]')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-2')
+      expect(screen.getByTestId('dropdown-menu-trigger')).toHaveClass('focus-visible:ring-state-accent-solid')
     })
 
     it('should show edit option when dropdown menu is opened', async () => {
@@ -694,7 +741,7 @@ describe('AppCard', () => {
   describe('Styling', () => {
     it('should have correct card container styling', () => {
       const { container } = render(<AppCard app={mockApp} />)
-      const card = container.querySelector('[class*="h-[160px]"]')
+      const card = container.querySelector('[class*="h-41.5"]')
       expect(card).toBeInTheDocument()
     })
 
@@ -1150,20 +1197,20 @@ describe('AppCard', () => {
       const noTagsApp = { ...mockApp, tags: [] }
       // With empty tags, the component should still render successfully
       render(<AppCard app={noTagsApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should handle missing author name', () => {
       const noAuthorApp = { ...mockApp, author_name: '' }
       render(<AppCard app={noAuthorApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should handle null icon_url', () => {
       const nullIconApp = { ...mockApp, icon_url: null }
       // With null icon_url, the component should fall back to emoji icon and render successfully
       render(<AppCard app={nullIconApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should use created_at when updated_at is not available', () => {
@@ -1175,13 +1222,13 @@ describe('AppCard', () => {
     it('should handle agent chat mode apps', () => {
       const agentApp = { ...mockApp, mode: AppModeEnum.AGENT_CHAT }
       render(<AppCard app={agentApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should handle advanced chat mode apps', () => {
       const advancedApp = { ...mockApp, mode: AppModeEnum.ADVANCED_CHAT }
       render(<AppCard app={advancedApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
 
     it('should handle apps with multiple tags', () => {
@@ -1273,7 +1320,7 @@ describe('AppCard', () => {
       modes.forEach((mode) => {
         const testApp = { ...mockApp, mode }
         const { unmount } = render(<AppCard app={testApp} />)
-        expect(screen.getByTitle('Test App')).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
         unmount()
       })
     })
@@ -1394,9 +1441,10 @@ describe('AppCard', () => {
     })
 
     it('should handle open in explore via async window', async () => {
+      let openedUrl = ''
       // Configure mockOpenAsyncWindow to actually call the callback
       mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
-        await callback()
+        openedUrl = await callback()
       })
 
       render(<AppCard app={mockApp} />)
@@ -1409,6 +1457,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
+        expect(openedUrl).toBe('/installed/installed-1')
       })
     })
 
@@ -1556,7 +1605,7 @@ describe('AppCard', () => {
     it('should handle non-editor workspace users', () => {
       // This tests the isCurrentWorkspaceEditor=true branch (default mock)
       render(<AppCard app={mockApp} />)
-      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
     })
   })
 

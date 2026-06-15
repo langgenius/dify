@@ -12,10 +12,18 @@ import { PermissionType } from '@/app/components/plugins/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import AutoUpdateSetting from './auto-update-setting'
-import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
+import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from './auto-update-setting/types'
 import Label from './label'
 
 const i18nPrefix = 'privilege'
+const autoUpdateDefaultValue: AutoUpdateConfig = {
+  strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
+  upgrade_time_of_day: 36000,
+  upgrade_mode: AUTO_UPDATE_MODE.update_all,
+  exclude_plugins: [],
+  include_plugins: [],
+}
+
 type Props = Readonly<{
   payload: ReferenceSetting
   onHide: () => void

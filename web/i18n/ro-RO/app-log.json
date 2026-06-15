@@ -73,7 +73,7 @@
   "title": "Jurnale",
   "triggerBy.appRun": "Aplicație web",
   "triggerBy.debugging": "Depanare",
-  "triggerBy.plugin": "Plugin",
+  "triggerBy.plugin": "Integrare",
   "triggerBy.ragPipelineDebugging": "Depanare RAG",
   "triggerBy.ragPipelineRun": "Flux RAG",
   "triggerBy.schedule": "Program",

@@ -12,6 +12,7 @@ import {
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem
   className?: string
+  nameClassName?: string
   showModelType?: boolean
   modelTypeClassName?: string
   showMode?: boolean
@@ -24,6 +25,7 @@ type ModelNameProps = PropsWithChildren<{
 const ModelName: FC<ModelNameProps> = ({
   modelItem,
   className,
+  nameClassName,
   showModelType,
   modelTypeClassName,
   showMode,
@@ -41,7 +43,7 @@ const ModelName: FC<ModelNameProps> = ({
   return (
     <div className={cn('flex items-center gap-0.5 truncate overflow-hidden system-sm-regular text-ellipsis text-components-input-text-filled', className)}>
       <div
-        className="truncate"
+        className={cn('truncate', nameClassName)}
         title={modelItem.label[language] || modelItem.label.en_US}
       >
         {modelItem.label[language] || modelItem.label.en_US}
