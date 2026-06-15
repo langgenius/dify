@@ -5,6 +5,7 @@ from typing import cast
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppDslExportQuery, AppDslExportResponse, AppDslImportPayload
@@ -33,6 +34,7 @@ class AppDslImportApi(Resource):
     Returns 400 when the import failed due to invalid DSL or a business error.
     """
 
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL, resource_required=False)
     @auth_router.guard_workspace(
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
@@ -121,6 +123,7 @@ class AppDslExportApi(Resource):
     receive a 403; enable the API in the console first if needed.
     """
 
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
@@ -151,6 +154,7 @@ class AppDslCheckDependenciesApi(Resource):
     dependencies are satisfied.
     """
 
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
     @auth_router.guard(
         scope=Scope.APPS_READ,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),

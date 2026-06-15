@@ -21,6 +21,7 @@ from controllers.openapi._models import (
     AppListRow,
     TagItem,
 )
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from controllers.service_api.app.error import AppUnavailableError
@@ -86,6 +87,7 @@ def parameters_payload(app: App) -> dict:
 
 @openapi_ns.route("/apps/<string:app_id>/describe")
 class AppDescribeApi(AppReadResource):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @auth_router.guard(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, AppDescribeResponse, description="App description")
     @accepts(query=AppDescribeQuery)
@@ -136,6 +138,7 @@ class AppDescribeApi(AppReadResource):
 
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT, resource_required=False)
     @auth_router.guard_workspace(scope=Scope.APPS_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, AppListResponse, description="App list")
     @accepts(query=AppListQuery)

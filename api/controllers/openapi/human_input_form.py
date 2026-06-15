@@ -16,6 +16,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_schema_models
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
@@ -57,6 +58,7 @@ def _ensure_form_is_allowed_for_openapi(form) -> None:
 
 @openapi_ns.route("/apps/<string:app_id>/form/human_input/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @openapi_ns.response(200, "Form definition", openapi_ns.models[HumanInputFormDefinitionResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)
     def get(self, app_id: str, form_token: str, *, auth_data: AuthData):
@@ -71,6 +73,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
         service.ensure_form_active(form)
         return _jsonify_form_definition(form)
 
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @auth_router.guard(scope=Scope.APPS_RUN)
     @returns(200, FormSubmitResponse, description="Form submitted")
     @accepts(body=HumanInputFormSubmitPayload)

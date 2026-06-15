@@ -19,6 +19,7 @@ from werkzeug.exceptions import NotFound, UnprocessableEntity
 
 from controllers.common.fields import EventStreamResponse
 from controllers.common.schema import query_params_from_model
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
@@ -44,6 +45,7 @@ class WorkflowEventsQuery(BaseModel):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/events")
 class OpenApiWorkflowEventsApi(Resource):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @openapi_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @openapi_ns.response(200, "SSE event stream", openapi_ns.models[EventStreamResponse.__name__])
     @auth_router.guard(scope=Scope.APPS_RUN)

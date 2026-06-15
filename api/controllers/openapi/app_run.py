@@ -19,6 +19,7 @@ from werkzeug.exceptions import (
 
 import services
 from controllers.common.fields import EventStreamResponse
+from controllers.common.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
@@ -136,6 +137,7 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @auth_router.guard(scope=Scope.APPS_RUN)
     @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
@@ -167,6 +169,7 @@ class AppRunApi(Resource):
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
 class AppRunTaskStopApi(Resource):
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @auth_router.guard(scope=Scope.APPS_RUN)
     @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
