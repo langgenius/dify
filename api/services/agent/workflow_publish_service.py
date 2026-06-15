@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -20,6 +21,41 @@ class WorkflowAgentPublishService:
     _AGENT_BINDING_KEY = "agent_binding"
     _AGENT_TASK_KEY = "agent_task"
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
+
+    @classmethod
+    def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
+        """Return draft graph with persisted Agent node job config projected into node data.
+
+        Workflow draft graph is the front-end's editing source of truth, while
+        runtime/publish reads WorkflowAgentNodeBinding.node_job_config. This
+        response-only projection keeps reads aligned without writing binding
+        details back into the stored graph JSON.
+        """
+        graph = cast(dict[str, Any], copy.deepcopy(draft_workflow.graph_dict))
+        agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
+        if not agent_nodes:
+            return graph
+
+        bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+                WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes.keys())),
+            )
+        ).all()
+        for binding in bindings:
+            node_data = agent_nodes.get(binding.node_id)
+            if not isinstance(node_data, dict):
+                continue
+            node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            if node_job.workflow_prompt is not None:
+                node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
+            node_data[cls._AGENT_DECLARED_OUTPUTS_KEY] = [
+                output.model_dump(mode="json") for output in node_job.declared_outputs
+            ]
+        return graph
 
     @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
