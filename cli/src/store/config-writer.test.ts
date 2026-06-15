@@ -1,30 +1,12 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { describe, expect, it } from 'vitest'
 import { loadConfig } from '@/config/config-loader'
 import { emptyConfig } from '@/config/schema'
 import { saveConfig } from './config-writer'
-import { ENV_CONFIG_DIR } from './dir'
 import { getConfigurationStore } from './manager'
 
 describe('saveConfig', () => {
-  let dir: string
-  let prevConfigDir: string | undefined
-
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-w-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-
-  afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-w-')
 
   it('stamps schema_version=1 even if caller passed 0', async () => {
     await saveConfig(getConfigurationStore(), { ...emptyConfig() })

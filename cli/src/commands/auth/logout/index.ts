@@ -3,7 +3,7 @@ import type { HttpClient } from '@/http/types'
 import { Registry } from '@/auth/hosts'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { createHttpClient } from '@/http/client'
-import { getTokenStore, tokenKey } from '@/store/manager'
+import { getTokenStore } from '@/store/manager'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { realStreams } from '@/sys/io/streams'
 import { hostWithScheme, openAPIBase } from '@/util/host'
@@ -26,7 +26,11 @@ export default class Logout extends DifyCommand {
 
     let http: HttpClient | undefined
     if (active !== undefined) {
-      const bearer = await (await getTokenStore()).store.get(tokenKey(active.host, active.email))
+      let bearer = ''
+      try {
+        bearer = await getTokenStore(reg.token_storage).read(active.host, active.email)
+      }
+      catch { /* keyring locked — skip remote revocation, local cleanup still runs */ }
       if (bearer !== '') {
         http = createHttpClient({ baseURL: openAPIBase(hostWithScheme(active.host, active.scheme)), bearer, retryAttempts: 0 })
       }

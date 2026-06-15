@@ -284,6 +284,10 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
     )
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
     monkeypatch.setattr(
+        composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
+    )
+    monkeypatch.setattr(composer_controller.AgentComposerService, "resolve_bound_agent_id", lambda **kwargs: None)
+    monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "get_workflow_candidates",
         lambda **kwargs: _candidates_response("workflow"),
@@ -355,6 +359,10 @@ def test_agent_app_composer_get_put_validate_and_candidates(
     )
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
     monkeypatch.setattr(
+        composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
+    )
+    monkeypatch.setattr(composer_controller.AgentComposerService, "resolve_bound_agent_id", lambda **kwargs: None)
+    monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "get_agent_app_candidates",
         lambda **kwargs: _candidates_response("agent_app"),
@@ -383,3 +391,22 @@ def test_agent_app_composer_routes_are_agent_mode_only() -> None:
     assert _get_app_model_modes(AgentAppComposerApi.put) == [AppMode.AGENT]
     assert _get_app_model_modes(AgentAppComposerValidateApi.post) == [AppMode.AGENT]
     assert _get_app_model_modes(AgentAppComposerCandidatesApi.get) == [AppMode.AGENT]
+
+
+def test_dify_tool_candidate_response_keeps_granularity_fields():
+    """Both selection granularities must survive the fields-layer model —
+    the frontend needs granularity/tools_count to render the Tools menu."""
+    from fields.agent_fields import AgentComposerDifyToolCandidateResponse
+
+    provider_entry = AgentComposerDifyToolCandidateResponse.model_validate(
+        {
+            "id": "duckduckgo/*",
+            "granularity": "provider",
+            "name": "DuckDuckGo",
+            "provider": "duckduckgo",
+            "plugin_id": "langgenius/duckduckgo",
+            "tools_count": 2,
+        }
+    ).model_dump(exclude_none=True)
+    assert provider_entry["granularity"] == "provider"
+    assert provider_entry["tools_count"] == 2

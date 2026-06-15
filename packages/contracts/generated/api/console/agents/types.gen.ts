@@ -17,13 +17,14 @@ export type RosterAgentCreatePayload = {
   description?: string
   icon?: string | null
   icon_background?: string | null
-  icon_type?: AgentIconType
+  icon_type?: AgentIconType | null
   name: string
+  role?: string
   version_note?: string | null
 }
 
 export type AgentRosterResponse = {
-  active_config_snapshot?: AgentConfigSnapshotSummaryResponse
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id?: string | null
   agent_kind: AgentKind
   app_id?: string | null
@@ -34,9 +35,13 @@ export type AgentRosterResponse = {
   description: string
   icon?: string | null
   icon_background?: string | null
-  icon_type?: AgentIconType
+  icon_type?: AgentIconType | null
   id: string
   name: string
+  published_node_reference_count?: number
+  published_reference_count?: number
+  published_references?: Array<AgentPublishedReferenceResponse>
+  role?: string
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
@@ -58,8 +63,9 @@ export type RosterAgentUpdatePayload = {
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: AgentIconType
+  icon_type?: AgentIconType | null
   name?: string | null
+  role?: string | null
 }
 
 export type AgentConfigSnapshotListResponse = {
@@ -86,7 +92,7 @@ export type AgentSoulConfig = {
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
   misc_legacy?: AgentSoulAppFeaturesConfig
-  model?: AgentSoulModelConfig
+  model?: AgentSoulModelConfig | null
   prompt?: AgentSoulPromptConfig
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
@@ -108,6 +114,15 @@ export type AgentConfigSnapshotSummaryResponse = {
 
 export type AgentKind = 'dify_agent'
 
+export type AgentPublishedReferenceResponse = {
+  app_id: string
+  app_mode: string
+  app_name: string
+  node_ids?: Array<string>
+  workflow_id: string
+  workflow_version: string
+}
+
 export type AgentScope = 'roster' | 'workflow_only'
 
 export type AgentSource = 'agent_app' | 'imported' | 'system' | 'workflow'
@@ -115,7 +130,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'system' | 'workflow'
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentInviteOptionResponse = {
-  active_config_snapshot?: AgentConfigSnapshotSummaryResponse
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id?: string | null
   agent_kind: AgentKind
   app_id?: string | null
@@ -127,11 +142,15 @@ export type AgentInviteOptionResponse = {
   existing_node_ids?: Array<string>
   icon?: string | null
   icon_background?: string | null
-  icon_type?: AgentIconType
+  icon_type?: AgentIconType | null
   id: string
   in_current_workflow_count?: number
   is_in_current_workflow?: boolean
   name: string
+  published_node_reference_count?: number
+  published_reference_count?: number
+  published_references?: Array<AgentPublishedReferenceResponse>
+  role?: string
   scope: AgentScope
   source: AgentSource
   status: AgentStatus
@@ -155,12 +174,12 @@ export type AgentConfigRevisionResponse = {
 
 export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
-  retriever_resource?: AgentFeatureToggleConfig
-  sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig
-  speech_to_text?: AgentFeatureToggleConfig
+  retriever_resource?: AgentFeatureToggleConfig | null
+  sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
-  suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig
-  text_to_speech?: AgentTextToSpeechFeatureConfig
+  suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
+  text_to_speech?: AgentTextToSpeechFeatureConfig | null
   [key: string]: unknown
 }
 
@@ -184,7 +203,7 @@ export type AgentSoulHumanConfig = {
 export type AgentSoulKnowledgeConfig = {
   datasets?: Array<AgentKnowledgeDatasetConfig>
   query_config?: AgentKnowledgeQueryConfig
-  query_mode?: AgentKnowledgeQueryMode
+  query_mode?: AgentKnowledgeQueryMode | null
 }
 
 export type AgentSoulMemoryConfig = {
@@ -194,7 +213,7 @@ export type AgentSoulMemoryConfig = {
 }
 
 export type AgentSoulModelConfig = {
-  credential_ref?: AgentSoulModelCredentialRef
+  credential_ref?: AgentSoulModelCredentialRef | null
   model: string
   model_provider: string
   model_settings?: AgentSoulModelSettings
@@ -233,7 +252,7 @@ export type AgentFeatureToggleConfig = {
 }
 
 export type AgentSensitiveWordAvoidanceFeatureConfig = {
-  config?: AgentModerationProviderConfig
+  config?: AgentModerationProviderConfig | null
   enabled?: boolean
   type?: string | null
   [key: string]: unknown
@@ -241,7 +260,7 @@ export type AgentSensitiveWordAvoidanceFeatureConfig = {
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
-  model?: AgentSoulModelConfig
+  model?: AgentSoulModelConfig | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -260,7 +279,7 @@ export type AgentSecretRefConfig = {
   id?: string | null
   key?: string | null
   name?: string | null
-  permission?: AgentPermissionConfig
+  permission?: AgentPermissionConfig | null
   permission_status?: string | null
   provider?: string | null
   provider_credential_id?: string | null
@@ -271,13 +290,31 @@ export type AgentSecretRefConfig = {
 }
 
 export type AgentEnvVariableConfig = {
-  default?: unknown
+  default?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
   env_name?: string | null
   key?: string | null
   name?: string | null
   required?: boolean
   type?: string | null
-  value?: unknown
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | Array<string>
+    | Array<number>
+    | Array<number>
+    | Array<boolean>
+    | null
   variable?: string | null
   [key: string]: unknown
 }
@@ -337,7 +374,7 @@ export type AgentSoulModelSettings = {
   frequency_penalty?: number | null
   max_tokens?: number | null
   presence_penalty?: number | null
-  response_format?: AgentModelResponseFormatConfig
+  response_format?: AgentModelResponseFormatConfig | null
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
@@ -352,6 +389,7 @@ export type AgentSandboxProviderConfig = {
 }
 
 export type AgentFileRefConfig = {
+  drive_key?: string | null
   file_id?: string | null
   id?: string | null
   name?: string | null
@@ -368,15 +406,20 @@ export type AgentFileRefConfig = {
 export type AgentSkillRefConfig = {
   description?: string | null
   file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
   id?: string | null
+  manifest_files?: Array<string> | null
   name?: string | null
   path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
   [key: string]: unknown
 }
 
 export type AgentCliToolConfig = {
   approved?: boolean
-  authorization_status?: AgentCliToolAuthorizationStatus
+  authorization_status?: AgentCliToolAuthorizationStatus | null
   command?: string | null
   dangerous?: boolean
   dangerous_accepted?: boolean
@@ -384,6 +427,9 @@ export type AgentCliToolConfig = {
   dangerous_command?: boolean
   description?: string | null
   enabled?: boolean
+  env?: AgentCliToolEnvConfig
+  id?: string | null
+  inferred_from?: string | null
   install?: string | null
   install_command?: string | null
   install_commands?: Array<string>
@@ -392,18 +438,18 @@ export type AgentCliToolConfig = {
   }
   label?: string | null
   name?: string | null
-  permission?: AgentPermissionConfig
+  permission?: AgentPermissionConfig | null
   pre_authorized?: boolean | null
   requires_confirmation?: boolean
   risk_accepted?: boolean
-  risk_level?: AgentCliToolRiskLevel
+  risk_level?: AgentCliToolRiskLevel | null
   setup_command?: string | null
   tool_name?: string | null
   [key: string]: unknown
 }
 
 export type AgentSoulDifyToolConfig = {
-  credential_ref?: AgentSoulDifyToolCredentialRef
+  credential_ref?: AgentSoulDifyToolCredentialRef | null
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
   description?: string | null
   enabled?: boolean
@@ -413,16 +459,25 @@ export type AgentSoulDifyToolConfig = {
   provider_id?: string | null
   provider_type?: string
   runtime_parameters?: {
-    [key: string]: unknown
+    [key: string]:
+      | string
+      | number
+      | number
+      | boolean
+      | Array<string>
+      | Array<number>
+      | Array<number>
+      | Array<boolean>
+      | null
   }
-  tool_name: string
+  tool_name?: string | null
 }
 
 export type AgentModerationProviderConfig = {
   api_based_extension_id?: string | null
-  inputs_config?: AgentModerationIoConfig
+  inputs_config?: AgentModerationIoConfig | null
   keywords?: string | null
-  outputs_config?: AgentModerationIoConfig
+  outputs_config?: AgentModerationIoConfig | null
   [key: string]: unknown
 }
 
@@ -446,6 +501,11 @@ export type AgentCliToolAuthorizationStatus
     | 'pending'
     | 'pre_authorized'
     | 'unauthorized'
+
+export type AgentCliToolEnvConfig = {
+  secret_refs?: Array<AgentSecretRefConfig>
+  variables?: Array<AgentEnvVariableConfig>
+}
 
 export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
 
@@ -520,9 +580,7 @@ export type DeleteAgentsByAgentIdData = {
 }
 
 export type DeleteAgentsByAgentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteAgentsByAgentIdResponse

@@ -1,3 +1,5 @@
+'use client'
+
 import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
@@ -112,6 +114,7 @@ export function Button({
   tone,
   loading,
   disabled,
+  focusableWhenDisabled,
   type = 'button',
   children,
   ...props
@@ -121,6 +124,7 @@ export function Button({
       type={type}
       className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
+      focusableWhenDisabled={focusableWhenDisabled ?? loading}
       aria-busy={loading || undefined}
       {...props}
     >

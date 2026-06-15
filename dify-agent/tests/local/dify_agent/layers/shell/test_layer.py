@@ -436,8 +436,11 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
         assert "export PROJECT_NAME='demo project'" in script
         assert "export QUOTED='it'\\''s ok'" in script
         assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
+        assert "export RG_CONFIG_PATH='.ripgreprc'" in script
+        assert 'export GITHUB_TOKEN="${GITHUB_TOKEN:-}"' in script
         assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
         assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
+        assert '. ".dify/env.sh"' in script
         assert "apt-get install -y ripgrep" in script
         return _job_result("bootstrap-job", status=JobStatusName.EXITED, done=True, exit_code=0)
 
@@ -445,7 +448,14 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
     layer = _shell_layer(
         client_factory=lambda _entrypoint: client,
         config=DifyShellLayerConfig(
-            cli_tools=[DifyShellCliToolConfig(name="ripgrep", install_commands=["apt-get install -y ripgrep"])],
+            cli_tools=[
+                DifyShellCliToolConfig(
+                    name="ripgrep",
+                    install_commands=["apt-get install -y ripgrep"],
+                    env=[DifyShellEnvVarConfig(name="RG_CONFIG_PATH", value=".ripgreprc")],
+                    secret_refs=[DifyShellSecretRefConfig(name="GITHUB_TOKEN", ref="secret-2")],
+                )
+            ],
             env=[
                 DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project"),
                 DifyShellEnvVarConfig(name="QUOTED", value="it's ok"),
@@ -624,6 +634,148 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
     }
     assert internal_run_calls
     assert all(call.env is None for call in internal_run_calls)
+
+
+def test_run_remote_script_uses_workspace_cwd_accumulates_output_and_deletes_job() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+        assert '. ".dify/env.sh"' not in script
+        assert script == "printf 'hello world'"
+        assert cwd == "~/workspace/abc12ff"
+        assert env is None
+        assert timeout == 7.5
+        return _job_result(
+            "remote-job",
+            status=JobStatusName.RUNNING,
+            done=False,
+            output="hello ",
+            offset=6,
+            truncated=True,
+        )
+
+    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
+        assert job_id == "remote-job"
+        assert offset == 6
+        assert timeout == 7.5
+        return _job_result(
+            "remote-job",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=0,
+            output="world",
+            offset=11,
+        )
+
+    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
+    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            result = await layer.run_remote_script("printf 'hello world'", timeout=7.5)
+            assert result.output == "hello world"
+            assert result.exit_code == 0
+
+    asyncio.run(scenario())
+
+    assert [call.job_id for call in client.delete_calls] == ["remote-job"]
+    assert layer.runtime_state.job_ids == []
+    assert layer.runtime_state.job_offsets == {}
+
+
+def test_run_remote_script_deletes_job_even_when_command_exits_non_zero() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+        assert script == "exit 17"
+        assert cwd == "~/workspace/abc12ff"
+        assert env is None
+        assert timeout == 3.0
+        return _job_result(
+            "remote-failed-job",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=17,
+            output="failed\n",
+            offset=7,
+        )
+
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            result = await layer.run_remote_script("exit 17", timeout=3.0)
+            assert result.exit_code == 17
+            assert result.output == "failed\n"
+
+    asyncio.run(scenario())
+
+    assert [call.job_id for call in client.delete_calls] == ["remote-failed-job"]
+    assert layer.runtime_state.job_ids == []
+    assert layer.runtime_state.job_offsets == {}
+
+
+def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+        assert script == "dify-agent file upload report.txt"
+        assert '. ".dify/env.sh"' not in script
+        del timeout
+        assert cwd == "~/workspace/abc12ff"
+        assert env == {
+            AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+            AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
+        }
+        return _job_result("remote-upload", status=JobStatusName.EXITED, done=True, exit_code=0, output="{}")
+
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = DifyShellLayer.from_config_with_settings(
+        DifyShellLayerConfig(),
+        shellctl_entrypoint="http://shellctl",
+        shellctl_client_factory=lambda _entrypoint: client,
+        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_token_factory=lambda execution_context, *, session_id: (
+            f"token-for:{execution_context.tenant_id}:{session_id}"
+        ),
+    )
+    layer.deps = layer.deps_type(execution_context=_execution_context_layer())
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            _ = await layer.run_remote_script("dify-agent file upload report.txt", inject_agent_stub_env=True)
+
+    asyncio.run(scenario())
+
+    assert [call.job_id for call in client.delete_calls] == ["remote-upload"]
+
+
+def test_run_remote_script_raises_when_agent_stub_env_is_unavailable() -> None:
+    client = FakeShellctlClient(
+        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
+            "unexpected-run",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=0,
+        )
+    )
+    layer = DifyShellLayer.from_config_with_settings(
+        DifyShellLayerConfig(),
+        shellctl_entrypoint="http://shellctl",
+        shellctl_client_factory=lambda _entrypoint: client,
+        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_token_factory=lambda execution_context, *, session_id: (
+            f"token-for:{execution_context.tenant_id}:{session_id}"
+        ),
+    )
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            with pytest.raises(RuntimeError, match="Agent Stub environment injection is not available"):
+                await layer.run_remote_script("dify-agent file upload report.txt", inject_agent_stub_env=True)
+
+    asyncio.run(scenario())
+
+    assert client.run_calls == []
 
 
 def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency() -> None:

@@ -1,10 +1,7 @@
 import type { AccountContext } from './hosts'
-import type { Key, Store } from '@/store/store'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '@/store/dir'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { MemStore } from '@test/fixtures/mem-store'
+import { describe, expect, it } from 'vitest'
 import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {
@@ -52,6 +49,20 @@ describe('RegistrySchema', () => {
       external_subject: { email: 'sso@x.io', issuer: 'https://issuer' },
     })
     expect(ctx.external_subject?.issuer).toBe('https://issuer')
+  })
+
+  it('strips a stale available_workspaces field from legacy contexts', () => {
+    const raw = {
+      account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
+      workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
+      available_workspaces: [
+        { id: 'ws-1', name: 'Space', role: 'owner' },
+        { id: '00000000-0000-0000-0000-000000000002', name: 'Other', role: 'normal' },
+      ],
+    } as unknown as Record<string, unknown>
+    const ctx = AccountContextSchema.parse(raw)
+    expect((ctx as Record<string, unknown>).available_workspaces).toBeUndefined()
+    expect(ctx.workspace?.id).toBe('ws-1')
   })
 })
 
@@ -126,19 +137,7 @@ describe('Registry (pure)', () => {
 })
 
 describe('Registry.load / Registry.save', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-reg-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-reg-')
 
   it('returns an empty registry when nothing saved', async () => {
     const reg = await Registry.load()
@@ -158,27 +157,8 @@ describe('Registry.load / Registry.save', () => {
   })
 })
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  async get<T>(key: Key<T>): Promise<T> { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  async set<T>(key: Key<T>, value: T): Promise<void> { this.entries.set(key.key, value) }
-  async unset<T>(key: Key<T>): Promise<void> { this.entries.delete(key.key) }
-}
-
 describe('Registry.forget', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-forget-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  useTempConfigDir('difyctl-forget-')
 
   it('drops token + active context, keeps siblings, unsets pointers', async () => {
     const store = new MemStore()
@@ -188,12 +168,12 @@ describe('Registry.forget', () => {
     reg.setHost('h1')
     reg.setAccount('a@x')
     await reg.save()
-    await store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
+    await store.write('h1', 'a@x', 'dfoa_a')
 
     const active = reg.resolveActive()!
     await reg.forget(active, store)
 
-    expect(await store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
+    expect(await store.read('h1', 'a@x')).toBe('')
     const after = await Registry.load()
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()

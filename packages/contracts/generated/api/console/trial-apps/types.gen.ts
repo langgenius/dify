@@ -4,6 +4,36 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type TrialAppDetailWithSite = {
+  access_mode?: string
+  api_base_url?: string
+  created_at?: number
+  created_by?: string
+  deleted_tools?: Array<TrialDeletedTool>
+  description?: string
+  enable_api?: boolean
+  enable_site?: boolean
+  icon?: string
+  icon_background?: string
+  icon_type?: string
+  icon_url?: string
+  id?: string
+  max_active_requests?: number
+  mode?: string
+  model_config?: TrialAppModelConfig
+  name?: string
+  site?: TrialSite
+  tags?: Array<TrialTag>
+  updated_at?: number
+  updated_by?: string
+  use_icon_as_answer_icon?: boolean
+  workflow?: TrialWorkflowPartial
+}
+
+export type AudioTranscriptResponse = {
+  text: string
+}
+
 export type ChatRequest = {
   conversation_id?: string | null
   files?: Array<unknown> | null
@@ -15,6 +45,8 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
+export type GeneratedAppResponse = JsonValue
+
 export type CompletionRequest = {
   files?: Array<unknown> | null
   inputs: {
@@ -25,6 +57,50 @@ export type CompletionRequest = {
   retriever_from?: string
 }
 
+export type TrialDatasetList = {
+  data?: Array<TrialDataset>
+  has_more?: boolean
+  limit?: number
+  page?: number
+  total?: number
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
+}
+
+export type Parameters = {
+  annotation_reply: JsonObject
+  file_upload: JsonObject
+  more_like_this: JsonObject
+  opening_statement?: string | null
+  retriever_resource: JsonObject
+  sensitive_word_avoidance: JsonObject
+  speech_to_text: JsonObject
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: JsonObject
+  system_parameters: SystemParameters
+  text_to_speech: JsonObject
+  user_input_form: Array<JsonObject>
+}
+
+export type Site = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
+  privacy_policy?: string | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
+}
+
 export type TextToSpeechRequest = {
   message_id?: string | null
   streaming?: boolean | null
@@ -32,11 +108,246 @@ export type TextToSpeechRequest = {
   voice?: string | null
 }
 
+export type AudioBinaryResponse = Blob | File
+
+export type TrialWorkflow = {
+  conversation_variables?: Array<TrialConversationVariable>
+  created_at?: number
+  created_by?: TrialSimpleAccount
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }>
+  features?: {
+    [key: string]: unknown
+  }
+  graph?: {
+    [key: string]: unknown
+  }
+  hash?: string
+  id?: string
+  marked_comment?: string
+  marked_name?: string
+  rag_pipeline_variables?: Array<TrialPipelineVariable>
+  tool_published?: boolean
+  updated_at?: number
+  updated_by?: TrialSimpleAccount
+  version?: string
+}
+
 export type WorkflowRunRequest = {
   files?: Array<unknown> | null
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type TrialDeletedTool = {
+  provider_id?: string
+  tool_name?: string
+  type?: string
+}
+
+export type TrialAppModelConfig = {
+  agent_mode?: {
+    [key: string]: unknown
+  }
+  annotation_reply?: {
+    [key: string]: unknown
+  }
+  chat_prompt_config?: {
+    [key: string]: unknown
+  }
+  completion_prompt_config?: {
+    [key: string]: unknown
+  }
+  created_at?: number
+  created_by?: string
+  dataset_configs?: {
+    [key: string]: unknown
+  }
+  dataset_query_variable?: string
+  external_data_tools?: Array<{
+    [key: string]: unknown
+  }>
+  file_upload?: {
+    [key: string]: unknown
+  }
+  model?: {
+    [key: string]: unknown
+  }
+  more_like_this?: {
+    [key: string]: unknown
+  }
+  opening_statement?: string
+  pre_prompt?: string
+  prompt_type?: string
+  retriever_resource?: {
+    [key: string]: unknown
+  }
+  sensitive_word_avoidance?: {
+    [key: string]: unknown
+  }
+  speech_to_text?: {
+    [key: string]: unknown
+  }
+  suggested_questions?: Array<string>
+  suggested_questions_after_answer?: {
+    [key: string]: unknown
+  }
+  text_to_speech?: {
+    [key: string]: unknown
+  }
+  updated_at?: number
+  updated_by?: string
+  user_input_form?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type TrialSite = {
+  access_token?: string
+  app_base_url?: string
+  chat_color_theme?: string
+  chat_color_theme_inverted?: boolean
+  code?: string
+  copyright?: string
+  created_at?: number
+  created_by?: string
+  custom_disclaimer?: string
+  customize_domain?: string
+  customize_token_strategy?: string
+  default_language?: string
+  description?: string
+  icon?: string
+  icon_background?: string
+  icon_type?: string
+  icon_url?: string
+  privacy_policy?: string
+  prompt_public?: boolean
+  show_workflow_steps?: boolean
+  title?: string
+  updated_at?: number
+  updated_by?: string
+  use_icon_as_answer_icon?: boolean
+}
+
+export type TrialTag = {
+  id?: string
+  name?: string
+  type?: string
+}
+
+export type TrialWorkflowPartial = {
+  created_at?: number
+  created_by?: string
+  id?: string
+  updated_at?: number
+  updated_by?: string
+}
+
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
+export type TrialDataset = {
+  created_at?: number
+  created_by?: string
+  data_source_type?: string
+  description?: string
+  id?: string
+  indexing_technique?: string
+  name?: string
+  permission?: string
+}
+
+export type JsonObject = {
+  [key: string]: unknown
+}
+
+export type SystemParameters = {
+  audio_file_size_limit: number
+  file_size_limit: number
+  image_file_size_limit: number
+  video_file_size_limit: number
+  workflow_file_upload_limit: number
+}
+
+export type TrialConversationVariable = {
+  description?: string
+  id?: string
+  name?: string
+  value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+  value_type?: string
+}
+
+export type TrialSimpleAccount = {
+  email?: string
+  id?: string
+  name?: string
+}
+
+export type TrialPipelineVariable = {
+  allow_file_extension?: Array<string>
+  allow_file_upload_methods?: Array<string>
+  allowed_file_types?: Array<string>
+  belong_to_node_id?: string
+  default_value?:
+    | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+  label?: string
+  max_length?: number
+  options?: Array<string>
+  placeholder?: string
+  required?: boolean
+  tooltips?: string
+  type?: string
+  unit?: string
+  variable?: string
+}
+
+export type GeneratedAppResponseWritable = JsonValue
+
+export type SiteWritable = {
+  chat_color_theme?: string | null
+  chat_color_theme_inverted: boolean
+  copyright?: string | null
+  custom_disclaimer?: string | null
+  default_language: string
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  privacy_policy?: string | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type GetTrialAppsByAppIdData = {
@@ -49,9 +360,7 @@ export type GetTrialAppsByAppIdData = {
 }
 
 export type GetTrialAppsByAppIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TrialAppDetailWithSite
 }
 
 export type GetTrialAppsByAppIdResponse
@@ -67,9 +376,7 @@ export type PostTrialAppsByAppIdAudioToTextData = {
 }
 
 export type PostTrialAppsByAppIdAudioToTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioTranscriptResponse
 }
 
 export type PostTrialAppsByAppIdAudioToTextResponse
@@ -85,9 +392,7 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponse
@@ -103,9 +408,7 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponse
@@ -116,14 +419,16 @@ export type GetTrialAppsByAppIdDatasetsData = {
   path: {
     app_id: string
   }
-  query?: never
+  query?: {
+    ids?: Array<string>
+    limit?: number
+    page?: number
+  }
   url: '/trial-apps/{app_id}/datasets'
 }
 
 export type GetTrialAppsByAppIdDatasetsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TrialDatasetList
 }
 
 export type GetTrialAppsByAppIdDatasetsResponse
@@ -140,9 +445,7 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SuggestedQuestionsResponse
 }
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
@@ -158,9 +461,7 @@ export type GetTrialAppsByAppIdParametersData = {
 }
 
 export type GetTrialAppsByAppIdParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Parameters
 }
 
 export type GetTrialAppsByAppIdParametersResponse
@@ -176,9 +477,7 @@ export type GetTrialAppsByAppIdSiteData = {
 }
 
 export type GetTrialAppsByAppIdSiteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Site
 }
 
 export type GetTrialAppsByAppIdSiteResponse
@@ -194,9 +493,7 @@ export type PostTrialAppsByAppIdTextToAudioData = {
 }
 
 export type PostTrialAppsByAppIdTextToAudioResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioBinaryResponse
 }
 
 export type PostTrialAppsByAppIdTextToAudioResponse
@@ -212,9 +509,7 @@ export type GetTrialAppsByAppIdWorkflowsData = {
 }
 
 export type GetTrialAppsByAppIdWorkflowsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TrialWorkflow
 }
 
 export type GetTrialAppsByAppIdWorkflowsResponse
@@ -230,9 +525,7 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponse
@@ -249,9 +542,7 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse

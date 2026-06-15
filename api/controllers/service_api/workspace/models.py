@@ -1,10 +1,20 @@
 from flask_login import current_user
 from flask_restx import Resource
 
+from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_dataset_token
+from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from services.entities.model_provider_entities import ProviderWithModelsResponse
 from services.model_provider_service import ModelProviderService
+
+
+class ProviderWithModelsListResponse(ResponseModel):
+    data: list[ProviderWithModelsResponse]
+
+
+register_response_schema_models(service_api_ns, ProviderWithModelsListResponse)
 
 
 @service_api_ns.route("/workspaces/current/models/model-types/<string:model_type>")
@@ -17,6 +27,11 @@ class ModelProviderAvailableModelApi(Resource):
             200: "Models retrieved successfully",
             401: "Unauthorized - invalid API token",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Models retrieved successfully",
+        service_api_ns.models[ProviderWithModelsListResponse.__name__],
     )
     @validate_dataset_token
     def get(self, _, model_type: str):

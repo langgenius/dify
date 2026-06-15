@@ -1,10 +1,10 @@
 import type { HostEntry } from '@/auth/hosts'
-import type { Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import type { IOStreams } from '@/sys/io/streams'
 import { notLoggedInError, Registry } from '@/auth/hosts'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { getTokenStore, tokenKey } from '@/store/manager'
+import { getTokenStore } from '@/store/manager'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { selectFromList } from '@/sys/io/select'
 
@@ -12,7 +12,7 @@ export type UseAccountOptions = {
   readonly io: IOStreams
   readonly email: string | undefined
   /** Optional override for tests; production resolves via `getTokenStore`. */
-  readonly store?: Store
+  readonly store?: TokenStore
 }
 
 type AccountChoice = { email: string, name: string, sso: boolean, active: boolean }
@@ -38,8 +38,8 @@ export async function runUseAccount(opts: UseAccountOptions): Promise<void> {
     })
   }
 
-  const store = opts.store ?? (await getTokenStore()).store
-  if (await store.get(tokenKey(host, target)) === '') {
+  const store = opts.store ?? getTokenStore(reg.token_storage)
+  if (await store.read(host, target) === '') {
     throw new BaseError({
       code: ErrorCode.NotLoggedIn,
       message: `no credential stored for ${target} on ${host}`,

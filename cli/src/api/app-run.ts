@@ -34,6 +34,7 @@ export function buildRunBody(args: RunBodyArgs): Record<string, unknown> {
 export type StreamOptions = {
   signal?: AbortSignal
   includeStateSnapshot?: boolean
+  retryOnRateLimit?: boolean
 }
 
 export class AppRunClient {
@@ -59,6 +60,7 @@ export class AppRunClient {
       headers: { Accept: 'text/event-stream' },
       signal: opts.signal,
       throwOnError: true,
+      retryOnRateLimit: opts.retryOnRateLimit,
     })
     if (res.body === null)
       throw new Error('streaming response body missing')

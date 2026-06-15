@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -40,37 +40,14 @@ class ConversationListQuery(BaseModel):
 
 
 register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
-register_response_schema_models(web_ns, ResultResponse)
+register_response_schema_models(web_ns, ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation)
 
 
 @web_ns.route("/conversations")
 class ConversationListApi(WebApiResource):
     @web_ns.doc("Get Conversation List")
     @web_ns.doc(description="Retrieve paginated list of conversations for a chat application.")
-    @web_ns.doc(
-        params={
-            "last_id": {"description": "Last conversation ID for pagination", "type": "string", "required": False},
-            "limit": {
-                "description": "Number of conversations to return (1-100)",
-                "type": "integer",
-                "required": False,
-                "default": 20,
-            },
-            "pinned": {
-                "description": "Filter by pinned status",
-                "type": "string",
-                "enum": ["true", "false"],
-                "required": False,
-            },
-            "sort_by": {
-                "description": "Sort order",
-                "type": "string",
-                "enum": ["created_at", "-created_at", "updated_at", "-updated_at"],
-                "required": False,
-                "default": "-updated_at",
-            },
-        }
-    )
+    @web_ns.doc(params=query_params_from_model(ConversationListQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -81,6 +58,7 @@ class ConversationListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[ConversationInfiniteScrollPagination.__name__])
     def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
@@ -166,6 +144,8 @@ class ConversationRenameApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Conversation renamed successfully", web_ns.models[SimpleConversation.__name__])
+    @web_ns.expect(web_ns.models[ConversationRenamePayload.__name__])
     def post(self, app_model: App, end_user: EndUser, c_id: UUID):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:

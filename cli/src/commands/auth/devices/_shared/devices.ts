@@ -1,7 +1,7 @@
 import type { SessionRow } from '@dify/contracts/api/openapi/types.gen'
 import type { ActiveContext, Registry } from '@/auth/hosts'
 import type { HttpClient } from '@/http/types'
-import type { Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import type { IOStreams } from '@/sys/io/streams'
 import { AccountSessionsClient } from '@/api/account-sessions'
 import { BaseError } from '@/errors/base'
@@ -71,7 +71,7 @@ export type DevicesRevokeOptions = {
   readonly io: IOStreams
   readonly reg: Registry
   readonly active: ActiveContext
-  readonly store: Store
+  readonly store: TokenStore
   readonly http: HttpClient
   readonly target?: string
   readonly all: boolean

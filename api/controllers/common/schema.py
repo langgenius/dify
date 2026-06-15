@@ -1,9 +1,9 @@
 """Helpers for registering Pydantic models with Flask-RESTX namespaces.
 
 Flask-RESTX treats `SchemaModel` bodies as opaque JSON schemas; it does not
-promote Pydantic's nested `$defs` into top-level Swagger `definitions`.
+promote Pydantic's nested `$defs` into top-level OpenAPI component schemas.
 These helpers keep that translation centralized so models registered through
-`register_schema_models` emit resolvable Swagger 2.0 references.
+`register_schema_models` emit resolvable OpenAPI 3 references.
 """
 
 from collections.abc import Iterable, Mapping
@@ -14,7 +14,7 @@ from flask import request
 from flask_restx import Namespace
 from pydantic import BaseModel, TypeAdapter
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+DEFAULT_REF_TEMPLATE_OPENAPI_3_0 = "#/components/schemas/{model}"
 
 
 QueryParamDoc = TypedDict(
@@ -27,12 +27,18 @@ QueryParamDoc = TypedDict(
         "description": NotRequired[str],
         "enum": NotRequired[list[object]],
         "default": NotRequired[object],
+        "format": NotRequired[str],
         "minimum": NotRequired[int | float],
         "maximum": NotRequired[int | float],
+        "exclusiveMinimum": NotRequired[int | float],
+        "exclusiveMaximum": NotRequired[int | float],
         "minLength": NotRequired[int],
         "maxLength": NotRequired[int],
+        "pattern": NotRequired[str],
         "minItems": NotRequired[int],
         "maxItems": NotRequired[int],
+        "uniqueItems": NotRequired[bool],
+        "multipleOf": NotRequired[int | float],
     },
 )
 
@@ -48,7 +54,6 @@ class QueryArgs(Protocol):
 def _register_json_schema(namespace: Namespace, name: str, schema: dict) -> None:
     """Register a JSON schema and promote any nested Pydantic `$defs`."""
 
-    schema = _swagger_2_compatible_schema(schema)
     nested_definitions = schema.get("$defs")
     schema_to_register = dict(schema)
     if isinstance(nested_definitions, dict):
@@ -71,41 +76,12 @@ def _register_schema_model(namespace: Namespace, model: type[BaseModel], *, mode
     _register_json_schema(
         namespace,
         model.__name__,
-        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0, mode=mode),
+        model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0, mode=mode),
     )
 
 
-def _swagger_2_compatible_schema(value: Any) -> Any:
-    if isinstance(value, list):
-        return [_swagger_2_compatible_schema(item) for item in value]
-
-    if not isinstance(value, dict):
-        return value
-
-    converted = {key: _swagger_2_compatible_schema(child) for key, child in value.items()}
-    any_of = value.get("anyOf")
-    if not isinstance(any_of, list):
-        return converted
-
-    non_null_candidates = [
-        candidate for candidate in any_of if isinstance(candidate, Mapping) and candidate.get("type") != "null"
-    ]
-    has_null_candidate = any(isinstance(candidate, Mapping) and candidate.get("type") == "null" for candidate in any_of)
-    if not has_null_candidate or len(non_null_candidates) != 1:
-        return converted
-
-    non_null_schema = _swagger_2_compatible_schema(dict(non_null_candidates[0]))
-    if not isinstance(non_null_schema, dict):
-        return converted
-
-    converted.pop("anyOf", None)
-    converted.update(non_null_schema)
-    converted["x-nullable"] = True
-    return converted
-
-
 def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
-    """Register a BaseModel and its nested schema definitions for Swagger documentation."""
+    """Register a BaseModel and its nested component schemas for OpenAPI documentation."""
 
     _register_schema_model(namespace, model, mode="validation")
 
@@ -146,7 +122,7 @@ def register_enum_models(namespace: Namespace, *models: type[StrEnum]) -> None:
         _register_json_schema(
             namespace,
             model.__name__,
-            TypeAdapter(model).json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+            TypeAdapter(model).json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0),
         )
 
 
@@ -155,10 +131,11 @@ def query_params_from_model(model: type[BaseModel]) -> dict[str, QueryParamDoc]:
 
     `Namespace.expect()` treats Pydantic schema models as request bodies, so GET
     endpoints should keep runtime validation on the Pydantic model and feed this
-    derived mapping to `Namespace.doc(params=...)` for Swagger documentation.
+    derived mapping to `Namespace.doc(params=...)` for OpenAPI documentation.
     """
 
-    schema = model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    schema = model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0)
+    definitions = _schema_definitions(schema)
     properties = schema.get("properties", {})
     if not isinstance(properties, Mapping):
         return {}
@@ -171,7 +148,11 @@ def query_params_from_model(model: type[BaseModel]) -> dict[str, QueryParamDoc]:
         if not isinstance(name, str) or not isinstance(property_schema, Mapping):
             continue
 
-        params[name] = _query_param_from_property(property_schema, required=name in required_names)
+        params[name] = _query_param_from_property(
+            property_schema,
+            required=name in required_names,
+            definitions=definitions,
+        )
 
     return params
 
@@ -203,7 +184,7 @@ def query_params_from_request[ModelT: BaseModel](
 
 
 def _drop_malformed_defaulted_integer_params(model: type[BaseModel], params: dict[str, Any]) -> None:
-    properties = model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0).get("properties", {})
+    properties = model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_OPENAPI_3_0).get("properties", {})
     if not isinstance(properties, Mapping):
         return
 
@@ -228,8 +209,18 @@ def _drop_malformed_defaulted_integer_params(model: type[BaseModel], params: dic
             params.pop(name)
 
 
-def _query_param_from_property(property_schema: Mapping[str, Any], *, required: bool) -> QueryParamDoc:
-    param_schema = _nullable_property_schema(property_schema)
+def _schema_definitions(schema: Mapping[str, Any]) -> Mapping[str, Any]:
+    definitions = schema.get("$defs")
+    return definitions if isinstance(definitions, Mapping) else {}
+
+
+def _query_param_from_property(
+    property_schema: Mapping[str, Any],
+    *,
+    required: bool,
+    definitions: Mapping[str, Any],
+) -> QueryParamDoc:
+    param_schema = _resolve_schema_ref(_nullable_property_schema(property_schema), definitions)
     param_doc: QueryParamDoc = {"in": "query", "required": required}
 
     description = param_schema.get("description")
@@ -242,9 +233,16 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
         if schema_type == "array":
             items = param_schema.get("items")
             if isinstance(items, Mapping):
-                item_type = items.get("type")
+                item_schema = _resolve_schema_ref(items, definitions)
+                item_type = item_schema.get("type")
                 if isinstance(item_type, str):
                     param_doc["items"] = {"type": item_type}
+                item_enum = item_schema.get("enum")
+                if isinstance(item_enum, list):
+                    param_doc.setdefault("items", {})["enum"] = item_enum
+                item_format = item_schema.get("format")
+                if isinstance(item_format, str):
+                    param_doc.setdefault("items", {})["format"] = item_format
 
     enum = param_schema.get("enum")
     if isinstance(enum, list):
@@ -254,6 +252,10 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     if default is not None:
         param_doc["default"] = default
 
+    schema_format = param_schema.get("format")
+    if isinstance(schema_format, str):
+        param_doc["format"] = schema_format
+
     minimum = param_schema.get("minimum")
     if isinstance(minimum, int | float):
         param_doc["minimum"] = minimum
@@ -261,6 +263,14 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     maximum = param_schema.get("maximum")
     if isinstance(maximum, int | float):
         param_doc["maximum"] = maximum
+
+    exclusive_minimum = param_schema.get("exclusiveMinimum")
+    if isinstance(exclusive_minimum, int | float):
+        param_doc["exclusiveMinimum"] = exclusive_minimum
+
+    exclusive_maximum = param_schema.get("exclusiveMaximum")
+    if isinstance(exclusive_maximum, int | float):
+        param_doc["exclusiveMaximum"] = exclusive_maximum
 
     min_length = param_schema.get("minLength")
     if isinstance(min_length, int):
@@ -270,6 +280,10 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     if isinstance(max_length, int):
         param_doc["maxLength"] = max_length
 
+    pattern = param_schema.get("pattern")
+    if isinstance(pattern, str):
+        param_doc["pattern"] = pattern
+
     min_items = param_schema.get("minItems")
     if isinstance(min_items, int):
         param_doc["minItems"] = min_items
@@ -278,7 +292,29 @@ def _query_param_from_property(property_schema: Mapping[str, Any], *, required: 
     if isinstance(max_items, int):
         param_doc["maxItems"] = max_items
 
+    unique_items = param_schema.get("uniqueItems")
+    if isinstance(unique_items, bool):
+        param_doc["uniqueItems"] = unique_items
+
+    multiple_of = param_schema.get("multipleOf")
+    if isinstance(multiple_of, int | float):
+        param_doc["multipleOf"] = multiple_of
+
     return param_doc
+
+
+def _resolve_schema_ref(property_schema: Mapping[str, Any], definitions: Mapping[str, Any]) -> Mapping[str, Any]:
+    ref = property_schema.get("$ref")
+    if not isinstance(ref, str):
+        return property_schema
+
+    ref_name = ref.rsplit("/", 1)[-1]
+    resolved = definitions.get(ref_name)
+    if not isinstance(resolved, Mapping):
+        return property_schema
+
+    property_without_ref = {key: value for key, value in property_schema.items() if key != "$ref"}
+    return {**resolved, **property_without_ref}
 
 
 def _nullable_property_schema(property_schema: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -297,7 +333,7 @@ def _nullable_property_schema(property_schema: Mapping[str, Any]) -> Mapping[str
 
 
 __all__ = [
-    "DEFAULT_REF_TEMPLATE_SWAGGER_2_0",
+    "DEFAULT_REF_TEMPLATE_OPENAPI_3_0",
     "get_or_create_model",
     "query_params_from_model",
     "query_params_from_request",

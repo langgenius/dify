@@ -8,7 +8,7 @@ deprecated in generated API docs so clients migrate toward the canonical paths.
 import json
 from collections.abc import Mapping
 from contextlib import ExitStack
-from typing import Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from flask import request, send_file
@@ -25,7 +25,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.fields import UrlResponse
+from controllers.common.fields import BinaryFileResponse, UrlResponse
 from controllers.common.schema import (
     query_params_from_model,
     register_enum_models,
@@ -51,6 +51,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentListResponse,
+    DocumentMetadataResponse,
     DocumentResponse,
     DocumentStatusListResponse,
 )
@@ -117,6 +118,10 @@ class DocumentListQuery(BaseModel):
     status: str | None = Field(default=None, description="Document status filter")
 
 
+class DocumentGetQuery(BaseModel):
+    metadata: Literal["all", "only", "without"] = Field(default="all", description="Metadata response mode")
+
+
 DOCUMENT_CREATE_BY_FILE_PARAMS = {
     "dataset_id": "Dataset ID",
     "file": {
@@ -155,6 +160,40 @@ class DocumentAndBatchResponse(ResponseModel):
     batch: str
 
 
+class DocumentDetailResponse(ResponseModel):
+    id: str
+    position: int | None = None
+    data_source_type: str | None = None
+    data_source_info: dict[str, Any] | None = Field(default=None)
+    dataset_process_rule_id: str | None = None
+    dataset_process_rule: dict[str, Any] | None = Field(default=None)
+    document_process_rule: dict[str, Any] | None = Field(default=None)
+    name: str | None = None
+    created_from: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    tokens: int | None = None
+    indexing_status: str | None = None
+    completed_at: int | None = None
+    updated_at: int | None = None
+    indexing_latency: float | None = None
+    error: str | None = None
+    enabled: bool | None = None
+    disabled_at: int | None = None
+    disabled_by: str | None = None
+    archived: bool | None = None
+    doc_type: str | None = None
+    doc_metadata: list[DocumentMetadataResponse] | None = None
+    segment_count: int | None = None
+    average_segment_length: float | None = None
+    hit_count: int | None = None
+    display_status: str | None = None
+    doc_form: str | None = None
+    doc_language: str | None = None
+    summary_index_status: str | None = None
+    need_summary: bool | None = None
+
+
 register_enum_models(service_api_ns, RetrievalMethod)
 
 register_schema_models(
@@ -164,6 +203,7 @@ register_schema_models(
     DocumentTextCreatePayload,
     DocumentTextUpdate,
     DocumentListQuery,
+    DocumentGetQuery,
     DocumentBatchDownloadZipPayload,
     Rule,
     PreProcessingRule,
@@ -171,9 +211,11 @@ register_schema_models(
 )
 register_response_schema_models(
     service_api_ns,
+    BinaryFileResponse,
     UrlResponse,
     DocumentResponse,
     DocumentAndBatchResponse,
+    DocumentDetailResponse,
     DocumentListResponse,
     DocumentStatusListResponse,
 )
@@ -716,6 +758,11 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
             404: "Document or dataset not found",
         }
     )
+    @service_api_ns.response(
+        200,
+        "ZIP archive generated successfully",
+        service_api_ns.models[BinaryFileResponse.__name__],
+    )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id: UUID):
         payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
@@ -851,6 +898,7 @@ class DocumentApi(DatasetApiResource):
     @service_api_ns.doc("get_document")
     @service_api_ns.doc(description="Get a specific document by ID")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(params=query_params_from_model(DocumentGetQuery))
     @service_api_ns.doc(
         responses={
             200: "Document retrieved successfully",
@@ -858,6 +906,11 @@ class DocumentApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
             404: "Document not found",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Document retrieved successfully",
+        service_api_ns.models[DocumentDetailResponse.__name__],
     )
     def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)

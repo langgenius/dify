@@ -1,34 +1,14 @@
-import type { Key, Store } from '@/store/store'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { MemStore } from '@test/fixtures/mem-store'
+import { describe, expect, it } from 'vitest'
 import { Registry } from '@/auth/hosts'
-import { ENV_CONFIG_DIR } from '@/store/dir'
 import { bufferStreams } from '@/sys/io/streams'
 import { runLogout } from './logout.js'
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  async get<T>(key: Key<T>): Promise<T> { return (this.entries.get(key.key) as T | undefined) ?? key.default }
-  async set<T>(key: Key<T>, value: T): Promise<void> { this.entries.set(key.key, value) }
-  async unset<T>(key: Key<T>): Promise<void> { this.entries.delete(key.key) }
-}
-
 describe('runLogout', () => {
-  let dir: string
-  let prev: string | undefined
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-logout-'))
-    prev = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
-  })
-  afterEach(async () => {
-    if (prev === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else process.env[ENV_CONFIG_DIR] = prev
-    await rm(dir, { recursive: true, force: true })
-  })
+  const dir = useTempConfigDir('difyctl-logout-')
 
   async function seed(store: MemStore) {
     const reg = Registry.empty('file')
@@ -37,8 +17,8 @@ describe('runLogout', () => {
     reg.setHost('h1')
     reg.setAccount('a@x')
     await reg.save()
-    await store.set({ key: 'tokens.h1.a@x', default: '' }, 'dfoa_a')
-    await store.set({ key: 'tokens.h1.b@x', default: '' }, 'dfoa_b')
+    await store.write('h1', 'a@x', 'dfoa_a')
+    await store.write('h1', 'b@x', 'dfoa_b')
   }
 
   it('removes only the active context, keeps others, unsets pointers, file survives', async () => {
@@ -49,10 +29,21 @@ describe('runLogout', () => {
     expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
     expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
     expect(after?.current_host).toBeUndefined()
-    expect(await store.get({ key: 'tokens.h1.a@x', default: '' })).toBe('')
-    expect(await store.get({ key: 'tokens.h1.b@x', default: '' })).toBe('dfoa_b')
-    const raw = await readFile(join(dir, 'hosts.yml'), 'utf8')
+    expect(await store.read('h1', 'a@x')).toBe('')
+    expect(await store.read('h1', 'b@x')).toBe('dfoa_b')
+    const raw = await readFile(join(dir(), 'hosts.yml'), 'utf8')
     expect(raw).toContain('b@x')
+  })
+
+  it('clears local credentials even when the store.read throws (e.g. keyring locked)', async () => {
+    const store = new MemStore()
+    await seed(store)
+    store.read = () => {
+      throw new Error('keyring locked')
+    }
+    await runLogout({ io: bufferStreams(), reg: await Registry.load(), store })
+    const after = await Registry.load()
+    expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
   })
 
   it('throws NotLoggedIn when no active context', async () => {
