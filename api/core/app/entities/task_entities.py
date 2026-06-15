@@ -28,7 +28,8 @@ class TaskStateMetadata(BaseModel):
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
     usage: LLMUsage | None = None
     reasoning: dict[str, str] = Field(default_factory=dict)
-    """terminal reasoning_content per LLM node id (separated mode); persisted to message_metadata"""
+    """reasoning_content per LLM node id (separated mode), accumulated across iteration/loop
+    passes for that node; persisted to message_metadata"""
 
 
 class TaskState(BaseModel):

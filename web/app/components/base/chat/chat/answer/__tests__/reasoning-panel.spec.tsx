@@ -66,4 +66,16 @@ describe('ReasoningPanel', () => {
     render(<ReasoningPanel content={{ llm1: 'first', llm2: 'second' }} responding />)
     expect(screen.getByTestId('reasoning-markdown')).toHaveTextContent('first second')
   })
+
+  it('reflects in-place mutation of the same content object (streaming)', () => {
+    // The live stream mutates the same reasoningContent object under a stable reference,
+    // then re-renders. The panel must reflect the appended delta, not a stale snapshot.
+    const content: Record<string, string> = { llm: 'first' }
+    const { rerender } = render(<ReasoningPanel content={content} responding />)
+    expect(screen.getByTestId('reasoning-markdown')).toHaveTextContent('first')
+
+    content.llm = 'first second'
+    rerender(<ReasoningPanel content={content} responding />)
+    expect(screen.getByTestId('reasoning-markdown')).toHaveTextContent('first second')
+  })
 })

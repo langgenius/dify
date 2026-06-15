@@ -27,7 +27,11 @@ from controllers.console.wraps import with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.conversation_fields import ResultResponse
-from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
+from fields.message_fields import (
+    ExploreMessageInfiniteScrollPagination,
+    ExploreMessageListItem,
+    SuggestedQuestionsResponse,
+)
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from models import Account
@@ -56,7 +60,7 @@ register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, Mor
 register_response_schema_models(
     console_ns,
     GeneratedAppResponse,
-    MessageInfiniteScrollPagination,
+    ExploreMessageInfiniteScrollPagination,
     ResultResponse,
     SuggestedQuestionsResponse,
 )
@@ -68,7 +72,7 @@ register_response_schema_models(
 )
 class MessageListApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(MessageListQuery))
-    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPagination.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ExploreMessageInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -88,9 +92,9 @@ class MessageListApi(InstalledAppResource):
                 str(args.first_id) if args.first_id else None,
                 args.limit,
             )
-            adapter = TypeAdapter(MessageListItem)
+            adapter = TypeAdapter(ExploreMessageListItem)
             items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
-            return MessageInfiniteScrollPagination(
+            return ExploreMessageInfiniteScrollPagination(
                 limit=pagination.limit,
                 has_more=pagination.has_more,
                 data=items,

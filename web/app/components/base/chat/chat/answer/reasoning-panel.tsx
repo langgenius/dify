@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import { useMemo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
 import ThinkingDetails from '@/app/components/base/markdown-blocks/thinking-details'
 import { useElapsedTimer } from '@/app/components/base/markdown-blocks/use-elapsed-timer'
@@ -13,7 +12,9 @@ type ReasoningPanelProps = {
 
 const ReasoningPanel: FC<ReasoningPanelProps> = ({ content, isFinished, responding }) => {
   // First version renders one panel for the run; multiple LLM nodes are concatenated.
-  const text = useMemo(() => Object.values(content).filter(Boolean).join('\n\n'), [content])
+  // Computed inline (not memoized): the live stream mutates `content` in place under a
+  // stable reference, so a [content]-keyed memo would never see new deltas.
+  const text = Object.values(content).filter(Boolean).join('\n\n')
   // Done when the terminal marker arrived, or the response is no longer active.
   const { elapsedTime, isComplete } = useElapsedTimer(!!isFinished || responding === false)
 
