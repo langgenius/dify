@@ -316,8 +316,8 @@ describe('Explore App List Flow', () => {
 
       renderAppList(true, onSuccess)
 
-      // Step 2: Click add to workspace button - opens create modal
-      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0]!)
+      // Step 2: Click the app card - opens create modal in self-hosted/non-cloud mode
+      fireEvent.click(screen.getByRole('button', { name: 'Writer Bot' }))
 
       // Step 3: Confirm creation in modal
       fireEvent.click(await screen.findByTestId('confirm-create'))
@@ -366,16 +366,16 @@ describe('Explore App List Flow', () => {
   })
 
   describe('Permission-Based Behavior', () => {
-    it('should hide add-to-workspace button when user has no edit permission', () => {
+    it('should not make app cards clickable when user has no edit permission', () => {
       renderAppList(false)
 
-      expect(screen.queryByText('explore.appCard.addToWorkspace')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Writer Bot' })).not.toBeInTheDocument()
     })
 
-    it('should show add-to-workspace button when user has edit permission', () => {
+    it('should make app cards clickable when user has edit permission', () => {
       renderAppList(true)
 
-      expect(screen.getAllByText('explore.appCard.addToWorkspace').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: 'Writer Bot' })).toBeInTheDocument()
     })
   })
 })

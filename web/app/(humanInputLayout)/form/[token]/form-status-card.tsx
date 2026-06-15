@@ -8,6 +8,7 @@ type FormStatusCardProps = {
   title: ReactNode
   subtitle?: ReactNode
   submissionID?: string
+  removeWebappBrand?: boolean
 }
 
 const FormStatusCard = ({
@@ -15,6 +16,7 @@ const FormStatusCard = ({
   title,
   subtitle,
   submissionID,
+  removeWebappBrand,
 }: FormStatusCardProps) => {
   const { t } = useTranslation()
 
@@ -37,12 +39,14 @@ const FormStatusCard = ({
             </div>
           )}
         </div>
-        <div className="flex flex-row-reverse px-2 py-3">
-          <div className="flex shrink-0 items-center gap-1.5 px-1">
-            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
-            <DifyLogo size="small" />
+        {!removeWebappBrand && (
+          <div className="flex flex-row-reverse px-2 py-3">
+            <div className="flex shrink-0 items-center gap-1.5 px-1">
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <DifyLogo size="small" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

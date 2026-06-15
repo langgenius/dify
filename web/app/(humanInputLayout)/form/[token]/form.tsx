@@ -1,6 +1,6 @@
 'use client'
 import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
-import type { SiteInfo } from '@/models/share'
+import type { CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { HumanInputFormError } from '@/service/use-share'
 import type { HumanInputResolvedValue } from '@/types/workflow'
 import * as React from 'react'
@@ -14,7 +14,10 @@ import LoadedFormContent from './loaded-form-content'
 import { useFormSubmit } from './use-form-submit'
 
 export type FormData = {
-  site: { site: SiteInfo }
+  site: {
+    site: SiteInfo
+    custom_config?: Record<string, CustomConfigValueType> | null
+  }
   form_content: string
   inputs: FormInputItem[]
   resolved_default_values: Record<string, HumanInputResolvedValue>
@@ -30,6 +33,8 @@ const FormContent = () => {
 
   const { data: formData, isLoading, error } = useGetHumanInputForm(token)
   const { isSubmitting, submit, success } = useFormSubmit(token)
+
+  const removeWebappBrand = formData?.site?.custom_config?.remove_webapp_brand === true
 
   const expired = (error as HumanInputFormError | null)?.code === 'human_input_form_expired'
   const submitted = (error as HumanInputFormError | null)?.code === 'human_input_form_submitted'
@@ -48,6 +53,7 @@ const FormContent = () => {
         title={t('humanInput.thanks', { ns: 'share' })}
         subtitle={t('humanInput.recorded', { ns: 'share' })}
         submissionID={token}
+        removeWebappBrand={removeWebappBrand}
       />
     )
   }
@@ -98,6 +104,7 @@ const FormContent = () => {
       formData={formData}
       isSubmitting={isSubmitting}
       onSubmit={submit}
+      removeWebappBrand={removeWebappBrand}
     />
   )
 }

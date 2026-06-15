@@ -80,7 +80,7 @@ const AppInfo: FC<Props> = ({
         </div>
         <div className="w-0 grow py-px">
           <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
-            <div className="truncate">{appDetail.name}</div>
+            <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
             {mode === 'advanced-chat' && <div className="truncate">{t('types.advanced', { ns: 'app' }).toUpperCase()}</div>}

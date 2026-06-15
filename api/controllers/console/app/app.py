@@ -479,7 +479,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
         for app in apps:
             if str(app.id) in res:
-                app.access_mode = res[str(app.id)].access_mode
+                app.access_mode = res[str(app.id)].access_mode  # pyrefly: ignore[missing-attribute]
 
     workflow_capable_app_ids = [str(app.id) for app in apps if app.mode in {"workflow", "advanced-chat"}]
     draft_trigger_app_ids: set[str] = set()
@@ -508,7 +508,7 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
                 continue
 
     for app in apps:
-        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
+        app.has_draft_trigger = str(app.id) in draft_trigger_app_ids  # pyrefly: ignore[missing-attribute]
 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
@@ -599,7 +599,7 @@ class AppListApi(Resource):
     @console_ns.doc("create_app")
     @console_ns.doc(description="Create a new application")
     @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
-    @console_ns.response(201, "App created successfully", console_ns.models[AppDetail.__name__])
+    @console_ns.response(201, "App created successfully", console_ns.models[AppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -623,7 +623,7 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user)
-        app_detail = AppDetail.model_validate(app, from_attributes=True)
+        app_detail = AppDetailWithSite.model_validate(app, from_attributes=True)
         return app_detail.model_dump(mode="json"), 201
 
 

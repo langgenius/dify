@@ -315,16 +315,16 @@ describe('App List Browsing Flow', () => {
     })
   })
 
-  // -- Footer visibility --
-  describe('Footer Visibility', () => {
-    it('should show footer when branding is disabled', () => {
+  // -- Legacy footer removal --
+  describe('Legacy Footer', () => {
+    it('should not show the legacy footer when branding is disabled', () => {
       mockSystemFeatures = { ...mockSystemFeatures, branding: { enabled: false } }
       mockPages = [createPage([createMockApp()])]
 
       renderList()
 
-      expect(screen.getByText('app.join')).toBeInTheDocument()
-      expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
+      expect(screen.queryByText('app.join')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.communityIntro')).not.toBeInTheDocument()
     })
 
     it('should hide footer when branding is enabled', () => {
@@ -368,7 +368,7 @@ describe('App List Browsing Flow', () => {
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' })).toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' })).toBeInTheDocument()
       expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' })).toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.completion' })).toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' })).toBeInTheDocument()
     })
   })
 

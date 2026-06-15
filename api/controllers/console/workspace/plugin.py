@@ -28,7 +28,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginInstallationSource
+from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -179,8 +179,28 @@ class PluginAutoUpgradeFetchResponse(ResponseModel):
     auto_upgrade: PluginAutoUpgradeSettingsResponseModel
 
 
-class PluginDeclarationResponse(PluginDeclaration):
+class PluginDeclarationResponse(ResponseModel):
+    version: str
+    author: str | None
+    name: str
+    description: I18nObject
+    icon: str
+    icon_dark: str | None = None
+    label: I18nObject
+    category: PluginCategory
+    created_at: datetime
+    resource: Mapping[str, Any]
+    plugins: Mapping[str, list[str] | None]
+    tags: list[str] = Field(default_factory=list)
+    repo: str | None = None
+    verified: bool = False
+    tool: Mapping[str, Any] | None = None
     model: ProviderEntityResponse | None = None
+    endpoint: Mapping[str, Any] | None = None
+    agent_strategy: Mapping[str, Any] | None = None
+    datasource: Mapping[str, Any] | None = None
+    trigger: Mapping[str, Any] | None = None
+    meta: Mapping[str, Any]
 
 
 class ParserAutoUpgradeChange(BaseModel):

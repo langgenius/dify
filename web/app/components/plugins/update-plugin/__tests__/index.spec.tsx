@@ -48,18 +48,16 @@ vi.mock('@/service/plugins', () => ({
 }))
 
 // Mock use-plugins hooks
-const mockHandleRefetch = vi.fn()
+const mockHandleInstallTaskStart = vi.fn()
 const mockMutateAsync = vi.fn()
-const mockInvalidateReferenceSettings = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
   usePluginTaskList: () => ({
-    handleRefetch: mockHandleRefetch,
+    handleInstallTaskStart: mockHandleInstallTaskStart,
   }),
   useRemoveAutoUpgrade: () => ({
     mutateAsync: mockMutateAsync,
   }),
-  useInvalidateReferenceSettings: () => mockInvalidateReferenceSettings,
   useVersionListOfPlugin: () => ({
     data: {
       data: {
@@ -631,7 +629,10 @@ describe('update-plugin', () => {
 
         // Assert
         await waitFor(() => {
-          expect(mockHandleRefetch).toHaveBeenCalled()
+          expect(mockHandleInstallTaskStart).toHaveBeenCalledWith({
+            all_installed: false,
+            task_id: 'task-123',
+          })
         })
         await waitFor(() => {
           expect(mockCheck).toHaveBeenCalledWith({
@@ -797,7 +798,7 @@ describe('update-plugin', () => {
           })
         })
         await waitFor(() => {
-          expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
+          expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
         })
       })
 
@@ -824,7 +825,7 @@ describe('update-plugin', () => {
 
         // Assert - mutateAsync should NOT be called when pluginId is undefined
         await waitFor(() => {
-          expect(mockInvalidateReferenceSettings).toHaveBeenCalled()
+          expect(mockUpdateFromMarketPlace).toHaveBeenCalled()
         })
         expect(mockMutateAsync).not.toHaveBeenCalled()
       })

@@ -161,8 +161,8 @@ describe('LabelFilter', () => {
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'RAG' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
     })
 
     it('should show empty state when no labels match search', async () => {
@@ -196,8 +196,8 @@ describe('LabelFilter', () => {
         fireEvent.change(searchInput, { target: { value: 'rag' } })
       })
 
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
-      expect(screen.queryByTitle('Agent')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'RAG' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Agent' })).not.toBeInTheDocument()
 
       await act(async () => {
         const searchInput = screen.getByRole('textbox')
@@ -205,8 +205,8 @@ describe('LabelFilter', () => {
       })
 
       // All labels should be visible again
-      expect(screen.getByTitle('Agent')).toBeInTheDocument()
-      expect(screen.getByTitle('RAG')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Agent' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'RAG' })).toBeInTheDocument()
     })
   })
 

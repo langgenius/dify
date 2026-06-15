@@ -1562,25 +1562,6 @@ export const zFieldModelSchema = z.object({
 export const zProviderQuotaType = z.enum(['free', 'paid', 'trial'])
 
 /**
- * Meta
- */
-export const zMeta = z.object({
-  minimum_dify_version: z.string().nullish(),
-  version: z.string().nullish(),
-})
-
-/**
- * Plugins
- */
-export const zPlugins = z.object({
-  datasources: z.array(z.string()).nullish(),
-  endpoints: z.array(z.string()).nullish(),
-  models: z.array(z.string()).nullish(),
-  tools: z.array(z.string()).nullish(),
-  triggers: z.array(z.string()).nullish(),
-})
-
-/**
  * PriceConfigResponse
  *
  * Serialized pricing info with codegen-safe decimal string patterns.
@@ -1757,6 +1738,64 @@ export const zProviderEntityResponse = z.object({
 })
 
 /**
+ * PluginDeclarationResponse
+ */
+export const zPluginDeclarationResponse = z.object({
+  agent_strategy: z.record(z.string(), z.unknown()).nullish(),
+  author: z.string().nullable(),
+  category: zPluginCategory,
+  created_at: z.iso.datetime(),
+  datasource: z.record(z.string(), z.unknown()).nullish(),
+  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  endpoint: z.record(z.string(), z.unknown()).nullish(),
+  icon: z.string(),
+  icon_dark: z.string().nullish(),
+  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
+  meta: z.record(z.string(), z.unknown()),
+  model: zProviderEntityResponse.nullish(),
+  name: z.string(),
+  plugins: z.record(z.string(), z.array(z.string()).nullable()),
+  repo: z.string().nullish(),
+  resource: z.record(z.string(), z.unknown()),
+  tags: z.array(z.string()).optional(),
+  tool: z.record(z.string(), z.unknown()).nullish(),
+  trigger: z.record(z.string(), z.unknown()).nullish(),
+  verified: z.boolean().optional().default(false),
+  version: z.string(),
+})
+
+/**
+ * PluginCategoryInstalledPluginResponse
+ */
+export const zPluginCategoryInstalledPluginResponse = z.object({
+  checksum: z.string(),
+  created_at: z.iso.datetime(),
+  declaration: zPluginDeclarationResponse,
+  endpoints_active: z.int(),
+  endpoints_setups: z.int(),
+  id: z.string(),
+  installation_id: z.string(),
+  meta: z.record(z.string(), z.unknown()),
+  name: z.string(),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  runtime_type: z.string(),
+  source: zPluginInstallationSource,
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  version: z.string(),
+})
+
+/**
+ * PluginCategoryListResponse
+ */
+export const zPluginCategoryListResponse = z.object({
+  builtin_tools: z.array(zPluginCategoryBuiltinToolProviderResponse),
+  has_more: z.boolean(),
+  plugins: z.array(zPluginCategoryInstalledPluginResponse),
+})
+
+/**
  * QuotaUnit
  */
 export const zQuotaUnit = z.enum(['credits', 'times', 'tokens'])
@@ -1823,461 +1862,6 @@ export const zProviderResponse = z.object({
  */
 export const zModelProviderListResponse = z.object({
   data: z.array(zProviderResponse),
-})
-
-/**
- * DatasourceProviderType
- *
- * Enum class for datasource provider
- */
-export const zDatasourceProviderType = z.enum([
-  'local_file',
-  'online_document',
-  'online_drive',
-  'website_crawl',
-])
-
-/**
- * EndpointDeclaration
- *
- * declaration of an endpoint
- */
-export const zEndpointDeclaration = z.object({
-  hidden: z.boolean().optional().default(false),
-  method: z.string(),
-  path: z.string(),
-})
-
-/**
- * TriggerProviderIdentity
- *
- * The identity of the trigger provider
- */
-export const zTriggerProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string().nullish(),
-  icon_dark: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(z.string()).optional(),
-})
-
-/**
- * ToolLabelEnum
- */
-export const zToolLabelEnum = z.enum([
-  'business',
-  'design',
-  'education',
-  'entertainment',
-  'finance',
-  'image',
-  'medical',
-  'news',
-  'other',
-  'productivity',
-  'rag',
-  'search',
-  'social',
-  'travel',
-  'utilities',
-  'videos',
-  'weather',
-])
-
-/**
- * AgentStrategyProviderIdentity
- *
- * Inherits from ToolProviderIdentity, without any additional fields.
- */
-export const zAgentStrategyProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string(),
-  icon_dark: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(zToolLabelEnum).nullish().default([]),
-})
-
-/**
- * AgentStrategyProviderEntity
- */
-export const zAgentStrategyProviderEntity = z.object({
-  identity: zAgentStrategyProviderIdentity,
-  plugin_id: z.string().nullish(),
-})
-
-/**
- * DatasourceProviderIdentity
- */
-export const zDatasourceProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(zToolLabelEnum).nullish().default([]),
-})
-
-/**
- * ToolProviderIdentity
- */
-export const zToolProviderIdentity = z.object({
-  author: z.string(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  icon: z.string(),
-  icon_dark: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  tags: z.array(zToolLabelEnum).nullish().default([]),
-})
-
-/**
- * Option
- */
-export const zOption = z.object({
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  value: z.string(),
-})
-
-/**
- * AppSelectorScope
- */
-export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
-
-/**
- * ModelSelectorScope
- */
-export const zModelSelectorScope = z.enum([
-  'llm',
-  'moderation',
-  'rerank',
-  'speech2text',
-  'text-embedding',
-  'tts',
-  'vision',
-])
-
-/**
- * ToolSelectorScope
- */
-export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
-
-/**
- * Type
- */
-export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
-  'app-selector',
-  'array[tools]',
-  'boolean',
-  'model-selector',
-  'secret-input',
-  'select',
-  'text-input',
-])
-
-/**
- * ProviderConfig
- *
- * Model class for common provider settings like credentials
- */
-export const zProviderConfig = z.object({
-  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
-  help: zCoreToolsEntitiesCommonEntitiesI18nObject.nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject.nullish(),
-  multiple: z.boolean().nullish().default(false),
-  name: z.string(),
-  options: z.array(zOption).nullish(),
-  placeholder: zCoreToolsEntitiesCommonEntitiesI18nObject.nullish(),
-  required: z.boolean().optional().default(false),
-  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
-  url: z.string().nullish(),
-})
-
-/**
- * EndpointProviderDeclaration
- *
- * declaration of an endpoint group
- */
-export const zEndpointProviderDeclaration = z.object({
-  endpoints: z.array(zEndpointDeclaration).nullish(),
-  settings: z.array(zProviderConfig).optional(),
-})
-
-/**
- * OAuthSchema
- *
- * OAuth schema
- */
-export const zOAuthSchema = z.object({
-  client_schema: z.array(zProviderConfig).optional(),
-  credentials_schema: z.array(zProviderConfig).optional(),
-})
-
-/**
- * DatasourceProviderEntity
- *
- * Datasource provider entity
- */
-export const zDatasourceProviderEntity = z.object({
-  credentials_schema: z.array(zProviderConfig).optional(),
-  identity: zDatasourceProviderIdentity,
-  oauth_schema: zOAuthSchema.nullish(),
-  provider_type: zDatasourceProviderType,
-})
-
-/**
- * ToolProviderEntity
- */
-export const zToolProviderEntity = z.object({
-  credentials_schema: z.array(zProviderConfig).optional(),
-  identity: zToolProviderIdentity,
-  oauth_schema: zOAuthSchema.nullish(),
-  plugin_id: z.string().nullish(),
-})
-
-/**
- * Endpoint
- */
-export const zEndpoint = z.object({
-  enabled: z.boolean().nullish().default(false),
-})
-
-/**
- * Model
- */
-export const zModel = z.object({
-  enabled: z.boolean().nullish().default(false),
-  llm: z.boolean().nullish().default(false),
-  moderation: z.boolean().nullish().default(false),
-  rerank: z.boolean().nullish().default(false),
-  speech2text: z.boolean().nullish().default(false),
-  text_embedding: z.boolean().nullish().default(false),
-  tts: z.boolean().nullish().default(false),
-})
-
-/**
- * Node
- */
-export const zNode = z.object({
-  enabled: z.boolean().nullish().default(false),
-})
-
-/**
- * Storage
- */
-export const zStorage = z.object({
-  enabled: z.boolean().nullish().default(false),
-  size: z.int().gte(1024).lte(1073741824).optional().default(1048576),
-})
-
-/**
- * Tool
- */
-export const zTool = z.object({
-  enabled: z.boolean().nullish().default(false),
-})
-
-/**
- * Permission
- */
-export const zPermission = z.object({
-  endpoint: zEndpoint.nullish(),
-  model: zModel.nullish(),
-  node: zNode.nullish(),
-  storage: zStorage.nullish(),
-  tool: zTool.nullish(),
-})
-
-/**
- * PluginResourceRequirements
- */
-export const zPluginResourceRequirements = z.object({
-  memory: z.int(),
-  permission: zPermission.nullish(),
-})
-
-/**
- * EventIdentity
- *
- * The identity of the event
- */
-export const zEventIdentity = z.object({
-  author: z.string(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  name: z.string(),
-  provider: z.string().nullish(),
-})
-
-/**
- * PluginParameterOption
- */
-export const zPluginParameterOption = z.object({
-  icon: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  value: z.string(),
-})
-
-/**
- * PluginParameterTemplate
- */
-export const zPluginParameterTemplate = z.object({
-  enabled: z.boolean().optional().default(false),
-})
-
-/**
- * EventParameterType
- *
- * The type of the parameter
- */
-export const zEventParameterType = z.enum([
-  'app-selector',
-  'array',
-  'boolean',
-  'checkbox',
-  'dynamic-select',
-  'file',
-  'files',
-  'model-selector',
-  'number',
-  'object',
-  'select',
-  'string',
-])
-
-/**
- * Type
- */
-export const zCorePluginEntitiesParametersPluginParameterAutoGenerateType = z.enum([
-  'prompt_instruction',
-])
-
-/**
- * PluginParameterAutoGenerate
- */
-export const zPluginParameterAutoGenerate = z.object({
-  type: zCorePluginEntitiesParametersPluginParameterAutoGenerateType,
-})
-
-/**
- * EventParameter
- *
- * The parameter of the event
- */
-export const zEventParameter = z.object({
-  auto_generate: zPluginParameterAutoGenerate.nullish(),
-  default: z.union([z.int(), z.number(), z.string(), z.array(z.unknown())]).nullish(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject.nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  max: z.union([z.number(), z.int()]).nullish(),
-  min: z.union([z.number(), z.int()]).nullish(),
-  multiple: z.boolean().nullish().default(false),
-  name: z.string(),
-  options: z.array(zPluginParameterOption).nullish(),
-  precision: z.int().nullish(),
-  required: z.boolean().nullish().default(false),
-  scope: z.string().nullish(),
-  template: zPluginParameterTemplate.nullish(),
-  type: zEventParameterType,
-})
-
-/**
- * EventEntity
- *
- * The configuration of an event
- */
-export const zEventEntity = z.object({
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  identity: zEventIdentity,
-  output_schema: z.record(z.string(), z.unknown()).nullish(),
-  parameters: z.array(zEventParameter).optional(),
-})
-
-/**
- * SubscriptionConstructor
- *
- * The subscription constructor of the trigger provider
- */
-export const zSubscriptionConstructor = z.object({
-  credentials_schema: z.array(zProviderConfig).optional(),
-  oauth_schema: zOAuthSchema.nullish(),
-  parameters: z.array(zEventParameter).optional(),
-})
-
-/**
- * TriggerProviderEntity
- *
- * The configuration of a trigger provider
- */
-export const zTriggerProviderEntity = z.object({
-  events: z.array(zEventEntity).optional(),
-  identity: zTriggerProviderIdentity,
-  subscription_constructor: zSubscriptionConstructor.nullish(),
-  subscription_schema: z.array(zProviderConfig).optional(),
-})
-
-/**
- * PluginDeclarationResponse
- */
-export const zPluginDeclarationResponse = z.object({
-  agent_strategy: zAgentStrategyProviderEntity.nullish(),
-  author: z
-    .string()
-    .regex(/^[\w-]{1,64}$/)
-    .nullable(),
-  category: zPluginCategory,
-  created_at: z.iso.datetime(),
-  datasource: zDatasourceProviderEntity.nullish(),
-  description: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  endpoint: zEndpointProviderDeclaration.nullish(),
-  icon: z.string(),
-  icon_dark: z.string().nullish(),
-  label: zCoreToolsEntitiesCommonEntitiesI18nObject,
-  meta: zMeta,
-  model: zProviderEntityResponse.nullish(),
-  name: z.string().regex(/^[a-z0-9_-]{1,128}$/),
-  plugins: zPlugins,
-  repo: z.string().nullish(),
-  resource: zPluginResourceRequirements,
-  tags: z.array(z.string()).optional(),
-  tool: zToolProviderEntity.nullish(),
-  trigger: zTriggerProviderEntity.nullish(),
-  verified: z.boolean().optional().default(false),
-  version: z.string(),
-})
-
-/**
- * PluginCategoryInstalledPluginResponse
- */
-export const zPluginCategoryInstalledPluginResponse = z.object({
-  checksum: z.string(),
-  created_at: z.iso.datetime(),
-  declaration: zPluginDeclarationResponse,
-  endpoints_active: z.int(),
-  endpoints_setups: z.int(),
-  id: z.string(),
-  installation_id: z.string(),
-  meta: z.record(z.string(), z.unknown()),
-  name: z.string(),
-  plugin_id: z.string(),
-  plugin_unique_identifier: z.string(),
-  runtime_type: z.string(),
-  source: zPluginInstallationSource,
-  tenant_id: z.string(),
-  updated_at: z.iso.datetime(),
-  version: z.string(),
-})
-
-/**
- * PluginCategoryListResponse
- */
-export const zPluginCategoryListResponse = z.object({
-  builtin_tools: z.array(zPluginCategoryBuiltinToolProviderResponse),
-  has_more: z.boolean(),
-  plugins: z.array(zPluginCategoryInstalledPluginResponse),
 })
 
 /**

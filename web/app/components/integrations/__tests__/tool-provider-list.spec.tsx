@@ -384,7 +384,7 @@ describe('ProviderList', () => {
   describe('Layout', () => {
     it('uses default content inset outside compact integrations layout', () => {
       renderProviderList()
-      const toolbar = screen.getByRole('textbox').closest('.bg-components-panel-bg')
+      const toolbar = screen.getByRole('searchbox').closest('.bg-components-panel-bg')
 
       expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
       expect(toolbar).toHaveClass('px-12', 'pt-2', 'pb-0', 'bg-components-panel-bg')
@@ -396,7 +396,7 @@ describe('ProviderList', () => {
 
     it('uses compact content inset when rendered by integrations layout', () => {
       renderProviderList(undefined, 'builtin', 'compact')
-      const toolbar = screen.getByRole('textbox').closest('.bg-components-panel-bg')
+      const toolbar = screen.getByRole('searchbox').closest('.bg-components-panel-bg')
 
       expect(screen.getByRole('region', { name: 'common.menus.tools' })).toBeInTheDocument()
       expect(toolbar).toHaveClass('px-6', 'pt-2', 'pb-0', 'bg-components-panel-bg')
@@ -438,7 +438,7 @@ describe('ProviderList', () => {
 
     it('filters by search keyword', () => {
       renderProviderList()
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       fireEvent.change(input, { target: { value: 'nonexistent' } })
       expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty')).not.toBeInTheDocument()
@@ -446,7 +446,7 @@ describe('ProviderList', () => {
 
     it('filters by search keyword matching label', () => {
       renderProviderList()
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       fireEvent.change(input, { target: { value: 'Google' } })
       expect(screen.getByTestId('card-google-search')).toBeInTheDocument()
       expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
@@ -454,7 +454,7 @@ describe('ProviderList', () => {
 
     it('filters search within the current route category', () => {
       renderProviderList(undefined, 'builtin')
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       fireEvent.change(input, { target: { value: 'My API' } })
       expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
       expect(screen.queryByTestId('card-google-search')).not.toBeInTheDocument()
@@ -489,7 +489,7 @@ describe('ProviderList', () => {
 
     it('clears search with clear button', () => {
       renderProviderList()
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
       fireEvent.change(input, { target: { value: 'Google' } })
       expect(screen.queryByTestId('card-weather-tool')).not.toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
@@ -512,7 +512,7 @@ describe('ProviderList', () => {
 
     it('renders search input', () => {
       renderProviderList()
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('searchbox')).toBeInTheDocument()
     })
 
     it('uses the plugin update settings dialog from the tools toolbar', () => {
@@ -632,7 +632,7 @@ describe('ProviderList', () => {
 
     it('does not show workflow empty state when search has no matches', () => {
       renderProviderList({ category: 'workflow' })
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox')
 
       fireEvent.change(input, { target: { value: 'nonexistent' } })
 
