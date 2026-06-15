@@ -3,11 +3,10 @@
 import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
-import { antfuWithoutFormatting, disableJsonSortFormatting } from '../eslint.shared.mjs'
 
 export default antfu(
   {
-    ...antfuWithoutFormatting,
+    stylistic: false,
     ignores: (original) => ['context/**', 'docs/**', 'dist/**', 'coverage/**', ...original],
     typescript: {
       overrides: {
@@ -69,5 +68,6 @@ export default antfu(
       ],
     },
   },
-  disableJsonSortFormatting,
 )
+  .remove('antfu/sort/package-json')
+  .remove('antfu/sort/tsconfig-json')

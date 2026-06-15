@@ -17,7 +17,6 @@ import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
-import { antfuWithoutFormatting, disableJsonSortFormatting } from '../eslint.shared.mjs'
 import {
   GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
@@ -30,7 +29,7 @@ import dify from './plugins/eslint/index.js'
 
 export default antfu(
   {
-    ...antfuWithoutFormatting,
+    stylistic: false,
     react: {
       overrides: {
         'react/set-state-in-effect': 'error',
@@ -224,5 +223,6 @@ export default antfu(
       ],
     },
   },
-  disableJsonSortFormatting,
 )
+  .remove('antfu/sort/package-json')
+  .remove('antfu/sort/tsconfig-json')

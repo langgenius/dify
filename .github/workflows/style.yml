@@ -134,7 +134,6 @@ jobs:
             .nvmrc
             vite.config.ts
             eslint.config.mjs
-            eslint.shared.mjs
             .vscode/**
             .github/workflows/autofix.yml
             .github/workflows/style.yml

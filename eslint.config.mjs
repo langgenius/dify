@@ -3,7 +3,6 @@
 import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
-import { antfuWithoutFormatting, disableJsonSortFormatting } from './eslint.shared.mjs'
 
 const GENERATED_IGNORES = [
   '**/storybook-static/',
@@ -18,14 +17,13 @@ const GENERATED_IGNORES = [
 
 export default antfu(
   {
-    ...antfuWithoutFormatting,
+    stylistic: false,
     ignores: (original) => [
       '**',
       '!packages/**',
       '!web/**',
       '!e2e/**',
       '!eslint.config.mjs',
-      '!eslint.shared.mjs',
       '!package.json',
       '!pnpm-workspace.yaml',
       '!vite.config.ts',
@@ -69,5 +67,6 @@ export default antfu(
       'node/prefer-global/process': 'off',
     },
   },
-  disableJsonSortFormatting,
 )
+  .remove('antfu/sort/package-json')
+  .remove('antfu/sort/tsconfig-json')

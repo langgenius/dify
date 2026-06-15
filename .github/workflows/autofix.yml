@@ -46,7 +46,6 @@ jobs:
             .nvmrc
             vite.config.ts
             eslint.config.mjs
-            eslint.shared.mjs
             web/eslint.config.mjs
             .vscode/**
             .github/workflows/autofix.yml
