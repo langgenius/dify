@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
 
-type Props = {
+type Props = Readonly<{
   value: string | number
   onChange: (value: string | number) => void
   placeholder?: string
   isNumber?: boolean
-}
+}>
 
 const MIN_VALUE = 0
 

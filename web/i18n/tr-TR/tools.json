@@ -120,6 +120,8 @@
   "mcp.modal.configurations": "Yapılandırmalar",
   "mcp.modal.confirm": "Ekle ve Yetkilendir",
   "mcp.modal.editTitle": "MCP Sunucusunu Düzenle (HTTP)",
+  "mcp.modal.forwardUserIdentity": "Kullanıcı kimliğini ilet",
+  "mcp.modal.forwardUserIdentityTip": "Çağıran kullanıcının doğrulanmış SSO kimliğini bu MCP sunucusuna X-Dify-SSO-Token başlığında iletir. Dify Enterprise SSO gerektirir.",
   "mcp.modal.headerKey": "Başlık Adı",
   "mcp.modal.headerKeyPlaceholder": "örneğin, Yetkilendirme",
   "mcp.modal.headerValue": "Başlık Değeri",

@@ -13,7 +13,7 @@ import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Infotip } from '@/app/components/base/infotip'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   id: string
   name: string
@@ -27,7 +27,7 @@ type Props = {
   onChange: (key: string, value: number) => void
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
-}
+}>
 
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (

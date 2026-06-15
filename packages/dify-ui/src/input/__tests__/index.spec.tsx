@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { FieldControl, FieldError, FieldLabel, FieldRoot } from '../../field'
 import { Form } from '../../form'
@@ -22,7 +23,7 @@ describe('Input', () => {
 
   it('should apply size variants shared with FieldControl', async () => {
     const screen = await render(
-      <>
+      <React.Fragment>
         <label>
           Small input
           <Input size="small" />
@@ -34,7 +35,7 @@ describe('Input', () => {
             <FieldControl size="large" />
           </FieldRoot>
         </div>
-      </>,
+      </React.Fragment>,
     )
 
     await expect.element(screen.getByRole('textbox', { name: 'Small input' })).toHaveClass('rounded-md', 'py-[3px]', 'system-xs-regular')

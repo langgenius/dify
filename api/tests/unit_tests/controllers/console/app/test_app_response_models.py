@@ -212,6 +212,24 @@ def test_app_list_query_normalizes_orpc_bracket_tag_ids(app_module):
     assert query.tag_ids == [first_tag_id, second_tag_id]
 
 
+def test_app_list_query_normalizes_orpc_bracket_creator_ids(app_module):
+    first_creator_id = "9e8959cf-a67b-4d34-9906-1d687517b248"
+    second_creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
+    query_args = MultiDict(
+        [
+            ("page", "1"),
+            ("limit", "30"),
+            ("creator_ids[1]", second_creator_id),
+            ("creator_ids[0]", first_creator_id),
+        ]
+    )
+
+    normalized = app_module._normalize_app_list_query_args(query_args)
+    query = app_module.AppListQuery.model_validate(normalized)
+
+    assert query.creator_ids == [first_creator_id, second_creator_id]
+
+
 def test_app_list_query_preserves_regular_query_params(app_module):
     query_args = MultiDict(
         [
@@ -263,6 +281,13 @@ def test_app_list_query_rejects_invalid_bracket_tag_id(app_module):
         app_module.AppListQuery.model_validate(normalized)
 
 
+def test_app_list_query_rejects_invalid_bracket_creator_id(app_module):
+    normalized = app_module._normalize_app_list_query_args(MultiDict([("creator_ids[0]", "not-a-uuid")]))
+
+    with pytest.raises(ValidationError):
+        app_module.AppListQuery.model_validate(normalized)
+
+
 def test_app_list_query_sorts_bracket_tag_ids_by_index(app_module):
     first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
@@ -287,6 +312,39 @@ def test_app_list_query_rejects_flat_tag_ids(app_module):
 
     with pytest.raises(ValidationError):
         app_module.AppListQuery.model_validate(normalized)
+
+
+def test_create_agent_app_response_includes_bound_agent_id(app_module, monkeypatch: pytest.MonkeyPatch):
+    payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
+    app_obj = SimpleNamespace(
+        id="app-1",
+        name="Iris",
+        description="Agent app",
+        mode_compatible_with_agent="agent",
+        icon_type="emoji",
+        icon="robot",
+        icon_background="#fff",
+        enable_site=False,
+        enable_api=False,
+        created_at=_ts(),
+        updated_at=_ts(),
+        bound_agent_id="agent-1",
+    )
+    app_service = MagicMock()
+    app_service.create_app.return_value = app_obj
+    monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+
+    app_module.console_ns.payload = payload
+    try:
+        response, status = _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+    finally:
+        app_module.console_ns.payload = None
+
+    assert status == 201
+    assert response["id"] == "app-1"
+    assert response["bound_agent_id"] == "agent-1"
+    created_params = app_service.create_app.call_args.args[1]
+    assert created_params.mode == "agent"
 
 
 def test_app_partial_serialization_uses_aliases(app_models):
@@ -364,6 +422,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         max_active_requests=5,
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
         site=site,
+        bound_agent_id="agent-1",
     )
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -373,6 +432,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["bound_agent_id"] == "agent-1"
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):

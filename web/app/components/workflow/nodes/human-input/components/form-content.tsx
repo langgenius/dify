@@ -132,6 +132,7 @@ const FormContent: FC<FormContentProps> = ({
 
     return [{
       hotkey: ['mod', '/'],
+      displayMode: 'workflow-panel-adjacent-center' as const,
       // Keep this component type stable while the popup is open; it reads fresh props from a ref.
       // eslint-disable-next-line react/no-nested-component-definitions
       Popup: ({ onClose, onInsert }: {

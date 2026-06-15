@@ -49,6 +49,7 @@ type ConfigModalFormFieldsProps = {
   onVarNameChange: (event: ChangeEvent<HTMLInputElement>) => void
   options?: string[]
   selectOptions: SelectOptionItem[]
+  showHiddenField?: boolean
   tempPayload: InputVar
   t: Translate
 }
@@ -67,6 +68,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   onVarNameChange,
   options,
   selectOptions,
+  showHiddenField = true,
   tempPayload,
   t,
 }) => {
@@ -242,7 +244,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
       </label>
 
-      {!isFileInput && (
+      {showHiddenField && !isFileInput && (
         <div className="mt-5! flex h-6 items-center gap-2">
           <label className="flex items-center gap-2">
             <Checkbox

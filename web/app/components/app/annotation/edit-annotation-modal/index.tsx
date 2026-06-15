@@ -29,7 +29,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { addAnnotation, editAnnotation } from '@/service/annotation'
 import EditItem, { EditItemType } from './edit-item'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   appId: string
@@ -42,7 +42,7 @@ type Props = {
   createdAt?: number
   onRemove: () => void
   onlyEditResponse?: boolean
-}
+}>
 
 const EditAnnotationModal: FC<Props> = ({
   isShow,

@@ -357,6 +357,7 @@ class TestBuildFromDatasourceFile:
         )
         assert captured["mime_type"] == "text/csv"
         assert file.extension == ".csv"
+        assert file.transfer_method == FileTransferMethod.DATASOURCE_FILE
 
     def test_extension_falls_back_to_bin_when_key_has_no_dot(self, monkeypatch: pytest.MonkeyPatch):
         captured: dict = {}
@@ -384,3 +385,4 @@ class TestBuildFromDatasourceFile:
 
         assert captured["extension"] == ".bin"
         assert file.extension == ".bin"
+        assert file.transfer_method == FileTransferMethod.DATASOURCE_FILE

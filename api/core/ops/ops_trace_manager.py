@@ -7,7 +7,7 @@ import threading
 import time
 from collections.abc import Mapping
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, override
 from uuid import UUID, uuid4
 
 from cachetools import LRUCache
@@ -221,9 +221,10 @@ class TracingProviderConfigEntry(TypedDict):
 
 
 class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigEntry]):
-    def __getitem__(self, provider: str) -> TracingProviderConfigEntry:
+    @override
+    def __getitem__(self, key: str) -> TracingProviderConfigEntry:
         try:
-            match provider:
+            match key:
                 case TracingProviderEnum.LANGFUSE:
                     from dify_trace_langfuse.config import LangfuseConfig
                     from dify_trace_langfuse.langfuse_trace import LangFuseDataTrace
@@ -330,9 +331,9 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, TracingProviderConfigE
                     }
 
                 case _:
-                    raise KeyError(f"Unsupported tracing provider: {provider}")
+                    raise KeyError(f"Unsupported tracing provider: {key}")
         except ImportError:
-            raise ImportError(f"Provider {provider} is not installed.")
+            raise ImportError(f"Provider {key} is not installed.")
 
 
 provider_config_map = OpsTraceProviderConfigMap()

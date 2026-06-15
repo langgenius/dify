@@ -1,7 +1,7 @@
 import type { EditorState } from 'lexical'
 import type { NoteTheme } from './types'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback } from 'react'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { useNodeDataUpdate, useWorkflowHistory, WorkflowHistoryEvent } from '../hooks'
 import { NOTE_SHOW_AUTHOR_STORAGE_KEY } from './constants'
 

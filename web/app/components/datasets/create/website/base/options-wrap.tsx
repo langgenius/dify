@@ -10,11 +10,11 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   children: React.ReactNode
   controlFoldOptions?: number
-}
+}>
 
 const OptionsWrap: FC<Props> = ({
   className = '',

@@ -8,12 +8,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AgentSetting from './agent/agent-setting'
 
-type Props = {
+type Props = Readonly<{
   isFunctionCall: boolean
   isChatModel: boolean
   agentConfig?: AgentConfig
   onAgentSettingChange: (payload: AgentConfig) => void
-}
+}>
 
 const AgentSettingButton: FC<Props> = ({
   onAgentSettingChange,

@@ -120,6 +120,8 @@
   "mcp.modal.configurations": "Konfigurationen",
   "mcp.modal.confirm": "Hinzufügen & Autorisieren",
   "mcp.modal.editTitle": "MCP-Server bearbeiten (HTTP)",
+  "mcp.modal.forwardUserIdentity": "Benutzeridentität weiterleiten",
+  "mcp.modal.forwardUserIdentityTip": "Leitet die verifizierte SSO-Identität des aufrufenden Benutzers im X-Dify-SSO-Token-Header an diesen MCP-Server weiter. Erfordert Dify Enterprise SSO.",
   "mcp.modal.headerKey": "Kopfzeilenname",
   "mcp.modal.headerKeyPlaceholder": "z.B., Autorisierung",
   "mcp.modal.headerValue": "Header-Wert",

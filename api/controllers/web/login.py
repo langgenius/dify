@@ -14,7 +14,7 @@ from controllers.common.fields import (
     SimpleResultDataResponse,
     SimpleResultResponse,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -62,7 +62,12 @@ class EmailCodeLoginVerifyPayload(BaseModel):
     token: str = Field(min_length=1)
 
 
-register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload)
+class LoginStatusQuery(BaseModel):
+    app_code: str | None = Field(default=None, description="Web app code")
+    user_id: str | None = Field(default=None, description="End user session ID")
+
+
+register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginStatusQuery)
 register_response_schema_models(
     web_ns,
     AccessTokenResultResponse,
@@ -122,6 +127,7 @@ class LoginStatusApi(Resource):
     @setup_required
     @web_ns.doc("web_app_login_status")
     @web_ns.doc(description="Check login status")
+    @web_ns.doc(params=query_params_from_model(LoginStatusQuery))
     @web_ns.doc(
         responses={
             200: "Login status",

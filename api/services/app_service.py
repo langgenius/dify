@@ -1,7 +1,8 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any, Literal, TypedDict, cast
+from datetime import datetime
+from typing import Any, Literal, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
@@ -23,7 +24,7 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
-from models.agent import AgentIconType
+from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
@@ -42,6 +43,7 @@ class AppListParams(BaseModel):
     mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"] = "all"
     name: str | None = None
     tag_ids: list[str] | None = None
+    creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
     status: str | None = None
     openapi_visible: bool = False
@@ -138,6 +140,8 @@ class AppService:
             filters.append(App.enable_api.is_(True))
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
+        if params.creator_ids:
+            filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
             from libs.helper import escape_like_pattern
 
@@ -145,7 +149,7 @@ class AppService:
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids)
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -357,6 +361,7 @@ class AppService:
                     self.__dict__.update(app.__dict__)
 
                 @property
+                @override
                 def app_model_config(self):
                     return model_config
 
@@ -372,6 +377,62 @@ class AppService:
         icon_background: str
         use_icon_as_answer_icon: bool
         max_active_requests: int
+
+    @staticmethod
+    def _get_backing_agent_for_update(app: App) -> Agent | None:
+        if app.mode != AppMode.AGENT:
+            return None
+        return db.session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.app_id == app.id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+
+    @staticmethod
+    def _to_agent_icon_type(icon_type: IconType | str | None) -> AgentIconType | None:
+        if icon_type is None:
+            return None
+        value = icon_type.value if isinstance(icon_type, IconType) else icon_type
+        return AgentIconType(value)
+
+    def _sync_backing_agent_identity(
+        self,
+        app: App,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: IconType | str | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+        account_id: str | None = None,
+        updated_at: datetime | None = None,
+    ) -> None:
+        """Keep the Roster identity aligned with its Agent App shell.
+
+        Agent Soul remains versioned through Composer. This helper only mirrors
+        user-facing identity fields so Roster and Agent Console do not drift.
+        """
+        agent = self._get_backing_agent_for_update(app)
+        if agent is None:
+            return
+
+        if name is not None:
+            agent.name = name
+        if description is not None:
+            agent.description = description
+        if icon_type is not None:
+            agent.icon_type = self._to_agent_icon_type(icon_type)
+        if icon is not None:
+            agent.icon = icon
+        if icon_background is not None:
+            agent.icon_background = icon_background
+        agent.updated_by = account_id
+        if updated_at is not None:
+            agent.updated_at = updated_at
 
     def update_app(self, app: App, args: ArgsDict) -> App:
         """
@@ -396,6 +457,16 @@ class AppService:
         app.max_active_requests = args.get("max_active_requests")
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
+        self._sync_backing_agent_identity(
+            app,
+            name=app.name,
+            description=app.description,
+            icon_type=app.icon_type,
+            icon=app.icon,
+            icon_background=app.icon_background,
+            account_id=current_user.id,
+            updated_at=app.updated_at,
+        )
         db.session.commit()
 
         app_was_updated.send(app)
@@ -413,6 +484,12 @@ class AppService:
         app.name = name
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
+        self._sync_backing_agent_identity(
+            app,
+            name=app.name,
+            account_id=current_user.id,
+            updated_at=app.updated_at,
+        )
         db.session.commit()
 
         app_was_updated.send(app)
@@ -437,6 +514,14 @@ class AppService:
             app.icon_type = icon_type if isinstance(icon_type, IconType) else IconType(icon_type)
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
+        self._sync_backing_agent_identity(
+            app,
+            icon_type=app.icon_type,
+            icon=app.icon,
+            icon_background=app.icon_background,
+            account_id=current_user.id,
+            updated_at=app.updated_at,
+        )
         db.session.commit()
 
         app_was_updated.send(app)
@@ -488,6 +573,16 @@ class AppService:
         :param app: App instance
         """
         app_was_deleted.send(app)
+
+        backing_agent = self._get_backing_agent_for_update(app)
+        if backing_agent is not None:
+            now = naive_utc_now()
+            account_id = getattr(current_user, "id", None)
+            backing_agent.status = AgentStatus.ARCHIVED
+            backing_agent.archived_by = account_id
+            backing_agent.archived_at = now
+            backing_agent.updated_by = account_id
+            backing_agent.updated_at = now
 
         db.session.delete(app)
         db.session.commit()
@@ -548,9 +643,9 @@ class AppService:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 # current tool standard
-                provider_type = tool.get("provider_type", "")
-                provider_id = tool.get("provider_id", "")
-                tool_name = tool.get("tool_name", "")
+                provider_type = str(tool.get("provider_type", ""))
+                provider_id = str(tool.get("provider_id", ""))
+                tool_name = str(tool.get("tool_name", ""))
                 if provider_type == "builtin":
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":

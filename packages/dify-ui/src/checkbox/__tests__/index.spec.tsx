@@ -17,7 +17,7 @@ describe('Checkbox', () => {
     await expect.element(checkbox).toHaveAttribute('data-unchecked', '')
     await expect.element(checkbox).not.toHaveAttribute('data-checked')
     await expect.element(checkbox).not.toHaveAttribute('data-indeterminate')
-    await expect.element(checkbox).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-components-input-border-hover')
+    await expect.element(checkbox).toHaveClass('focus-visible:ring-2', 'focus-visible:ring-state-accent-solid')
   })
 
   it('should expose checked data attributes and icon styling hooks', async () => {

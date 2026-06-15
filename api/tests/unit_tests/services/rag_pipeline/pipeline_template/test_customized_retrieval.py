@@ -5,10 +5,6 @@ from services.rag_pipeline.pipeline_template.pipeline_template_type import Pipel
 
 
 def test_get_pipeline_templates(mocker) -> None:
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.current_account_with_tenant",
-        return_value=("account-id", "tenant-id"),
-    )
     customized_template = SimpleNamespace(
         id="tpl-1",
         name="Custom Template",
@@ -27,7 +23,7 @@ def test_get_pipeline_templates(mocker) -> None:
     )
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("en-US")
+    result = retrieval.get_pipeline_templates("en-US", "tenant-id")
 
     assert retrieval.get_type() == PipelineTemplateType.CUSTOMIZED
     assert result == {

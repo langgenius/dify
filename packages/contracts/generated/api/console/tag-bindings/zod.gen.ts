@@ -14,7 +14,7 @@ export const zSimpleResultResponse = z.object({
  *
  * Tag type
  */
-export const zTagType = z.enum(['app', 'knowledge'])
+export const zTagType = z.enum(['app', 'knowledge', 'snippet'])
 
 /**
  * TagBindingPayload

@@ -27,7 +27,7 @@ import Description from '@/app/components/plugins/card/base/description'
 import { API_PREFIX } from '@/config'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
-type Props = {
+type Props = Readonly<{
   provider: {
     author: string
     name: string
@@ -39,7 +39,7 @@ type Props = {
   }
   detail: StrategyDetailType
   onHide: () => void
-}
+}>
 
 const StrategyDetail: FC<Props> = ({
   provider,

@@ -16,7 +16,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   payload: InputVar
@@ -26,7 +26,7 @@ type Props = {
   varKeys?: string[]
   showLegacyBadge?: boolean
   canDrag?: boolean
-}
+}>
 
 const VarItem: FC<Props> = ({
   className,

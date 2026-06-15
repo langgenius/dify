@@ -18,13 +18,13 @@ import { PluginSource } from '../../types'
 import NoDataPlaceholder from './no-data-placeholder'
 import ToolItem from './tool-item'
 
-type Props = {
+type Props = Readonly<{
   trigger: React.ReactNode
   value: string[]
   onChange: (value: string[]) => void
   isShow: boolean
   onShowChange: (isShow: boolean) => void
-}
+}>
 
 const ToolPicker: FC<Props> = ({
   trigger,

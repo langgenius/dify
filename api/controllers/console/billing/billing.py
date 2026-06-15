@@ -1,12 +1,12 @@
 import base64
-from typing import Literal
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 from werkzeug.exceptions import BadRequest
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
@@ -30,11 +30,18 @@ class PartnerTenantsPayload(BaseModel):
     click_id: str = Field(..., description="Click Id from partner referral link")
 
 
+class BillingResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
+register_response_schema_models(console_ns, BillingResponse)
 
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
+    @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
+    @console_ns.response(200, "Success", console_ns.models[BillingResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -49,6 +56,7 @@ class Subscription(Resource):
 
 @console_ns.route("/billing/invoices")
 class Invoices(Resource):
+    @console_ns.response(200, "Success", console_ns.models[BillingResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -66,7 +74,7 @@ class PartnerTenants(Resource):
     @console_ns.doc(description="Sync partner tenants bindings")
     @console_ns.doc(params={"partner_key": "Partner key"})
     @console_ns.expect(console_ns.models[PartnerTenantsPayload.__name__])
-    @console_ns.response(200, "Tenants synced to partner successfully")
+    @console_ns.response(200, "Tenants synced to partner successfully", console_ns.models[BillingResponse.__name__])
     @console_ns.response(400, "Invalid partner information")
     @setup_required
     @login_required

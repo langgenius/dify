@@ -1,8 +1,9 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, patch
 
 from flask import Flask
 
 import controllers.console.explore.recommended_app as module
+from models import Account
 from models.model import AppMode, IconType
 
 
@@ -10,6 +11,13 @@ def unwrap(func):
     while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
+
+
+def make_account(interface_language: str | None) -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = "account-1"
+    account.interface_language = interface_language
+    return account
 
 
 class TestRecommendedAppListApi:
@@ -21,16 +29,15 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/", query_string={"language": "en-US"}),
-            patch.object(module, "current_user", MagicMock(interface_language="fr-FR")),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("en-US")
+        service_mock.assert_called_once_with(ANY, "en-US")
         assert result == result_data
 
     def test_get_fallback_to_user_language(self, app: Flask):
@@ -41,16 +48,15 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/", query_string={"language": "invalid"}),
-            patch.object(module, "current_user", MagicMock(interface_language="fr-FR")),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, make_account("fr-FR"))
 
-        service_mock.assert_called_once_with("fr-FR")
+        service_mock.assert_called_once_with(ANY, "fr-FR")
         assert result == result_data
 
     def test_get_fallback_to_default_language(self, app: Flask):
@@ -61,16 +67,15 @@ class TestRecommendedAppListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_user", MagicMock(interface_language=None)),
             patch.object(
                 module.RecommendedAppService,
                 "get_recommended_apps_and_categories",
                 return_value=result_data,
             ) as service_mock,
         ):
-            result = method(api)
+            result = method(api, make_account(None))
 
-        service_mock.assert_called_once_with(module.languages[0])
+        service_mock.assert_called_once_with(ANY, module.languages[0])
         assert result == result_data
 
 
@@ -91,7 +96,7 @@ class TestRecommendedAppApi:
         ):
             result = method(api, "11111111-1111-1111-1111-111111111111")
 
-        service_mock.assert_called_once_with("11111111-1111-1111-1111-111111111111")
+        service_mock.assert_called_once_with(ANY, "11111111-1111-1111-1111-111111111111")
         assert result == result_data
 
 

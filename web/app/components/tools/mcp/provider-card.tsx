@@ -21,13 +21,13 @@ import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
 import OperationDropdown from './detail/operation-dropdown'
 import MCPModal from './modal'
 
-type Props = {
+type Props = Readonly<{
   currentProvider?: ToolWithProvider
   data: ToolWithProvider
   handleSelect: (providerID: string) => void
   onUpdate: (providerID: string) => void
   onDeleted: () => void
-}
+}>
 
 const MCPCard = ({
   currentProvider,

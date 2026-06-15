@@ -8,6 +8,7 @@ import {
   RiGroupLine,
 } from '@remixicon/react'
 import { useUnmountedRef } from 'ahooks'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,6 @@ import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useEducationVerify } from '@/service/use-education'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
@@ -31,9 +31,9 @@ import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
 
-type Props = {
+type Props = Readonly<{
   loc: string
-}
+}>
 
 const PlanComp: FC<Props> = ({
   loc,

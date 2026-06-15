@@ -25,10 +25,10 @@ import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   isPanel?: boolean
   panelVisible?: boolean
-}
+}>
 
 const Sidebar = ({ isPanel }: Props) => {
   const { t } = useTranslation()
