@@ -32,7 +32,7 @@ import {
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useSetLocalStorage } from 'foxact/use-local-storage'
-import { memo, useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
@@ -1163,5 +1163,3 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
     </>
   )
 }
-
-export default memo(AppCard)
