@@ -23,6 +23,12 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
+
+class SessionMatcher:
+    def __eq__(self, other):
+        return isinstance(other, Session)
+
+
 import services
 from controllers.service_api.dataset.dataset import (
     DatasetCreatePayload,
@@ -998,7 +1004,7 @@ class TestDatasetTagsApiGet:
 
         assert status == 200
         assert response == [{"id": "tag-1", "name": "Test Tag", "type": "knowledge", "binding_count": "0"}]
-        mock_tag_svc.get_tags.assert_called_once_with("knowledge", "tenant-1")
+        mock_tag_svc.get_tags.assert_called_once_with(SessionMatcher(), "knowledge", "tenant-1")
 
     @patch("controllers.service_api.dataset.dataset.current_user")
     def test_list_tags_from_db(

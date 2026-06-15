@@ -2,6 +2,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
+
+
+class SessionMatcher:
+    def __eq__(self, other):
+        return isinstance(other, Session)
+
+
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
@@ -125,7 +133,7 @@ class TestTagListApi:
             ):
                 result, status = method(api, "tenant-1")
 
-        get_tags_mock.assert_called_once_with("snippet", "tenant-1", None)
+        get_tags_mock.assert_called_once_with(SessionMatcher(), "snippet", "tenant-1", None)
         assert status == 200
         assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
 

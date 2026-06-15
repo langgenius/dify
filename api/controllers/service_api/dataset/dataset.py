@@ -22,6 +22,7 @@ from controllers.service_api.wraps import (
 )
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -608,7 +609,7 @@ class DatasetTagsApi(DatasetApiResource):
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
-        tags = TagService.get_tags("knowledge", cid)
+        tags = TagService.get_tags(db.session(), "knowledge", cid)
         return dump_response(KnowledgeTagListResponse, tags), 200
 
     @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])

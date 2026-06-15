@@ -16,6 +16,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models import Account
@@ -101,7 +102,7 @@ class TagListApi(Resource):
     def get(self, current_tenant_id: str):
         raw_args = request.args.to_dict()
         param = TagListQueryParam.model_validate(raw_args)
-        tags = TagService.get_tags(param.type, current_tenant_id, param.keyword)
+        tags = TagService.get_tags(db.session(), param.type, current_tenant_id, param.keyword)
 
         serialized_tags = [
             TagResponse.model_validate(tag, from_attributes=True).model_dump(mode="json") for tag in tags
