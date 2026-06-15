@@ -899,7 +899,7 @@ class RecommendedApp(TypeBase):
         init=False,
     )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    description: Mapped[Any] = mapped_column(sa.JSON, nullable=False)
+    description: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
     copyright: Mapped[str] = mapped_column(String(255), nullable=False)
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)

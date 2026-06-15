@@ -869,7 +869,7 @@ class DocumentSegment(TypeBase):
     index_node_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
-    keywords: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
+    keywords: Mapped[Optional[list]] = mapped_column(sa.JSON, nullable=True, default=None)
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
     disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     status: Mapped[SegmentStatus] = mapped_column(
