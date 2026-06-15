@@ -20,9 +20,10 @@ function parseArgs(argv) {
   const out = {}
   for (let i = 0; i < argv.length; i += 2) {
     const key = argv[i]?.replace(/^--/, '')
-    if (!key || argv[i + 1] === undefined)
-      die(`malformed argument near ${argv[i]}`)
-    out[key] = argv[i + 1]
+    const val = argv[i + 1]
+    if (!key || val === undefined || val.startsWith('--'))
+      die(`malformed argument near ${argv[i]} (expected --key value)`)
+    out[key] = val
   }
   return out
 }

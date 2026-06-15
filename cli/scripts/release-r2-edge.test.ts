@@ -86,6 +86,13 @@ describe('release-r2-edge manifest', () => {
       '--build-date', '2026-06-14T12:00:00Z', '--base-url', BASE_URL, '--checksums', file])
     expect(r.code).not.toBe(0)
   })
+
+  it('rejects a malformed dropped-value argument (no silent misparse)', () => {
+    // --version has no value; --commit must NOT be swallowed as the version
+    const r = run(['manifest', '--channel', 'edge', '--version', '--commit', 'abc1234',
+      '--build-date', '2026-06-14T12:00:00Z', '--base-url', 'https://x', '--checksums', '/nonexistent'])
+    expect(r.code).not.toBe(0)
+  })
 })
 
 // ---- index ----
