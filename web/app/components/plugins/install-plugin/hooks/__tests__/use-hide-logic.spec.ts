@@ -54,6 +54,17 @@ describe('useHideLogic', () => {
     expect(mockOnClose).not.toHaveBeenCalled()
   })
 
+  it('should fold into task trigger directly', () => {
+    const { result } = renderHook(() => useHideLogic(mockOnClose))
+
+    act(() => {
+      result.current.foldIntoTaskTrigger()
+    })
+
+    expect(mockFoldAnimInto).toHaveBeenCalled()
+    expect(mockOnClose).not.toHaveBeenCalled()
+  })
+
   it('should set installing and start countdown on handleStartToInstall', () => {
     const { result } = renderHook(() => useHideLogic(mockOnClose))
 

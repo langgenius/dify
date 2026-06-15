@@ -73,7 +73,7 @@
   "title": "日志",
   "triggerBy.appRun": "网页应用",
   "triggerBy.debugging": "调试",
-  "triggerBy.plugin": "插件",
+  "triggerBy.plugin": "集成",
   "triggerBy.ragPipelineDebugging": "RAG 调试",
   "triggerBy.ragPipelineRun": "RAG 流水线",
   "triggerBy.schedule": "定时任务",

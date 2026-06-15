@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "أضيف",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "لا توجد استراتيجية وكيل متاحة",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "عرض الدليل",
   "copyToolName": "نسخ الاسم",
   "createCustomTool": "إنشاء أداة مخصصة",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "نوع المصادقة",
   "createTool.authHeaderPrefix.types.basic": "أساسي",
   "createTool.authHeaderPrefix.types.bearer": "Bearer",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "إعداد",
   "setBuiltInTools.string": "سلسلة",
   "setBuiltInTools.toolDescription": "وصف الأداة",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "المعلمات",
   "test.parametersValue": "المعلمات والقيمة",
   "test.testResult": "نتائج الاختبار",
@@ -211,5 +214,12 @@
   "toolRemoved": "تمت إزالة الأداة",
   "type.builtIn": "أدوات",
   "type.custom": "مخصص",
-  "type.workflow": "سير عمل"
+  "type.workflow": "سير عمل",
+  "workflowToolEmpty.description": "لاستخدام مسار عمل كأداة، انشره أولاً من Studio. بعد ذلك سيظهر هنا ويمكن إضافته إلى أي تطبيق.",
+  "workflowToolEmpty.goToStudio": "اذهب إلى Studio",
+  "workflowToolEmpty.learnMore": "هل تحتاج إلى مساعدة؟ تعلّم كيفية نشر مسار عمل كأداة →",
+  "workflowToolEmpty.step1": "أنشئ مسار عمل في Studio",
+  "workflowToolEmpty.step2": "انقر على “Workflow as Tool” في قائمة النشر لإتاحته كأداة",
+  "workflowToolEmpty.step3": "عُد إلى هنا لإدارته وإعادة استخدامه",
+  "workflowToolEmpty.title": "لا توجد بعد مسارات عمل منشورة كأدوات"
 }

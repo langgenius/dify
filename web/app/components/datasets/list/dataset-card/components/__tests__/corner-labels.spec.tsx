@@ -43,13 +43,13 @@ describe('CornerLabels', () => {
       expect(screen.getByText(/unavailable/i)).toBeInTheDocument()
     })
 
-    it('should render pipeline label when runtime_mode is rag_pipeline', () => {
+    it('should not render pipeline label when runtime_mode is rag_pipeline', () => {
       const dataset = createMockDataset({
         embedding_available: true,
         runtime_mode: 'rag_pipeline',
       })
-      render(<CornerLabels dataset={dataset} />)
-      expect(screen.getByText(/pipeline/i)).toBeInTheDocument()
+      const { container } = render(<CornerLabels dataset={dataset} />)
+      expect(container.firstChild).toBeNull()
     })
   })
 
@@ -83,14 +83,13 @@ describe('CornerLabels', () => {
       expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-5')
     })
 
-    it('should have correct positioning for pipeline label', () => {
+    it('should not reserve corner positioning for pipeline label', () => {
       const dataset = createMockDataset({
         embedding_available: true,
         runtime_mode: 'rag_pipeline',
       })
       const { container } = render(<CornerLabels dataset={dataset} />)
-      const labelContainer = container.firstChild as HTMLElement
-      expect(labelContainer).toHaveClass('absolute', 'right-0', 'top-0', 'z-5')
+      expect(container.firstChild).toBeNull()
     })
   })
 

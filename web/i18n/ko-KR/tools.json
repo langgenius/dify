@@ -1,4 +1,5 @@
 {
+  "addSwaggerAPIAsTool": "Add Swagger API as Tool",
   "addToolModal.added": "추가됨",
   "addToolModal.agent.tip": "",
   "addToolModal.agent.title": "에이전트 전략 없음",
@@ -27,6 +28,7 @@
   "contribute.viewGuide": "가이드 보기",
   "copyToolName": "이름 복사",
   "createCustomTool": "커스텀 도구 만들기",
+  "createSwaggerAPIAsTool": "Create a Swagger API as Tool",
   "createTool.authHeaderPrefix.title": "인증 유형",
   "createTool.authHeaderPrefix.types.basic": "베이직",
   "createTool.authHeaderPrefix.types.bearer": "베어러",
@@ -196,6 +198,7 @@
   "setBuiltInTools.setting": "설정",
   "setBuiltInTools.string": "문자열",
   "setBuiltInTools.toolDescription": "도구 설명",
+  "swaggerAPIAsToolTip": "Learn more about Swagger API as Tool",
   "test.parameters": "파라미터",
   "test.parametersValue": "파라미터 및 값",
   "test.testResult": "테스트 결과",
@@ -211,5 +214,12 @@
   "toolRemoved": "도구가 제거되었습니다",
   "type.builtIn": "내장",
   "type.custom": "커스텀",
-  "type.workflow": "워크플로우"
+  "type.workflow": "워크플로우",
+  "workflowToolEmpty.description": "워크플로를 도구로 사용하려면 먼저 Studio에서 게시하세요. 게시 후 여기에 표시되며 모든 앱에 추가할 수 있습니다.",
+  "workflowToolEmpty.goToStudio": "Studio로 이동",
+  "workflowToolEmpty.learnMore": "도움이 필요하신가요? 워크플로를 도구로 게시하는 방법 알아보기 →",
+  "workflowToolEmpty.step1": "Studio에서 워크플로 만들기",
+  "workflowToolEmpty.step2": "게시 메뉴에서 “Workflow as Tool”을 클릭해 도구로 사용할 수 있게 하기",
+  "workflowToolEmpty.step3": "여기로 돌아와 관리하고 재사용하기",
+  "workflowToolEmpty.title": "아직 도구로 게시된 워크플로가 없습니다"
 }

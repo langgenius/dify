@@ -20,10 +20,12 @@ vi.mock('@/config', async (importOriginal) => {
   return { ...actual, IS_CLOUD_EDITION: true }
 })
 
-const renderPanelHook = (provider: ModelProvider | undefined) =>
-  renderHookWithSystemFeatures(() => useCredentialPanelState(provider), {
+const renderPanelHook = (provider: ModelProvider | undefined) => {
+  // eslint-disable-next-line react/use-state -- This is a domain hook, not React's useState.
+  return renderHookWithSystemFeatures(() => useCredentialPanelState(provider), {
     trialModels: mockTrialModels,
   })
+}
 
 const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider => ({
   provider: 'langgenius/openai/openai',
@@ -74,6 +76,23 @@ describe('useCredentialPanelState', () => {
           current_credential_id: undefined,
           current_credential_name: undefined,
           available_credentials: [{ credential_id: 'cred-1', credential_name: 'My Key' }],
+        },
+      })
+
+      const { result } = renderPanelHook(provider)
+
+      expect(result.current.variant).toBe('no-usage')
+    })
+
+    it('should return no-usage when credits exhausted and selected API key is unavailable', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: 'cred-1',
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key', not_allowed_to_use: true }],
         },
       })
 
@@ -166,6 +185,24 @@ describe('useCredentialPanelState', () => {
           current_credential_id: undefined,
           current_credential_name: 'Bad Key',
           available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key' }],
+        },
+      })
+
+      const { result } = renderPanelHook(provider)
+
+      expect(result.current.variant).toBe('api-unavailable')
+    })
+
+    it('should return api-unavailable when selected API key is unavailable and credits are exhausted', () => {
+      mockTrialCredits.isExhausted = true
+      mockTrialCredits.credits = 0
+      const provider = createProvider({
+        preferred_provider_type: PreferredProviderTypeEnum.custom,
+        custom_configuration: {
+          status: CustomConfigurationStatusEnum.active,
+          current_credential_id: 'cred-1',
+          current_credential_name: 'Bad Key',
+          available_credentials: [{ credential_id: 'cred-1', credential_name: 'Bad Key', not_allowed_to_use: true }],
         },
       })
 

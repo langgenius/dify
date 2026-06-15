@@ -50,7 +50,15 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: (path: string) => `https://marketplace.test${path}`,
+    getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
+      const searchParams = new URLSearchParams()
+      Object.entries(params || {}).forEach(([key, value]) => {
+        if (value)
+          searchParams.set(key, value)
+      })
+      const query = searchParams.toString()
+      return `https://marketplace.test${path}${query ? `?${query}` : ''}`
+    },
   }
 })
 

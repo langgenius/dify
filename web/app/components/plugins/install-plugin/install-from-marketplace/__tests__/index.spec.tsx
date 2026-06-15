@@ -283,7 +283,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
@@ -352,7 +352,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
   })
@@ -684,7 +684,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
@@ -924,7 +924,7 @@ describe('InstallFromMarketplace', () => {
       fireEvent.click(screen.getByTestId('bundle-change-to-installed'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
