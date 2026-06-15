@@ -3,9 +3,11 @@
 import antfu, { GLOB_MARKDOWN } from '@antfu/eslint-config'
 import md from 'eslint-markdown'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
+import { antfuWithoutFormatting, disableJsonSortFormatting } from '../eslint.shared.mjs'
 
 export default antfu(
   {
+    ...antfuWithoutFormatting,
     ignores: original => [
       'context/**',
       'docs/**',
@@ -24,11 +26,6 @@ export default antfu(
     test: {
       overrides: {
         'test/prefer-lowercase-title': 'off',
-      },
-    },
-    stylistic: {
-      overrides: {
-        'antfu/top-level-function': 'off',
       },
     },
     e18e: false,
@@ -77,4 +74,5 @@ export default antfu(
       }],
     },
   },
+  disableJsonSortFormatting,
 )

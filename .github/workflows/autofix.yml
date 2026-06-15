@@ -44,6 +44,13 @@ jobs:
             pnpm-lock.yaml
             pnpm-workspace.yaml
             .nvmrc
+            vite.config.ts
+            eslint.config.mjs
+            eslint.shared.mjs
+            web/eslint.config.mjs
+            .vscode/**
+            .github/workflows/autofix.yml
+            .github/workflows/style.yml
       - name: Check api inputs
         if: github.event_name != 'merge_group'
         id: api-changes
@@ -145,6 +152,12 @@ jobs:
       - name: Generate frontend contracts
         if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
         run: pnpm --dir packages/contracts gen-api-contract-from-openapi
+
+      - name: Format web files
+        if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'
+        env:
+          CHANGED_FILES: ${{ steps.web-changes.outputs.all_changed_files }}
+        run: vp fmt --no-error-on-unmatched-pattern $CHANGED_FILES
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'

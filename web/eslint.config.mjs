@@ -11,6 +11,7 @@ import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import noBarrelFiles from 'eslint-plugin-no-barrel-files'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
+import { antfuWithoutFormatting, disableJsonSortFormatting } from '../eslint.shared.mjs'
 import {
   GENERATED_IGNORES,
   HYOBAN_PREFER_TAILWIND_ICONS_OPTIONS,
@@ -23,6 +24,7 @@ import dify from './plugins/eslint/index.js'
 
 export default antfu(
   {
+    ...antfuWithoutFormatting,
     react: {
       overrides: {
         'react/set-state-in-effect': 'error',
@@ -41,11 +43,6 @@ export default antfu(
     test: {
       overrides: {
         'test/prefer-lowercase-title': 'off',
-      },
-    },
-    stylistic: {
-      overrides: {
-        'antfu/top-level-function': 'off',
       },
     },
     e18e: false,
@@ -122,9 +119,7 @@ export default antfu(
       tailwindcss,
     },
     rules: {
-      'tailwindcss/enforce-consistent-class-order': 'error',
       'tailwindcss/no-duplicate-classes': 'error',
-      'tailwindcss/no-unnecessary-whitespace': 'error',
       'tailwindcss/no-unknown-classes': 'warn',
     },
     settings: {
@@ -222,4 +217,5 @@ export default antfu(
       ],
     },
   },
+  disableJsonSortFormatting,
 )
