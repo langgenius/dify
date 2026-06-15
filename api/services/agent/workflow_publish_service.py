@@ -61,6 +61,7 @@ class WorkflowAgentPublishService:
                 session=session,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
+                node_data=node_data,
                 node_binding=binding_payload,
                 existing_binding=existing_by_node_id.get(node_id),
                 account_id=account_id,
@@ -74,6 +75,7 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         node_id: str,
+        node_data: Mapping[str, Any],
         node_binding: Mapping[str, Any],
         existing_binding: WorkflowAgentNodeBinding | None,
         account_id: str,
@@ -101,6 +103,10 @@ class WorkflowAgentPublishService:
             raise ValueError(f"Workflow Agent node {node_id} roster agent has no active config snapshot.")
 
         binding = existing_binding
+        node_job_config = cls._node_job_config_from_node_data(
+            existing_binding=existing_binding,
+            node_data=node_data,
+        )
         if binding is None:
             binding = WorkflowAgentNodeBinding(
                 tenant_id=draft_workflow.tenant_id,
@@ -108,17 +114,34 @@ class WorkflowAgentPublishService:
                 workflow_id=draft_workflow.id,
                 workflow_version=cls._DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
-                node_job_config=WorkflowNodeJobConfig(),
+                node_job_config=node_job_config,
                 created_by=account_id,
             )
             session.add(binding)
-        elif not binding.node_job_config:
-            binding.node_job_config = WorkflowNodeJobConfig()
+        else:
+            binding.node_job_config = node_job_config
 
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = agent.id
         binding.current_snapshot_id = agent.active_config_snapshot_id
         binding.updated_by = account_id
+
+    @staticmethod
+    def _node_job_config_from_node_data(
+        *,
+        existing_binding: WorkflowAgentNodeBinding | None,
+        node_data: Mapping[str, Any],
+    ) -> WorkflowNodeJobConfig:
+        if existing_binding and existing_binding.node_job_config:
+            node_job = WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
+        else:
+            node_job = WorkflowNodeJobConfig()
+
+        agent_task = node_data.get("agent_task")
+        if isinstance(agent_task, str):
+            node_job.workflow_prompt = agent_task
+
+        return node_job
 
     @classmethod
     def copy_agent_node_bindings_to_published(
