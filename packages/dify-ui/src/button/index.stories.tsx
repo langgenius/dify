@@ -141,6 +141,7 @@ export const AsLink: Story = {
   args: {
     variant: 'ghost-accent',
     render: <a href="https://example.com" />,
+    nativeButton: false,
     children: 'Link Button',
   },
 }

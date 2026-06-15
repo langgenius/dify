@@ -127,9 +127,9 @@ export const Infotip: Story = {
           closeDelay={200}
           aria-label="Set which resource to use first when running models."
           render={(
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+            <button type="button" className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid">
               <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-            </span>
+            </button>
           )}
         />
         <PopoverContent
