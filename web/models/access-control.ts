@@ -239,3 +239,27 @@ export type GetMembersOfRoleResponse = {
   data: Account[]
   pagination: Pagination
 }
+
+type ResourceUserAccessSettingsResponse = {
+  account: Account
+  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
+  access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
+}
+
+export type GetAppUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
+
+export type GetDatasetUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
+
+type UpdateResourceUserAccessSettingsRequest = {
+  accessPolicyIds: string[]
+}
+
+export type UpdateAppUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
+
+export type UpdateDatasetUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
+
+export type GetAccessPolicyDetailResponse = {
+  access_policies: Pick<AccessPolicy, 'id' | 'name' | 'resource_type' | 'policy_key' | 'permission_keys'>[]
+}
+
+export type ResourceOpenScope = 'all' | 'specific'
