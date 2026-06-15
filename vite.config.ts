@@ -4,6 +4,17 @@ const lintFiles = '*.{js,cjs,mjs,jsx,ts,tsx,json,jsonc,json5,md,yml,yaml,toml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte}'
 const format = 'vp fmt --no-error-on-unmatched-pattern'
 const lintFix = 'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern'
+const generatedIgnores = [
+  '**/.next/**',
+  '**/coverage/**',
+  '**/dist/**',
+  '**/storybook-static/**',
+  'e2e/.auth/**',
+  'e2e/cucumber-report/**',
+  'web/next/**',
+  'web/next-env.d.ts',
+]
+const eslintIgnoredInputs = ['eslint-suppressions.json', 'web/public/**', 'web/types/doc-paths.ts']
 
 export default defineConfig({
   staged: {
@@ -11,16 +22,7 @@ export default defineConfig({
     [formatOnlyFiles]: format,
   },
   fmt: {
-    ignorePatterns: [
-      '**/.next/**',
-      '**/coverage/**',
-      '**/dist/**',
-      '**/storybook-static/**',
-      'e2e/.auth/**',
-      'e2e/cucumber-report/**',
-      'web/next/**',
-      'web/next-env.d.ts',
-    ],
+    ignorePatterns: [...generatedIgnores, ...eslintIgnoredInputs],
     singleQuote: true,
     semi: false,
     sortPackageJson: true,
