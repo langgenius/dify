@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ApiBasedExtensionSelector } from '@/app/components/header/account-setting/api-based-extension-page/selector'
@@ -63,8 +63,22 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const docLink = useDocLink()
   const locale = useLocale()
   const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
+  const localeDataRef = useRef<ModerationConfig>(data)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const openIntegrationsSetting = useIntegrationsSetting()
+  const updateLocaleData = useCallback((
+    update: ModerationConfig | ((current: ModerationConfig) => ModerationConfig),
+    options: { render?: boolean } = {},
+  ) => {
+    const nextLocaleData = typeof update === 'function'
+      ? update(localeDataRef.current)
+      : update
+
+    localeDataRef.current = nextLocaleData
+
+    if (options.render !== false)
+      setLocaleData(nextLocaleData)
+  }, [])
   const handleOpenSettingsModal = () => {
     openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.PROVIDER,
@@ -116,11 +130,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         return prev
       }, {} as Record<string, string>)
     }
-    setLocaleData({
-      ...localeData,
+    updateLocaleData(current => ({
+      ...current,
       type,
       config,
-    })
+    }))
   }
 
   const handleDataKeywordsChange = (value: string) => {
@@ -133,43 +147,46 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return prev
     }, [])
 
-    setLocaleData({
-      ...localeData,
+    updateLocaleData(current => ({
+      ...current,
       config: {
-        ...localeData.config,
+        ...current.config,
         keywords: arr.slice(0, 100).join('\n'),
       },
-    })
+    }))
   }
 
   const handleDataContentChange = (contentType: string, contentConfig: ModerationContentConfig) => {
-    setLocaleData({
-      ...localeData,
+    const previousContentConfig = localeDataRef.current.config?.[contentType] as ModerationContentConfig | undefined
+    const shouldRender = previousContentConfig?.enabled !== contentConfig.enabled
+
+    updateLocaleData(current => ({
+      ...current,
       config: {
-        ...localeData.config,
+        ...current.config,
         [contentType]: contentConfig,
       },
-    })
+    }), { render: shouldRender })
   }
 
   const handleDataApiBasedChange = (apiBasedExtensionId: string) => {
-    setLocaleData({
-      ...localeData,
+    updateLocaleData(current => ({
+      ...current,
       config: {
-        ...localeData.config,
+        ...current.config,
         api_based_extension_id: apiBasedExtensionId,
       },
-    })
+    }))
   }
 
   const handleDataExtraChange = (extraValue: Record<string, string>) => {
-    setLocaleData({
-      ...localeData,
+    updateLocaleData(current => ({
+      ...current,
       config: {
-        ...localeData.config,
+        ...current.config,
         ...extraValue,
       },
-    })
+    }))
   }
 
   const formatData = (originData: ModerationConfig) => {
@@ -201,45 +218,48 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   }
 
   const handleSave = () => {
+    const currentLocaleData = localeDataRef.current
+    const providerForSave = providers.find(provider => provider.key === currentLocaleData.type)
+
     /* v8 ignore next -- UI-invariant guard: same condition is used in Save button disabled logic, so when true handleSave has no user-triggerable invocation path. @preserve */
-    if (localeData.type === 'openai_moderation' && !isOpenAIProviderConfigured)
+    if (currentLocaleData.type === 'openai_moderation' && !isOpenAIProviderConfigured)
       return
 
-    if (!localeData.config?.inputs_config?.enabled && !localeData.config?.outputs_config?.enabled) {
+    if (!currentLocaleData.config?.inputs_config?.enabled && !currentLocaleData.config?.outputs_config?.enabled) {
       toast.error(t('feature.moderation.modal.content.condition', { ns: 'appDebug' }))
       return
     }
 
-    if (localeData.type === 'keywords' && !localeData.config.keywords) {
+    if (currentLocaleData.type === 'keywords' && !currentLocaleData.config.keywords) {
       toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'keywords' : '关键词' }))
       return
     }
 
-    if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
+    if (currentLocaleData.type === 'api' && !currentLocaleData.config.api_based_extension_id) {
       toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }))
       return
     }
 
-    if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
-      for (let i = 0; i < currentProvider.form_schema.length; i++) {
-        if (!localeData.config?.[currentProvider.form_schema[i]!.variable] && currentProvider.form_schema[i]!.required) {
-          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i]!.label['en-US'] : currentProvider.form_schema[i]!.label['zh-Hans'] }))
+    if (systemTypes.findIndex(t => t === currentLocaleData.type) < 0 && providerForSave?.form_schema) {
+      for (let i = 0; i < providerForSave.form_schema.length; i++) {
+        if (!currentLocaleData.config?.[providerForSave.form_schema[i]!.variable] && providerForSave.form_schema[i]!.required) {
+          toast.error(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? providerForSave.form_schema[i]!.label['en-US'] : providerForSave.form_schema[i]!.label['zh-Hans'] }))
           return
         }
       }
     }
 
-    if (localeData.config.inputs_config?.enabled && !localeData.config.inputs_config.preset_response && localeData.type !== 'api') {
+    if (currentLocaleData.config.inputs_config?.enabled && !currentLocaleData.config.inputs_config.preset_response && currentLocaleData.type !== 'api') {
       toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
-    if (localeData.config.outputs_config?.enabled && !localeData.config.outputs_config.preset_response && localeData.type !== 'api') {
+    if (currentLocaleData.config.outputs_config?.enabled && !currentLocaleData.config.outputs_config.preset_response && currentLocaleData.type !== 'api') {
       toast.error(t('feature.moderation.modal.content.errorMessage', { ns: 'appDebug' }))
       return
     }
 
-    onSave(formatData(localeData))
+    onSave(formatData(currentLocaleData))
   }
 
   return (
@@ -360,6 +380,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
           <div className="flex flex-col gap-2">
             <LabeledDivider>{t('feature.moderation.title', { ns: 'appDebug' })}</LabeledDivider>
             <ModerationContent
+              key={`inputs-${localeData.type}-${localeData.config?.inputs_config?.preset_response ?? ''}`}
               title={t('feature.moderation.modal.content.input', { ns: 'appDebug' }) || ''}
               config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
               onConfigChange={config => handleDataContentChange('inputs_config', config)}
@@ -367,6 +388,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               showPreset={localeData.type !== 'api'}
             />
             <ModerationContent
+              key={`outputs-${localeData.type}-${localeData.config?.outputs_config?.preset_response ?? ''}`}
               title={t('feature.moderation.modal.content.output', { ns: 'appDebug' }) || ''}
               config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
               onConfigChange={config => handleDataContentChange('outputs_config', config)}

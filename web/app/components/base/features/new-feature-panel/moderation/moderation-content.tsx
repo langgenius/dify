@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import type { ModerationContentConfig } from '@/models/debug'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type ModerationContentProps = {
@@ -19,11 +20,23 @@ const ModerationContent: FC<ModerationContentProps> = ({
   onConfigChange,
 }) => {
   const { t } = useTranslation()
+  const [presetResponse, setPresetResponse] = useState(config.preset_response || '')
 
   const handleConfigChange = (field: string, value: boolean | string) => {
     if (field === 'preset_response' && typeof value === 'string')
       value = value.slice(0, 100)
-    onConfigChange({ ...config, [field]: value })
+
+    onConfigChange({
+      ...config,
+      preset_response: field === 'preset_response' ? value as string : presetResponse,
+      [field]: value,
+    })
+  }
+
+  const handlePresetResponseChange = (value: string) => {
+    const nextValue = value.slice(0, 100)
+    setPresetResponse(nextValue)
+    handleConfigChange('preset_response', nextValue)
   }
 
   return (
@@ -58,13 +71,13 @@ const ModerationContent: FC<ModerationContentProps> = ({
             <div className="relative h-20">
               <Textarea
                 aria-label={t('feature.moderation.modal.content.preset', { ns: 'appDebug' }) as string}
-                value={config.preset_response || ''}
+                value={presetResponse}
                 className="size-full resize-none pb-8"
                 placeholder={t('feature.moderation.modal.content.placeholder', { ns: 'appDebug' }) || ''}
-                onValueChange={value => handleConfigChange('preset_response', value)}
+                onValueChange={handlePresetResponseChange}
               />
               <div className="absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-2xs-medium-uppercase text-text-quaternary">
-                <span>{(config.preset_response || '').length}</span>
+                <span>{presetResponse.length}</span>
                 /
                 <span className="text-text-tertiary">100</span>
               </div>
