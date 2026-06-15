@@ -33,17 +33,7 @@ const LoadedFormContent = ({
   )
 
   const contentList = useMemo(() => {
-    const contentCounts = new Map<string, number>()
-
-    return splitByOutputVar(formData.form_content).map((content) => {
-      const occurrence = (contentCounts.get(content) || 0) + 1
-      contentCounts.set(content, occurrence)
-
-      return {
-        key: `${content}-${occurrence}`,
-        content,
-      }
-    })
+    return splitByOutputVar(formData.form_content)
   }, [formData.form_content])
 
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
@@ -73,9 +63,9 @@ const LoadedFormContent = ({
       </div>
       <div className="h-0 w-full grow overflow-y-auto">
         <div className="rounded-[20px] border border-divider-subtle bg-chat-bubble-bg p-4 shadow-lg backdrop-blur-xs">
-          {contentList.map(({ key, content }) => (
+          {contentList.map((content, index) => (
             <ContentItem
-              key={key}
+              key={index}
               content={content}
               formInputFields={formData.inputs}
               inputs={inputs}
@@ -96,10 +86,7 @@ const LoadedFormContent = ({
           </div>
           <ExpirationTime expirationTime={formData.expiration_time * 1000} />
         </div>
-        <BrandingFooter
-          removeWebappBrand={removeWebappBrand}
-          replaceWebappLogo={replaceWebappLogo}
-        />
+        <BrandingFooter removeWebappBrand={removeWebappBrand} replaceWebappLogo={replaceWebappLogo} />
       </div>
     </div>
   )

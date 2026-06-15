@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
 import BrandingFooter from './branding-footer'
 
 type FormStatusCardProps = {
@@ -20,8 +19,6 @@ const FormStatusCard = ({
   removeWebappBrand,
   replaceWebappLogo,
 }: FormStatusCardProps) => {
-  const { t } = useTranslation()
-
   return (
     <div className={cn('flex size-full flex-col items-center justify-center')}>
       <div className="max-w-160 min-w-120">
@@ -37,14 +34,11 @@ const FormStatusCard = ({
           </div>
           {submissionID && (
             <div className="shrink-0 system-2xs-regular-uppercase text-text-tertiary">
-              {t('humanInput.submissionID', { id: submissionID, ns: 'share' })}
+              {submissionID}
             </div>
           )}
         </div>
-        <BrandingFooter
-          removeWebappBrand={removeWebappBrand}
-          replaceWebappLogo={replaceWebappLogo}
-        />
+        <BrandingFooter removeWebappBrand={removeWebappBrand} replaceWebappLogo={replaceWebappLogo} />
       </div>
     </div>
   )
