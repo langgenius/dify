@@ -9,7 +9,7 @@ import re
 import time
 from datetime import datetime
 from json import JSONDecodeError
-from typing import Any, ClassVar, Optional, TypedDict, cast, override
+from typing import Any, ClassVar, TypedDict, cast, override
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -177,37 +177,39 @@ class Dataset(Base):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description: Mapped[Optional[str]] = mapped_column(LongText, nullable=True)
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True)
     provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
     permission: Mapped[DatasetPermissionEnum] = mapped_column(
         EnumText(DatasetPermissionEnum, length=255),
         server_default=sa.text("'only_me'"),
         default=DatasetPermissionEnum.ONLY_ME,
     )
-    data_source_type: Mapped[Optional[str]] = mapped_column(EnumText(DataSourceType, length=255))
+    data_source_type: Mapped[str | None] = mapped_column(EnumText(DataSourceType, length=255))
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
-    index_struct: Mapped[Optional[str]] = mapped_column(LongText, nullable=True)
+    index_struct: Mapped[str | None] = mapped_column(LongText, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    embedding_model: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
-    embedding_model_provider: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
-    keyword_number: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
-    collection_binding_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    retrieval_model: Mapped[Optional[dict]] = mapped_column(AdjustedJSON, nullable=True)
-    summary_index_setting: Mapped[Optional[dict]] = mapped_column(AdjustedJSON, nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
+    keyword_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
+    collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    retrieval_model: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    summary_index_setting: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    icon_info: Mapped[Optional[dict]] = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode: Mapped[Optional[str]] = mapped_column(
+    icon_info: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    runtime_mode: Mapped[str | None] = mapped_column(
         EnumText(DatasetRuntimeMode, length=255), nullable=True, server_default=sa.text("'general'")
     )
-    pipeline_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
-    chunk_structure: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
+    pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal: Mapped[bool] = mapped_column(sa.Boolean, default=False, nullable=False, server_default=db.text("false"))
+    is_multimodal: Mapped[bool] = mapped_column(
+        sa.Boolean, default=False, nullable=False, server_default=db.text("false")
+    )
 
     @property
     def total_documents(self):
@@ -508,20 +510,20 @@ class Document(Base):
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     data_source_type: Mapped[str] = mapped_column(EnumText(DataSourceType, length=255), nullable=False)
-    data_source_info: Mapped[Optional[str]] = mapped_column(LongText, nullable=True)
-    dataset_process_rule_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    data_source_info: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    dataset_process_rule_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     batch: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_from: Mapped[str] = mapped_column(EnumText(DocumentCreatedFrom, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_api_request_id: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    created_api_request_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
     # start processing
     processing_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # parsing
-    file_id: Mapped[Optional[str]] = mapped_column(LongText, nullable=True)
+    file_id: Mapped[str | None] = mapped_column(LongText, nullable=True)
     word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)  # TODO: make this not nullable
     parsing_completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -538,11 +540,11 @@ class Document(Base):
 
     # pause
     is_paused: Mapped[bool | None] = mapped_column(sa.Boolean, nullable=True, server_default=sa.text("false"))
-    paused_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    paused_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # error
-    error: Mapped[Optional[str]] = mapped_column(LongText, nullable=True)
+    error: Mapped[str | None] = mapped_column(LongText, nullable=True)
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # basic fields
@@ -551,20 +553,20 @@ class Document(Base):
     )
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    disabled_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    disabled_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    archived_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    archived_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
+    archived_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    doc_type: Mapped[Optional[str]] = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
-    doc_metadata: Mapped[Optional[dict]] = mapped_column(AdjustedJSON, nullable=True)
+    doc_type: Mapped[str | None] = mapped_column(EnumText(DocumentDocType, length=40), nullable=True)
+    doc_metadata: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
     doc_form: Mapped[IndexStructureType] = mapped_column(
         EnumText(IndexStructureType, length=255), nullable=False, server_default=sa.text("'text_model'")
     )
-    doc_language: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    doc_language: Mapped[str | None] = mapped_column(String(255), nullable=True)
     need_summary: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
