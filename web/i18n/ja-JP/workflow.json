@@ -776,6 +776,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "セグメントアイコン",
   "nodes.knowledgeRetrieval.outputVars.metadata": "メタデータ",
   "nodes.knowledgeRetrieval.outputVars.output": "検索結果セグメント",
+  "nodes.knowledgeRetrieval.outputVars.summary": "コンテンツ概要",
   "nodes.knowledgeRetrieval.outputVars.title": "セグメントタイトル",
   "nodes.knowledgeRetrieval.outputVars.url": "セグメント URL",
   "nodes.knowledgeRetrieval.queryAttachment": "画像を検索",

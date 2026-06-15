@@ -776,6 +776,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Ikona segmentowana",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Inne metadane",
   "nodes.knowledgeRetrieval.outputVars.output": "Odzyskane dane segmentowane",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Podsumowanie treści",
   "nodes.knowledgeRetrieval.outputVars.title": "Tytuł segmentowany",
   "nodes.knowledgeRetrieval.outputVars.url": "URL segmentowany",
   "nodes.knowledgeRetrieval.queryAttachment": "Wyszukaj obrazy",

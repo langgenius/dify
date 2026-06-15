@@ -776,6 +776,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Parça simgesi",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Diğer meta veriler",
   "nodes.knowledgeRetrieval.outputVars.output": "Geri alınmış parça verisi",
+  "nodes.knowledgeRetrieval.outputVars.summary": "İçerik özeti",
   "nodes.knowledgeRetrieval.outputVars.title": "Parça başlığı",
   "nodes.knowledgeRetrieval.outputVars.url": "Parça URL'si",
   "nodes.knowledgeRetrieval.queryAttachment": "Sorgu Görüntüleri",

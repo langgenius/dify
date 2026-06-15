@@ -776,6 +776,7 @@
   "nodes.knowledgeRetrieval.outputVars.icon": "Сегментована піктограма",
   "nodes.knowledgeRetrieval.outputVars.metadata": "Інші метадані",
   "nodes.knowledgeRetrieval.outputVars.output": "Відновлені сегментовані дані",
+  "nodes.knowledgeRetrieval.outputVars.summary": "Підсумок вмісту",
   "nodes.knowledgeRetrieval.outputVars.title": "Сегментований заголовок",
   "nodes.knowledgeRetrieval.outputVars.url": "Сегментована URL",
   "nodes.knowledgeRetrieval.queryAttachment": "Пошук зображень",
