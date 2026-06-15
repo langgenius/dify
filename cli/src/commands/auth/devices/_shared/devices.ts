@@ -100,7 +100,7 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
     await sessions.revoke(id)
 
   if (selfHit)
-    opts.reg.forget(opts.active, opts.store)
+    await opts.reg.forget(opts.active, opts.store)
 
   opts.io.out.write(`${cs.successIcon()} Revoked ${ids.length} session(s)\n`)
 }

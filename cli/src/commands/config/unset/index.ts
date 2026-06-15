@@ -20,6 +20,6 @@ export default class ConfigUnset extends DifyCommand {
 
   async run(argv: string[]) {
     const { args } = this.parse(ConfigUnset, argv)
-    return raw(runConfigUnset({ store: getConfigurationStore(), key: args.key }))
+    return raw(await runConfigUnset({ store: getConfigurationStore(), key: args.key }))
   }
 }
