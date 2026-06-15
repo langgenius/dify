@@ -15,7 +15,7 @@
   "addToolModal.type": "type",
   "addToolModal.workflow.tip": "Publish workflows as tools in Studio",
   "addToolModal.workflow.title": "No workflow tool available",
-  "allTools": "All tools",
+  "allTools": "All tool plugins",
   "auth.authorized": "Authorized",
   "auth.setup": "Set up authorization to use",
   "auth.setupModalTitle": "Set Up Authorization",

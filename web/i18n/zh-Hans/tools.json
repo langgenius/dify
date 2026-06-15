@@ -15,7 +15,7 @@
   "addToolModal.type": "类型",
   "addToolModal.workflow.tip": "在工作室中发布工作流作为工具",
   "addToolModal.workflow.title": "没有可用的工作流工具",
-  "allTools": "全部工具",
+  "allTools": "所有工具插件",
   "auth.authorized": "已授权",
   "auth.setup": "要使用请先授权",
   "auth.setupModalTitle": "设置授权",
