@@ -8,7 +8,7 @@
  *
  * Staging app prerequisites (specified via DIFY_E2E_* env vars):
  *   echo-chat     — mode=chat, query variable, outputs "echo: {query}"
- *   echo-workflow — mode=workflow, x variable (required), outputs "echo: {x}"
+ *   echo-workflow — mode=workflow, x variable (required), outputs x directly (no echo prefix)
  */
 
 import type { AuthFixture } from '../../helpers/cli.js'
@@ -263,7 +263,7 @@ describe('E2E / difyctl run app', () => {
         JSON.stringify({ x: 'hello', num: 42, enum_var: 'A', paragraph: 'short text' }),
       ])
       assertExitCode(happyResult, 0)
-      assertStdoutContains(happyResult, 'echo:hello')
+      assertStdoutContains(happyResult, 'hello') // workflow outputs x directly; echo: prefix removed (no sandbox on server)
 
       // ── 4.1.17: number field receives a string value ─────────────────────
       const typedResult = await fx.r([
