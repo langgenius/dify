@@ -23,7 +23,7 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 from pydantic import BaseModel
 
 from clients.agent_backend import (
@@ -104,6 +104,9 @@ class WorkflowAgentRuntimeBuildContext:
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
     session_snapshot: CompositorSessionSnapshot | None = None
+    # ENG-638: set when resuming after a submitted ask_human HITL form; threads
+    # the human's answer back into the second Agent run keyed by tool_call_id.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,6 +225,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
+                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )

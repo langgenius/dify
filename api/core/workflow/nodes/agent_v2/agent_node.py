@@ -33,6 +33,7 @@ from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
+from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from .binding_resolver import WorkflowAgentBindingError, WorkflowAgentBindingResolver
 from .entities import DifyAgentNodeData
 from .output_adapter import WorkflowAgentOutputAdapter
@@ -170,6 +171,33 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
         outputs_by_name = {o.name: o for o in effective_outputs}
 
+        # ──── ENG-638: resume after a submitted/timed-out ask_human form ────
+        # graphon re-executes this _run when the outer workflow resumes. If a
+        # pending ask_human form is now terminal, thread the human's answer into
+        # the second Agent run as deferred_tool_results; if it is somehow still
+        # waiting, re-emit the same pause defensively.
+        deferred_tool_results = None
+        if self._session_store is not None:
+            stored_session = self._session_store.load_active_session(session_scope)
+            if stored_session is not None and stored_session.pending_form_id is not None:
+                outcome = resolve_ask_human_form(
+                    form_id=stored_session.pending_form_id,
+                    tenant_id=dify_ctx.tenant_id,
+                    node_id=self._node_id,
+                )
+                if outcome is not None and outcome.repause is not None:
+                    yield PauseRequestedEvent(reason=outcome.repause)
+                    return
+                if (
+                    outcome is not None
+                    and outcome.deferred_result is not None
+                    and stored_session.pending_tool_call_id is not None
+                ):
+                    deferred_tool_results = build_deferred_tool_results(
+                        tool_call_id=stored_session.pending_tool_call_id,
+                        result=outcome.deferred_result,
+                    )
+
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
@@ -190,6 +218,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         snapshot=bundle.snapshot,
                         attempt=attempt,
                         session_snapshot=session_snapshot,
+                        deferred_tool_results=deferred_tool_results,
                     )
                 )
             except WorkflowAgentRuntimeRequestBuildError as error:

@@ -3,6 +3,7 @@ from typing import cast
 from unittest.mock import MagicMock, patch
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
 
 from clients.agent_backend import (
@@ -15,16 +16,22 @@ from clients.agent_backend import (
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
-from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore, WorkflowAgentSessionScope
+from core.workflow.nodes.agent_v2.session_store import (
+    StoredWorkflowAgentSession,
+    WorkflowAgentRuntimeSessionStore,
+    WorkflowAgentSessionScope,
+)
 from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
+from graphon.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -114,6 +121,8 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
 class FakeSessionStore:
     def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
         self.loaded_snapshot = snapshot
+        # ENG-638: set to simulate resume after a submitted/timed-out form.
+        self.loaded_session: StoredWorkflowAgentSession | None = None
         self.saved: list[
             tuple[
                 WorkflowAgentSessionScope,
@@ -128,6 +137,9 @@ class FakeSessionStore:
 
     def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
         return self.loaded_snapshot
+
+    def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
+        return self.loaded_session
 
     def save_active_snapshot(
         self,
@@ -493,6 +505,81 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     # ENG-637: the awaiting form + deferred tool_call correlation is persisted.
     assert store.saved[0][4] == "form-1"
     assert store.saved[0][5] == "fake-ask-human-1"
+
+
+def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgentSession:
+    return StoredWorkflowAgentSession(
+        scope=WorkflowAgentSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="workflow-run-1",
+            node_id="agent-node",
+            node_execution_id="exec-1",
+            binding_id="binding-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snapshot-1",
+        ),
+        session_snapshot=snapshot,
+        backend_run_id="run-0",
+        pending_form_id="form-1",
+        pending_tool_call_id="call-1",
+    )
+
+
+def test_agent_node_resumes_with_deferred_tool_results_after_submitted_form(monkeypatch):
+    # ENG-638: a submitted form re-enters _run; the human's answer is threaded
+    # into the second Agent run as deferred_tool_results.
+    snapshot = CompositorSessionSnapshot(layers=[])
+    store = FakeSessionStore(snapshot=snapshot)
+    store.loaded_session = _pending_session(snapshot)
+
+    def _fake_resolve(*, form_id: str, tenant_id: str, node_id: str) -> AskHumanResumeOutcome:
+        assert form_id == "form-1"
+        return AskHumanResumeOutcome(
+            deferred_result=AskHumanToolResult(status="submitted", values={"note": "ok"})
+        )
+
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form", _fake_resolve)
+
+    client = FakeAgentBackendRunClient()  # SUCCESS scenario -> second run completes
+    node = _node(agent_backend_client=client, session_store=store)
+
+    events = list(node._run())
+
+    assert client.request is not None
+    assert client.request.deferred_tool_results is not None
+    assert set(client.request.deferred_tool_results.calls) == {"call-1"}
+    assert any(isinstance(event, StreamCompletedEvent) for event in events)
+
+
+def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
+    snapshot = CompositorSessionSnapshot(layers=[])
+    store = FakeSessionStore(snapshot=snapshot)
+    store.loaded_session = _pending_session(snapshot)
+
+    repause = HumanInputRequired(
+        form_id="form-1",
+        form_content="Approve?",
+        inputs=[],
+        actions=[UserActionConfig(id="ok", title="OK")],
+        node_id="agent-node",
+        node_title="Budget review",
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form",
+        lambda **_kwargs: AskHumanResumeOutcome(repause=repause),
+    )
+
+    client = FakeAgentBackendRunClient()
+    node = _node(agent_backend_client=client, session_store=store)
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    assert isinstance(events[0], PauseRequestedEvent)
+    assert isinstance(events[0].reason, HumanInputRequired)
+    assert client.request is None  # no second Agent run was created
 
 
 def test_agent_node_records_stream_usage_metadata():
