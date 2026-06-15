@@ -9,6 +9,7 @@ import type { Tool } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolTypeEnum, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
@@ -64,17 +65,6 @@ const isCliToolItem = (item: AgentOrchestrateAddedItem): item is Extract<AgentTo
 const isKnowledgeRetrievalItem = (item: AgentOrchestrateAddedItem): item is AgentKnowledgeRetrievalItem => (
   'queryMode' in item || 'customQuery' in item || 'selectedDatasets' in item || 'nameKey' in item
 )
-
-const getFileIcon = (file: AgentFileNode) => {
-  if (file.children?.length || file.icon === 'folder')
-    return 'i-ri-folder-2-line'
-  if (file.icon === 'json')
-    return 'i-ri-file-code-line'
-  if (file.icon === 'markdown')
-    return 'i-ri-markdown-line'
-
-  return 'i-ri-file-line'
-}
 
 export function AgentPromptSlashMenu({
   view,
@@ -256,7 +246,7 @@ function AgentPromptFileRows({
       {files.map(file => (
         <div key={file.id}>
           <AgentPromptSubmenuRow
-            icon={getFileIcon(file)}
+            icon={<FileTreeIcon type={file.children?.length ? 'folder' : file.icon} />}
             label={file.name}
             depth={depth}
             hasChildren={!!file.children?.length}
@@ -676,7 +666,7 @@ function AgentPromptSubmenuRow({
   hasChildren = false,
   onClick,
 }: {
-  icon?: string
+  icon?: ReactNode
   label: string
   depth?: number
   hasChildren?: boolean
@@ -691,7 +681,8 @@ function AgentPromptSubmenuRow({
       onClick={onClick}
     >
       <span className={`flex min-w-0 flex-1 items-center gap-1 ${indent} pr-2`}>
-        {icon && <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />}
+        {typeof icon === 'string' && <span aria-hidden className={`${icon} size-4 shrink-0 text-text-secondary`} />}
+        {typeof icon !== 'string' && icon}
         <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">{label}</span>
       </span>
       {hasChildren && <span aria-hidden className="mr-1.5 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />}

@@ -1,5 +1,7 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import {
+  getRosterReferenceFileIconType,
   getRosterReferenceIconClassName,
   parseRosterReferenceToken,
 } from './utils'
@@ -34,7 +36,9 @@ const RosterReferenceBlockComponent = ({
           isKnowledge && 'border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
         )}
       >
-        <span className={cn(isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />
+        {token.kind === 'file'
+          ? <FileTreeIcon type={getRosterReferenceFileIconType(token.label)} className="size-4" />
+          : <span className={cn(isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />}
       </span>
       <span className="max-w-48 truncate system-xs-medium text-text-accent">
         {token.label}

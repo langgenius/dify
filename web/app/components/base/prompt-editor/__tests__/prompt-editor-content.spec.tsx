@@ -315,7 +315,7 @@ describe('PromptEditorContent', () => {
       const token = container.querySelector('[data-roster-reference-kind="file"]') as HTMLElement
       expect(token).toBeInTheDocument()
       expect(token).toHaveTextContent('qna_report.pdf')
-      expect(token.querySelector('.i-ri-file-pdf-2-line')).toBeInTheDocument()
+      expect(token.querySelector('.i-ri-file-pdf-2-fill')).toBeInTheDocument()
     })
   })
 })

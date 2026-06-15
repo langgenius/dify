@@ -12,7 +12,7 @@ import {
   RosterReferenceBlockNode,
 } from '../node'
 import {
-  getRosterReferenceIconClassName,
+  getRosterReferenceFileIconType,
   parseRosterReferenceToken,
 } from '../utils'
 
@@ -42,11 +42,7 @@ describe('RosterReferenceBlockNode', () => {
       label: 'qna_report:final.pdf',
     })
     expect(parseRosterReferenceToken('[§unknown:1:item§]')).toBeNull()
-    expect(getRosterReferenceIconClassName({
-      kind: 'file',
-      id: 'file-1',
-      label: 'qna_report.pdf',
-    })).toContain('i-ri-file-pdf-2-line')
+    expect(getRosterReferenceFileIconType('qna_report.pdf')).toBe('pdf')
   })
 
   it('should render a non-editable token pill component', () => {

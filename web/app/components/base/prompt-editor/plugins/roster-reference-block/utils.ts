@@ -1,3 +1,5 @@
+import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
+
 export type RosterReferenceKind = 'skill' | 'file' | 'tool-all' | 'tool' | 'cli_tool' | 'knowledge'
 
 export type RosterReferenceToken = {
@@ -45,33 +47,51 @@ export function parseRosterReferenceToken(text: string): RosterReferenceToken | 
   }
 }
 
-const getFileTypeIconClassName = (label: string) => {
+const codeFileExtensions = new Set([
+  'css',
+  'go',
+  'html',
+  'htm',
+  'js',
+  'jsx',
+  'py',
+  'rb',
+  'rs',
+  'scss',
+  'sh',
+  'ts',
+  'tsx',
+  'vue',
+  'yaml',
+  'yml',
+])
+const imageFileExtensions = new Set(['apng', 'avif', 'bmp', 'gif', 'ico', 'jpeg', 'jpg', 'png', 'svg', 'webp'])
+const tableFileExtensions = new Set(['csv', 'xls', 'xlsx'])
+const archiveFileExtensions = new Set(['7z', 'gz', 'rar', 'tar', 'zip'])
+
+export function getRosterReferenceFileIconType(label: string): FileTreeIconType {
   const extension = label.includes('.') ? label.split('.').pop()?.toLowerCase() : undefined
 
-  switch (extension) {
-    case 'csv':
-      return 'i-ri-file-excel-2-line text-util-colors-green-green-600'
-    case 'doc':
-    case 'docx':
-      return 'i-ri-file-word-2-line text-util-colors-blue-blue-600'
-    case 'htm':
-    case 'html':
-    case 'json':
-      return 'i-ri-file-code-line text-util-colors-purple-purple-600'
-    case 'md':
-    case 'markdown':
-    case 'mdx':
-      return 'i-ri-markdown-line text-text-tertiary'
-    case 'pdf':
-      return 'i-ri-file-pdf-2-line text-util-colors-red-red-600'
-    case 'txt':
-      return 'i-ri-file-text-line text-text-tertiary'
-    case 'xls':
-    case 'xlsx':
-      return 'i-ri-file-excel-2-line text-util-colors-green-green-600'
-    default:
-      return extension ? 'i-ri-file-line text-text-tertiary' : 'i-ri-folder-2-line text-text-tertiary'
-  }
+  if (!extension)
+    return 'folder'
+  if (imageFileExtensions.has(extension))
+    return 'image'
+  if (extension === 'pdf')
+    return 'pdf'
+  if (extension === 'md' || extension === 'markdown' || extension === 'mdx')
+    return 'markdown'
+  if (extension === 'json')
+    return 'json'
+  if (tableFileExtensions.has(extension))
+    return 'table'
+  if (archiveFileExtensions.has(extension))
+    return 'archive'
+  if (codeFileExtensions.has(extension))
+    return 'code'
+  if (extension === 'txt')
+    return 'text'
+
+  return 'file'
 }
 
 export function getRosterReferenceIconClassName(token: RosterReferenceToken) {
@@ -79,7 +99,7 @@ export function getRosterReferenceIconClassName(token: RosterReferenceToken) {
     case 'skill':
       return 'i-custom-public-agent-building-blocks text-text-tertiary'
     case 'file':
-      return getFileTypeIconClassName(token.label)
+      return ''
     case 'tool-all':
     case 'tool':
       return 'i-custom-public-other-default-tool-icon text-[#ef5b39]'
