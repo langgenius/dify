@@ -266,7 +266,7 @@ describe('DatasetDetailLayout', () => {
         },
       )
 
-      expect(screen.queryByText('common.settings.knowledgeBaseAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 })

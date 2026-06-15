@@ -209,7 +209,7 @@ describe('AppDetailLayout permissions', () => {
     })
 
     await waitFor(() => {
-      expect(queryByText('common.settings.appAccess')).not.toBeInTheDocument()
+      expect(queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 

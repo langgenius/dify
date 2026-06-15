@@ -3,16 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { del, get, post, put } from '@/service/base'
 import {
-  useBindingLock,
-  useBindingUnlock,
   useCopyAccessRule,
   useCreateAccessRule,
   useDeleteAccessRule,
   useInfiniteWorkspaceAppAccessRules,
   useInfiniteWorkspaceDatasetAccessRules,
   useUpdateAccessRule,
-  useUpdateAppAccessRuleBindings,
-  useUpdateDatasetAccessRuleBindings,
 } from '../use-workspace-access-rules'
 
 vi.mock('@/service/base', () => ({
@@ -118,53 +114,6 @@ describe('use-workspace-access-rules', () => {
 
       expect(post).toHaveBeenCalledWith('/workspaces/current/rbac/access-policies/policy-1/copy', {})
       expect(del).toHaveBeenCalledWith('/workspaces/current/rbac/access-policies/policy-2', {})
-    })
-  })
-
-  // Binding mutations target the app or dataset workspace access-policy binding route.
-  describe('Binding Mutations', () => {
-    it('should update app and dataset access rule bindings', async () => {
-      const appHook = renderHook(() => useUpdateAppAccessRuleBindings(), { wrapper: createWrapper() })
-      const datasetHook = renderHook(() => useUpdateDatasetAccessRuleBindings(), { wrapper: createWrapper() })
-
-      await act(async () => {
-        await appHook.result.current.mutateAsync({
-          id: 'app-policy',
-          role_ids: ['role-1'],
-          account_ids: ['account-1'],
-        })
-        await datasetHook.result.current.mutateAsync({
-          id: 'dataset-policy',
-          role_ids: ['role-2'],
-          account_ids: ['account-2'],
-        })
-      })
-
-      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/apps/access-policies/app-policy/bindings', {
-        body: {
-          role_ids: ['role-1'],
-          account_ids: ['account-1'],
-        },
-      })
-      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/workspace/datasets/access-policies/dataset-policy/bindings', {
-        body: {
-          role_ids: ['role-2'],
-          account_ids: ['account-2'],
-        },
-      })
-    })
-
-    it('should lock and unlock access rule bindings by binding id', async () => {
-      const lockHook = renderHook(() => useBindingLock(), { wrapper: createWrapper() })
-      const unlockHook = renderHook(() => useBindingUnlock(), { wrapper: createWrapper() })
-
-      await act(async () => {
-        await lockHook.result.current.mutateAsync('binding-1')
-        await unlockHook.result.current.mutateAsync('binding-2')
-      })
-
-      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/access-policy-bindings/binding-1/lock')
-      expect(put).toHaveBeenCalledWith('/workspaces/current/rbac/access-policy-bindings/binding-2/unlock')
     })
   })
 })

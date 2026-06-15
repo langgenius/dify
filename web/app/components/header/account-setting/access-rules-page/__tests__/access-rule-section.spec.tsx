@@ -95,7 +95,7 @@ describe('AccessRuleSection', () => {
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })
 
-  it('should summarize total permission sets and locked bindings', () => {
+  it('should summarize total permission sets without binding counts', () => {
     render(
       <AccessRuleSection
         title="App Access Rules"
@@ -106,7 +106,27 @@ describe('AccessRuleSection', () => {
     )
 
     expect(screen.getByText(/permission\.accessRule\.summary/)).toHaveTextContent('"count":2')
-    expect(screen.getByText(/permission\.accessRule\.lockedSummary/)).toHaveTextContent('"count":1')
+    expect(screen.queryByText(/permission\.accessRule\.lockedSummary/)).not.toBeInTheDocument()
+  })
+
+  it('should render a placeholder when a rule has no description', () => {
+    render(
+      <AccessRuleSection
+        title="App Access Rules"
+        rules={[{
+          ...rule,
+          policy: {
+            ...rule.policy,
+            description: '',
+          },
+        }]}
+        totalCount={1}
+        isLoadingRules={false}
+        defaultExpanded
+      />,
+    )
+
+    expect(screen.getByText('permission.accessRule.noDescription')).toBeInTheDocument()
   })
 
   it('should fetch the next page when the expanded group reaches its list anchor', () => {
@@ -156,61 +176,51 @@ describe('AccessRuleSection', () => {
     expect(fetchNextPage).not.toHaveBeenCalled()
   })
 
-  it('should toggle a role binding lock status by binding id', async () => {
+  it('should expose create action when workspace role management is allowed', async () => {
     mocks.workspacePermissionKeys = ['workspace.role.manage']
-    const onToggleLockStatus = vi.fn()
+    const onCreate = vi.fn()
 
     renderWithQueryClient(
       <AccessRuleSection
         title="App Access Rules"
-        rules={[{
-          ...rule,
-          roles: [{
-            ...rule.roles[0]!,
-            is_locked: false,
-          }],
-        }]}
+        rules={[rule]}
         totalCount={1}
         isLoadingRules={false}
-        defaultExpanded
-        onToggleLockStatus={onToggleLockStatus}
+        onCreate={onCreate}
       />,
     )
 
-    await userEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.bindingActionsAria.*Admin/ }))
-    await userEvent.click(screen.getByRole('menuitem', { name: /permission\.accessRule\.lockBinding/ }))
+    await userEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.newPermissionSet/ }))
 
-    expect(onToggleLockStatus).toHaveBeenCalledWith('role-binding-1', true)
+    expect(onCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('should not expose binding actions for full-access owner roles', () => {
+  it('should keep row actions when workspace role management is allowed', () => {
     mocks.workspacePermissionKeys = ['workspace.role.manage']
 
     renderWithQueryClient(
       <AccessRuleSection
         title="App Access Rules"
-        rules={[{
-          ...rule,
-          policy: {
-            ...rule.policy,
-            policy_key: 'app.full_access',
-          },
-          roles: [{
-            ...rule.roles[0]!,
-            role_name: 'Owner',
-            is_locked: false,
-            role_tag: 'owner',
-          }],
-        }]}
+        rules={[rule]}
         totalCount={1}
         isLoadingRules={false}
         defaultExpanded
-        onRemoveBinding={vi.fn()}
-        onToggleLockStatus={vi.fn()}
       />,
     )
 
-    expect(screen.getByText('Owner')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /permission\.accessRule\.bindingActionsAria.*Owner/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.operation.moreActions' })).toBeInTheDocument()
+  })
+
+  it('should hide create action when workspace role management is missing', () => {
+    render(
+      <AccessRuleSection
+        title="App Access Rules"
+        rules={[rule]}
+        totalCount={1}
+        isLoadingRules={false}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /permission\.accessRule\.newPermissionSet/ })).not.toBeInTheDocument()
   })
 })

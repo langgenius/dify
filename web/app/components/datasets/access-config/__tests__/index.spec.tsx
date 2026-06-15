@@ -7,10 +7,6 @@ const mockDatasetAccessRules = vi.hoisted(() => ({
   isLoading: false,
 }))
 
-const mockDatasetPermissionKeys = vi.hoisted(() => ({
-  value: [] as string[],
-}))
-
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
 }))
@@ -22,20 +18,12 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
   })),
 }))
 
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: <T,>(selector: (state: { dataset?: { permission_keys?: string[] } }) => T): T => selector({
-    dataset: { permission_keys: mockDatasetPermissionKeys.value },
-  }),
-}))
-
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
     return (
       <div data-testid="access-rules-editor">
-        {props.resourceId}
-        :
-        {String(props.canManage)}
+        {props.title}
       </div>
     )
   },
@@ -46,17 +34,16 @@ describe('DatasetAccessConfigPage', () => {
     vi.clearAllMocks()
     mockDatasetAccessRules.items = []
     mockDatasetAccessRules.isLoading = false
-    mockDatasetPermissionKeys.value = []
     mockAccessRulesEditor.props = null
   })
 
   // Rendering wires dataset access rules into the shared editor.
   describe('Rendering', () => {
-    it('should render access config title and pass dataset id to the editor', () => {
+    it('should render access config title and pass dataset rules to the editor', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.knowledgeBaseAccessPermissions' })).toBeInTheDocument()
-      expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('dataset-1:false')
+      expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByTestId('access-rules-editor')).toHaveTextContent('permission.accessRule.datasetTitle')
       expect(mockAccessRulesEditor.props?.rules).toEqual([])
     })
 
@@ -66,14 +53,6 @@ describe('DatasetAccessConfigPage', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(mockAccessRulesEditor.props?.isLoadingRules).toBe(true)
-    })
-
-    it('should allow management when dataset ACL includes access config permission', () => {
-      mockDatasetPermissionKeys.value = ['dataset.acl.access_config']
-
-      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
-
-      expect(mockAccessRulesEditor.props?.canManage).toBe(true)
     })
   })
 })
