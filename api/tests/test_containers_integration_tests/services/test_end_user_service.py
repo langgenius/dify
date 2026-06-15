@@ -469,7 +469,7 @@ class TestEndUserServiceCreateBatch:
         assert result == {}
 
     def test_create_batch_creates_users_for_all_apps(self, db_session_with_containers: Session, factory: TestEndUserServiceFactory):
-        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory: TestEndUserServiceFactory, count=3)
+        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=3)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
 
@@ -484,7 +484,7 @@ class TestEndUserServiceCreateBatch:
             assert result[app_id].type == InvokeFrom.SERVICE_API
 
     def test_create_batch_default_session_id(self, db_session_with_containers: Session, factory: TestEndUserServiceFactory):
-        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory: TestEndUserServiceFactory, count=2)
+        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
 
         result = EndUserService.create_end_user_batch(
@@ -497,7 +497,7 @@ class TestEndUserServiceCreateBatch:
             assert end_user._is_anonymous is True
 
     def test_create_batch_deduplicate_app_ids(self, db_session_with_containers: Session, factory: TestEndUserServiceFactory):
-        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory: TestEndUserServiceFactory, count=2)
+        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [apps[0].id, apps[1].id, apps[0].id, apps[1].id]
         user_id = f"user-{uuid4()}"
 
@@ -508,7 +508,7 @@ class TestEndUserServiceCreateBatch:
         assert len(result) == 2
 
     def test_create_batch_returns_existing_users(self, db_session_with_containers: Session, factory: TestEndUserServiceFactory):
-        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory: TestEndUserServiceFactory, count=2)
+        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=2)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
 
@@ -527,7 +527,7 @@ class TestEndUserServiceCreateBatch:
             assert first_result[app_id].id == second_result[app_id].id
 
     def test_create_batch_partial_existing_users(self, db_session_with_containers: Session, factory: TestEndUserServiceFactory):
-        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory: TestEndUserServiceFactory, count=3)
+        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=3)
         user_id = f"user-{uuid4()}"
 
         # Create for first 2 apps
@@ -556,7 +556,7 @@ class TestEndUserServiceCreateBatch:
         [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP, InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER],
     )
     def test_create_batch_all_invoke_types(self, db_session_with_containers: Session, invoke_type: InvokeFrom, factory: TestEndUserServiceFactory):
-        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory: TestEndUserServiceFactory, count=1)
+        tenant_id, apps = self._create_multiple_apps(db_session_with_containers, factory, count=1)
         user_id = f"user-{uuid4()}"
 
         result = EndUserService.create_end_user_batch(
