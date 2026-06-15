@@ -152,7 +152,6 @@ function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
     return (
       <DropdownMenuItem
         className={className}
-        title={nav.name}
       >
         <NavSelectorItemContent nav={nav} />
       </DropdownMenuItem>
@@ -162,7 +161,6 @@ function NavSelectorRouteItem({ nav, isCurrent, onBeforeNavigate }: {
   return (
     <DropdownMenuItem
       className={className}
-      title={nav.name}
       onClick={handleNavigate}
     >
       <NavSelectorItemContent nav={nav} />
@@ -192,7 +190,7 @@ export function NavSelector({ curNav, navigationItems, createText, isApp, onCrea
           'focus-visible:bg-components-main-nav-nav-button-bg-active focus-visible:ring-1 focus-visible:ring-components-input-border-hover data-popup-open:bg-components-main-nav-nav-button-bg-active',
         )}
       >
-        <div className="max-w-[157px] min-w-0 truncate" title={curNav?.name}>{curNav?.name}</div>
+        <div className="max-w-[157px] min-w-0 truncate">{curNav?.name}</div>
         <RiArrowDownSLine
           className="ml-1 size-3 shrink-0 opacity-50 group-hover:opacity-100 group-data-popup-open:opacity-100"
           aria-hidden="true"

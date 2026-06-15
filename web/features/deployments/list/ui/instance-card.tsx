@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { DeploymentActionsMenu } from '../../components/deployment-actions'
-import { TitleTooltip } from '../../components/title-tooltip'
 import { CreateReleaseControl } from '../../create-release'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import {
@@ -68,18 +67,14 @@ export function InstanceCard({ summary }: {
           href={detailHref}
           className="block min-w-0 rounded-t-xl px-4 pt-4 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
-          <TitleTooltip content={appName}>
-            <h3 className="truncate title-md-semi-bold text-text-primary">
-              {appName}
-            </h3>
-          </TitleTooltip>
+          <h3 className="truncate title-md-semi-bold text-text-primary">
+            {appName}
+          </h3>
           {description
             ? (
-                <TitleTooltip content={description}>
-                  <p className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary">
-                    {description}
-                  </p>
-                </TitleTooltip>
+                <p className="mt-2 line-clamp-2 system-xs-regular text-text-tertiary">
+                  {description}
+                </p>
               )
             : (
                 <p className="mt-2 truncate system-xs-regular text-text-quaternary">

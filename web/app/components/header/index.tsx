@@ -103,7 +103,7 @@ export function Header() {
         </WorkspaceProvider>
         {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
       </div>
-      <div className="flex min-w-0 items-center justify-center gap-2 overflow-hidden">
+      <div className="flex min-w-0 items-center justify-center gap-2 overflow-hidden py-3">
         {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
         {!isCurrentWorkspaceDatasetOperator && <AppNav />}
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}

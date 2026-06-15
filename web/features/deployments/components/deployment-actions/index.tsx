@@ -55,7 +55,7 @@ export function DeploymentActionsMenu({
   return (
     <div
       role="presentation"
-      className={className}
+      className={cn(className, menuOpen && 'pointer-events-auto opacity-100')}
       onClick={event => event.stopPropagation()}
       onKeyDown={event => event.stopPropagation()}
     >
