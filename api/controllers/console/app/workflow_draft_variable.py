@@ -19,10 +19,10 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.app.file_access import DatabaseFileAccessController
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from extensions.ext_database import db

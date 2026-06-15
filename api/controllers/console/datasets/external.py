@@ -13,11 +13,11 @@ from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from fields.dataset_fields import (
     dataset_detail_fields,
     dataset_retrieval_model_fields,

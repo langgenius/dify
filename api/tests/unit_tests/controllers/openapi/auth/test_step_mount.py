@@ -2,11 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import Unauthorized
-
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.steps import CallerMount
 from controllers.openapi.auth.strategies import AccountMounter, EndUserMounter
+from werkzeug.exceptions import Unauthorized
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.oauth_bearer import SubjectType
 

@@ -30,11 +30,11 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager

@@ -10,8 +10,8 @@ from sqlalchemy import select
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
-from controllers.console.wraps import rbac_permission_required
 from core.db.session_factory import session_factory
 from libs.login import current_account_with_tenant, login_required
 from models import Account, TenantAccountJoin
@@ -482,9 +482,7 @@ def _resolve_access_scope_account_ids(
     requested_ids = sorted({value.strip() for value in payload.account_ids if value and value.strip()})
     with session_factory.create_session() as session:
         workspace_account_ids = set(
-            session.scalars(
-                select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == tenant_id)
-            ).all()
+            session.scalars(select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == tenant_id)).all()
         )
 
     if payload.scope is _AccessScope.ALL:
@@ -553,9 +551,7 @@ class RBACAppUserAccessPoliciesApi(Resource):
         return _dump(result)
 
 
-@console_ns.route(
-    "/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies"
-)
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies")
 class RBACAppUserAccessPolicyAssignmentApi(Resource):
     @login_required
     def put(self, app_id, target_account_id):
@@ -635,9 +631,7 @@ class RBACDatasetUserAccessPoliciesApi(Resource):
         return _dump(result)
 
 
-@console_ns.route(
-    "/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies"
-)
+@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies")
 class RBACDatasetUserAccessPolicyAssignmentApi(Resource):
     @login_required
     def put(self, dataset_id, target_account_id):

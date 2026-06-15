@@ -7,10 +7,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from werkzeug.exceptions import Forbidden
-
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.steps import WorkspaceMembershipCheck
+from werkzeug.exceptions import Forbidden
+
 from libs.oauth_bearer import SubjectType
 
 

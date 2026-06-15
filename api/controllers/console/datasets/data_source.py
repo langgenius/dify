@@ -33,11 +33,11 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
 from .. import console_ns
 from ..wraps import (
     account_initialization_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 
 
 class NotionEstimatePayload(BaseModel):

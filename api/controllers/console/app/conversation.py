@@ -15,10 +15,10 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (

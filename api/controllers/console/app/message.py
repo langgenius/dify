@@ -24,10 +24,10 @@ from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDi
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError

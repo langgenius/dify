@@ -32,11 +32,11 @@ from controllers.console.wraps import (
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType

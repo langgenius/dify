@@ -14,9 +14,9 @@ from controllers.console.wraps import (
     annotation_import_rate_limit,
     cloud_edition_billing_resource_check,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
 )
+from controllers.common.wraps import rbac_permission_required
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,

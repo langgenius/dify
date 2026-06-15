@@ -631,9 +631,7 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppAccess,
                 "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(
-                    resource_ids=["app-shared", "app-not-permitted"]
-                ),
+                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-not-permitted"]),
             )
             monkeypatch.setattr(
                 app_module.FeatureService,
@@ -678,9 +676,7 @@ def test_app_list_api_limits_to_view_layout_overrides_without_manage_own_permiss
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppAccess,
                 "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(
-                    resource_ids=["app-shared", "app-whitelist-only"]
-                ),
+                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-whitelist-only"]),
             )
             monkeypatch.setattr(
                 app_module.FeatureService,

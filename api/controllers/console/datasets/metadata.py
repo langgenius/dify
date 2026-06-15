@@ -10,11 +10,11 @@ from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from fields.dataset_fields import (
     DatasetMetadataBuiltInFieldsResponse,
     DatasetMetadataListResponse,

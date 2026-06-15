@@ -5,7 +5,7 @@ from uuid import UUID
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.wraps import rbac_permission_required
+from controllers.common.wraps import rbac_permission_required
 from fields.hit_testing_fields import HitTestingResponse
 from libs.helper import dump_response
 from libs.login import login_required

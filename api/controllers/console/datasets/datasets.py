@@ -21,11 +21,11 @@ from controllers.console.wraps import (
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
     is_admin_or_owner_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager

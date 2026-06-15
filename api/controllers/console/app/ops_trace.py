@@ -6,10 +6,11 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import register_schema_models
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
 from models import App
 from services.ops_service import OpsService

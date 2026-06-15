@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.steps import BearerCheck
 from flask import Flask
 from werkzeug.exceptions import Unauthorized
 
-from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.steps import BearerCheck
 from libs.oauth_bearer import (
     AuthContext,
     InvalidBearerError,

@@ -25,12 +25,12 @@ from controllers.console.wraps import (
     edit_permission_required,
     enterprise_license_required,
     is_admin_or_owner_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
     with_current_user_id,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod

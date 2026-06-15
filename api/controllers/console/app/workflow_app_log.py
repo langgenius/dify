@@ -8,9 +8,10 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.schema import register_schema_models
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser

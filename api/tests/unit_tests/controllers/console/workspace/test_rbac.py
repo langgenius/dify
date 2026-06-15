@@ -266,9 +266,7 @@ class TestPaginationMapping:
 
 class TestAccessScopeResolution:
     def test_only_me_uses_current_account_without_query(self):
-        payload = rbac_mod._ResourceAccessScopeRequest.model_validate(
-            {"scope": "only_me", "account_ids": ["ignored"]}
-        )
+        payload = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "only_me", "account_ids": ["ignored"]})
 
         with patch("controllers.console.workspace.rbac.session_factory.create_session") as mock_session:
             result = rbac_mod._resolve_access_scope_account_ids("tenant-1", "acct-1", payload)
@@ -342,6 +340,7 @@ class TestResourceAccessScopeBindings:
             "acct-target",
         )
         assert payload.access_policy_ids == ["policy-1", "policy-2"]
+
 
 class TestPaginationForwarding:
     def test_role_members_get_forwards_outer_pagination_params(self, app):

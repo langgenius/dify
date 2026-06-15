@@ -22,11 +22,11 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_user,
     with_current_user_id,
 )
+from controllers.common.wraps import rbac_permission_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (

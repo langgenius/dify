@@ -2,10 +2,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
-
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.steps import AppResolver
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+
 from models import TenantStatus
 
 

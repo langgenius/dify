@@ -23,11 +23,11 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.steps import SurfaceCheck
 from flask import Flask
 from werkzeug.exceptions import Forbidden
 
-from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.steps import SurfaceCheck
 from controllers.openapi.auth.surface_gate import _coerce_subject_type, accept_subjects, check_surface
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, reset_auth_ctx, set_auth_ctx
 

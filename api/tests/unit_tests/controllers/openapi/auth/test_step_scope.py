@@ -1,8 +1,7 @@
 import pytest
-from werkzeug.exceptions import Forbidden
-
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.steps import ScopeCheck
+from werkzeug.exceptions import Forbidden
 
 
 def _ctx(scopes, required):

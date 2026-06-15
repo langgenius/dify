@@ -31,9 +31,10 @@ from flask import Response
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, rbac_permission_required, setup_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from libs.exception import BaseHTTPException
 from libs.login import login_required
 from models import App, AppMode

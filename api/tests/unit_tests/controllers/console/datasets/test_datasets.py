@@ -287,9 +287,7 @@ class TestDatasetList:
         method = unwrap(api.get)
         current_user = self._mock_user()
         permissions = enterprise_rbac_service.MyPermissionsResponse(
-            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
-                default_permission_keys=["dataset.acl.readonly"]
-            )
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(default_permission_keys=["dataset.acl.readonly"])
         )
 
         with app.test_request_context("/datasets"):
@@ -343,9 +341,7 @@ class TestDatasetList:
                 ),
                 patch(
                     "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
-                    return_value=SimpleNamespace(
-                        resource_ids=["dataset-shared", "dataset-whitelist-only"]
-                    ),
+                    return_value=SimpleNamespace(resource_ids=["dataset-shared", "dataset-whitelist-only"]),
                 ),
                 patch.object(
                     ProviderManager,

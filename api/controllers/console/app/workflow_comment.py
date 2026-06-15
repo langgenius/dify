@@ -10,11 +10,11 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
 from libs.helper import build_avatar_url, dump_response, to_timestamp

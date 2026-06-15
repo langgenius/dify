@@ -15,11 +15,11 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from controllers.common.wraps import rbac_permission_required
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
 from extensions.ext_database import db
 from fields.base import ResponseModel

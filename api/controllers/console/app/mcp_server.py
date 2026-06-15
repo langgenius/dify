@@ -14,10 +14,10 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
 )
+from controllers.common.wraps import rbac_permission_required
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import to_timestamp

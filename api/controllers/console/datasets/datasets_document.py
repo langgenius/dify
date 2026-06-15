@@ -18,8 +18,8 @@ import services
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
 from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.wraps import rbac_permission_required
 from controllers.console import console_ns
-from controllers.console.wraps import rbac_permission_required
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
