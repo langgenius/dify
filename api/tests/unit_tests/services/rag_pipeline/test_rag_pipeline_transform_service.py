@@ -1,4 +1,4 @@
-from _pytest.logging import LogCaptureFixture
+from pytest import LogCaptureFixture
 import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
