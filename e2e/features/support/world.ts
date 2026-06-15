@@ -2,8 +2,8 @@ import type { IWorldOptions } from '@cucumber/cucumber'
 import type { Browser, BrowserContext, ConsoleMessage, Download, Page } from '@playwright/test'
 import type { AuthSessionMetadata } from '../../fixtures/auth'
 import { setWorldConstructor, World } from '@cucumber/cucumber'
-import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
-import { baseURL, defaultLocale } from '../../test-env'
+import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth.ts'
+import { baseURL, defaultLocale } from '../../test-env.ts'
 
 export class DifyWorld extends World {
   context: BrowserContext | undefined

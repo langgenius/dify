@@ -5,7 +5,7 @@ import { access, copyFile, readFile, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { sleep } from '../support/process'
+import { sleep } from '../support/process.ts'
 
 type RunCommandOptions = {
   command: string

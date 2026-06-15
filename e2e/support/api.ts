@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { request } from '@playwright/test'
-import { authStatePath } from '../fixtures/auth'
-import { apiURL } from '../test-env'
+import { authStatePath } from '../fixtures/auth.ts'
+import { apiURL } from '../test-env.ts'
 
 type StorageState = {
   cookies: Array<{ name: string, value: string }>

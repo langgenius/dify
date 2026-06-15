@@ -3,6 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2023", "DOM"],
     "types": ["node", "@playwright/test", "@cucumber/cucumber"],
+    "allowImportingTsExtensions": true,
     "allowJs": false,
     "verbatimModuleSyntax": true
   },

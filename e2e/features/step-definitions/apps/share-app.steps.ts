@@ -6,7 +6,7 @@ import {
   enableAppSiteAndGetURL,
   publishWorkflowApp,
   syncRunnableWorkflowDraft,
-} from '../../../support/api'
+} from '../../../support/api.ts'
 
 When('I enable the Web App share', async function (this: DifyWorld) {
   const page = this.getPage()

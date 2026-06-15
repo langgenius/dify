@@ -1,6 +1,6 @@
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { waitForUrl } from '../support/process'
+import { waitForUrl } from '../support/process.ts'
 import {
   apiDir,
   apiEnvExampleFile,
@@ -21,7 +21,7 @@ import {
   runForegroundProcess,
   waitForCondition,
   webDir,
-} from './common'
+} from './common.ts'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
 const webBuildEnvStampPath = path.join(webDir, '.next', 'e2e-web-env.sha256')

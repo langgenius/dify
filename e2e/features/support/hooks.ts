@@ -5,9 +5,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
-import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteTestApp } from '../../support/api'
-import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
+import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth.ts'
+import { deleteTestApp } from '../../support/api.ts'
+import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env.ts'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')

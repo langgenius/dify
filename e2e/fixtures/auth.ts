@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
-import { defaultBaseURL, defaultLocale } from '../test-env'
+import { defaultBaseURL, defaultLocale } from '../test-env.ts'
 
 export type AuthSessionMetadata = {
   adminEmail: string

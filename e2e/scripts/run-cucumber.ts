@@ -1,10 +1,10 @@
 import { mkdir, rm } from 'node:fs/promises'
 import path from 'node:path'
-import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
-import { startWebServer, stopWebServer } from '../support/web-server'
-import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
-import { e2eDir, isMainModule, runCommand } from './common'
-import { resetState, startMiddleware, stopMiddleware } from './setup'
+import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process.ts'
+import { startWebServer, stopWebServer } from '../support/web-server.ts'
+import { apiURL, baseURL, reuseExistingWebServer } from '../test-env.ts'
+import { e2eDir, isMainModule, runCommand } from './common.ts'
+import { resetState, startMiddleware, stopMiddleware } from './setup.ts'
 
 type RunOptions = {
   forwardArgs: string[]
