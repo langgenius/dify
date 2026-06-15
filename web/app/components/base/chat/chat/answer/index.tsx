@@ -24,6 +24,7 @@ import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import More from './more'
 import Operation from './operation'
+import ReasoningPanel from './reasoning-panel'
 import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
@@ -245,7 +246,16 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && (
+                !!item.reasoningContent && (
+                  <ReasoningPanel
+                    content={item.reasoningContent}
+                    isFinished={item.reasoningFinished}
+                    responding={responding}
+                  />
+                )
+              }
+              {
+                responding && contentIsEmpty && !hasAgentThoughts && !item.reasoningContent && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
@@ -351,7 +361,16 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && (
+                !!item.reasoningContent && (
+                  <ReasoningPanel
+                    content={item.reasoningContent}
+                    isFinished={item.reasoningFinished}
+                    responding={responding}
+                  />
+                )
+              }
+              {
+                responding && contentIsEmpty && !hasAgentThoughts && !item.reasoningContent && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
