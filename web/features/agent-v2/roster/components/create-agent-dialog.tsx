@@ -18,6 +18,7 @@ import { consoleQuery } from '@/service/client'
 type AgentFormValues = {
   description?: string
   name?: string
+  role?: string
 }
 
 const defaultAgentIcon = {
@@ -55,6 +56,7 @@ export function CreateAgentDialog() {
     const body = {
       name: trimmedName,
       description: formValues.description?.trim() ?? '',
+      role: formValues.role?.trim() ?? '',
       icon_type: agentIcon.type,
       icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
       icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
@@ -120,7 +122,7 @@ export function CreateAgentDialog() {
                     imageUrl={agentIcon.type === 'image' ? agentIcon.url : undefined}
                   />
                 </button>
-                <div className="flex min-w-0 flex-1 pb-1">
+                <div className="flex min-w-0 flex-1 gap-3 pb-1">
                   <FieldRoot name="name" className="min-w-0 flex-1">
                     <FieldLabel>
                       {t('roster.createForm.nameLabel')}
@@ -136,6 +138,16 @@ export function CreateAgentDialog() {
                     <FieldError match="valueMissing">
                       {t('roster.createForm.nameRequired')}
                     </FieldError>
+                  </FieldRoot>
+                  <FieldRoot name="role" className="min-w-0 flex-1">
+                    <FieldLabel>
+                      {t('roster.createForm.roleLabel')}
+                    </FieldLabel>
+                    <FieldControl
+                      autoComplete="off"
+                      maxLength={255}
+                      placeholder={t('roster.createForm.rolePlaceholder')}
+                    />
                   </FieldRoot>
                 </div>
               </div>

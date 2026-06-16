@@ -92,6 +92,7 @@ export const zAgentAppCreatePayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   name: z.string().min(1),
+  role: z.string().optional().default(''),
 })
 
 /**
@@ -104,6 +105,7 @@ export const zUpdateAppPayload = z.object({
   icon_type: zIconType.nullish(),
   max_active_requests: z.int().nullish(),
   name: z.string().min(1),
+  role: z.string().optional().default(''),
   use_icon_as_answer_icon: z.boolean().nullish(),
 })
 
@@ -485,6 +487,7 @@ export const zAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  role: z.string().optional().default(''),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
