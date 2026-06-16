@@ -92,18 +92,20 @@ export const zAgentAppCreatePayload = z.object({
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   name: z.string().min(1),
+  role: z.string().max(255).optional().default(''),
 })
 
 /**
- * UpdateAppPayload
+ * AgentAppUpdatePayload
  */
-export const zUpdateAppPayload = z.object({
+export const zAgentAppUpdatePayload = z.object({
   description: z.string().max(400).nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: zIconType.nullish(),
   max_active_requests: z.int().nullish(),
   name: z.string().min(1),
+  role: z.string().max(255).nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
 })
 
@@ -473,6 +475,7 @@ export const zModelConfigPartial = z.object({
  */
 export const zAppPartial = z.object({
   access_mode: z.string().nullish(),
+  app_id: z.string().nullish(),
   author_name: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
@@ -490,6 +493,7 @@ export const zAppPartial = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
@@ -531,6 +535,7 @@ export const zModelConfig = z.object({
 export const zAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
   api_base_url: z.string().nullish(),
+  app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
@@ -547,6 +552,7 @@ export const zAppDetailWithSite = z.object({
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
+  role: z.string().nullish(),
   site: zSite.nullish(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
@@ -1729,6 +1735,7 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
  */
 export const zAppPartialWritable = z.object({
   access_mode: z.string().nullish(),
+  app_id: z.string().nullish(),
   author_name: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
@@ -1745,6 +1752,7 @@ export const zAppPartialWritable = z.object({
   mode: z.string(),
   model_config: zModelConfigPartial.nullish(),
   name: z.string(),
+  role: z.string().nullish(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
@@ -1788,6 +1796,7 @@ export const zSiteWritable = z.object({
 export const zAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
   api_base_url: z.string().nullish(),
+  app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
@@ -1803,6 +1812,7 @@ export const zAppDetailWithSiteWritable = z.object({
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
+  role: z.string().nullish(),
   site: zSiteWritable.nullish(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
@@ -1880,7 +1890,7 @@ export const zGetAgentByAgentIdPath = z.object({
  */
 export const zGetAgentByAgentIdResponse = zAppDetailWithSite
 
-export const zPutAgentByAgentIdBody = zUpdateAppPayload
+export const zPutAgentByAgentIdBody = zAgentAppUpdatePayload
 
 export const zPutAgentByAgentIdPath = z.object({
   agent_id: z.string(),
