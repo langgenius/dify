@@ -184,6 +184,14 @@ class TestWaterCrawlAPIClient:
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
 
+    def test_process_response_json_payload_with_invalid_body_raises_clear_error(self):
+        client = WaterCrawlAPIClient(api_key="k")
+        response = _response(200, text="<html>upstream error</html>")
+        response.json.side_effect = json.JSONDecodeError("Expecting value", response.text, 0)
+
+        with pytest.raises(ValueError, match="Invalid JSON response from WaterCrawl"):
+            client.process_response(response)
+
     def test_process_response_accepts_json_content_type_parameters(self):
         client = WaterCrawlAPIClient(api_key="k")
 
