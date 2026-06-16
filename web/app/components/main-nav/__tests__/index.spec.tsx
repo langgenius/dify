@@ -159,6 +159,15 @@ vi.mock('@/app/components/app-sidebar/dataset-detail-top', () => ({
   ),
 }))
 
+vi.mock('@/features/deployments/detail/deployment-sidebar', () => ({
+  DeploymentDetailSection: ({ expand }: { expand: boolean }) => <div data-testid="deployment-detail-section" data-expand={expand} />,
+  DeploymentDetailTop: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="deployment-detail-top" data-expand={expand}>
+      <button type="button" data-testid="deployment-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -626,6 +635,50 @@ describe('MainNav', () => {
     expect(screen.getAllByTestId('dataset-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
+  })
+
+  it('replaces global navigation with deployment detail navigation on deployment routes', () => {
+    mockPathname = '/deployments/app-instance-1/releases'
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    expect(screen.getByTestId('deployment-detail-top')).toBeInTheDocument()
+    expect(screen.getByTestId('deployment-detail-section')).toBeInTheDocument()
+    expect(screen.getByTestId('deployment-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('deployment-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
+  })
+
+  it('collapses deployment detail navigation from the top-right toggle', () => {
+    mockPathname = '/deployments/app-instance-1/releases'
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+    fireEvent.click(screen.getByTestId('deployment-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByTestId('deployment-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.getByTestId('deployment-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(localStorage.getItem('app-detail-collapse-or-expand')).toBe('collapse')
+  })
+
+  it.each([
+    '/deployments',
+    '/deployments/create',
+  ])('keeps global navigation on deployment collection route %s', (pathname) => {
+    mockPathname = pathname
+
+    renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })
+
+    expect(screen.queryByTestId('deployment-detail-top')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('deployment-detail-section')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.menus.deployments/ })).toHaveAttribute('href', '/deployments')
   })
 
   it('registers the detail navigation shortcut to run while inputs are focused', () => {

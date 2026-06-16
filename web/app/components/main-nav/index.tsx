@@ -17,6 +17,7 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useAppContext } from '@/context/app-context'
+import { DeploymentDetailSection, DeploymentDetailTop } from '@/features/deployments/detail/deployment-sidebar'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
@@ -29,6 +30,7 @@ import { WorkspaceCard } from './components/workspace-card'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
+const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 const DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
 const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
 
@@ -60,6 +62,12 @@ const isDatasetDetailPathname = (pathname: string) => {
   return true
 }
 
+const isDeploymentDetailPathname = (pathname: string) => {
+  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
+
+  return section === 'deployments' && !!appInstanceId && !DEPLOYMENT_COLLECTION_ROUTES.has(appInstanceId)
+}
+
 const MainNav = ({
   className,
 }: MainNavProps) => {
@@ -71,7 +79,8 @@ const MainNav = ({
   const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
   const showAppDetailNavigation = !isCurrentWorkspaceDatasetOperator && pathname.startsWith('/app/')
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
-  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation
+  const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showDeploymentDetailNavigation
   const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     appSidebarExpand: state.appSidebarExpand,
@@ -271,12 +280,19 @@ const MainNav = ({
                     onToggle={handleToggleDetailNavigation}
                   />
                 )
-              : (
-                  <DatasetDetailTop
-                    expand={detailNavigationVisibleExpanded}
-                    onToggle={handleToggleDetailNavigation}
-                  />
-                )
+              : showDatasetDetailNavigation
+                ? (
+                    <DatasetDetailTop
+                      expand={detailNavigationVisibleExpanded}
+                      onToggle={handleToggleDetailNavigation}
+                    />
+                  )
+                : (
+                    <DeploymentDetailTop
+                      expand={detailNavigationVisibleExpanded}
+                      onToggle={handleToggleDetailNavigation}
+                    />
+                  )
             : (
                 <>
                   <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
@@ -291,7 +307,9 @@ const MainNav = ({
           {showDetailNavigation
             ? showAppDetailNavigation
               ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
-              : <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
+              : showDatasetDetailNavigation
+                ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
+                : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
             : (
                 <>
                   <nav className="flex flex-col gap-px p-2">

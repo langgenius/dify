@@ -8,7 +8,6 @@ import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
-import { DeploymentSidebar } from './deployment-sidebar'
 import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
 
@@ -55,7 +54,6 @@ export function InstanceDetail({ appInstanceId, children }: {
 
   return (
     <div className="relative flex h-full min-w-0 overflow-hidden rounded-t-2xl shadow-xs">
-      <DeploymentSidebar appInstanceId={appInstanceId} />
       <div className="min-w-0 grow overflow-hidden bg-background-default-subtle">
         <div className="h-full min-w-0 overflow-y-auto">
           <div className="flex min-h-full w-full flex-col">

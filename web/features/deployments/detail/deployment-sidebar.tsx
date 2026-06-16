@@ -4,17 +4,19 @@ import type { ComponentProps, PropsWithoutRef } from 'react'
 import type { InstanceDetailTabKey } from './tabs'
 import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
-import { useHover, useKeyPress } from 'ahooks'
-import { useLocalStorage } from 'foxact/use-local-storage'
-import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
 import Divider from '@/app/components/base/divider'
+import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
-import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
+import Link from '@/next/link'
+import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
@@ -24,10 +26,6 @@ type TabDef = {
   icon: NavIcon
   selectedIcon: NavIcon
 }
-
-type DeploymentSidebarMode = 'expand' | 'collapse'
-
-const DEPLOYMENT_SIDEBAR_MODE_KEY = 'deployment-sidebar-collapse-or-expand'
 
 type TailwindNavIconProps = PropsWithoutRef<ComponentProps<'svg'>> & {
   title?: string
@@ -65,7 +63,7 @@ function ApiSelectedIcon({ className }: TailwindNavIconProps) {
   return <span aria-hidden className={cn('i-ri-code-s-slash-fill', className)} />
 }
 
-const TABS: TabDef[] = [
+const DEPLOYMENT_TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
   { key: 'instances', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
@@ -73,34 +71,11 @@ const TABS: TabDef[] = [
   { key: 'api-tokens', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
 ]
 
-function isShortcutFromInputArea(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement))
-    return false
+const SEARCH_SHORTCUT = ['Mod', 'K']
 
-  return target.tagName === 'INPUT'
-    || target.tagName === 'TEXTAREA'
-    || target.isContentEditable
-}
-
-function useDeploymentSidebarMode(isMobile: boolean) {
-  const [persistedMode, setPersistedMode] = useLocalStorage<DeploymentSidebarMode>(
-    DEPLOYMENT_SIDEBAR_MODE_KEY,
-    'expand',
-  )
-  const sidebarMode = isMobile ? 'collapse' : persistedMode ?? 'expand'
-
-  function toggleSidebarMode() {
-    setPersistedMode(sidebarMode === 'expand' ? 'collapse' : 'expand')
-  }
-
-  return {
-    sidebarMode,
-    toggleSidebarMode,
-  }
-}
-
-type DeploymentSidebarProps = {
-  appInstanceId: string
+const getDeploymentIdFromPathname = (pathname: string) => {
+  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
+  return section === 'deployments' ? appInstanceId : undefined
 }
 
 function DeploymentIcon({ expand }: {
@@ -118,7 +93,7 @@ function DeploymentIcon({ expand }: {
   )
 }
 
-function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
+function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
   appInstanceId: string
   expand: boolean
 }) {
@@ -134,8 +109,14 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
   const instanceName = app ? app.displayName : appInstanceId
 
   return (
-    <div className={cn('shrink-0', expand ? 'p-2' : 'p-1')}>
-      <div className={cn('flex flex-col gap-2 rounded-lg', expand ? 'p-1' : 'items-center p-1')}>
+    <div
+      className={cn(
+        'relative overflow-hidden rounded-xl',
+        expand ? 'p-2 hover:bg-state-base-hover' : 'flex items-center justify-center px-1 py-1.5',
+      )}
+      aria-label={!expand ? instanceName : undefined}
+    >
+      <div className={cn(expand ? 'flex w-full items-start gap-2' : 'flex items-center justify-center')}>
         {isLoading
           ? (
               <>
@@ -206,69 +187,135 @@ function DeploymentSidebarInstanceInfo({ appInstanceId, expand }: {
   )
 }
 
-export function DeploymentSidebar({ appInstanceId }: DeploymentSidebarProps) {
-  const { t } = useTranslation('deployments')
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const isHoveringSidebar = useHover(sidebarRef)
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
-  const { sidebarMode, toggleSidebarMode } = useDeploymentSidebarMode(isMobile)
-  const expand = sidebarMode === 'expand'
+export function DeploymentDetailTop({
+  expand = true,
+  onToggle,
+}: {
+  expand?: boolean
+  onToggle?: () => void
+}) {
+  const { t } = useTranslation()
+  const router = useRouter()
+  const setGotoAnythingOpen = useSetGotoAnythingOpen()
 
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.b`, (e) => {
-    if (isShortcutFromInputArea(e.target))
-      return
-
-    e.preventDefault()
-    toggleSidebarMode()
-  }, { exactMatch: true, useCapture: true })
-
-  return (
-    <aside
-      ref={sidebarRef}
-      className={cn(
-        'hidden shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-[width] pc:flex',
-        expand ? 'w-54' : 'w-14',
-      )}
-    >
-      <DeploymentSidebarInstanceInfo appInstanceId={appInstanceId} expand={expand} />
-
-      <div className="relative px-4 py-2">
-        <Divider
-          type="horizontal"
-          bgStyle={expand ? 'gradient' : 'solid'}
-          className={cn(
-            'my-0 h-px',
-            expand
-              ? 'bg-linear-to-r from-divider-subtle to-background-gradient-mask-transparent'
-              : 'bg-divider-subtle',
-          )}
-        />
-        {!isMobile && isHoveringSidebar && (
+  if (!expand) {
+    return (
+      <div className="flex w-full items-center justify-center px-3 pt-2 pb-1">
+        {onToggle && (
           <ToggleButton
-            className="absolute -top-1 -right-3 z-20"
             expand={expand}
-            handleToggle={toggleSidebarMode}
+            handleToggle={onToggle}
+            icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+            className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
           />
         )}
       </div>
+    )
+  }
 
-      <nav
-        className={cn(
-          'flex grow flex-col gap-y-0.5',
-          expand ? 'px-3 py-2' : 'p-3',
-        )}
-      >
-        {TABS.map(tab => (
+  return (
+    <div className="flex items-center py-2 pr-2 pl-1">
+      <div className="flex min-w-0 flex-1 items-center gap-px">
+        <div className="flex shrink-0 items-center rounded-lg py-2 pr-1.5 pl-0.5 transition-colors hover:bg-background-default-hover">
+          <button
+            type="button"
+            aria-label={t('operation.back', { ns: 'common' })}
+            className="flex size-4 items-center justify-center text-text-tertiary hover:text-text-secondary"
+            onClick={() => router.back()}
+          >
+            <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+          </button>
+          <Link
+            href="/"
+            aria-label={t('mainNav.home', { ns: 'common' })}
+            className="flex size-4 items-center justify-center text-text-tertiary hover:text-text-secondary"
+          >
+            <span aria-hidden className="i-custom-vender-main-nav-app-home size-4" />
+          </Link>
+        </div>
+        <span className="shrink-0 system-md-regular text-text-quaternary">
+          /
+        </span>
+        <Link
+          href="/deployments"
+          className="shrink-0 truncate rounded-lg px-1.5 py-2 system-sm-semibold-uppercase text-text-secondary transition-colors hover:bg-background-default-hover hover:text-text-primary"
+        >
+          {t('menus.deployments', { ns: 'common' })}
+        </Link>
+      </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <button
+              type="button"
+              aria-label={t('gotoAnything.searchTitle', { ns: 'app' })}
+              className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] text-text-tertiary transition-colors hover:bg-state-base-hover hover:text-text-secondary"
+              onClick={() => setGotoAnythingOpen(true)}
+            >
+              <span aria-hidden className="i-custom-vender-main-nav-quick-search size-4" />
+            </button>
+          )}
+        />
+        <TooltipContent placement="bottom" className="flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 system-xs-medium text-text-secondary shadow-lg backdrop-blur-[5px]">
+          <span className="px-0.5">{t('gotoAnything.quickAction', { ns: 'app' })}</span>
+          <KbdGroup>
+            {SEARCH_SHORTCUT.map(key => (
+              <Kbd key={key}>{formatForDisplay(key)}</Kbd>
+            ))}
+          </KbdGroup>
+        </TooltipContent>
+      </Tooltip>
+      {onToggle && (
+        <ToggleButton
+          expand={expand}
+          handleToggle={onToggle}
+          icon={<SidebarLeftArrowIcon aria-hidden className="size-4" />}
+          className="size-8 rounded-[10px] border-0 bg-transparent px-0 text-text-tertiary shadow-none hover:border-0 hover:bg-state-base-hover hover:text-text-secondary"
+        />
+      )}
+    </div>
+  )
+}
+
+export function DeploymentDetailSection({
+  expand = true,
+}: {
+  expand?: boolean
+}) {
+  const { t } = useTranslation('deployments')
+  const pathname = usePathname()
+  const appInstanceId = getDeploymentIdFromPathname(pathname)
+
+  if (!appInstanceId)
+    return null
+
+  return (
+    <div className={cn('flex min-h-0 flex-1 flex-col', expand ? 'px-2 pb-2' : 'pb-2')}>
+      {!expand && (
+        <div className="flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-[3px]">
+          <Divider
+            type="horizontal"
+            bgStyle="solid"
+            className="my-0 h-px w-[27px] bg-divider-subtle"
+          />
+        </div>
+      )}
+      <div className="py-2">
+        <DeploymentDetailInstanceInfo appInstanceId={appInstanceId} expand={expand} />
+      </div>
+
+      <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
+        {DEPLOYMENT_TABS.map(tab => (
           <NavLink
             key={tab.key}
-            mode={sidebarMode}
+            mode={expand ? 'expand' : 'collapse'}
             iconMap={{ selected: tab.selectedIcon, normal: tab.icon }}
             name={t(`tabs.${tab.key}.name`)}
             href={`/deployments/${appInstanceId}/${tab.key}`}
+            pathname={pathname}
           />
         ))}
       </nav>
-    </aside>
+    </div>
   )
 }
