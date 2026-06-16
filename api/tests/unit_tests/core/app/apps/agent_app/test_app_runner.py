@@ -160,6 +160,16 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
     )
 
 
+def _message_end(qm: _FakeQueueManager) -> QueueMessageEndEvent:
+    return next(e for e in qm.events if isinstance(e, QueueMessageEndEvent))
+
+
+def _saved_user_query(qm: _FakeQueueManager) -> str:
+    prompt_messages = _message_end(qm).llm_result.prompt_messages
+    assert len(prompt_messages) == 1
+    return prompt_messages[0].content
+
+
 def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     client = FakeAgentBackendRunClient()  # SUCCESS: output {"text": "hello agent"}
     store = _FakeSessionStore()
@@ -175,6 +185,7 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert chunk_events[0].chunk.delta.message.content == "hello agent"
     assert end_events[0].llm_result.message.content == "hello agent"
     assert end_events[0].llm_result.model == "gpt-4o-mini"
+    assert _saved_user_query(qm) == "hello"
     # The conversation session snapshot is persisted for multi-turn continuity.
     assert store.saved
     saved_scope, saved_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
@@ -256,6 +267,7 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
     assert created_params.conversation_id == "conv-1"
     assert created_params.workflow_execution_id is None
     assert [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert _saved_user_query(qm) == "hello"
     # The pause correlation is persisted so a form submission can resume the run.
     assert store.saved
     assert store.saved[0][4] == "form-1"
