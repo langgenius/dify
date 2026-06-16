@@ -57,6 +57,48 @@ class TestWaterCrawlExceptions:
         assert "exceeding your WaterCrawl API limits" in str(permission)
         assert "API key is invalid or expired" in str(authentication)
 
+    def test_bad_request_error_with_non_json_body_falls_back_to_text(self):
+        """When the response body is not valid JSON, the exception must
+        fall back to ``response.text`` instead of leaking JSONDecodeError."""
+        response = _response(400, text="Internal Server Error")
+        response.json.side_effect = ValueError("Not JSON")
+
+        err = WaterCrawlBadRequestError(response)
+
+        assert err.message == "Internal Server Error"
+        assert err.errors == {}
+        assert "Internal Server Error" in str(err)
+
+    def test_bad_request_error_with_non_json_empty_body(self):
+        """When the response body is not JSON and text is empty,
+        a generic message should be used."""
+        response = _response(400, text="")
+        response.json.side_effect = ValueError("Not JSON")
+
+        err = WaterCrawlBadRequestError(response)
+
+        assert err.message == "Unknown error occurred"
+        assert err.errors == {}
+
+    def test_permission_error_with_non_json_body(self):
+        """WaterCrawlPermissionError must not raise JSONDecodeError on
+        non-JSON error responses."""
+        response = _response(403, text="Rate limit exceeded")
+        response.json.side_effect = ValueError("Not JSON")
+
+        err = WaterCrawlPermissionError(response)
+        assert "exceeding your WaterCrawl API limits" in str(err)
+        assert "Rate limit exceeded" in str(err)
+
+    def test_authentication_error_with_non_json_body(self):
+        """WaterCrawlAuthenticationError must not raise JSONDecodeError on
+        non-JSON error responses."""
+        response = _response(401, text="Unauthorized")
+        response.json.side_effect = ValueError("Not JSON")
+
+        err = WaterCrawlAuthenticationError(response)
+        assert "API key is invalid or expired" in str(err)
+
 
 class TestBaseAPIClient:
     def test_init_session_builds_expected_headers(self, monkeypatch: pytest.MonkeyPatch):
