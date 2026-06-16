@@ -298,7 +298,11 @@ export function WorkspaceCard() {
             inviteMembersLabel={t('mainNav.workspace.inviteMembers', { ns: 'common' })}
             onOpenSettings={() => {
               setOpen(false)
-              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+              setShowAccountSettingModal({
+                payload: enableBilling
+                  ? ACCOUNT_SETTING_TAB.BILLING
+                  : ACCOUNT_SETTING_TAB.MEMBERS,
+              })
             }}
             onInviteMembers={() => {
               setOpen(false)

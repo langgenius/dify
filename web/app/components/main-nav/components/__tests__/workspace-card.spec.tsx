@@ -308,6 +308,24 @@ describe('WorkspaceCard', () => {
     expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
   })
 
+  it('opens members settings from workspace menu when billing is disabled', async () => {
+    vi.mocked(useProviderContext).mockReturnValue({
+      enableBilling: false,
+      isEducationAccount: false,
+      isEducationWorkspace: false,
+      isFetchedPlan: false,
+      plan: { type: Plan.sandbox },
+    } as ProviderContextState)
+
+    renderWorkspaceCard()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.workspace.openMenu' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'common.mainNav.workspace.settings' }))
+
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.MEMBERS })
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.BILLING })
+  })
+
   it('switches workspace from the workspace switcher item', async () => {
     renderWorkspaceCard()
 
