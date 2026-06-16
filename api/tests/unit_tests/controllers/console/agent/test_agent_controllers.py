@@ -25,6 +25,15 @@ from controllers.console.agent.roster import (
     AgentRosterVersionDetailApi,
     AgentRosterVersionsApi,
 )
+from controllers.console.app import completion as completion_controller
+from controllers.console.app import message as message_controller
+from controllers.console.app.completion import AgentChatMessageApi, AgentChatMessageStopApi
+from controllers.console.app.message import (
+    AgentChatMessageListApi,
+    AgentMessageApi,
+    AgentMessageFeedbackApi,
+    AgentMessageSuggestedQuestionApi,
+)
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
@@ -132,6 +141,11 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/sandbox/files",
         "/agent/<uuid:agent_id>/skills/upload",
         "/agent/<uuid:agent_id>/files",
+        "/agent/<uuid:agent_id>/chat-messages",
+        "/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop",
+        "/agent/<uuid:agent_id>/feedbacks",
+        "/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions",
+        "/agent/<uuid:agent_id>/messages/<uuid:message_id>",
         "/agent/invite-options",
     ):
         assert route in paths
@@ -469,6 +483,103 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     candidates = unwrap(AgentComposerCandidatesApi.get)(AgentComposerCandidatesApi(), "tenant-1", account_id, agent_id)
     assert candidates["variant"] == "agent_app"
     assert cast(dict[str, object], captured["candidates"])["app_id"] == "app-1"
+
+
+def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = SimpleNamespace(id="app-1", mode="agent")
+    captured: dict[str, object] = {}
+
+    def resolve_agent_app_model(**kwargs: object) -> object:
+        captured["resolve"] = kwargs
+        return app_model
+
+    def create_chat_message(**kwargs: object) -> dict[str, object]:
+        captured["create"] = kwargs
+        return {"result": "generated"}
+
+    def stop_chat_message(**kwargs: object) -> tuple[dict[str, object], int]:
+        captured["stop"] = kwargs
+        return {"result": "success"}, 200
+
+    monkeypatch.setattr(completion_controller, "resolve_agent_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(completion_controller, "_create_chat_message", create_chat_message)
+    monkeypatch.setattr(completion_controller, "_stop_chat_message", stop_chat_message)
+
+    with app.test_request_context(json={"inputs": {}, "query": "hello"}):
+        assert unwrap(AgentChatMessageApi.post)(
+            AgentChatMessageApi(), "tenant-1", SimpleNamespace(id=account_id), agent_id
+        ) == {"result": "generated"}
+
+    assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    create_call = cast(dict[str, object], captured["create"])
+    assert create_call["app_model"] is app_model
+    assert cast(SimpleNamespace, create_call["current_user"]).id == account_id
+
+    assert unwrap(AgentChatMessageStopApi.post)(
+        AgentChatMessageStopApi(), "tenant-1", account_id, agent_id, "task-1"
+    ) == ({"result": "success"}, 200)
+    stop_call = cast(dict[str, object], captured["stop"])
+    assert stop_call == {"current_user_id": account_id, "app_model": app_model, "task_id": "task-1"}
+
+
+def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    message_id = "00000000-0000-0000-0000-000000000002"
+    app_model = SimpleNamespace(id="app-1")
+    current_user = SimpleNamespace(id="account-1")
+    captured: dict[str, object] = {}
+
+    def resolve_agent_app_model(**kwargs: object) -> object:
+        captured["resolve"] = kwargs
+        return app_model
+
+    def list_chat_messages(**kwargs: object) -> dict[str, object]:
+        captured["list"] = kwargs
+        return {"data": []}
+
+    def update_message_feedback(**kwargs: object) -> dict[str, object]:
+        captured["feedback"] = kwargs
+        return {"result": "success"}
+
+    def get_message_suggested_questions(**kwargs: object) -> dict[str, object]:
+        captured["suggested"] = kwargs
+        return {"data": ["next"]}
+
+    def get_message_detail(**kwargs: object) -> dict[str, object]:
+        captured["detail"] = kwargs
+        return {"id": message_id}
+
+    monkeypatch.setattr(message_controller, "resolve_agent_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(message_controller, "_list_chat_messages", list_chat_messages)
+    monkeypatch.setattr(message_controller, "_update_message_feedback", update_message_feedback)
+    monkeypatch.setattr(message_controller, "_get_message_suggested_questions", get_message_suggested_questions)
+    monkeypatch.setattr(message_controller, "_get_message_detail", get_message_detail)
+
+    assert unwrap(AgentChatMessageListApi.get)(AgentChatMessageListApi(), "tenant-1", agent_id) == {"data": []}
+    assert cast(dict[str, object], captured["list"])["app_model"] is app_model
+
+    with app.test_request_context(json={"message_id": message_id, "rating": "like"}):
+        assert unwrap(AgentMessageFeedbackApi.post)(AgentMessageFeedbackApi(), "tenant-1", current_user, agent_id) == {
+            "result": "success"
+        }
+    feedback_call = cast(dict[str, object], captured["feedback"])
+    assert feedback_call["app_model"] is app_model
+    assert feedback_call["current_user"] is current_user
+
+    assert unwrap(AgentMessageSuggestedQuestionApi.get)(
+        AgentMessageSuggestedQuestionApi(), "tenant-1", current_user, agent_id, message_id
+    ) == {"data": ["next"]}
+    suggested_call = cast(dict[str, object], captured["suggested"])
+    assert suggested_call["app_model"] is app_model
+    assert suggested_call["current_user"] is current_user
+    assert suggested_call["message_id"] == message_id
+
+    assert unwrap(AgentMessageApi.get)(AgentMessageApi(), "tenant-1", agent_id, message_id) == {"id": message_id}
+    detail_call = cast(dict[str, object], captured["detail"])
+    assert detail_call == {"app_model": app_model, "message_id": message_id}
 
 
 def test_dify_tool_candidate_response_keeps_granularity_fields():

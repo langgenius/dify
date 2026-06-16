@@ -323,7 +323,7 @@ class WorkflowService:
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
         db.session.flush()
-        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
             session=cast(Session, db.session),
             draft_workflow=workflow,
             account_id=account.id,
