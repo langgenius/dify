@@ -128,6 +128,16 @@ def test_handle_error_with_text_json_body(jina_module: ModuleType) -> None:
         auth._handle_error(response)
 
 
+def test_handle_error_with_non_json_text_body(jina_module: ModuleType) -> None:
+    auth = jina_module.JinaAuth(_credentials(api_key="k"))
+    response = MagicMock()
+    response.status_code = 403
+    response.text = "Forbidden"
+
+    with pytest.raises(Exception, match="Status code: 403.*Forbidden"):
+        auth._handle_error(response)
+
+
 def test_handle_error_with_text_json_body_missing_error(jina_module: ModuleType) -> None:
     auth = jina_module.JinaAuth(_credentials(api_key="k"))
     response = MagicMock()
