@@ -242,11 +242,18 @@ class TestWaterCrawlAPIClient:
         client = WaterCrawlAPIClient(api_key="k")
 
         response = _response(200, {"markdown": "body"})
-        monkeypatch.setattr(client_module.httpx, "get", lambda *args, **kwargs: response)
+        captured = {}
+
+        def fake_get(*args, **kwargs):
+            captured.update(kwargs)
+            return response
+
+        monkeypatch.setattr(client_module.httpx, "get", fake_get)
 
         result = client.download_result({"result": "https://example.com/result.json"})
 
         assert result["result"] == {"markdown": "body"}
+        assert captured["timeout"] is not None
         response.close.assert_called_once()
 
 
