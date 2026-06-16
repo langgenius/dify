@@ -1,5 +1,5 @@
 import { toast } from '@langgenius/dify-ui/toast'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CliToolDialog } from '../dialog'
@@ -97,6 +97,19 @@ describe('CliToolDialog', () => {
         installCommand: 'npm install -g @lark/cli',
       }))
       expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    it('should reject environment variable keys using the shared env editor rules', () => {
+      renderCliToolDialog()
+
+      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+
+      fireEvent.change(keyInput, {
+        target: { value: '1BAD' },
+      })
+
+      expect(keyInput).toHaveValue('')
+      expect(toast.error).toHaveBeenCalledWith('appDebug.varKeyError.notStartWithNumber:{"key":"agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn"}')
     })
   })
 
