@@ -146,7 +146,11 @@ class ActivateApi(Resource):
             raise AccountInFreezeError()
 
         tenant = invitation["tenant"]
-        role = invitation["data"].get("role", TenantAccountRole.NORMAL)
+        raw_role = invitation["data"].get("role")
+        try:
+            role = TenantAccountRole(raw_role) if raw_role else TenantAccountRole.NORMAL
+        except ValueError:
+            role = TenantAccountRole.NORMAL
         if not TenantAccountRole.is_non_owner_role(role):
             role = TenantAccountRole.NORMAL
 
@@ -161,18 +165,21 @@ class ActivateApi(Resource):
         if requires_setup is None:
             requires_setup = account.status == AccountStatus.PENDING
 
-        if requires_setup and (not args.name or not args.interface_language or not args.timezone):
-            raise AlreadyActivateError()
+        setup_fields: tuple[str, str, str] | None = None
+        if requires_setup:
+            if not args.name or not args.interface_language or not args.timezone:
+                raise AlreadyActivateError()
+            setup_fields = (args.name, args.interface_language, args.timezone)
 
         RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
         if membership_id is None:
             TenantService.create_tenant_member(tenant, account, str(role))
 
-        if requires_setup:
-            account.name = args.name
-            account.interface_language = args.interface_language
-            account.timezone = args.timezone
+        if setup_fields:
+            account.name = setup_fields[0]
+            account.interface_language = setup_fields[1]
+            account.timezone = setup_fields[2]
             account.interface_theme = "light"
             account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
