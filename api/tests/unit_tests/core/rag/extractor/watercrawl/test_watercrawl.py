@@ -168,6 +168,13 @@ class TestWaterCrawlAPIClient:
         assert client.process_response(_response(200, {"ok": True})) == {"ok": True}
         assert client.process_response(_response(200, None)) == {}
 
+    def test_process_response_accepts_json_content_type_parameters(self):
+        client = WaterCrawlAPIClient(api_key="k")
+
+        response = _response(200, {"ok": True}, content_type="application/json; charset=utf-8")
+
+        assert client.process_response(response) == {"ok": True}
+
     def test_process_response_octet_stream_returns_bytes(self):
         client = WaterCrawlAPIClient(api_key="k")
         assert (

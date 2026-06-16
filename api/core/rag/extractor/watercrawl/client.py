@@ -118,16 +118,18 @@ class WaterCrawlAPIClient(BaseAPIClient):
         response.raise_for_status()
         if response.status_code == 204:
             return None
-        if response.headers.get("Content-Type") == "application/json":
+        content_type = response.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().lower()
+        if media_type == "application/json":
             return response.json() or {}
 
-        if response.headers.get("Content-Type") == "application/octet-stream":
+        if media_type == "application/octet-stream":
             return response.content
 
-        if response.headers.get("Content-Type") == "text/event-stream":
+        if media_type == "text/event-stream":
             return self.process_eventstream(response)
 
-        raise Exception(f"Unknown response type: {response.headers.get('Content-Type')}")
+        raise Exception(f"Unknown response type: {content_type}")
 
     def get_crawl_requests_list(self, page: int | None = None, page_size: int | None = None):
         query_params = {"page": page or 1, "page_size": page_size or 10}
