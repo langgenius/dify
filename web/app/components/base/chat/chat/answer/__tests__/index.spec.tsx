@@ -150,6 +150,72 @@ describe('Answer Component', () => {
     })
   })
 
+  // Reasoning panel slot (separated-mode chain-of-thought) in both layouts.
+  // The panel body renders through the async dynamic Markdown, so assertions
+  // target the synchronously-rendered "Thinking…/Thought" summary label.
+  describe('Reasoning Panel', () => {
+    it('should render the reasoning panel in the normal layout while thinking', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          responding={true}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: { llm: 'deep thought' },
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel in the thought state once finished', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: { llm: 'recalled reasoning' },
+            reasoningFinished: true,
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
+    })
+
+    it('should render the reasoning panel within the human-input layout', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: { llm: 'human-input reasoning' },
+            humanInputFormDataList: [{ id: 'form1' }],
+          } as unknown as ChatItem}
+        />,
+      )
+      // hasHumanInputs is true, so this can only come from the human-input slot
+      expect(screen.getByText(/chat\.(thinking|thought)/)).toBeInTheDocument()
+    })
+
+    it('should not render the reasoning panel when reasoningContent is absent', () => {
+      render(<Answer {...defaultProps} />)
+      expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
+    })
+
+    it('should not render the reasoning panel for an empty reasoningContent map (rehydrated, no reasoning)', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={{
+            ...defaultProps.item,
+            reasoningContent: {},
+          } as unknown as ChatItem}
+        />,
+      )
+      expect(screen.queryByText(/chat\.(thinking|thought)/)).not.toBeInTheDocument()
+    })
+  })
+
   describe('Interactions', () => {
     it('should handle switch sibling', () => {
       const mockSwitchSibling = vi.fn()

@@ -75,6 +75,9 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
   const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
+  // Truthy only when there is real reasoning text. Rehydrated messages carry an empty
+  // `{}` (the field is always persisted), and `!!{}` would otherwise be truthy.
+  const hasReasoning = !!item.reasoningContent && Object.values(item.reasoningContent).some(Boolean)
 
   const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
@@ -246,16 +249,16 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                !!item.reasoningContent && (
+                hasReasoning && (
                   <ReasoningPanel
-                    content={item.reasoningContent}
+                    content={item.reasoningContent ?? {}}
                     isFinished={item.reasoningFinished}
                     responding={responding}
                   />
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && !item.reasoningContent && (
+                responding && contentIsEmpty && !hasAgentThoughts && !hasReasoning && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
@@ -361,16 +364,16 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                !!item.reasoningContent && (
+                hasReasoning && (
                   <ReasoningPanel
-                    content={item.reasoningContent}
+                    content={item.reasoningContent ?? {}}
                     isFinished={item.reasoningFinished}
                     responding={responding}
                   />
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && !item.reasoningContent && (
+                responding && contentIsEmpty && !hasAgentThoughts && !hasReasoning && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
