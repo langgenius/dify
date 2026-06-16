@@ -67,7 +67,7 @@ export function AgentSelectorContent({
       setSearchText(nextSearchText)
   }
   const handleValueChange = async (agent: AgentInviteOptionResponse | null) => {
-    if (!agent)
+    if (!agent || validatingAgentId)
       return
 
     if (!agent.active_config_snapshot_id) {
@@ -104,7 +104,7 @@ export function AgentSelectorContent({
     if (!nextOpen)
       onOpenChange(false)
   }
-  const isLoading = agentsQuery.isPending || !!validatingAgentId
+  const isLoading = agentsQuery.isPending
 
   return (
     <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
