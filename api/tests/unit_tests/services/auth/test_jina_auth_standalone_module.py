@@ -118,6 +118,17 @@ def test_handle_error_statuses_default_unknown_error(jina_module: ModuleType) ->
         auth._handle_error(response)
 
 
+def test_handle_error_statuses_fall_back_to_text_body(jina_module: ModuleType) -> None:
+    auth = jina_module.JinaAuth(_credentials(api_key="k"))
+    response = MagicMock()
+    response.status_code = 402
+    response.text = "Payment required"
+    response.json.side_effect = ValueError("Not JSON")
+
+    with pytest.raises(Exception, match="Status code: 402.*Payment required"):
+        auth._handle_error(response)
+
+
 def test_handle_error_with_text_json_body(jina_module: ModuleType) -> None:
     auth = jina_module.JinaAuth(_credentials(api_key="k"))
     response = MagicMock()
