@@ -1,7 +1,9 @@
 import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
+import { useFileUploadConfig } from '@/service/use-common'
 import { TransferMethod } from '@/types/app'
 import InputField from '../input-field'
 
@@ -11,6 +13,15 @@ type VarReferencePickerProps = {
 }
 
 let lastVarReferencePickerProps: VarReferencePickerProps | undefined
+let fileUploadSettingMaxLength: number | undefined = 4
+
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/file-uploader/hooks', () => ({
+  useFileSizeLimit: vi.fn(),
+}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: (props: VarReferencePickerProps) => {
@@ -66,7 +77,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-upload-setting', 
         allowed_file_extensions: ['.pdf'],
         allowed_file_types: [SupportUploadFileTypes.document],
         allowed_file_upload_methods: [TransferMethod.local_file],
-        max_length: 4,
+        max_length: fileUploadSettingMaxLength,
       })}
     >
       file-upload-setting
@@ -89,6 +100,15 @@ describe('InputField', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     lastVarReferencePickerProps = undefined
+    fileUploadSettingMaxLength = 4
+    vi.mocked(useFileUploadConfig).mockReturnValue({ data: {} } as ReturnType<typeof useFileUploadConfig>)
+    vi.mocked(useFileSizeLimit).mockReturnValue({
+      imgSizeLimit: 10 * 1024 * 1024,
+      docSizeLimit: 20 * 1024 * 1024,
+      audioSizeLimit: 30 * 1024 * 1024,
+      videoSizeLimit: 40 * 1024 * 1024,
+      maxFileUploadLimit: 10,
+    } as ReturnType<typeof useFileSizeLimit>)
   })
 
   it('should keep the header and actions visible while the field content scrolls internally', () => {
@@ -625,6 +645,36 @@ describe('InputField', () => {
       allowed_file_upload_methods: ['local_file'],
       number_limits: 4,
     })
+  })
+
+  it.each([
+    { maxLength: 20, expectedNumberLimits: 10 },
+    { maxLength: 0, expectedNumberLimits: 1 },
+    { maxLength: Number.NaN, expectedNumberLimits: 1 },
+  ])('should normalize file-list upload limits on save', async ({ maxLength, expectedNumberLimits }) => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    fileUploadSettingMaxLength = maxLength
+
+    render(
+      <InputField
+        nodeId="node-14-normalize"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'select-file-list' }))
+    await user.click(screen.getByRole('button', { name: 'file-upload-setting' }))
+    await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.insertInputField\.insert/i }))
+
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange.mock.calls[0]![0]).toEqual(expect.objectContaining({
+      type: InputVarType.multiFiles,
+      number_limits: expectedNumberLimits,
+    }))
   })
 
   it('should clear paragraph default state when switching to file-list', async () => {

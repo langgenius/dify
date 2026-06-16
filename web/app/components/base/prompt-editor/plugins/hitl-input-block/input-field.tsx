@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import {
@@ -23,6 +24,7 @@ import {
   isSelectFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { useFileUploadConfig } from '@/service/use-common'
 import PrePopulate from './pre-populate'
 import TypeSwitch from './type-switch'
 
@@ -45,6 +47,8 @@ const InputField: React.FC<InputFieldProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { maxFileUploadLimit } = useFileSizeLimit(fileUploadConfigResponse)
   const [tempPayload, setTempPayload] = useState<FormInputItem>(() => payload || createDefaultParagraphFormInput())
   const fieldTypeItems = useMemo<TypeSelectItem[]>(() => {
     return [
@@ -97,8 +101,18 @@ const InputField: React.FC<InputFieldProps> = ({
   const handleSave = useCallback(() => {
     if (!nameValid)
       return
+    if (isFileListFormInput(tempPayload)) {
+      const value = tempPayload.number_limits ?? 5
+      const safeValue = Number.isFinite(value) ? value : 1
+      const numberLimits = Math.min(Math.max(safeValue, 1), maxFileUploadLimit)
+      onChange({
+        ...tempPayload,
+        number_limits: numberLimits,
+      })
+      return
+    }
     onChange(tempPayload)
-  }, [nameValid, onChange, tempPayload])
+  }, [maxFileUploadLimit, nameValid, onChange, tempPayload])
   const handleTypeChange = useCallback((item: TypeSelectItem) => {
     setTempPayload(prev => createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name))
   }, [])
