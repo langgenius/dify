@@ -39,7 +39,7 @@ export function SpecificGroupsOrMembers({
           <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
         <div className="flex items-center gap-x-1">
-          <AddMemberOrGroupDialog />
+          <AddMemberOrGroupDialog disabled={loading} />
         </div>
       </div>
       <div className="px-1 pb-1">

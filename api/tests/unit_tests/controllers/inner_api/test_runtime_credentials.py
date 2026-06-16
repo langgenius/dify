@@ -157,6 +157,8 @@ def test_runtime_tool_credentials_resolve_returns_decrypted_values(
     assert body["credentials"][0]["kind"] == "tool"
     assert body["credentials"][0]["provider"] == "langgenius/tavily/tavily"
     assert body["credentials"][0]["values"]["tavily_api_key"] == "tvly-secret"
+    compiled = str(session.execute.call_args.args[0].compile(compile_kwargs={"literal_binds": True}))
+    assert "tool_builtin_providers.provider = 'langgenius/tavily/tavily'" in compiled
 
 
 @patch("controllers.inner_api.runtime_credentials.db")

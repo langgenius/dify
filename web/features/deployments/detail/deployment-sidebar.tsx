@@ -227,7 +227,7 @@ export function DeploymentSidebar({ appInstanceId }: DeploymentSidebarProps) {
     <aside
       ref={sidebarRef}
       className={cn(
-        'hidden shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all pc:flex',
+        'hidden shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-[width] pc:flex',
         expand ? 'w-54' : 'w-14',
       )}
     >

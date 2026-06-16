@@ -151,6 +151,7 @@ export function ReleaseField() {
                   value: release.id,
                   label: `${release.displayName} · ${releaseCommit(release)}`,
                 }))}
+                ariaLabel={t('deployDrawer.releaseLabel')}
                 placeholder={t('deployDrawer.selectRelease')}
               />
             )}
@@ -187,6 +188,7 @@ export function EnvironmentField() {
                   value: env.id,
                   label: environmentOptionLabel(env, t),
                 }))}
+                ariaLabel={t('deployDrawer.targetEnv')}
                 placeholder={t('deployDrawer.selectEnv')}
               />
             )}

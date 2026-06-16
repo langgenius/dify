@@ -118,4 +118,26 @@ describe('AccessControl', () => {
     expect(screen.getByText('app.accessControlDialog.accessItems.external')).toBeInTheDocument()
     expect(screen.getByText('app.accessControlDialog.accessItems.anyone')).toBeInTheDocument()
   })
+
+  it('should prevent confirming specific access before subjects are loaded', () => {
+    mockUseAppWhiteListSubjects.mockReturnValue({
+      isPending: true,
+      data: undefined,
+    })
+
+    render(
+      <AccessControl
+        app={{ id: 'app-id-3', access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS } as App}
+        onClose={vi.fn()}
+      />,
+    )
+
+    const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+
+    expect(confirmButton).toBeDisabled()
+
+    fireEvent.click(confirmButton)
+
+    expect(mockMutate).not.toHaveBeenCalled()
+  })
 })

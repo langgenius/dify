@@ -112,6 +112,7 @@ function DeploymentsSearchInput({ className }: {
       <span aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary" />
       <Input
         className="h-8 pr-8 pl-8"
+        aria-label={t('filter.searchPlaceholder')}
         placeholder={t('filter.searchPlaceholder')}
         value={keywords}
         onChange={e => handleKeywordsChange(e.target.value)}

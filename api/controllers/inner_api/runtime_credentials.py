@@ -10,7 +10,7 @@ from json import JSONDecodeError
 from typing import Any
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -37,12 +37,16 @@ ResolveError = tuple[dict[str, str], int]
 
 
 class InnerRuntimeCredentialResolveItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     credential_id: str = Field(description="Credential id")
     provider: str = Field(description="Runtime provider identifier, for example langgenius/openai/openai")
     kind: str = Field(description="Credential kind, either 'model' or 'tool'")
 
 
 class InnerRuntimeCredentialsResolvePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     tenant_id: str = Field(description="Workspace id")
     credentials: list[InnerRuntimeCredentialResolveItem] = Field(default_factory=list)
 
@@ -164,6 +168,7 @@ def _resolve_tool(
     with Session(db.engine) as session:
         stmt = select(BuiltinToolProvider).where(
             BuiltinToolProvider.id == item.credential_id,
+            BuiltinToolProvider.provider == item.provider,
             BuiltinToolProvider.tenant_id == tenant_id,
         )
         builtin_provider = session.execute(stmt).scalar_one_or_none()

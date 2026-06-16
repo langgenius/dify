@@ -4,9 +4,8 @@ import type {
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import type { TFunction } from 'i18next'
-import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { releaseDeploymentAction } from '../../shared/domain/release-action'
-import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
+import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 
 export type DeployMenuRowState = 'deploy' | 'rollback' | 'current' | 'deploying'
 
@@ -67,9 +66,9 @@ function buildDeployMenuRow({
   const row = deploymentRows.find(item => item.environment.id === envId)
   const currentRelease = row?.currentRelease
   const isCurrent = currentRelease?.id === releaseId
-  const isEnvironmentDeploying = row?.status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING
+  const isEnvironmentInProgress = isRuntimeDeploymentInProgress(row?.status)
 
-  if (isEnvironmentDeploying) {
+  if (isEnvironmentInProgress) {
     return {
       env,
       environmentId: envId,

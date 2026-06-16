@@ -5,7 +5,9 @@ import {
 } from './access-subject-selector/add-button'
 import { useAccessControlStore } from './store'
 
-export function AddMemberOrGroupDialog() {
+export function AddMemberOrGroupDialog({ disabled = false }: {
+  disabled?: boolean
+}) {
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
@@ -17,6 +19,7 @@ export function AddMemberOrGroupDialog() {
     <AccessSubjectAddButton
       selectedGroups={specificGroups}
       selectedMembers={specificMembers}
+      disabled={disabled}
       breadcrumbGroups={selectedGroupsForBreadcrumb}
       onBreadcrumbGroupsChange={setSelectedGroupsForBreadcrumb}
       onChange={({ groups, members }) => {

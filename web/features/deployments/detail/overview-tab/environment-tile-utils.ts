@@ -2,6 +2,7 @@ import type { RuntimeInstanceStatus as RuntimeInstanceStatusValue } from '@dify/
 import type { TFunction } from 'i18next'
 import type { computeDrift } from './overview-drift'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
+import { isRuntimeDeploymentInProgress } from '../../shared/domain/runtime-status'
 
 export type TileKind = 'empty' | 'latest' | 'behind' | 'older' | 'deploying' | 'failed'
 
@@ -21,10 +22,10 @@ export function resolveConfig({ drift, status, hasAnyRelease, latestId, currentR
   latestId: string | undefined
   currentReleaseId: string | undefined
 }): TileConfig {
-  if (status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING) {
+  if (isRuntimeDeploymentInProgress(status)) {
     return {
       kind: 'deploying',
-      status: RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_DEPLOYING,
+      status,
       actionClass: 'text-text-secondary hover:bg-state-base-hover hover:text-text-primary',
       showRelease: true,
       intent: 'navigate',

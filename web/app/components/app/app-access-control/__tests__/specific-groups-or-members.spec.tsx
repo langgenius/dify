@@ -56,6 +56,8 @@ describe('SpecificGroupsOrMembers', () => {
     const harness = createAccessControlDraftHarness(<SpecificGroupsOrMembers loading />)
     render(harness.element)
 
+    expect(screen.getByRole('combobox', { name: 'common.operation.add' })).toBeDisabled()
+
     await waitFor(() => {
       expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     })

@@ -36,10 +36,11 @@ type SelectProps = {
   value?: string
   onChange: (value: string) => void
   options: SelectOption[]
+  ariaLabel?: string
   placeholder?: string
 }
 
-export function DeploymentSelect({ value, onChange, options, placeholder }: SelectProps) {
+export function DeploymentSelect({ value, onChange, options, ariaLabel, placeholder }: SelectProps) {
   const { t } = useTranslation('deployments')
   const selectedOption = options.find(option => option.value === value)
 
@@ -54,6 +55,7 @@ export function DeploymentSelect({ value, onChange, options, placeholder }: Sele
       disabled={options.length === 0}
     >
       <SelectTrigger
+        aria-label={ariaLabel ?? placeholder ?? t('deployDrawer.defaultSelect')}
         className={cn(
           'h-8 min-w-0 px-2 text-left system-sm-medium',
           !selectedOption && 'text-text-quaternary',
