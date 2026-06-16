@@ -487,6 +487,28 @@ describe('agent/panel', () => {
     expect(mockHandleNodeDataUpdateWithSyncDraft).not.toHaveBeenCalled()
   })
 
+  it('reveals output editor advanced options with the collapsible trigger', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
+
+    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.defaultValueLabel' })).not.toBeInTheDocument()
+
+    const advancedTrigger = screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.showAdvancedOptions' })
+    expect(advancedTrigger).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(advancedTrigger)
+
+    expect(advancedTrigger).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.defaultValueLabel' })).toBeInTheDocument()
+  })
+
   it('does not show name validation error before the user enters a name', () => {
     render(
       <AgentV2Panel

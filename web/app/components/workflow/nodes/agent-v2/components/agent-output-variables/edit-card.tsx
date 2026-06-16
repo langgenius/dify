@@ -1,7 +1,7 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { CollapsiblePanel, CollapsibleRoot, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -51,7 +51,6 @@ export function OutputEditCard({
   const nameErrorId = useId()
   const editorRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState(state.draft)
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const trimmedName = draft.name.trim()
   const duplicateName = existingOutputs.some((output, index) => output.name === trimmedName && index !== state.index)
   const nameInvalid = !!trimmedName && !OUTPUT_NAME_PATTERN.test(trimmedName)
@@ -135,39 +134,36 @@ export function OutputEditCard({
             />
           </FieldRoot>
         </div>
-        <button
-          type="button"
-          className="flex h-8 items-center gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
-          aria-expanded={showAdvancedOptions}
-          onClick={() => setShowAdvancedOptions(value => !value)}
-        >
-          <span
-            aria-hidden="true"
-            className={cn('i-ri-arrow-down-double-line size-3', showAdvancedOptions && 'rotate-180')}
-          />
-          {t('nodes.agent.outputVars.showAdvancedOptions', { ns: 'workflow' })}
-        </button>
-        {showAdvancedOptions && (
-          <div className="border-t border-divider-subtle px-3 py-2">
-            <FieldRoot name="defaultValue" className="gap-1">
-              <FieldLabel className="py-0 system-xs-medium text-text-secondary">
-                {t('nodes.agent.outputVars.defaultValueLabel', { ns: 'workflow' })}
-              </FieldLabel>
-              <Textarea
-                size="small"
-                value={draft.defaultValue}
-                placeholder={t('nodes.agent.outputVars.defaultValuePlaceholder', { ns: 'workflow' })}
-                className="mt-1 min-h-6"
-                onValueChange={defaultValue => updateDraft({ defaultValue })}
-              />
-              {defaultValueErrorKey && (
-                <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                  {t(defaultValueErrorKey, { ns: 'workflow' })}
-                </FieldError>
-              )}
-            </FieldRoot>
-          </div>
-        )}
+        <CollapsibleRoot>
+          <CollapsibleTrigger className="h-8 min-h-8 justify-start gap-x-0.5 rounded-none border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-tertiary focus-visible:bg-state-base-hover focus-visible:ring-inset data-panel-open:text-text-tertiary">
+            <span
+              aria-hidden="true"
+              className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open:rotate-180 motion-reduce:transition-none"
+            />
+            {t('nodes.agent.outputVars.showAdvancedOptions', { ns: 'workflow' })}
+          </CollapsibleTrigger>
+          <CollapsiblePanel className="border-t border-divider-subtle">
+            <div className="px-3 py-2">
+              <FieldRoot name="defaultValue" className="gap-1">
+                <FieldLabel className="py-0 system-xs-medium text-text-secondary">
+                  {t('nodes.agent.outputVars.defaultValueLabel', { ns: 'workflow' })}
+                </FieldLabel>
+                <Textarea
+                  size="small"
+                  value={draft.defaultValue}
+                  placeholder={t('nodes.agent.outputVars.defaultValuePlaceholder', { ns: 'workflow' })}
+                  className="mt-1 min-h-6"
+                  onValueChange={defaultValue => updateDraft({ defaultValue })}
+                />
+                {defaultValueErrorKey && (
+                  <FieldError match className="py-0 system-xs-regular text-text-destructive">
+                    {t(defaultValueErrorKey, { ns: 'workflow' })}
+                  </FieldError>
+                )}
+              </FieldRoot>
+            </div>
+          </CollapsiblePanel>
+        </CollapsibleRoot>
         <div className="flex h-12 items-center justify-end gap-x-2 px-3">
           <Button type="button" size="small" variant="secondary" onClick={onCancel}>
             {t('operation.cancel', { ns: 'common' })}
