@@ -420,14 +420,14 @@ class WorkflowAgentRuntimeRequestBuilder:
             case DeclaredOutputType.BOOLEAN:
                 return {"type": "boolean"}
             case DeclaredOutputType.OBJECT:
-                schema: dict[str, Any] = {"type": "object"}
-                WorkflowAgentRuntimeRequestBuilder._apply_child_properties(schema, children or [])
-                return schema
+                object_schema: dict[str, Any] = {"type": "object"}
+                WorkflowAgentRuntimeRequestBuilder._apply_child_properties(object_schema, children or [])
+                return object_schema
             case DeclaredOutputType.ARRAY:
                 # Stage 4 §4.2: items shape mirrors the declared array_item.
                 # Validator guarantees array_item is set when type is array.
                 item_type = array_item.type if array_item else DeclaredOutputType.OBJECT
-                schema: dict[str, Any] = {
+                array_schema: dict[str, Any] = {
                     "type": "array",
                     "items": WorkflowAgentRuntimeRequestBuilder._schema_for_type(
                         item_type,
@@ -435,8 +435,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                     ),
                 }
                 if array_item is not None and array_item.description:
-                    schema["items"]["description"] = array_item.description
-                return schema
+                    array_schema["items"]["description"] = array_item.description
+                return array_schema
             case DeclaredOutputType.FILE:
                 return {
                     "oneOf": [
