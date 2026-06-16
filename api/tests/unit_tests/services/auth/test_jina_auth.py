@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from services.auth.jina.jina import JinaAuth
+from services.auth.jina.jina import JinaAuth, _CREDENTIAL_VALIDATION_TIMEOUT
 
 
 class TestJinaAuth:
@@ -51,6 +51,7 @@ class TestJinaAuth:
             "https://r.jina.ai",
             headers={"Content-Type": "application/json", "Authorization": "Bearer test_api_key_123"},
             json={"url": "https://example.com"},
+            timeout=_CREDENTIAL_VALIDATION_TIMEOUT,
         )
 
     @patch("services.auth.jina.jina._http_client.post", autospec=True)
@@ -185,3 +186,21 @@ class TestJinaAuth:
         with pytest.raises(ValueError) as exc_info:
             JinaAuth({"auth_type": "basic", "config": {"api_key": "super_secret_key_12345"}})
         assert "super_secret_key_12345" not in str(exc_info.value)
+
+    @patch("services.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_pass_bounded_timeout_to_credential_validation(self, mock_post):
+        """Credential validation must not use the default unbounded timeout."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_api_key_123"}}
+        auth = JinaAuth(credentials)
+        auth.validate_credentials()
+
+        call_kwargs = mock_post.call_args
+        assert "timeout" in call_kwargs.kwargs, "timeout keyword is missing from _post_request"
+        timeout = call_kwargs.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == _CREDENTIAL_VALIDATION_TIMEOUT.connect
+        assert timeout.read == _CREDENTIAL_VALIDATION_TIMEOUT.read
