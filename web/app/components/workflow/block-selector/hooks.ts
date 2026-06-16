@@ -119,17 +119,21 @@ export const useTabs = ({
     return fallbackTab
   }, [defaultActiveTab, noBlocks, noSources, noTools, noSnippets, noStart, tabs, getValidTabKey])
   const [activeTab, setActiveTab] = useState(initialTab)
+  const resetActiveTab = useCallback(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
 
   useEffect(() => {
     const currentTab = tabs.find(tab => tab.key === activeTab)
     if (!currentTab || currentTab.disabled)
-      setActiveTab(initialTab)
-  }, [tabs, activeTab, initialTab])
+      resetActiveTab()
+  }, [tabs, activeTab, resetActiveTab])
 
   return {
     tabs,
     activeTab,
     setActiveTab,
+    resetActiveTab,
   }
 }
 

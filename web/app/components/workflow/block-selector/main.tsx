@@ -135,6 +135,7 @@ function NodeSelector({
   const disableSnippetsTab = flowType === FlowType.snippet
   const {
     activeTab,
+    resetActiveTab,
     setActiveTab,
     tabs,
   } = useTabs({
@@ -158,6 +159,7 @@ function NodeSelector({
     if (!newOpen) {
       setSearchText('')
       setSnippetsLoading(false)
+      resetActiveTab()
     }
     else if (activeTab === TabsEnum.Snippets) {
       setSnippetsLoading(true)
@@ -165,7 +167,7 @@ function NodeSelector({
 
     if (onOpenChange)
       onOpenChange(newOpen)
-  }, [activeTab, disabled, onOpenChange])
+  }, [activeTab, disabled, onOpenChange, resetActiveTab])
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
     e.stopPropagation()
   }, [])
