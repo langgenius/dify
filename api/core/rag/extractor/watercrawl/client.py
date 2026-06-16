@@ -217,7 +217,7 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 return event_data["data"]
 
     def download_result(self, result_object: dict[str, Any]):
-        response = httpx.get(result_object["result"], timeout=None)
+        response = httpx.get(result_object["result"], timeout=30)
         try:
             response.raise_for_status()
             result_object["result"] = response.json()
