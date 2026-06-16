@@ -5,7 +5,6 @@ import Control from '../control'
 
 type WorkflowStoreState = {
   controlMode: ControlMode
-  maximizeCanvas: boolean
 }
 
 const {
@@ -13,13 +12,11 @@ const {
   mockHandleLayout,
   mockHandleModeHand,
   mockHandleModePointer,
-  mockHandleToggleMaximizeCanvas,
 } = vi.hoisted(() => ({
   mockHandleAddNote: vi.fn(),
   mockHandleLayout: vi.fn(),
   mockHandleModeHand: vi.fn(),
   mockHandleModePointer: vi.fn(),
-  mockHandleToggleMaximizeCanvas: vi.fn(),
 }))
 
 let mockNodesReadOnly = false
@@ -29,9 +26,6 @@ vi.mock('../../hooks', () => ({
   useNodesReadOnly: () => ({
     nodesReadOnly: mockNodesReadOnly,
     getNodesReadOnly: () => mockNodesReadOnly,
-  }),
-  useWorkflowCanvasMaximize: () => ({
-    handleToggleMaximizeCanvas: mockHandleToggleMaximizeCanvas,
   }),
   useWorkflowMoveMode: () => ({
     handleModePointer: mockHandleModePointer,
@@ -76,7 +70,6 @@ describe('Control', () => {
     mockNodesReadOnly = false
     mockStoreState = {
       controlMode: ControlMode.Pointer,
-      maximizeCanvas: false,
     }
   })
 
@@ -89,38 +82,33 @@ describe('Control', () => {
       expect(screen.getByTestId('more-actions')).toBeInTheDocument()
       expect(screen.getByTestId('workflow.common.pointerMode').firstElementChild).toHaveClass('bg-state-accent-active')
       expect(screen.getByTestId('workflow.common.handMode').firstElementChild).not.toHaveClass('bg-state-accent-active')
-      expect(screen.getByTestId('workflow.panel.maximize')).toBeInTheDocument()
     })
 
-    it('should switch the maximize tooltip and active style when the canvas is maximized', () => {
+    it('should highlight hand mode when it is active', () => {
       mockStoreState = {
         controlMode: ControlMode.Hand,
-        maximizeCanvas: true,
       }
 
       render(<Control />)
 
       expect(screen.getByTestId('workflow.common.handMode').firstElementChild).toHaveClass('bg-state-accent-active')
-      expect(screen.getByTestId('workflow.panel.minimize').firstElementChild).toHaveClass('bg-state-accent-active')
     })
   })
 
   // User interactions exposed by the control bar.
   describe('User Interactions', () => {
-    it('should trigger the note, mode, organize, and maximize handlers', () => {
+    it('should trigger the note, mode, and organize handlers', () => {
       render(<Control />)
 
       fireEvent.click(screen.getByTestId('workflow.nodes.note.addNote').firstElementChild as HTMLElement)
       fireEvent.click(screen.getByTestId('workflow.common.pointerMode').firstElementChild as HTMLElement)
       fireEvent.click(screen.getByTestId('workflow.common.handMode').firstElementChild as HTMLElement)
       fireEvent.click(screen.getByTestId('workflow.panel.organizeBlocks').firstElementChild as HTMLElement)
-      fireEvent.click(screen.getByTestId('workflow.panel.maximize').firstElementChild as HTMLElement)
 
       expect(mockHandleAddNote).toHaveBeenCalledTimes(1)
       expect(mockHandleModePointer).toHaveBeenCalledTimes(1)
       expect(mockHandleModeHand).toHaveBeenCalledTimes(1)
       expect(mockHandleLayout).toHaveBeenCalledTimes(1)
-      expect(mockHandleToggleMaximizeCanvas).toHaveBeenCalledTimes(1)
     })
 
     it('should block note creation when the workflow is read only', () => {

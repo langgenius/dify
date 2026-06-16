@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-from models.agent import Agent, AgentScope, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.agent_config_entities import DeclaredOutputConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 
@@ -22,6 +30,41 @@ class WorkflowAgentPublishService:
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
 
     @classmethod
+    def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
+        """Return draft graph with persisted Agent node job config projected into node data.
+
+        Workflow draft graph is the front-end's editing source of truth, while
+        runtime/publish reads WorkflowAgentNodeBinding.node_job_config. This
+        response-only projection keeps reads aligned without writing binding
+        details back into the stored graph JSON.
+        """
+        graph = cast(dict[str, Any], copy.deepcopy(draft_workflow.graph_dict))
+        agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
+        if not agent_nodes:
+            return graph
+
+        bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+                WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes.keys())),
+            )
+        ).all()
+        for binding in bindings:
+            node_data = agent_nodes.get(binding.node_id)
+            if not isinstance(node_data, dict):
+                continue
+            node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            if node_job.workflow_prompt is not None:
+                node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
+            node_data[cls._AGENT_DECLARED_OUTPUTS_KEY] = [
+                output.model_dump(mode="json") for output in node_job.declared_outputs
+            ]
+        return graph
+
+    @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
         WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=draft_workflow)
 
@@ -30,7 +73,7 @@ class WorkflowAgentPublishService:
         WorkflowAgentNodeValidator.validate_draft_workflow(session=session, workflow=draft_workflow)
 
     @classmethod
-    def sync_roster_agent_bindings_for_draft(
+    def sync_agent_bindings_for_draft(
         cls,
         *,
         session: Session,
@@ -60,7 +103,7 @@ class WorkflowAgentPublishService:
                 continue
             if not isinstance(binding_payload, Mapping):
                 raise ValueError(f"Workflow Agent node {node_id} has invalid agent_binding.")
-            cls._sync_roster_agent_binding_for_node(
+            cls._sync_agent_binding_for_node(
                 session=session,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
@@ -72,7 +115,21 @@ class WorkflowAgentPublishService:
         session.flush()
 
     @classmethod
-    def _sync_roster_agent_binding_for_node(
+    def sync_roster_agent_bindings_for_draft(
+        cls,
+        *,
+        session: Session,
+        draft_workflow: Workflow,
+        account_id: str,
+    ) -> None:
+        cls.sync_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=draft_workflow,
+            account_id=account_id,
+        )
+
+    @classmethod
+    def _sync_agent_binding_for_node(
         cls,
         *,
         session: Session,
@@ -84,26 +141,33 @@ class WorkflowAgentPublishService:
         account_id: str,
     ) -> None:
         binding_type = node_binding.get("binding_type")
-        if binding_type != WorkflowAgentBindingType.ROSTER_AGENT.value:
-            raise ValueError(f"Workflow Agent node {node_id} only supports roster_agent graph binding.")
         agent_id = node_binding.get("agent_id")
         if not isinstance(agent_id, str) or not agent_id:
-            raise ValueError(f"Workflow Agent node {node_id} roster_agent binding requires agent_id.")
+            raise ValueError(f"Workflow Agent node {node_id} agent binding requires agent_id.")
 
-        agent = session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == draft_workflow.tenant_id,
-                Agent.id == agent_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
+        if binding_type == WorkflowAgentBindingType.ROSTER_AGENT.value:
+            agent, current_snapshot_id = cls._resolve_roster_agent_graph_binding(
+                session=session,
+                draft_workflow=draft_workflow,
+                node_id=node_id,
+                agent_id=agent_id,
             )
-            .limit(1)
-        )
-        if agent is None:
-            raise ValueError(f"Workflow Agent node {node_id} references an unavailable roster agent.")
-        if not agent.active_config_snapshot_id:
-            raise ValueError(f"Workflow Agent node {node_id} roster agent has no active config snapshot.")
+            resolved_binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+        elif binding_type == WorkflowAgentBindingType.INLINE_AGENT.value:
+            raw_current_snapshot_id = node_binding.get("current_snapshot_id")
+            if not isinstance(raw_current_snapshot_id, str) or not raw_current_snapshot_id:
+                raise ValueError(f"Workflow Agent node {node_id} inline_agent binding requires current_snapshot_id.")
+            current_snapshot_id = raw_current_snapshot_id
+            agent = cls._resolve_inline_agent_graph_binding(
+                session=session,
+                draft_workflow=draft_workflow,
+                node_id=node_id,
+                agent_id=agent_id,
+                current_snapshot_id=current_snapshot_id,
+            )
+            resolved_binding_type = WorkflowAgentBindingType.INLINE_AGENT
+        else:
+            raise ValueError(f"Workflow Agent node {node_id} has unsupported agent_binding type.")
 
         binding = existing_binding
         node_job_config = cls._node_job_config_from_node_data(
@@ -124,10 +188,83 @@ class WorkflowAgentPublishService:
         else:
             binding.node_job_config = node_job_config
 
-        binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
+        binding.binding_type = resolved_binding_type
         binding.agent_id = agent.id
-        binding.current_snapshot_id = agent.active_config_snapshot_id
+        binding.current_snapshot_id = current_snapshot_id
         binding.updated_by = account_id
+
+    @classmethod
+    def _resolve_roster_agent_graph_binding(
+        cls,
+        *,
+        session: Session,
+        draft_workflow: Workflow,
+        node_id: str,
+        agent_id: str,
+    ) -> tuple[Agent, str]:
+        agent = session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == draft_workflow.tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        if agent is None:
+            raise ValueError(f"Workflow Agent node {node_id} references an unavailable roster agent.")
+        if agent.scope != AgentScope.ROSTER:
+            raise ValueError(f"Workflow Agent node {node_id} roster_agent binding must reference a roster agent.")
+        if not agent.active_config_snapshot_id:
+            raise ValueError(f"Workflow Agent node {node_id} roster agent has no active config snapshot.")
+        return agent, agent.active_config_snapshot_id
+
+    @classmethod
+    def _resolve_inline_agent_graph_binding(
+        cls,
+        *,
+        session: Session,
+        draft_workflow: Workflow,
+        node_id: str,
+        agent_id: str,
+        current_snapshot_id: str,
+    ) -> Agent:
+        agent = session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == draft_workflow.tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.WORKFLOW_ONLY,
+                Agent.app_id == draft_workflow.app_id,
+                Agent.workflow_id == draft_workflow.id,
+                Agent.workflow_node_id == node_id,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        if agent is None:
+            raise ValueError(f"Workflow Agent node {node_id} references an unavailable inline agent.")
+        if (
+            agent.scope != AgentScope.WORKFLOW_ONLY
+            or agent.app_id != draft_workflow.app_id
+            or agent.workflow_id != draft_workflow.id
+            or agent.workflow_node_id != node_id
+        ):
+            raise ValueError(f"Workflow Agent node {node_id} inline_agent binding does not belong to this node.")
+
+        snapshot = session.scalar(
+            select(AgentConfigSnapshot)
+            .where(
+                AgentConfigSnapshot.tenant_id == draft_workflow.tenant_id,
+                AgentConfigSnapshot.agent_id == agent.id,
+                AgentConfigSnapshot.id == current_snapshot_id,
+            )
+            .limit(1)
+        )
+        if snapshot is None or snapshot.agent_id != agent.id:
+            raise ValueError(f"Workflow Agent node {node_id} references a missing inline agent config snapshot.")
+        return agent
 
     @classmethod
     def _node_job_config_from_node_data(

@@ -18,13 +18,15 @@ SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
         # ENG-623: exposed at runtime as the dify.drive declaration layer
         # (an index the agent pulls through the back proxy).
         "skills_files",
+        # ENG-635: human involvement is exposed at runtime as the dify.ask_human
+        # deferred tool; a call pauses via the existing HITL form mechanism.
+        "human",
     }
 )
 
 RESERVED_AGENT_BACKEND_FEATURES = frozenset(
     {
         "knowledge",
-        "human",
         "memory",
     }
 )
@@ -85,6 +87,7 @@ def build_runtime_feature_manifest(
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"
     reserved_status["sandbox"] = "forwarded_to_shell_layer_config"
+    reserved_status["human"] = "supported_by_ask_human_hitl" if agent_soul.human.contacts else "not_configured"
 
     return {
         "supported": sorted(SUPPORTED_AGENT_BACKEND_FEATURES),

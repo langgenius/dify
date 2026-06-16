@@ -91,7 +91,7 @@ describe('Card Component', () => {
     author: 'Test Author',
     provider: 'test-provider',
     plugin_id: 'test-plugin-id',
-    plugin_unique_identifier: 'test-unique-id',
+    plugin_unique_identifier: 'test-author/test-name:1.2.0@checksum',
     icon: 'test-icon-url',
     name: 'test-name',
     label: {
@@ -146,10 +146,12 @@ describe('Card Component', () => {
       // Assert
       // Assert
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
-      expect(screen.getByText(/Test Author/))!.toBeInTheDocument()
-      expect(screen.getByText(/test-name/))!.toBeInTheDocument()
-      expect(screen.getByRole('img'))!.toHaveAttribute('src', 'test-icon-url')
+      expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
+      expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
+      expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
+      expect(screen.getByRole('img', { name: 'Test Label' }))!.toHaveAttribute('src', 'test-icon-url')
       expect(screen.getByText('Credential 1'))!.toBeInTheDocument()
+      expect(screen.getByText(/plugin.auth.default/))!.toBeInTheDocument()
 
       expect(usePluginAuthAction).toHaveBeenCalledWith(
         expect.objectContaining({

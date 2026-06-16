@@ -8,13 +8,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
-import {
-  RiArrowDownSLine,
-  RiCloseCircleFill,
-} from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '../../hooks'
 
 type TagsFilterProps = {
@@ -51,7 +47,7 @@ const TagsFilter = ({
             )}
             >
               {
-                !selectedTagsLength && t('allTags', { ns: 'pluginTags' })
+                !selectedTagsLength && t('tag.tags', { ns: 'common' })
               }
               {
                 !!selectedTagsLength && value.map(val => getTagLabel(val)).slice(0, 2).join(',')
@@ -67,8 +63,9 @@ const TagsFilter = ({
             </div>
             {
               !!selectedTagsLength && (
-                <RiCloseCircleFill
-                  className="size-4 cursor-pointer text-text-quaternary"
+                <span
+                  aria-hidden
+                  className="i-ri-close-circle-fill size-4 cursor-pointer text-text-quaternary"
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange([])
@@ -78,7 +75,7 @@ const TagsFilter = ({
             }
             {
               !selectedTagsLength && (
-                <RiArrowDownSLine className="size-4" />
+                <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
               )
             }
           </div>
@@ -91,10 +88,9 @@ const TagsFilter = ({
       >
         <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
+            <SearchInput
               value={searchText}
-              onChange={e => setSearchText(e.target.value)}
+              onValueChange={setSearchText}
               placeholder={t('searchTags', { ns: 'pluginTags' })}
             />
           </div>

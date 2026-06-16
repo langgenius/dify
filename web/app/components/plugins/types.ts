@@ -2,7 +2,7 @@ import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
-import type { ToolCredential } from '@/app/components/tools/types'
+import type { Collection, ToolCredential } from '@/app/components/tools/types'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { Locale } from '@/i18n-config'
 
@@ -36,7 +36,7 @@ type PluginToolDeclaration = {
 
 type PluginEndpointDeclaration = {
   settings: ToolCredential[]
-  endpoints: EndpointItem[]
+  endpoints?: EndpointItem[] | null
 }
 
 type EndpointItem = {
@@ -80,7 +80,7 @@ export type PluginDeclaration = {
   resource: any // useless in frontend
   plugins: any // useless in frontend
   verified: boolean
-  endpoint: PluginEndpointDeclaration
+  endpoint?: PluginEndpointDeclaration | null
   tool?: PluginToolDeclaration
   datasource?: PluginToolDeclaration
   model: any
@@ -364,9 +364,10 @@ export type GitHubRepoReleaseResponse = {
 }
 
 export type InstallPackageResponse = {
-  plugin_unique_identifier: string
+  plugin_unique_identifier?: string
   all_installed: boolean
   task_id: string
+  task?: PluginTaskStart
 }
 
 export type InstallStatusResponse = {
@@ -383,6 +384,7 @@ export type InstallStatus = {
 export type updatePackageResponse = {
   all_installed: boolean
   task_id: string
+  task?: PluginTaskStart
 }
 
 export type uploadGitHubResponse = {
@@ -397,6 +399,7 @@ export type DebugInfo = {
 }
 
 export enum TaskStatus {
+  pending = 'pending',
   running = 'running',
   success = 'success',
   failed = 'failed',
@@ -423,6 +426,10 @@ export type PluginTask = {
   plugins: PluginStatus[]
 }
 
+export type PluginTaskStart = Omit<PluginTask, 'plugins'> & {
+  plugins: Array<Omit<PluginStatus, 'taskId'> & { taskId?: string }>
+}
+
 export type TaskStatusResponse = {
   task: PluginTask
 }
@@ -436,6 +443,12 @@ export type MetaData = {
 export type InstalledPluginListWithTotalResponse = {
   plugins: PluginDetail[]
   total: number
+}
+
+export type InstalledPluginCategoryListResponse = {
+  plugins: PluginDetail[]
+  builtin_tools: Collection[]
+  has_more: boolean
 }
 
 export type InstalledLatestVersionResponse = {

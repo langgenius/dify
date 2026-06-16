@@ -1,0 +1,51 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "16",
+      "height": "16",
+      "viewBox": "0 0 16 16",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "help-question"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Question",
+              "d": "M6.25 6.25C6.25 5.28 7.03 4.5 8 4.5C8.97 4.5 9.75 5.28 9.75 6.25C9.75 6.96 9.33 7.37 8.72 7.77C8.25 8.08 8 8.36 8 8.9V9.25",
+              "stroke": "currentColor",
+              "stroke-width": "1.35",
+              "stroke-linecap": "round",
+              "stroke-linejoin": "round"
+            },
+            "children": []
+          },
+          {
+            "type": "element",
+            "name": "path",
+            "attributes": {
+              "id": "Dot",
+              "d": "M8 11.25H8.01",
+              "stroke": "currentColor",
+              "stroke-width": "1.6",
+              "stroke-linecap": "round"
+            },
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "name": "HelpQuestion"
+}

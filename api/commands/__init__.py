@@ -11,6 +11,7 @@ from .data_migration import (
     migration_data_wizard,
 )
 from .plugin import (
+    backfill_plugin_auto_upgrade,
     extract_plugins,
     extract_unique_plugins,
     install_plugins,
@@ -49,6 +50,7 @@ from .vector import (
 __all__ = [
     "add_qdrant_index",
     "archive_workflow_runs",
+    "backfill_plugin_auto_upgrade",
     "clean_expired_messages",
     "clean_workflow_runs",
     "cleanup_orphaned_draft_variables",

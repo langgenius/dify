@@ -697,6 +697,62 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch):
     assert [item["id"] for item in result["data"]] == ["agent-2"]
 
 
+def test_published_references_include_app_display_fields_and_sort_by_updated_at():
+    recent_updated_at = datetime(2026, 1, 7, 3, 4, 5, tzinfo=UTC)
+    stale_updated_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
+    bindings = [
+        SimpleNamespace(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            app_id="app-stale",
+            workflow_id="workflow-stale",
+            workflow_version="published-stale",
+            node_id="node-b",
+        ),
+        SimpleNamespace(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            app_id="app-recent",
+            workflow_id="workflow-recent",
+            workflow_version="published-recent",
+            node_id="node-a",
+        ),
+    ]
+    apps = [
+        SimpleNamespace(
+            id="app-stale",
+            name="Stale Workflow",
+            mode="advanced-chat",
+            workflow_id="workflow-stale",
+            icon_type=SimpleNamespace(value="emoji"),
+            icon="old",
+            icon_background="#F3F4F6",
+            updated_at=stale_updated_at,
+        ),
+        SimpleNamespace(
+            id="app-recent",
+            name="Recent Workflow",
+            mode="advanced-chat",
+            workflow_id="workflow-recent",
+            icon_type=SimpleNamespace(value="image"),
+            icon="upload-file-id",
+            icon_background="#E0F2FE",
+            updated_at=recent_updated_at,
+        ),
+    ]
+    service = AgentRosterService(FakeSession(scalars=[bindings, apps]))
+
+    result = service._load_published_references_by_agent_id(tenant_id="tenant-1", agent_ids=["agent-1"])
+
+    references = result["agent-1"]
+    assert [item["app_id"] for item in references] == ["app-recent", "app-stale"]
+    assert references[0]["app_icon_type"] == "image"
+    assert references[0]["app_icon"] == "upload-file-id"
+    assert references[0]["app_icon_background"] == "#E0F2FE"
+    assert references[0]["app_updated_at"] == int(recent_updated_at.timestamp())
+    assert references[0]["workflow_version"] == "published-recent"
+
+
 def test_roster_update_archive_versions_and_detail(monkeypatch):
     listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
     listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
@@ -1037,6 +1093,31 @@ class TestAgentAppBackingAgent:
 
         assert service.get_app_backing_agent(tenant_id="tenant-1", app_id="app-x") is None
 
+    def test_get_agent_app_model_resolves_app_backing_agent(self):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        app = SimpleNamespace(id="app-1", mode="agent", status="normal")
+        session = FakeSession(scalar=[agent, app])
+        service = AgentRosterService(session)
+
+        assert service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-1") is app
+
+    def test_get_agent_app_model_rejects_unbound_agent(self):
+        session = FakeSession()
+        service = AgentRosterService(session)
+
+        with pytest.raises(roster_service.AgentNotFoundError):
+            service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
+
 
 class TestListWorkflowsReferencingAppAgent:
     def test_groups_bindings_by_workflow_app_and_sorts_by_name(self):
@@ -1115,6 +1196,62 @@ class TestListWorkflowsReferencingAppAgent:
 
 
 class TestWorkflowAgentDraftBindingSync:
+    def test_projects_binding_declared_outputs_to_draft_graph_response(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ],
+                    "edges": [],
+                }
+            ),
+        )
+        binding = WorkflowAgentNodeBinding(
+            id="binding-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="agent-1",
+            current_snapshot_id="snapshot-1",
+            node_job_config=WorkflowNodeJobConfig(
+                workflow_prompt="Summarize the upstream result.",
+                declared_outputs=[
+                    DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING, description="Short summary")
+                ],
+            ),
+        )
+        session = FakeSession(scalars=[[binding]])
+
+        graph = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=session,
+            draft_workflow=workflow,
+        )
+
+        node_data = graph["nodes"][0]["data"]
+        assert node_data["agent_task"] == "Summarize the upstream result."
+        assert node_data["agent_declared_outputs"][0]["name"] == "summary"
+        assert node_data["agent_declared_outputs"][0]["type"] == "string"
+        assert node_data["agent_declared_outputs"][0]["description"] == "Short summary"
+        assert "agent_declared_outputs" not in workflow.graph_dict["nodes"][0]["data"]
+
     def test_creates_roster_binding_from_agent_node_graph(self):
         workflow = Workflow(
             id="workflow-1",
@@ -1179,6 +1316,225 @@ class TestWorkflowAgentDraftBindingSync:
                 )
             ],
         ).model_dump(mode="json")
+
+    def test_creates_inline_binding_from_agent_node_graph(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_task": "Use the current node context.",
+                                "agent_binding": {
+                                    "binding_type": "inline_agent",
+                                    "agent_id": "inline-agent-1",
+                                    "current_snapshot_id": "inline-snapshot-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="inline-agent-1",
+            tenant_id="tenant-1",
+            name="Workflow Agent agent-node",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_node_id="agent-node",
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="inline-snapshot-1",
+        )
+        snapshot = AgentConfigSnapshot(
+            id="inline-snapshot-1",
+            tenant_id="tenant-1",
+            agent_id="inline-agent-1",
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+        )
+        session = FakeSession(scalar=[agent, snapshot], scalars=[[]])
+
+        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        binding = next(item for item in session.added if isinstance(item, WorkflowAgentNodeBinding))
+        assert binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+        assert binding.agent_id == "inline-agent-1"
+        assert binding.current_snapshot_id == "inline-snapshot-1"
+        assert binding.node_job_config_dict == WorkflowNodeJobConfig(
+            workflow_prompt="Use the current node context.",
+        ).model_dump(mode="json")
+
+    def test_rejects_inline_binding_for_agent_owned_by_another_node(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_binding": {
+                                    "binding_type": "inline_agent",
+                                    "agent_id": "inline-agent-1",
+                                    "current_snapshot_id": "inline-snapshot-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="inline-agent-1",
+            tenant_id="tenant-1",
+            name="Workflow Agent other-node",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_node_id="other-node",
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="inline-snapshot-1",
+        )
+        session = FakeSession(scalar=[agent], scalars=[[]])
+
+        with pytest.raises(ValueError, match="inline_agent binding does not belong to this node"):
+            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                session=session,
+                draft_workflow=workflow,
+                account_id="account-1",
+            )
+
+    def test_rejects_agent_node_graph_binding_with_unsupported_type(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_binding": {
+                                    "binding_type": "unknown",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+
+        with pytest.raises(ValueError, match="unsupported agent_binding type"):
+            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                session=FakeSession(scalars=[[]]),
+                draft_workflow=workflow,
+                account_id="account-1",
+            )
+
+    def test_rejects_inline_binding_without_current_snapshot_id(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_binding": {
+                                    "binding_type": "inline_agent",
+                                    "agent_id": "inline-agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+
+        with pytest.raises(ValueError, match="inline_agent binding requires current_snapshot_id"):
+            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                session=FakeSession(scalars=[[]]),
+                draft_workflow=workflow,
+                account_id="account-1",
+            )
+
+    def test_rejects_inline_binding_with_missing_snapshot(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_binding": {
+                                    "binding_type": "inline_agent",
+                                    "agent_id": "inline-agent-1",
+                                    "current_snapshot_id": "missing-snapshot",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="inline-agent-1",
+            tenant_id="tenant-1",
+            name="Workflow Agent agent-node",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_node_id="agent-node",
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="inline-snapshot-1",
+        )
+
+        with pytest.raises(ValueError, match="missing inline agent config snapshot"):
+            WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+                session=FakeSession(scalar=[agent, None], scalars=[[]]),
+                draft_workflow=workflow,
+                account_id="account-1",
+            )
 
     def test_updates_existing_roster_binding_prompt_from_agent_node_graph(self):
         workflow = Workflow(

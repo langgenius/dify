@@ -19,7 +19,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -37,7 +37,11 @@ class AgentReferencingWorkflow(TypedDict):
 
     app_id: str
     app_name: str
+    app_icon_type: str | None
+    app_icon: str | None
+    app_icon_background: str | None
     app_mode: str
+    app_updated_at: int | None
     workflow_id: str
     workflow_version: str
     node_ids: list[str]
@@ -349,6 +353,43 @@ class AgentRosterService:
             )
         )
 
+    def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve the Agent App hidden behind an app-backed Agent id.
+
+        The public /agent route uses Agent ids, while the runtime and legacy app
+        APIs still operate on App ids internally. Only app-backed roster Agents
+        are accepted here; workflow-only Agents and historical standalone roster
+        Agents are not Agent App resources.
+        """
+        agent = self._session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.app_id.is_not(None),
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .limit(1)
+        )
+        if agent is None or agent.app_id is None:
+            raise AgentNotFoundError()
+
+        app = self._session.scalar(
+            select(App)
+            .where(
+                App.tenant_id == tenant_id,
+                App.id == agent.app_id,
+                App.mode == AppMode.AGENT,
+                App.status == AppStatus.NORMAL,
+            )
+            .limit(1)
+        )
+        if app is None:
+            raise AgentNotFoundError()
+        return app
+
     def list_workflows_referencing_app_agent(self, *, tenant_id: str, app_id: str) -> list[AgentReferencingWorkflow]:
         """List the workflow apps that reference this Agent App's bound Agent.
 
@@ -520,7 +561,11 @@ class AgentRosterService:
                 AgentReferencingWorkflow(
                     app_id=binding.app_id,
                     app_name=app.name,
+                    app_icon_type=(icon_type.value if (icon_type := getattr(app, "icon_type", None)) else None),
+                    app_icon=getattr(app, "icon", None),
+                    app_icon_background=getattr(app, "icon_background", None),
                     app_mode=str(app.mode),
+                    app_updated_at=to_timestamp(getattr(app, "updated_at", None)),
                     workflow_id=binding.workflow_id,
                     workflow_version=binding.workflow_version,
                     node_ids=[],
@@ -533,7 +578,7 @@ class AgentRosterService:
             references = list(by_workflow.values())
             for reference in references:
                 reference["node_ids"] = sorted(set(reference["node_ids"]))
-            references.sort(key=lambda item: (item["app_name"].lower(), item["workflow_id"]))
+            references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
             result[agent_id] = references
         return result
 
