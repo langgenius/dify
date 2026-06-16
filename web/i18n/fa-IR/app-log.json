@@ -73,7 +73,7 @@
   "title": "لاگ‌ها",
   "triggerBy.appRun": "وب اپ",
   "triggerBy.debugging": "رفع اشکال",
-  "triggerBy.plugin": "افزونه",
+  "triggerBy.plugin": "یکپارچه‌سازی",
   "triggerBy.ragPipelineDebugging": "رفع اشکال RAG",
   "triggerBy.ragPipelineRun": "خط لوله RAG",
   "triggerBy.schedule": "برنامه",

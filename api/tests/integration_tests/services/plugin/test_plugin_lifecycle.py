@@ -7,6 +7,8 @@ from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermissi
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_permission_service import PluginPermissionService
 
+PLUGIN_CATEGORY = TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL
+
 
 @pytest.fixture
 def tenant(flask_req_ctx):
@@ -71,7 +73,7 @@ class TestPluginPermissionLifecycle:
 
 class TestPluginAutoUpgradeLifecycle:
     def test_get_returns_none_for_new_tenant(self, tenant):
-        assert PluginAutoUpgradeService.get_strategy(tenant) is None
+        assert PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY) is None
 
     def test_change_creates_row(self, tenant):
         result = PluginAutoUpgradeService.change_strategy(
@@ -81,10 +83,11 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
             exclude_plugins=[],
             include_plugins=[],
+            category=PLUGIN_CATEGORY,
         )
         assert result is True
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
         assert strategy.upgrade_time_of_day == 3
@@ -97,6 +100,7 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
             exclude_plugins=[],
             include_plugins=[],
+            category=PLUGIN_CATEGORY,
         )
         PluginAutoUpgradeService.change_strategy(
             tenant,
@@ -105,9 +109,10 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL,
             exclude_plugins=[],
             include_plugins=["plugin-a"],
+            category=PLUGIN_CATEGORY,
         )
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
         assert strategy.upgrade_time_of_day == 12
@@ -115,9 +120,9 @@ class TestPluginAutoUpgradeLifecycle:
         assert strategy.include_plugins == ["plugin-a"]
 
     def test_exclude_plugin_creates_strategy_when_none_exists(self, tenant):
-        PluginAutoUpgradeService.exclude_plugin(tenant, "my-plugin")
+        PluginAutoUpgradeService.exclude_plugin(tenant, "my-plugin", PLUGIN_CATEGORY)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
         assert "my-plugin" in strategy.exclude_plugins
@@ -130,10 +135,11 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
             exclude_plugins=["existing"],
             include_plugins=[],
+            category=PLUGIN_CATEGORY,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "new-plugin")
+        PluginAutoUpgradeService.exclude_plugin(tenant, "new-plugin", PLUGIN_CATEGORY)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert "existing" in strategy.exclude_plugins
         assert "new-plugin" in strategy.exclude_plugins
@@ -146,10 +152,11 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
             exclude_plugins=["same-plugin"],
             include_plugins=[],
+            category=PLUGIN_CATEGORY,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "same-plugin")
+        PluginAutoUpgradeService.exclude_plugin(tenant, "same-plugin", PLUGIN_CATEGORY)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert strategy.exclude_plugins.count("same-plugin") == 1
 
@@ -161,10 +168,11 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL,
             exclude_plugins=[],
             include_plugins=["p1", "p2"],
+            category=PLUGIN_CATEGORY,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "p1")
+        PluginAutoUpgradeService.exclude_plugin(tenant, "p1", PLUGIN_CATEGORY)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert "p1" not in strategy.include_plugins
         assert "p2" in strategy.include_plugins
@@ -177,10 +185,11 @@ class TestPluginAutoUpgradeLifecycle:
             upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
             exclude_plugins=[],
             include_plugins=[],
+            category=PLUGIN_CATEGORY,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "excluded-plugin")
+        PluginAutoUpgradeService.exclude_plugin(tenant, "excluded-plugin", PLUGIN_CATEGORY)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
         assert strategy is not None
         assert strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
         assert "excluded-plugin" in strategy.exclude_plugins

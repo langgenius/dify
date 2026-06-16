@@ -2,6 +2,7 @@
 import type { Locale } from '@/i18n-config'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
@@ -23,17 +24,35 @@ type TimezoneOption = {
 }
 
 const titleClassName = `
-  mb-2 system-sm-semibold text-text-secondary
+  mb-1 system-sm-medium text-text-secondary
 `
+const themes = ['system', 'light', 'dark'] as const
+type ThemeOption = typeof themes[number]
+
+const isThemeOption = (value: string): value is ThemeOption => {
+  return (themes as readonly string[]).includes(value)
+}
+
 export default function LanguagePage() {
   const locale = useLocale()
   const { userProfile, mutateUserProfile } = useAppContext()
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const languageOptions: SelectOption[] = languages.filter(item => item.supported)
+  const themeOptions: SelectOption[] = [
+    { value: 'system', name: t('account.appearanceFollowSystem', { ns: 'common' }) },
+    { value: 'light', name: t('account.appearanceLight', { ns: 'common' }) },
+    { value: 'dark', name: t('account.appearanceDark', { ns: 'common' }) },
+  ]
   const selectedLanguage = languageOptions.find(item => item.value === (locale || userProfile.interface_language))
+  const selectedTheme = themeOptions.find(item => item.value === (theme || 'system'))
   const selectedTimezone = timezones.find(item => item.value === userProfile.timezone)
+  const handleSelectTheme = (item: SelectOption) => {
+    if (isThemeOption(item.value))
+      setTheme(item.value)
+  }
   const handleSelectLanguage = async (item: SelectOption) => {
     const url = '/account/interface-language'
     const bodyKey = 'interface_language'
@@ -69,7 +88,32 @@ export default function LanguagePage() {
   }
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-6">
+        <div className={titleClassName}>{t('account.appearanceLabel', { ns: 'common' })}</div>
+        <Select
+          value={selectedTheme?.value ?? 'system'}
+          onValueChange={(nextValue) => {
+            if (!nextValue)
+              return
+            const nextItem = themeOptions.find(item => item.value === nextValue)
+            if (nextItem)
+              handleSelectTheme(nextItem)
+          }}
+        >
+          <SelectTrigger size="medium">
+            {selectedTheme?.name ?? t('account.appearanceFollowSystem', { ns: 'common' })}
+          </SelectTrigger>
+          <SelectContent>
+            {themeOptions.map(item => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.name}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="mb-6">
         <div className={titleClassName}>{t('language.displayLanguage', { ns: 'common' })}</div>
         <Select
           value={selectedLanguage?.value ?? null}
@@ -82,7 +126,7 @@ export default function LanguagePage() {
               handleSelectLanguage(nextItem)
           }}
         >
-          <SelectTrigger size="large">
+          <SelectTrigger size="medium">
             {selectedLanguage?.name ?? t('placeholder.select', { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>
@@ -95,7 +139,7 @@ export default function LanguagePage() {
           </SelectContent>
         </Select>
       </div>
-      <div className="mb-8">
+      <div className="mb-6">
         <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
         <Select
           value={selectedTimezone ? String(selectedTimezone.value) : null}
@@ -108,7 +152,7 @@ export default function LanguagePage() {
               handleSelectTimezone(nextItem)
           }}
         >
-          <SelectTrigger size="large">
+          <SelectTrigger size="medium">
             {selectedTimezone?.name ?? t('placeholder.select', { ns: 'common' })}
           </SelectTrigger>
           <SelectContent>

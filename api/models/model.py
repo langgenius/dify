@@ -397,6 +397,12 @@ class App(Base):
     __tablename__ = "apps"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
 
+    if TYPE_CHECKING:
+        # Response-only attributes attached by app list/detail enrichers.
+        access_mode: str | None
+        has_draft_trigger: bool
+        is_starred: bool
+
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
@@ -654,6 +660,28 @@ class App(Base):
         return None
 
 
+class AppStar(Base):
+    """Account-scoped star marker for apps in a workspace."""
+
+    __tablename__ = "app_stars"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_star_pkey"),
+        sa.UniqueConstraint("tenant_id", "account_id", "app_id", name="app_star_tenant_account_app_unique"),
+        sa.Index("app_star_tenant_account_idx", "tenant_id", "account_id"),
+        sa.Index("app_star_app_idx", "app_id"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+
+    @override
+    def __repr__(self) -> str:
+        return f"<AppStar app_id={self.app_id} account_id={self.account_id}>"
+
+
 class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
@@ -907,6 +935,9 @@ class RecommendedApp(TypeBase):
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    is_learn_dify: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),

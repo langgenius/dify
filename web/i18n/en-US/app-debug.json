@@ -383,7 +383,7 @@
   "variableTable.typeString": "String",
   "variableTip": "Users fill variables in a form, automatically replacing variables in the prompt.",
   "variableTitle": "Variables",
-  "vision.description": "Enable Vision will allows the model to take in images and answer questions about them. ",
+  "vision.description": "Enable Vision will allows the model to take in images and answer questions about them. ",
   "vision.name": "Vision",
   "vision.onlySupportVisionModelTip": "Only supports vision models",
   "vision.settings": "Settings",

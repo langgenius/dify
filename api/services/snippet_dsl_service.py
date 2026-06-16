@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from urllib.parse import urlparse
 
-import yaml  # type: ignore
+import yaml
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -498,7 +498,7 @@ class SnippetDslService:
             export_data=export_data, snippet=snippet, workflow=workflow, include_secret=include_secret
         )
 
-        return yaml.dump(export_data, allow_unicode=True)  # type: ignore
+        return yaml.dump(export_data, allow_unicode=True)
 
     def _append_workflow_export_data(
         self, *, export_data: dict, snippet: CustomizedSnippet, workflow: Workflow, include_secret: bool
