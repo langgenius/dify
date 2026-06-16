@@ -17,6 +17,7 @@ export function AccessControlItem({ type, children }: PropsWithChildren<{
         'hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover',
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:ring-[0.5px] data-checked:ring-components-option-card-option-selected-border data-checked:ring-inset',
+        'data-disabled:cursor-not-allowed data-disabled:opacity-60 data-disabled:hover:border-components-option-card-option-border data-disabled:hover:bg-components-option-card-option-bg',
       )}
     >
       {children}

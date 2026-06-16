@@ -118,6 +118,7 @@ function AccessControlForm({
       <AccessControlDialogContent
         hideExternalTip={hideExternalTip}
         saving={isPending}
+        controlsDisabled={subjectsLoading || isPending}
         confirmDisabled={subjectsLoading}
         specificGroupsOrMembersProps={{
           loading: subjectsLoading,

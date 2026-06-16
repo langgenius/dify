@@ -121,13 +121,15 @@ export function EnvironmentPermissionRow({
     },
   ) => {
     const normalizedSubjects = nextKind === 'specific' ? subjectsFromAccessControlSelection(nextSelection) : []
-    setDraft({
-      fingerprint: policyFingerprint,
-      kind: nextKind,
-      subjects: normalizedSubjects,
-    })
     persistPolicy(nextKind, normalizedSubjects, {
-      onSuccess: options?.onSuccess,
+      onSuccess: () => {
+        setDraft({
+          fingerprint: policyFingerprint,
+          kind: nextKind,
+          subjects: normalizedSubjects,
+        })
+        options?.onSuccess?.()
+      },
     })
   }
 

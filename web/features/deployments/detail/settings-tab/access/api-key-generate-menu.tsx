@@ -224,7 +224,7 @@ export function ApiKeyGenerateMenu({
                 type="submit"
                 variant="primary"
                 loading={isCreating}
-                disabled={!selectedEnvironmentId || !draftName.trim()}
+                disabled={isCreating || !selectedEnvironmentId}
               >
                 {t('access.api.createKey')}
               </Button>

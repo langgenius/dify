@@ -133,8 +133,12 @@ describe('AccessControl', () => {
     )
 
     const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    const organizationOption = screen.getByRole('radio', {
+      name: 'app.accessControlDialog.accessItems.organization',
+    })
 
     expect(confirmButton).toBeDisabled()
+    expect(organizationOption).toHaveAttribute('aria-disabled', 'true')
 
     fireEvent.click(confirmButton)
 

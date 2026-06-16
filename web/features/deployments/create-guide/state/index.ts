@@ -312,7 +312,8 @@ const deploymentOptionsUnsupportedDslNodesAtom = unwrap(atom(async (get): Promis
   if (!sourceReady(get) || !deploymentOptionsQuery.isError)
     return []
 
-  return (await unsupportedDslNodeError(deploymentOptionsQuery.error))?.nodes ?? []
+  const unsupportedError = await unsupportedDslNodeError(deploymentOptionsQuery.error)
+  return unsupportedError?.nodes
 }), (): undefined => undefined)
 
 export const unsupportedDslNodesAtom = atom((get): UnsupportedDslNode[] => {

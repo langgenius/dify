@@ -580,6 +580,7 @@
   "versions.deployedStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "Unknown",
   "versions.deployingTo": "{{name}} is deploying",
   "versions.disabledReason.checkingDeployments": "Checking deployment usage",
+  "versions.disabledReason.checkDeploymentsFailed": "Could not verify deployment usage. Try again later.",
   "versions.disabledReason.current": "This release is already running on {{name}}",
   "versions.disabledReason.deploying": "Wait for the active deployment to finish",
   "versions.disabledReason.envDisabled": "This environment isn't deployable",

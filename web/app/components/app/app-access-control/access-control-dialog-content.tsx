@@ -18,6 +18,7 @@ type AccessControlDialogContentProps = {
   hideExternal?: boolean
   hideExternalTip?: boolean
   saving?: boolean
+  controlsDisabled?: boolean
   confirmDisabled?: boolean
   specificGroupsOrMembersProps?: SpecificGroupsOrMembersProps
   onClose: () => void
@@ -31,6 +32,7 @@ export function AccessControlDialogContent({
   hideExternal = false,
   hideExternalTip = false,
   saving = false,
+  controlsDisabled = false,
   confirmDisabled = false,
   specificGroupsOrMembersProps,
   onClose,
@@ -55,6 +57,7 @@ export function AccessControlDialogContent({
         onValueChange={setCurrentMenu}
         className="flex flex-col items-stretch gap-y-1 px-6 pb-3"
         aria-labelledby="access-control-options-label"
+        disabled={controlsDisabled}
       >
         <div className="leading-6">
           <p id="access-control-options-label" className="system-sm-medium text-text-tertiary">

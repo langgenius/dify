@@ -175,6 +175,7 @@ function DeploymentAccessControlDialogBody({
         description={t('access.permissions.editDescription')}
         hideExternal
         saving={saving}
+        controlsDisabled={saving || subjectsLoading}
         confirmDisabled={confirmDisabled}
         specificGroupsOrMembersProps={{
           loading: subjectsLoading,

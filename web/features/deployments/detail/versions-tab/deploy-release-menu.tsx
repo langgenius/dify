@@ -64,14 +64,17 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
   const targetReleaseName = targetRelease.displayName
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
   const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading
+  const hasDeleteUsageCheckFailed = open && environmentDeploymentsQuery.isError
   const isReleaseInUse = deleteUsageCount > 0
   const isDeletingRelease = deleteRelease.isPending
   const deleteDisabledReason = isCheckingDeleteUsage
     ? t('versions.disabledReason.checkingDeployments')
-    : isReleaseInUse
-      ? t('versions.disabledReason.releaseInUse', { count: deleteUsageCount })
-      : undefined
-  const deleteActionDisabled = isDeletingRelease || isCheckingDeleteUsage || isReleaseInUse
+    : hasDeleteUsageCheckFailed
+      ? t('versions.disabledReason.checkDeploymentsFailed')
+      : isReleaseInUse
+        ? t('versions.disabledReason.releaseInUse', { count: deleteUsageCount })
+        : undefined
+  const deleteActionDisabled = isDeletingRelease || isCheckingDeleteUsage || hasDeleteUsageCheckFailed || isReleaseInUse
 
   const handleExportDsl = async () => {
     if (isExportingDsl)

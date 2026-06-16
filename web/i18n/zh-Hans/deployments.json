@@ -580,6 +580,7 @@
   "versions.deployedStatus.RUNTIME_INSTANCE_STATUS_UNSPECIFIED": "未知",
   "versions.deployingTo": "{{name}} 正在部署",
   "versions.disabledReason.checkingDeployments": "正在检查部署使用情况",
+  "versions.disabledReason.checkDeploymentsFailed": "无法确认部署使用情况，请稍后重试。",
   "versions.disabledReason.current": "{{name}} 已运行此版本",
   "versions.disabledReason.deploying": "请等待当前部署完成",
   "versions.disabledReason.envDisabled": "此环境不可部署",
