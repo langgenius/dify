@@ -68,9 +68,9 @@ export function AppListHeaderFilters({
           onValueChange={onKeywordsChange}
           aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
         />
+        <AppSortFilter value={sortBy} onChange={onSortByChange} />
       </div>
       <div className="flex items-center gap-2">
-        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <Link
           href="/snippets"
           className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"

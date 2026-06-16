@@ -417,14 +417,16 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
-    it('should render link to snippets before the create button', () => {
+    it('should render sort filter after search and before the snippets link', () => {
       renderList()
 
+      const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
       const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(searchInput.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(sortButton.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
