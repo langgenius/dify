@@ -11864,9 +11864,13 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
 | app_id | string |  | Yes |
 | app_mode | string |  | Yes |
 | app_name | string |  | Yes |
+| app_updated_at | integer |  | No |
 | node_ids | [ string ] |  | No |
 | workflow_id | string |  | Yes |
 | workflow_version | string |  | Yes |
@@ -11875,11 +11879,16 @@ the current roster/workflow APIs scoped to Dify Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
 | app_id | string |  | Yes |
 | app_mode | string |  | Yes |
 | app_name | string |  | Yes |
+| app_updated_at | integer |  | No |
 | node_ids | [ string ] |  | No |
 | workflow_id | string |  | Yes |
+| workflow_version | string |  | Yes |
 
 #### AgentReferencingWorkflowsResponse
 

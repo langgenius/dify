@@ -582,11 +582,16 @@ export type MessageFile = {
 }
 
 export type AgentReferencingWorkflowResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
   app_id: string
   app_mode: string
   app_name: string
+  app_updated_at?: number | null
   node_ids?: Array<string>
   workflow_id: string
+  workflow_version: string
 }
 
 export type SandboxFileEntryResponse = {
@@ -661,9 +666,13 @@ export type AgentKind = 'dify_agent'
 export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type AgentPublishedReferenceResponse = {
+  app_icon?: string | null
+  app_icon_background?: string | null
+  app_icon_type?: string | null
   app_id: string
   app_mode: string
   app_name: string
+  app_updated_at?: number | null
   node_ids?: Array<string>
   workflow_id: string
   workflow_version: string
