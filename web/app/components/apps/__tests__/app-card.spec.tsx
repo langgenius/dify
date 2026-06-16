@@ -8,6 +8,7 @@ import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 
 let mockWebappAuthEnabled = false
@@ -573,6 +574,21 @@ describe('AppCard', () => {
       })
     })
 
+    it('should show duplicate option when user can create apps without app import export permission', async () => {
+      const appWithoutImportExportPermission = createMockApp({
+        created_by: 'another-user',
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+      render(<AppCard app={appWithoutImportExportPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+    })
+
     it('should show export option when dropdown menu is opened', async () => {
       render(<AppCard app={mockApp} />)
 
@@ -602,6 +618,23 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText(/switch/i)).toBeInTheDocument()
       })
+    })
+
+    it('should show switch option when user can edit app without app creation permission', async () => {
+      mockAppContext.workspacePermissionKeys = []
+      const editableChatApp = createMockApp({
+        created_by: 'another-user',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.Edit],
+      })
+      render(<AppCard app={editableChatApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText(/switch/i)).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.duplicate')).not.toBeInTheDocument()
     })
 
     it('should show switch option for completion mode apps', async () => {
@@ -1637,6 +1670,35 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText('app.accessControl')).toBeInTheDocument()
       })
+    })
+
+    it('should show access control option when user has app release and version permission', async () => {
+      const appWithReleasePermission = createMockApp({
+        created_by: 'another-user',
+        permission_keys: [AppACLPermission.ReleaseAndVersion],
+      })
+      render(<AppCard app={appWithReleasePermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should not show access control option when user only has app access config permission', async () => {
+      const appWithAccessConfigPermission = createMockApp({
+        created_by: 'another-user',
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
+      })
+      render(<AppCard app={appWithAccessConfigPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
     })
 
     it('should click access control button', async () => {

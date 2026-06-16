@@ -3,6 +3,19 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import PermissionSetModal from '../index'
 
+const expectedAppACLPermissionKeys = [
+  'app.acl.view_layout',
+  'app.acl.test_and_run',
+  'app.acl.edit',
+  'app.acl.import_export_dsl',
+  'app.acl.delete',
+  'app.acl.release_and_version',
+  'app.acl.monitor',
+  'app.acl.access_config',
+]
+
+const getPermissionKeyMatcher = (permissionKey: string) => new RegExp(permissionKey.replaceAll('.', '\\.'))
+
 const mockCatalogs = vi.hoisted(() => ({
   app: {
     groups: [] as PermissionGroup[],
@@ -25,18 +38,11 @@ const createPermissionGroup = (overrides: Partial<PermissionGroup> = {}): Permis
   group_key: 'app_management',
   group_name: 'App management',
   description: '',
-  permissions: [
-    {
-      key: 'app.acl.edit',
-      name: 'Edit app',
-      description: '',
-    },
-    {
-      key: 'app.acl.publish',
-      name: 'Publish app',
-      description: '',
-    },
-  ],
+  permissions: expectedAppACLPermissionKeys.map(permissionKey => ({
+    key: permissionKey,
+    name: permissionKey,
+    description: '',
+  })),
   ...overrides,
 })
 
@@ -79,6 +85,21 @@ describe('PermissionSetModal', () => {
       expect(screen.getByText(/app\.acl\.edit/)).toBeInTheDocument()
     })
 
+    it('should render the complete app ACL permission catalog', async () => {
+      render(
+        <PermissionSetModal
+          open
+          mode="create"
+          resourceType="app"
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
+      )
+
+      for (const permissionKey of expectedAppACLPermissionKeys)
+        expect(await screen.findByText(getPermissionKeyMatcher(permissionKey))).toBeInTheDocument()
+    })
+
     it('should render dataset permission catalog when resource type is dataset', () => {
       render(
         <PermissionSetModal
@@ -115,14 +136,14 @@ describe('PermissionSetModal', () => {
 
       await user.type(screen.getByLabelText(/permission\.permissionSet\.nameLabel/), '  Custom app rule  ')
       await user.type(screen.getByLabelText('permission.permissionSet.descriptionLabel'), '  Can edit apps  ')
-      await user.click(screen.getByText(/app\.acl\.publish/))
+      await user.click(screen.getByText(/app\.acl\.release_and_version/))
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       expect(handleSubmit).toHaveBeenCalledTimes(1)
       expect(handleSubmit).toHaveBeenCalledWith({
         name: 'Custom app rule',
         description: 'Can edit apps',
-        permissionKeys: ['app.acl.publish'],
+        permissionKeys: ['app.acl.release_and_version'],
       })
       expect(handleClose).toHaveBeenCalledTimes(1)
     })
