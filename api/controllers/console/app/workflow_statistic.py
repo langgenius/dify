@@ -103,7 +103,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
@@ -148,7 +148,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
@@ -193,7 +193,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
@@ -237,7 +237,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=[AppMode.WORKFLOW])
     def get(self, account: Account, app_model: App):
         args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))
