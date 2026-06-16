@@ -26,7 +26,9 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.runs_on }}
-    if: github.repository == 'langgenius/dify'
+    if: |
+      github.repository == 'langgenius/dify' &&
+      (github.ref != 'refs/heads/feat/agent-v2' || contains(github.event.head_commit.message, 'deploy'))
     permissions:
       contents: read
       id-token: write
