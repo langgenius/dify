@@ -2755,7 +2755,7 @@ class TestRegisterService:
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test inviting an existing member who is not in the tenant yet.
+        Test inviting an existing active account who is not in the tenant yet.
         """
         fake = Faker()
         tenant_name = fake.company()
@@ -2791,20 +2791,20 @@ class TestRegisterService:
         # Mock the email task
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
             mock_send_mail.delay.return_value = None
-            with pytest.raises(AccountAlreadyInTenantError, match="Account already in tenant."):
-                # Execute invitation
-                token = RegisterService.invite_new_member(
-                    tenant=tenant,
-                    email=existing_member_email,
-                    language=language,
-                    role="admin",
-                    inviter=inviter,
-                )
 
-            # Verify email task was not called
-            mock_send_mail.delay.assert_not_called()
+            token = RegisterService.invite_new_member(
+                tenant=tenant,
+                email=existing_member_email,
+                language=language,
+                role="admin",
+                inviter=inviter,
+            )
 
-        # Verify tenant member was created for existing account
+            assert token is not None
+            assert len(token) > 0
+            mock_send_mail.delay.assert_called_once()
+
+        # Existing active accounts must accept the invite before becoming workspace members.
         from models.account import TenantAccountJoin
 
         tenant_join = (
@@ -2812,8 +2812,13 @@ class TestRegisterService:
             .filter_by(tenant_id=tenant.id, account_id=existing_account.id)
             .first()
         )
-        assert tenant_join is not None
-        assert tenant_join.role == "admin"
+        assert tenant_join is None
+
+        invitation = RegisterService.get_invitation_if_token_valid(None, None, token)
+        assert invitation is not None
+        assert invitation["account"].id == existing_account.id
+        assert invitation["data"]["role"] == "admin"
+        assert invitation["data"]["requires_setup"] is False
 
     def test_invite_new_member_existing_member(
         self, db_session_with_containers: Session, mock_external_service_dependencies
