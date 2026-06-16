@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import pytest
 from flask import Flask
+from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
@@ -525,6 +526,83 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     assert stop_call == {"current_user_id": account_id, "app_model": app_model, "task_id": "task-1"}
 
 
+def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    app_model = SimpleNamespace(id="app-1", mode="agent")
+    current_user = SimpleNamespace(id=account_id)
+    captured: dict[str, object] = {}
+
+    def generate(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(
+        completion_controller.helper,
+        "compact_generate_response",
+        lambda response: {"response": response},
+    )
+
+    with app.test_request_context(
+        json={"inputs": {}, "query": "hello", "response_mode": "streaming"},
+        headers={"X-Trace-Id": "trace-1"},
+    ):
+        result = completion_controller._create_chat_message(current_user=current_user, app_model=app_model)
+
+    assert result == {"response": {"answer": "ok"}}
+    assert captured["app_model"] is app_model
+    assert captured["user"] is current_user
+    assert captured["streaming"] is True
+    args = cast(dict[str, object], captured["args"])
+    assert args["response_mode"] == "streaming"
+    assert args["auto_generate_name"] is False
+    assert args["external_trace_id"] == "trace-1"
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (completion_controller.services.errors.conversation.ConversationNotExistsError(), NotFound),
+        (
+            completion_controller.services.errors.conversation.ConversationCompletedError(),
+            completion_controller.ConversationCompletedError,
+        ),
+        (
+            completion_controller.services.errors.app_model_config.AppModelConfigBrokenError(),
+            completion_controller.AppUnavailableError,
+        ),
+        (
+            completion_controller.ProviderTokenNotInitError("not initialized"),
+            completion_controller.ProviderNotInitializeError,
+        ),
+        (completion_controller.QuotaExceededError(), completion_controller.ProviderQuotaExceededError),
+        (
+            completion_controller.ModelCurrentlyNotSupportError(),
+            completion_controller.ProviderModelCurrentlyNotSupportError,
+        ),
+        (completion_controller.InvokeRateLimitError("rate limited"), completion_controller.InvokeRateLimitHttpError),
+        (completion_controller.InvokeError("invoke failed"), completion_controller.CompletionRequestError),
+        (RuntimeError("unexpected"), InternalServerError),
+    ],
+)
+def test_agent_chat_helper_maps_generation_errors(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+    expected: type[Exception],
+) -> None:
+    app_model = SimpleNamespace(id="app-1", mode="chat")
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", lambda **_: (_ for _ in ()).throw(error))
+
+    with app.test_request_context(json={"inputs": {}, "query": "hello"}):
+        with pytest.raises(expected):
+            completion_controller._create_chat_message(
+                current_user=SimpleNamespace(id="account-1"),
+                app_model=app_model,
+            )
+
+
 def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     message_id = "00000000-0000-0000-0000-000000000002"
@@ -580,6 +658,98 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeyp
     assert unwrap(AgentMessageApi.get)(AgentMessageApi(), "tenant-1", agent_id, message_id) == {"id": message_id}
     detail_call = cast(dict[str, object], captured["detail"])
     assert detail_call == {"app_model": app_model, "message_id": message_id}
+
+
+def test_list_chat_messages_supports_first_id_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    conversation_id = "00000000-0000-0000-0000-000000000010"
+    first_message_id = "00000000-0000-0000-0000-000000000011"
+    older_message_id = "00000000-0000-0000-0000-000000000012"
+    conversation = SimpleNamespace(id=conversation_id)
+    first_message = SimpleNamespace(id=first_message_id, created_at=2)
+    older_message = SimpleNamespace(id=older_message_id, created_at=1)
+    scalar_values = iter([conversation, first_message, True])
+    scalars_result = SimpleNamespace(all=lambda: [older_message])
+    session = SimpleNamespace(
+        scalar=lambda _stmt: next(scalar_values),
+        scalars=lambda _stmt: scalars_result,
+    )
+
+    class FakeMessagePaginationResponse:
+        @classmethod
+        def model_validate(cls, pagination: object, from_attributes: bool = False) -> object:
+            return SimpleNamespace(
+                model_dump=lambda mode: {
+                    "data": [item.id for item in pagination.data],
+                    "limit": pagination.limit,
+                    "has_more": pagination.has_more,
+                }
+            )
+
+    monkeypatch.setattr(message_controller, "db", SimpleNamespace(session=session))
+    monkeypatch.setattr(message_controller, "attach_message_extra_contents", lambda messages: None)
+    monkeypatch.setattr(message_controller, "MessageInfiniteScrollPaginationResponse", FakeMessagePaginationResponse)
+
+    with app.test_request_context(
+        "/console/api/agent/agent-1/chat-messages"
+        f"?conversation_id={conversation_id}&first_id={first_message_id}&limit=1"
+    ):
+        result = message_controller._list_chat_messages(app_model=SimpleNamespace(id="app-1"))
+
+    assert result == {"data": [older_message_id], "limit": 1, "has_more": True}
+
+
+def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    message_id = "00000000-0000-0000-0000-000000000002"
+    message = SimpleNamespace(id=message_id, app_id="app-1", admin_feedback=None)
+    session = SimpleNamespace(scalar=lambda _stmt: message)
+    monkeypatch.setattr(message_controller, "db", SimpleNamespace(session=session))
+
+    with app.test_request_context(json={"message_id": message_id, "rating": None}):
+        with pytest.raises(ValueError, match="rating cannot be None"):
+            message_controller._update_message_feedback(
+                current_user=SimpleNamespace(id="account-1"),
+                app_model=SimpleNamespace(id="app-1"),
+            )
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (message_controller.MessageNotExistsError(), NotFound),
+        (message_controller.ConversationNotExistsError(), NotFound),
+        (
+            message_controller.ProviderTokenNotInitError("not initialized"),
+            message_controller.ProviderNotInitializeError,
+        ),
+        (message_controller.QuotaExceededError(), message_controller.ProviderQuotaExceededError),
+        (message_controller.ModelCurrentlyNotSupportError(), message_controller.ProviderModelCurrentlyNotSupportError),
+        (message_controller.InvokeError("invoke failed"), message_controller.CompletionRequestError),
+        (
+            message_controller.SuggestedQuestionsAfterAnswerDisabledError(),
+            message_controller.AppSuggestedQuestionsAfterAnswerDisabledError,
+        ),
+        (RuntimeError("unexpected"), InternalServerError),
+    ],
+)
+def test_get_message_suggested_questions_maps_service_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    error: Exception,
+    expected: type[Exception],
+) -> None:
+    monkeypatch.setattr(
+        message_controller.MessageService,
+        "get_suggested_questions_after_answer",
+        lambda **_: (_ for _ in ()).throw(error),
+    )
+
+    with pytest.raises(expected):
+        message_controller._get_message_suggested_questions(
+            current_user=SimpleNamespace(id="account-1"),
+            app_model=SimpleNamespace(id="app-1"),
+            message_id="00000000-0000-0000-0000-000000000002",
+        )
 
 
 def test_dify_tool_candidate_response_keeps_granularity_fields():
