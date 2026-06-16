@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -113,37 +114,36 @@ class TestDeleteAppStars:
 
 class TestDeleteArchivedWorkflowRunFiles:
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    @patch("tasks.remove_app_and_related_data_task.logger")
-    def test_delete_archived_workflow_run_files_not_configured(self, mock_logger, mock_get_storage):
+    def test_delete_archived_workflow_run_files_not_configured(self, mock_get_storage, caplog):
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
-        _delete_archived_workflow_run_files("tenant-1", "app-1")
+        with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
+            _delete_archived_workflow_run_files("tenant-1", "app-1")
 
-        assert mock_logger.info.call_count == 1
-        assert "Archive storage not configured" in mock_logger.info.call_args[0][0]
+        assert caplog.text.count("Archive storage not configured") == 1
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    @patch("tasks.remove_app_and_related_data_task.logger")
-    def test_delete_archived_workflow_run_files_list_failure(self, mock_logger, mock_get_storage):
+    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog):
         storage = MagicMock()
         storage.list_objects.side_effect = Exception("list failed")
         mock_get_storage.return_value = storage
 
-        _delete_archived_workflow_run_files("tenant-1", "app-1")
+        with caplog.at_level(logging.ERROR, logger="tasks.remove_app_and_related_data_task"):
+            _delete_archived_workflow_run_files("tenant-1", "app-1")
 
         storage.list_objects.assert_called_once_with("tenant-1/app_id=app-1/")
         storage.delete_object.assert_not_called()
-        mock_logger.exception.assert_called_once_with("Failed to list archive files for app %s", "app-1")
+        assert "Failed to list archive files for app app-1" in caplog.text
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    @patch("tasks.remove_app_and_related_data_task.logger")
-    def test_delete_archived_workflow_run_files_success(self, mock_logger, mock_get_storage):
+    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog):
         storage = MagicMock()
         storage.list_objects.return_value = ["key-1", "key-2"]
         mock_get_storage.return_value = storage
 
-        _delete_archived_workflow_run_files("tenant-1", "app-1")
+        with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
+            _delete_archived_workflow_run_files("tenant-1", "app-1")
 
         storage.list_objects.assert_called_once_with("tenant-1/app_id=app-1/")
         storage.delete_object.assert_has_calls([call("key-1"), call("key-2")], any_order=False)
-        mock_logger.info.assert_called_with("Deleted %s archive objects for app %s", 2, "app-1")
+        assert "Deleted 2 archive objects for app app-1" in caplog.text
