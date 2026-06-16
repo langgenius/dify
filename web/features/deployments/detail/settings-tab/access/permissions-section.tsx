@@ -1,7 +1,6 @@
 'use client'
 
-import type { AccessChannels, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
-import { cn } from '@langgenius/dify-ui/cn'
+import type { EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
@@ -30,7 +29,6 @@ function AccessPermissionsSkeleton() {
         <DetailTableRow>
           <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
           <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.permission}>{t('access.permissions.col.permission')}</DetailTableHead>
-          <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.subjects}>{t('access.permissions.col.subjects')}</DetailTableHead>
         </DetailTableRow>
       </DetailTableHeader>
       <DetailTableBody className="block pc:table-row-group">
@@ -42,9 +40,6 @@ function AccessPermissionsSkeleton() {
             <DetailTableCell className="block h-auto max-w-none px-4 py-1 pc:table-cell pc:p-3 pc:pr-2">
               <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
             </DetailTableCell>
-            <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 pc:table-cell pc:p-3 pc:pr-2">
-              <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-            </DetailTableCell>
           </DetailTableRow>
         ))}
       </DetailTableBody>
@@ -54,25 +49,21 @@ function AccessPermissionsSkeleton() {
 
 export function AccessPermissionsSection({
   appInstanceId,
-  accessChannels,
   environmentPolicies,
   isLoading,
   isError,
 }: {
   appInstanceId: string
-  accessChannels?: AccessChannels
   environmentPolicies?: EnvironmentAccessPolicy[]
   isLoading: boolean
   isError: boolean
 }) {
   const { t } = useTranslation('deployments')
   const policyRows = environmentPolicies ?? []
-  const permissionsDisabled = !(accessChannels?.webAppEnabled ?? false)
 
   return (
     <Section
       title={t('access.permissions.title')}
-      description={t('access.permissions.description')}
       showDivider={false}
     >
       {isLoading
@@ -89,12 +80,11 @@ export function AccessPermissionsSection({
                 />
               )
             : (
-                <DetailTable className={cn('block pc:table', permissionsDisabled && 'opacity-60')}>
+                <DetailTable className="block pc:table">
                   <DetailTableHeader className="hidden pc:table-header-group">
                     <DetailTableRow>
                       <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.permissions.col.environment')}</DetailTableHead>
                       <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.permission}>{t('access.permissions.col.permission')}</DetailTableHead>
-                      <DetailTableHead className={ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES.subjects}>{t('access.permissions.col.subjects')}</DetailTableHead>
                     </DetailTableRow>
                   </DetailTableHeader>
                   <DetailTableBody className="block pc:table-row-group">
@@ -104,7 +94,6 @@ export function AccessPermissionsSection({
                         <EnvironmentPermissionRow
                           key={environment.id}
                           appInstanceId={appInstanceId}
-                          disabled={permissionsDisabled}
                           environment={environment}
                           summaryPolicy={environmentPolicy.policy}
                           resolvedSubjects={environmentPolicy.resolvedSubjects}

@@ -13,7 +13,6 @@ import { AccessControlDialog } from '@/app/components/app/app-access-control/acc
 import { AccessControlDialogContent } from '@/app/components/app/app-access-control/access-control-dialog-content'
 import { useAccessControlStore } from '@/app/components/app/app-access-control/store'
 import { AccessControlDraftProvider } from '@/app/components/app/app-access-control/store-provider'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 import {
   appAccessModeToPermissionKey,
@@ -22,18 +21,31 @@ import {
 
 export function PermissionSummaryButton({
   value,
+  subjects,
   disabled,
   loading,
   environmentLabel,
   onClick,
 }: {
   value: AccessPermissionKind
+  subjects?: SelectableAccessSubject[]
   disabled?: boolean
   loading?: boolean
   environmentLabel: string
   onClick: () => void
 }) {
   const { t } = useTranslation('deployments')
+  const groupCount = subjects?.filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP).length ?? 0
+  const memberCount = (subjects?.length ?? 0) - groupCount
+  const countLabels = [
+    ...(groupCount > 0 ? [t('access.members.groupCount', { count: groupCount })] : []),
+    ...(memberCount > 0 ? [t('access.members.memberCount', { count: memberCount })] : []),
+  ]
+  const specificSubjectLabel = value === 'specific'
+    ? subjects && subjects.length > 0
+      ? countLabels.join(' · ')
+      : t('access.permission.specificDesc')
+    : undefined
 
   return (
     <button
@@ -42,7 +54,7 @@ export function PermissionSummaryButton({
       aria-label={t('access.permissions.editAriaLabel', { environment: environmentLabel })}
       onClick={onClick}
       className={cn(
-        'inline-flex h-8 w-full min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2.5 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+        'inline-flex min-h-8 w-full min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2.5 py-1.5 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
         disabled && 'cursor-not-allowed opacity-50 hover:bg-components-input-bg-normal',
       )}
     >
@@ -53,55 +65,17 @@ export function PermissionSummaryButton({
         )}
         aria-hidden="true"
       />
-      <span className="flex-1 truncate text-left">{t(`access.permission.${value}`)}</span>
+      <span className="min-w-0 flex-1 truncate text-left">
+        <span>{t(`access.permission.${value}`)}</span>
+        {specificSubjectLabel && (
+          <span className="text-text-tertiary">
+            {' · '}
+            {specificSubjectLabel}
+          </span>
+        )}
+      </span>
       <span className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
     </button>
-  )
-}
-
-export function SubjectsSummary({
-  permissionKind,
-  subjects,
-  loading,
-}: {
-  permissionKind: AccessPermissionKind
-  subjects: SelectableAccessSubject[]
-  loading?: boolean
-}) {
-  const { t } = useTranslation('deployments')
-
-  if (permissionKind !== 'specific') {
-    return (
-      <div className="flex min-h-8 items-center system-xs-regular text-text-tertiary">
-        <span className="min-w-0">
-          {t(`access.permission.${permissionKind}Desc`)}
-        </span>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-8 items-center">
-        <SkeletonRectangle className="h-4 w-36 animate-pulse" />
-      </div>
-    )
-  }
-
-  const groupCount = subjects.filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP).length
-  const memberCount = subjects.length - groupCount
-  const countLabels = [
-    ...(groupCount > 0 ? [t('access.members.groupCount', { count: groupCount })] : []),
-    ...(memberCount > 0 ? [t('access.members.memberCount', { count: memberCount })] : []),
-  ]
-
-  return (
-    <div className="flex min-h-8 min-w-0 items-center gap-1.5 system-xs-regular text-text-tertiary">
-      <span className="i-ri-lock-line size-3.5 shrink-0" aria-hidden="true" />
-      <span className="min-w-0 truncate">
-        {countLabels.length > 0 ? countLabels.join(' · ') : t('access.permission.specificDesc')}
-      </span>
-    </div>
   )
 }
 

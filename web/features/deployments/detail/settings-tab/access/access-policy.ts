@@ -19,7 +19,7 @@ import { AccessMode as AppAccessMode } from '@/models/access-control'
 export type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
 
 export const permissionIcon: Record<AccessPermissionKind, string> = {
-  organization: 'i-ri-team-line',
+  organization: 'i-ri-building-line',
   specific: 'i-ri-lock-line',
   anyone: 'i-ri-global-line',
 }

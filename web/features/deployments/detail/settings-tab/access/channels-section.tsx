@@ -58,7 +58,6 @@ function AccessChannelsSkeleton() {
             <SkeletonRectangle className="my-0 size-7 shrink-0 animate-pulse rounded-lg" />
             <div className="flex min-w-0 flex-col gap-1.5">
               <SkeletonRectangle className="h-3.5 w-24 animate-pulse" />
-              <SkeletonRectangle className="h-3 w-40 animate-pulse" />
             </div>
           </div>
           <SkeletonRectangle className="my-0 h-8 min-w-0 flex-1 animate-pulse rounded-lg" />
@@ -71,7 +70,7 @@ function AccessChannelsSkeleton() {
 function ChannelInfo({ icon, title, description }: {
   icon: ReactNode
   title: string
-  description: string
+  description?: string
 }) {
   return (
     <div className="flex min-w-0 items-start gap-2.5">
@@ -82,7 +81,9 @@ function ChannelInfo({ icon, title, description }: {
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="system-sm-medium text-text-primary">{title}</span>
         </div>
-        <div className="system-xs-regular text-text-tertiary">{description}</div>
+        {description && (
+          <div className="system-xs-regular text-text-tertiary">{description}</div>
+        )}
       </div>
     </div>
   )
@@ -137,7 +138,6 @@ export function AccessChannelsSection({
   return (
     <Section
       title={t('access.channels.title')}
-      description={t('access.channels.description')}
       action={(
         isLoading
           ? <SwitchSkeleton />
@@ -168,7 +168,6 @@ export function AccessChannelsSection({
                       <ChannelInfo
                         icon={<span className="i-ri-global-line size-3.5" aria-hidden="true" />}
                         title={t('access.runAccess.webapp')}
-                        description={t('access.runAccess.webappDesc')}
                       />
                     )}
                   >
@@ -197,7 +196,6 @@ export function AccessChannelsSection({
                       <ChannelInfo
                         icon={<span className="i-ri-terminal-box-line size-3.5" aria-hidden="true" />}
                         title={t('access.cli.title')}
-                        description={t('access.cli.description')}
                       />
                     )}
                   >

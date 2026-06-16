@@ -19,7 +19,6 @@ export const RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
 export const ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
   environment: 'whitespace-nowrap',
   permission: '',
-  subjects: '',
 }
 
 export const API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES = {

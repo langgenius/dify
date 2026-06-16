@@ -24,7 +24,7 @@ export function DetailTableHeader({ className, ...props }: ComponentProps<'thead
   return (
     <thead
       data-slot="deployment-detail-table-header"
-      className={cn('system-xs-medium-uppercase text-text-tertiary [&_tr]:border-b-0 [&_tr]:hover:bg-transparent', className)}
+      className={cn('h-8 border-b border-divider-subtle system-xs-medium-uppercase text-text-tertiary [&_tr]:border-b-0 [&_tr]:hover:bg-transparent', className)}
       {...props}
     />
   )
@@ -54,7 +54,7 @@ export function DetailTableHead({ className, ...props }: ComponentProps<'th'>) {
   return (
     <th
       data-slot="deployment-detail-table-head"
-      className={cn('bg-background-section-burn py-1.5 pr-2 pl-3 text-left align-middle font-medium whitespace-nowrap first:rounded-l-lg last:rounded-r-lg', className)}
+      className={cn('bg-transparent py-2 pr-2 pl-3 text-left align-middle font-medium whitespace-nowrap', className)}
       {...props}
     />
   )

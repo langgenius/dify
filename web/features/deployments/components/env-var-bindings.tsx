@@ -173,14 +173,18 @@ export function EnvVarBindingsPanel({
               <div className="flex min-w-0 flex-col gap-2.5">
                 <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
+                    <span aria-hidden="true" className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600" />
                     <TitleTooltip content={slot.key}>
                       <label className="truncate font-mono system-sm-semibold text-text-primary" htmlFor={inputId}>
                         {slot.key}
                       </label>
                     </TitleTooltip>
-                    <span className="shrink-0 rounded-md border border-divider-deep bg-background-default px-1.5 py-0.5 system-2xs-medium-uppercase text-text-secondary">
+                    <span className="shrink-0 system-sm-medium text-text-tertiary">
                       {valueTypeLabels[slot.valueType]}
                     </span>
+                    {slot.valueType === 'secret' && (
+                      <span aria-hidden="true" className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary" />
+                    )}
                   </div>
                   {sourceOptions.length > 1 && (
                     <SegmentedControl<EnvVarValueSource>

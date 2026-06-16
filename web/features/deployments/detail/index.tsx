@@ -56,7 +56,7 @@ export function InstanceDetail({ appInstanceId, children }: {
   return (
     <div className="relative flex h-full min-w-0 overflow-hidden rounded-t-2xl shadow-xs">
       <DeploymentSidebar appInstanceId={appInstanceId} />
-      <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
+      <div className="min-w-0 grow overflow-hidden bg-background-default-subtle">
         <div className="h-full min-w-0 overflow-y-auto">
           <div className="flex min-h-full w-full flex-col">
             <div className="flex w-full flex-col gap-y-0.5 px-4 pt-3 pb-2 sm:px-6">

@@ -1,5 +1,5 @@
 import type { AccessPolicy, Environment } from '@dify/contracts/enterprise/types.gen'
-import { AccessMode } from '@dify/contracts/enterprise/types.gen'
+import { AccessMode, SubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { EnvironmentPermissionRow } from '../permissions'
@@ -34,6 +34,23 @@ function createAccessPolicy(): AccessPolicy {
   }
 }
 
+function createSpecificAccessPolicy(): AccessPolicy {
+  return {
+    ...createAccessPolicy(),
+    mode: AccessMode.ACCESS_MODE_PRIVATE,
+    subjects: [
+      {
+        subjectId: 'group-1',
+        subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+      },
+      {
+        subjectId: 'member-1',
+        subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+      },
+    ],
+  }
+}
+
 describe('EnvironmentPermissionRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -65,5 +82,25 @@ describe('EnvironmentPermissionRow', () => {
 
     expect(mockMutate).toHaveBeenCalled()
     expect(screen.getByText('deployments.access.permission.organization')).toBeInTheDocument()
+  })
+
+  it('should show specific subject counts in the access summary', () => {
+    render(
+      <table>
+        <tbody>
+          <EnvironmentPermissionRow
+            appInstanceId="app-instance-1"
+            environment={createEnvironment()}
+            summaryPolicy={createSpecificAccessPolicy()}
+          />
+        </tbody>
+      </table>,
+    )
+
+    const editButton = screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ })
+
+    expect(editButton).toHaveTextContent('deployments.access.permission.specific')
+    expect(editButton).toHaveTextContent('deployments.access.members.groupCount:{"count":1}')
+    expect(editButton).toHaveTextContent('deployments.access.members.memberCount:{"count":1}')
   })
 })

@@ -32,7 +32,6 @@ import {
 import {
   DeploymentAccessControlDialog,
   PermissionSummaryButton,
-  SubjectsSummary,
 } from './permission-row-components'
 
 type EnvironmentPermissionRowProps = {
@@ -145,26 +144,18 @@ export function EnvironmentPermissionRow({
           </span>
         </div>
       </DetailTableCell>
-      <DetailTableCell className="block h-auto max-w-none px-4 py-1 align-top pc:table-cell pc:p-3 pc:pr-2">
+      <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:p-3 pc:pr-2">
         <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
           {t('access.permissions.col.permission')}
         </div>
         <EnvironmentPermissionEditor
           permissionKind={permissionKind}
           subjectSelection={subjectSelection}
+          subjects={subjects}
           disabled={controlsDisabled}
           environmentLabel={envName}
           saving={isSaving}
           onSubmit={handlePermissionSubmit}
-        />
-      </DetailTableCell>
-      <DetailTableCell className="block h-auto max-w-none px-4 pt-1 pb-3 align-top pc:table-cell pc:p-3 pc:pr-2">
-        <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary pc:hidden">
-          {t('access.permissions.col.subjects')}
-        </div>
-        <SubjectsSummary
-          permissionKind={permissionKind}
-          subjects={subjects}
         />
       </DetailTableCell>
     </DetailTableRow>
@@ -174,6 +165,7 @@ export function EnvironmentPermissionRow({
 function EnvironmentPermissionEditor({
   permissionKind,
   subjectSelection,
+  subjects,
   disabled,
   environmentLabel,
   saving,
@@ -181,6 +173,7 @@ function EnvironmentPermissionEditor({
 }: {
   permissionKind: AccessPermissionKind
   subjectSelection: AccessSubjectSelectionValue
+  subjects: SelectableAccessSubject[]
   disabled?: boolean
   environmentLabel: string
   saving?: boolean
@@ -202,6 +195,7 @@ function EnvironmentPermissionEditor({
     <>
       <PermissionSummaryButton
         value={permissionKind}
+        subjects={subjects}
         disabled={disabled}
         loading={saving}
         environmentLabel={environmentLabel}
