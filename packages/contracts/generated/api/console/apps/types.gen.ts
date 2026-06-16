@@ -317,6 +317,7 @@ export type AppDetail = {
   enable_site: boolean
   icon?: string | null
   icon_background?: string | null
+  icon_type?: string | null
   id: string
   mode_compatible_with_agent: string
   name: string
