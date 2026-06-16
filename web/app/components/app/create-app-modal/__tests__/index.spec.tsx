@@ -131,7 +131,8 @@ describe('CreateAppModal', () => {
       enableBilling: true,
     } as unknown as ReturnType<typeof useProviderContext>)
     mockUseAppContext.mockReturnValue({
-      isCurrentWorkspaceEditor: true,
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: ['app.create_and_management'],
     } as unknown as ReturnType<typeof useAppContext>)
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
@@ -171,7 +172,13 @@ describe('CreateAppModal', () => {
     expect(onClose).toHaveBeenCalled()
     await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
     expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush))
+    await waitFor(() =>
+      expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
+        currentUserId: 'user-1',
+        resourceCreatedBy: undefined,
+        workspacePermissionKeys: ['app.create_and_management'],
+      }),
+    )
   })
 
   it('shows error toast when creation fails', async () => {

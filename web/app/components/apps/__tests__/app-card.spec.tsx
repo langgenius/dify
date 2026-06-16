@@ -60,11 +60,15 @@ vi.mock('use-context-selector', () => ({
   }),
 }))
 
+const mockAppContext = vi.hoisted(() => ({
+  isCurrentWorkspaceEditor: true,
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: ['app.create_and_management'] as string[],
+}))
+
 // Mock app context
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
-  }),
+  useAppContext: () => mockAppContext,
 }))
 
 // Mock provider context
@@ -114,6 +118,13 @@ vi.mock('@/service/access-control', () => ({
   }),
 }))
 
+vi.mock('@/service/access-control/use-app-access-control', () => ({
+  useGetUserCanAccessApp: () => ({
+    data: { result: true },
+    isLoading: false,
+  }),
+}))
+
 // Mock hooks
 const mockOpenAsyncWindow = vi.fn()
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -126,7 +137,7 @@ const { mockGetRedirection } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: (_isCurrentWorkspaceEditor: boolean, app: { id: string }) => `/app/${app.id}/configuration`,
+  getRedirectionPath: (app: { id: string }) => `/app/${app.id}/configuration`,
   getRedirection: mockGetRedirection,
 }))
 
@@ -325,6 +336,7 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   icon_background: '#FFEAD5',
   icon_url: null,
   author_name: 'Test Author',
+  created_by: 'user-1',
   created_at: 1704067200,
   updated_at: 1704153600,
   tags: [],
@@ -350,6 +362,9 @@ describe('AppCard', () => {
     mockWebappAuthEnabled = false
     mockDeleteMutationPending = false
     mockToggleStarMutationPending = false
+    mockAppContext.isCurrentWorkspaceEditor = true
+    mockAppContext.userProfile = { id: 'user-1' }
+    mockAppContext.workspacePermissionKeys = ['app.create_and_management']
   })
 
   describe('Rendering', () => {

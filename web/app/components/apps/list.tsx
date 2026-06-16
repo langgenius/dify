@@ -15,6 +15,7 @@ import { CheckModal } from '@/hooks/use-pay'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
+import { hasPermission } from '@/utils/permission'
 import AppCard from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { AppListCreationModals } from './app-list-creation-modals'
@@ -40,7 +41,7 @@ function List({
 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isCurrentWorkspaceDatasetOperator, workspacePermissionKeys } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -63,16 +64,20 @@ function List({
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
   const [needsRefreshAppList, setNeedsRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback((file: File) => {
+    if (!canCreateApp)
+      return
+
     setDroppedDSLFile(file)
     setShowCreateFromDSLModal(true)
-  }, [])
+  }, [canCreateApp])
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    enabled: canCreateApp,
   })
 
   useEffect(() => {
@@ -210,7 +215,19 @@ function List({
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  const showFirstEmptyState = !showSkeleton && !hasAnyApp && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
+  const showFirstEmptyState = !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const openCreateBlankModal = useCallback(() => {
+    if (canCreateApp)
+      setShowNewAppModal(true)
+  }, [canCreateApp])
+  const openCreateTemplateDialog = useCallback(() => {
+    if (canCreateApp)
+      setShowNewAppTemplateDialog(true)
+  }, [canCreateApp])
+  const openCreateFromDSLModal = useCallback(() => {
+    if (canCreateApp)
+      setShowCreateFromDSLModal(true)
+  }, [canCreateApp])
 
   return (
     <>
@@ -238,19 +255,19 @@ function List({
             onKeywordsChange={setKeywords}
             onCreatorIDsChange={setCreatorIDs}
             onSortByChange={setSortBy}
-            onCreateBlank={() => setShowNewAppModal(true)}
-            onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
-            onImportDSL={() => setShowCreateFromDSLModal(true)}
+            onCreateBlank={openCreateBlankModal}
+            onCreateTemplate={openCreateTemplateDialog}
+            onImportDSL={openCreateFromDSLModal}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
-            showCreateButton={isCurrentWorkspaceEditor}
+            showCreateButton={canCreateApp}
           />
         </StudioListHeader>
         {showFirstEmptyState
           ? (
               <FirstEmptyState
-                onCreateBlank={() => setShowNewAppModal(true)}
-                onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
-                onImportDSL={() => setShowCreateFromDSLModal(true)}
+                onCreateBlank={openCreateBlankModal}
+                onCreateTemplate={openCreateTemplateDialog}
+                onImportDSL={openCreateFromDSLModal}
               />
             )
           : (
@@ -258,7 +275,6 @@ function List({
                 {starredApps.length > 0 && (
                   <StarredAppList
                     apps={starredApps}
-                    isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
                     onRefresh={refreshAppLists}
                   />
                 )}
@@ -287,7 +303,7 @@ function List({
               </>
             )}
 
-        {isCurrentWorkspaceEditor && !showFirstEmptyState && (
+        {canCreateApp && !showFirstEmptyState && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
@@ -307,6 +323,7 @@ function List({
       </div>
 
       <AppListCreationModals
+        canCreateApp={canCreateApp}
         category={category}
         droppedDSLFile={droppedDSLFile}
         showCreateFromDSLModal={showCreateFromDSLModal}

@@ -1038,6 +1038,11 @@
       "count": 1
     }
   },
+  "web/app/components/apps/new-app-card.tsx": {
+    "react/set-state-in-effect": {
+      "count": 3
+    }
+  },
   "web/app/components/base/action-button/index.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1

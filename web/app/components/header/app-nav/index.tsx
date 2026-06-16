@@ -11,7 +11,7 @@ import dynamic from '@/next/dynamic'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import { getAppACLCapabilities } from '@/utils/permission'
+import { getAppACLCapabilities, hasPermission } from '@/utils/permission'
 import Nav from '../nav'
 
 const CreateAppTemplateDialog = dynamic(() => import('@/app/components/app/create-app-dialog'), { ssr: false })
@@ -40,6 +40,7 @@ const AppNav = () => {
   const appDetail = useAppStore(state => state.appDetail)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
@@ -70,14 +71,17 @@ const AppNav = () => {
       fetchNextPage()
   }, [fetchNextPage, hasNextPage])
 
-  const openModal = (state: string) => {
+  const openModal = useCallback((state: string) => {
+    if (!canCreateApp)
+      return
+
     if (state === 'blank')
       setShowNewAppDialog(true)
     if (state === 'template')
       setShowNewAppTemplateDialog(true)
     if (state === 'dsl')
       setShowCreateFromDSLModal(true)
-  }
+  }, [canCreateApp])
 
   const navItems = useMemo<NavItem[]>(() => {
     const appItems = appsData?.pages.flatMap(appData => appData.data) ?? []
@@ -120,17 +124,17 @@ const AppNav = () => {
         isLoadingMore={isFetchingNextPage}
       />
       <CreateAppModal
-        show={showNewAppDialog}
+        show={canCreateApp && showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}
         onSuccess={() => refetch()}
       />
       <CreateAppTemplateDialog
-        show={showNewAppTemplateDialog}
+        show={canCreateApp && showNewAppTemplateDialog}
         onClose={() => setShowNewAppTemplateDialog(false)}
         onSuccess={() => refetch()}
       />
       <CreateFromDSLModal
-        show={showCreateFromDSLModal}
+        show={canCreateApp && showCreateFromDSLModal}
         onClose={() => setShowCreateFromDSLModal(false)}
         onSuccess={() => refetch()}
       />

@@ -19,9 +19,13 @@ const ContinueWorkItem = ({
 }: ContinueWorkItemProps) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
   const updatedAt = (app.updated_at || app.created_at) * 1000
-  const href = getRedirectionPath(Boolean(isCurrentWorkspaceEditor), app)
+  const href = getRedirectionPath(app, {
+    currentUserId: userProfile?.id,
+    resourceCreatedBy: app.created_by || app.workflow?.created_by,
+    workspacePermissionKeys,
+  })
 
   return (
     <Link href={href} className="flex min-w-0 items-center gap-3 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-4 pb-4 shadow-xs shadow-shadow-shadow-3">

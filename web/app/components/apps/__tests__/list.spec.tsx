@@ -67,11 +67,13 @@ vi.mock('@/service/client', () => ({
 
 const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
     userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -354,6 +356,7 @@ describe('List', () => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
@@ -412,9 +415,17 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
 
-    it('should render create button for editors', () => {
+    it('should render create button with app.create_and_management permission', () => {
       renderList()
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
+    })
+
+    it('should render create button for non-editors with app.create_and_management permission', () => {
+      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+
+      renderList()
+
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
     })
 
     it('should render link to snippets before the create button', () => {
@@ -490,7 +501,7 @@ describe('List', () => {
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should render drop DSL hint for editors', () => {
+    it('should render drop DSL hint with app.create_and_management permission', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
@@ -737,8 +748,8 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
-    it('should not render create button for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should not render create button without app.create_and_management permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
@@ -747,20 +758,22 @@ describe('List', () => {
   })
 
   describe('Non-Editor User', () => {
-    it('should not render new app card for non-editors', () => {
+    it('should not render new app card without app.create_and_management permission', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should not render drop DSL hint for non-editors', () => {
+    it('should not render drop DSL hint without app.create_and_management permission', () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
-      expect(screen.queryByText(/drop dsl file to create app/i)).not.toBeInTheDocument()
+      expect(screen.queryByText('app.newApp.dropDSLToCreateApp')).not.toBeInTheDocument()
     })
   })
 
@@ -896,6 +909,19 @@ describe('List', () => {
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
+    })
+
+    it('should ignore DSL file drop without app.create_and_management permission', () => {
+      mockWorkspacePermissionKeys = []
+      renderList()
+
+      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
+      act(() => {
+        if (mockOnDSLFileDropped)
+          mockOnDSLFileDropped(mockFile)
+      })
+
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
     })
 
     it('should close DSL modal when onClose is called', () => {

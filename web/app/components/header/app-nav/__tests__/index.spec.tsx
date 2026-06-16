@@ -23,6 +23,14 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn(),
 }))
 
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
@@ -186,6 +194,7 @@ describe('AppNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAppDetail = null
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     setupDefaultMocks()
   })
 
@@ -306,6 +315,20 @@ describe('AppNav', () => {
       expect(screen.queryByTestId('create-from-dsl-modal')).not.toBeInTheDocument()
       expect(refetch).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('should not open create modals without app.create_and_management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys = []
+    render(<AppNav />)
+
+    await user.click(screen.getByTestId('create-blank'))
+    await user.click(screen.getByTestId('create-template'))
+    await user.click(screen.getByTestId('create-dsl'))
+
+    expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('create-app-template-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('create-from-dsl-modal')).not.toBeInTheDocument()
   })
 
   it('should load more when user clicks load more and more data is available', async () => {
