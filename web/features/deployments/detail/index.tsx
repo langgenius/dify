@@ -53,7 +53,7 @@ export function InstanceDetail({ appInstanceId, children }: {
   useDocumentTitle(t('documentTitle.detail'))
 
   return (
-    <div className="relative flex h-full min-w-0 overflow-hidden rounded-t-2xl shadow-xs">
+    <div className="relative m-1 ml-0 flex min-h-0 flex-1 overflow-hidden rounded-lg shadow-xs">
       <div className="min-w-0 grow overflow-hidden bg-background-default-subtle">
         <div className="h-full min-w-0 overflow-y-auto">
           <div className="flex min-h-full w-full flex-col">
