@@ -6,12 +6,7 @@ app:
   mode: workflow
   name: basic_auto_test
   use_icon_as_answer_icon: false
-dependencies:
-  - current_identifier: null
-    type: marketplace
-    value:
-      marketplace_plugin_unique_identifier: langgenius/tongyi:0.1.48@966d88dc40611f067311c1c9839139ebc4b55bff471bc5e736dc3e828bc67b46
-      version: null
+dependencies: []
 kind: app
 version: 0.6.0
 workflow:
@@ -70,20 +65,9 @@ workflow:
           isInIteration: false
           isInLoop: false
           sourceType: start
-          targetType: llm
-        id: 1779097154262-source-1779097204645-target
-        source: '1779097154262'
-        sourceHandle: source
-        target: '1779097204645'
-        targetHandle: target
-        type: custom
-        zIndex: 0
-      - data:
-          isInLoop: false
-          sourceType: llm
           targetType: end
-        id: 1779097204645-source-1779171097399-target
-        source: '1779097204645'
+        id: 1779097154262-source-1779171097399-target
+        source: '1779097154262'
         sourceHandle: source
         target: '1779171097399'
         targetHandle: target
@@ -92,7 +76,7 @@ workflow:
     nodes:
       - data:
           selected: true
-          title: 用户输入
+          title: User Input
           type: start
           variables:
             - default: ''
@@ -144,48 +128,14 @@ workflow:
         type: custom
         width: 242
       - data:
-          context:
-            enabled: false
-            variable_selector: []
-          model:
-            completion_params:
-              temperature: 0.7
-            mode: chat
-            name: qwen3.6-plus
-            provider: langgenius/tongyi/tongyi
-          prompt_template:
-            - id: 1ddb3202-d84c-4faf-afe3-424eedc9049a
-              role: system
-              text: 'User says:{{#1779097154262.x#}}. Reply exactly: echo:{{#1779097154262.x#}}
-
-                '
-          selected: false
-          title: LLM
-          type: llm
-          vision:
-            enabled: false
-        height: 88
-        id: '1779097204645'
-        position:
-          x: 382
-          y: 282
-        positionAbsolute:
-          x: 382
-          y: 282
-        selected: false
-        sourcePosition: right
-        targetPosition: left
-        type: custom
-        width: 242
-      - data:
           outputs:
             - value_selector:
-                - '1779097204645'
-                - text
+                - '1779097154262'
+                - x
               value_type: string
               variable: x
           selected: false
-          title: 输出
+          title: Output
           type: end
         height: 88
         id: '1779171097399'

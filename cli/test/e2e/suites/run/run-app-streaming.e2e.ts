@@ -277,7 +277,7 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
       '--stream',
     ])
     expect(result.exitCode, 'wrong-type input should cause non-zero exit').not.toBe(0)
-    expect(result.stderr).toMatch(/validation|invalid|type|400|server_5xx|must be/i)
+    expect(result.stderr).toMatch(/validation|invalid|type|422|must be/i)
   })
 
   // ── Non-existent app with positional query (4.2.16) ────────────────────

@@ -141,7 +141,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
     // Spec 5.70: submitting a value of the wrong type must fail.
     // The workflow app (workflowAppId) expects x as a string; passing a JSON
     // number causes the server to reject the request.
-    // In v1.0 the server returns HTTP 500 for type validation failures.
+    // After the @accepts/@returns contract unification, the server returns HTTP 422 for request schema failures.
     const result = await fx.r([
       'run',
       'app',
@@ -154,6 +154,65 @@ describe('E2E / error message standards (spec 5.3)', () => {
     assertNonZeroExit(result)
     // stderr must contain an error (either validation or server error)
     expect(result.stderr.trim().length).toBeGreaterThan(0)
+  })
+
+  // ── 5.70a/b/c  P4 sanitization — 422 error body is clean (no leaks) ────────
+
+  it('[P0] 5.70a validation failure message is a plain string, not double-encoded JSON', async () => {
+    // After the @accepts contract fix, the server aborts with
+    //   abort(422, message="Request validation failed", errors=[...])
+    // The CLI wraps this into its envelope. The message field must be a plain
+    // human-readable string — NOT a JSON-serialised string that itself contains
+    // pydantic error details (which was the double-encoding bug in P4).
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    assertNonZeroExit(result)
+    const envelope = assertErrorEnvelope(result)
+    // message must be a plain string, not a JSON string (no double encoding)
+    expect(typeof envelope.error.message).toBe('string')
+    expect(() => JSON.parse(envelope.error.message)).toThrow()
+  })
+
+  it('[P1] 5.70b validation error response does not leak pydantic version URL', async () => {
+    // Before the P4 fix, exc.json() included a "url" field pointing to
+    // https://errors.pydantic.dev/<version>/... — exposing the server's pydantic
+    // version. The sanitised response must not contain this URL.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    assertNonZeroExit(result)
+    expect(result.stderr).not.toMatch(/errors\.pydantic\.dev|pydantic\.dev\//)
+  })
+
+  it('[P1] 5.70c validation error response does not echo back user input', async () => {
+    // Before the P4 fix, exc.json() included the user's original "input" value
+    // inside the error details. The sanitised response must not repeat the
+    // submitted value so that sensitive payloads are not reflected to callers.
+    const sentValue = 'not-a-number-sentinel-12345'
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: sentValue, enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    assertNonZeroExit(result)
+    expect(result.stderr).not.toContain(sentValue)
   })
 
   // ── 5.76  Failed command + -o yaml → stderr is still JSON envelope ────────
