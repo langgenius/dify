@@ -21,6 +21,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
+from core.workflow.document_extractor_pdf_fallback import install_pdf_empty_text_fallback
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
@@ -110,6 +111,7 @@ def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] 
 def register_nodes() -> None:
     """Import production node modules so they self-register with ``Node``."""
     _import_node_package("graphon.nodes")
+    install_pdf_empty_text_fallback()
     _import_node_package("core.workflow.nodes")
 
 

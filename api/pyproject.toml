@@ -40,6 +40,7 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.62b1",
     "opentelemetry-instrumentation-sqlalchemy==0.62b1",
     "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
+    "pypdf>=6.10.2,<7.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     # Emerging: newer and fast-moving, use compatible pins
