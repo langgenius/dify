@@ -505,6 +505,21 @@ class TestGetHistoryPromptMessages:
         conv.app = MagicMock()
         return TokenBufferMemory(conversation=conv, model_instance=_make_model_instance())
 
+    @staticmethod
+    def _history_scalars_side_effect(messages: list[MagicMock]):
+        call_count = {"n": 0}
+
+        def scalars_side_effect(stmt):
+            result = MagicMock()
+            if call_count["n"] == 0:
+                result.all.return_value = messages
+            else:
+                result.all.return_value = []
+            call_count["n"] += 1
+            return result
+
+        return scalars_side_effect
+
     def test_returns_empty_when_no_messages(self):
         mem = self._make_memory()
         with patch("core.memory.token_buffer_memory.db") as mock_db:
@@ -754,11 +769,66 @@ class TestGetHistoryPromptMessages:
             mock_db.session.scalars.side_effect = scalars_side_effect
             result = mem.get_history_prompt_messages(max_token_limit=2000)
 
-        # After pruning, we should have fewer than the 2 initial messages
-        assert len(result) <= 1
+        # A single oversized historical turn is optional and should be dropped.
+        assert result == []
 
-    def test_token_pruning_stops_at_single_message(self):
-        """Pruning stops when only 1 message remains (to prevent empty list)."""
+    def test_token_pruning_removes_complete_oldest_turn(self):
+        """Pruning removes user+assistant pairs instead of leaving orphan messages."""
+        conv = _make_conversation()
+        conv.app = MagicMock()
+
+        mi = MagicMock()
+        mi.get_llm_num_tokens.side_effect = [3000, 1500]
+        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
+
+        first = _make_message(answer="old answer", answer_tokens=10)
+        first.query = "old query"
+        first.parent_message_id = None
+        second = _make_message(answer="new answer", answer_tokens=10)
+        second.query = "new query"
+        second.parent_message_id = first.id
+        messages = [second, first]
+
+        with (
+            patch("core.memory.token_buffer_memory.db") as mock_db,
+            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=messages),
+            patch("core.memory.token_buffer_memory.FileUploadConfigManager.convert", return_value=None),
+        ):
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(messages)
+            result = mem.get_history_prompt_messages(max_token_limit=2000)
+
+        assert len(result) == 2
+        assert isinstance(result[0], UserPromptMessage)
+        assert isinstance(result[1], AssistantPromptMessage)
+        assert result[0].content == "new query"
+        assert result[1].content == "new answer"
+
+    def test_token_pruning_returns_empty_when_latest_turn_exceeds_limit(self):
+        """Historical memory is optional; oversized history should be dropped instead of sent."""
+        conv = _make_conversation()
+        conv.app = MagicMock()
+
+        mi = MagicMock()
+        mi.get_llm_num_tokens.return_value = 99999
+        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
+
+        msg = _make_message(answer="very large answer", answer_tokens=10)
+        msg.query = "very large query"
+        msg.parent_message_id = None
+        messages = [msg]
+
+        with (
+            patch("core.memory.token_buffer_memory.db") as mock_db,
+            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=messages),
+            patch("core.memory.token_buffer_memory.FileUploadConfigManager.convert", return_value=None),
+        ):
+            mock_db.session.scalars.side_effect = self._history_scalars_side_effect(messages)
+            result = mem.get_history_prompt_messages(max_token_limit=1)
+
+        assert result == []
+
+    def test_token_pruning_drops_oversized_single_turn(self):
+        """An oversized historical turn is dropped so it cannot exceed the next model call."""
         conv = _make_conversation()
         conv.app = MagicMock()
 
@@ -796,8 +866,7 @@ class TestGetHistoryPromptMessages:
             mock_db.session.scalars.side_effect = scalars_side_effect
             result = mem.get_history_prompt_messages(max_token_limit=1)
 
-        # At least 1 message should remain
-        assert len(result) >= 1
+        assert result == []
 
     def test_no_pruning_when_within_limit(self):
         """When tokens ≤ limit, no pruning occurs."""
