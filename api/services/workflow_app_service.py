@@ -95,9 +95,36 @@ class WorkflowAppService:
             # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
             escaped_keyword = escape_like_pattern(keyword[:30])
             keyword_like_val = f"%{escaped_keyword}%"
+
+            # json.dumps() defaults to ensure_ascii=True, which stores CJK characters
+            # as \uXXXX escape sequences in the database.  Build an additional LIKE value
+            # that matches the escaped form so that CJK keyword searches work regardless
+            # of how the data was serialized.  We also keep the raw-CJK LIKE value so
+            # that records written with ensure_ascii=False (e.g. the logstore backend)
+            # are matched.
+            truncated_keyword = keyword[:30]
+            has_non_ascii = any(ord(c) > 127 for c in truncated_keyword)
+
+            if has_non_ascii:
+                ascii_escaped_keyword = escape_like_pattern(
+                    truncated_keyword.encode("unicode_escape").decode("utf-8")
+                )
+                ascii_keyword_like_val = f"%{ascii_escaped_keyword}%"
+                inputs_condition = or_(
+                    WorkflowRun.inputs.ilike(keyword_like_val, escape="\\"),
+                    WorkflowRun.inputs.ilike(ascii_keyword_like_val, escape="\\"),
+                )
+                outputs_condition = or_(
+                    WorkflowRun.outputs.ilike(keyword_like_val, escape="\\"),
+                    WorkflowRun.outputs.ilike(ascii_keyword_like_val, escape="\\"),
+                )
+            else:
+                inputs_condition = WorkflowRun.inputs.ilike(keyword_like_val, escape="\\")
+                outputs_condition = WorkflowRun.outputs.ilike(keyword_like_val, escape="\\")
+
             keyword_conditions = [
-                WorkflowRun.inputs.ilike(keyword_like_val, escape="\\"),
-                WorkflowRun.outputs.ilike(keyword_like_val, escape="\\"),
+                inputs_condition,
+                outputs_condition,
                 # filter keyword by end user session id if created by end user role
                 and_(
                     WorkflowRun.created_by_role == "end_user",
