@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -134,7 +135,8 @@ class TestWorkspacePermissionHelper:
         mock_enterprise_service.WorkspacePermissionService.get_permission.side_effect = Exception("Service unavailable")
 
         # Should not raise (fail-open)
-        check_workspace_member_invite_permission("test-workspace-id")
+        with caplog.at_level(logging.ERROR, logger="libs.workspace_permission"):
+            check_workspace_member_invite_permission("test-workspace-id")
 
         # Should log the error
         error_records = [r for r in caplog.records if r.levelname == "ERROR"]
