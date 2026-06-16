@@ -5,13 +5,13 @@ import type {
   ApiKey,
   Environment,
 } from '@dify/contracts/enterprise/types.gen'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { atom, useAtom, useSetAtom } from 'jotai'
+import { atom, useAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
 import { DeveloperApiDocsDrawer } from './api-docs-drawer'
@@ -109,46 +109,24 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
   )
 }
 
-export function DeveloperApiHeaderActions({ appInstanceId }: {
-  appInstanceId: string
-}) {
-  const setCreatedApiToken = useSetAtom(createdApiTokenAtom)
-  const {
-    apiEnabled,
-    apiKeys,
-    environments,
-    isLoading,
-  } = useDeveloperApiSettings(appInstanceId)
-
-  if (isLoading) {
-    return <SkeletonRectangle className="my-0 h-8 w-32 animate-pulse rounded-lg" />
-  }
-
-  if (!apiEnabled)
-    return null
-
-  if (apiKeys.length === 0)
-    return null
-
-  return (
-    <ApiKeyGenerateMenu
-      appInstanceId={appInstanceId}
-      environments={environments}
-      onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-    />
-  )
-}
-
-function ApiKeyListSection({ apiKeys, environments }: {
+function ApiKeyListSection({ apiKeys, environments, action }: {
   apiKeys: ApiKey[]
   environments: Environment[]
+  action?: ReactNode
 }) {
   const { t } = useTranslation('deployments')
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="system-xs-semibold-uppercase text-text-tertiary">
-        {t('access.api.keyList')}
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="system-xs-semibold-uppercase text-text-tertiary">
+          {t('access.api.keyList')}
+        </div>
+        {action && (
+          <div className="w-full shrink-0 sm:w-auto [&_button]:w-full sm:[&_button]:w-auto">
+            {action}
+          </div>
+        )}
       </div>
       <ApiKeyList
         apiKeys={apiKeys}
@@ -257,6 +235,7 @@ export function DeveloperApiSection({
                     <ApiKeyListSection
                       apiKeys={apiKeys}
                       environments={environments}
+                      action={trigger}
                     />
                   )}
             </ApiKeyGenerateMenu>

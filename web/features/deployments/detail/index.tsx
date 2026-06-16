@@ -8,7 +8,7 @@ import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
-import { DeveloperApiHeaderActions, DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
+import { DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
 
 function MobileDetailTabs({ appInstanceId, activeTab }: {
@@ -70,13 +70,11 @@ export function InstanceDetail({ appInstanceId, children }: {
                   </div>
                   <div className="system-sm-regular text-text-tertiary">{t(`tabs.${activeTab}.description`)}</div>
                 </div>
-                {(activeTab === 'api-tokens' || activeTab === 'instances' || activeTab === 'releases') && (
+                {(activeTab === 'instances' || activeTab === 'releases') && (
                   <div className="w-full shrink-0 pt-1 sm:w-auto sm:pt-1.5 [&_button]:w-full sm:[&_button]:w-auto">
-                    {activeTab === 'api-tokens'
-                      ? <DeveloperApiHeaderActions appInstanceId={appInstanceId} />
-                      : activeTab === 'instances'
-                        ? <NewDeploymentHeaderAction appInstanceId={appInstanceId} />
-                        : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+                    {activeTab === 'instances'
+                      ? <NewDeploymentHeaderAction appInstanceId={appInstanceId} />
+                      : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
                   </div>
                 )}
               </div>
