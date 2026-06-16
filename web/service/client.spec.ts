@@ -1,14 +1,9 @@
-import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { MutationFunctionContext } from '@tanstack/react-query'
 import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
-type ParsedAgentRosterResponse = AgentRosterResponse & Required<Pick<
-  AgentRosterResponse,
-  'published_node_reference_count' | 'published_reference_count' | 'published_references' | 'role'
->>
 
 const loadGetBaseURL = async (isClientValue: boolean) => {
   vi.resetModules()
@@ -49,19 +44,15 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
   ...overrides,
 })
 
-const createAgent = (overrides: Partial<AgentRosterResponse> = {}): ParsedAgentRosterResponse => ({
+const createAgent = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite => ({
   ...overrides,
-  agent_kind: overrides.agent_kind ?? 'dify_agent',
+  enable_api: overrides.enable_api ?? true,
+  enable_site: overrides.enable_site ?? true,
   description: overrides.description ?? 'Agent description',
   id: overrides.id ?? 'agent-1',
+  icon_url: overrides.icon_url ?? null,
+  mode: overrides.mode ?? 'agent',
   name: overrides.name ?? 'Agent',
-  published_node_reference_count: overrides.published_node_reference_count ?? 0,
-  published_reference_count: overrides.published_reference_count ?? 0,
-  published_references: overrides.published_references ?? [],
-  role: overrides.role ?? '',
-  scope: overrides.scope ?? 'roster',
-  source: overrides.source ?? 'agent_app',
-  status: overrides.status ?? 'active',
 })
 
 // Scenario: base URL selection and warnings.
@@ -149,7 +140,7 @@ describe('consoleQuery agent mutation defaults', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const createdAgent = createAgent()
 
-    const mutationOptions = consoleQuery.agents.post.mutationOptions()
+    const mutationOptions = consoleQuery.agent.post.mutationOptions()
     await mutationOptions.onSuccess?.(
       createdAgent,
       {
@@ -163,10 +154,10 @@ describe('consoleQuery agent mutation defaults', () => {
     )
 
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agents.get.key(),
+      queryKey: consoleQuery.agent.get.key(),
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agents.inviteOptions.get.key(),
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
 
@@ -176,7 +167,7 @@ describe('consoleQuery agent mutation defaults', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const updatedAgent = createAgent({ name: 'Updated Agent' })
 
-    const mutationOptions = consoleQuery.agents.byAgentId.patch.mutationOptions()
+    const mutationOptions = consoleQuery.agent.byAgentId.put.mutationOptions()
     await mutationOptions.onSuccess?.(
       updatedAgent,
       {
@@ -192,7 +183,7 @@ describe('consoleQuery agent mutation defaults', () => {
     )
 
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agents.inviteOptions.get.key(),
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
 
@@ -202,7 +193,7 @@ describe('consoleQuery agent mutation defaults', () => {
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const deletedAgent = createAgent()
 
-    const mutationOptions = consoleQuery.agents.byAgentId.delete.mutationOptions()
+    const mutationOptions = consoleQuery.agent.byAgentId.delete.mutationOptions()
     await mutationOptions.onSuccess?.(
       {},
       {
@@ -215,7 +206,7 @@ describe('consoleQuery agent mutation defaults', () => {
     )
 
     expect(invalidateQueries).toHaveBeenCalledWith({
-      queryKey: consoleQuery.agents.inviteOptions.get.key(),
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
   })
 })

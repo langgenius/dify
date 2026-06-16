@@ -43,7 +43,7 @@ export function AgentMonitoringPage({
     query: getDefaultPeriodQuery(),
   }))
   const [sourceFilter, setSourceFilter] = useState<SourceFilterValue>('all')
-  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+  const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
     input: {
       params: {
         agent_id: agentId,

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { Features } from '@/app/components/base/features/types'
 import type { ModerationConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'

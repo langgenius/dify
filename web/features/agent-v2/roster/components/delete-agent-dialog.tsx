@@ -29,7 +29,7 @@ export function DeleteAgentDialog({
 }: DeleteAgentDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const deleteAgentMutation = useMutation(consoleQuery.agents.byAgentId.delete.mutationOptions())
+  const deleteAgentMutation = useMutation(consoleQuery.agent.byAgentId.delete.mutationOptions())
 
   const handleDelete = () => {
     if (deleteAgentMutation.isPending)

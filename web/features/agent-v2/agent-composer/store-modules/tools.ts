@@ -98,3 +98,21 @@ export function useRemoveProviderToolAction() {
     }))
   }, [setDraft])
 }
+
+export function useSetProviderToolCredential() {
+  const setTools = useSetAtom(agentComposerToolsAtom)
+
+  return useCallback((toolId: string, credentialId?: string) => {
+    setTools(tools => tools.map((tool) => {
+      if (tool.kind !== 'provider' || tool.id !== toolId)
+        return tool
+
+      return {
+        ...tool,
+        credentialId,
+        credentialType: 'api-key',
+        credentialVariant: 'authorized',
+      }
+    }))
+  }, [setTools])
+}

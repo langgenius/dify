@@ -4,9 +4,9 @@ import type { ReactNode } from 'react'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../../data'
 import type { AgentOrchestrateAddAction, AgentOrchestrateAddedItem } from '../add-actions-context'
 import type { AgentSkill } from '../skills/item'
-import type { AgentTool } from '../tools/types'
+import type { AgentProviderToolDefaultValue, AgentTool } from '../tools/types'
 import type { Tool } from '@/app/components/tools/types'
-import type { ToolDefaultValue, ToolTypeEnum, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolTypeEnum, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
@@ -304,7 +304,7 @@ function AgentPromptToolRows({
     { key: 'cli' as const, label: t('agentDetail.configure.tools.cliTool', { ns: 'agentV2' }) },
   ]
 
-  const selectTools = (tools: ToolDefaultValue[]) => {
+  const selectTools = (tools: AgentProviderToolDefaultValue[]) => {
     onConfiguredToolsChange(addProviderTools(configuredTools, tools))
   }
 
@@ -415,7 +415,7 @@ function toToolDefaultValue(
   provider: ToolWithProvider,
   tool: Tool,
   language: string,
-): ToolDefaultValue {
+): AgentProviderToolDefaultValue {
   const params: Record<string, string> = {}
   tool.parameters?.forEach((parameter) => {
     params[parameter.name] = ''
@@ -438,6 +438,7 @@ function toToolDefaultValue(
     tool_label: label,
     tool_description: description,
     title: label,
+    allowDelete: provider.allow_delete,
     is_team_authorization: provider.is_team_authorization,
     paramSchemas: tool.parameters,
     params,

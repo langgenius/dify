@@ -1,4 +1,4 @@
-import type { AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComponentProps } from 'react'
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'

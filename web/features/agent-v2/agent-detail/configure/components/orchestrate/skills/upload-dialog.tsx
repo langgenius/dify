@@ -151,7 +151,7 @@ export function AgentSkillUploadDialog({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
-  const uploadSkillMutation = useMutation(consoleQuery.apps.byAppId.agent.skills.upload.post.mutationOptions())
+  const uploadSkillMutation = useMutation(consoleQuery.agent.byAgentId.skills.upload.post.mutationOptions())
 
   const handleUpload = () => {
     if (!file || uploadSkillMutation.isPending)
@@ -159,7 +159,7 @@ export function AgentSkillUploadDialog({
 
     uploadSkillMutation.mutate({
       params: {
-        app_id: agentId,
+        agent_id: agentId,
       },
       body: {
         file,

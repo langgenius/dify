@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentRosterListItem } from './components/agent-roster-list'
 import type { RosterFilterValue } from './components/roster-filter'
 import {
   ScrollAreaContent,
@@ -20,11 +21,11 @@ import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 import { RosterToolbar } from './components/roster-toolbar'
 
 const ROSTER_PAGE_SIZE = 30
-const isAgentInUse = (agent: { published_reference_count?: number }) => (agent.published_reference_count ?? 0) > 0
+const isAgentInUse = (agent: AgentRosterListItem) => (agent.published_reference_count ?? 0) > 0
 const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
 
-const getFilteredRosterItems = <T extends { published_reference_count?: number }>(
-  agents: T[],
+const getFilteredRosterItems = (
+  agents: AgentRosterListItem[],
   filter: RosterFilterValue,
 ) => {
   if (filter === 'in-use')
@@ -50,7 +51,7 @@ export default function RosterPage() {
 
   const rosterQueryInput = {
     limit: ROSTER_PAGE_SIZE,
-    ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}),
+    ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
   }
 
   const {
@@ -62,7 +63,7 @@ export default function RosterPage() {
     hasNextPage,
     error,
   } = useInfiniteQuery({
-    ...consoleQuery.agents.get.infiniteOptions({
+    ...consoleQuery.agent.get.infiniteOptions({
       input: pageParam => ({
         query: {
           ...rosterQueryInput,
@@ -75,7 +76,7 @@ export default function RosterPage() {
     }),
   })
 
-  const rosterItems = rosterPages?.pages.flatMap(page => page.data) ?? []
+  const rosterItems: AgentRosterListItem[] = rosterPages?.pages.flatMap(page => page.data) ?? []
   const inUseAgents = rosterItems.filter(isAgentInUse).length
   const draftAgents = Math.max(rosterItems.length - inUseAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)

@@ -16,7 +16,7 @@ export function AgentDetailLayout({
   children,
 }: AgentDetailLayoutProps) {
   const { t } = useTranslation('agentV2')
-  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+  const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
     input: {
       params: {
         agent_id: agentId,

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -133,7 +133,7 @@ export function AgentPreviewVersionsPanel({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
-  const versionsQuery = useQuery(consoleQuery.agents.byAgentId.versions.get.queryOptions({
+  const versionsQuery = useQuery(consoleQuery.agent.byAgentId.versions.get.queryOptions({
     input: {
       params: {
         agent_id: agentId,

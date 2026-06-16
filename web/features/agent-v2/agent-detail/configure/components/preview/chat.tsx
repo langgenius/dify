@@ -5,7 +5,7 @@ import type {
   AgentIconType,
   AgentSoulConfig,
   AgentSoulDifyToolConfig,
-} from '@dify/contracts/api/console/agents/types.gen'
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'

@@ -1,7 +1,6 @@
 'use client'
 
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
-import type { ComposerSaveStrategy } from '@dify/contracts/api/console/apps/types.gen'
+import type { AgentSoulConfig, ComposerSaveStrategy } from '@dify/contracts/api/console/agent/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
@@ -26,13 +25,11 @@ type AgentConfigurePublishPayload = {
 
 export function useAgentConfigureSync({
   agentId,
-  appId,
   baseConfig,
   currentModel,
   enabled,
 }: {
   agentId: string
-  appId?: string | null
   baseConfig?: AgentSoulConfig
   currentModel?: DefaultModel
   enabled: boolean
@@ -42,13 +39,11 @@ export function useAgentConfigureSync({
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
   const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
   const [isPublishing, setIsPublishing] = useState(false)
-  const appIdRef = useRef(appId)
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
 
-  appIdRef.current = appId
   baseConfigRef.current = baseConfig
   currentModelRef.current = currentModel
   enabledRef.current = enabled
@@ -60,30 +55,14 @@ export function useAgentConfigureSync({
   }), [store])
 
   const saveComposerMutation = useMutation(
-    consoleQuery.apps.byAppId.agentComposer.put.mutationOptions({
+    consoleQuery.agent.byAgentId.composer.put.mutationOptions({
       onSuccess: (composerState, variables) => {
         queryClient.setQueryData(
-          consoleQuery.apps.byAppId.agentComposer.get.queryKey({ input: { params: variables.params } }),
+          consoleQuery.agent.byAgentId.composer.get.queryKey({ input: { params: variables.params } }),
           composerState,
         )
-        queryClient.setQueryData(
-          consoleQuery.agents.byAgentId.get.queryKey({
-            input: {
-              params: {
-                agent_id: agentId,
-              },
-            },
-          }),
-          agent => agent
-            ? {
-                ...agent,
-                active_config_snapshot: composerState.active_config_snapshot,
-                active_config_snapshot_id: composerState.active_config_snapshot.id,
-              }
-            : agent,
-        )
         void queryClient.invalidateQueries({
-          queryKey: consoleQuery.agents.byAgentId.versions.get.key(),
+          queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
         })
       },
     }),
@@ -93,14 +72,10 @@ export function useAgentConfigureSync({
     saveStrategy: ComposerSaveStrategy,
     configSnapshot = getAgentSoulDraft(),
   ) => {
-    const currentAppId = appIdRef.current
-    if (!currentAppId)
-      return
-
     const savedDraftKey = JSON.stringify(configSnapshot)
     const composerState = await saveComposerMutation.mutateAsync({
       params: {
-        app_id: currentAppId,
+        agent_id: agentId,
       },
       body: {
         variant: 'agent_app',
@@ -135,7 +110,6 @@ export function useAgentConfigureSync({
 
       if (
         !enabledRef.current
-        || !appIdRef.current
         || !store.get(isAgentComposerDirtyAtom)
         || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {

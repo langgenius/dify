@@ -1,4 +1,4 @@
-import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { DraftFieldUpdate } from './utils'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
 import { agentComposerDraftAtom } from '../store'

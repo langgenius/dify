@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { MouseEvent, ReactElement } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'

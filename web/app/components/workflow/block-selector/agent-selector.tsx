@@ -1,4 +1,4 @@
-import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentInviteOptionResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { NodeDefault } from '../types'
 import type { AgentRosterNodeData } from './types'
@@ -50,7 +50,7 @@ export function AgentSelectorContent({
   const [validatingAgentId, setValidatingAgentId] = useState<string>()
   const debouncedSearchText = useDebounce(searchText.trim(), { wait: 300 })
   const agentsQuery = useQuery({
-    ...consoleQuery.agents.inviteOptions.get.queryOptions({
+    ...consoleQuery.agent.inviteOptions.get.queryOptions({
       input: {
         query: {
           limit: AGENT_SELECTOR_PAGE_SIZE,
@@ -77,7 +77,7 @@ export function AgentSelectorContent({
 
     setValidatingAgentId(agent.id)
     try {
-      const activeConfigSnapshot = await queryClient.fetchQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
+      const activeConfigSnapshot = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
         input: {
           params: {
             agent_id: agent.id,

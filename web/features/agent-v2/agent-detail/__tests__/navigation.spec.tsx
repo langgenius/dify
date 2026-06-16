@@ -1,10 +1,10 @@
-import type { AgentRosterResponse } from '@dify/contracts/api/console/agents/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen } from '@testing-library/react'
 import { AgentDetailSection } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
   pathname: '/roster/agent/agent-1/configure',
-  queryData: undefined as AgentRosterResponse | undefined,
+  queryData: undefined as AppDetailWithSite | undefined,
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -34,18 +34,17 @@ vi.mock('@/app/components/base/divider', () => ({
   default: () => <div data-testid="divider" />,
 }))
 
-const createAgent = (overrides: Partial<AgentRosterResponse> = {}): AgentRosterResponse => ({
-  agent_kind: 'dify_agent',
+const createAgent = (overrides: Partial<AppDetailWithSite> = {}): AppDetailWithSite => ({
   description: 'Find and summarize market materials.',
+  enable_api: true,
+  enable_site: true,
   icon: '🧪',
   icon_background: '#E0F2FE',
   icon_type: 'emoji',
   id: 'agent-1',
+  icon_url: null,
+  mode: 'agent',
   name: 'Research Agent',
-  role: 'Researcher',
-  scope: 'roster',
-  source: 'agent_app',
-  status: 'active',
   ...overrides,
 })
 
@@ -55,13 +54,13 @@ describe('AgentDetailSection', () => {
     mocks.queryData = createAgent()
   })
 
-  it('renders the current roster agent avatar, name, and role', () => {
+  it('renders the current agent app avatar, name, and mode', () => {
     const { container } = render(<AgentDetailSection />)
     const agentName = screen.getByText('Research Agent')
     const agentAvatar = container.querySelector('em-emoji')?.parentElement
 
     expect(agentName).toBeInTheDocument()
-    expect(screen.getByText('Researcher')).toBeInTheDocument()
+    expect(screen.getByText('agent')).toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
     expect(agentAvatar).toHaveClass('h-10', 'w-10', 'rounded-full')

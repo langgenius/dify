@@ -2,6 +2,7 @@ import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import {
+  agentAppSkillUploadContract,
   agentSkillUploadContract,
   appDeleteContract,
   appListContract,
@@ -125,6 +126,18 @@ export const consoleRouterContract = {
           upload: {
             post: agentSkillUploadContract,
           },
+        },
+      },
+    },
+  },
+  agent: {
+    ...communityContract.agent,
+    byAgentId: {
+      ...communityContract.agent.byAgentId,
+      skills: {
+        ...communityContract.agent.byAgentId.skills,
+        upload: {
+          post: agentAppSkillUploadContract,
         },
       },
     },

@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentRosterResponse, RosterAgentUpdatePayload } from '@dify/contracts/api/console/agents/types.gen'
+import type { AppPartial, UpdateAppPayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
@@ -16,7 +16,7 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { consoleQuery } from '@/service/client'
 
 type EditAgentDialogProps = {
-  agent: AgentRosterResponse
+  agent: AppPartial
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -24,7 +24,6 @@ type EditAgentDialogProps = {
 type AgentFormValues = {
   description?: string
   name?: string
-  role?: string
 }
 
 type AgentIconSelection = AppIconSelection | {
@@ -39,7 +38,7 @@ const defaultAgentIcon = {
   background: '#F5F3FF',
 } satisfies AppIconSelection
 
-const createAgentIconSelection = (agent: AgentRosterResponse): AgentIconSelection => {
+const createAgentIconSelection = (agent: AppPartial): AgentIconSelection => {
   if (agent.icon_type === 'image' && agent.icon) {
     return {
       type: 'image',
@@ -73,7 +72,7 @@ const getAgentIconKey = (icon: AgentIconSelection) => {
   return `${icon.type}:${icon.icon}`
 }
 
-const applyIconPayload = (body: RosterAgentUpdatePayload, icon: AgentIconSelection) => {
+const applyIconPayload = (body: UpdateAppPayload, icon: AgentIconSelection) => {
   if (icon.type === 'emoji') {
     body.icon_type = icon.type
     body.icon = icon.icon
@@ -95,28 +94,24 @@ export function EditAgentDialog({
   const { t: tCommon } = useTranslation('common')
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
-  const [role, setRole] = useState(agent.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => createAgentIconSelection(agent))
-  const updateAgentMutation = useMutation(consoleQuery.agents.byAgentId.patch.mutationOptions())
+  const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
 
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedDescription = formValues.description?.trim() ?? ''
-    const trimmedRole = formValues.role?.trim() ?? ''
     const hasIconChanges = getAgentIconKey(agentIcon) !== getAgentIconKey(createAgentIconSelection(agent))
     const hasFormChanges = trimmedName !== agent.name.trim()
       || trimmedDescription !== (agent.description?.trim() ?? '')
-      || trimmedRole !== (agent.role?.trim() ?? '')
       || hasIconChanges
 
     if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
       return
 
-    const body: RosterAgentUpdatePayload = {
+    const body: UpdateAppPayload = {
       name: trimmedName,
       description: trimmedDescription,
-      role: trimmedRole,
     }
 
     if (hasIconChanges)
@@ -142,7 +137,6 @@ export function EditAgentDialog({
     if (nextOpen) {
       setName(agent.name)
       setDescription(agent.description ?? '')
-      setRole(agent.role ?? '')
       setAgentIcon(createAgentIconSelection(agent))
     }
     else {
@@ -153,11 +147,9 @@ export function EditAgentDialog({
 
   const trimmedName = name.trim()
   const trimmedDescription = description.trim()
-  const trimmedRole = role.trim()
   const hasIconChanges = getAgentIconKey(agentIcon) !== getAgentIconKey(createAgentIconSelection(agent))
   const hasChanges = trimmedName !== agent.name.trim()
     || trimmedDescription !== (agent.description?.trim() ?? '')
-    || trimmedRole !== (agent.role?.trim() ?? '')
     || hasIconChanges
 
   return (
@@ -195,7 +187,7 @@ export function EditAgentDialog({
                     imageUrl={agentIcon.type === 'emoji' ? undefined : agentIcon.url}
                   />
                 </button>
-                <div className="flex min-w-0 flex-1 gap-3 pb-1">
+                <div className="flex min-w-0 flex-1 pb-1">
                   <FieldRoot name="name" className="min-w-0 flex-1">
                     <FieldLabel>
                       {t('roster.createForm.nameLabel')}
@@ -213,18 +205,6 @@ export function EditAgentDialog({
                     <FieldError match="valueMissing">
                       {t('roster.createForm.nameRequired')}
                     </FieldError>
-                  </FieldRoot>
-                  <FieldRoot name="role" className="min-w-0 flex-1">
-                    <FieldLabel>
-                      {t('roster.createForm.roleLabel')}
-                    </FieldLabel>
-                    <FieldControl
-                      autoComplete="off"
-                      maxLength={255}
-                      onValueChange={setRole}
-                      placeholder={t('roster.createForm.rolePlaceholder')}
-                      value={role}
-                    />
                   </FieldRoot>
                 </div>
               </div>

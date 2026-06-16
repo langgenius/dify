@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,11 +46,11 @@ function AgentConfigurePageContent({
     agentQuery,
     composerQuery,
     versionQuery,
-    appId,
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,
   } = useAgentConfigureData(agentId)
+  const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
 
   useHydrateAgentConfigureDraft({
     agentId,
@@ -67,7 +67,6 @@ function AgentConfigurePageContent({
     publishDraft,
   } = useAgentConfigureSync({
     agentId,
-    appId,
     baseConfig: agentSoulConfig,
     currentModel,
     enabled: composerQuery.isSuccess,
@@ -87,8 +86,6 @@ function AgentConfigurePageContent({
         currentModel={currentModel}
         textGenerationModelList={textGenerationModelList}
         isPublishing={isPublishing}
-        publishedReferenceCount={agentQuery.data?.published_reference_count}
-        publishedReferences={agentQuery.data?.published_references}
         onSelectModel={setConfigureModel}
         onPublish={publishDraft}
         onOpenVersions={() => setShowPreviewVersions(true)}
@@ -105,10 +102,10 @@ function AgentConfigurePageContent({
 
           <div className="min-h-0 flex-1">
             <AgentPreviewChatWithDraftConfig
-              appId={agentQuery.data?.app_id}
+              appId={undefined}
               agentIcon={agentQuery.data?.icon}
               agentIconBackground={agentQuery.data?.icon_background}
-              agentIconType={agentQuery.data?.icon_type}
+              agentIconType={agentIconType}
               agentName={agentQuery.data?.name}
               agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
@@ -120,7 +117,7 @@ function AgentConfigurePageContent({
         {showPreviewVersions && (
           <AgentPreviewVersionsPanel
             agentId={agentId}
-            activeVersionId={agentQuery.data?.active_config_snapshot_id}
+            activeVersionId={activeVersionId}
             onClose={() => setShowPreviewVersions(false)}
           />
         )}
@@ -153,26 +150,23 @@ function AgentPreviewChatWithDraftConfig({
 }
 
 function useAgentConfigureData(agentId: string) {
-  const agentQuery = useQuery(consoleQuery.agents.byAgentId.get.queryOptions({
+  const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
     input: {
       params: {
         agent_id: agentId,
       },
     },
   }))
-  const appId = agentQuery.data?.app_id
-  const composerQuery = useQuery(consoleQuery.apps.byAppId.agentComposer.get.queryOptions({
-    input: appId
-      ? {
-          params: {
-            app_id: appId,
-          },
-        }
-      : skipToken,
+  const composerQuery = useQuery(consoleQuery.agent.byAgentId.composer.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
   }))
-  const activeVersionId = composerQuery.data?.active_config_snapshot.id ?? agentQuery.data?.active_config_snapshot_id
+  const activeVersionId = composerQuery.data?.active_config_snapshot.id
   const shouldLoadPublishedVersion = !composerQuery.data?.agent_soul
-  const versionQuery = useQuery(consoleQuery.agents.byAgentId.versions.byVersionId.get.queryOptions({
+  const versionQuery = useQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
     input: activeVersionId && shouldLoadPublishedVersion
       ? {
           params: {
@@ -183,14 +177,13 @@ function useAgentConfigureData(agentId: string) {
       : skipToken,
   }))
   const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
-  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot ?? versionDetail ?? agentQuery.data?.active_config_snapshot
+  const activeConfigSnapshot = composerQuery.data?.active_config_snapshot ?? versionDetail
   const agentSoulConfig = composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot
 
   return {
     agentQuery,
     composerQuery,
     versionQuery,
-    appId,
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,

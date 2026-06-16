@@ -2,6 +2,10 @@ import type { EnvVariable } from '../advanced/env'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
+export type AgentProviderToolDefaultValue = ToolDefaultValue & {
+  allowDelete?: boolean
+}
+
 export type AgentToolBase = {
   id: string
   name: string
@@ -14,6 +18,8 @@ export type AgentToolAction = {
   description: string
 }
 
+export type AgentProviderToolCredentialType = 'api-key' | 'oauth2' | 'unauthorized'
+
 export type AgentProviderTool = AgentToolBase & {
   kind: 'provider'
   displayName?: string
@@ -21,8 +27,11 @@ export type AgentProviderTool = AgentToolBase & {
   icon?: ToolDefaultValue['provider_icon']
   iconDark?: ToolDefaultValue['provider_icon_dark']
   providerType?: string
-  credentialKey: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
-  credentialVariant: 'authorized' | 'endUser'
+  allowDelete?: boolean
+  credentialId?: string
+  credentialKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.tools.'>
+  credentialType?: AgentProviderToolCredentialType
+  credentialVariant: 'authorized' | 'unauthorized' | 'none'
   actions: AgentToolAction[]
 }
 

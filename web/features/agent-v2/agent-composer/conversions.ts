@@ -1,4 +1,4 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agents/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem } from '../agent-detail/configure/components/data'
 import type { EnvVariable } from '../agent-detail/configure/components/orchestrate/advanced/env'
 import type { AgentSkill } from '../agent-detail/configure/components/orchestrate/skills/item'
@@ -158,6 +158,16 @@ const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) 
 
 const getDifyToolActionId = (tool: AgentSoulDifyToolConfig) => `${tool.provider_id ?? tool.provider ?? tool.plugin_id ?? 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
 
+const toCredentialVariant = (credentialType: AgentSoulDifyToolConfig['credential_type']) => {
+  if (credentialType === 'api-key')
+    return 'authorized' as const
+
+  if (credentialType === 'unauthorized')
+    return 'unauthorized' as const
+
+  return 'none' as const
+}
+
 const toProviderToolFormState = (config?: AgentSoulConfig): {
   tools: AgentProviderTool[]
   toolSettings: AgentSoulConfigFormState['toolSettings']
@@ -193,10 +203,13 @@ const toProviderToolFormState = (config?: AgentSoulConfig): {
       kind: 'provider',
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       providerType: tool.provider_type,
-      credentialKey: tool.credential_type === 'oauth2'
-        ? 'agentDetail.configure.tools.credential.endUserOAuth'
-        : 'agentDetail.configure.tools.credential.authOne',
-      credentialVariant: tool.credential_type === 'oauth2' ? 'endUser' : 'authorized',
+      allowDelete: tool.credential_type === 'api-key' || tool.credential_type === 'unauthorized',
+      credentialId: tool.credential_ref?.id ?? undefined,
+      credentialKey: tool.credential_type === 'api-key'
+        ? 'agentDetail.configure.tools.credential.authOne'
+        : undefined,
+      credentialType: tool.credential_type,
+      credentialVariant: toCredentialVariant(tool.credential_type),
       actions: [action],
     })
   }
@@ -222,7 +235,14 @@ const toDifyToolConfigs = (
     provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
     runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
-    credential_type: tool.credentialVariant === 'endUser' ? 'oauth2' as const : 'api-key' as const,
+    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : undefined),
+    credential_ref: tool.credentialId
+      ? {
+          id: tool.credentialId,
+          provider: tool.id,
+          type: 'provider' as const,
+        }
+      : undefined,
   }))
 })
 
@@ -377,7 +397,23 @@ const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
   return {
     provider: modelProvider,
     model,
+    plugin_id: config?.model?.plugin_id,
   }
+}
+
+const getModelProviderPluginId = (model: DefaultModel, baseModel?: AgentSoulConfig['model']) => {
+  if (model.plugin_id)
+    return model.plugin_id
+
+  if (baseModel?.model_provider === model.provider && baseModel.plugin_id)
+    return baseModel.plugin_id
+
+  const [organization, pluginName] = model.provider.split('/').filter(Boolean)
+
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
+
+  return model.provider ? `langgenius/${model.provider}` : ''
 }
 
 export const formStateToAgentSoulConfig = ({
@@ -399,7 +435,7 @@ export const formStateToAgentSoulConfig = ({
         ...baseConfig?.model,
         model_provider: currentModel.provider,
         model: currentModel.model,
-        plugin_id: baseConfig?.model?.plugin_id ?? '',
+        plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
       }
     : baseConfig?.model,
   skills_files: {
