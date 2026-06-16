@@ -8,13 +8,13 @@
  * withTempConfig) to prevent session state leaking between tests.
  */
 
+import type { TokenDoc } from '@/store/token-store'
 import { Buffer } from 'node:buffer'
 import { execSync, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import yaml from 'js-yaml'
-import type { TokenDoc } from '@/store/token-store'
 
 /** Path to the dev entry point — no build required. */
 export const BIN = resolve(__dirname, '../../../bin/dev.js')
