@@ -140,7 +140,6 @@ class TestRateLimit:
         """Test max requests syncs from Redis when key exists."""
         redis_patch.configure_mock(
             **{
-                "exists.return_value": True,
                 "get.return_value": b"10",
                 "expire.return_value": True,
             }
@@ -150,6 +149,27 @@ class TestRateLimit:
         rate_limit.flush_cache()
 
         assert rate_limit.max_active_requests == 10
+
+    def test_should_use_local_value_when_redis_key_disappears_between_exists_and_get(self, redis_patch):
+        """Test that flush_cache doesn't crash when Redis key expires between exists() and get().
+
+        This is a TOCTOU race condition: the key can expire between the exists() check and the
+        get() call. Before the fix, this would cause `AttributeError: 'NoneType' object has no
+        attribute 'decode'` because get() returns None but .decode() is called on it.
+        """
+        redis_patch.configure_mock(
+            **{
+                "get.return_value": None,  # Key expired between check and get
+                "setex.return_value": True,
+            }
+        )
+
+        rate_limit = RateLimit("test_client", 5)
+
+        # Should not raise, and should fall back to using local value
+        rate_limit.flush_cache()
+        assert rate_limit.max_active_requests == 5
+        redis_patch.setex.assert_called()
 
     @patch("time.time")
     def test_should_clean_timeout_requests_from_active_list(self, mock_time, redis_patch):

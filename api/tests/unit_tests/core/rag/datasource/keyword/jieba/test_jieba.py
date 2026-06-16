@@ -157,6 +157,9 @@ def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch: pyt
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value=None))
     assert keyword.text_exists("node-1") is False
 
+    monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
+    assert keyword.text_exists("node-1") is False
+
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={"k": {"node-1", "node-2"}}))
     assert keyword.text_exists("node-2") is True
     assert keyword.text_exists("node-x") is False

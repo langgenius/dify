@@ -77,7 +77,7 @@ class Jieba(BaseKeyword):
     @override
     def text_exists(self, id: str) -> bool:
         keyword_table = self._get_dataset_keyword_table()
-        if keyword_table is None:
+        if not keyword_table:
             return False
         return id in set.union(*keyword_table.values())
 
