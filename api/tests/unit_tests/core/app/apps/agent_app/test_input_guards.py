@@ -65,6 +65,13 @@ def _answer_text(events: list[Any]) -> str:
     return end.llm_result.message.content
 
 
+def _saved_user_query(events: list[Any]) -> str:
+    end = next(e for e in events if isinstance(e, QueueMessageEndEvent))
+    prompt_messages = end.llm_result.prompt_messages
+    assert len(prompt_messages) == 1
+    return prompt_messages[0].content
+
+
 class TestRunInputGuards:
     def test_no_guards_passes_through(self, monkeypatch):
         _patch_moderation(monkeypatch, returns=(False, {}, "hello"))
@@ -113,6 +120,7 @@ class TestRunInputGuards:
         assert handled is True
         assert any(isinstance(e, QueueLLMChunkEvent) for e in qm.events)
         assert _answer_text(qm.events) == "blocked preset answer"
+        assert _saved_user_query(qm.events) == "forbidden"
 
     def test_annotation_hit_short_circuits(self, monkeypatch):
         _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
@@ -131,3 +139,4 @@ class TestRunInputGuards:
         assert len(annotation_events) == 1
         assert annotation_events[0].message_annotation_id == "anno-1"
         assert _answer_text(qm.events) == "I am the annotated Iris."
+        assert _saved_user_query(qm.events) == "what is your name"

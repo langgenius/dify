@@ -46,13 +46,25 @@ from core.repositories.human_input_repository import HumanInputFormRepository, H
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from models.agent_config_entities import AgentSoulConfig
 
 logger = logging.getLogger(__name__)
 
 
-def publish_text_answer(*, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
+def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
+    if not user_query:
+        return []
+    return [UserPromptMessage(content=user_query)]
+
+
+def publish_text_answer(
+    *,
+    queue_manager: AppQueueManager,
+    model_name: str,
+    answer: str,
+    user_query: str | None = None,
+) -> None:
     """Publish a complete assistant answer as one chunk + message-end.
 
     The EasyUI chat task pipeline consumes a QueueLLMChunkEvent stream followed
@@ -60,9 +72,10 @@ def publish_text_answer(*, queue_manager: AppQueueManager, model_name: str, answ
     both the backend-produced answer and short-circuited answers (moderation /
     annotation reply) share the exact same persistence + SSE path.
     """
+    prompt_messages = _prompt_messages_from_query(user_query)
     chunk = LLMResultChunk(
         model=model_name,
-        prompt_messages=[],
+        prompt_messages=prompt_messages,
         delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=answer)),
     )
     queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
@@ -70,7 +83,7 @@ def publish_text_answer(*, queue_manager: AppQueueManager, model_name: str, answ
         QueueMessageEndEvent(
             llm_result=LLMResult(
                 model=model_name,
-                prompt_messages=[],
+                prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=answer),
                 usage=LLMUsage.empty_usage(),
             ),
@@ -153,6 +166,7 @@ class AgentAppRunner:
                 model_name=model_name,
                 runtime=runtime,
                 queue_manager=queue_manager,
+                query=query,
             )
             return
 
@@ -161,7 +175,7 @@ class AgentAppRunner:
             raise AgentBackendError(str(error))
 
         answer = self._extract_answer(terminal.output)
-        self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
+        self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, query=query)
         self._save_session(
             scope=scope,
             backend_run_id=terminal.run_id,
@@ -181,6 +195,7 @@ class AgentAppRunner:
         model_name: str,
         runtime: AgentAppRuntimeRequest,
         queue_manager: AppQueueManager,
+        query: str,
     ) -> None:
         """End the chat turn on a dify.ask_human call: create a conversation-owned
         HITL form, persist the pause correlation, and surface the question."""
@@ -214,6 +229,7 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             answer=self._ask_human_message(created.args),
+            query=query,
         )
 
     def _resolve_pending_ask_human(
@@ -287,10 +303,12 @@ class AgentAppRunner:
         except Exception:
             logger.warning("Failed to cancel stopped Agent App backend run: run_id=%s", run_id, exc_info=True)
 
-    def _publish_answer(self, *, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
+    def _publish_answer(
+        self, *, queue_manager: AppQueueManager, model_name: str, answer: str, query: str | None
+    ) -> None:
         # MVP: emit the full answer as a single chunk + message-end. The chat
         # task pipeline streams the chunk over SSE and persists the message.
-        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
+        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
 
     def _save_session(
         self,
