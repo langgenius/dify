@@ -5,6 +5,30 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { AgentFiles } from '../index'
 
+const mocks = vi.hoisted(() => ({
+  filePreviewQueryOptions: vi.fn(),
+  uploadFileMutationOptions: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    files: {
+      byFileId: {
+        preview: {
+          get: {
+            queryOptions: mocks.filePreviewQueryOptions,
+          },
+        },
+      },
+      upload: {
+        post: {
+          mutationOptions: mocks.uploadFileMutationOptions,
+        },
+      },
+    },
+  },
+}))
+
 const agentFilesDraft = {
   ...defaultAgentSoulConfigFormState,
   files: [
@@ -22,7 +46,13 @@ const agentFilesDraft = {
 } satisfies typeof defaultAgentSoulConfigFormState
 
 function renderAgentFiles() {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -36,9 +66,19 @@ function renderAgentFiles() {
 describe('AgentFiles', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.filePreviewQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['file-preview', input],
+      queryFn: async () => ({
+        content: `Preview content for ${input.params.file_id}`,
+      }),
+    }))
+    mocks.uploadFileMutationOptions.mockReturnValue({
+      mutationFn: vi.fn(),
+      mutationKey: ['upload-file'],
+    })
   })
 
-  it('should open the shared detail dialog with the full file tree when the file row is clicked', () => {
+  it('should open the shared detail dialog with the full file tree when the file row is clicked', async () => {
     renderAgentFiles()
 
     fireEvent.click(screen.getByRole('button', {
@@ -50,6 +90,14 @@ describe('AgentFiles', () => {
     expect(dialog).toBeInTheDocument()
     expect(within(dialog).getAllByText('agent-roster-skill-detail-dialog-preview-image.png')).toHaveLength(2)
     expect(within(dialog).getByText('brief.md')).toBeInTheDocument()
+    expect(mocks.filePreviewQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          file_id: 'preview-image',
+        },
+      },
+    })
+    expect(await within(dialog).findByText('Preview content for preview-image')).toBeInTheDocument()
   })
 
   // File rows expose a hover/focus remove action that updates the composer draft.

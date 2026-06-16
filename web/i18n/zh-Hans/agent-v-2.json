@@ -71,6 +71,8 @@
   "agentDetail.configure.files.empty.description": "上传智能体可读取的文档，例如规格、模板或指南",
   "agentDetail.configure.files.empty.title": "暂无文件",
   "agentDetail.configure.files.label": "文件",
+  "agentDetail.configure.files.preview.empty": "暂无预览内容。",
+  "agentDetail.configure.files.preview.failed": "预览加载失败。",
   "agentDetail.configure.files.remove": "移除 {{name}}",
   "agentDetail.configure.files.tip": "此智能体在编排任务时可使用的文件。",
   "agentDetail.configure.files.toggle": "展开或收起文件",

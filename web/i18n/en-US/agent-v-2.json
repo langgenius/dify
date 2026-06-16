@@ -71,6 +71,8 @@
   "agentDetail.configure.files.empty.description": "Upload docs the agent can read, like specs, templates, or guidelines",
   "agentDetail.configure.files.empty.title": "No files yet",
   "agentDetail.configure.files.label": "Files",
+  "agentDetail.configure.files.preview.empty": "No preview content.",
+  "agentDetail.configure.files.preview.failed": "Failed to load preview.",
   "agentDetail.configure.files.remove": "Remove {{name}}",
   "agentDetail.configure.files.tip": "Files this agent can use while orchestrating tasks.",
   "agentDetail.configure.files.toggle": "Toggle files",

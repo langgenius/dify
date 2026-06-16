@@ -9,6 +9,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { AgentFileTree } from '../files/tree'
 import { countAgentFileNodes } from '../utils'
 
@@ -25,6 +26,11 @@ export type AgentSkillDetail = {
   description: string
   fileCount?: number
   files: AgentSkillFileNode[]
+  filePreview?: {
+    content?: string
+    isError?: boolean
+    isLoading?: boolean
+  }
   selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
@@ -89,6 +95,48 @@ function AgentSkillDetailSectionBlock({
   )
 }
 
+function AgentFilePreviewContent({
+  content,
+  isError,
+  isLoading,
+}: {
+  content?: string
+  isError?: boolean
+  isLoading?: boolean
+}) {
+  const { t } = useTranslation('agentV2')
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-40 items-center justify-center">
+        <Loading type="area" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <p className="system-sm-regular text-text-tertiary">
+        {t('agentDetail.configure.files.preview.failed')}
+      </p>
+    )
+  }
+
+  if (!content) {
+    return (
+      <p className="system-sm-regular text-text-tertiary">
+        {t('agentDetail.configure.files.preview.empty')}
+      </p>
+    )
+  }
+
+  return (
+    <pre className="m-0 font-mono text-xs leading-5 break-words whitespace-pre-wrap text-text-secondary">
+      {content}
+    </pre>
+  )
+}
+
 export function AgentSkillDetailDialog({
   skillName,
   detail,
@@ -121,6 +169,13 @@ export function AgentSkillDetailDialog({
             scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
           }}
         >
+          {detail.filePreview && (
+            <AgentFilePreviewContent
+              content={detail.filePreview.content}
+              isError={detail.filePreview.isError}
+              isLoading={detail.filePreview.isLoading}
+            />
+          )}
           {detail.sections.map(section => (
             <AgentSkillDetailSectionBlock key={section.id} section={section} />
           ))}

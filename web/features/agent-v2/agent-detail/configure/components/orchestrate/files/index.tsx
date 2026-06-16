@@ -9,9 +9,11 @@ import {
 import {
   FileTreeGuide,
 } from '@langgenius/dify-ui/file-tree'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFiles } from '@/features/agent-v2/agent-composer/store-modules/files'
+import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -44,6 +46,16 @@ function AgentFileItem({
 }) {
   const { t } = useTranslation('agentV2')
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
+  const previewQuery = useQuery({
+    ...consoleQuery.files.byFileId.preview.get.queryOptions({
+      input: {
+        params: {
+          file_id: file.id,
+        },
+      },
+    }),
+    enabled: isPreviewOpen,
+  })
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
@@ -71,6 +83,11 @@ function AgentFileItem({
             detail={{
               description: t('agentDetail.configure.files.tip'),
               files,
+              filePreview: {
+                content: previewQuery.data?.content,
+                isError: previewQuery.isError,
+                isLoading: previewQuery.isPending,
+              },
               selectedFileId: file.id,
               sections: [],
             }}
