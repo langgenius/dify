@@ -131,11 +131,12 @@ describe('E2E / difyctl describe app', () => {
 
   // ── Not found ─────────────────────────────────────────────────────────────
 
-  it('[P0] non-existent app returns exit code 1 with not-found error (3.83)', async () => {
-    // Spec 3.83: describe non-existent app → stderr contains not-found, exit code 1.
+  it('[P0] invalid (non-UUID) app id returns usage error (exit code 2)', async () => {
+    // NONEXISTENT_ID is not a valid UUID, so the CLI rejects it client-side via
+    // isValidUuid() before making any network request → usage_invalid_flag (exit 2).
     const result = await fx.r(['describe', 'app', NONEXISTENT_ID])
-    expect(result.exitCode, 'non-existent app should exit with code 1').toBe(1)
-    expect(result.stderr).toMatch(/not.?found|404|does not exist|server_5xx/i)
+    expect(result.exitCode, 'invalid UUID should exit with code 2').toBe(2)
+    expect(result.stderr).toMatch(/uuid|valid|usage_invalid_flag/i)
   })
 
   it('[P1] non-existent app in JSON mode outputs JSON error envelope', async () => {
