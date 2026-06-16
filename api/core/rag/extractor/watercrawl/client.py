@@ -12,7 +12,7 @@ from core.rag.extractor.watercrawl.exceptions import (
     WaterCrawlPermissionError,
 )
 
-WATERCRAWL_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+WATERCRAWL_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(30.0, connect=5.0)
 
 
 class SpiderOptions(TypedDict):
