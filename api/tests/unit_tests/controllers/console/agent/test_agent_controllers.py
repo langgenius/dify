@@ -206,7 +206,9 @@ def test_agent_app_list_and_create_use_agent_route(
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
-        lambda _self, **kwargs: SimpleNamespace(id="agent-created", role="Created role", active_config_snapshot_id=None),
+        lambda _self, **kwargs: SimpleNamespace(
+            id="agent-created", role="Created role", active_config_snapshot_id=None
+        ),
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
