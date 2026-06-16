@@ -421,6 +421,9 @@ class FeatureService:
         if "IsAllowCreateWorkspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
 
+        if "EnableAppDeploy" in enterprise_info:
+            features.enable_app_deploy = enterprise_info["EnableAppDeploy"]
+
         if "Branding" in enterprise_info:
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")
             features.branding.login_page_logo = enterprise_info["Branding"].get("loginPageLogo", "")
