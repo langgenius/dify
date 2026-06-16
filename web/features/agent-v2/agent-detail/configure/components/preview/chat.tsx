@@ -26,11 +26,7 @@ import { useCurrentModel } from '@/features/agent-v2/agent-composer/store-module
 import { usePrompt } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
-import {
-  fetchConversationMessages,
-  fetchSuggestedQuestions,
-  stopChatMessageResponding,
-} from '@/service/debug'
+import { consoleClient } from '@/service/client'
 import { AgentStrategy, ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
@@ -134,13 +130,40 @@ const toCliTool = (tool: AgentCliToolConfig) => ({
   enabled: tool.enabled ?? true,
 })
 
+const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
+  return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
+    params: {
+      agent_id: agentId,
+      task_id: taskId,
+    },
+  })
+}
+
+const fetchAgentConversationMessages = (agentId: string, conversationId: string) => {
+  return consoleClient.agent.byAgentId.chatMessages.get({
+    params: {
+      agent_id: agentId,
+    },
+    query: {
+      conversation_id: conversationId,
+    },
+  })
+}
+
+const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
+  return consoleClient.agent.byAgentId.chatMessages.byMessageId.suggestedQuestions.get({
+    params: {
+      agent_id: agentId,
+      message_id: messageId,
+    },
+  })
+}
+
 const buildChatConfig = ({
-  appId,
   agentSoulConfig,
   currentModel,
   prompt,
 }: {
-  appId?: string | null
   agentSoulConfig?: AgentSoulConfig
   currentModel?: DefaultModel
   prompt: string
@@ -224,7 +247,6 @@ const buildChatConfig = ({
     },
     file_upload: disabledFileUploadConfig,
     system_parameters: defaultSystemParameters,
-    appId: appId ?? undefined,
     supportCitationHitInfo: true,
   }
 }
@@ -272,7 +294,7 @@ function AgentPreviewChatEmptyState({
 }
 
 export function AgentPreviewChat({
-  appId,
+  agentId,
   agentIcon,
   agentIconBackground,
   agentIconType,
@@ -281,7 +303,7 @@ export function AgentPreviewChat({
   clearChatList,
   onClearChatListChange,
 }: {
-  appId?: string | null
+  agentId: string
   agentIcon?: string | null
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
@@ -294,11 +316,10 @@ export function AgentPreviewChat({
   const [prompt] = usePrompt()
   const currentModel = useCurrentModel()
   const config = useMemo(() => buildChatConfig({
-    appId,
     agentSoulConfig,
     currentModel,
     prompt,
-  }), [agentSoulConfig, appId, currentModel, prompt])
+  }), [agentSoulConfig, currentModel, prompt])
   const inputsForm = useMemo(() => (agentSoulConfig?.app_variables ?? []).map(toInputForm), [agentSoulConfig?.app_variables])
   const inputs = useMemo(() => {
     return inputsForm.reduce<Inputs>((acc, input) => {
@@ -327,24 +348,19 @@ export function AgentPreviewChat({
     },
     [],
     (taskId) => {
-      if (appId)
-        void stopChatMessageResponding(appId, taskId)
+      void stopAgentChatMessageResponding(agentId, taskId)
     },
     clearChatList,
     onClearChatListChange,
   )
 
   const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
-    if (!appId)
-      return
-
     const currentProvider = textGenerationModelList.find(item => item.provider === config.model.provider)
     const selectedModel = currentProvider?.models.find(model => model.model === config.model.name)
     const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
     const data: Record<string, unknown> = {
       query: message,
       inputs,
-      model_config: config,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
@@ -352,14 +368,14 @@ export function AgentPreviewChat({
       data.files = files
 
     handleSend(
-      `apps/${appId}/chat-messages`,
+      `agent/${agentId}/chat-messages`,
       data as Parameters<typeof handleSend>[1],
       {
-        onGetConversationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
-        onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
+        onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
+        onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
       },
     )
-  }, [appId, chatList, config, handleSend, inputs, textGenerationModelList])
+  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, textGenerationModelList])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)

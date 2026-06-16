@@ -104,7 +104,7 @@ function AgentConfigurePageContent({
 
           <div className="min-h-0 flex-1">
             <AgentPreviewChatWithDraftConfig
-              appId={undefined}
+              agentId={agentId}
               agentIcon={agentQuery.data?.icon}
               agentIconBackground={agentQuery.data?.icon_background}
               agentIconType={agentIconType}
