@@ -136,7 +136,7 @@ export function OutputEditCard({
         </div>
         <button
           type="button"
-          className="mt-2 flex h-8 items-center gap-x-1 border-t border-divider-subtle px-2 system-xs-regular text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          className="flex h-8 items-center gap-x-0.5 border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
           aria-expanded={showAdvancedOptions}
           onClick={() => setShowAdvancedOptions(value => !value)}
         >
