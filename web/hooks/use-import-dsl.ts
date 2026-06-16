@@ -19,6 +19,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 
 type DSLPayload = {
@@ -41,6 +42,7 @@ export const useImportDSL = () => {
   const [isFetching, setIsFetching] = useState(false)
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { push } = useRouter()
+  const invalidateAppList = useInvalidateAppList()
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
@@ -88,6 +90,7 @@ export const useImportDSL = () => {
           toast.warning(message, { description })
         onSuccess?.(response)
         setNeedRefresh('1')
+        invalidateAppList()
         await handleCheckPluginDependencies(app_id)
         getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }
@@ -111,7 +114,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [isFetching, t, setNeedRefresh, handleCheckPluginDependencies, push])
+  }, [isFetching, t, setNeedRefresh, handleCheckPluginDependencies, push, setNeedRefresh, invalidateAppList])
 
   const handleImportDSLConfirm = useCallback(async (
     {
@@ -139,6 +142,7 @@ export const useImportDSL = () => {
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
+        invalidateAppList()
         getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
@@ -153,7 +157,7 @@ export const useImportDSL = () => {
     finally {
       setIsFetching(false)
     }
-  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push])
+  }, [isFetching, t, handleCheckPluginDependencies, setNeedRefresh, push, setNeedRefresh, invalidateAppList])
 
   return {
     handleImportDSL,

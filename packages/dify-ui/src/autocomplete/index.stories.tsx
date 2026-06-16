@@ -297,8 +297,9 @@ const CommandPaletteList = () => {
     <AutocompleteList className="max-h-72 rounded-lg border border-divider-subtle bg-components-panel-bg p-1 shadow-xs">
       {groups.map((group, groupIndex) => (
         <AutocompleteGroup key={group.label} items={group.items}>
-          {groupIndex > 0 && <AutocompleteSeparator />}
-          <AutocompleteGroupLabel>{group.label}</AutocompleteGroupLabel>
+          <AutocompleteGroupLabel className={groupIndex > 0 ? 'mt-1 border-t border-divider-subtle pt-2' : undefined}>
+            {group.label}
+          </AutocompleteGroupLabel>
           <AutocompleteCollection>
             {(item: Suggestion) => (
               <AutocompleteItem key={item.value} value={item} className="grid grid-cols-[1fr_auto]">
@@ -691,7 +692,7 @@ export const CommandPalette: Story = {
       >
         <AutocompleteInputGroup className="mb-2">
           <span className="i-ri-search-line ml-2 size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
-          <AutocompleteInput placeholder="Run a command…" aria-label="Run a command" />
+          <AutocompleteInput placeholder="Run a command…" aria-label="Run a command" aria-expanded="true" />
           <AutocompleteClear />
         </AutocompleteInputGroup>
         <CommandPaletteList />

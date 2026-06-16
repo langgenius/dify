@@ -3,47 +3,81 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zGetExploreAppsByAppIdPath, zGetExploreAppsByAppIdResponse, zGetExploreAppsQuery, zGetExploreAppsResponse, zGetExploreBannersQuery, zGetExploreBannersResponse } from './zod.gen'
+import {
+  zGetExploreAppsByAppIdPath,
+  zGetExploreAppsByAppIdResponse,
+  zGetExploreAppsLearnDifyQuery,
+  zGetExploreAppsLearnDifyResponse,
+  zGetExploreAppsQuery,
+  zGetExploreAppsResponse,
+  zGetExploreBannersQuery,
+  zGetExploreBannersResponse,
+} from './zod.gen'
 
-export const get = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getExploreAppsByAppId',
-  path: '/explore/apps/{app_id}',
-  tags: ['console'],
-}).input(z.object({ params: zGetExploreAppsByAppIdPath })).output(zGetExploreAppsByAppIdResponse)
+export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExploreAppsLearnDify',
+    path: '/explore/apps/learn-dify',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
+  .output(zGetExploreAppsLearnDifyResponse)
 
-export const byAppId = {
+export const learnDify = {
   get,
 }
 
-export const get2 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getExploreApps',
-  path: '/explore/apps',
-  tags: ['console'],
-}).input(z.object({ query: zGetExploreAppsQuery.optional() })).output(zGetExploreAppsResponse)
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExploreAppsByAppId',
+    path: '/explore/apps/{app_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetExploreAppsByAppIdPath }))
+  .output(zGetExploreAppsByAppIdResponse)
+
+export const byAppId = {
+  get: get2,
+}
+
+export const get3 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExploreApps',
+    path: '/explore/apps',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetExploreAppsQuery.optional() }))
+  .output(zGetExploreAppsResponse)
 
 export const apps = {
-  get: get2,
+  get: get3,
+  learnDify,
   byAppId,
 }
 
 /**
  * Get banner list
  */
-export const get3 = oc.route({
-  inputStructure: 'detailed',
-  method: 'GET',
-  operationId: 'getExploreBanners',
-  path: '/explore/banners',
-  summary: 'Get banner list',
-  tags: ['default'],
-}).input(z.object({ query: zGetExploreBannersQuery.optional() })).output(zGetExploreBannersResponse)
+export const get4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExploreBanners',
+    path: '/explore/banners',
+    summary: 'Get banner list',
+    tags: ['default'],
+  })
+  .input(z.object({ query: zGetExploreBannersQuery.optional() }))
+  .output(zGetExploreBannersResponse)
 
 export const banners = {
-  get: get3,
+  get: get4,
 }
 
 export const explore = {

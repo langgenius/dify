@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 
-import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
-import { PermissionType } from '../../types'
+import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
+import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
 vi.mock('@/context/app-context', () => ({
@@ -14,20 +14,26 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useReferenceSettings: vi.fn(),
+  hasPluginPermission: vi.fn((permission: string | undefined, isAdmin: boolean) => {
+    if (!permission)
+      return false
+
+    if (permission === 'noone')
+      return false
+
+    if (permission === 'everyone')
+      return true
+
+    return isAdmin
+  }),
+  usePluginAutoUpgradeSettings: vi.fn(),
+  usePluginPermissionSettings: vi.fn(),
+  useMutationPluginPermissionSettings: vi.fn(),
   useMutationReferenceSettings: vi.fn(),
   useInvalidateReferenceSettings: vi.fn(),
 }))
 
 const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
-
-const createAppContext = (overrides: Partial<ReturnType<typeof useAppContext>> = {}) => ({
-  isCurrentWorkspaceManager: false,
-  isCurrentWorkspaceOwner: false,
-  langGeniusVersionInfo: { current_version: '1.0.0' },
-  workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.debug'],
-  ...overrides,
-}) as ReturnType<typeof useAppContext>
 
 describe('useReferenceSetting Hook', () => {
   beforeEach(() => {
@@ -35,158 +41,177 @@ describe('useReferenceSetting Hook', () => {
     toastSuccessSpy.mockClear()
 
     // Default mocks
-    vi.mocked(useAppContext).mockReturnValue(createAppContext())
+    vi.mocked(useAppContext).mockReturnValue({
+      isCurrentWorkspaceManager: false,
+      isCurrentWorkspaceOwner: false,
+    } as ReturnType<typeof useAppContext>)
 
-    vi.mocked(useReferenceSettings).mockReturnValue({
+    vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
       data: {
-        permission: {
-          install_permission: PermissionType.everyone,
-          debug_permission: PermissionType.everyone,
+        category: PluginCategoryEnum.tool,
+        auto_upgrade: {
+          strategy_setting: 'fix_only',
+          upgrade_time_of_day: 0,
+          upgrade_mode: 'all',
+          exclude_plugins: [],
+          include_plugins: [],
         },
       },
-    } as ReturnType<typeof useReferenceSettings>)
+    } as unknown as ReturnType<typeof usePluginAutoUpgradeSettings>)
+
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
+      data: {
+        install_permission: PermissionType.everyone,
+        debug_permission: PermissionType.everyone,
+      },
+    } as ReturnType<typeof usePluginPermissionSettings>)
 
     vi.mocked(useMutationReferenceSettings).mockReturnValue({
       mutate: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useMutationReferenceSettings>)
 
+    vi.mocked(useMutationPluginPermissionSettings).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof useMutationPluginPermissionSettings>)
+
     vi.mocked(useInvalidateReferenceSettings).mockReturnValue(vi.fn())
   })
 
-  describe('workspace permission key logic', () => {
-    it('should return false when workspace permission keys are empty', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: [],
-      }))
+  describe('hasPermission logic', () => {
+    it('should return false when permission is undefined', () => {
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: undefined,
+          debug_permission: undefined,
+        },
+      } as unknown as ReturnType<typeof usePluginPermissionSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
-      expect(result.current.canInstall).toBe(false)
-      expect(result.current.canUpdate).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(false)
-      expect(result.current.canManagePlugin).toBe(false)
-      expect(result.current.canUninstall).toBe(false)
+      expect(result.current.canManagement).toBe(false)
       expect(result.current.canDebugger).toBe(false)
     })
 
-    it('should only allow debug with plugin.debug only', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.debug'],
-      }))
+    it('should return false when permission is noOne', () => {
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.noOne,
+          debug_permission: PermissionType.noOne,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
-      expect(result.current.canInstall).toBe(false)
-      expect(result.current.canUpdate).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(false)
-      expect(result.current.canManagePlugin).toBe(false)
-      expect(result.current.canUninstall).toBe(false)
+      expect(result.current.canManagement).toBe(false)
+      expect(result.current.canDebugger).toBe(false)
+    })
+
+    it('should return true when permission is everyone', () => {
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.everyone,
+          debug_permission: PermissionType.everyone,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should allow install and update but not manage or debug with plugin.install only', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.install'],
-      }))
+    it('should return isAdmin when permission is admin and user is manager', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+      } as ReturnType<typeof useAppContext>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.admin,
+          debug_permission: PermissionType.admin,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
 
-      expect(result.current.canInstall).toBe(true)
-      expect(result.current.canUpdate).toBe(true)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(false)
-      expect(result.current.canUninstall).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
-    })
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
-    it('should allow update and view but not install with plugin.manage only', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.manage'],
-      }))
-
-      const { result } = renderHook(() => useReferenceSetting())
-
-      expect(result.current.canInstall).toBe(false)
-      expect(result.current.canUpdate).toBe(true)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(true)
-      expect(result.current.canUninstall).toBe(true)
-      expect(result.current.canDebugger).toBe(false)
-    })
-
-    it('should allow install and debug when both plugin.install and plugin.debug are present', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.install', 'plugin.debug'],
-      }))
-
-      const { result } = renderHook(() => useReferenceSetting())
-
-      expect(result.current.canInstall).toBe(true)
-      expect(result.current.canUpdate).toBe(true)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should not allow uninstall with legacy plugin.uninstall only', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.uninstall'],
-      }))
+    it('should return isAdmin when permission is admin and user is owner', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: true,
+      } as ReturnType<typeof useAppContext>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.admin,
+          debug_permission: PermissionType.admin,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
 
-      expect(result.current.canUninstall).toBe(false)
-      expect(result.current.canInstall).toBe(false)
-      expect(result.current.canUpdate).toBe(false)
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.canManagement).toBe(true)
+      expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should not allow uninstall with plugin.install only', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.install'],
-      }))
+    it('should return false when permission is admin and user is not admin', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+      } as ReturnType<typeof useAppContext>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.admin,
+          debug_permission: PermissionType.admin,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
 
-      expect(result.current.canUninstall).toBe(false)
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.canManagement).toBe(false)
+      expect(result.current.canDebugger).toBe(false)
     })
   })
 
-  describe('canSetPreferences', () => {
-    it('should not allow preference settings with legacy plugin.preference.manage only', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.preference.manage'],
-      }))
+  describe('canSetPermissions', () => {
+    it('should be true when user is workspace manager', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+      } as ReturnType<typeof useAppContext>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
-      expect(result.current.canSetPreferences).toBe(false)
-      expect(result.current.canSetPermissions).toBe(false)
-      expect(result.current.canSetAutoUpdate).toBe(false)
-    })
-
-    it('should be true when user has plugin.plugin_preferences for plugin preferences', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: ['plugin.plugin_preferences'],
-      }))
-
-      const { result } = renderHook(() => useReferenceSetting())
-
-      expect(result.current.canSetPreferences).toBe(true)
       expect(result.current.canSetPermissions).toBe(true)
-      expect(result.current.canSetAutoUpdate).toBe(true)
     })
 
-    it('should be false when user has neither plugin preference nor install permission', () => {
-      vi.mocked(useAppContext).mockReturnValue(createAppContext({
-        workspacePermissionKeys: [],
-      }))
+    it('should be true when user is workspace owner', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: true,
+      } as ReturnType<typeof useAppContext>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
-      expect(result.current.canSetPreferences).toBe(false)
+      expect(result.current.canSetPermissions).toBe(true)
+    })
+
+    it('should be false when user is neither manager nor owner', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
       expect(result.current.canSetPermissions).toBe(false)
-      expect(result.current.canSetAutoUpdate).toBe(false)
     })
   })
 
@@ -204,7 +229,7 @@ describe('useReferenceSetting Hook', () => {
         } as unknown as ReturnType<typeof useMutationReferenceSettings>
       })
 
-      renderHook(() => useReferenceSetting())
+      renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       // Trigger the onSuccess callback
       if (onSuccessCallback)
@@ -224,12 +249,22 @@ describe('useReferenceSetting Hook', () => {
           install_permission: PermissionType.everyone,
           debug_permission: PermissionType.everyone,
         },
+        auto_upgrade: {
+          strategy_setting: 'fix_only',
+          upgrade_time_of_day: 0,
+          upgrade_mode: 'all',
+          exclude_plugins: [],
+          include_plugins: [],
+        },
       }
-      vi.mocked(useReferenceSettings).mockReturnValue({
-        data: mockData,
-      } as ReturnType<typeof useReferenceSettings>)
+      vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
+        data: {
+          category: PluginCategoryEnum.tool,
+          auto_upgrade: mockData.auto_upgrade,
+        },
+      } as unknown as ReturnType<typeof usePluginAutoUpgradeSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.referenceSetting).toEqual(mockData)
     })
@@ -240,20 +275,20 @@ describe('useReferenceSetting Hook', () => {
         isPending: true,
       } as unknown as ReturnType<typeof useMutationReferenceSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.isUpdatePending).toBe(true)
     })
 
-    it('should handle null data', () => {
-      vi.mocked(useReferenceSettings).mockReturnValue({
-        data: null,
-      } as unknown as ReturnType<typeof useReferenceSettings>)
+    it('should keep permissions available when reference setting data is still loading', () => {
+      vi.mocked(usePluginAutoUpgradeSettings).mockReturnValue({
+        data: undefined,
+      } as unknown as ReturnType<typeof usePluginAutoUpgradeSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting())
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
-      expect(result.current.referenceSetting).toBeNull()
-      expect(result.current.canInstall).toBe(true)
+      expect(result.current.referenceSetting).toBeUndefined()
+      expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
     })
   })
@@ -263,19 +298,17 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    vi.mocked(useAppContext).mockReturnValue(createAppContext({
+    vi.mocked(useAppContext).mockReturnValue({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
-    }))
+    } as ReturnType<typeof useAppContext>)
 
-    vi.mocked(useReferenceSettings).mockReturnValue({
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
       data: {
-        permission: {
-          install_permission: PermissionType.everyone,
-          debug_permission: PermissionType.everyone,
-        },
+        install_permission: PermissionType.everyone,
+        debug_permission: PermissionType.everyone,
       },
-    } as ReturnType<typeof useReferenceSettings>)
+    } as ReturnType<typeof usePluginPermissionSettings>)
 
     vi.mocked(useMutationReferenceSettings).mockReturnValue({
       mutate: vi.fn(),
@@ -285,7 +318,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     vi.mocked(useInvalidateReferenceSettings).mockReturnValue(vi.fn())
   })
 
-  it('should return true when marketplace is enabled and canInstall is true', () => {
+  it('should return true when marketplace is enabled and canManagement is true', () => {
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
       systemFeatures: { enable_marketplace: true },
     })
@@ -301,44 +334,42 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })
 
-  it('should return false when canInstall is false', () => {
-    vi.mocked(useAppContext).mockReturnValue(createAppContext({
-      workspacePermissionKeys: [],
-    }))
-
-    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
-      systemFeatures: { enable_marketplace: true },
-    })
-
-    expect(result.current.canInstallPluginFromMarketplace).toBe(false)
-  })
-
-  it('should return false when user only has plugin.manage', () => {
-    vi.mocked(useAppContext).mockReturnValue(createAppContext({
-      workspacePermissionKeys: ['plugin.manage'],
-    }))
-
-    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
-      systemFeatures: { enable_marketplace: true },
-    })
-
-    expect(result.current.canInstallPluginFromMarketplace).toBe(false)
-  })
-
-  it('should return false when both marketplace is disabled and canInstall is false', () => {
-    vi.mocked(useReferenceSettings).mockReturnValue({
+  it('should return false when canManagement is false', () => {
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
       data: {
-        permission: {
-          install_permission: PermissionType.noOne,
-          debug_permission: PermissionType.noOne,
-        },
+        install_permission: PermissionType.noOne,
+        debug_permission: PermissionType.noOne,
       },
-    } as ReturnType<typeof useReferenceSettings>)
+    } as ReturnType<typeof usePluginPermissionSettings>)
+
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: { enable_marketplace: true },
+    })
+
+    expect(result.current.canInstallPluginFromMarketplace).toBe(false)
+  })
+
+  it('should return false when both marketplace is disabled and canManagement is false', () => {
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
+      data: {
+        install_permission: PermissionType.noOne,
+        debug_permission: PermissionType.noOne,
+      },
+    } as ReturnType<typeof usePluginPermissionSettings>)
 
     const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
       systemFeatures: { enable_marketplace: false },
     })
 
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
+  })
+
+  it('should only read plugin permissions and not fetch category auto-upgrade settings', () => {
+    renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: { enable_marketplace: true },
+    })
+
+    expect(usePluginPermissionSettings).toHaveBeenCalled()
+    expect(usePluginAutoUpgradeSettings).not.toHaveBeenCalled()
   })
 })

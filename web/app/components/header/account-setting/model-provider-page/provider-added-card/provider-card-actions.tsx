@@ -133,6 +133,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         onRemove={modalStates.showDeleteConfirm}
         detailUrl={detailUrl}
         placement="bottom-start"
+        destructiveRemove
       />
 
       <HeaderModals

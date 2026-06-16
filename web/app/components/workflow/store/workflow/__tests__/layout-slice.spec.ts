@@ -6,18 +6,16 @@ describe('createLayoutSlice', () => {
     localStorage.clear()
   })
 
-  it('uses static panel defaults and keeps the legacy maximize bootstrap', () => {
+  it('uses static panel defaults', () => {
     localStorage.setItem('workflow-node-panel-width', '460')
     localStorage.setItem('debug-and-preview-panel-width', '520')
     localStorage.setItem('workflow-variable-inpsect-panel-height', '240')
-    localStorage.setItem('workflow-canvas-maximize', 'true')
 
     const store = createStore(createLayoutSlice)
 
     expect(store.getState().nodePanelWidth).toBe(400)
     expect(store.getState().previewPanelWidth).toBe(400)
     expect(store.getState().variableInspectPanelHeight).toBe(320)
-    expect(store.getState().maximizeCanvas).toBe(true)
   })
 
   it('updates canvas and panel dimensions through the slice setters', () => {

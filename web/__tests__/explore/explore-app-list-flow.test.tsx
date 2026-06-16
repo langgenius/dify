@@ -8,10 +8,11 @@ import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { createTestQueryClient, renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import AppList from '@/app/components/explore/app-list'
 import { useAppContext } from '@/context/app-context'
-import { fetchAppDetail } from '@/service/explore'
+import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
@@ -46,9 +47,9 @@ vi.mock('ahooks', async () => {
 })
 
 vi.mock('@/service/use-explore', () => ({
-  useExploreAppList: () => ({
-    data: mockExploreData,
-    isLoading: mockIsLoading,
+  useLearnDifyAppList: () => ({
+    data: [],
+    isLoading: false,
     isError: false,
   }),
 }))
@@ -56,10 +57,63 @@ vi.mock('@/service/use-explore', () => ({
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: vi.fn(),
   fetchAppList: vi.fn(),
+  fetchBanners: vi.fn(),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleClient: {},
+  consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures'],
+      },
+    },
+    apps: {
+      list: {
+        queryOptions: (options: {
+          input?: { query?: { limit?: number } }
+          select?: (response: {
+            data: []
+            has_more: boolean
+            limit: number
+            page: number
+            total: number
+          }) => unknown
+        }) => {
+          const limit = options.input?.query?.limit ?? 0
+          const response = {
+            data: [],
+            has_more: false,
+            limit,
+            page: 1,
+            total: 0,
+          }
+          return {
+            queryKey: ['console', 'apps', 'list', options.input],
+            queryFn: () => Promise.resolve(response),
+            initialData: response,
+            select: options.select,
+          }
+        },
+      },
+    },
+    explore: {
+      apps: {
+        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+      },
+      banners: {
+        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+      },
+    },
+  },
 }))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  useMembers: vi.fn(),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -131,23 +185,48 @@ const createApp = (overrides: Partial<App> = {}): App => ({
   is_agent: overrides.is_agent ?? false,
 })
 
-const mockWorkspacePermissions = (canCreateApp: boolean) => {
+const mockMemberRole = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
-    workspacePermissionKeys: canCreateApp
-      ? ['app_library.access', 'app.create_and_management']
-      : ['app_library.access'],
+  })
+  ;(useMembers as Mock).mockReturnValue({
+    data: {
+      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
+    },
   })
 }
 
-const renderAppList = (canCreateApp = true, onSuccess?: () => void) => {
-  mockWorkspacePermissions(canCreateApp)
-  return render(<AppList onSuccess={onSuccess} />)
+const localeInput = { query: { language: 'en' } }
+const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
+const homeContinueWorkAppsInput = {
+  query: {
+    page: 1,
+    limit: 8,
+    name: '',
+  },
 }
 
-const appListElement = (canCreateApp = true, onSuccess?: () => void) => {
-  mockWorkspacePermissions(canCreateApp)
-  return <AppList onSuccess={onSuccess} />
+const createHomeQueryClient = () => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(['console', 'apps', 'list', homeContinueWorkAppsInput], {
+    data: [],
+    has_more: false,
+    limit: 8,
+    page: 1,
+    total: 0,
+  })
+
+  if (!mockIsLoading && mockExploreData)
+    queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
+
+  return queryClient
+}
+
+const renderAppList = (hasEditPermission = true, onSuccess?: () => void) => {
+  mockMemberRole(hasEditPermission)
+  return render(<AppList onSuccess={onSuccess} />, {
+    queryClient: createHomeQueryClient(),
+  })
 }
 
 describe('Explore App List Flow', () => {
@@ -163,6 +242,8 @@ describe('Explore App List Flow', () => {
         createApp({ app_id: 'app-3', app: { ...createApp().app, id: 'app-id-3', name: 'Code Helper' }, categories: ['Programming'] }),
       ],
     }
+    ;(fetchAppList as unknown as Mock).mockImplementation(() => new Promise(() => {}))
+    ;(fetchBanners as unknown as Mock).mockResolvedValue([])
   })
 
   describe('Browse and Filter Flow', () => {
@@ -235,8 +316,8 @@ describe('Explore App List Flow', () => {
 
       renderAppList(true, onSuccess)
 
-      // Step 2: Click add to workspace button - opens create modal
-      fireEvent.click(screen.getAllByText('explore.appCard.addToWorkspace')[0]!)
+      // Step 2: Click the app card - opens create modal in self-hosted/non-cloud mode
+      fireEvent.click(screen.getByRole('button', { name: 'Writer Bot' }))
 
       // Step 3: Confirm creation in modal
       fireEvent.click(await screen.findByTestId('confirm-create'))
@@ -249,7 +330,6 @@ describe('Explore App List Flow', () => {
       // Step 5: DSL import triggers pending confirmation
       expect(mockHandleImportDSL).toHaveBeenCalledTimes(1)
 
-      // Step 6: DSL confirm modal appears and user confirms
       // Step 6: DSL confirm modal appears and user confirms
       expect(await screen.findByTestId('dsl-confirm-modal'))!.toBeInTheDocument()
       fireEvent.click(screen.getByTestId('dsl-confirm'))
@@ -267,7 +347,7 @@ describe('Explore App List Flow', () => {
       // Step 1: Loading state
       mockIsLoading = true
       mockExploreData = undefined
-      const { unmount } = render(appListElement())
+      const { unmount } = renderAppList()
 
       expect(screen.getByRole('status'))!.toBeInTheDocument()
 
@@ -286,18 +366,16 @@ describe('Explore App List Flow', () => {
   })
 
   describe('Permission-Based Behavior', () => {
-    it('should keep add-to-workspace buttons visible but disabled when user lacks app creation permission', () => {
+    it('should not make app cards clickable when user has no edit permission', () => {
       renderAppList(false)
 
-      const addButtons = screen.getAllByRole('button', { name: 'explore.appCard.addToWorkspace' })
-      expect(addButtons.length).toBeGreaterThan(0)
-      addButtons.forEach(button => expect(button).toBeDisabled())
+      expect(screen.queryByRole('button', { name: 'Writer Bot' })).not.toBeInTheDocument()
     })
 
-    it('should show add-to-workspace button when user has app creation permission', () => {
+    it('should make app cards clickable when user has edit permission', () => {
       renderAppList(true)
 
-      expect(screen.getAllByText('explore.appCard.addToWorkspace').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: 'Writer Bot' })).toBeInTheDocument()
     })
   })
 })

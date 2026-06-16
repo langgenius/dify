@@ -13,11 +13,12 @@ import Loading from '@/app/components/base/loading'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
+import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import { BlockSelectorRow } from './block-selector-row'
@@ -141,7 +142,7 @@ const FeaturedTriggers = ({
 
           {showEmptyState && (
             <p className="px-4 py-2 system-xs-regular text-text-tertiary">
-              <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'trigger' })} target="_blank" rel="noopener noreferrer">
+              <Link className="text-text-accent" href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
               </Link>
             </p>

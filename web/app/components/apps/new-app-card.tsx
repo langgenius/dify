@@ -1,12 +1,14 @@
 'use client'
 
-import type { AppModeEnum } from '@/types/app'
-import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContextSelector } from 'use-context-selector'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
+import CreateResourceCard, {
+  createResourceCardActionClassName,
+  createResourceCardActionIconClassName,
+} from '@/app/components/base/create-resource-card'
 import AppListContext from '@/context/app-list-context'
 import { useProviderContext } from '@/context/provider-context'
 import dynamic from '@/next/dynamic'
@@ -14,6 +16,7 @@ import {
   useRouter,
   useSearchParams,
 } from '@/next/navigation'
+import { AppModeEnum } from '@/types/app'
 
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
   ssr: false,
@@ -27,17 +30,15 @@ const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-fro
 
 type CreateAppCardProps = {
   className?: string
-  disabled?: boolean
   isLoading?: boolean
   onSuccess?: () => void
   ref: React.RefObject<HTMLDivElement | null>
-  selectedAppType?: 'all' | AppModeEnum
+  selectedAppType?: string
 }
 
 const CreateAppCard = ({
   ref,
   className,
-  disabled = false,
   isLoading = false,
   onSuccess,
   selectedAppType,
@@ -48,17 +49,9 @@ const CreateAppCard = ({
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
 
-  const isDisabled = disabled || isLoading
-  const canOpenRemoteDSLModal = !!dslUrl && !isDisabled
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
-  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(() => canOpenRemoteDSLModal)
-  const actionButtonClassName = cn(
-    'flex w-full items-center rounded-lg px-6 py-1.75 text-[13px] leading-4.5 font-medium text-text-tertiary',
-    isDisabled
-      ? 'cursor-not-allowed'
-      : 'cursor-pointer hover:bg-state-base-hover hover:text-text-secondary',
-  )
+  const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
 
   const activeTab = useMemo(() => {
     if (dslUrl)
@@ -66,58 +59,59 @@ const CreateAppCard = ({
 
     return undefined
   }, [dslUrl])
+  const defaultAppMode = useMemo(() => {
+    if (!selectedAppType || selectedAppType === 'all')
+      return undefined
+
+    return Object.values(AppModeEnum).includes(selectedAppType as AppModeEnum)
+      ? selectedAppType as AppModeEnum
+      : undefined
+  }, [selectedAppType])
 
   const controlHideCreateFromTemplatePanel = useContextSelector(AppListContext, ctx => ctx.controlHideCreateFromTemplatePanel)
   useEffect(() => {
-    if (controlHideCreateFromTemplatePanel > 0) {
-      // eslint-disable-next-line react/set-state-in-effect -- external context signal closes this dialog from outside the card
+    if (controlHideCreateFromTemplatePanel <= 0)
+      return
+
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled)
+        return
+
       setShowNewAppTemplateDialog(false)
+    })
+
+    return () => {
+      cancelled = true
     }
   }, [controlHideCreateFromTemplatePanel])
 
-  useEffect(() => {
-    if (canOpenRemoteDSLModal) {
-      // eslint-disable-next-line react/set-state-in-effect -- URL-driven install links should open only after create actions are usable
-      setShowCreateFromDSLModal(true)
-      return
-    }
-
-    if (isDisabled) {
-      // eslint-disable-next-line react/set-state-in-effect -- permission/loading changes must close hidden creation surfaces
-      setShowCreateFromDSLModal(false)
-    }
-  }, [canOpenRemoteDSLModal, isDisabled])
-
   return (
-    <div
-      ref={ref}
-      className={cn(
-        'relative col-span-1 inline-flex h-40 flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg transition-opacity',
-        isDisabled && 'opacity-50',
-        className,
-      )}
-    >
-      <div className="grow rounded-t-xl p-2">
-        <div className="px-6 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
-        <button type="button" disabled={isDisabled} className={cn('mb-1', actionButtonClassName)} onClick={() => setShowNewAppModal(true)}>
-          <span className="mr-2 i-custom-vender-line-files-file-plus-01 size-4 shrink-0" />
-          {t('newApp.startFromBlank', { ns: 'app' })}
+    <>
+      <CreateResourceCard
+        ref={ref}
+        className={className}
+        isLoading={isLoading}
+        footer={(
+          <button
+            type="button"
+            onClick={() => setShowCreateFromDSLModal(true)}
+            className={createResourceCardActionClassName}
+          >
+            <span aria-hidden="true" className={`i-ri-file-upload-line ${createResourceCardActionIconClassName}`} />
+            <span className="min-w-0 grow truncate">{t('importDSL', { ns: 'app' })}</span>
+          </button>
+        )}
+      >
+        <button type="button" className={createResourceCardActionClassName} onClick={() => setShowNewAppModal(true)}>
+          <span aria-hidden="true" className={`i-ri-sticky-note-add-line ${createResourceCardActionIconClassName}`} />
+          <span className="min-w-0 grow truncate">{t('newApp.startFromBlank', { ns: 'app' })}</span>
         </button>
-        <button type="button" disabled={isDisabled} className={actionButtonClassName} onClick={() => setShowNewAppTemplateDialog(true)}>
-          <span className="mr-2 i-custom-vender-line-files-file-plus-02 size-4 shrink-0" />
-          {t('newApp.startFromTemplate', { ns: 'app' })}
+        <button type="button" className={createResourceCardActionClassName} onClick={() => setShowNewAppTemplateDialog(true)}>
+          <span aria-hidden="true" className={`i-ri-function-add-line ${createResourceCardActionIconClassName}`} />
+          <span className="min-w-0 grow truncate">{t('newApp.startFromTemplate', { ns: 'app' })}</span>
         </button>
-        <button
-          type="button"
-          disabled={isDisabled}
-          onClick={() => setShowCreateFromDSLModal(true)}
-          className={actionButtonClassName}
-        >
-          <span className="mr-2 i-custom-vender-line-files-file-arrow-01 size-4 shrink-0" />
-          {t('importDSL', { ns: 'app' })}
-        </button>
-      </div>
-
+      </CreateResourceCard>
       {showNewAppModal && (
         <CreateAppModal
           show={showNewAppModal}
@@ -131,7 +125,7 @@ const CreateAppCard = ({
             setShowNewAppTemplateDialog(true)
             setShowNewAppModal(false)
           }}
-          defaultAppMode={selectedAppType !== 'all' ? selectedAppType : undefined}
+          defaultAppMode={defaultAppMode}
         />
       )}
       {showNewAppTemplateDialog && (
@@ -156,7 +150,7 @@ const CreateAppCard = ({
             setShowCreateFromDSLModal(false)
 
             if (dslUrl)
-              replace('/')
+              replace('/apps')
           }}
           activeTab={activeTab}
           dslUrl={dslUrl}
@@ -167,7 +161,7 @@ const CreateAppCard = ({
           }}
         />
       )}
-    </div>
+    </>
   )
 }
 

@@ -9,6 +9,8 @@ import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 type MarketplaceProps = {
   showInstallButton?: boolean
   pluginTypeSwitchClassName?: string
+  isMarketplacePlatform?: boolean
+  marketplaceNav?: React.ReactNode
   /**
    * Pass the search params from the request to prefetch data on the server.
    */
@@ -18,16 +20,25 @@ type MarketplaceProps = {
 const Marketplace = async ({
   showInstallButton = false,
   pluginTypeSwitchClassName,
+  isMarketplacePlatform = false,
+  marketplaceNav,
   searchParams,
 }: MarketplaceProps) => {
   return (
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams}>
         <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
-          <Description />
-          <StickySearchAndSwitchWrapper
-            pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-          />
+          <Description
+          isMarketplacePlatform={isMarketplacePlatform}
+          marketplaceNav={marketplaceNav}
+        />
+        {
+          !isMarketplacePlatform && (
+              <StickySearchAndSwitchWrapper
+                pluginTypeSwitchClassName={pluginTypeSwitchClassName}
+              />
+          )
+        }
           <ListWrapper
             showInstallButton={showInstallButton}
           />

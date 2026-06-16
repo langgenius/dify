@@ -1,48 +1,98 @@
 'use client'
 import type { CustomCollectionBackend } from '../types'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
+import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
-import { hasPermission } from '@/utils/permission'
+import CreateEntryCard from './create-entry-card'
 
 type Props = Readonly<{
   onRefreshData: () => void
 }>
 
-const Contribute = ({ onRefreshData }: Props) => {
+function useCustomToolCreateAction({ onRefreshData }: Props) {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageTools = hasPermission(workspacePermissionKeys, 'tool.manage')
-
+  const { isCurrentWorkspaceManager } = useAppContext()
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
-  const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools)
-      return
 
+  const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
     toast.success(t('api.actionSuccess', { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
   }
 
+  return {
+    doCreateCustomToolCollection,
+    isCurrentWorkspaceManager,
+    isShowEditCollectionToolModal,
+    setIsShowEditCustomCollectionModal,
+  }
+}
+
+export const NewCustomToolButton = ({ onRefreshData }: Props) => {
+  const { t } = useTranslation()
+  const addSwaggerAPIAsToolLabel = t('addSwaggerAPIAsTool', { ns: 'tools' })
+  const {
+    doCreateCustomToolCollection,
+    isCurrentWorkspaceManager,
+    isShowEditCollectionToolModal,
+    setIsShowEditCustomCollectionModal,
+  } = useCustomToolCreateAction({ onRefreshData })
+
+  if (!isCurrentWorkspaceManager)
+    return null
+
   return (
     <>
-      {canManageTools && (
-        <div className="col-span-1 flex min-h-[135px] cursor-pointer flex-col rounded-xl bg-background-default-dimmed transition-all duration-200 ease-in-out">
-          <div className="group grow rounded-t-xl" onClick={() => setIsShowEditCustomCollectionModal(true)}>
-            <div className="flex shrink-0 items-center p-4 pb-3">
-              <div className="flex size-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
-                <span className="i-ri-add-circle-fill size-4 text-text-quaternary group-hover:text-text-accent" />
-              </div>
-              <div className="ml-3 system-md-semibold text-text-secondary group-hover:text-text-accent">{t('createCustomTool', { ns: 'tools' })}</div>
-            </div>
-          </div>
-        </div>
+      <Button
+        variant="secondary"
+        className="gap-0.5 px-3!"
+        onClick={() => setIsShowEditCustomCollectionModal(true)}
+        title={addSwaggerAPIAsToolLabel}
+        aria-label={addSwaggerAPIAsToolLabel}
+      >
+        <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+        {addSwaggerAPIAsToolLabel}
+      </Button>
+      {isShowEditCollectionToolModal && (
+        <EditCustomToolModal
+          payload={null}
+          onHide={() => setIsShowEditCustomCollectionModal(false)}
+          onAdd={doCreateCustomToolCollection}
+        />
       )}
-      {canManageTools && isShowEditCollectionToolModal && (
+    </>
+  )
+}
+
+const Contribute = ({ onRefreshData }: Props) => {
+  const { t } = useTranslation()
+  const docLink = useDocLink()
+  const {
+    doCreateCustomToolCollection,
+    isCurrentWorkspaceManager,
+    isShowEditCollectionToolModal,
+    setIsShowEditCustomCollectionModal,
+  } = useCustomToolCreateAction({ onRefreshData })
+
+  return (
+    <>
+      {isCurrentWorkspaceManager && (
+        <CreateEntryCard
+          className="min-w-0"
+          title={t('createSwaggerAPIAsTool', { ns: 'tools' })}
+          linkText={t('swaggerAPIAsToolTip', { ns: 'tools' })}
+          linkUrl={`${docLink('/use-dify/workspace/tools' as DocPathWithoutLang)}#custom-tool`}
+          onCreate={() => setIsShowEditCustomCollectionModal(true)}
+        />
+      )}
+      {isShowEditCollectionToolModal && (
         <EditCustomToolModal
           payload={null}
           onHide={() => setIsShowEditCustomCollectionModal(false)}

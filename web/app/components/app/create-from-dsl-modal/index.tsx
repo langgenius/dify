@@ -25,6 +25,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import Uploader from './uploader'
@@ -75,6 +76,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
@@ -125,6 +127,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             : undefined,
         })
         setNeedRefresh('1')
+        invalidateAppList()
         if (app_id) {
           await handleCheckPluginDependencies(app_id)
           getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
@@ -180,6 +183,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
+        invalidateAppList()
         if (app_id)
           getRedirection({ id: app_id, mode: app_mode, permission_keys }, push)
       }

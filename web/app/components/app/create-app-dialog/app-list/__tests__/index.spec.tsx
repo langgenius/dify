@@ -12,6 +12,7 @@ const mockPush = vi.fn()
 const mockToastSuccess = vi.fn()
 const mockToastError = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockIsCurrentWorkspaceEditor = true
@@ -103,6 +104,9 @@ vi.mock('@/utils/create-app-tracking', () => ({
 }))
 vi.mock('@/service/apps', () => ({
   importDSL: (...args: unknown[]) => mockImportDSL(...args),
+}))
+vi.mock('@/service/use-apps', () => ({
+  useInvalidateAppList: () => mockInvalidateAppList,
 }))
 vi.mock('@/service/explore', () => ({
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
@@ -285,6 +289,7 @@ describe('Apps', () => {
     expect(onSuccess).toHaveBeenCalled()
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('created-app-id')
     expect(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY)).toBe('1')
+    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).toHaveBeenCalledWith({
       id: 'created-app-id',
       mode: AppModeEnum.CHAT,

@@ -169,7 +169,6 @@ describe('createWorkflowStore', () => {
       ['bottomPanelWidth', 'setBottomPanelWidth', 600],
       ['bottomPanelHeight', 'setBottomPanelHeight', 500],
       ['variableInspectPanelHeight', 'setVariableInspectPanelHeight', 250],
-      ['maximizeCanvas', 'setMaximizeCanvas', true],
     ])('should update %s', (stateKey, setter, value) => {
       testSetter(setter, stateKey, value)
     })
@@ -214,12 +213,6 @@ describe('createWorkflowStore', () => {
       localStorage.setItem('workflow-variable-inpsect-panel-height', '200')
       const store = createStore()
       expect(store.getState().variableInspectPanelHeight).toBe(320)
-    })
-
-    it('should read maximizeCanvas from localStorage', () => {
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-      const store = createStore()
-      expect(store.getState().maximizeCanvas).toBe(true)
     })
   })
 

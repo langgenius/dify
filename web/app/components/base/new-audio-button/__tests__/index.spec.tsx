@@ -79,7 +79,7 @@ describe('AudioBtn', () => {
 
     it('should generate installed app URL correctly', async () => {
       ; (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ appId: '456' })
-      ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/explore/installed/app')
+      ; (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/installed/456')
 
       render(<AudioBtn value="test" />)
       await userEvent.click(getButton())

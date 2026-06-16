@@ -78,6 +78,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
       <ModelName
         className="grow system-md-regular text-text-secondary"
         modelItem={model}
+        nameClassName={model.deprecated ? 'line-through' : undefined}
         showModelType
         showMode
         showContextSize

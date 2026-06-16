@@ -73,7 +73,7 @@
   "title": "Dnevniki",
   "triggerBy.appRun": "Spletna aplikacija",
   "triggerBy.debugging": "Razhroščevanje",
-  "triggerBy.plugin": "Vtičnik",
+  "triggerBy.plugin": "Integracija",
   "triggerBy.ragPipelineDebugging": "RAG odpravljanje napak",
   "triggerBy.ragPipelineRun": "RAG cevovod",
   "triggerBy.schedule": "Urnik",

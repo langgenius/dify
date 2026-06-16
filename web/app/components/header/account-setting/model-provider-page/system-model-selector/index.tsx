@@ -4,6 +4,7 @@ import type {
   DefaultModelResponse,
 } from '../declarations'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogCloseButton,
@@ -14,10 +15,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
-import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
@@ -28,6 +28,7 @@ import {
 import ModelSelector from '../model-selector'
 
 type SystemModelSelectorProps = {
+  className?: string
   textGenerationDefaultModel: DefaultModelResponse | undefined
   embeddingsDefaultModel: DefaultModelResponse | undefined
   rerankDefaultModel: DefaultModelResponse | undefined
@@ -35,6 +36,7 @@ type SystemModelSelectorProps = {
   ttsDefaultModel: DefaultModelResponse | undefined
   notConfigured: boolean
   isLoading?: boolean
+  hideProviderSettingsFooter?: boolean
 }
 
 type SystemModelLabelKey
@@ -52,6 +54,7 @@ type SystemModelTipKey
     | 'modelProvider.ttsModel.tip'
 
 const SystemModel: FC<SystemModelSelectorProps> = ({
+  className,
   textGenerationDefaultModel,
   embeddingsDefaultModel,
   rerankDefaultModel,
@@ -59,10 +62,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   ttsDefaultModel,
   notConfigured,
   isLoading,
+  hideProviderSettingsFooter,
 }) => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
@@ -138,7 +141,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         {t(labelKey, { ns: 'common' })}
         <Infotip
           aria-label={tipText}
-          className="ml-0.5"
+          className="ml-0.5 text-text-tertiary"
           popupClassName="w-[261px]"
         >
           {tipText}
@@ -150,27 +153,30 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   return (
     <>
       <Button
-        className="relative"
+        className={cn('relative', className)}
         variant={notConfigured ? 'primary' : 'secondary'}
         size="small"
         disabled={isLoading}
         onClick={() => setOpen(true)}
       >
         {isLoading
-          ? <span className="mr-1 i-ri-loader-2-line size-3.5 animate-spin" />
-          : <span className="mr-1 i-ri-equalizer-2-line size-3.5" />}
+          ? <span className="mr-0.5 i-ri-loader-2-line size-3.5 animate-spin" />
+          : <span className="mr-0.5 i-ri-brain-2-line size-3.5" />}
         {t('modelProvider.systemModelSettings', { ns: 'common' })}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           backdropProps={{ forceRender: true }}
-          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden p-0"
+          className="flex max-h-[calc(100dvh-2rem)] w-[480px] max-w-[480px] flex-col overflow-hidden rounded-2xl p-0"
         >
           <DialogCloseButton className="top-5 right-5" />
           <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
-              {t('modelProvider.systemModelSettings', { ns: 'common' })}
+              {t('modelProvider.systemModelSettingsTitle', { ns: 'common' })}
             </DialogTitle>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t('modelProvider.systemModelSettingsDesc', { ns: 'common' })}
+            </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             <div className="flex flex-col gap-4">
@@ -180,7 +186,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
-                    readonly={!canManagePlugin}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                   />
                 </div>
@@ -191,7 +199,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
-                    readonly={!canManagePlugin}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                   />
                 </div>
@@ -202,7 +212,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
-                    readonly={!canManagePlugin}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                   />
                 </div>
@@ -213,7 +225,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
-                    readonly={!canManagePlugin}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                   />
                 </div>
@@ -224,25 +238,27 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <ModelSelector
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
-                    readonly={!canManagePlugin}
+                    hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onConfigureEmptyState={() => setOpen(false)}
+                    showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}
                   />
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
+          <div className="flex h-[76px] shrink-0 items-center justify-end gap-2 px-6 pt-5 pb-6">
             <Button
-              className="min-w-18"
+              className="min-w-[72px]"
               onClick={() => setOpen(false)}
             >
               {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
-              className="min-w-18"
+              className="min-w-[72px]"
               variant="primary"
               onClick={handleSave}
-              disabled={!canManagePlugin}
+              disabled={!isCurrentWorkspaceManager}
             >
               {t('operation.save', { ns: 'common' })}
             </Button>

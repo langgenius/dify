@@ -15,6 +15,7 @@ type ItemValue = number | string
 export type Item<T extends ItemValue = ItemValue> = {
   value: T
   name: string
+  triggerName?: string
 } & Record<string, unknown>
 
 type Props<T extends ItemValue> = {
@@ -22,6 +23,7 @@ type Props<T extends ItemValue> = {
   panelClassName?: string
   showLeftIcon?: boolean
   leftIcon?: ReactNode
+  showItemIndicator?: boolean
   value: T
   items: Item<T>[]
   onSelect: (item: Item<T>) => void
@@ -33,6 +35,7 @@ function Chip<T extends ItemValue>({
   panelClassName,
   showLeftIcon = true,
   leftIcon,
+  showItemIndicator = true,
   value,
   items,
   onSelect,
@@ -40,7 +43,7 @@ function Chip<T extends ItemValue>({
 }: Props<T>) {
   const { t } = useTranslation()
   const selectedItem = items.find(item => Object.is(item.value, value))
-  const triggerContent = selectedItem?.name || ''
+  const triggerContent = selectedItem?.triggerName || selectedItem?.name || ''
   const hasValue = selectedItem !== undefined && value !== ''
 
   return (
@@ -65,7 +68,7 @@ function Chip<T extends ItemValue>({
             className,
           )}
         >
-          <span className="flex min-w-0 grow items-center gap-0 text-left">
+          <span className="flex min-w-0 grow items-center gap-1 text-left">
             {showLeftIcon && (
               <span className="p-0.5">
                 {leftIcon || (
@@ -104,12 +107,9 @@ function Chip<T extends ItemValue>({
             <SelectItem
               key={item.value}
               value={item.value}
-              className="mx-1 gap-2 rounded-lg px-2 py-1.5 pl-3 select-none"
             >
-              <SelectItemText className="mr-0 px-0">
-                <span title={item.name} className="block truncate system-sm-medium text-text-secondary">{item.name}</span>
-              </SelectItemText>
-              <SelectItemIndicator className="text-util-colors-blue-light-blue-light-600" />
+              <SelectItemText title={item.name}>{item.name}</SelectItemText>
+              {showItemIndicator && <SelectItemIndicator />}
             </SelectItem>
           ))}
         </SelectContent>
