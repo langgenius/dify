@@ -17,6 +17,7 @@ from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
     ToolParameter,
 )
+from core.tools.tool_manager import ToolManager
 from core.workflow.nodes.agent_v2.plugin_tools_builder import (
     WorkflowAgentPluginToolsBuilder,
     WorkflowAgentPluginToolsBuildError,
@@ -32,6 +33,8 @@ class FakeRuntimeProvider:
         self.tool = tool
         self.last_agent_tool: AgentToolEntity | None = None
         self.last_invoke_from: InvokeFrom | None = None
+        self.last_allow_file_parameters: bool | None = None
+        self.last_use_default_for_missing_form_parameters: bool | None = None
 
     def get_agent_tool_runtime(
         self,
@@ -41,11 +44,25 @@ class FakeRuntimeProvider:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Any | None = None,
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> Tool:
         self.last_agent_tool = agent_tool
         self.last_invoke_from = invoke_from
+        self.last_allow_file_parameters = allow_file_parameters
+        self.last_use_default_for_missing_form_parameters = use_default_for_missing_form_parameters
         if isinstance(self.tool, Exception):
             raise self.tool
+        if self.tool.runtime is not None:
+            runtime_parameters = ToolManager._convert_tool_parameters_type(
+                self.tool.get_merged_runtime_parameters(),
+                variable_pool,
+                agent_tool.tool_parameters,
+                typ="agent",
+                allow_file_parameters=allow_file_parameters,
+                use_default_for_missing_form_parameters=use_default_for_missing_form_parameters,
+            )
+            self.tool.runtime.runtime_parameters.update(runtime_parameters)
         return self.tool
 
 
@@ -103,6 +120,67 @@ def _tool(*, runtime_parameters: dict[str, Any] | None = None) -> FakeTool:
     return FakeTool(entity=entity, runtime=runtime)
 
 
+def _file_tool() -> FakeTool:
+    parameters = [
+        ToolParameter(
+            name="audio_file",
+            label=I18nObject(en_US="Audio File"),
+            type=ToolParameter.ToolParameterType.FILE,
+            form=ToolParameter.ToolParameterForm.LLM,
+            required=True,
+            llm_description="The audio file to be converted.",
+        )
+    ]
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="langgenius",
+            name="asr",
+            label=I18nObject(en_US="Speech To Text"),
+            provider="audio",
+        ),
+        description=ToolDescription(human=I18nObject(en_US="Speech To Text"), llm="Convert audio file to text."),
+        parameters=parameters,
+    )
+    runtime = ToolRuntime(tenant_id="tenant-1", user_id="user-1", credentials={}, runtime_parameters={})
+    return FakeTool(entity=entity, runtime=runtime)
+
+
+def _tts_tool() -> FakeTool:
+    parameters = [
+        ToolParameter(
+            name="text",
+            label=I18nObject(en_US="Text"),
+            type=ToolParameter.ToolParameterType.STRING,
+            form=ToolParameter.ToolParameterForm.LLM,
+            required=True,
+            llm_description="The text to be converted.",
+        ),
+        ToolParameter(
+            name="model",
+            label=I18nObject(en_US="Model"),
+            type=ToolParameter.ToolParameterType.SELECT,
+            form=ToolParameter.ToolParameterForm.FORM,
+            required=True,
+            options=[
+                {"value": "provider-a#model-a", "label": {"en_US": "model-a(provider-a)"}},
+                {"value": "provider-b#model-b", "label": {"en_US": "model-b(provider-b)"}},
+            ],
+        ),
+    ]
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="langgenius",
+            name="tts",
+            label=I18nObject(en_US="Text To Speech"),
+            provider="audio",
+        ),
+        description=ToolDescription(human=I18nObject(en_US="Text To Speech"), llm="Convert text to audio file."),
+        parameters=parameters,
+    )
+    runtime = ToolRuntime(tenant_id="tenant-1", user_id="user-1", credentials={}, runtime_parameters={})
+    return FakeTool(entity=entity, runtime=runtime)
+
+
 def _build(
     builder: WorkflowAgentPluginToolsBuilder,
     tools: AgentSoulToolsConfig,
@@ -155,6 +233,62 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     # must surface that so ToolManager hits the plugin provider table, not the
     # built-in legacy table.
     assert runtime_provider.last_agent_tool.provider_type.value == "plugin"
+
+
+def test_builds_dify_plugin_tool_with_file_llm_parameter():
+    runtime_provider = FakeRuntimeProvider(_file_tool())
+    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "audio",
+                    "provider_type": "builtin",
+                    "tool_name": "asr",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    prepared = result.tools[0]
+    assert prepared.tool_name == "asr"
+    assert prepared.runtime_parameters == {}
+    assert prepared.parameters[0].name == "audio_file"
+    assert prepared.parameters[0].type == "file"
+    # The public Agent backend DTO carries non-scalar tool inputs in
+    # ``parameters``; legacy JSON schema generation omits file fields.
+    assert prepared.parameters_json_schema == {"type": "object", "properties": {}, "required": []}
+    assert runtime_provider.last_allow_file_parameters is True
+    assert runtime_provider.last_use_default_for_missing_form_parameters is True
+
+
+def test_builds_dify_plugin_tool_with_missing_required_select_default():
+    runtime_provider = FakeRuntimeProvider(_tts_tool())
+    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "audio",
+                    "provider_type": "builtin",
+                    "tool_name": "tts",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    prepared = result.tools[0]
+    assert prepared.tool_name == "tts"
+    assert prepared.runtime_parameters == {"model": "provider-a#model-a"}
+    assert runtime_provider.last_use_default_for_missing_form_parameters is True
 
 
 def test_rejects_duplicate_exposed_tool_names():
