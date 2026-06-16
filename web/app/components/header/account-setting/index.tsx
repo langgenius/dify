@@ -22,6 +22,7 @@ import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
+import UsageLimitsPage from './usage-limits-page'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -93,6 +94,12 @@ export default function AccountSetting({
         name: t('settings.apiBasedExtension', { ns: 'common' }),
         icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
         activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
+      },
+      {
+        key: ACCOUNT_SETTING_TAB.USAGE_LIMITS,
+        name: t('settings.usageLimits', { ns: 'common' }),
+        icon: <span className={cn('i-ri-speed-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-speed-fill', iconClassName)} />,
       },
     )
 
@@ -231,6 +238,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.USAGE_LIMITS && <UsageLimitsPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>

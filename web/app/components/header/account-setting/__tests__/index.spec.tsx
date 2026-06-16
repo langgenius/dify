@@ -180,6 +180,7 @@ describe('AccountSetting', () => {
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
       expect(screen.getByText('common.settings.apiBasedExtension'))!.toBeInTheDocument()
+      expect(screen.getByText('common.settings.usageLimits'))!.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.language').length).toBeGreaterThan(0)
     })

@@ -6,6 +6,7 @@ export const ACCOUNT_SETTING_TAB = {
   BILLING: 'billing',
   DATA_SOURCE: 'data-source',
   API_BASED_EXTENSION: 'api-based-extension',
+  USAGE_LIMITS: 'usage-limits',
   CUSTOM: 'custom',
   LANGUAGE: 'language',
 } as const
