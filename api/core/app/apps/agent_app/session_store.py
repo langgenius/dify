@@ -56,6 +56,10 @@ class StoredAgentAppSession:
     session_snapshot: CompositorSessionSnapshot
     backend_run_id: str | None
     runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
+    # ENG-635: set while the conversation turn is paused on a dify.ask_human
+    # deferred call, awaiting a HITL form submission.
+    pending_form_id: str | None = None
+    pending_tool_call_id: str | None = None
 
 
 class AgentAppRuntimeSessionStore:
@@ -75,6 +79,8 @@ class AgentAppRuntimeSessionStore:
                 session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
                 backend_run_id=row.backend_run_id,
                 runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
+                pending_form_id=row.pending_form_id,
+                pending_tool_call_id=row.pending_tool_call_id,
             )
 
     def load_active_session_for_conversation(
@@ -125,6 +131,8 @@ class AgentAppRuntimeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
         if snapshot is None:
             return
@@ -144,6 +152,8 @@ class AgentAppRuntimeSessionStore:
                     session_snapshot=snapshot_json,
                     composition_layer_specs=runtime_layer_specs_json,
                     status=AgentRuntimeSessionStatus.ACTIVE,
+                    pending_form_id=pending_form_id,
+                    pending_tool_call_id=pending_tool_call_id,
                 )
                 session.add(row)
             else:
@@ -152,6 +162,9 @@ class AgentAppRuntimeSessionStore:
                 row.composition_layer_specs = runtime_layer_specs_json
                 row.status = AgentRuntimeSessionStatus.ACTIVE
                 row.cleaned_at = None
+                # Set (or clear, when omitted) the ask_human pause correlation.
+                row.pending_form_id = pending_form_id
+                row.pending_tool_call_id = pending_tool_call_id
             session.flush()
             other_rows = session.scalars(
                 select(AgentRuntimeSession).where(

@@ -281,6 +281,36 @@ def test_submit_form_by_token_calls_repository_and_enqueue(
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
 
 
+def test_submit_form_by_token_enqueues_agent_app_resume_for_conversation_form(
+    sample_form_record, mock_session_factory, mocker: MockerFixture
+):
+    # ENG-635: a conversation-owned (Agent v2 chat) form routes to the chat
+    # resume, not the workflow resume.
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    conversation_record = dataclasses.replace(
+        sample_form_record,
+        workflow_run_id=None,
+        conversation_id="conv-1",
+    )
+    repo.get_by_token.return_value = conversation_record
+    repo.mark_submitted.return_value = conversation_record
+    service = HumanInputService(session_factory, form_repository=repo)
+    workflow_enqueue_spy = mocker.patch.object(service, "enqueue_resume")
+    chat_enqueue_spy = mocker.patch.object(service, "enqueue_agent_app_resume")
+
+    service.submit_form_by_token(
+        recipient_type=RecipientType.STANDALONE_WEB_APP,
+        form_token="token",
+        selected_action_id="submit",
+        form_data={"field": "value"},
+        submission_end_user_id="end-user-id",
+    )
+
+    chat_enqueue_spy.assert_called_once_with(conversation_id="conv-1", form_id=conversation_record.form_id)
+    workflow_enqueue_spy.assert_not_called()
+
+
 def test_submit_form_by_token_skips_enqueue_for_delivery_test(
     sample_form_record, mock_session_factory, mocker: MockerFixture
 ):

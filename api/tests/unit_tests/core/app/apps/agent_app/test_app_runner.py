@@ -6,9 +6,11 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any, override
+from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import CancelRunRequest, CancelRunResponse, RuntimeLayerSpec
 
 from clients.agent_backend import (
@@ -19,10 +21,11 @@ from clients.agent_backend import (
 )
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
-from core.app.apps.agent_app.session_store import AgentAppSessionScope
+from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from models.agent_config_entities import AgentSoulConfig
 
 
@@ -65,17 +68,47 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
 
 
 class _FakeSessionStore:
-    def __init__(self, loaded: CompositorSessionSnapshot | None = None) -> None:
+    def __init__(
+        self,
+        loaded: CompositorSessionSnapshot | None = None,
+        loaded_session: StoredAgentAppSession | None = None,
+    ) -> None:
         self.loaded = loaded
+        self._loaded_session = loaded_session
         self.saved: list[
-            tuple[AgentAppSessionScope, str, CompositorSessionSnapshot | None, list[RuntimeLayerSpec]]
+            tuple[
+                AgentAppSessionScope,
+                str,
+                CompositorSessionSnapshot | None,
+                list[RuntimeLayerSpec],
+                str | None,
+                str | None,
+            ]
         ] = []
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
         return self.loaded
 
-    def save_active_snapshot(self, *, scope, backend_run_id, snapshot, runtime_layer_specs) -> None:
-        self.saved.append((scope, backend_run_id, snapshot, list(runtime_layer_specs)))
+    def load_active_session(self, scope: AgentAppSessionScope) -> StoredAgentAppSession | None:
+        if self._loaded_session is not None:
+            return self._loaded_session
+        if self.loaded is None:
+            return None
+        return StoredAgentAppSession(scope=scope, session_snapshot=self.loaded, backend_run_id=None)
+
+    def save_active_snapshot(
+        self,
+        *,
+        scope,
+        backend_run_id,
+        snapshot,
+        runtime_layer_specs,
+        pending_form_id=None,
+        pending_tool_call_id=None,
+    ) -> None:
+        self.saved.append(
+            (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
+        )
 
 
 def _soul() -> AgentSoulConfig:
@@ -144,11 +177,14 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert end_events[0].llm_result.model == "gpt-4o-mini"
     # The conversation session snapshot is persisted for multi-turn continuity.
     assert store.saved
-    saved_scope, saved_run_id, saved_snapshot, saved_specs = store.saved[0]
+    saved_scope, saved_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
     assert saved_scope.conversation_id == "conv-1"
     assert saved_scope.agent_config_snapshot_id == "snap-1"
     assert saved_run_id == "fake-run-1"
     assert saved_snapshot is not None
+    # A successful turn carries no ask_human pause correlation.
+    assert pending_form_id is None
+    assert pending_tool_call_id is None
     assert [spec.name for spec in saved_specs] == [
         "agent_soul_prompt",
         "agent_app_user_prompt",
@@ -197,3 +233,68 @@ def test_extract_answer_handles_plain_string_and_dict():
     assert AgentAppRunner._extract_answer("plain text") == "plain text"
     assert AgentAppRunner._extract_answer({"text": "hi"}) == "hi"
     assert AgentAppRunner._extract_answer({"a": 1}) == '{"a": 1}'
+
+
+def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
+    # ENG-635/637: the PAUSED scenario emits a dify.ask_human deferred call, so
+    # the chat turn ends by creating a conversation-owned HITL form + saving the
+    # pause correlation, instead of crashing. Stub the form repo (DB-free).
+    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+    runner = _runner(client, store)
+
+    fake_repo = MagicMock()
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
+    runner._build_form_repository = lambda dify_context: fake_repo  # type: ignore[assignment]
+
+    _run(runner, qm)
+
+    # The conversation-owned form was created and the agent's question surfaced.
+    fake_repo.create_form.assert_called_once()
+    created_params = fake_repo.create_form.call_args.args[0]
+    assert created_params.conversation_id == "conv-1"
+    assert created_params.workflow_execution_id is None
+    assert [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    # The pause correlation is persisted so a form submission can resume the run.
+    assert store.saved
+    assert store.saved[0][4] == "form-1"
+    assert store.saved[0][5] == "fake-ask-human-1"
+
+
+def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):
+    # ENG-638: a turn that runs while a pending form is answered threads the
+    # human's reply into the request as deferred_tool_results.
+    snapshot = CompositorSessionSnapshot(layers=[])
+    stored = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snap-1",
+        ),
+        session_snapshot=snapshot,
+        backend_run_id="run-0",
+        pending_form_id="form-1",
+        pending_tool_call_id="call-1",
+    )
+    store = _FakeSessionStore(loaded_session=stored)
+    submitted = AskHumanResumeOutcome(deferred_result=AskHumanToolResult(status="submitted", values={"ok": True}))
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.app_runner.resolve_ask_human_form",
+        lambda **_kwargs: submitted,
+    )
+
+    client = FakeAgentBackendRunClient()  # SUCCESS -> the resumed run completes
+    qm = _FakeQueueManager()
+    _run(_runner(client, store), qm)
+
+    assert client.request is not None
+    assert client.request.deferred_tool_results is not None
+    assert set(client.request.deferred_tool_results.calls) == {"call-1"}
+    # ENG-638: the resume composition must keep the user-prompt layer so it
+    # matches the suspended snapshot's layer names (the agent backend rejects a
+    # mismatch). A resume therefore re-sends a non-blank query, never blank.
+    layer_names = [layer.name for layer in client.request.composition.layers]
+    assert "agent_app_user_prompt" in layer_names

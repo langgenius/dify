@@ -47,12 +47,20 @@ class StoredWorkflowAgentSession:
     session_snapshot: CompositorSessionSnapshot
     backend_run_id: str | None
     runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
+    # ENG-637: set while the session is paused on a dify.ask_human deferred call.
+    pending_form_id: str | None = None
+    pending_tool_call_id: str | None = None
 
 
 class WorkflowAgentRuntimeSessionStore:
     """Stores Agent backend session snapshots for workflow Agent node re-entry."""
 
     def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
+        stored = self.load_active_session(scope)
+        return stored.session_snapshot if stored is not None else None
+
+    def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
+        """Load the active session row including any pending ask_human correlation."""
         if scope.workflow_run_id is None:
             return None
 
@@ -69,7 +77,14 @@ class WorkflowAgentRuntimeSessionStore:
             )
             if row is None:
                 return None
-            return CompositorSessionSnapshot.model_validate_json(row.session_snapshot)
+            return StoredWorkflowAgentSession(
+                scope=scope,
+                session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
+                backend_run_id=row.backend_run_id,
+                runtime_layer_specs=_deserialize_specs(row.composition_layer_specs),
+                pending_form_id=row.pending_form_id,
+                pending_tool_call_id=row.pending_tool_call_id,
+            )
 
     def list_active_sessions(self, *, workflow_run_id: str) -> list[StoredWorkflowAgentSession]:
         with session_factory.create_session() as session:
@@ -109,6 +124,8 @@ class WorkflowAgentRuntimeSessionStore:
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
         if scope.workflow_run_id is None or snapshot is None:
             return
@@ -141,6 +158,8 @@ class WorkflowAgentRuntimeSessionStore:
                     session_snapshot=snapshot_json,
                     composition_layer_specs=specs_json,
                     status=WorkflowAgentRuntimeSessionStatus.ACTIVE,
+                    pending_form_id=pending_form_id,
+                    pending_tool_call_id=pending_tool_call_id,
                 )
                 session.add(row)
             else:
@@ -151,6 +170,9 @@ class WorkflowAgentRuntimeSessionStore:
                 row.composition_layer_specs = specs_json
                 row.status = WorkflowAgentRuntimeSessionStatus.ACTIVE
                 row.cleaned_at = None
+                # Set (or clear, when omitted) the ask_human pause correlation.
+                row.pending_form_id = pending_form_id
+                row.pending_tool_call_id = pending_tool_call_id
             session.commit()
 
     def mark_cleaned(self, *, scope: WorkflowAgentSessionScope, backend_run_id: str | None = None) -> None:
