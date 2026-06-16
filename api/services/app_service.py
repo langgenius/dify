@@ -29,6 +29,7 @@ from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
@@ -428,6 +429,12 @@ class AppService:
         db.session.commit()
 
         app_was_created.send(app, account=account)
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account.id,
+            enterprise_rbac_service.RBACResourceType.APP,
+            app.id,
+        )
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private

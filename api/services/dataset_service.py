@@ -477,6 +477,12 @@ class DatasetService:
             db.session.add(external_knowledge_binding)
 
         db.session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account.id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
         return dataset
 
     @staticmethod

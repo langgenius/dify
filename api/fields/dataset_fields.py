@@ -270,6 +270,7 @@ class DatasetDetailResponse(ResponseModel):
     enable_api: bool
     is_multimodal: bool
     permission_keys: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod

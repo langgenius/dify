@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from enum import StrEnum
 from typing import Any, TypeVar
 
@@ -14,6 +15,7 @@ from models import TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
 T = TypeVar("T")
+logger = logging.getLogger(__name__)
 
 
 class _RBACModel(BaseModel):
@@ -674,6 +676,42 @@ def _inner_call(
     )
 
 
+def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str) -> dict[str, str]:
+    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else str(resource_type)
+    resource_id = resource_id.strip()
+    if resource_type_value == RBACResourceType.APP.value:
+        return {"resource_type": resource_type_value, "app_id": resource_id}
+    if resource_type_value == RBACResourceType.DATASET.value:
+        return {"resource_type": resource_type_value, "dataset_id": resource_id}
+    raise ValueError(f"unsupported resource_type: {resource_type_value}")
+
+
+def try_sync_creator_access_policy_member_bindings(
+    tenant_id: str,
+    account_id: str,
+    resource_type: RBACResourceType | str,
+    resource_id: str,
+) -> None:
+    if not dify_config.RBAC_ENABLED:
+        return
+    try:
+        RBACService.AccessPolicies.sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account_id,
+            resource_type=resource_type,
+            resource_id=resource_id,
+        )
+    except Exception:
+        logger.warning(
+            "Failed to sync creator access policy member binding for tenant_id=%s resource_type=%s resource_id=%s account_id=%s",
+            tenant_id,
+            resource_type.value if isinstance(resource_type, RBACResourceType) else resource_type,
+            resource_id,
+            account_id,
+            exc_info=True,
+        )
+
+
 class RBACService:
     """Single entry point grouping every inner RBAC call by feature area.
 
@@ -931,6 +969,27 @@ class RBACService:
                 account_id=account_id,
                 params={"id": policy_id},
             )
+
+        @staticmethod
+        def sync_creator_access_policy_member_bindings(
+            tenant_id: str,
+            account_id: str | None,
+            *,
+            resource_type: RBACResourceType | str,
+            resource_id: str,
+        ) -> list[AccessPolicyMemberBinding]:
+            params = _resource_id_params(resource_type, resource_id)
+            data = _inner_call(
+                "PUT",
+                f"{_INNER_PREFIX}/access-policies/creator-member-bindings",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params=params,
+            )
+            items = []
+            if isinstance(data, dict):
+                items = data.get("data") or []
+            return [AccessPolicyMemberBinding.model_validate(item) for item in items]
 
     # ------------------------------------------------------------------
     # Access-policy bindings (lock / unlock a single binding).

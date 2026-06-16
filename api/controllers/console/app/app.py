@@ -408,6 +408,7 @@ class AppPartial(ResponseModel):
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
     is_starred: bool = False
+    maintainer: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore
     @property
@@ -444,6 +445,7 @@ class AppDetail(ResponseModel):
     access_mode: str | None = None
     tags: list[Tag] = Field(default_factory=list)
     permission_keys: list[str] = Field(default_factory=list)
+    maintainer: str | None = None
 
     @field_validator("created_at", "updated_at", mode="before")
     @classmethod
