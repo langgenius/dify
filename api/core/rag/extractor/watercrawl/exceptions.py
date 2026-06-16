@@ -7,7 +7,9 @@ domain type instead of low-level parser errors.
 """
 
 import json
-from typing import override
+from typing import Any, override
+
+from httpx import Response
 
 
 class WaterCrawlError(Exception):
@@ -15,11 +17,11 @@ class WaterCrawlError(Exception):
 
 
 class WaterCrawlBadRequestError(WaterCrawlError):
-    def __init__(self, response):
+    def __init__(self, response: Response):
         self.status_code = response.status_code
         self.response = response
         try:
-            data = response.json()
+            data: Any = response.json()
         except ValueError:
             data = {}
         if not isinstance(data, dict):
