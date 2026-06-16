@@ -20,8 +20,12 @@ const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flat
 ])
 
 const toSkillRefs = (skills: AgentSkill[]) => skills.map(skill => ({
+  description: skill.description,
   id: skill.id,
+  manifest_files: skill.files,
   name: skill.name,
+  path: skill.path,
+  skill_md_key: skill.skillMdKey,
 }))
 
 const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => (
@@ -32,8 +36,12 @@ const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => (
     return []
 
   return [{
+    description: skill.description ?? undefined,
+    files: skill.manifest_files ?? undefined,
     id,
     name: skill.name ?? id,
+    path: skill.path ?? undefined,
+    skillMdKey: skill.skill_md_key ?? undefined,
   }]
 })
 

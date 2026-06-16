@@ -1,22 +1,16 @@
 'use client'
 
-import type { AgentSoulConfig, ComposerSaveStrategy } from '@dify/contracts/api/console/agent/types.gen'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { debounce } from 'es-toolkit/compat'
-import { useSetAtom, useStore } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSetAtom } from 'jotai'
+import { useCallback, useState } from 'react'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import {
-  agentComposerDraftAtom,
   agentComposerOriginalConfigAtom,
   agentComposerOriginalDraftAtom,
-  isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
-
-const DRAFT_AUTOSAVE_WAIT = 5000
 
 type AgentConfigurePublishPayload = {
   agent_id: string
@@ -25,34 +19,13 @@ type AgentConfigurePublishPayload = {
 
 export function useAgentConfigureSync({
   agentId,
-  baseConfig,
-  currentModel,
-  enabled,
 }: {
   agentId: string
-  baseConfig?: AgentSoulConfig
-  currentModel?: DefaultModel
-  enabled: boolean
 }) {
   const queryClient = useQueryClient()
-  const store = useStore()
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
   const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
   const [isPublishing, setIsPublishing] = useState(false)
-  const baseConfigRef = useRef(baseConfig)
-  const currentModelRef = useRef(currentModel)
-  const enabledRef = useRef(enabled)
-  const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
-
-  baseConfigRef.current = baseConfig
-  currentModelRef.current = currentModel
-  enabledRef.current = enabled
-
-  const getAgentSoulDraft = useCallback(() => formStateToAgentSoulConfig({
-    baseConfig: baseConfigRef.current,
-    formState: store.get(agentComposerDraftAtom),
-    currentModel: currentModelRef.current,
-  }), [store])
 
   const saveComposerMutation = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
@@ -69,68 +42,27 @@ export function useAgentConfigureSync({
   )
 
   const saveComposer = useSerialAsyncCallback(async (
-    saveStrategy: ComposerSaveStrategy,
-    configSnapshot = getAgentSoulDraft(),
+    configSnapshot: AgentSoulConfig,
   ) => {
-    const savedDraftKey = JSON.stringify(configSnapshot)
     const composerState = await saveComposerMutation.mutateAsync({
       params: {
         agent_id: agentId,
       },
       body: {
         variant: 'agent_app',
-        save_strategy: saveStrategy,
+        save_strategy: 'save_as_new_version',
         agent_soul: configSnapshot,
       },
     })
 
-    if (saveStrategy === 'save_to_current_version') {
-      lastAutosavedDraftKeyRef.current = savedDraftKey
-      return
-    }
-
     setOriginalConfig(composerState.agent_soul)
     setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
-    lastAutosavedDraftKeyRef.current = savedDraftKey
   })
 
-  const latestDraftSaveRef = useRef<() => void>(() => undefined)
-  latestDraftSaveRef.current = () => {
-    void saveComposer('save_to_current_version')
-  }
-
-  const debouncedSaveDraft = useMemo(() => debounce(() => {
-    latestDraftSaveRef.current()
-  }, DRAFT_AUTOSAVE_WAIT), [])
-
-  useEffect(() => {
-    return store.sub(agentComposerDraftAtom, () => {
-      const agentSoulDraft = getAgentSoulDraft()
-      const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
-
-      if (
-        !enabledRef.current
-        || !store.get(isAgentComposerDirtyAtom)
-        || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
-      ) {
-        return
-      }
-
-      debouncedSaveDraft()
-    })
-  }, [debouncedSaveDraft, getAgentSoulDraft, store])
-
-  useEffect(() => {
-    return () => {
-      debouncedSaveDraft.flush?.()
-    }
-  }, [debouncedSaveDraft])
-
   const publishDraft = useCallback(async (payload: AgentConfigurePublishPayload) => {
-    debouncedSaveDraft.cancel?.()
     setIsPublishing(true)
     try {
-      await saveComposer('save_as_new_version', payload.config_snapshot)
+      await saveComposer(payload.config_snapshot)
     }
     catch {
       // Draft sync follows workflow autosave behavior: save failures are silent and keep the local draft intact.
@@ -138,7 +70,7 @@ export function useAgentConfigureSync({
     finally {
       setIsPublishing(false)
     }
-  }, [debouncedSaveDraft, saveComposer])
+  }, [saveComposer])
 
   return {
     isPublishing,

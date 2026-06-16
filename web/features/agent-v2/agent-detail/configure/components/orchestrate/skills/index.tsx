@@ -67,7 +67,7 @@ export function AgentSkills({
               />
             )
           : skills.map(skill => (
-              <AgentSkillItem key={skill.id} skill={skill} onRemove={removeSkill} />
+              <AgentSkillItem key={skill.id} agentId={agentId} skill={skill} onRemove={removeSkill} />
             ))}
       </ConfigureSection>
       <AgentSkillUploadDialog

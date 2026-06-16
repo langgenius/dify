@@ -1,5 +1,6 @@
 'use client'
 
+import type { PostAgentByAgentIdSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSkill } from './item'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,21 +16,24 @@ import { formatFileSize } from '@/utils/format'
 const skillPackageAccept = '.zip,.skill'
 const skillPackageExtensions = ['.zip', '.skill']
 
-const getStringValue = (value: unknown) => typeof value === 'string' ? value : undefined
-
 const getSkillNameFromFile = (file: File) => file.name.replace(/\.(?:skill|zip)$/iu, '') || file.name
 
-const toUploadedSkill = (response: Record<string, unknown>, file: File): AgentSkill => {
-  const name = getStringValue(response.name)
-    ?? getStringValue(response.skill_name)
+const toUploadedSkill = (response: PostAgentByAgentIdSkillsUploadResponse, file: File): AgentSkill => {
+  const name = response.skill?.name
+    ?? response.manifest?.name
     ?? getSkillNameFromFile(file)
-  const id = getStringValue(response.id)
-    ?? getStringValue(response.skill_id)
+  const id = response.skill?.id
+    ?? response.skill?.skill_md_key
+    ?? response.skill?.path
     ?? name
 
   return {
+    description: response.skill?.description ?? response.manifest?.description,
+    files: response.skill?.manifest_files ?? response.manifest?.files,
     id,
     name,
+    path: response.skill?.path ?? undefined,
+    skillMdKey: response.skill?.skill_md_key ?? undefined,
   }
 }
 

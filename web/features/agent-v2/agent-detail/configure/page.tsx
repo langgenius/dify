@@ -44,7 +44,6 @@ function AgentConfigurePageContent({
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const {
     agentQuery,
-    composerQuery,
     versionQuery,
     activeVersionId,
     activeConfigSnapshot,
@@ -67,9 +66,6 @@ function AgentConfigurePageContent({
     publishDraft,
   } = useAgentConfigureSync({
     agentId,
-    baseConfig: agentSoulConfig,
-    currentModel,
-    enabled: composerQuery.isSuccess,
   })
 
   return (
