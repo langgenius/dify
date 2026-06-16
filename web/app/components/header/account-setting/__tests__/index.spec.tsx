@@ -115,6 +115,16 @@ vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
   default: () => <div data-testid="data-source-page" />,
 }))
 
+vi.mock('@/app/components/header/account-setting/permissions-page', () => ({
+  __esModule: true,
+  default: () => <div data-testid="permissions-page" />,
+}))
+
+vi.mock('@/app/components/header/account-setting/access-rules-page', () => ({
+  __esModule: true,
+  default: () => <div data-testid="access-rules-page" />,
+}))
+
 const baseAppContextValue: AppContextValue = {
   userProfile: {
     id: '1',
@@ -224,6 +234,8 @@ describe('AccountSetting', () => {
       expect(screen.getAllByText('common.settings.workspace').length).toBeGreaterThan(0)
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
+      expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
@@ -313,7 +325,7 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
     })
 
-    it('should filter items for dataset operator', () => {
+    it('should hide workspace menu items for dataset operators', () => {
       // Arrange
       const datasetOperatorContext = {
         ...baseAppContextValue,
@@ -327,16 +339,17 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getAllByText('common.settings.provider').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('common.settings.billing').length).toBeGreaterThan(0)
+      expect(screen.queryByRole('button', { name: 'common.settings.members' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.billing' })).not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource')).not.toBeInTheDocument()
-      expect(screen.getAllByText('common.settings.apiBasedExtension').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(0)
-      expect(screen.getByText('common.settings.language'))!.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.customEndpoint')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'custom.custom' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.preferences' })).toBeInTheDocument()
     })
 
-    it('should show api extension tab when api extension permission is missing', () => {
+    it('should keep moved integrations hidden when api extension permission is missing', () => {
       // Arrange
       const contextWithoutApiExtensionPermission = {
         ...baseAppContextValue,
@@ -349,7 +362,9 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getAllByText('common.settings.apiBasedExtension').length).toBeGreaterThan(0)
+      expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.dataSource')).not.toBeInTheDocument()
+      expect(screen.queryByText('common.settings.customEndpoint')).not.toBeInTheDocument()
     })
 
     it('should show custom tab when customization permission is missing', () => {
@@ -365,38 +380,28 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
-      // Assert
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.members' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
+    })
+
+    it('should hide role and resource access entries when role management permission is missing', () => {
+      // Arrange
+      const contextWithoutRoleManagePermission = {
+        ...baseAppContextValue,
+        workspacePermissionKeys: baseAppContextValue.workspacePermissionKeys.filter(key => key !== 'workspace.role.manage'),
+      }
+      vi.mocked(useAppContext).mockReturnValue(contextWithoutRoleManagePermission)
+      mockAppContextState.current = contextWithoutRoleManagePermission
+
+      // Act
+      renderAccountSetting()
+
+      // Assert
+      expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
     })
 
     it('should hide billing and custom tabs when disabled', () => {
@@ -478,6 +483,14 @@ describe('AccountSetting', () => {
       // Members
       fireEvent.click(screen.getAllByText('common.settings.members')[0]!)
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(1)
+
+      // Roles & Permissions
+      fireEvent.click(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }))
+      expect(screen.getByTestId('permissions-page')).toBeInTheDocument()
+
+      // Resource Access
+      fireEvent.click(screen.getByRole('button', { name: 'common.settings.resourceAccess' }))
+      expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
 
       // Language
       fireEvent.click(screen.getByText('common.settings.preferences'))
