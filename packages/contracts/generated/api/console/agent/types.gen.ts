@@ -18,6 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
+  role?: string
 }
 
 export type AppDetailWithSite = {
@@ -63,6 +64,7 @@ export type UpdateAppPayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
+  role?: string
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -272,6 +274,7 @@ export type AppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  role?: string
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null

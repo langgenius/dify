@@ -38,6 +38,7 @@ describe('CreateAgentDialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
     await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), ' Research Agent ')
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Research Assistant ')
     await user.type(within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'), ' Find and summarize market materials. ')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
@@ -45,6 +46,7 @@ describe('CreateAgentDialog', () => {
       body: {
         name: 'Research Agent',
         description: 'Find and summarize market materials.',
+        role: 'Research Assistant',
         icon_type: 'emoji',
         icon: '🧸',
         icon_background: '#F5F3FF',

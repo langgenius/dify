@@ -24,6 +24,7 @@ type EditAgentDialogProps = {
 type AgentFormValues = {
   description?: string
   name?: string
+  role?: string
 }
 
 type AgentIconSelection = AppIconSelection | {
@@ -94,6 +95,7 @@ export function EditAgentDialog({
   const { t: tCommon } = useTranslation('common')
   const [name, setName] = useState(agent.name)
   const [description, setDescription] = useState(agent.description ?? '')
+  const [role, setRole] = useState(agent.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => createAgentIconSelection(agent))
   const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
@@ -101,9 +103,11 @@ export function EditAgentDialog({
   const handleSubmit = (formValues: AgentFormValues) => {
     const trimmedName = formValues.name?.trim() ?? ''
     const trimmedDescription = formValues.description?.trim() ?? ''
+    const trimmedRole = formValues.role?.trim() ?? ''
     const hasIconChanges = getAgentIconKey(agentIcon) !== getAgentIconKey(createAgentIconSelection(agent))
     const hasFormChanges = trimmedName !== agent.name.trim()
       || trimmedDescription !== (agent.description?.trim() ?? '')
+      || trimmedRole !== (agent.role?.trim() ?? '')
       || hasIconChanges
 
     if (!trimmedName || !hasFormChanges || updateAgentMutation.isPending)
@@ -112,6 +116,7 @@ export function EditAgentDialog({
     const body: UpdateAppPayload = {
       name: trimmedName,
       description: trimmedDescription,
+      role: trimmedRole,
     }
 
     if (hasIconChanges)
@@ -137,6 +142,7 @@ export function EditAgentDialog({
     if (nextOpen) {
       setName(agent.name)
       setDescription(agent.description ?? '')
+      setRole(agent.role ?? '')
       setAgentIcon(createAgentIconSelection(agent))
     }
     else {
@@ -147,9 +153,11 @@ export function EditAgentDialog({
 
   const trimmedName = name.trim()
   const trimmedDescription = description.trim()
+  const trimmedRole = role.trim()
   const hasIconChanges = getAgentIconKey(agentIcon) !== getAgentIconKey(createAgentIconSelection(agent))
   const hasChanges = trimmedName !== agent.name.trim()
     || trimmedDescription !== (agent.description?.trim() ?? '')
+    || trimmedRole !== (agent.role?.trim() ?? '')
     || hasIconChanges
 
   return (
@@ -187,7 +195,7 @@ export function EditAgentDialog({
                     imageUrl={agentIcon.type === 'emoji' ? undefined : agentIcon.url}
                   />
                 </button>
-                <div className="flex min-w-0 flex-1 pb-1">
+                <div className="flex min-w-0 flex-1 gap-3 pb-1">
                   <FieldRoot name="name" className="min-w-0 flex-1">
                     <FieldLabel>
                       {t('roster.createForm.nameLabel')}
@@ -205,6 +213,18 @@ export function EditAgentDialog({
                     <FieldError match="valueMissing">
                       {t('roster.createForm.nameRequired')}
                     </FieldError>
+                  </FieldRoot>
+                  <FieldRoot name="role" className="min-w-0 flex-1">
+                    <FieldLabel>
+                      {t('roster.createForm.roleLabel')}
+                    </FieldLabel>
+                    <FieldControl
+                      autoComplete="off"
+                      maxLength={255}
+                      onValueChange={setRole}
+                      placeholder={t('roster.createForm.rolePlaceholder')}
+                      value={role}
+                    />
                   </FieldRoot>
                 </div>
               </div>

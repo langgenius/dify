@@ -56,6 +56,7 @@ const createAgent = (overrides: Partial<AppPartial> = {}): AppPartial => ({
   icon_url: null,
   mode: 'agent',
   name: 'Research Agent',
+  role: 'Research Assistant',
   ...overrides,
 })
 
@@ -95,6 +96,31 @@ describe('EditAgentDialog', () => {
       body: {
         name: 'Market Agent',
         description: 'Find and summarize market materials.',
+        role: 'Research Assistant',
+      },
+    }, expect.objectContaining({
+      onError: expect.any(Function),
+      onSuccess: expect.any(Function),
+    }))
+  })
+
+  it('submits changed role when editing an agent', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Market Analyst ')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: 'Market Analyst',
       },
     }, expect.objectContaining({
       onError: expect.any(Function),
@@ -118,6 +144,7 @@ describe('EditAgentDialog', () => {
       body: {
         name: 'Research Agent',
         description: 'Find and summarize market materials.',
+        role: 'Research Assistant',
         icon_type: 'emoji',
         icon: '🧠',
         icon_background: '#E0F2FE',
