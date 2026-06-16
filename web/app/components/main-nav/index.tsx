@@ -289,7 +289,7 @@ const MainNav = ({
                       <MainNavLink key={item.href} item={item} pathname={pathname} />
                     ))}
                   </nav>
-                  {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+                  <WebAppsSection />
                 </>
               )}
           {showEnvTag && detailNavigationVisibleExpanded && (

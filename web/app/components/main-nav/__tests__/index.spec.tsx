@@ -238,7 +238,7 @@ const appContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
-  workspacePermissionKeys: [],
+  workspacePermissionKeys: ['app_library.access'],
 }
 
 const renderMainNav = (
@@ -417,7 +417,8 @@ describe('MainNav', () => {
     expect(screen.getAllByText(Plan.team)).toHaveLength(1)
   })
 
-  it('hides app and tools entries for dataset operators', () => {
+  it('hides app and tools entries for dataset operators without hiding RBAC-permitted installed web apps', () => {
+    mockInstalledApps = [createInstalledApp()]
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
       currentWorkspace: {
@@ -437,7 +438,23 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.queryByRole('link', { name: /common.mainNav.integrations/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
+    expect(screen.getByRole('button', { name: 'explore.sidebar.webApps' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Alpha App' })).toHaveAttribute('href', '/installed/installed-1')
+  })
+
+  it('hides installed web apps and skips loading them when app library access is missing', () => {
+    mockInstalledApps = [createInstalledApp()]
+    ;(useAppContext as Mock).mockReturnValue({
+      ...appContextValue,
+      workspacePermissionKeys: [],
+    })
+
+    renderMainNav()
+
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Alpha App' })).not.toBeInTheDocument()
+    expect(useGetInstalledApps).not.toHaveBeenCalled()
   })
 
   it('hides datasets for members without editor or dataset-operator access', () => {
