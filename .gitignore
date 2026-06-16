@@ -262,5 +262,3 @@ scripts/stress-test/reports/
 
 # Vitest local reports
 web/.vitest-reports/
-
-.vinext
