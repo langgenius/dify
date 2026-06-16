@@ -9,16 +9,11 @@ import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
 function AgentNodeAvatar({
   agent,
   isInlineAgent,
-  isLoading,
 }: {
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
   isInlineAgent: boolean
-  isLoading: boolean
 }) {
   const imageUrl = agent && (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
-
-  if (isLoading)
-    return <span aria-hidden className="size-8 shrink-0 rounded-full bg-text-quaternary/20" />
 
   if (isInlineAgent) {
     return (
@@ -50,6 +45,10 @@ function AgentNodeAvatar({
   )
 }
 
+function AgentNodeAvatarPlaceholder() {
+  return <span aria-hidden className="size-8 shrink-0 rounded-full bg-text-quaternary/20" />
+}
+
 function AgentNodeModel({
   data,
   agent,
@@ -74,7 +73,9 @@ function AgentNodeModel({
       </div>
       <div className="px-2.5">
         <div className="flex min-w-0 items-center gap-1 rounded-lg bg-workflow-block-parma-bg p-1">
-          <AgentNodeAvatar agent={agent} isInlineAgent={isInlineAgent} isLoading={showPlaceholder} />
+          {showPlaceholder
+            ? <AgentNodeAvatarPlaceholder />
+            : <AgentNodeAvatar agent={agent} isInlineAgent={isInlineAgent} />}
           <div className="flex min-w-0 flex-1 flex-col justify-center">
             {showPlaceholder
               ? (
