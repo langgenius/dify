@@ -237,6 +237,8 @@ class WorkflowFinishStreamResponse(StreamResponse):
         error: str | None = None
         elapsed_time: float
         total_tokens: int
+        prompt_tokens: int = 0
+        completion_tokens: int = 0
         total_steps: int
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
@@ -876,6 +878,8 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         error: str | None = None
         elapsed_time: float
         total_tokens: int
+        prompt_tokens: int = 0
+        completion_tokens: int = 0
         total_steps: int
         created_at: int
         finished_at: int | None
