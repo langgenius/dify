@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+import { redirect } from '@/next/navigation'
 
 const Page = async (props: {
   params: Promise<{ snippetId: string }>
