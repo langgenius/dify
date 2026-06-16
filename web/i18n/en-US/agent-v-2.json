@@ -342,6 +342,7 @@
   "roster.loadMore": "Load more",
   "roster.loadingError": "Failed to load agents. Refresh and try again.",
   "roster.moreActions": "More actions for {{name}}",
+  "roster.nodeSelector.createInlineFailed": "Failed to create inline agent. Refresh and try again.",
   "roster.nodeSelector.dialogLabel": "Select an agent",
   "roster.nodeSelector.manageInAgentConsole": "Manage in Agent Console",
   "roster.nodeSelector.searchPlaceholder": "Search…",

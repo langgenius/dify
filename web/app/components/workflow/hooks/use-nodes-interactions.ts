@@ -36,7 +36,8 @@ import {
   Y_OFFSET,
 } from '../constants'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
-import { isAgentV2NodeData } from '../nodes/agent-v2/types'
+import { useCreateInlineAgentBinding } from '../nodes/agent-v2/hooks'
+import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '../nodes/agent-v2/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
@@ -176,6 +177,21 @@ export const useNodesInteractions = () => {
     redo,
   } = useWorkflowHistory()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
+  const { createInlineAgentBinding } = useCreateInlineAgentBinding()
+
+  const createInlineAgentBindingForNode = useCallback((nodeId: string) => {
+    createInlineAgentBinding(nodeId, {
+      onSuccess: (binding) => {
+        const { nodes, setNodes } = collaborativeWorkflow.getState()
+        setNodes(produce(nodes, (draft) => {
+          const node = draft.find(node => node.id === nodeId)
+          if (node && isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+            node.data.agent_binding = binding
+        }))
+        handleSyncWorkflowDraft(true, true)
+      },
+    })
+  }, [collaborativeWorkflow, createInlineAgentBinding, handleSyncWorkflowDraft])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
@@ -235,12 +251,12 @@ export const useNodesInteractions = () => {
         const currentNode = draft.find(n => n.id === node.id)!
 
         // Check if current dragging node is an entry node
-        const isCurrentEntryNode = isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
+        const isCurrentEntryNode = isTriggerNode(node.data.type as BlockEnum) || node.data.type === BlockEnum.Start
 
         // X-axis alignment with offset consideration
         if (showVerticalHelpLineNodesLength > 0) {
           const targetNode = showVerticalHelpLineNodes[0]
-          const isTargetEntryNode = isTriggerNode(targetNode!.data.type as any) || targetNode!.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode!.data.type as BlockEnum) || targetNode!.data.type === BlockEnum.Start
 
           // Calculate the wrapper position needed to align the inner nodes
           // Target inner position = target.position + target.offset
@@ -264,7 +280,7 @@ export const useNodesInteractions = () => {
         // Y-axis alignment with offset consideration
         if (showHorizontalHelpLineNodesLength > 0) {
           const targetNode = showHorizontalHelpLineNodes[0]
-          const isTargetEntryNode = isTriggerNode(targetNode!.data.type as any) || targetNode!.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode!.data.type as BlockEnum) || targetNode!.data.type === BlockEnum.Start
 
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
@@ -621,7 +637,7 @@ export const useNodesInteractions = () => {
   )
 
   const handleNodeConnectEnd = useCallback<OnConnectEnd>(
-    (e: any) => {
+    (e) => {
       if (getNodesReadOnly())
         return
 
@@ -647,7 +663,8 @@ export const useNodesInteractions = () => {
         if (fromNode.parentId !== toNode.parentId)
           return
 
-        const { x, y } = screenToFlowPosition({ x: e.x, y: e.y })
+        const pointer = e as { x: number, y: number }
+        const { x, y } = screenToFlowPosition({ x: pointer.x, y: pointer.y })
 
         if (
           fromHandleType === 'source'
@@ -891,7 +908,7 @@ export const useNodesInteractions = () => {
         = generateNewNode({
           type: getNodeCustomTypeByNodeDataType(nodeType),
           data: {
-            ...(defaultValue as any),
+            ...(defaultValue as Node['data']),
             title:
               nodesWithSameType.length > 0
                 ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
@@ -1141,7 +1158,7 @@ export const useNodesInteractions = () => {
           }
         }
 
-        let nodesConnectedSourceOrTargetHandleIdsMap: Record<string, any>
+        let nodesConnectedSourceOrTargetHandleIdsMap: ReturnType<typeof getNodesConnectedSourceOrTargetHandleIdsMap>
         if (newEdge) {
           nodesConnectedSourceOrTargetHandleIdsMap
             = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -1420,6 +1437,12 @@ export const useNodesInteractions = () => {
         })
         setEdges(newEdges)
       }
+      if (isAgentV2NodeData(newNode.data) && needsInlineAgentBindingCreation(newNode.data)) {
+        saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
+        createInlineAgentBindingForNode(newNode.id)
+        return
+      }
+
       handleSyncWorkflowDraft()
       saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
     },
@@ -1427,6 +1450,7 @@ export const useNodesInteractions = () => {
       getNodesReadOnly,
       collaborativeWorkflow,
       handleSyncWorkflowDraft,
+      createInlineAgentBindingForNode,
       saveStateToHistory,
       workflowStore,
       getAfterNodesInSameBranch,
@@ -1459,7 +1483,7 @@ export const useNodesInteractions = () => {
       } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(nodeType),
         data: {
-          ...(defaultValue as any),
+          ...(defaultValue as Node['data']),
           title:
             nodesWithSameType.length > 0
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
@@ -1649,6 +1673,9 @@ export const useNodesInteractions = () => {
           onSuccess: () => autoGenerateWebhookUrl(newCurrentNode.id),
         })
       }
+      else if (isAgentV2NodeData(newCurrentNode.data) && needsInlineAgentBindingCreation(newCurrentNode.data)) {
+        createInlineAgentBindingForNode(newCurrentNode.id)
+      }
       else {
         handleSyncWorkflowDraft()
       }
@@ -1661,6 +1688,7 @@ export const useNodesInteractions = () => {
       getNodesReadOnly,
       collaborativeWorkflow,
       handleSyncWorkflowDraft,
+      createInlineAgentBindingForNode,
       saveStateToHistory,
       nodesMetaDataMap,
       autoGenerateWebhookUrl,
@@ -2357,7 +2385,7 @@ export const useNodesInteractions = () => {
 
       const currentNode = nodes.find(n => n.id === nodeId)!
       const childrenNodes = nodes.filter(n =>
-        currentNode.data._children?.find((c: any) => c.nodeId === n.id),
+        currentNode.data._children?.find((child: NonNullable<Node['data']['_children']>[number]) => child.nodeId === n.id),
       )
       let rightNode: Node
       let bottomNode: Node

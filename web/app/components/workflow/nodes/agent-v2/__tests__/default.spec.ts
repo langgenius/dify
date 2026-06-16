@@ -63,10 +63,25 @@ describe('agent/default', () => {
     })
   })
 
-  it('passes validation for inline agent binding', () => {
+  it('requires complete inline agent binding', () => {
     const result = nodeDefault.checkValid(createPayload({
       agent_binding: {
         binding_type: 'inline_agent',
+      },
+    }), t)
+
+    expect(result).toEqual({
+      isValid: false,
+      errorMessage: 'required:Agent',
+    })
+  })
+
+  it('passes validation for complete inline agent binding', () => {
+    const result = nodeDefault.checkValid(createPayload({
+      agent_binding: {
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-1',
+        current_snapshot_id: 'inline-snapshot-1',
       },
     }), t)
 

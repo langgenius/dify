@@ -1,4 +1,5 @@
 import type {
+  ComponentProps,
   FC,
 } from 'react'
 import type {
@@ -17,7 +18,8 @@ import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-co
 import { CUSTOM_NODE } from './constants'
 import { useAutoGenerateWebhookUrl, useNodesInteractions, useNodesSyncDraft, useWorkflowHistory, WorkflowHistoryEvent } from './hooks'
 import CustomNode from './nodes'
-import { isAgentV2NodeData } from './nodes/agent-v2/types'
+import { useCreateInlineAgentBinding } from './nodes/agent-v2/hooks'
+import { isAgentV2NodeData, needsInlineAgentBindingCreation } from './nodes/agent-v2/types'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import {
@@ -42,6 +44,7 @@ const CandidateNodeMain: FC<Props> = ({
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
   const collaborativeWorkflow = useCollaborativeWorkflow()
+  const { createInlineAgentBinding } = useCreateInlineAgentBinding()
 
   useEventListener('click', (e) => {
     e.preventDefault()
@@ -83,6 +86,21 @@ const CandidateNodeMain: FC<Props> = ({
       })
     }
 
+    if (isAgentV2NodeData(candidateNode.data) && needsInlineAgentBindingCreation(candidateNode.data)) {
+      createInlineAgentBinding(candidateNode.id, {
+        onSuccess: (binding) => {
+          const { nodes, setNodes } = collaborativeWorkflow.getState()
+          setNodes(produce(nodes, (draft) => {
+            const node = draft.find(node => node.id === candidateNode.id)
+            if (node && isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+              node.data.agent_binding = binding
+          }))
+          handleSyncWorkflowDraft(true, true)
+        },
+      })
+      return
+    }
+
     if (isAgentV2NodeData(candidateNode.data))
       handleSyncWorkflowDraft(true, true)
   })
@@ -104,12 +122,12 @@ const CandidateNodeMain: FC<Props> = ({
     >
       {
         candidateNode.type === CUSTOM_NODE && (
-          <CustomNode {...candidateNode as any} />
+          <CustomNode {...candidateNode as unknown as ComponentProps<typeof CustomNode>} />
         )
       }
       {
         candidateNode.type === CUSTOM_NOTE_NODE && (
-          <CustomNoteNode {...candidateNode as any} />
+          <CustomNoteNode {...candidateNode as unknown as ComponentProps<typeof CustomNoteNode>} />
         )
       }
     </div>

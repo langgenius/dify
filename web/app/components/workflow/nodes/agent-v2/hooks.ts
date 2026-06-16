@@ -1,5 +1,20 @@
-import { skipToken, useQuery } from '@tanstack/react-query'
+import type { AgentInlineBinding } from '../../block-selector/types'
+import { toast } from '@langgenius/dify-ui/toast'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { consoleQuery } from '@/service/client'
+import { FlowType } from '@/types/common'
+
+type CreatedInlineAgentBinding = AgentInlineBinding & {
+  agent_id: string
+  current_snapshot_id: string
+}
+
+type CreateInlineAgentBindingOptions = {
+  onSuccess?: (binding: CreatedInlineAgentBinding) => void
+}
 
 export function useAgentRosterDetail(agentId?: string) {
   return useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
@@ -11,4 +26,63 @@ export function useAgentRosterDetail(agentId?: string) {
         }
       : skipToken,
   }))
+}
+
+export function useCreateInlineAgentBinding() {
+  const { t } = useTranslation('agentV2')
+  const configsMap = useHooksStore(state => state.configsMap)
+  const {
+    isPending,
+    mutate,
+  } = useMutation(
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+  )
+
+  const createInlineAgentBinding = useCallback((nodeId: string, options?: CreateInlineAgentBindingOptions) => {
+    if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) {
+      toast.error(t('roster.nodeSelector.createInlineFailed'))
+      return
+    }
+
+    mutate(
+      {
+        params: {
+          app_id: configsMap.flowId,
+          node_id: nodeId,
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
+      },
+      {
+        onSuccess: (composerState) => {
+          const binding = composerState.binding
+
+          if (
+            binding?.binding_type !== 'inline_agent'
+            || !binding.agent_id
+            || !binding.current_snapshot_id
+          ) {
+            toast.error(t('roster.nodeSelector.createInlineFailed'))
+            return
+          }
+
+          options?.onSuccess?.({
+            binding_type: 'inline_agent',
+            agent_id: binding.agent_id,
+            current_snapshot_id: binding.current_snapshot_id,
+          })
+        },
+        onError: () => {
+          toast.error(t('roster.nodeSelector.createInlineFailed'))
+        },
+      },
+    )
+  }, [configsMap?.flowId, configsMap?.flowType, mutate, t])
+
+  return {
+    createInlineAgentBinding,
+    isCreatingInlineAgent: isPending,
+  }
 }
