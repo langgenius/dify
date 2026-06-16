@@ -796,3 +796,36 @@ def test_build_drive_layer_config_all_refs_dangling_yields_no_config():
     config, warnings = build_drive_layer_config(soul, agent_id="agent-1")
     assert config is None
     assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+
+
+# ── ENG-635: ask_human layer gating + feature manifest ───────────────────────
+
+
+def test_build_ask_human_layer_config_gated_on_human_contacts():
+    from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
+
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_ask_human_layer_config
+
+    # no human involvement configured -> tool stays off
+    assert build_ask_human_layer_config(AgentSoulConfig()) is None
+
+    soul = AgentSoulConfig.model_validate(
+        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+    )
+    config = build_ask_human_layer_config(soul)
+    assert isinstance(config, DifyAskHumanLayerConfig)
+    assert config.enabled is True
+
+
+def test_feature_manifest_marks_human_supported_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {"human": {"contacts": [{"id": "c-1", "name": "David", "email": "d@acme.com", "channel": "email"}]}}
+    )
+    manifest = build_runtime_feature_manifest(soul)
+    assert "human" in manifest["supported"]
+    assert "human" not in manifest["reserved"]
+    assert manifest["reserved_status"]["human"] == "supported_by_ask_human_hitl"
+    # configured human no longer produces a "not executed" warning
+    assert all("human" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
