@@ -67,6 +67,7 @@ export function OutputEditCard({
     onConfirm(createOutputFromDraft(draft), state.index)
   }
   useHotkey(CONFIRM_HOTKEY, handleConfirm, { target: editorRef, ignoreInputs: false })
+  useHotkey('Escape', onCancel, { target: editorRef, ignoreInputs: false })
   return (
     <div ref={editorRef}>
       <Form

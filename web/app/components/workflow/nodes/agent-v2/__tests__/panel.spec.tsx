@@ -460,6 +460,33 @@ describe('agent/panel', () => {
     )
   })
 
+  it('cancels the output editor with a scoped Escape shortcut', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
+    const nameInput = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    fireEvent.change(nameInput, {
+      target: {
+        value: 'summary',
+      },
+    })
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toBeInTheDocument()
+
+    fireEvent.keyDown(nameInput, { key: 'Escape' })
+
+    expect(screen.queryByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' })).toBeInTheDocument()
+    expect(mockHandleNodeDataUpdateWithSyncDraft).not.toHaveBeenCalled()
+  })
+
   it('does not show name validation error before the user enters a name', () => {
     render(
       <AgentV2Panel
