@@ -27,19 +27,24 @@ packages:
   - packages/*
   - cli
 overrides:
+  '@babel/core@<=7.29.0': ^7.29.1
   '@lexical/code': npm:lexical-code-no-prism@0.41.0
   canvas: ^3.2.3
   esbuild@<0.27.2: 0.27.2
   esbuild@>=0.17.0 <0.28.1: ^0.28.1
   esbuild@>=0.27.3 <0.28.1: ^0.28.1
   is-core-module: npm:@nolyfill/is-core-module@^1.0.39
+  js-yaml@<=4.1.1: ^4.1.2
   picomatch@>=4.0.0 <4.0.4: 4.0.4
+  postcss-selector-parser@>=6.0.0 <6.1.3: 6.1.4
+  postcss-selector-parser@>=7.0.0 <7.1.3: 7.1.4
   postcss@<8.5.10: ^8.5.10
   rollup@>=4.0.0 <4.59.0: 4.61.1
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
   side-channel: npm:@nolyfill/side-channel@^1.0.44
   solid-js: 1.9.13
   string-width: ~8.2.1
+  tar@<=7.5.15: ^7.5.16
   vite: npm:@voidzero-dev/vite-plus-core@0.1.24
   vitest: npm:@voidzero-dev/vite-plus-test@0.1.24
   ws@>=8.0.0 <8.20.1: ^8.21.0
