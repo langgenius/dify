@@ -697,6 +697,62 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch):
     assert [item["id"] for item in result["data"]] == ["agent-2"]
 
 
+def test_published_references_include_app_display_fields_and_sort_by_updated_at():
+    recent_updated_at = datetime(2026, 1, 7, 3, 4, 5, tzinfo=UTC)
+    stale_updated_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
+    bindings = [
+        SimpleNamespace(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            app_id="app-stale",
+            workflow_id="workflow-stale",
+            workflow_version="published-stale",
+            node_id="node-b",
+        ),
+        SimpleNamespace(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            app_id="app-recent",
+            workflow_id="workflow-recent",
+            workflow_version="published-recent",
+            node_id="node-a",
+        ),
+    ]
+    apps = [
+        SimpleNamespace(
+            id="app-stale",
+            name="Stale Workflow",
+            mode="advanced-chat",
+            workflow_id="workflow-stale",
+            icon_type=SimpleNamespace(value="emoji"),
+            icon="old",
+            icon_background="#F3F4F6",
+            updated_at=stale_updated_at,
+        ),
+        SimpleNamespace(
+            id="app-recent",
+            name="Recent Workflow",
+            mode="advanced-chat",
+            workflow_id="workflow-recent",
+            icon_type=SimpleNamespace(value="image"),
+            icon="upload-file-id",
+            icon_background="#E0F2FE",
+            updated_at=recent_updated_at,
+        ),
+    ]
+    service = AgentRosterService(FakeSession(scalars=[bindings, apps]))
+
+    result = service._load_published_references_by_agent_id(tenant_id="tenant-1", agent_ids=["agent-1"])
+
+    references = result["agent-1"]
+    assert [item["app_id"] for item in references] == ["app-recent", "app-stale"]
+    assert references[0]["app_icon_type"] == "image"
+    assert references[0]["app_icon"] == "upload-file-id"
+    assert references[0]["app_icon_background"] == "#E0F2FE"
+    assert references[0]["app_updated_at"] == int(recent_updated_at.timestamp())
+    assert references[0]["workflow_version"] == "published-recent"
+
+
 def test_roster_update_archive_versions_and_detail(monkeypatch):
     listed_version = AgentConfigSnapshot(id="version-2", agent_id="agent-1", version=2)
     listed_version_created_at = datetime(2026, 1, 5, 3, 4, 5, tzinfo=UTC)
