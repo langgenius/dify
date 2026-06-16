@@ -154,9 +154,10 @@ class WorkflowAgentPublishService:
             )
             resolved_binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         elif binding_type == WorkflowAgentBindingType.INLINE_AGENT.value:
-            current_snapshot_id = node_binding.get("current_snapshot_id")
-            if not isinstance(current_snapshot_id, str) or not current_snapshot_id:
+            raw_current_snapshot_id = node_binding.get("current_snapshot_id")
+            if not isinstance(raw_current_snapshot_id, str) or not raw_current_snapshot_id:
                 raise ValueError(f"Workflow Agent node {node_id} inline_agent binding requires current_snapshot_id.")
+            current_snapshot_id = raw_current_snapshot_id
             agent = cls._resolve_inline_agent_graph_binding(
                 session=session,
                 draft_workflow=draft_workflow,
