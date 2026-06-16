@@ -1,6 +1,7 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 
 from constants.languages import supported_language
 from controllers.common.schema import register_schema_models
@@ -10,7 +11,8 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
-from services.account_service import RegisterService
+from models.account import TenantAccountJoin, TenantAccountRole
+from services.account_service import RegisterService, TenantService
 
 
 class ActivateCheckQuery(BaseModel):
@@ -23,18 +25,22 @@ class ActivatePayload(BaseModel):
     workspace_id: str | None = Field(default=None)
     email: EmailStr | None = Field(default=None)
     token: str
-    name: str = Field(..., max_length=30)
-    interface_language: str = Field(...)
-    timezone: str = Field(...)
+    name: str | None = Field(default=None, max_length=30)
+    interface_language: str | None = Field(default=None)
+    timezone: str | None = Field(default=None)
 
     @field_validator("interface_language")
     @classmethod
-    def validate_lang(cls, value: str) -> str:
+    def validate_lang(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return supported_language(value)
 
     @field_validator("timezone")
     @classmethod
-    def validate_tz(cls, value: str) -> str:
+    def validate_tz(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         return timezone(value)
 
 
@@ -46,6 +52,8 @@ class ActivationCheckData(BaseModel):
     workspace_name: str | None
     workspace_id: str | None
     email: str | None
+    account_status: str | None = None
+    requires_setup: bool | None = None
 
 
 class ActivationCheckResponse(BaseModel):
@@ -93,9 +101,20 @@ class ActivateCheckApi(Resource):
             workspace_name = tenant.name if tenant else None
             workspace_id = tenant.id if tenant else None
             invitee_email = data.get("email") if data else None
+            account = invitation.get("account")
+            account_status = account.status if account else None
+            requires_setup = data.get("requires_setup")
+            if requires_setup is None:
+                requires_setup = account_status == AccountStatus.PENDING
             return {
                 "is_valid": invitation is not None,
-                "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email},
+                "data": {
+                    "workspace_name": workspace_name,
+                    "workspace_id": workspace_id,
+                    "email": invitee_email,
+                    "account_status": account_status,
+                    "requires_setup": requires_setup,
+                },
             }
         else:
             return {"is_valid": False}
@@ -120,16 +139,39 @@ class ActivateApi(Resource):
         if invitation is None:
             raise AlreadyActivateError()
 
+        account = invitation["account"]
+        tenant = invitation["tenant"]
+        role = invitation["data"].get("role", TenantAccountRole.NORMAL)
+        if not TenantAccountRole.is_non_owner_role(role):
+            role = TenantAccountRole.NORMAL
+
+        membership_id = db.session.scalar(
+            select(TenantAccountJoin.id).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account.id,
+            )
+        )
+
+        requires_setup = invitation["data"].get("requires_setup")
+        if requires_setup is None:
+            requires_setup = account.status == AccountStatus.PENDING
+
+        if requires_setup and (not args.name or not args.interface_language or not args.timezone):
+            raise AlreadyActivateError()
+
         RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
-        account = invitation["account"]
-        account.name = args.name
+        if membership_id is None:
+            TenantService.create_tenant_member(tenant, account, str(role))
 
-        account.interface_language = args.interface_language
-        account.timezone = args.timezone
-        account.interface_theme = "light"
-        account.status = AccountStatus.ACTIVE
-        account.initialized_at = naive_utc_now()
-        db.session.commit()
+        if requires_setup:
+            account.name = args.name
+            account.interface_language = args.interface_language
+            account.timezone = args.timezone
+            account.interface_theme = "light"
+            account.status = AccountStatus.ACTIVE
+            account.initialized_at = naive_utc_now()
+
+        TenantService.switch_tenant(account, tenant.id)
 
         return {"result": "success"}

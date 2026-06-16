@@ -74,9 +74,14 @@ function NormalForm() {
     if (!isLoggedIn)
       return
 
+    if (isInviteLink) {
+      router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+      return
+    }
+
     const redirectUrl = resolvePostLoginRedirect(searchParams)
     router.replace(redirectUrl || '/')
-  }, [isLoggedIn, router, searchParams])
+  }, [isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
     if (message)
