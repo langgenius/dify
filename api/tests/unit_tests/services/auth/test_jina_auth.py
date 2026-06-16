@@ -69,6 +69,22 @@ class TestJinaAuth:
         assert str(exc_info.value) == "Failed to authorize. Status code: 402. Error: Payment required"
 
     @patch("services.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_handle_http_error_with_non_json_text_response(self, mock_post):
+        """Test handling of known HTTP errors with non-JSON text response."""
+        mock_response = MagicMock()
+        mock_response.status_code = 402
+        mock_response.text = "Payment required"
+        mock_response.json.side_effect = ValueError("Not JSON")
+        mock_post.return_value = mock_response
+
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_api_key_123"}}
+        auth = JinaAuth(credentials)
+
+        with pytest.raises(Exception) as exc_info:
+            auth.validate_credentials()
+        assert str(exc_info.value) == "Failed to authorize. Status code: 402. Error: Payment required"
+
+    @patch("services.auth.jina.jina._http_client.post", autospec=True)
     def test_should_handle_http_409_error(self, mock_post):
         """Test handling of 409 Conflict error"""
         mock_response = MagicMock()
@@ -104,6 +120,22 @@ class TestJinaAuth:
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_response.text = '{"error": "Forbidden"}'
+        mock_response.json.side_effect = Exception("Not JSON")
+        mock_post.return_value = mock_response
+
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_api_key_123"}}
+        auth = JinaAuth(credentials)
+
+        with pytest.raises(Exception) as exc_info:
+            auth.validate_credentials()
+        assert str(exc_info.value) == "Failed to authorize. Status code: 403. Error: Forbidden"
+
+    @patch("services.auth.jina.jina._http_client.post", autospec=True)
+    def test_should_handle_unexpected_error_with_non_json_text_response(self, mock_post):
+        """Test handling of unexpected errors with non-JSON text response."""
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.text = "Forbidden"
         mock_response.json.side_effect = Exception("Not JSON")
         mock_post.return_value = mock_response
 
