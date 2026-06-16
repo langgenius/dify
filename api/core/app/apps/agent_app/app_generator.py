@@ -373,7 +373,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
         app_config = application_generate_entity.app_config
         model_name = application_generate_entity.model_conf.model
-        query = application_generate_entity.query
+        query = application_generate_entity.query or ""
 
         # content moderation (sensitive_word_avoidance); a blocked input yields a
         # preset answer, an "overridden" action returns a sanitized query.
@@ -388,7 +388,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 trace_manager=application_generate_entity.trace_manager,
             )
         except ModerationError as e:
-            publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e))
+            publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=str(e), user_query=query)
             return True, query
 
         # annotation reply: a matching annotation answers the turn deterministically.
@@ -405,7 +405,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id),
                     PublishFrom.APPLICATION_MANAGER,
                 )
-                publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=annotation_reply.content)
+                publish_text_answer(
+                    queue_manager=queue_manager,
+                    model_name=model_name,
+                    answer=annotation_reply.content,
+                    user_query=query,
+                )
                 return True, query
 
         return False, query
