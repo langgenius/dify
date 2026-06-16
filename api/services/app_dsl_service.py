@@ -632,7 +632,7 @@ class AppDslService:
         ]
 
     @classmethod
-    def _strip_tenant_file_defaults_from_workflow_dict(cls, workflow_dict: dict[str, Any]) -> None:
+    def _strip_tenant_file_defaults_from_workflow_dict(cls, workflow_dict: Mapping[str, Any]) -> None:
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
             if not isinstance(node_data, dict):
