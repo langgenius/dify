@@ -1,4 +1,5 @@
 import json
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -468,16 +469,14 @@ class TestRagPipelineTaskProxy:
         # Assert
         proxy._dispatch.assert_called_once()
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.logger")
-    def test_delay_method_with_empty_entities(self, mock_logger):
+    def test_delay_method_with_empty_entities(self, caplog):
         """Test delay method with empty rag_pipeline_invoke_entities."""
         # Arrange
         proxy = RagPipelineTaskProxy("tenant-123", "user-456", [])
 
         # Act
-        proxy.delay()
+        with caplog.at_level(logging.WARNING, logger="services.rag_pipeline.rag_pipeline_task_proxy"):
+            proxy.delay()
 
         # Assert
-        mock_logger.warning.assert_called_once_with(
-            "Received empty rag pipeline invoke entities, no tasks delivered: %s %s", "tenant-123", "user-456"
-        )
+        assert "Received empty rag pipeline invoke entities, no tasks delivered: tenant-123 user-456" in caplog.text
