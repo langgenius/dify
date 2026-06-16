@@ -120,6 +120,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             self.graph_runtime_state.variable_pool,
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
+        # Set on chatflow (advanced-chat) runs; None for a pure workflow run. Lets an
+        # ask_human form be tagged with its conversation in addition to workflow_run_id.
+        conversation_id = get_system_text(
+            self.graph_runtime_state.variable_pool,
+            SystemVariableKey.CONVERSATION_ID,
+        )
         inputs: dict[str, Any] = {}
         process_data: dict[str, Any] = {}
         metadata: dict[str, Any] = {
@@ -293,6 +299,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         node_id=self._node_id,
                         default_node_title=bundle.agent.name or self._node_id,
                         workflow_run_id=workflow_run_id,
+                        conversation_id=conversation_id,
                         contacts=AgentSoulConfig.model_validate(bundle.snapshot.config_snapshot_dict).human.contacts,
                         repository=self._build_human_input_form_repository(
                             dify_ctx=dify_ctx, workflow_run_id=workflow_run_id

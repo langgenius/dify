@@ -302,6 +302,7 @@ def build_ask_human_pause_reason(
     workflow_run_id: str | None,
     contacts: Sequence[AgentHumanContactConfig],
     repository: HumanInputFormRepository,
+    conversation_id: str | None = None,
     expected_tool_name: str = DEFAULT_ASK_HUMAN_TOOL_NAME,
     display_in_ui: bool = True,
 ) -> HumanInputRequired | None:
@@ -325,6 +326,9 @@ def build_ask_human_pause_reason(
         contacts=contacts,
         repository=repository,
         workflow_run_id=workflow_run_id,
+        # A chatflow agent node also belongs to a conversation; tag the form so it is
+        # queryable per conversation. None for a pure workflow run (workflow_run_id only).
+        conversation_id=conversation_id,
         display_in_ui=display_in_ui,
     )
     return HumanInputRequired(

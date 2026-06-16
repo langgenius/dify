@@ -40,9 +40,12 @@ class HumanInputForm(DefaultFieldsMixin, Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    # ENG-635: Agent v2 chat ask_human forms are owned by a conversation turn
-    # instead of a workflow run (the new Agent App has no workflow_run_id). Exactly
-    # one of workflow_run_id / conversation_id is set for a RUNTIME form.
+    # ENG-635: a RUNTIME form is tagged with its owning workflow run and/or its
+    # conversation. Workflow / Human-Input / agent-node forms always set
+    # workflow_run_id, and ALSO set conversation_id when the run has a conversation
+    # (chatflow / advanced-chat). Agent v2 chat ask_human forms set only
+    # conversation_id (the new Agent App has no workflow_run_id). At least one is set;
+    # resume routing prefers workflow_run_id when both are present.
     conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     form_kind: Mapped[HumanInputFormKind] = mapped_column(
         EnumText(HumanInputFormKind),

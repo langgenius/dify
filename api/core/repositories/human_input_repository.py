@@ -63,8 +63,9 @@ class FormCreateParams:
     display_in_ui: bool
     resolved_default_values: Mapping[str, Any]
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
-    # ENG-635: Agent v2 chat owner. When set (and workflow_execution_id is None),
-    # the form is owned by a conversation turn instead of a workflow run.
+    # ENG-635: the conversation this form belongs to. Set together with
+    # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
+    # for Agent v2 chat ask_human forms, which have no workflow run.
     conversation_id: str | None = None
 
 
@@ -440,8 +441,9 @@ class HumanInputFormRepositoryImpl:
         if not app_id:
             raise ValueError("app_id is required to create a human input form")
         workflow_execution_id = params.workflow_execution_id or self._workflow_execution_id
-        # A RUNTIME form must be owned by exactly one of: a workflow run (workflow
-        # Agent node) or a conversation turn (ENG-635: Agent v2 chat ask_human).
+        # A RUNTIME form must be owned by at least one of: a workflow run (workflow /
+        # Human-Input / agent node) or a conversation turn (ENG-635: Agent v2 chat
+        # ask_human; chatflow runs set both — workflow_run_id and conversation_id).
         if (
             params.form_kind == HumanInputFormKind.RUNTIME
             and workflow_execution_id is None

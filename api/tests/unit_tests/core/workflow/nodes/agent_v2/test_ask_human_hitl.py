@@ -259,7 +259,29 @@ def test_pause_reason_builds_form_and_returns_human_input_required() -> None:
     params: FormCreateParams = repo.create_form.call_args.args[0]
     assert params.workflow_execution_id == "wf-1"
     assert params.node_id == "node-1"
+    # No conversation_id passed -> pure workflow run owns the form by workflow_run_id only.
+    assert params.conversation_id is None
     assert any(isinstance(m, EmailDeliveryMethod) for m in params.delivery_methods)
+
+
+def test_pause_reason_forwards_conversation_id_for_chatflow() -> None:
+    # ENG-635 (review): an agent node running in a chatflow tags its ask_human form
+    # with the conversation in addition to the workflow run.
+    repo = _fake_repository(form_id="form-xyz")
+
+    build_ask_human_pause_reason(
+        deferred_tool_call=_deferred_call({"question": "Please approve"}),
+        node_id="node-1",
+        default_node_title="Agent",
+        workflow_run_id="wf-1",
+        conversation_id="conv-1",
+        contacts=[],
+        repository=repo,
+    )
+
+    params: FormCreateParams = repo.create_form.call_args.args[0]
+    assert params.workflow_execution_id == "wf-1"
+    assert params.conversation_id == "conv-1"
 
 
 def test_pause_reason_falls_back_to_default_node_title() -> None:
