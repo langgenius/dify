@@ -13,6 +13,7 @@ from controllers.common.controller_schemas import MessageFeedbackPayload as _Mes
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -25,6 +26,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     edit_permission_required,
     setup_required,
+    with_current_tenant_id,
     with_current_user,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -183,67 +185,25 @@ class ChatMessageListApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @edit_permission_required
     def get(self, app_model: App):
-        args = ChatMessagesQuery.model_validate(request.args.to_dict())
+        return _list_chat_messages(app_model=app_model)
 
-        conversation = db.session.scalar(
-            select(Conversation)
-            .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
-            .limit(1)
-        )
 
-        if not conversation:
-            raise NotFound("Conversation Not Exists.")
-
-        if args.first_id:
-            first_message = db.session.scalar(
-                select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
-            )
-
-            if not first_message:
-                raise NotFound("First message not found")
-
-            history_messages = db.session.scalars(
-                select(Message)
-                .where(
-                    Message.conversation_id == conversation.id,
-                    Message.created_at < first_message.created_at,
-                    Message.id != first_message.id,
-                )
-                .order_by(Message.created_at.desc())
-                .limit(args.limit)
-            ).all()
-        else:
-            history_messages = db.session.scalars(
-                select(Message)
-                .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at.desc())
-                .limit(args.limit)
-            ).all()
-
-        # Initialize has_more based on whether we have a full page
-        if len(history_messages) == args.limit:
-            current_page_first_message = history_messages[-1]
-            # Check if there are more messages before the current page
-            has_more = db.session.scalar(
-                select(
-                    exists().where(
-                        Message.conversation_id == conversation.id,
-                        Message.created_at < current_page_first_message.created_at,
-                        Message.id != current_page_first_message.id,
-                    )
-                )
-            )
-        else:
-            # If we don't have a full page, there are no more messages
-            has_more = False
-
-        history_messages = list(reversed(history_messages))
-        attach_message_extra_contents(history_messages)
-
-        return MessageInfiniteScrollPaginationResponse.model_validate(
-            InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more),
-            from_attributes=True,
-        ).model_dump(mode="json")
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages")
+class AgentChatMessageListApi(Resource):
+    @console_ns.doc("list_agent_chat_messages")
+    @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
+    @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.doc(params=query_params_from_model(ChatMessagesQuery))
+    @console_ns.response(200, "Success", console_ns.models[MessageInfiniteScrollPaginationResponse.__name__])
+    @console_ns.response(404, "Agent or conversation not found")
+    @login_required
+    @account_initialization_required
+    @setup_required
+    @edit_permission_required
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _list_chat_messages(app_model=app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -261,44 +221,25 @@ class MessageFeedbackApi(Resource):
     @account_initialization_required
     @with_current_user
     def post(self, current_user: Account, app_model: App):
-        args = MessageFeedbackPayload.model_validate(console_ns.payload)
+        return _update_message_feedback(current_user=current_user, app_model=app_model)
 
-        message_id = str(args.message_id)
 
-        message = db.session.scalar(
-            select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
-        )
-
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        feedback = message.admin_feedback
-
-        if not args.rating and feedback:
-            db.session.delete(feedback)
-        elif args.rating and feedback:
-            feedback.rating = FeedbackRating(args.rating)
-            feedback.content = args.content
-        elif not args.rating and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
-        else:
-            rating_value = args.rating
-            if rating_value is None:
-                raise ValueError("rating is required to create feedback")
-            feedback = MessageFeedback(
-                app_id=app_model.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                rating=FeedbackRating(rating_value),
-                content=args.content,
-                from_source=FeedbackFromSource.ADMIN,
-                from_account_id=current_user.id,
-            )
-            db.session.add(feedback)
-
-        db.session.commit()
-
-        return {"result": "success"}
+@console_ns.route("/agent/<uuid:agent_id>/feedbacks")
+class AgentMessageFeedbackApi(Resource):
+    @console_ns.doc("create_agent_message_feedback")
+    @console_ns.doc(description="Create or update Agent App message feedback")
+    @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
+    @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(404, "Agent or message not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _update_message_feedback(current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
@@ -340,31 +281,28 @@ class MessageSuggestedQuestionApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user
     def get(self, current_user: Account, app_model: App, message_id: UUID):
-        message_id_str = str(message_id)
+        return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
-        try:
-            questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, message_id=message_id_str, user=current_user, invoke_from=InvokeFrom.DEBUGGER
-            )
-        except MessageNotExistsError:
-            raise NotFound("Message not found")
-        except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except SuggestedQuestionsAfterAnswerDisabledError:
-            raise AppSuggestedQuestionsAfterAnswerDisabledError()
-        except Exception:
-            logger.exception("internal server error.")
-            raise InternalServerError()
 
-        return {"data": questions}
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions")
+class AgentMessageSuggestedQuestionApi(Resource):
+    @console_ns.doc("get_agent_message_suggested_questions")
+    @console_ns.doc(description="Get suggested questions for an Agent App message")
+    @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
+    @console_ns.response(
+        200,
+        "Suggested questions retrieved successfully",
+        console_ns.models[SuggestedQuestionsResponse.__name__],
+    )
+    @console_ns.response(404, "Agent, message, or conversation not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks/export")
@@ -423,14 +361,167 @@ class MessageApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model: App, message_id: UUID):
-        message_id_str = str(message_id)
+        return _get_message_detail(app_model=app_model, message_id=message_id)
 
-        message = db.session.scalar(
-            select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)
+
+@console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>")
+class AgentMessageApi(Resource):
+    @console_ns.doc("get_agent_message")
+    @console_ns.doc(description="Get Agent App message details by ID")
+    @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})
+    @console_ns.response(200, "Message retrieved successfully", console_ns.models[MessageDetailResponse.__name__])
+    @console_ns.response(404, "Agent or message not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, agent_id: UUID, message_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _get_message_detail(app_model=app_model, message_id=message_id)
+
+
+def _list_chat_messages(*, app_model: App):
+    args = ChatMessagesQuery.model_validate(request.args.to_dict())
+
+    conversation = db.session.scalar(
+        select(Conversation)
+        .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
+        .limit(1)
+    )
+
+    if not conversation:
+        raise NotFound("Conversation Not Exists.")
+
+    if args.first_id:
+        first_message = db.session.scalar(
+            select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
         )
 
-        if not message:
-            raise NotFound("Message Not Exists.")
+        if not first_message:
+            raise NotFound("First message not found")
 
-        attach_message_extra_contents([message])
-        return MessageDetailResponse.model_validate(message, from_attributes=True).model_dump(mode="json")
+        history_messages = db.session.scalars(
+            select(Message)
+            .where(
+                Message.conversation_id == conversation.id,
+                Message.created_at < first_message.created_at,
+                Message.id != first_message.id,
+            )
+            .order_by(Message.created_at.desc())
+            .limit(args.limit)
+        ).all()
+    else:
+        history_messages = db.session.scalars(
+            select(Message)
+            .where(Message.conversation_id == conversation.id)
+            .order_by(Message.created_at.desc())
+            .limit(args.limit)
+        ).all()
+
+    # Initialize has_more based on whether we have a full page
+    if len(history_messages) == args.limit:
+        current_page_first_message = history_messages[-1]
+        # Check if there are more messages before the current page
+        has_more = db.session.scalar(
+            select(
+                exists().where(
+                    Message.conversation_id == conversation.id,
+                    Message.created_at < current_page_first_message.created_at,
+                    Message.id != current_page_first_message.id,
+                )
+            )
+        )
+    else:
+        # If we don't have a full page, there are no more messages
+        has_more = False
+
+    history_messages = list(reversed(history_messages))
+    attach_message_extra_contents(history_messages)
+
+    return MessageInfiniteScrollPaginationResponse.model_validate(
+        InfiniteScrollPagination(data=history_messages, limit=args.limit, has_more=has_more),
+        from_attributes=True,
+    ).model_dump(mode="json")
+
+
+def _update_message_feedback(*, current_user: Account, app_model: App):
+    args = MessageFeedbackPayload.model_validate(console_ns.payload)
+
+    message_id = str(args.message_id)
+
+    message = db.session.scalar(
+        select(Message).where(Message.id == message_id, Message.app_id == app_model.id).limit(1)
+    )
+
+    if not message:
+        raise NotFound("Message Not Exists.")
+
+    feedback = message.admin_feedback
+
+    if not args.rating and feedback:
+        db.session.delete(feedback)
+    elif args.rating and feedback:
+        feedback.rating = FeedbackRating(args.rating)
+        feedback.content = args.content
+    elif not args.rating and not feedback:
+        raise ValueError("rating cannot be None when feedback not exists")
+    else:
+        rating_value = args.rating
+        if rating_value is None:
+            raise ValueError("rating is required to create feedback")
+        feedback = MessageFeedback(
+            app_id=app_model.id,
+            conversation_id=message.conversation_id,
+            message_id=message.id,
+            rating=FeedbackRating(rating_value),
+            content=args.content,
+            from_source=FeedbackFromSource.ADMIN,
+            from_account_id=current_user.id,
+        )
+        db.session.add(feedback)
+
+    db.session.commit()
+
+    return {"result": "success"}
+
+
+def _get_message_suggested_questions(*, current_user: Account, app_model: App, message_id: UUID):
+    message_id_str = str(message_id)
+
+    try:
+        questions = MessageService.get_suggested_questions_after_answer(
+            app_model=app_model, message_id=message_id_str, user=current_user, invoke_from=InvokeFrom.DEBUGGER
+        )
+    except MessageNotExistsError:
+        raise NotFound("Message not found")
+    except ConversationNotExistsError:
+        raise NotFound("Conversation not found")
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    except QuotaExceededError:
+        raise ProviderQuotaExceededError()
+    except ModelCurrentlyNotSupportError:
+        raise ProviderModelCurrentlyNotSupportError()
+    except InvokeError as e:
+        raise CompletionRequestError(e.description)
+    except SuggestedQuestionsAfterAnswerDisabledError:
+        raise AppSuggestedQuestionsAfterAnswerDisabledError()
+    except Exception:
+        logger.exception("internal server error.")
+        raise InternalServerError()
+
+    return {"data": questions}
+
+
+def _get_message_detail(*, app_model: App, message_id: UUID):
+    message_id_str = str(message_id)
+
+    message = db.session.scalar(
+        select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)
+    )
+
+    if not message:
+        raise NotFound("Message Not Exists.")
+
+    attach_message_extra_contents([message])
+    return MessageDetailResponse.model_validate(message, from_attributes=True).model_dump(mode="json")
