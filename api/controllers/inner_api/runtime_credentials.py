@@ -54,7 +54,7 @@ class InnerRuntimeCredentialsResolvePayload(BaseModel):
 register_schema_model(inner_api_ns, InnerRuntimeCredentialsResolvePayload)
 
 
-@inner_api_ns.route("/enterprise/runtime/credentials/resolve")
+@inner_api_ns.route("/enterprise/credentials/resolve")
 class EnterpriseRuntimeCredentialsResolve(Resource):
     @setup_required
     @enterprise_inner_api_only
