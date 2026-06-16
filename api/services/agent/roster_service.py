@@ -37,7 +37,11 @@ class AgentReferencingWorkflow(TypedDict):
 
     app_id: str
     app_name: str
+    app_icon_type: str | None
+    app_icon: str | None
+    app_icon_background: str | None
     app_mode: str
+    app_updated_at: int | None
     workflow_id: str
     workflow_version: str
     node_ids: list[str]
@@ -557,7 +561,11 @@ class AgentRosterService:
                 AgentReferencingWorkflow(
                     app_id=binding.app_id,
                     app_name=app.name,
+                    app_icon_type=(icon_type.value if (icon_type := getattr(app, "icon_type", None)) else None),
+                    app_icon=getattr(app, "icon", None),
+                    app_icon_background=getattr(app, "icon_background", None),
                     app_mode=str(app.mode),
+                    app_updated_at=to_timestamp(getattr(app, "updated_at", None)),
                     workflow_id=binding.workflow_id,
                     workflow_version=binding.workflow_version,
                     node_ids=[],
@@ -570,7 +578,7 @@ class AgentRosterService:
             references = list(by_workflow.values())
             for reference in references:
                 reference["node_ids"] = sorted(set(reference["node_ids"]))
-            references.sort(key=lambda item: (item["app_name"].lower(), item["workflow_id"]))
+            references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
             result[agent_id] = references
         return result
 
