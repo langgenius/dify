@@ -13,6 +13,7 @@ const {
   mockInsertNodes,
   mockPromptEditorProps,
   mockSetInputs,
+  mockStoreState,
   mockUseAgentRosterDetail,
   mockUseWorkflowInlineAgentDetail,
   mockUseNodeCrud,
@@ -23,6 +24,10 @@ const {
   mockInsertNodes: vi.fn(),
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockSetInputs: vi.fn(),
+  mockStoreState: {
+    openInlineAgentPanelNodeId: undefined as string | undefined,
+    setOpenInlineAgentPanelNodeId: vi.fn(),
+  },
   mockUseAgentRosterDetail: vi.fn(),
   mockUseWorkflowInlineAgentDetail: vi.fn(),
   mockUseNodeCrud: vi.fn(),
@@ -141,6 +146,10 @@ vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowVariableType: () => vi.fn(),
 }))
 
+vi.mock('@/app/components/workflow/store', () => ({
+  useStore: (selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState),
+}))
+
 const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',
   desc: '',
@@ -160,6 +169,7 @@ describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPromptEditorProps.length = 0
+    mockStoreState.openInlineAgentPanelNodeId = undefined
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentV2NodeType) => ({
       inputs: data,
       setInputs: mockSetInputs,
@@ -273,9 +283,13 @@ describe('agent/panel', () => {
     expect(screen.queryByText(/^workflow\.errorMsg\.fieldRequired/)).not.toBeInTheDocument()
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'workflow.nodes.agent.roster.change' })).toBeDisabled()
+    expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+    expect(container.querySelector('[inert]')).toBeInTheDocument()
   })
 
-  it('renders inline agent detail from workflow composer state', () => {
+  it('renders inline agent detail from workflow composer state and opens the inline panel', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     render(
       <AgentV2Panel
         id="agent-node"
@@ -292,9 +306,12 @@ describe('agent/panel', () => {
 
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
-    expect(screen.getByText('Workflow Agent 1')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).not.toBeInTheDocument()
+    expect(screen.getAllByText('Workflow Agent 1')).toHaveLength(2)
+    expect(screen.getAllByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Workflow Agent 1' })).toBeInTheDocument()
+    expect(screen.queryByText('workflow.nodes.agent.roster.editInConsole')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.task.label')).toBeInTheDocument()
   })
 
   it('updates roster agent binding from the selector', () => {

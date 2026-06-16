@@ -17,6 +17,7 @@ const mockCustomNoteNode = vi.hoisted(() => vi.fn())
 const mockGetIterationStartNode = vi.hoisted(() => vi.fn())
 const mockGetLoopStartNode = vi.hoisted(() => vi.fn())
 const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
+const mockSetOpenInlineAgentPanelNodeId = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useEventListener: (...args: unknown[]) => mockUseEventListener(...args),
@@ -136,6 +137,9 @@ describe('CandidateNodeMain', () => {
       },
     }))
     mockUseWorkflowStore.mockReturnValue({
+      getState: () => ({
+        setOpenInlineAgentPanelNodeId: mockSetOpenInlineAgentPanelNodeId,
+      }),
       setState: mockWorkflowStoreSetState,
     })
     mockUseHooks.mockReturnValue({
@@ -309,6 +313,7 @@ describe('CandidateNodeMain', () => {
     const finalNodes = mockSetNodes.mock.calls.at(-1)?.[0]
     const finalAgentNode = finalNodes.find((node: { id: string }) => node.id === 'candidate-inline-agent-v2')
     expect(finalAgentNode.data._isTempNode).toBeUndefined()
+    expect(mockSetOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('candidate-inline-agent-v2')
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 

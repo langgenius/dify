@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -69,16 +69,21 @@ function AgentRosterAvatar({
 
 function AgentRosterDrawer({
   agent,
+  children,
+  kind = 'roster',
   open,
   portalContainerRef,
   onClose,
 }: {
   agent: AgentRosterDisplayData
+  children?: ReactNode
+  kind?: 'inline' | 'roster'
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const isInline = kind === 'inline'
 
   return (
     <Drawer
@@ -101,7 +106,7 @@ function AgentRosterDrawer({
             }}
           >
             <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
-              <header className="flex h-[108px] shrink-0 flex-col gap-3 border-b border-divider-subtle bg-components-panel-bg py-3 pr-4 pl-3">
+              <header className={cn('flex shrink-0 flex-col gap-3 border-b border-divider-subtle bg-components-panel-bg py-3 pr-4 pl-3', isInline ? 'h-16' : 'h-[108px]')}>
                 <div className="flex h-10 min-w-0 items-start justify-between">
                   <div className="flex h-10 min-w-0 flex-1 items-center gap-2 px-0.5 py-0.5">
                     <AgentRosterAvatar agent={agent} size="md" className="size-9" />
@@ -134,34 +139,36 @@ function AgentRosterDrawer({
                     />
                   </div>
                 </div>
-                <div className="flex h-8 gap-2 pl-1">
-                  <Link
-                    href={getAgentDetailPath(agent.id, 'configure')}
-                    className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                  >
-                    <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
-                    <span className="truncate">
-                      {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
-                    </span>
-                  </Link>
-                  <Button
-                    variant="secondary"
-                    size="medium"
-                    className="min-w-0 flex-1 gap-1.5 px-3"
-                  >
-                    <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
-                    <span className="truncate">
-                      {t(`${i18nPrefix}.roster.makeCopy`, { ns: 'workflow' })}
-                    </span>
-                  </Button>
-                </div>
+                {!isInline && (
+                  <div className="flex h-8 gap-2 pl-1">
+                    <Link
+                      href={getAgentDetailPath(agent.id, 'configure')}
+                      className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    >
+                      <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
+                      <span className="truncate">
+                        {t(`${i18nPrefix}.roster.editInConsole`, { ns: 'workflow' })}
+                      </span>
+                    </Link>
+                    <Button
+                      variant="secondary"
+                      size="medium"
+                      className="min-w-0 flex-1 gap-1.5 px-3"
+                    >
+                      <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
+                      <span className="truncate">
+                        {t(`${i18nPrefix}.roster.makeCopy`, { ns: 'workflow' })}
+                      </span>
+                    </Button>
+                  </div>
+                )}
               </header>
               <div
                 role="region"
                 aria-label={t(`${i18nPrefix}.roster.panelLabel`, { ns: 'workflow', name: agent.name })}
                 className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
               >
-                <div className="h-full min-h-80 bg-components-panel-bg" />
+                {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
               </div>
             </DrawerContent>
           </DrawerPopup>
@@ -175,20 +182,30 @@ export function AgentRosterField({
   agent,
   agentId,
   canOpenPanel = true,
+  isPanelOpen,
   isPending = false,
+  panelBody,
+  panelKind = 'roster',
   portalContainerRef,
   onChange,
+  onPanelOpenChange,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
   canOpenPanel?: boolean
+  isPanelOpen?: boolean
   isPending?: boolean
+  panelBody?: ReactNode
+  panelKind?: 'inline' | 'roster'
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
+  onPanelOpenChange?: (open: boolean) => void
 }) {
   const { t } = useTranslation()
-  const [isPanelOpen, setIsPanelOpen] = useState(false)
+  const [localPanelOpen, setLocalPanelOpen] = useState(false)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
+  const panelOpen = isPanelOpen ?? localPanelOpen
+  const setPanelOpen = onPanelOpenChange ?? setLocalPanelOpen
   const rosterRequiredMessage = t('errorMsg.fieldRequired', {
     ns: 'workflow',
     field: t(`${i18nPrefix}.roster.label`, { ns: 'workflow' }),
@@ -261,7 +278,7 @@ export function AgentRosterField({
                       type="button"
                       aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: agent.name })}
                       className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => setIsPanelOpen(true)}
+                      onClick={() => setPanelOpen(true)}
                     >
                       {agentContent}
                       <span className="flex shrink-0 items-center text-text-tertiary">
@@ -270,10 +287,13 @@ export function AgentRosterField({
                     </button>
                     <AgentRosterDrawer
                       agent={agent}
-                      open={isPanelOpen}
+                      kind={panelKind}
+                      open={panelOpen}
                       portalContainerRef={portalContainerRef}
-                      onClose={() => setIsPanelOpen(false)}
-                    />
+                      onClose={() => setPanelOpen(false)}
+                    >
+                      {panelBody}
+                    </AgentRosterDrawer>
                   </>
                 )
               : (

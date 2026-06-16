@@ -189,8 +189,13 @@ export const useNodesInteractions = () => {
   const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
   const { createInlineAgentBinding } = useCreateInlineAgentBinding()
 
-  const createInlineAgentBindingForNode = useCallback((nodeId: string) => {
+  const createInlineAgentBindingForNode = useCallback((nodeId: string, options?: {
+    onError?: () => void
+  }) => {
     createInlineAgentBinding(nodeId, {
+      onError: () => {
+        options?.onError?.()
+      },
       onSuccess: (binding) => {
         const { nodes, setNodes } = collaborativeWorkflow.getState()
         setNodes(produce(nodes, (draft) => {
@@ -201,10 +206,11 @@ export const useNodesInteractions = () => {
             delete node.data._isTempNode
           }
         }))
+        workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
         handleSyncWorkflowDraft(true, true)
       },
     })
-  }, [collaborativeWorkflow, createInlineAgentBinding, handleSyncWorkflowDraft])
+  }, [collaborativeWorkflow, createInlineAgentBinding, handleSyncWorkflowDraft, workflowStore])
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
@@ -1454,7 +1460,13 @@ export const useNodesInteractions = () => {
       }
       if (isAgentV2NodeData(newNode.data) && needsInlineAgentBindingCreation(newNode.data)) {
         saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNode.id })
-        createInlineAgentBindingForNode(newNode.id)
+        createInlineAgentBindingForNode(newNode.id, {
+          onError: () => {
+            const { nodes, setNodes, edges, setEdges } = collaborativeWorkflow.getState()
+            setNodes(nodes.filter(node => node.id !== newNode.id))
+            setEdges(edges.filter(edge => edge.source !== newNode.id && edge.target !== newNode.id))
+          },
+        })
         return
       }
 
@@ -1691,7 +1703,13 @@ export const useNodesInteractions = () => {
         })
       }
       else if (isAgentV2NodeData(newCurrentNode.data) && needsInlineAgentBindingCreation(newCurrentNode.data)) {
-        createInlineAgentBindingForNode(newCurrentNode.id)
+        createInlineAgentBindingForNode(newCurrentNode.id, {
+          onError: () => {
+            const { setNodes, setEdges } = collaborativeWorkflow.getState()
+            setNodes(nodes)
+            setEdges(edges)
+          },
+        })
       }
       else {
         handleSyncWorkflowDraft()

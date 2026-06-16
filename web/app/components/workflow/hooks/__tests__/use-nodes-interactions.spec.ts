@@ -505,7 +505,7 @@ describe('useNodesInteractions', () => {
       },
     }
 
-    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+    const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
       historyStore: {
         nodes: currentNodes,
         edges: [],
@@ -544,6 +544,7 @@ describe('useNodesInteractions', () => {
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
+    expect(store.getState().openInlineAgentPanelNodeId).toBe(agentNode?.id)
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 

@@ -17,6 +17,7 @@ type CreatedInlineAgentBinding = AgentInlineBinding & {
 }
 
 type CreateInlineAgentBindingOptions = {
+  onError?: () => void
   onSuccess?: (binding: CreatedInlineAgentBinding) => void
 }
 
@@ -89,12 +90,14 @@ export function useCreateInlineAgentBinding() {
   const createInlineAgentBinding = useCallback((nodeId: string, options?: CreateInlineAgentBindingOptions) => {
     if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) {
       toast.error(t('roster.nodeSelector.createInlineFailed'))
+      options?.onError?.()
       return
     }
 
     const agentSoul = getDefaultAgentSoul(defaultModel)
     if (!agentSoul) {
       toast.error(t('roster.nodeSelector.createInlineFailed'))
+      options?.onError?.()
       return
     }
 
@@ -123,6 +126,7 @@ export function useCreateInlineAgentBinding() {
             || !binding.current_snapshot_id
           ) {
             toast.error(t('roster.nodeSelector.createInlineFailed'))
+            options?.onError?.()
             return
           }
 
@@ -131,6 +135,9 @@ export function useCreateInlineAgentBinding() {
             agent_id: binding.agent_id,
             current_snapshot_id: binding.current_snapshot_id,
           })
+        },
+        onError: () => {
+          options?.onError?.()
         },
       },
     )

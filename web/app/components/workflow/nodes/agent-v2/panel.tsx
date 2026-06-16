@@ -5,6 +5,7 @@ import { produce } from 'immer'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import { useStore } from '@/app/components/workflow/store'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentOutputVariables } from './components/agent-output-variables'
@@ -20,11 +21,15 @@ export function AgentV2Panel({
   const { t } = useTranslation()
   const { inputs, setInputs } = useNodeCrud<AgentV2NodeType>(id, data)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
+  const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
   const inlineAgentId = inputs.agent_binding?.binding_type === 'inline_agent' ? inputs.agent_binding.agent_id : undefined
   const isInlineAgentPending = inputs.agent_binding?.binding_type === 'inline_agent' && inputs._isTempNode
+  const isInlineAgentReady = Boolean(inlineAgentId && !isInlineAgentPending)
+  const isInlineAgentPanelOpen = isInlineAgentReady && openInlineAgentPanelNodeId === id
   const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
   const inlineAgentQuery = useWorkflowInlineAgentDetail(id, inlineAgentId)
   const inlineAgent = inlineAgentQuery.data?.agent
@@ -45,6 +50,7 @@ export function AgentV2Panel({
   }, [inputs, setInputs])
 
   const handleRosterChange = useCallback((agent: AgentRosterNodeData) => {
+    setOpenInlineAgentPanelNodeId(undefined)
     const newInputs = produce(inputs, (draft) => {
       delete (draft as AgentV2NodeType & { agent_roster?: unknown }).agent_roster
       draft.agent_binding = {
@@ -62,7 +68,12 @@ export function AgentV2Panel({
         notRefreshWhenSyncError: true,
       },
     )
-  }, [handleNodeDataUpdateWithSyncDraft, id, inputs])
+  }, [handleNodeDataUpdateWithSyncDraft, id, inputs, setOpenInlineAgentPanelNodeId])
+
+  const handleAgentPanelOpenChange = useCallback((open: boolean) => {
+    if (isInlineAgentReady)
+      setOpenInlineAgentPanelNodeId(open ? id : undefined)
+  }, [id, isInlineAgentReady, setOpenInlineAgentPanelNodeId])
 
   const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>) => {
     const newInputs = produce(inputs, (draft) => {
@@ -86,25 +97,34 @@ export function AgentV2Panel({
         <AgentRosterField
           agent={displayedAgent}
           agentId={rosterAgentId ?? inlineAgentId ?? undefined}
-          canOpenPanel={!inlineAgentId}
+          canOpenPanel={!isInlineAgentPending}
+          isPanelOpen={isInlineAgentReady ? isInlineAgentPanelOpen : undefined}
           isPending={isInlineAgentPending}
+          panelKind={isInlineAgentReady ? 'inline' : 'roster'}
           portalContainerRef={drawerPortalContainerRef}
           onChange={handleRosterChange}
+          onPanelOpenChange={isInlineAgentReady ? handleAgentPanelOpenChange : undefined}
         />
       </div>
-      <div className="border-b border-divider-subtle">
-        <AgentTaskField
-          id={id}
-          data={inputs}
-          onChange={handleTaskChange}
-        />
-      </div>
-      <AgentAdvancedSettings />
-      <div>
-        <AgentOutputVariables
-          outputs={declaredOutputs}
-          onChange={handleDeclaredOutputsChange}
-        />
+      <div
+        aria-disabled={isInlineAgentPending}
+        inert={isInlineAgentPending ? true : undefined}
+        className={isInlineAgentPending ? 'pointer-events-none' : undefined}
+      >
+        <div className="border-b border-divider-subtle">
+          <AgentTaskField
+            id={id}
+            data={inputs}
+            onChange={handleTaskChange}
+          />
+        </div>
+        <AgentAdvancedSettings />
+        <div>
+          <AgentOutputVariables
+            outputs={declaredOutputs}
+            onChange={handleDeclaredOutputsChange}
+          />
+        </div>
       </div>
     </div>
   )
