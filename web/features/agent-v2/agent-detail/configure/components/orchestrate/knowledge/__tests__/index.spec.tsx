@@ -1,3 +1,4 @@
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -15,7 +16,7 @@ const agentKnowledgeDraft = {
       nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
     },
   ],
-} satisfies typeof defaultAgentSoulConfigFormState
+} satisfies AgentSoulConfigFormState
 
 function PublishPayloadPreview() {
   const payload = useConfigPublishPayload({ agentId: 'agent-1' })
@@ -27,12 +28,18 @@ function PublishPayloadPreview() {
   )
 }
 
-function renderKnowledgeRetrieval({ showPublishPayload = false } = {}) {
+function renderKnowledgeRetrieval({
+  initialDraft = agentKnowledgeDraft,
+  showPublishPayload = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  showPublishPayload?: boolean
+} = {}) {
   const queryClient = new QueryClient()
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={agentKnowledgeDraft}>
+      <AgentComposerProvider initialDraft={initialDraft}>
         <AgentKnowledgeRetrieval />
         {showPublishPayload && <PublishPayloadPreview />}
       </AgentComposerProvider>
@@ -167,6 +174,39 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne')
+    })
+
+    it('should show hydrated backend datasets in the edit dialog', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval({
+        initialDraft: {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            {
+              id: 'dataset-1',
+              name: 'Search Docs',
+              datasetRefs: [
+                {
+                  id: 'dataset-1',
+                  name: 'Product Docs',
+                  description: 'Docs corpus',
+                },
+              ],
+            },
+          ],
+        },
+      })
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"Search Docs"}',
+      }))
+
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+
+      expect(within(dialog).getByText('Product Docs')).toBeInTheDocument()
+      expect(within(dialog).queryByText('appDebug.datasetConfig.knowledgeTip')).not.toBeInTheDocument()
     })
 
     it('should save edited retrieval data into the publish config', async () => {

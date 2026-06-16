@@ -14,17 +14,42 @@ const noCredentialTool = {
   params: {},
   paramSchemas: [],
   allowDelete: false,
+  credentialRequired: false,
+} satisfies AgentProviderToolDefaultValue
+
+const unauthorizedCredentialTool = {
+  ...noCredentialTool,
+  provider_id: 'google',
+  provider_name: 'google',
+  provider_show_name: 'Google',
+  tool_name: 'search',
+  tool_label: 'Google Search',
+  title: 'Google Search',
+  is_team_authorization: false,
+  credentialRequired: true,
 } satisfies AgentProviderToolDefaultValue
 
 describe('addProviderTools', () => {
-  it('should mark tools that do not need credentials as unauthorized', () => {
+  it('should not mark tools that do not need credentials as unauthorized', () => {
     const nextTools = addProviderTools([], [noCredentialTool])
 
     expect(nextTools).toEqual([
       expect.objectContaining({
         credentialId: undefined,
-        credentialType: 'unauthorized',
+        credentialType: undefined,
         credentialVariant: 'none',
+      }),
+    ])
+  })
+
+  it('should mark credential-required tools without credentials as unauthorized', () => {
+    const nextTools = addProviderTools([], [unauthorizedCredentialTool])
+
+    expect(nextTools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'unauthorized',
+        credentialVariant: 'unauthorized',
       }),
     ])
   })

@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentKnowledgeRetrievalItem } from '../../data'
 import type {
@@ -18,6 +19,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import DatasetList from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-list'
@@ -31,7 +33,8 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 
@@ -72,6 +75,81 @@ const createDefaultRetrievalConfig = (): MultipleRetrievalConfig => ({
   reranking_enable: false,
 })
 
+const createDatasetFromRef = (dataset: AgentKnowledgeDatasetConfig, index: number): DataSet => {
+  const id = dataset.id ?? dataset.name ?? `dataset-${index}`
+  const name = dataset.name ?? id
+
+  return {
+    id,
+    name,
+    indexing_status: 'completed',
+    icon_info: {
+      icon: '📙',
+      icon_type: 'emoji',
+      icon_background: '#FFF4ED',
+      icon_url: '',
+    },
+    description: dataset.description ?? '',
+    permission: DatasetPermission.allTeamMembers,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: IndexingType.QUALIFIED,
+    created_by: '',
+    updated_by: '',
+    updated_at: 0,
+    app_count: 0,
+    doc_form: ChunkingMode.text,
+    document_count: 0,
+    total_document_count: 0,
+    word_count: 0,
+    provider: '',
+    embedding_model: '',
+    embedding_model_provider: '',
+    embedding_available: false,
+    retrieval_model_dict: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
+      },
+      top_k: DATASET_DEFAULT.top_k,
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    },
+    retrieval_model: {
+      search_method: RETRIEVE_METHOD.semantic,
+      reranking_enable: false,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
+      },
+      top_k: DATASET_DEFAULT.top_k,
+      score_threshold_enabled: false,
+      score_threshold: 0,
+    },
+    tags: [],
+    external_knowledge_info: {
+      external_knowledge_id: '',
+      external_knowledge_api_id: '',
+      external_knowledge_api_name: '',
+      external_knowledge_api_endpoint: '',
+    },
+    external_retrieval_model: {
+      top_k: DATASET_DEFAULT.top_k,
+      score_threshold: 0,
+      score_threshold_enabled: false,
+    },
+    built_in_field_enabled: false,
+    runtime_mode: 'general',
+    enable_api: false,
+    is_multimodal: false,
+  }
+}
+
+const getSelectedDatasets = (item?: AgentKnowledgeRetrievalItem) => (
+  item?.selectedDatasets ?? item?.datasetRefs?.map(createDatasetFromRef) ?? []
+)
+
 const createMetadataCondition = ({ id, name, type }: MetadataInDoc): MetadataFilteringCondition => ({
   id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
   metadata_id: id,
@@ -101,7 +179,7 @@ export function AgentKnowledgeRetrievalDialog({
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>(item?.queryMode ?? 'agent')
   const [customQuery, setCustomQuery] = useState(item?.customQuery ?? '')
-  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>(item?.selectedDatasets ?? [])
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>(() => getSelectedDatasets(item))
   const [retrievalMode, setRetrievalMode] = useState(item?.retrievalMode ?? RETRIEVE_TYPE.multiWay)
   const [multipleRetrievalConfig, setMultipleRetrievalConfig] = useState(item?.multipleRetrievalConfig ?? createDefaultRetrievalConfig)
   const [rerankModelOpen, setRerankModelOpen] = useState(false)

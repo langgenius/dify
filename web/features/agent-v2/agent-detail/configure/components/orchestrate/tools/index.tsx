@@ -1,14 +1,15 @@
 'use client'
 
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentCliTool, AgentProviderToolDefaultValue, AgentTool, ToolSettingTarget } from './types'
+import type { AgentCliTool, AgentProviderTool, AgentProviderToolDefaultValue, AgentTool, ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
+import { useGetLanguage } from '@/context/i18n'
 import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import {
   useAllBuiltInTools,
@@ -95,6 +96,96 @@ function AgentToolItem({
   )
 }
 
+function useAgentToolProviderMap() {
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+
+  return useMemo(() => {
+    const providers = new Map<string, ToolWithProvider>()
+    const buildInToolList = Array.isArray(buildInTools) ? buildInTools : []
+    const customToolList = Array.isArray(customTools) ? customTools : []
+    const workflowToolList = Array.isArray(workflowTools) ? workflowTools : []
+    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : []
+    const allProviders = [
+      ...buildInToolList,
+      ...customToolList,
+      ...workflowToolList,
+      ...mcpToolList,
+    ]
+
+    allProviders.forEach((provider) => {
+      providers.set(provider.id, provider)
+      providers.set(provider.name, provider)
+      if (provider.plugin_id) {
+        providers.set(provider.plugin_id, provider)
+        providers.set(`${provider.plugin_id}/${provider.name}`, provider)
+      }
+    })
+
+    return providers
+  }, [buildInTools, customTools, workflowTools, mcpTools])
+}
+
+function getLocalizedText(
+  text: Record<string, string> | undefined,
+  language: string,
+) {
+  return text?.[language] ?? text?.en_US ?? text?.zh_Hans
+}
+
+function getProviderCredentialRequired(provider?: ToolWithProvider) {
+  return Object.keys(provider?.team_credentials ?? {}).length > 0
+}
+
+function useDisplayTools(tools: AgentTool[]) {
+  const language = useGetLanguage()
+  const providerById = useAgentToolProviderMap()
+
+  return useMemo(() => {
+    return tools.map((tool) => {
+      if (tool.kind !== 'provider')
+        return tool
+
+      const provider = providerById.get(tool.id)
+        ?? providerById.get(tool.name)
+
+      if (!provider)
+        return tool
+
+      const providerToolByName = new Map(provider.tools.map(providerTool => [providerTool.name, providerTool]))
+      const credentialRequired = getProviderCredentialRequired(provider)
+
+      return {
+        ...tool,
+        displayName: tool.displayName ?? getLocalizedText(provider.label, language) ?? tool.name,
+        icon: tool.icon ?? provider.icon,
+        iconDark: tool.iconDark ?? provider.icon_dark,
+        providerType: tool.providerType ?? provider.type,
+        allowDelete: tool.allowDelete ?? provider.allow_delete,
+        credentialKey: credentialRequired ? tool.credentialKey : undefined,
+        credentialType: credentialRequired ? tool.credentialType : undefined,
+        credentialVariant: credentialRequired ? tool.credentialVariant : 'none',
+        actions: tool.actions.map((action) => {
+          const providerTool = providerToolByName.get(action.toolName)
+
+          if (!providerTool)
+            return action
+
+          return {
+            ...action,
+            name: action.name === action.toolName
+              ? getLocalizedText(providerTool.label, language) ?? action.name
+              : action.name,
+            description: action.description || getLocalizedText(providerTool.description, language) || '',
+          }
+        }),
+      } satisfies AgentProviderTool
+    })
+  }, [language, providerById, tools])
+}
+
 function AddToolMenuItem({
   badge,
   description,
@@ -146,32 +237,7 @@ function AddToolMenu({
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<'menu' | 'tool-picker'>('menu')
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-  const providerById = useMemo(() => {
-    const providers = new Map<string, ToolWithProvider>()
-    const buildInToolList = Array.isArray(buildInTools) ? buildInTools : []
-    const customToolList = Array.isArray(customTools) ? customTools : []
-    const workflowToolList = Array.isArray(workflowTools) ? workflowTools : []
-    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : []
-    const allProviders = [
-      ...buildInToolList,
-      ...customToolList,
-      ...workflowToolList,
-      ...mcpToolList,
-    ]
-
-    allProviders.forEach((provider) => {
-      providers.set(provider.id, provider)
-      providers.set(provider.name, provider)
-      if (provider.plugin_id)
-        providers.set(provider.plugin_id, provider)
-    })
-
-    return providers
-  }, [buildInTools, customTools, workflowTools, mcpTools])
+  const providerById = useAgentToolProviderMap()
 
   const openToolPicker = useCallback(() => {
     setView('tool-picker')
@@ -194,6 +260,9 @@ function AddToolMenu({
     allowDelete: (providerById.get(tool.provider_id)
       ?? providerById.get(tool.provider_name)
       ?? (tool.plugin_id ? providerById.get(tool.plugin_id) : undefined))?.allow_delete,
+    credentialRequired: getProviderCredentialRequired(providerById.get(tool.provider_id)
+      ?? providerById.get(tool.provider_name)
+      ?? (tool.plugin_id ? providerById.get(tool.plugin_id) : undefined)),
   }), [providerById])
 
   const handleSelectTool = useCallback((tool: ToolDefaultValue) => {
@@ -261,6 +330,7 @@ export function AgentTools() {
     settingTarget,
     isCliToolDialogOpen,
     editingCliTool,
+    setTools,
     setToolOpen,
     setSettingTarget,
     addTools,
@@ -273,6 +343,37 @@ export function AgentTools() {
     handleCliDialogOpenChange,
     closeProviderSettingsDialog,
   } = useAgentToolsOperations()
+  const displayTools = useDisplayTools(tools)
+  useEffect(() => {
+    let shouldSyncCredentials = false
+    const nextTools = tools.map((tool, index) => {
+      const displayTool = displayTools[index]
+
+      if (tool.kind !== 'provider' || displayTool?.kind !== 'provider')
+        return tool
+
+      if (
+        tool.allowDelete === displayTool.allowDelete
+        && tool.credentialKey === displayTool.credentialKey
+        && tool.credentialType === displayTool.credentialType
+        && tool.credentialVariant === displayTool.credentialVariant
+      ) {
+        return tool
+      }
+
+      shouldSyncCredentials = true
+      return {
+        ...tool,
+        allowDelete: displayTool.allowDelete,
+        credentialKey: displayTool.credentialKey,
+        credentialType: displayTool.credentialType,
+        credentialVariant: displayTool.credentialVariant,
+      }
+    })
+
+    if (shouldSyncCredentials)
+      setTools(nextTools)
+  }, [displayTools, setTools, tools])
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const openCliToolDialogFromPrompt = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
@@ -312,14 +413,14 @@ export function AgentTools() {
           />
         )}
       >
-        {tools.length === 0
+        {displayTools.length === 0
           ? (
               <ConfigureSectionEmpty
                 title={t('agentDetail.configure.tools.empty.title')}
                 description={t('agentDetail.configure.tools.empty.description')}
               />
             )
-          : tools.map(tool => (
+          : displayTools.map(tool => (
               <AgentToolItem
                 key={tool.id}
                 tool={tool}

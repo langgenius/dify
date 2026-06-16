@@ -4,6 +4,7 @@ import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type AgentProviderToolDefaultValue = ToolDefaultValue & {
   allowDelete?: boolean
+  credentialRequired?: boolean
 }
 
 export type AgentToolBase = {

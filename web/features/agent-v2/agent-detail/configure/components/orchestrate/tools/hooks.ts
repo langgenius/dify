@@ -25,18 +25,21 @@ const toProviderToolAction = (tool: AgentProviderToolDefaultValue) => ({
 })
 
 const getCredentialVariant = (tool: AgentProviderToolDefaultValue) => {
-  if (!tool.allowDelete)
+  if (!tool.credentialRequired)
     return 'none' as const
+
+  if (!tool.allowDelete)
+    return tool.credential_id ? 'authorized' as const : 'unauthorized' as const
 
   return tool.is_team_authorization ? 'authorized' as const : 'unauthorized' as const
 }
 
 const getCredentialType = (tool: AgentProviderToolDefaultValue) => {
-  if (!tool.allowDelete && !tool.credential_id)
-    return 'unauthorized' as const
+  if (!tool.credentialRequired)
+    return undefined
 
   if (!tool.allowDelete)
-    return undefined
+    return tool.credential_id ? 'api-key' as const : 'unauthorized' as const
 
   return tool.is_team_authorization ? 'api-key' as const : 'unauthorized' as const
 }
@@ -190,6 +193,7 @@ export function useAgentToolsOperations() {
     settingTarget,
     isCliToolDialogOpen,
     editingCliTool,
+    setTools,
     setToolOpen,
     setSettingTarget,
     addTools,
