@@ -144,6 +144,15 @@ const Answer: FC<AnswerProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
+  // Reasoning is "done" — freeze the elapsed timer and collapse the panel — as soon as ANY of:
+  //  ① the answer has begun streaming (first text delta): the only signal that fires
+  //     mid-node, so it drives the normal think→answer handoff;
+  //  ② the reasoning stream's terminal marker arrived (a reasoning node that finishes
+  //     before a separate answer node starts);
+  //  ③ the response is no longer active — explicitly false, not merely absent (history / abnormal end).
+  // graphon's is_final (on BOTH the text and reasoning channels) is a node-terminal marker
+  // that trails the whole answer, so it can't drive ①; the answer-started signal must.
+  const reasoningDone = !contentIsEmpty || !!item.reasoningFinished || responding === false
 
   return (
     <div className="mb-2 flex last:mb-0">
@@ -252,8 +261,7 @@ const Answer: FC<AnswerProps> = ({
                 hasReasoning && (
                   <ReasoningPanel
                     content={item.reasoningContent ?? {}}
-                    isFinished={item.reasoningFinished}
-                    responding={responding}
+                    done={reasoningDone}
                   />
                 )
               }
@@ -367,8 +375,7 @@ const Answer: FC<AnswerProps> = ({
                 hasReasoning && (
                   <ReasoningPanel
                     content={item.reasoningContent ?? {}}
-                    isFinished={item.reasoningFinished}
-                    responding={responding}
+                    done={reasoningDone}
                   />
                 )
               }

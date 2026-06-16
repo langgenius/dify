@@ -161,6 +161,8 @@ describe('Answer Component', () => {
           responding={true}
           item={{
             ...defaultProps.item,
+            // Thinking ⇒ the answer has not started yet, so content must be empty.
+            content: '',
             reasoningContent: { llm: 'deep thought' },
           } as unknown as ChatItem}
         />,

@@ -6,23 +6,23 @@ import { useElapsedTimer } from '@/app/components/base/markdown-blocks/use-elaps
 type ReasoningPanelProps = {
   // reasoning (chain-of-thought) deltas accumulated per LLM node id
   content: Record<string, string>
-  isFinished?: boolean
-  responding?: boolean
+  // true once reasoning is over (answer started / terminal marker / response ended);
+  // latches the elapsed timer and collapses the panel. Computed by the caller.
+  done: boolean
 }
 
-const ReasoningPanel: FC<ReasoningPanelProps> = ({ content, isFinished, responding }) => {
+const ReasoningPanel: FC<ReasoningPanelProps> = ({ content, done }) => {
   // First version renders one panel for the run; multiple LLM nodes are concatenated.
   // Computed inline (not memoized): the live stream mutates `content` in place under a
   // stable reference, so a [content]-keyed memo would never see new deltas.
   const text = Object.values(content).filter(Boolean).join('\n\n')
-  // Done when the terminal marker arrived, or the response is no longer active.
-  const { elapsedTime, isComplete } = useElapsedTimer(!!isFinished || responding === false)
+  const { elapsedTime, isComplete } = useElapsedTimer(done)
 
   if (!text)
     return null
 
   return (
-    <ThinkingDetails isComplete={isComplete} elapsedTime={elapsedTime}>
+    <ThinkingDetails className="my-2" isComplete={isComplete} elapsedTime={elapsedTime}>
       <Markdown content={text} />
     </ThinkingDetails>
   )
