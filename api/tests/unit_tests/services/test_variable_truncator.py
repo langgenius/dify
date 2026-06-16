@@ -224,6 +224,25 @@ class TestArrayTruncation:
             assert isinstance(item, str)
         assert VariableTruncator.calculate_json_size(result.value) <= 50
 
+    def test_array_size_limit_break_sets_truncated_flag(self):
+        """When _truncate_array breaks out of the loop due to used_size exceeding
+        target_size, the truncated flag must be True (elements were dropped)."""
+        t = VariableTruncator(array_element_limit=20, max_size_bytes=1000)
+        # target_size=12 is small enough that only a few integers fit (each is
+        # 2-3 bytes in JSON, plus commas).  The tail of the array gets dropped.
+        result = t._truncate_array([10, 20, 30, 40, 50], 12)
+        assert result.truncated is True
+        assert len(result.value) < 5  # at least one element was dropped
+
+    def test_array_truncated_flag_accumulates_across_elements(self):
+        """If an earlier element is truncated but a later element is not, the
+        accumulated truncated flag must still be True (no overwrite)."""
+        t = VariableTruncator(array_element_limit=20, max_size_bytes=1000, string_length_limit=10)
+        # The first string (60 chars) will be truncated to fit budget, the second
+        # ("a") fits without truncation.  The flag must still be True overall.
+        result = t._truncate_array(["x" * 60, "a"], 60)
+        assert result.truncated is True
+
     def test_array_with_nested_objects(self, small_truncator):
         """Test array truncation with nested objects."""
         nested_array = [
