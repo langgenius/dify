@@ -123,7 +123,7 @@ class DatasetRetrieval:
         if not available_datasets_ids:
             return []
 
-        if not request.query:
+        if not request.query and not request.attachment_ids:
             return []
 
         metadata_filter_document_ids, metadata_condition = None, None
