@@ -625,10 +625,41 @@ def test_dify_human_input_runtime_create_form_filters_debugger_delivery_methods(
     params = repository.create_form.call_args.args[0]
     assert params.node_id == "human-input-node"
     assert params.workflow_execution_id == "workflow-execution-id"
+    # No conversation_id_getter wired -> a pure workflow run leaves it None.
+    assert params.conversation_id is None
     assert params.display_in_ui is True
     assert len(params.delivery_methods) == 1
     assert params.delivery_methods[0].type == DeliveryMethodType.EMAIL
     assert params.delivery_methods[0].config.recipients.items[0].reference_id == "user-id"
+
+
+def test_dify_human_input_runtime_create_form_tags_conversation_id_for_chatflow() -> None:
+    # ENG-635 (review): a chatflow (advanced-chat) run carries a conversation, so its
+    # Human Input form is tagged with BOTH its workflow run and its conversation —
+    # making the form queryable per conversation without changing resume routing.
+    repository = MagicMock()
+    repository.create_form.return_value = sentinel.form
+    node_data = HumanInputNodeData(
+        title="Human Input",
+        delivery_methods=[WebAppDeliveryMethod(enabled=True, config=_WebAppDeliveryConfig())],
+    )
+    runtime = DifyHumanInputNodeRuntime(
+        _build_run_context(),
+        workflow_execution_id_getter=lambda: "workflow-execution-id",
+        conversation_id_getter=lambda: "conversation-id",
+        form_repository=repository,
+    )
+
+    runtime.create_form(
+        node_id="human-input-node",
+        node_data=node_data,
+        rendered_content="<p>Rendered</p>",
+        resolved_default_values={},
+    )
+
+    params = repository.create_form.call_args.args[0]
+    assert params.workflow_execution_id == "workflow-execution-id"
+    assert params.conversation_id == "conversation-id"
 
 
 def test_dify_human_input_runtime_preserves_webapp_delivery_for_web_invocations() -> None:
