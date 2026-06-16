@@ -6,10 +6,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useAtomValue, useStore } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
-import { agentComposerDraftAtom, hasAgentComposerUnpublishedChangesAtom } from '@/features/agent-v2/agent-composer/store'
+import { useConfigPublishPayload, useHasAgentComposerUnpublishedChanges } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
@@ -85,8 +83,12 @@ export function AgentConfigurePublishBar({
 }: AgentConfigurePublishBarProps) {
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const store = useStore()
-  const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
+  const hasUnpublishedChanges = useHasAgentComposerUnpublishedChanges()
+  const publishPayload = useConfigPublishPayload({
+    agentId,
+    baseConfig: agentSoulConfig,
+    currentModel,
+  })
   const publishState = getPublishState({
     activeConfigSnapshot,
     isDirty: hasUnpublishedChanges,
@@ -98,17 +100,6 @@ export function AgentConfigurePublishBar({
     if (!canPublish)
       return
 
-    const publishPayload = {
-      agent_id: agentId,
-      config_snapshot: formStateToAgentSoulConfig({
-        baseConfig: agentSoulConfig,
-        formState: store.get(agentComposerDraftAtom),
-        currentModel,
-      }),
-    }
-
-    // eslint-disable-next-line no-console
-    console.log('[AgentConfigurePublishBar] publish payload', publishPayload)
     void onPublish?.(publishPayload)
   }
 

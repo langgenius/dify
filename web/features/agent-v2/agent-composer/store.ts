@@ -91,6 +91,26 @@ export function useHydrateAgentSoulConfigFormState({
   })
 }
 
+export function useHasAgentComposerUnpublishedChanges() {
+  return useAtomValue(hasAgentComposerUnpublishedChangesAtom)
+}
+
+export function useAgentComposerConfigSnapshot({
+  baseConfig,
+  currentModel,
+}: {
+  baseConfig?: AgentSoulConfig
+  currentModel?: DefaultModel
+}) {
+  const draft = useAtomValue(agentComposerDraftAtom)
+
+  return useMemo(() => formStateToAgentSoulConfig({
+    baseConfig,
+    formState: draft,
+    currentModel,
+  }), [baseConfig, currentModel, draft])
+}
+
 export function useConfigPublishPayload({
   agentId,
   baseConfig,
@@ -100,14 +120,13 @@ export function useConfigPublishPayload({
   baseConfig?: AgentSoulConfig
   currentModel?: DefaultModel
 }) {
-  const draft = useAtomValue(agentComposerDraftAtom)
+  const configSnapshot = useAgentComposerConfigSnapshot({
+    baseConfig,
+    currentModel,
+  })
 
   return useMemo(() => ({
     agent_id: agentId,
-    config_snapshot: formStateToAgentSoulConfig({
-      baseConfig,
-      formState: draft,
-      currentModel,
-    }),
-  }), [agentId, baseConfig, currentModel, draft])
+    config_snapshot: configSnapshot,
+  }), [agentId, configSnapshot])
 }
