@@ -114,7 +114,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
             <DetailTableCell>
               <CurrentReleaseSummary release={row.currentRelease} />
             </DetailTableCell>
-            <DetailTableCell>
+            <DetailTableCell className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions}>
               <div className="flex min-h-8 justify-end">
                 <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
               </div>

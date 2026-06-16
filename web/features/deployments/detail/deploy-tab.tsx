@@ -73,7 +73,7 @@ function DeploymentEnvironmentListSkeleton() {
                     <SkeletonRectangle className="h-2.5 w-18 animate-pulse" />
                   </SkeletonRow>
                 </DetailTableCell>
-                <DetailTableCell>
+                <DetailTableCell className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions}>
                   <div className="flex justify-end">
                     <SkeletonRectangle className="my-0 size-8 animate-pulse rounded-md" />
                   </div>

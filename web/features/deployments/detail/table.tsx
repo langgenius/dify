@@ -13,7 +13,7 @@ export function DetailTable({ className, containerClassName, ...props }: DetailT
     >
       <table
         data-slot="deployment-detail-table"
-        className={cn('w-full max-w-full min-w-0 caption-bottom border-collapse border-0 text-sm pc:min-w-[720px]', className)}
+        className={cn('w-full max-w-full min-w-0 caption-bottom border-collapse border-0 pc:min-w-[720px]', className)}
         {...props}
       />
     </div>
@@ -24,7 +24,7 @@ export function DetailTableHeader({ className, ...props }: ComponentProps<'thead
   return (
     <thead
       data-slot="deployment-detail-table-header"
-      className={cn('h-8 border-b border-divider-subtle system-xs-medium-uppercase text-text-tertiary [&_tr]:border-b-0 [&_tr]:hover:bg-transparent', className)}
+      className={cn('system-xs-medium-uppercase text-text-tertiary [&_tr]:border-b-0 [&_tr]:hover:bg-transparent', className)}
       {...props}
     />
   )
@@ -34,7 +34,7 @@ export function DetailTableBody({ className, ...props }: ComponentProps<'tbody'>
   return (
     <tbody
       data-slot="deployment-detail-table-body"
-      className={cn('text-text-secondary', className)}
+      className={cn('system-sm-regular text-text-secondary', className)}
       {...props}
     />
   )
@@ -54,7 +54,7 @@ export function DetailTableHead({ className, ...props }: ComponentProps<'th'>) {
   return (
     <th
       data-slot="deployment-detail-table-head"
-      className={cn('bg-transparent py-2 pr-2 pl-3 text-left align-middle font-medium whitespace-nowrap', className)}
+      className={cn('bg-background-section-burn py-1.5 pr-2 pl-3 text-left align-middle font-medium whitespace-nowrap first:rounded-l-lg last:rounded-r-lg', className)}
       {...props}
     />
   )

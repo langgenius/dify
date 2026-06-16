@@ -1,14 +1,14 @@
 import { cn } from '@langgenius/dify-ui/cn'
 
 export const DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  actions: 'w-14 whitespace-nowrap',
+  actions: 'w-14 py-1.5 whitespace-nowrap',
   currentRelease: '',
   environment: 'whitespace-nowrap',
   status: 'whitespace-nowrap',
 }
 
 export const RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  action: 'w-14 whitespace-nowrap',
+  action: 'w-14 py-1.5 whitespace-nowrap',
   author: 'whitespace-nowrap',
   createdAt: 'whitespace-nowrap',
   deployedTo: '',
@@ -22,7 +22,7 @@ export const ACCESS_PERMISSION_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
 }
 
 export const API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES = {
-  action: 'w-16 whitespace-nowrap',
+  action: 'w-16 py-1.5 whitespace-nowrap',
   environment: 'whitespace-nowrap',
   key: '',
   name: 'whitespace-nowrap',
