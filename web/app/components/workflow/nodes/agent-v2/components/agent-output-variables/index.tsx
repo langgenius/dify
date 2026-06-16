@@ -29,12 +29,14 @@ function OutputRow({
   const description = getOutputDescription(output, t)
   return (
     <div className="group flex min-h-12 flex-col rounded-lg py-0.5 focus-within:bg-state-base-hover hover:bg-state-base-hover">
-      <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-2">
-        <div className="flex min-w-0 grow items-center gap-x-3">
-          <span className="truncate code-sm-semibold text-text-primary">{output.name}</span>
-          <span className="shrink-0 system-xs-regular text-text-tertiary">{getOutputDisplayType(output)}</span>
+      <div className="flex h-6 items-center gap-x-1 pr-0.5 pl-1">
+        <div className="flex min-w-0 grow items-center gap-x-1">
+          <span className="flex h-5 min-w-0 items-center px-1">
+            <span className="truncate code-sm-semibold leading-4 text-text-primary">{output.name}</span>
+          </span>
+          <span className="flex h-5 shrink-0 items-center px-1 system-xs-medium text-text-tertiary">{getOutputDisplayType(output)}</span>
           {output.required && (
-            <span className="shrink-0 system-2xs-medium-uppercase text-text-warning">
+            <span className="flex h-3 shrink-0 items-center px-1 system-2xs-medium-uppercase text-text-warning">
               {t('nodes.agent.outputVars.requiredLabel', { ns: 'workflow' })}
             </span>
           )}
