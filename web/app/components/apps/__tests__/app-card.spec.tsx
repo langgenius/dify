@@ -69,6 +69,7 @@ const mockAppContext = vi.hoisted(() => ({
 // Mock app context
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => mockAppContext,
+  useSelector: (selector: (state: typeof mockAppContext) => unknown) => selector(mockAppContext),
 }))
 
 // Mock provider context

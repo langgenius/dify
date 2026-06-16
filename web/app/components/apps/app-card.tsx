@@ -40,7 +40,7 @@ import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
@@ -287,7 +287,8 @@ type AppCardActionBarProps = {
 export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefresh }) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -302,7 +303,6 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
-  const currentUserId = userProfile?.id
   const resourceCreatedBy = getAppResourceCreatedBy(app)
   const creatorPermissionOptions = useMemo(() => ({
     currentUserId,
@@ -704,7 +704,9 @@ export const AppCardActionBar: React.FC<AppCardActionBarProps> = ({ app, onRefre
 const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => { } }: AppCardProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, userProfile, workspacePermissionKeys } = useAppContext()
+  const isCurrentWorkspaceEditor = useAppContextSelector(state => state.isCurrentWorkspaceEditor)
+  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -719,7 +721,6 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
-  const currentUserId = userProfile?.id
   const resourceCreatedBy = getAppResourceCreatedBy(app)
   const creatorPermissionOptions = useMemo(() => ({
     currentUserId,

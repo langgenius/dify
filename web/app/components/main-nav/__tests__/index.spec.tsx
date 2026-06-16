@@ -238,6 +238,7 @@ const appContextValue: AppContextValue = {
   useSelector: vi.fn(),
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 }
 
 const renderMainNav = (

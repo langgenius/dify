@@ -5,7 +5,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import Link from '@/next/link'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { formatTime } from '@/utils/time'
@@ -18,7 +18,8 @@ type StarredAppCardProps = {
 
 export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
   const { t } = useTranslation()
-  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
 
   const editTimeText = useMemo(() => {
     const timestamp = app.updated_at || app.created_at
@@ -32,7 +33,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
     return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.created_at, app.updated_at, t])
   const href = getRedirectionPath(app, {
-    currentUserId: userProfile?.id,
+    currentUserId,
     resourceCreatedBy: app.created_by || app.workflow?.created_by,
     workspacePermissionKeys,
   })

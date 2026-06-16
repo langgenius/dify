@@ -15,6 +15,14 @@ import { AppModeEnum } from '@/types/app'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/atoms'
 import AppList from '../index'
 
+type MockAppContext = {
+  isCurrentWorkspaceEditor: boolean
+  userProfile: { id: string }
+  workspacePermissionKeys: string[]
+}
+
+const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
+
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
 let mockLearnDifyApps: App[] = []
 let mockLearnDifyLoading = false
@@ -100,7 +108,8 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
+  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -259,6 +268,7 @@ const mockMemberRole = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
     isCurrentWorkspaceEditor: hasEditPermission,
+    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
   ;(useMembers as Mock).mockReturnValue({
     data: {

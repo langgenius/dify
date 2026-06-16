@@ -75,6 +75,17 @@ vi.mock('@/context/app-context', () => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
+  useSelector: <T,>(selector: (state: {
+    isCurrentWorkspaceEditor: boolean
+    isCurrentWorkspaceDatasetOperator: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => T): T => selector({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
+    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 const mockOnPlanInfoChanged = vi.fn()
