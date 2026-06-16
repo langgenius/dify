@@ -238,3 +238,56 @@ class TestGenerateWorker:
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         assert queue_manager.publish_error.called
+
+
+class TestResumeAfterFormSubmission:
+    """ENG-638: a resume turn re-sends the paused turn's original query so the
+    composition's user-prompt layer matches the suspended snapshot (never blank)."""
+
+    def _wire(self, generator, mocker: MockerFixture):
+        generator._resolve_agent = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="agent1"), mocker.MagicMock(id="snap1"), mocker.MagicMock())
+        )
+        generator._init_generate_records = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="conv", mode="agent"), mocker.MagicMock(id="msg"))
+        )
+        generator._handle_response = mocker.MagicMock(return_value=None)
+        mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=mocker.MagicMock(id="conv"))
+        mocker.patch(f"{MODULE}.AgentAppConfigManager.get_app_config", return_value=mocker.MagicMock(variables=[]))
+        mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
+        mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
+        return mocker.patch(
+            f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+        )
+
+    def test_resume_resends_paused_turn_query(self, generator, mocker: MockerFixture):
+        entity = self._wire(generator, mocker)
+        db_mock = mocker.patch(f"{MODULE}.db")
+        db_mock.session.scalar.return_value = mocker.MagicMock(query="original question")
+
+        generator.resume_after_form_submission(
+            app_model=mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent"),
+            user=DummyAccount("user"),
+            conversation_id="conv",
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+
+        # The paused turn's query is re-sent verbatim — never blank.
+        assert entity.call_args.kwargs["query"] == "original question"
+
+    def test_resume_falls_back_to_placeholder_when_no_paused_message(self, generator, mocker: MockerFixture):
+        entity = self._wire(generator, mocker)
+        db_mock = mocker.patch(f"{MODULE}.db")
+        db_mock.session.scalar.return_value = None
+
+        generator.resume_after_form_submission(
+            app_model=mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent"),
+            user=DummyAccount("user"),
+            conversation_id="conv",
+            invoke_from=InvokeFrom.WEB_APP,
+        )
+
+        # No prior user message -> a non-blank placeholder, still never blank.
+        assert entity.call_args.kwargs["query"] == "(resumed)"
