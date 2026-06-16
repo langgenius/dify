@@ -642,10 +642,17 @@ def test_nested_declared_output_emits_object_and_array_child_schema():
         children=[
             DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
             DeclaredOutputChildConfig(
+                name="nickname",
+                type=DeclaredOutputType.STRING,
+                required=False,
+                description="Optional display name",
+            ),
+            DeclaredOutputChildConfig(
                 name="addresses",
                 type=DeclaredOutputType.ARRAY,
                 array_item=DeclaredArrayItem(
                     type=DeclaredOutputType.OBJECT,
+                    description="Address item",
                     children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
                 ),
             ),
@@ -655,7 +662,9 @@ def test_nested_declared_output_emits_object_and_array_child_schema():
     schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
 
     assert schema["properties"]["email"] == {"type": "string"}
+    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
     assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
+    assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
     assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
     assert schema["required"] == ["email", "addresses"]
 

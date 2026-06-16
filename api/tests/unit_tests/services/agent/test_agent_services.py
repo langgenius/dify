@@ -704,6 +704,41 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch):
     assert [item["id"] for item in result["data"]] == ["agent-2"]
 
 
+def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Published",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+    )
+    draft_agent = Agent(
+        id="agent-2",
+        tenant_id="tenant-1",
+        name="Draft",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id=None,
+    )
+    service = AgentRosterService(FakeSession(scalars=[["agent-1"], ["agent-1"]]))
+
+    flags = service.load_active_config_is_published_by_agent_id(tenant_id="tenant-1", agents=[agent, draft_agent])
+
+    assert flags == {"agent-1": True, "agent-2": False}
+    assert service.active_config_is_published(tenant_id="tenant-1", agent=agent) is True
+    assert AgentRosterService(FakeSession()).load_active_config_is_published_by_agent_id(
+        tenant_id="tenant-1",
+        agents=[draft_agent],
+    ) == {"agent-2": False}
+
+
 def test_published_references_include_app_display_fields_and_sort_by_updated_at():
     recent_updated_at = datetime(2026, 1, 7, 3, 4, 5, tzinfo=UTC)
     stale_updated_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
