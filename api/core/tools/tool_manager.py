@@ -398,6 +398,8 @@ class ToolManager:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: "VariablePool | None" = None,
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -415,7 +417,12 @@ class ToolManager:
         runtime_parameters: dict[str, Any] = {}
         parameters = tool_entity.get_merged_runtime_parameters()
         runtime_parameters = cls._convert_tool_parameters_type(
-            parameters, variable_pool, agent_tool.tool_parameters, typ="agent"
+            parameters,
+            variable_pool,
+            agent_tool.tool_parameters,
+            typ="agent",
+            allow_file_parameters=allow_file_parameters,
+            use_default_for_missing_form_parameters=use_default_for_missing_form_parameters,
         )
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
@@ -1063,6 +1070,8 @@ class ToolManager:
         variable_pool: "VariablePool | None",
         tool_configurations: Mapping[str, Any],
         typ: Literal["agent", "workflow", "tool"] = "workflow",
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> dict[str, Any]:
         """
         Convert tool parameters type
@@ -1081,6 +1090,7 @@ class ToolManager:
                 }
                 and parameter.required
                 and typ == "agent"
+                and not allow_file_parameters
             ):
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
             # save tool parameter to tool entity memory
@@ -1117,7 +1127,19 @@ class ToolManager:
                     runtime_parameters[parameter.name] = parameter_value
 
                 else:
-                    value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
+                    parameter_value = tool_configurations.get(parameter.name)
+                    if use_default_for_missing_form_parameters and parameter_value is None:
+                        if parameter.default is not None:
+                            parameter_value = parameter.default
+                        elif (
+                            parameter.required
+                            and parameter.type == ToolParameter.ToolParameterType.SELECT
+                            and parameter.options
+                        ):
+                            parameter_value = parameter.options[0].value
+                        else:
+                            continue
+                    value = parameter.init_frontend_parameter(parameter_value)
                     runtime_parameters[parameter.name] = value
         return runtime_parameters
 
