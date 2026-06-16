@@ -22,6 +22,7 @@ type AgentOrchestratePanelProps = {
   agentName?: string | null
   currentModel?: DefaultModel
   textGenerationModelList: Model[]
+  draftSavedAt?: number
   isPublishing?: boolean
   publishedReferenceCount?: number
   publishedReferences?: AgentPublishedReferenceResponse[]
@@ -37,6 +38,7 @@ export function AgentOrchestratePanel({
   agentName,
   currentModel,
   textGenerationModelList,
+  draftSavedAt,
   isPublishing,
   publishedReferenceCount,
   publishedReferences,
@@ -79,6 +81,7 @@ export function AgentOrchestratePanel({
         agentSoulConfig={agentSoulConfig}
         agentName={agentName}
         currentModel={currentModel}
+        draftSavedAt={draftSavedAt}
         isPublishing={isPublishing}
         publishedReferenceCount={publishedReferenceCount}
         publishedReferences={publishedReferences}

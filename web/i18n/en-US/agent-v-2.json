@@ -145,6 +145,7 @@
   "agentDetail.configure.publishBar.publishedAt": "Published {{time}}",
   "agentDetail.configure.publishBar.publishing": "Publishing…",
   "agentDetail.configure.publishBar.saved": "Saved 5 min ago",
+  "agentDetail.configure.publishBar.savedAt": "Saved {{time}}",
   "agentDetail.configure.publishBar.unpublishedChanges": "Unpublished changes",
   "agentDetail.configure.publishBar.upToDate": "Up to date",
   "agentDetail.configure.publishBar.versionHistory": "Open version history",

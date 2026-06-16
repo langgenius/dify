@@ -44,6 +44,7 @@ function AgentConfigurePageContent({
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const {
     agentQuery,
+    composerQuery,
     versionQuery,
     activeVersionId,
     activeConfigSnapshot,
@@ -62,10 +63,14 @@ function AgentConfigurePageContent({
     textGenerationModelList,
   } = useAgentConfigureModelOptions()
   const {
+    draftSavedAt,
     isPublishing,
     publishDraft,
   } = useAgentConfigureSync({
     agentId,
+    baseConfig: agentSoulConfig,
+    currentModel,
+    enabled: composerQuery.isSuccess,
   })
 
   return (
@@ -81,6 +86,7 @@ function AgentConfigurePageContent({
         agentName={agentQuery.data?.name}
         currentModel={currentModel}
         textGenerationModelList={textGenerationModelList}
+        draftSavedAt={draftSavedAt}
         isPublishing={isPublishing}
         onSelectModel={setConfigureModel}
         onPublish={publishDraft}

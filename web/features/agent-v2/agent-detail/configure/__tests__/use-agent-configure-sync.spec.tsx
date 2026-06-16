@@ -76,18 +76,30 @@ function renderUseAgentConfigureSync() {
   )
 
   return {
-    ...renderHook(() => useAgentConfigureSync({ agentId: 'agent-1' }), { wrapper }),
+    ...renderHook(() => useAgentConfigureSync({
+      agentId: 'agent-1',
+      enabled: true,
+    }), { wrapper }),
+    queryClient,
     store,
   }
 }
 
 describe('useAgentConfigureSync', () => {
   beforeEach(() => {
+    vi.useFakeTimers()
     vi.clearAllMocks()
   })
 
-  it('should not save the configure page draft as a published version automatically', () => {
-    const { store } = renderUseAgentConfigureSync()
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('should automatically save configure page changes to draft', async () => {
+    vi.setSystemTime(1710000100000)
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+
+    expect(result.current.draftSavedAt).toBeUndefined()
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -96,11 +108,30 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: expect.objectContaining({
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Draft only prompt',
+          }),
+        }),
+      }),
+    }))
+    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toBeUndefined()
+    expect(result.current.draftSavedAt).toBe(1710000105000)
   })
 
   it('should publish only when publishDraft is called explicitly', async () => {
-    const { result } = renderUseAgentConfigureSync()
+    const { queryClient, result } = renderUseAgentConfigureSync()
 
     await act(async () => {
       await result.current.publishDraft({
@@ -127,5 +158,12 @@ describe('useAgentConfigureSync', () => {
         },
       }),
     }))
+    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toEqual({
+      agent_soul: {
+        prompt: {
+          system_prompt: 'Published prompt',
+        },
+      },
+    })
   })
 })

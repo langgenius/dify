@@ -9,7 +9,7 @@ import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useAtomValue, useStore } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
-import { agentComposerDraftAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, hasAgentComposerUnpublishedChangesAtom } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AgentPublishImpactPopover } from './publish-impact-popover'
 
@@ -31,6 +31,7 @@ type AgentConfigurePublishBarProps = {
     provider: string
     model: string
   }
+  draftSavedAt?: number
   isPublishing?: boolean
   publishedReferenceCount?: number
   publishedReferences?: AgentPublishedReferenceResponse[]
@@ -75,6 +76,7 @@ export function AgentConfigurePublishBar({
   agentSoulConfig,
   agentName,
   currentModel,
+  draftSavedAt,
   isPublishing = false,
   publishedReferenceCount = 0,
   publishedReferences = [],
@@ -84,10 +86,10 @@ export function AgentConfigurePublishBar({
   const { t } = useTranslation('agentV2')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const store = useStore()
-  const isDirty = useAtomValue(isAgentComposerDirtyAtom)
+  const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
   const publishState = getPublishState({
     activeConfigSnapshot,
-    isDirty,
+    isDirty: hasUnpublishedChanges,
     isPublishing,
   })
   const canPublish = publishState === 'draft' || publishState === 'unpublished'
@@ -123,12 +125,17 @@ export function AgentConfigurePublishBar({
         time: formatTimeFromNow(activeConfigSnapshot.created_at * 1000),
       })
     : t('agentDetail.configure.publishBar.published')
+  const savedMeta = draftSavedAt
+    ? t('agentDetail.configure.publishBar.savedAt', {
+        time: formatTimeFromNow(draftSavedAt),
+      })
+    : t('agentDetail.configure.publishBar.saved')
   const stateMeta = {
     draft: {
       actionIcon: null,
       actionLabel: t('agentDetail.publish'),
       dotStatus: 'disabled',
-      metaLabel: t('agentDetail.configure.publishBar.saved'),
+      metaLabel: savedMeta,
       showShortcut: true,
       statusLabel: t('agentDetail.configure.publishBar.draft'),
     },
@@ -136,7 +143,7 @@ export function AgentConfigurePublishBar({
       actionIcon: 'i-ri-loader-2-line animate-spin motion-reduce:animate-none',
       actionLabel: t('agentDetail.configure.publishBar.publishing'),
       dotStatus: 'disabled',
-      metaLabel: t('agentDetail.configure.publishBar.saved'),
+      metaLabel: savedMeta,
       showShortcut: false,
       statusLabel: t('agentDetail.configure.publishBar.draft'),
     },
@@ -152,7 +159,7 @@ export function AgentConfigurePublishBar({
       actionIcon: null,
       actionLabel: t('agentDetail.configure.publishBar.publishUpdate'),
       dotStatus: 'warning',
-      metaLabel: t('agentDetail.configure.publishBar.saved'),
+      metaLabel: savedMeta,
       showShortcut: true,
       statusLabel: t('agentDetail.configure.publishBar.unpublishedChanges'),
     },
