@@ -11187,9 +11187,9 @@ Default namespace
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | No |
-| interface_language | string |  | Yes |
-| name | string |  | Yes |
-| timezone | string |  | Yes |
+| interface_language | string |  | No |
+| name | string |  | No |
+| timezone | string |  | No |
 | token | string |  | Yes |
 | workspace_id | string |  | No |
 
@@ -11197,7 +11197,9 @@ Default namespace
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_status | string |  | No |
 | email | string |  | Yes |
+| requires_setup | boolean |  | No |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
 
