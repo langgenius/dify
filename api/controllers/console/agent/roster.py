@@ -95,7 +95,8 @@ def _serialize_agent_app_detail(app_model) -> dict:
         app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
-    agent = _agent_roster_service().get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
+    roster_service = _agent_roster_service()
+    agent = roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
     if not agent:
         raise AgentNotFoundError()
     payload = AppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
@@ -103,14 +104,23 @@ def _serialize_agent_app_detail(app_model) -> dict:
     payload["app_id"] = str(app_model.id)
     payload["id"] = agent.id
     payload["role"] = agent.role or ""
+    payload["active_config_is_published"] = roster_service.active_config_is_published(
+        tenant_id=app_model.tenant_id,
+        agent=agent,
+    )
     return payload
 
 
 def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
     app_ids = [str(app.id) for app in app_pagination.items]
-    agents_by_app_id = _agent_roster_service().load_app_backing_agents_by_app_id(
+    roster_service = _agent_roster_service()
+    agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
         tenant_id=tenant_id,
         app_ids=app_ids,
+    )
+    active_config_is_published_by_agent_id = roster_service.load_active_config_is_published_by_agent_id(
+        tenant_id=tenant_id,
+        agents=list(agents_by_app_id.values()),
     )
     payload = AppPagination.model_validate(app_pagination, from_attributes=True).model_dump(mode="json")
     for item in payload["data"]:
@@ -121,6 +131,7 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str) -> dict:
             item["app_id"] = app_id
             item["id"] = agent.id
             item["role"] = agent.role or ""
+            item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
     return payload
 
 
