@@ -135,19 +135,32 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
 
 
 class RecipientType(StrEnum):
+    # Second value = approval-channel label (surfaced in `approval_channels`).
     # EMAIL_MEMBER member means that the
-    EMAIL_MEMBER = "email_member"
-    EMAIL_EXTERNAL = "email_external"
+    EMAIL_MEMBER = "email_member", "email"
+    EMAIL_EXTERNAL = "email_external", "email"
     # STANDALONE_WEB_APP is used by the standalone web app.
     #
     # It's not used while running workflows / chatflows containing HumanInput
     # node inside console.
-    STANDALONE_WEB_APP = "standalone_web_app"
+    STANDALONE_WEB_APP = "standalone_web_app", "web_app"
     # CONSOLE is used while running workflows / chatflows containing HumanInput
     # node inside console. (E.G. running installed apps or debugging workflows / chatflows)
-    CONSOLE = "console"
+    CONSOLE = "console", "console"
     # BACKSTAGE is used for backstage input inside console.
-    BACKSTAGE = "backstage"
+    BACKSTAGE = "backstage", "console"
+
+    _approval_channel_label: str
+
+    def __new__(cls, value: str, approval_channel_label: str) -> "RecipientType":
+        member = str.__new__(cls, value)
+        member._value_ = value
+        member._approval_channel_label = approval_channel_label
+        return member
+
+    @property
+    def approval_channel_label(self) -> str:
+        return self._approval_channel_label
 
 
 @final
