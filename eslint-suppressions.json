@@ -4086,6 +4086,17 @@
       "count": 1
     }
   },
+  "web/app/components/plugins/marketplace/index.tsx": {
+    "style/indent": {
+      "count": 7
+    },
+    "style/jsx-closing-bracket-location": {
+      "count": 1
+    },
+    "style/jsx-indent-props": {
+      "count": 2
+    }
+  },
   "web/app/components/plugins/marketplace/list/list-with-collection.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -4408,6 +4419,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 1
     }
   },
   "web/app/components/plugins/plugin-page/context.ts": {
@@ -4431,6 +4445,11 @@
   "web/app/components/plugins/plugin-page/filter-management/search-box.tsx": {
     "no-restricted-imports": {
       "count": 1
+    }
+  },
+  "web/app/components/plugins/plugin-page/use-reference-setting.ts": {
+    "style/indent": {
+      "count": 3
     }
   },
   "web/app/components/plugins/reference-setting-modal/auto-update-setting/__tests__/index.spec.tsx": {
@@ -4850,19 +4869,6 @@
       "count": 2
     }
   },
-  "web/app/components/tools/mcp/create-card.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/mcp/headers-input.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
       "count": 1
@@ -4874,6 +4880,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
+    },
+    "ts/no-explicit-any": {
+      "count": 3
     }
   },
   "web/app/components/tools/provider/detail.tsx": {
@@ -4886,9 +4895,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -7639,6 +7645,26 @@
       "count": 1
     }
   },
+  "web/i18n/en-US/common.json": {
+    "jsonc/sort-keys": {
+      "count": 2
+    }
+  },
+  "web/i18n/ja-JP/common.json": {
+    "jsonc/sort-keys": {
+      "count": 2
+    }
+  },
+  "web/i18n/zh-Hans/common.json": {
+    "jsonc/sort-keys": {
+      "count": 2
+    }
+  },
+  "web/i18n/zh-Hant/common.json": {
+    "jsonc/sort-keys": {
+      "count": 2
+    }
+  },
   "web/models/app.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
@@ -7810,7 +7836,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 27
+      "count": 25
     }
   },
   "web/service/datasets.ts": {
