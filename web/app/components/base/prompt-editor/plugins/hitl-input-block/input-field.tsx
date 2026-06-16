@@ -97,6 +97,16 @@ const InputField: React.FC<InputFieldProps> = ({
   const handleSave = useCallback(() => {
     if (!nameValid)
       return
+    if (isFileListFormInput(tempPayload)) {
+      const value = tempPayload.number_limits ?? 5
+      if (!Number.isFinite(value)) {
+        onChange({
+          ...tempPayload,
+          number_limits: 1,
+        })
+        return
+      }
+    }
     onChange(tempPayload)
   }, [nameValid, onChange, tempPayload])
   const handleTypeChange = useCallback((item: TypeSelectItem) => {
