@@ -36,6 +36,7 @@ The codebase is split into:
 ## General Practices
 
 - Prefer editing existing files; add new documentation only when requested.
+- Do not manually edit generated code or generated documentation. Update the source contract/schema/configuration and run the appropriate code generation tool instead.
 - Inject dependencies through constructors and preserve clean architecture boundaries.
 - Handle errors with domain-specific exceptions at the correct layer.
 
