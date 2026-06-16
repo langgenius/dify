@@ -7,10 +7,10 @@ import Divider from '@/app/components/base/divider'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { useChatWithHistoryContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   collapsed: boolean
   setCollapsed: (collapsed: boolean) => void
-}
+}>
 
 const InputsFormNode = ({
   collapsed,

@@ -63,7 +63,7 @@ describe('CreateAppCard', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<CreateAppCard ref={defaultRef} />)
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
     })
 
     it('should render three create buttons', () => {
@@ -96,7 +96,7 @@ describe('CreateAppCard', () => {
 
     it('should render with selectedAppType prop', () => {
       render(<CreateAppCard ref={defaultRef} selectedAppType="chat" />)
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
     })
   })
 
@@ -222,7 +222,7 @@ describe('CreateAppCard', () => {
       const { container } = render(<CreateAppCard ref={defaultRef} />)
       const card = container.firstChild as HTMLElement
 
-      expect(card).toHaveClass('h-[160px]', 'rounded-xl')
+      expect(card).toHaveClass('h-41.5', 'rounded-xl', 'bg-background-default-dimmed')
     })
 
     it('should have proper button styling', () => {

@@ -12,7 +12,7 @@ import { useLastRun } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
 import NoData from './no-data'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   nodeId: string
   canSingleRun: boolean
@@ -23,7 +23,7 @@ type Props = {
   onSingleRunClicked: () => void
   singleRunResult?: NodeTracing
   isPaused?: boolean
-} & Partial<ResultPanelProps>
+}> & Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
   appId: _appId,

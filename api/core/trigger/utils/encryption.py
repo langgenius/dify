@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Union
+from typing import Union, override
 
 from core.entities.provider_entities import BasicProviderConfig, ProviderConfig
 from core.helper.provider_cache import ProviderCredentialsCache
@@ -16,6 +16,7 @@ class TriggerProviderCredentialsCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider_id: str, credential_id: str):
         super().__init__(tenant_id=tenant_id, provider_id=provider_id, credential_id=credential_id)
 
+    @override
     def _generate_cache_key(self, **kwargs) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
@@ -29,6 +30,7 @@ class TriggerProviderOAuthClientParamsCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider_id: str):
         super().__init__(tenant_id=tenant_id, provider_id=provider_id)
 
+    @override
     def _generate_cache_key(self, **kwargs) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]
@@ -41,6 +43,7 @@ class TriggerProviderPropertiesCache(ProviderCredentialsCache):
     def __init__(self, tenant_id: str, provider_id: str, subscription_id: str):
         super().__init__(tenant_id=tenant_id, provider_id=provider_id, subscription_id=subscription_id)
 
+    @override
     def _generate_cache_key(self, **kwargs) -> str:
         tenant_id = kwargs["tenant_id"]
         provider_id = kwargs["provider_id"]

@@ -10,7 +10,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import {
+  useStoreApi,
+} from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   BlockEnum,

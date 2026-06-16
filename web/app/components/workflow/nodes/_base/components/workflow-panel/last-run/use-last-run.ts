@@ -38,7 +38,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useInvalidLastRun } from '@/service/use-workflow'
-import { TabType } from '../tab'
+import { TabType } from '../types'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -54,6 +54,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: useStartSingleRunFormParams,
+  [BlockEnum.StartPlaceholder]: undefined,
   [BlockEnum.IfElse]: useIfElseSingleRunFormParams,
   [BlockEnum.VariableAggregator]: useVariableAggregatorSingleRunFormParams,
   [BlockEnum.Assigner]: useVariableAssignerSingleRunFormParams,
@@ -93,6 +94,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.DocExtractor]: undefined,
   [BlockEnum.Loop]: undefined,
   [BlockEnum.Start]: undefined,
+  [BlockEnum.StartPlaceholder]: undefined,
   [BlockEnum.IfElse]: undefined,
   [BlockEnum.VariableAggregator]: undefined,
   [BlockEnum.End]: undefined,
@@ -235,7 +237,7 @@ const useLastRun = <T>({
       setTabType(TabType.lastRun)
 
     setInitShowLastRunTab(false)
-  }, [initShowLastRunTab])
+  }, [initShowLastRunTab, setInitShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
@@ -338,6 +340,11 @@ const useLastRun = <T>({
     hideSingleRun()
   }
 
+  const showSingleRunWithDraftSync = () => {
+    handleSyncWorkflowDraft(true)
+    showSingleRun()
+  }
+
   const handleSingleRun = () => {
     if (blockIfChecklistFailed())
       return
@@ -347,7 +354,7 @@ const useLastRun = <T>({
     if (blockType === BlockEnum.TriggerWebhook || blockType === BlockEnum.TriggerPlugin || blockType === BlockEnum.TriggerSchedule)
       setShowVariableInspectPanel(true)
     if (isCustomRunNode || isHumanInputNode) {
-      showSingleRun()
+      showSingleRunWithDraftSync()
       return
     }
     const vars = singleRunParams?.getDependentVars?.()
@@ -361,7 +368,7 @@ const useLastRun = <T>({
       })
     }
     else {
-      showSingleRun()
+      showSingleRunWithDraftSync()
     }
   }
 

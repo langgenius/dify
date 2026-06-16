@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useId, useState } from 'react'
+import * as React from 'react'
 import { CheckboxGroup } from '.'
 import { Checkbox } from '../checkbox'
 import {
@@ -29,8 +29,8 @@ type Story = StoryObj<typeof meta>
 
 function DocumentSelectionDemo() {
   const documentIds = ['doc-1', 'doc-2', 'doc-3']
-  const [selected, setSelected] = useState<string[]>(['doc-1'])
-  const groupLabelId = useId()
+  const [selected, setSelected] = React.useState<string[]>(['doc-1'])
+  const groupLabelId = React.useId()
 
   return (
     <CheckboxGroup
@@ -77,7 +77,7 @@ function DynamicFormFieldDemo() {
     { value: 'pdf', label: 'PDF' },
     { value: 'html', label: 'HTML' },
   ]
-  const [selected, setSelected] = useState<string[]>(['markdown'])
+  const [selected, setSelected] = React.useState<string[]>(['markdown'])
 
   return (
     <FieldRoot name="allowed_file_types" className="flex w-80 flex-col gap-2">

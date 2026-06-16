@@ -195,13 +195,16 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
         snapshot.update(self._overrides)
         return snapshot
 
+    @override
     def __getitem__(self, key: NodeType) -> Mapping[str, type[Node]]:
         return self._snapshot()[key]
 
+    @override
     def __setitem__(self, key: NodeType, value: Mapping[str, type[Node]]) -> None:
         self._deleted.discard(key)
         self._overrides[key] = value
 
+    @override
     def __delitem__(self, key: NodeType) -> None:
         if key in self._overrides:
             del self._overrides[key]
@@ -211,9 +214,11 @@ class _LazyNodeTypeClassesMapping(MutableMapping[NodeType, Mapping[str, type[Nod
             return
         raise KeyError(key)
 
+    @override
     def __iter__(self) -> Iterator[NodeType]:
         return iter(self._snapshot())
 
+    @override
     def __len__(self) -> int:
         return len(self._snapshot())
 
@@ -329,6 +334,7 @@ class DifyNodeFactory(NodeFactory):
                 self.graph_runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
+            conversation_id_getter=self._conversation_id,
         )
         self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
@@ -474,8 +480,9 @@ class DifyNodeFactory(NodeFactory):
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client
-            from core.workflow.nodes.agent_v2.file_tenant_validator import UploadFileTenantValidator
+            from core.workflow.nodes.agent_v2.file_tenant_validator import AgentOutputFileTenantValidator
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
+            from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
             from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
 
@@ -491,11 +498,12 @@ class DifyNodeFactory(NodeFactory):
                     fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                 ),
                 "event_adapter": AgentBackendRunEventAdapter(),
-                "output_adapter": WorkflowAgentOutputAdapter(),
+                # Agent Files §4.6: reback file outputs from the ToolFile row so
+                # downstream metadata is authoritative, not sandbox-provided.
+                "output_adapter": WorkflowAgentOutputAdapter(tool_file_rebacker=reback_tool_file_output),
                 # Stage 4 §5/§7: per-output validation + failure orchestration. The
-                # tenant validator queries upload_files so it stays cheap when
-                # outputs contain no file refs.
-                "type_checker": PerOutputTypeChecker(file_validator=UploadFileTenantValidator()),
+                # tenant validator resolves ToolFile (canonical) + UploadFile refs.
+                "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
                 "session_store": WorkflowAgentRuntimeSessionStore(),
             }

@@ -1,7 +1,7 @@
 import json
 from os import path
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from flask import current_app
 
@@ -16,13 +16,17 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
     builtin_data: dict[str, Any] | None = None
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.BUILTIN
 
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
+    @override
+    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+        del current_tenant_id
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result
 
+    @override
     def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         result = self.fetch_pipeline_template_detail_from_builtin(template_id)
         return result

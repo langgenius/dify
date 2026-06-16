@@ -3,16 +3,18 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
+from configs import dify_config
 from constants.languages import supported_language
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.error import AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
 from models import AccountStatus
 from models.account import TenantAccountJoin, TenantAccountRole
 from services.account_service import RegisterService, TenantService
+from services.billing_service import BillingService
 
 
 class ActivateCheckQuery(BaseModel):
@@ -75,7 +77,7 @@ register_schema_models(
 class ActivateCheckApi(Resource):
     @console_ns.doc("check_activation_token")
     @console_ns.doc(description="Check if activation token is valid")
-    @console_ns.expect(console_ns.models[ActivateCheckQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ActivateCheckQuery))
     @console_ns.response(
         200,
         "Success",
@@ -140,6 +142,9 @@ class ActivateApi(Resource):
             raise AlreadyActivateError()
 
         account = invitation["account"]
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(account.email):
+            raise AccountInFreezeError()
+
         tenant = invitation["tenant"]
         role = invitation["data"].get("role", TenantAccountRole.NORMAL)
         if not TenantAccountRole.is_non_owner_role(role):

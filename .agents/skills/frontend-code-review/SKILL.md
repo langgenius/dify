@@ -25,6 +25,7 @@ Before reviewing, read the relevant local contracts:
 - `packages/dify-ui/README.md` and `packages/dify-ui/AGENTS.md` when code uses or changes `@langgenius/dify-ui/*`.
 - `web/docs/overlay.md` when reviewing dialogs, drawers, popovers, tooltips, menus, selects, comboboxes, or other floating UI.
 - `web/docs/test.md` and the `frontend-testing` skill when reviewing tests or testability.
+- `karpathy-guidelines` for scope control and focused, verifiable changes.
 - `how-to-write-component` when reviewing React component structure, ownership, effects, query/mutation contracts, or memoization.
 
 For any UI, UX, or accessibility review, fetch the latest Web Interface Guidelines before finalizing findings. Treat them as a required baseline, not the complete source of accessibility truth:

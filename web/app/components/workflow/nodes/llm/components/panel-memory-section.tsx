@@ -8,7 +8,7 @@ import MemoryConfig from '@/app/components/workflow/nodes/_base/components/memor
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import { FlowType } from '@/types/common'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   isChatMode: boolean
   isChatModel: boolean
@@ -24,7 +24,7 @@ type Props = {
   flowType?: FlowType
   handleSyeQueryChange: (query: string) => void
   handleMemoryChange: (memory?: Memory) => void
-}
+}>
 
 const i18nPrefix = 'nodes.llm'
 const DEFAULT_MEMORY: Memory = {

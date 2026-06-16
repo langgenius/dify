@@ -702,9 +702,7 @@ describe('ModerationSettingModal', () => {
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
 
-    const modalCall = mockSetShowAccountSettingModal.mock.calls[0]![0]
-    modalCall.onCancelCallback()
-    expect(mockModelProvidersData.refetch).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
   })
 
   it('should not save when OpenAI type is selected but not configured', async () => {

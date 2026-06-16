@@ -17,7 +17,7 @@ import Loading from '@/app/components/base/loading'
 const PLANNING_MS = 3500
 const BUILDING_MS = 12000
 
-type Props = {
+type Props = Readonly<{
   /**
    * Per-attempt nonce — typically ``Date.now()`` of when Generate was
    * clicked. The component resets ``phaseIndex`` whenever this changes so a
@@ -25,7 +25,7 @@ type Props = {
    * resuming wherever the previous attempt left off.
    */
   startedAt: number
-}
+}>
 
 const GenerationPhases = ({ startedAt }: Props) => {
   const { t } = useTranslation('workflow')

@@ -26,11 +26,11 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { AppSourceType } from '@/service/share'
 import { useThemeContext } from '../../../base/chat/embedded-chatbot/theme/theme-context'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
   className: string
-}
+}>
 
 const TryApp: FC<Props> = ({
   appId,

@@ -17,12 +17,12 @@ import { isSupportedHttpBodyVariable } from './supported-body-vars'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   payload: Body
   onChange: (payload: Body) => void
-}
+}>
 
 const allTypes = [
   BodyType.none,

@@ -34,7 +34,7 @@ export const zActivationCheckData = z.object({
  * ActivationCheckResponse
  */
 export const zActivationCheckResponse = z.object({
-  data: zActivationCheckData.optional(),
+  data: zActivationCheckData.nullish(),
   is_valid: z.boolean(),
 })
 
@@ -46,9 +46,9 @@ export const zPostActivateBody = zActivatePayload
 export const zPostActivateResponse = zActivationResponse
 
 export const zGetActivateCheckQuery = z.object({
-  email: z.string().nullish(),
+  email: z.string().optional(),
   token: z.string(),
-  workspace_id: z.string().nullish(),
+  workspace_id: z.string().optional(),
 })
 
 /**

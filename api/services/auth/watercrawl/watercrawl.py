@@ -1,4 +1,5 @@
 import json
+from typing import override
 from urllib.parse import urljoin
 
 import httpx
@@ -18,6 +19,7 @@ class WatercrawlAuth(ApiKeyAuthBase):
         if not self.api_key:
             raise ValueError("No API key provided")
 
+    @override
     def validate_credentials(self):
         headers = self._prepare_headers()
         url = urljoin(self.base_url, "/api/v1/core/crawl-requests/")

@@ -59,7 +59,7 @@ describe('dify-mock fixture server', () => {
       workspaces: Array<{ id: string, name: string, role: string, status: string, current: boolean }>
     }
     expect(body.workspaces).toHaveLength(2)
-    expect(body.workspaces[0]?.id).toBe('ws-1')
+    expect(body.workspaces[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(body.workspaces[0]?.status).toBe('normal')
     expect(body.workspaces[0]?.current).toBe(true)
     expect(body.workspaces[1]?.current).toBe(false)
@@ -89,11 +89,11 @@ describe('dify-mock fixture server', () => {
     expect(body.subject_type).toBe('account')
     expect(body.account?.email).toBe('tester@dify.ai')
     expect(body.workspaces).toHaveLength(2)
-    expect(body.default_workspace_id).toBe('ws-1')
+    expect(body.default_workspace_id).toBe('550e8400-e29b-41d4-a716-446655440000')
   })
 
   it('GET /openapi/v1/apps respects ?mode filter', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps?workspace_id=ws-1&mode=workflow`, {
+    const r = await fetch(`${mock.url}/openapi/v1/apps?workspace_id=550e8400-e29b-41d4-a716-446655440000&mode=workflow`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     const body = await r.json() as { data: Array<{ mode: string }>, total: number }
@@ -103,7 +103,7 @@ describe('dify-mock fixture server', () => {
   })
 
   it('GET /openapi/v1/apps scopes by workspace_id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps?workspace_id=ws-2`, {
+    const r = await fetch(`${mock.url}/openapi/v1/apps?workspace_id=550e8400-e29b-41d4-a716-446655440001`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     const body = await r.json() as { data: Array<{ id: string }> }
@@ -112,14 +112,14 @@ describe('dify-mock fixture server', () => {
   })
 
   it('GET /openapi/v1/apps/:id/describe returns 404 for unknown id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/nope/describe?workspace_id=ws-1`, {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/nope/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(404)
   })
 
   it('GET /openapi/v1/apps/:id/describe returns the app for known id', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=ws-1`, {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
@@ -158,7 +158,7 @@ describe('dify-mock fixture server', () => {
   })
 
   it('GET /openapi/v1/apps/:id/describe?fields=info returns slim payload', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=ws-1&fields=info`, {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000&fields=info`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)
@@ -169,7 +169,7 @@ describe('dify-mock fixture server', () => {
   })
 
   it('GET /openapi/v1/apps/:id/describe full returns parameters when present', async () => {
-    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=ws-1`, {
+    const r = await fetch(`${mock.url}/openapi/v1/apps/app-1/describe?workspace_id=550e8400-e29b-41d4-a716-446655440000`, {
       headers: { Authorization: 'Bearer dfoa_test' },
     })
     expect(r.status).toBe(200)

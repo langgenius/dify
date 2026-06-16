@@ -23,12 +23,34 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('focuses the searchbox when autoFocus is enabled', () => {
+      render(<SearchInput value="" onValueChange={() => {}} autoFocus />)
+      expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
+    })
+
     it('shows clear button when value is present', () => {
       const onValueChange = vi.fn()
       render(<SearchInput value="has value" onValueChange={onValueChange} />)
 
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
+    })
+
+    it('uses the design-system focus treatment for the clear button', () => {
+      render(<SearchInput value="has value" onValueChange={() => {}} />)
+
+      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      expect(clearButton).toHaveClass(
+        'right-1.5',
+        'size-5',
+        'focus-visible:bg-components-input-bg-hover',
+        'focus-visible:ring-2',
+        'focus-visible:ring-state-accent-solid',
+        'focus-visible:ring-inset',
+      )
+      expect(clearButton).not.toHaveClass('size-4')
+      expect(clearButton).not.toHaveClass('focus-visible:ring-1')
+      expect(clearButton).not.toHaveClass('focus-visible:ring-components-input-border-active')
     })
   })
 

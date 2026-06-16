@@ -130,6 +130,16 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2Fapps%3Ftag%3Dworkflow')
   })
 
+  it('should default unauthorized refresh redirects to the home path when the pathname header is missing', async () => {
+    mocks.headers.mockResolvedValue(new Headers())
+    mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code: 'unauthorized' }), { status: 401 }))
+    const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
+
+    await expect(CommonLayoutHydrationBoundary({ children: null })).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mocks.redirect).toHaveBeenCalledWith('/auth/refresh?redirect_url=%2F')
+  })
+
   it('should redirect setup errors to install', async () => {
     mocks.profileQueryFn.mockRejectedValue(new Response(JSON.stringify({ code: 'not_setup' }), { status: 401 }))
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')

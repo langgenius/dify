@@ -562,7 +562,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert persisted == ["saved"]
 
-    def test_save_message_strips_markdown_and_sets_usage(self):
+    def test_save_message_preserves_full_answer_and_sets_usage(self):
         pipeline = _make_pipeline()
         pipeline._recorded_files = [
             {
@@ -572,7 +572,8 @@ class TestAdvancedChatGenerateTaskPipeline:
                 "related_id": "file-id",
             }
         ]
-        pipeline._task_state.answer = "![img](url) hello"
+        # The answer is stored verbatim; markdown image links are never stripped.
+        pipeline._task_state.answer = "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         pipeline._task_state.is_streaming_response = True
         pipeline._task_state.first_token_time = pipeline._base_task_pipeline.start_at + 0.1
         pipeline._task_state.last_token_time = pipeline._base_task_pipeline.start_at + 0.2
@@ -614,7 +615,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         pipeline._save_message(session=_Session(), graph_runtime_state=graph_runtime_state)
 
         assert message.status == MessageStatus.NORMAL
-        assert message.answer == "hello"
+        assert message.answer == "![img](http://example.com/file.png) hello ![inline](http://llm.com/img.jpg)"
         assert message.message_metadata
 
     def test_handle_stop_event_saves_message_for_moderation(self, monkeypatch: pytest.MonkeyPatch):

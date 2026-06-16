@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import cast
+from typing import cast, override
 
 from dify_vdb_hologres.hologres_vector import HologresVector, HologresVectorConfig
 from holo_search_sdk.types import BaseQuantizationType, DistanceType, TokenizerType
@@ -35,6 +35,7 @@ class HologresVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_full_text(self):
         """Override: full-text index may not be immediately ready in real mode."""
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
@@ -97,12 +98,14 @@ class HologresVectorTest(AbstractVectorTest):
             assert len(hits) == 1
             assert hits[0].metadata["doc_id"] == self.example_doc_id
 
+    @override
     def get_ids_by_metadata_field(self):
         """Override: Hologres implements this method via JSONB query."""
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert ids is not None
         assert len(ids) == 1
 
+    @override
     def run_all_tests(self):
         # Clean up before running tests
         self.vector.delete()

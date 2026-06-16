@@ -13,8 +13,12 @@ from dataclasses import dataclass
 from typing import Any, Protocol, cast
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.protocol import CreateRunRequest
+from dify_agent.layers.execution_context import (
+    DifyExecutionContextInvokeFrom,
+    DifyExecutionContextLayerConfig,
+    DifyExecutionContextUserFrom,
+)
+from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 
 from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
@@ -28,9 +32,15 @@ from core.workflow.nodes.agent_v2.plugin_tools_builder import (
     WorkflowAgentPluginToolsBuilder,
     WorkflowAgentPluginToolsBuildError,
 )
-from core.workflow.nodes.agent_v2.runtime_request_builder import build_shell_layer_config
+from core.workflow.nodes.agent_v2.runtime_request_builder import (
+    append_runtime_warnings,
+    build_ask_human_layer_config,
+    build_drive_layer_config,
+    build_shell_layer_config,
+)
 from models.agent_config_entities import AgentSoulConfig
 from models.provider_ids import ModelProviderID
+from services.agent.prompt_mentions import build_soul_mention_resolver, expand_prompt_mentions
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -55,6 +65,8 @@ class AgentAppRuntimeBuildContext:
     user_query: str
     idempotency_key: str
     session_snapshot: CompositorSessionSnapshot | None = None
+    # ENG-638: set when resuming a chat turn after a submitted ask_human form.
+    deferred_tool_results: DeferredToolResultsPayload | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,6 +119,11 @@ class AgentAppRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
+        drive_config = None
+        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
+            drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent_id)
+            append_runtime_warnings(metadata, drive_warnings)
+
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -126,14 +143,25 @@ class AgentAppRuntimeRequestBuilder:
                     conversation_id=context.conversation_id,
                     agent_id=context.agent_id,
                     agent_config_version_id=context.agent_config_snapshot_id,
-                    invoke_from="agent_app",
+                    # Agent Files §1.3: real Dify access context + agent run mode.
+                    user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
+                    invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    agent_mode="agent_app",
                 ),
-                agent_soul_prompt=agent_soul.prompt.system_prompt or None,
+                # ENG-616: expand slash-menu mention tokens to canonical names so
+                # no frontend-internal {{#…#}} marker ever reaches the model.
+                agent_soul_prompt=expand_prompt_mentions(
+                    agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
+                ).strip()
+                or None,
                 user_prompt=context.user_query,
                 tools=tools_layer,
+                drive_config=drive_config,
+                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
+                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
             )

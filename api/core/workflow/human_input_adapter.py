@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 import uuid
 from collections.abc import Mapping, Sequence
-from typing import Annotated, Any, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal, override
 
 import bleach
 import markdown
@@ -158,6 +158,7 @@ class EmailDeliveryMethod(_DeliveryMethodBase):
     type: Literal[DeliveryMethodType.EMAIL] = DeliveryMethodType.EMAIL
     config: EmailDeliveryConfig
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         variable_template_parser = VariableTemplateParser(template=self.config.body)
         selectors: list[Sequence[str]] = []

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,7 +53,7 @@ class TestBuildInRecommendAppRetrieval:
             mock_fetch.assert_called_once_with("app-1")
             assert result == {"id": "app-1"}
 
-    def test_get_builtin_data_reads_json_and_caches(self, tmp_path):
+    def test_get_builtin_data_reads_json_and_caches(self, tmp_path: Path):
         json_file = tmp_path / "constants" / "recommended_apps.json"
         json_file.parent.mkdir(parents=True)
         json_file.write_text(json.dumps(SAMPLE_BUILTIN_DATA))

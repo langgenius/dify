@@ -13,13 +13,13 @@ import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { formatFileSize } from '@/utils/format'
 
-type Props = {
+type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
   className?: string
   accept?: string
   displayName?: string
-}
+}>
 
 const Uploader: FC<Props> = ({
   file,

@@ -1,7 +1,7 @@
 import type { NoteNodeType } from '../note-node/types'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback } from 'react'
 import { useAppContext } from '@/context/app-context'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import {
   CUSTOM_NOTE_NODE,
   NOTE_SHOW_AUTHOR_STORAGE_KEY,

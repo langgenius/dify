@@ -104,7 +104,7 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
-        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+        if invoke_from.runs_as_account():
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 

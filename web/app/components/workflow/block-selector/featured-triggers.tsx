@@ -6,19 +6,21 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { RiMoreLine } from '@remixicon/react'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
 import { useGetLanguage } from '@/context/i18n'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
-import { getMarketplaceUrl } from '@/utils/var'
+import { PluginCategoryEnum } from '../../plugins/types'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { BlockSelectorRow } from './block-selector-row'
 import { TriggerPluginActionPreviewCard } from './trigger-plugin/action-item'
 import TriggerPluginItem from './trigger-plugin/item'
 
@@ -114,10 +116,10 @@ const FeaturedTriggers = ({
   const showEmptyState = !isLoading && totalVisible === 0
 
   return (
-    <div className="px-3 pt-2 pb-3">
+    <div className="pt-2 pb-3">
       <button
         type="button"
-        className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
+        className="flex w-full items-center rounded-md px-4 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
@@ -133,46 +135,39 @@ const FeaturedTriggers = ({
           )}
 
           {showEmptyState && (
-            <p className="py-2 system-xs-regular text-text-tertiary">
-              <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'trigger' })} target="_blank" rel="noopener noreferrer">
+            <p className="px-4 py-2 system-xs-regular text-text-tertiary">
+              <Link className="text-text-accent" href={getMarketplaceCategoryUrl(PluginCategoryEnum.trigger)} target="_blank" rel="noopener noreferrer">
                 {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
               </Link>
             </p>
           )}
 
           {!showEmptyState && !isLoading && (
-            <>
-              {visibleInstalledProviders.length > 0 && (
-                <div className="mt-1">
-                  {visibleInstalledProviders.map(provider => (
-                    <TriggerPluginItem
-                      key={provider.id}
-                      payload={provider}
-                      hasSearchText={false}
-                      previewCardHandle={triggerActionPreviewCardHandle}
-                      onSelect={onSelect}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="mt-1 p-1">
+              {visibleInstalledProviders.map(provider => (
+                <TriggerPluginItem
+                  key={provider.id}
+                  payload={provider}
+                  hasSearchText={false}
+                  previewCardHandle={triggerActionPreviewCardHandle}
+                  onSelect={onSelect}
+                />
+              ))}
 
-              {visibleUninstalledPlugins.length > 0 && (
-                <div className="mt-1 flex flex-col gap-1">
-                  {visibleUninstalledPlugins.map(plugin => (
-                    <FeaturedTriggerUninstalledItem
-                      key={plugin.plugin_id}
-                      plugin={plugin}
-                      language={language}
-                      previewCardHandle={previewCardHandle}
-                      onInstallSuccess={async () => {
-                        await onInstallSuccess?.()
-                      }}
-                      t={t}
-                    />
-                  ))}
+              {visibleUninstalledPlugins.map(plugin => (
+                <div key={plugin.plugin_id} className="mb-1 last-of-type:mb-0">
+                  <FeaturedTriggerUninstalledItem
+                    plugin={plugin}
+                    language={language}
+                    previewCardHandle={previewCardHandle}
+                    onInstallSuccess={async () => {
+                      await onInstallSuccess?.()
+                    }}
+                    t={t}
+                  />
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
 
           {!isLoading && totalVisible > 0 && canToggleVisibility && (
@@ -255,16 +250,14 @@ function FeaturedTriggerUninstalledItem({
   }, [actionOpen])
 
   const row = (
-    <div
-      className="group flex h-8 w-full items-center rounded-lg pr-1 pl-3 hover:bg-state-base-hover"
-    >
-      <div className="flex h-full min-w-0 items-center">
-        <BlockIcon type={BlockEnum.TriggerPlugin} toolIcon={plugin.icon} />
-        <div className="ml-2 min-w-0">
+    <BlockSelectorRow as="div" className="group select-none">
+      <div className="flex min-w-0 items-center">
+        <BlockIcon className="mr-2 shrink-0" type={BlockEnum.TriggerPlugin} size="sm" toolIcon={plugin.icon} />
+        <div className="min-w-0">
           <div className="truncate system-sm-medium text-text-secondary">{label}</div>
         </div>
       </div>
-      <div className="ml-auto flex h-full items-center gap-1 pl-1">
+      <div className="ml-auto flex h-6 items-center gap-1 pl-1">
         <span className={`system-xs-regular text-text-tertiary ${actionOpen ? 'hidden' : 'group-hover:hidden'}`}>{installCountLabel}</span>
         <div
           className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
@@ -288,7 +281,7 @@ function FeaturedTriggerUninstalledItem({
           />
         </div>
       </div>
-    </div>
+    </BlockSelectorRow>
   )
 
   return (

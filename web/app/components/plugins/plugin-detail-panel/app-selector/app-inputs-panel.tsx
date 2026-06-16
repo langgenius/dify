@@ -7,14 +7,14 @@ import Loading from '@/app/components/base/loading'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'
 
-type Props = {
+type Props = Readonly<{
   value?: {
     app_id: string
     inputs: Record<string, unknown>
   }
   appDetail: App
   onFormChange: (value: Record<string, unknown>) => void
-}
+}>
 
 const AppInputsPanel = ({
   value,

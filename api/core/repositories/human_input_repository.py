@@ -63,6 +63,10 @@ class FormCreateParams:
     display_in_ui: bool
     resolved_default_values: Mapping[str, Any]
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
+    # ENG-635: the conversation this form belongs to. Set together with
+    # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
+    # for Agent v2 chat ask_human forms, which have no workflow run.
+    conversation_id: str | None = None
 
 
 class HumanInputFormRecipientEntity(Protocol):
@@ -217,6 +221,9 @@ class HumanInputFormRecord:
     recipient_id: str | None
     recipient_type: RecipientType | None
     access_token: str | None
+    # ENG-635: Agent v2 chat owner (NULL for workflow-owned forms). Trailing +
+    # defaulted so existing record constructions stay source-compatible.
+    conversation_id: str | None = None
 
     @property
     def submitted(self) -> bool:
@@ -232,6 +239,7 @@ class HumanInputFormRecord:
         return cls(
             form_id=form_model.id,
             workflow_run_id=form_model.workflow_run_id,
+            conversation_id=form_model.conversation_id,
             node_id=form_model.node_id,
             tenant_id=form_model.tenant_id,
             app_id=form_model.app_id,
@@ -288,24 +296,25 @@ class HumanInputFormRepositoryImpl:
             channel_payload=delivery_method.model_dump_json(),
         )
         recipients: list[HumanInputFormRecipient] = []
-        if isinstance(delivery_method, InteractiveSurfaceDeliveryMethod):
-            recipient_model = HumanInputFormRecipient(
-                form_id=form_id,
-                delivery_id=delivery_id,
-                recipient_type=RecipientType.STANDALONE_WEB_APP,
-                recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
-            )
-            recipients.append(recipient_model)
-        elif isinstance(delivery_method, EmailDeliveryMethod):
-            email_recipients_config = delivery_method.config.recipients
-            recipients.extend(
-                self._build_email_recipients(
-                    session=session,
+        match delivery_method:
+            case InteractiveSurfaceDeliveryMethod():
+                recipient_model = HumanInputFormRecipient(
                     form_id=form_id,
                     delivery_id=delivery_id,
-                    recipients_config=email_recipients_config,
+                    recipient_type=RecipientType.STANDALONE_WEB_APP,
+                    recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
                 )
-            )
+                recipients.append(recipient_model)
+            case EmailDeliveryMethod():
+                email_recipients_config = delivery_method.config.recipients
+                recipients.extend(
+                    self._build_email_recipients(
+                        session=session,
+                        form_id=form_id,
+                        delivery_id=delivery_id,
+                        recipients_config=email_recipients_config,
+                    )
+                )
 
         return _DeliveryAndRecipients(delivery=delivery_model, recipients=recipients)
 
@@ -432,8 +441,15 @@ class HumanInputFormRepositoryImpl:
         if not app_id:
             raise ValueError("app_id is required to create a human input form")
         workflow_execution_id = params.workflow_execution_id or self._workflow_execution_id
-        if params.form_kind == HumanInputFormKind.RUNTIME and workflow_execution_id is None:
-            raise ValueError("workflow_execution_id is required for runtime human input forms")
+        # A RUNTIME form must be owned by at least one of: a workflow run (workflow /
+        # Human-Input / agent node) or a conversation turn (ENG-635: Agent v2 chat
+        # ask_human; chatflow runs set both — workflow_run_id and conversation_id).
+        if (
+            params.form_kind == HumanInputFormKind.RUNTIME
+            and workflow_execution_id is None
+            and params.conversation_id is None
+        ):
+            raise ValueError("a runtime human input form requires a workflow_execution_id or conversation_id")
 
         with session_factory.create_session() as session, session.begin():
             # Generate unique form ID
@@ -455,6 +471,7 @@ class HumanInputFormRepositoryImpl:
                 tenant_id=self._tenant_id,
                 app_id=app_id,
                 workflow_run_id=workflow_execution_id,
+                conversation_id=params.conversation_id,
                 form_kind=params.form_kind,
                 node_id=params.node_id,
                 form_definition=form_definition.model_dump_json(),

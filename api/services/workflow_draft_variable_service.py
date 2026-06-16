@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar, NotRequired, TypedDict, cast
+from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
 
 from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -107,6 +107,7 @@ class DraftVarLoader(VariableLoader):
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
         return (selector[0], selector[1])
 
+    @override
     def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         if not selectors:
             return []
@@ -748,6 +749,7 @@ class _InsertionDict(TypedDict):
     file_id: str | None
     visible: NotRequired[bool]
     editable: NotRequired[bool]
+    is_default_value: NotRequired[bool]
     created_at: NotRequired[datetime]
     updated_at: NotRequired[datetime]
     description: NotRequired[str]
@@ -777,6 +779,8 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
         d["updated_at"] = model.updated_at
     if model.description is not None:
         d["description"] = model.description
+    if model.is_default_value is not None:
+        d["is_default_value"] = model.is_default_value
     return d
 
 

@@ -12,7 +12,27 @@ from services.errors.enterprise import (
     EnterpriseAPIForbiddenError,
     EnterpriseAPINotFoundError,
     EnterpriseAPIUnauthorizedError,
+    EnterpriseServiceError,
 )
+
+
+class MCPTokenError(EnterpriseServiceError):
+    """Generic failure of the IssueMCPToken RPC."""
+
+
+class MCPNoRefreshTokenError(MCPTokenError):
+    """User has no stored SSO refresh_token; ask them to re-authenticate."""
+
+    def __init__(self, description: str = ""):
+        super().__init__(description, status_code=428)
+
+
+class MCPIdentityRefreshError(MCPTokenError):
+    """IdP rejected the refresh attempt (revoked/expired session)."""
+
+    def __init__(self, description: str = ""):
+        super().__init__(description, status_code=401)
+
 
 logger = logging.getLogger(__name__)
 

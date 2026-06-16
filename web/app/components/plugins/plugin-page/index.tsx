@@ -7,6 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiBookOpenLine,
+  RiBugLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
@@ -29,6 +30,7 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
+import { PluginCategoryEnum } from '../types'
 import { usePluginPageContext } from './context'
 import { PluginPageContextProvider } from './context-provider'
 import DebugInfo from './debug-info'
@@ -57,7 +59,6 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
   const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
@@ -111,8 +112,10 @@ const PluginPage = ({
     canManagement,
     canDebugger,
     canSetPermissions,
+    isPermissionLoading,
+    isReferenceSettingLoading,
     setReferenceSettings,
-  } = useReferenceSetting()
+  } = useReferenceSetting(PluginCategoryEnum.tool)
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
@@ -132,6 +135,9 @@ const PluginPage = ({
     const values = Object.values(PLUGIN_TYPE_SEARCH_MAP)
     return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
   }, [activeTab])
+  useDocumentTitle(isExploringMarketplace
+    ? t('mainNav.marketplace', { ns: 'common' })
+    : t('metadata.title', { ns: 'plugin' }))
 
   const handleFileChange = (file: File | null) => {
     if (!file || !file.name.endsWith('.difypkg')) {
@@ -206,8 +212,9 @@ const PluginPage = ({
               )
             }
             <PluginTasks />
-            {canManagement && (
+            {(canManagement || isPermissionLoading) && (
               <InstallPluginDropdown
+                disabled={isPermissionLoading || !canManagement}
                 onSwitchToMarketplaceTab={() => setActiveTab('discover')}
               />
             )}
@@ -216,6 +223,15 @@ const PluginPage = ({
                 <DebugInfo />
               )
             }
+            {isPermissionLoading && (
+              <Button
+                className="h-full w-full p-2 text-components-button-secondary-text"
+                disabled
+                loading
+              >
+                <RiBugLine className="h-4 w-4" />
+              </Button>
+            )}
             {
               canSetPermissions && (
                 <Tooltip>
@@ -224,6 +240,8 @@ const PluginPage = ({
                       <Button
                         aria-label={t('privilege.title', { ns: 'plugin' })}
                         className="group size-full p-2 text-components-button-secondary-text"
+                        disabled={isReferenceSettingLoading || !referenceSetting}
+                        loading={isReferenceSettingLoading}
                         onClick={setShowPluginSettingModal}
                       >
                         <RiEqualizer2Line className="size-4" aria-hidden="true" />
@@ -274,9 +292,9 @@ const PluginPage = ({
         isExploringMarketplace && enable_marketplace && marketplace
       }
 
-      {showPluginSettingModal && (
+      {showPluginSettingModal && referenceSetting && (
         <ReferenceSettingModal
-          payload={referenceSetting!}
+          payload={referenceSetting}
           onHide={setHidePluginSettingModal}
           onSave={setReferenceSettings}
         />

@@ -1,7 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
@@ -11,7 +10,7 @@ import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
+import { getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
@@ -39,38 +38,42 @@ const CardWrapperComponent = ({
   // Memoize tag labels to prevent recreating array on every render
   const tagLabels = useMemo(() =>
     plugin.tags.map(tag => getTagLabel(tag.name)), [plugin.tags, getTagLabel])
+  const handleOpenMarketplaceDetail = () => {
+    window.open(getPluginLinkInMarketplace(plugin, marketplaceLinkParams), '_blank', 'noopener,noreferrer')
+  }
 
   if (showInstallButton) {
     return (
       <div
-        className="group relative cursor-pointer rounded-xl hover:bg-components-panel-on-panel-item-bg-hover"
+        className="group relative cursor-pointer rounded-xl"
       >
         <Card
           key={plugin.name}
           payload={plugin}
+          variant="marketplace"
           footer={(
             <CardMoreInfo
               downloadCount={plugin.install_count}
               tags={tagLabels}
+              variant="marketplace"
             />
           )}
         />
-        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 group-hover:flex">
+        <div className="pointer-events-none absolute right-[-0.5px] bottom-[-0.5px] left-[-0.5px] z-10 flex items-center gap-2 rounded-b-xl bg-linear-to-t from-components-panel-on-panel-item-bg-hover from-[60%] to-background-gradient-mask-transparent px-4 pt-8 pb-4 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
           <Button
             variant="primary"
-            className="w-[calc(50%-4px)]"
+            className="min-w-0 flex-1 shadow-md"
             onClick={showInstallFromMarketplace}
           >
             {t('detailPanel.operation.install', { ns: 'plugin' })}
           </Button>
-          <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block w-[calc(50%-4px)] flex-1 shrink-0">
-            <Button
-              className="w-full gap-0.5"
-            >
-              {t('detailPanel.operation.detail', { ns: 'plugin' })}
-              <RiArrowRightUpLine className="ml-1 size-4" />
-            </Button>
-          </a>
+          <Button
+            className="min-w-0 flex-1 gap-0.5 shadow-xs backdrop-blur-[5px]"
+            onClick={handleOpenMarketplaceDetail}
+          >
+            {t('detailPanel.operation.detail', { ns: 'plugin' })}
+            <span aria-hidden className="ml-1 i-ri-arrow-right-up-line size-4" />
+          </Button>
         </div>
         {
           isShowInstallFromMarketplace && (
@@ -87,21 +90,22 @@ const CardWrapperComponent = ({
   }
 
   return (
-    <a
-      className="group relative inline-block cursor-pointer rounded-xl"
-      href={getPluginDetailLinkInMarketplace(plugin)}
+    <div
+      className="group relative rounded-xl"
     >
       <Card
         key={plugin.name}
         payload={plugin}
+        variant="marketplace"
         footer={(
           <CardMoreInfo
             downloadCount={plugin.install_count}
             tags={tagLabels}
+            variant="marketplace"
           />
         )}
       />
-    </a>
+    </div>
   )
 }
 

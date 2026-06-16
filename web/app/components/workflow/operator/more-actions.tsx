@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -12,20 +11,17 @@ import { toJpeg, toPng, toSvg } from 'html-to-image'
 import {
   memo,
   useCallback,
-  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getNodesBounds, useReactFlow } from 'reactflow'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
 import { downloadUrl } from '@/utils/download'
 import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
 
-const MoreActions: FC = () => {
+function MoreActions() {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
   const reactFlow = useReactFlow()
@@ -35,17 +31,7 @@ const MoreActions: FC = () => {
   const [previewTitle, setPreviewTitle] = useState('')
   const knowledgeName = useStore(s => s.knowledgeName)
   const appName = useStore(s => s.appName)
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
-  const { appSidebarExpand } = useAppStore(useShallow(state => ({
-    appSidebarExpand: state.appSidebarExpand,
-  })))
   const isReadOnly = getNodesReadOnly()
-
-  const crossAxisOffset = useMemo(() => {
-    if (maximizeCanvas)
-      return 40
-    return appSidebarExpand === 'expand' ? 188 : 40
-  }, [appSidebarExpand, maximizeCanvas])
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg', currentWorkflow = false) => {
     if (!appName && !knowledgeName)
@@ -187,9 +173,7 @@ const MoreActions: FC = () => {
           </TipPopup>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={-200}
-          alignOffset={crossAxisOffset}
+          placement="right-end"
           popupClassName="min-w-[180px]"
         >
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">

@@ -246,7 +246,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags("knowledge", tenant.id)
+        result = TagService.get_tags(db_session_with_containers, "knowledge", tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -299,7 +299,7 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test with keyword filter
-        result = TagService.get_tags("app", tenant.id, keyword="development")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="development")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -310,7 +310,7 @@ class TestTagService:
             assert "development" in tag_result.name.lower()
 
         # Verify no results for non-matching keyword
-        result_no_match = TagService.get_tags("app", tenant.id, keyword="nonexistent")
+        result_no_match = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="nonexistent")
         assert len(result_no_match) == 0
 
     def test_get_tags_with_special_characters_in_keyword(
@@ -371,22 +371,22 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act & Assert: Test 1 - Search with % character
-        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="50%")
         assert len(result) == 1
         assert result[0].name == "50% discount"
 
         # Test 2 - Search with _ character
-        result = TagService.get_tags("app", tenant.id, keyword="test_data")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="test_data")
         assert len(result) == 1
         assert result[0].name == "test_data_tag"
 
         # Test 3 - Search with \ character
-        result = TagService.get_tags("app", tenant.id, keyword="path\\to\\tag")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="path\\to\\tag")
         assert len(result) == 1
         assert result[0].name == "path\\to\\tag"
 
         # Test 4 - Search with % should NOT match 100% (verifies escaping works)
-        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="50%")
         assert len(result) == 1
         assert all("50%" in item.name for item in result)
 
@@ -405,7 +405,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags("knowledge", tenant.id)
+        result = TagService.get_tags(db_session_with_containers, "knowledge", tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -491,6 +491,57 @@ class TestTagService:
         assert result is not None
         assert len(result) == 0
         assert isinstance(result, list)
+
+    def test_get_target_ids_by_tag_ids_match_all(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test target ID retrieval when every requested tag must be bound to the same target.
+
+        This test verifies:
+        - Targets with only one requested tag are excluded
+        - Targets with all requested tags are returned once
+        - Missing requested tags make the filter unsatisfiable
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        tags = self._create_test_tags(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, "knowledge", 2
+        )
+        dataset_with_all_tags = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id
+        )
+        dataset_with_one_tag = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id
+        )
+        self._create_test_tag_bindings(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            tags,
+            dataset_with_all_tags.id,
+            tenant.id,
+        )
+        self._create_test_tag_bindings(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            tags[:1],
+            dataset_with_one_tag.id,
+            tenant.id,
+        )
+
+        # Act: Execute the method under test
+        tag_ids = [tag.id for tag in tags]
+        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, tag_ids, match_all=True)
+
+        # Assert: Verify the expected outcomes
+        assert result == [dataset_with_all_tags.id]
+
+        missing_tag_result = TagService.get_target_ids_by_tag_ids(
+            "knowledge", tenant.id, [tags[0].id, str(uuid.uuid4())], match_all=True
+        )
+        assert missing_tag_result == []
 
     def test_get_target_ids_by_tag_ids_no_matching_tags(
         self, db_session_with_containers: Session, mock_external_service_dependencies

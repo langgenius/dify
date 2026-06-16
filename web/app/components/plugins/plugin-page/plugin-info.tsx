@@ -7,12 +7,12 @@ import KeyValueItem from '../base/key-value-item'
 import { convertRepoToUrl } from '../install-plugin/utils'
 
 const i18nPrefix = 'pluginInfoModal'
-type Props = {
+type Props = Readonly<{
   repository?: string
   release?: string
   packageName?: string
   onHide: () => void
-}
+}>
 
 const PlugInfo: FC<Props> = ({
   repository,

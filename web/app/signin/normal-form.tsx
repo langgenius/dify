@@ -202,9 +202,13 @@ function NormalForm() {
                   <>
                     <MailAndCodeAuth isInvite={isInviteLink} />
                     {hasEmailPasswordLogin && (
-                      <div className="cursor-pointer py-1 text-center" onClick={() => { setSelectedAuthType('password') }}>
+                      <button
+                        type="button"
+                        className="w-full cursor-pointer py-1 text-center"
+                        onClick={() => { setSelectedAuthType('password') }}
+                      >
                         <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
-                      </div>
+                      </button>
                     )}
                   </>
                 )}
@@ -212,9 +216,13 @@ function NormalForm() {
                   <>
                     <MailAndPasswordAuth isInvite={isInviteLink} isEmailSetup={systemFeatures.is_email_setup} />
                     {hasEmailCodeLogin && (
-                      <div className="cursor-pointer py-1 text-center" onClick={() => { setSelectedAuthType('code') }}>
+                      <button
+                        type="button"
+                        className="w-full cursor-pointer py-1 text-center"
+                        onClick={() => { setSelectedAuthType('code') }}
+                      >
                         <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
-                      </div>
+                      </button>
                     )}
                   </>
                 )}

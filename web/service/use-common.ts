@@ -10,7 +10,6 @@ import type {
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
-  IWorkspace,
   LangGeniusVersionResponse,
   Member,
   PluginProvider,
@@ -25,7 +24,6 @@ const NAME_SPACE = 'common'
 
 export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
-  workspaces: [NAME_SPACE, 'workspaces'] as const,
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
@@ -63,13 +61,6 @@ export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: b
     queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
     queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
     enabled: !!currentVersion && (enabled ?? true),
-  })
-}
-
-export const useWorkspaces = () => {
-  return useQuery<{ workspaces: IWorkspace[] }>({
-    queryKey: commonQueryKeys.workspaces,
-    queryFn: () => get<{ workspaces: IWorkspace[] }>('/workspaces'),
   })
 }
 

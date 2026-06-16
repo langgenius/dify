@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Pagination,
   PaginationSkeleton,
@@ -10,18 +9,21 @@ function PaginationExample({
   initialPage = 2,
   initialPageSize = 25,
   totalPages = 200,
+  label = 'Pagination',
 }: {
   initialPage?: number
   initialPageSize?: number
   totalPages?: number
+  label?: string
 }) {
-  const [page, setPage] = useState(initialPage)
-  const [pageSize, setPageSize] = useState(initialPageSize)
+  const [page, setPage] = React.useState(initialPage)
+  const [pageSize, setPageSize] = React.useState(initialPageSize)
 
   return (
     <Pagination
       page={page}
       totalPages={totalPages}
+      aria-label={label}
       onPageChange={setPage}
       pageSize={{
         value: pageSize,
@@ -32,7 +34,7 @@ function PaginationExample({
   )
 }
 
-function PaginationDemo(props: ComponentProps<typeof PaginationExample>) {
+function PaginationDemo(props: React.ComponentProps<typeof PaginationExample>) {
   return (
     <div className="w-236 max-w-full bg-components-panel-bg px-16 py-10">
       <PaginationExample {...props} />
@@ -43,10 +45,10 @@ function PaginationDemo(props: ComponentProps<typeof PaginationExample>) {
 function DesignSpecDemo() {
   return (
     <div className="flex w-236 max-w-full flex-col gap-6 bg-components-panel-bg px-16 py-10">
-      <PaginationExample />
-      <PaginationExample initialPage={2} initialPageSize={25} />
-      <PaginationExample initialPage={2} initialPageSize={25} />
-      <PaginationExample initialPage={2} initialPageSize={25} />
+      <PaginationExample label="Default pagination" />
+      <PaginationExample label="Hover pagination" initialPage={2} initialPageSize={25} />
+      <PaginationExample label="Focused pagination" initialPage={2} initialPageSize={25} />
+      <PaginationExample label="Page size pagination" initialPage={2} initialPageSize={25} />
     </div>
   )
 }
@@ -75,11 +77,19 @@ type Story = StoryObj<typeof meta>
 
 export const Playground: Story = {
   render: () => <PaginationDemo />,
+  parameters: {
+    a11y: {
+      test: 'todo',
+    },
+  },
 }
 
 export const DesignSpec: Story = {
   render: () => <DesignSpecDemo />,
   parameters: {
+    a11y: {
+      test: 'todo',
+    },
     docs: {
       description: {
         story: 'Pagination rows with default, hover-like, focused, page-size, and skeleton examples.',

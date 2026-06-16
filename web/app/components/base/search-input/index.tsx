@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { InputProps } from '@langgenius/dify-ui/input'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
@@ -9,13 +9,14 @@ type SearchInputProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-} & Pick<ComponentProps<'input'>, 'aria-label'>
+} & Pick<InputProps, 'aria-label' | 'autoFocus'>
 
 export function SearchInput({
   placeholder,
   className,
   value,
   onValueChange,
+  autoFocus,
   'aria-label': ariaLabel,
 }: SearchInputProps) {
   const { t } = useTranslation()
@@ -83,13 +84,15 @@ export function SearchInput({
           onValueChange(e.currentTarget.value)
         }}
         autoComplete="off"
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={autoFocus}
         enterKeyHint="search"
       />
       {!!inputValue && (
         <button
           type="button"
           aria-label={t('operation.clear', { ns: 'common' })}
-          className="group/clear absolute top-1/2 right-2 flex size-4 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
+          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:bg-components-input-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
           onClick={handleClear}
         >
           <span className="i-ri-close-circle-fill size-4 text-text-quaternary group-hover/clear:text-text-tertiary" aria-hidden="true" />

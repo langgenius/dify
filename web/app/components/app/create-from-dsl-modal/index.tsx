@@ -8,6 +8,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useDebounceFn } from 'ahooks'
+import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -16,7 +17,6 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -26,6 +26,7 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import Uploader from './uploader'
@@ -77,6 +78,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
@@ -127,6 +129,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             : undefined,
         })
         setNeedRefresh('1')
+        invalidateAppList()
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
@@ -181,6 +184,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
+        invalidateAppList()
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
