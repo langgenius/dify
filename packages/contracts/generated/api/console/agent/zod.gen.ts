@@ -307,11 +307,16 @@ export const zAgentDriveFileCommitResponse = z.object({
  * AgentReferencingWorkflowResponse
  */
 export const zAgentReferencingWorkflowResponse = z.object({
+  app_icon: z.string().nullish(),
+  app_icon_background: z.string().nullish(),
+  app_icon_type: z.string().nullish(),
   app_id: z.string(),
   app_mode: z.string(),
   app_name: z.string(),
+  app_updated_at: z.int().nullish(),
   node_ids: z.array(z.string()).optional(),
   workflow_id: z.string(),
+  workflow_version: z.string(),
 })
 
 /**
@@ -523,9 +528,13 @@ export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
  * AgentPublishedReferenceResponse
  */
 export const zAgentPublishedReferenceResponse = z.object({
+  app_icon: z.string().nullish(),
+  app_icon_background: z.string().nullish(),
+  app_icon_type: z.string().nullish(),
   app_id: z.string(),
   app_mode: z.string(),
   app_name: z.string(),
+  app_updated_at: z.int().nullish(),
   node_ids: z.array(z.string()).optional(),
   workflow_id: z.string(),
   workflow_version: z.string(),
