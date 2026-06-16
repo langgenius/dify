@@ -66,6 +66,20 @@ export type UpdateAppPayload = {
   use_icon_as_answer_icon?: boolean | null
 }
 
+export type MessageInfiniteScrollPaginationResponse = {
+  data: Array<MessageDetailResponse>
+  has_more: boolean
+  limit: number
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type AgentAppComposerResponse = {
   active_config_snapshot: AgentConfigSnapshotSummaryResponse
   agent: AgentComposerAgentResponse
@@ -129,8 +143,10 @@ export type AgentAppFeaturesPayload = {
   text_to_speech?: AgentTextToSpeechFeatureConfig | null
 }
 
-export type SimpleResultResponse = {
-  result: string
+export type MessageFeedbackPayload = {
+  content?: string | null
+  message_id: string
+  rating?: 'dislike' | 'like' | null
 }
 
 export type AgentDriveDeleteResponse = {
@@ -146,6 +162,35 @@ export type AgentDriveFilePayload = {
 export type AgentDriveFileCommitResponse = {
   config_version_id?: string | null
   file: AgentDriveFileResponse
+}
+
+export type MessageDetailResponse = {
+  agent_thoughts?: Array<AgentThought>
+  annotation?: ConversationAnnotation | null
+  annotation_hit_history?: ConversationAnnotationHitHistory | null
+  answer_tokens?: number | null
+  conversation_id: string
+  created_at?: number | null
+  error?: string | null
+  extra_contents?: Array<HumanInputContent>
+  feedbacks?: Array<Feedback>
+  from_account_id?: string | null
+  from_end_user_id?: string | null
+  from_source: string
+  id: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+  message?: JsonValue | null
+  message_files?: Array<MessageFile>
+  message_metadata_dict?: JsonValue | null
+  message_tokens?: number | null
+  parent_message_id?: string | null
+  provider_response_latency?: number | null
+  query: string
+  re_sign_file_url_answer: string
+  status: string
+  workflow_run_id?: string | null
 }
 
 export type AgentReferencingWorkflowsResponse = {
@@ -476,6 +521,63 @@ export type AgentDriveFileResponse = {
   size?: number | null
 }
 
+export type AgentThought = {
+  chain_id?: string | null
+  created_at?: number | null
+  files: Array<string>
+  id: string
+  message_chain_id?: string | null
+  message_id: string
+  observation?: string | null
+  position: number
+  thought?: string | null
+  tool?: string | null
+  tool_input?: string | null
+  tool_labels: JsonValue
+}
+
+export type ConversationAnnotation = {
+  account?: SimpleAccount | null
+  content: string
+  created_at?: number | null
+  id: string
+  question?: string | null
+}
+
+export type ConversationAnnotationHitHistory = {
+  annotation_create_account?: SimpleAccount | null
+  created_at?: number | null
+  id: string
+}
+
+export type HumanInputContent = {
+  form_definition?: HumanInputFormDefinition | null
+  form_submission_data?: HumanInputFormSubmissionData | null
+  submitted: boolean
+  type?: ExecutionContentType
+  workflow_run_id: string
+}
+
+export type Feedback = {
+  content?: string | null
+  from_account?: SimpleAccount | null
+  from_end_user_id?: string | null
+  from_source: string
+  rating: string
+}
+
+export type MessageFile = {
+  belongs_to?: string | null
+  filename: string
+  id: string
+  mime_type?: string | null
+  size?: number | null
+  transfer_method: string
+  type: string
+  upload_file_id?: string | null
+  url?: string | null
+}
+
 export type AgentReferencingWorkflowResponse = {
   app_id: string
   app_mode: string
@@ -773,6 +875,40 @@ export type AgentModerationProviderConfig = {
   [key: string]: unknown
 }
 
+export type SimpleAccount = {
+  email: string
+  id: string
+  name: string
+}
+
+export type HumanInputFormDefinition = {
+  actions?: Array<UserActionConfig>
+  display_in_ui?: boolean
+  expiration_time: number
+  form_content: string
+  form_id: string
+  form_token?: string | null
+  inputs?: Array<FormInputConfig>
+  node_id: string
+  node_title: string
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+}
+
+export type HumanInputFormSubmissionData = {
+  action_id: string
+  action_text: string
+  node_id: string
+  node_title: string
+  rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue2
+  } | null
+}
+
+export type ExecutionContentType = 'human_input'
+
 export type EnvSuggestion = {
   key: string
   reason?: string
@@ -973,6 +1109,28 @@ export type AgentModerationIoConfig = {
   [key: string]: unknown
 }
 
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormInputConfig
+  = | ({
+    type: 'paragraph'
+  } & ParagraphInputConfig)
+  | ({
+    type: 'select'
+  } & SelectInputConfig)
+  | ({
+    type: 'file'
+  } & FileInputConfig)
+  | ({
+    type: 'file-list'
+  } & FileListInputConfig)
+
+export type JsonValue2 = unknown
+
 export type AgentModelResponseFormatConfig = {
   type?: string | null
   [key: string]: unknown
@@ -991,6 +1149,55 @@ export type DeclaredOutputRetryConfig = {
   max_retries?: number
   retry_interval_ms?: number
 }
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type ValueSourceType = 'constant' | 'variable'
 
 export type AppPaginationWritable = {
   data: Array<AppPartialWritable>
@@ -1190,6 +1397,68 @@ export type PutAgentByAgentIdResponses = {
 
 export type PutAgentByAgentIdResponse = PutAgentByAgentIdResponses[keyof PutAgentByAgentIdResponses]
 
+export type GetAgentByAgentIdChatMessagesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    conversation_id: string
+    first_id?: string
+    limit?: number
+  }
+  url: '/agent/{agent_id}/chat-messages'
+}
+
+export type GetAgentByAgentIdChatMessagesErrors = {
+  404: unknown
+}
+
+export type GetAgentByAgentIdChatMessagesResponses = {
+  200: MessageInfiniteScrollPaginationResponse
+}
+
+export type GetAgentByAgentIdChatMessagesResponse
+  = GetAgentByAgentIdChatMessagesResponses[keyof GetAgentByAgentIdChatMessagesResponses]
+
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsData = {
+  body?: never
+  path: {
+    agent_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/chat-messages/{message_id}/suggested-questions'
+}
+
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
+  404: unknown
+}
+
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
+  200: SuggestedQuestionsResponse
+}
+
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse
+  = GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses[keyof GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses]
+
+export type PostAgentByAgentIdChatMessagesByTaskIdStopData = {
+  body?: never
+  path: {
+    agent_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/chat-messages/{task_id}/stop'
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdStopResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdStopResponse
+  = PostAgentByAgentIdChatMessagesByTaskIdStopResponses[keyof PostAgentByAgentIdChatMessagesByTaskIdStopResponses]
+
 export type GetAgentByAgentIdComposerData = {
   body?: never
   path: {
@@ -1329,6 +1598,26 @@ export type PostAgentByAgentIdFeaturesResponses = {
 export type PostAgentByAgentIdFeaturesResponse
   = PostAgentByAgentIdFeaturesResponses[keyof PostAgentByAgentIdFeaturesResponses]
 
+export type PostAgentByAgentIdFeedbacksData = {
+  body: MessageFeedbackPayload
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/feedbacks'
+}
+
+export type PostAgentByAgentIdFeedbacksErrors = {
+  404: unknown
+}
+
+export type PostAgentByAgentIdFeedbacksResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAgentByAgentIdFeedbacksResponse
+  = PostAgentByAgentIdFeedbacksResponses[keyof PostAgentByAgentIdFeedbacksResponses]
+
 export type DeleteAgentByAgentIdFilesData = {
   body?: never
   path: {
@@ -1362,6 +1651,27 @@ export type PostAgentByAgentIdFilesResponses = {
 
 export type PostAgentByAgentIdFilesResponse
   = PostAgentByAgentIdFilesResponses[keyof PostAgentByAgentIdFilesResponses]
+
+export type GetAgentByAgentIdMessagesByMessageIdData = {
+  body?: never
+  path: {
+    agent_id: string
+    message_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/messages/{message_id}'
+}
+
+export type GetAgentByAgentIdMessagesByMessageIdErrors = {
+  404: unknown
+}
+
+export type GetAgentByAgentIdMessagesByMessageIdResponses = {
+  200: MessageDetailResponse
+}
+
+export type GetAgentByAgentIdMessagesByMessageIdResponse
+  = GetAgentByAgentIdMessagesByMessageIdResponses[keyof GetAgentByAgentIdMessagesByMessageIdResponses]
 
 export type GetAgentByAgentIdReferencingWorkflowsData = {
   body?: never
