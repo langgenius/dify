@@ -41,6 +41,9 @@ class WatercrawlAuth(ApiKeyAuthBase):
             raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
         else:
             if response.text:
-                error_message = json.loads(response.text).get("error", "Unknown error occurred")
+                try:
+                    error_message = json.loads(response.text).get("error", "Unknown error occurred")
+                except json.JSONDecodeError:
+                    error_message = response.text
                 raise Exception(f"Failed to authorize. Status code: {response.status_code}. Error: {error_message}")
             raise Exception(f"Unexpected error occurred while trying to authorize. Status code: {response.status_code}")

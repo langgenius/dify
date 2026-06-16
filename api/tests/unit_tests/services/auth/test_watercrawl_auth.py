@@ -104,7 +104,7 @@ class TestWatercrawlAuth:
         [
             (403, '{"error": "Forbidden"}', True, "Failed to authorize. Status code: 403. Error: Forbidden"),
             (404, "", True, "Unexpected error occurred while trying to authorize. Status code: 404"),
-            (401, "Not JSON", True, "Expecting value"),  # JSON decode error
+            (401, "Not JSON", True, "Failed to authorize. Status code: 401. Error: Not JSON"),
         ],
     )
     @patch("services.auth.watercrawl.watercrawl.httpx.get", autospec=True)
