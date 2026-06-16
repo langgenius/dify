@@ -994,7 +994,7 @@ class RagPipelineTransformApi(Resource):
 
         dataset_id_str = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str)
+        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, db.session)
         return result
 
 
