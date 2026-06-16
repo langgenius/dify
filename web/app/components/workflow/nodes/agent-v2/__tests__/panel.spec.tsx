@@ -13,6 +13,7 @@ const {
   mockInsertNodes,
   mockPromptEditorProps,
   mockSetInputs,
+  mockUseAgentRosterDetail,
   mockUseNodeCrud,
 } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
@@ -21,6 +22,7 @@ const {
   mockInsertNodes: vi.fn(),
   mockPromptEditorProps: [] as PromptEditorProps[],
   mockSetInputs: vi.fn(),
+  mockUseAgentRosterDetail: vi.fn(),
   mockUseNodeCrud: vi.fn(),
 }))
 
@@ -80,7 +82,15 @@ vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
   AgentSelectorContent: ({
     onSelect,
   }: {
-    onSelect: (agent: NonNullable<AgentV2NodeType['agent_roster']>) => void
+    onSelect: (agent: {
+      description: string
+      icon: string
+      icon_background: string
+      icon_type: 'emoji'
+      id: string
+      name: string
+      role: string
+    }) => void
   }) => (
     <button
       type="button"
@@ -97,6 +107,10 @@ vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
       Select Mara
     </button>
   ),
+}))
+
+vi.mock('../hooks', () => ({
+  useAgentRosterDetail: (agentId?: string) => mockUseAgentRosterDetail(agentId),
 }))
 
 vi.mock('../../_base/hooks/use-available-var-list', () => ({
@@ -133,15 +147,6 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
     agent_id: 'agent-1',
   },
   agent_node_kind: 'dify_agent',
-  agent_roster: {
-    id: 'agent-1',
-    name: 'Nadia',
-    description: 'Clarification Drafter',
-    icon: 'N',
-    icon_background: '#E9D7FE',
-    icon_type: 'emoji',
-    role: 'Researcher',
-  },
   version: '2',
   ...overrides,
 })
@@ -155,6 +160,19 @@ describe('agent/panel', () => {
     mockUseNodeCrud.mockImplementation((_id: string, data: AgentV2NodeType) => ({
       inputs: data,
       setInputs: mockSetInputs,
+    }))
+    mockUseAgentRosterDetail.mockImplementation((agentId?: string) => ({
+      data: agentId
+        ? {
+            id: agentId,
+            name: 'Nadia',
+            description: 'Clarification Drafter',
+            icon: 'N',
+            icon_background: '#E9D7FE',
+            icon_type: 'emoji',
+            role: 'Researcher',
+          }
+        : undefined,
     }))
   })
 
@@ -205,7 +223,7 @@ describe('agent/panel', () => {
     render(
       <AgentV2Panel
         id="agent-node"
-        data={createData({ agent_roster: undefined })}
+        data={createData({ agent_binding: undefined })}
         panelProps={panelProps}
       />,
     )
@@ -236,11 +254,6 @@ describe('agent/panel', () => {
             binding_type: 'roster_agent',
             agent_id: 'agent-2',
           },
-          agent_roster: expect.objectContaining({
-            id: 'agent-2',
-            name: 'Mara',
-            role: 'Analyst',
-          }),
         }),
       },
       expect.objectContaining({
@@ -251,20 +264,21 @@ describe('agent/panel', () => {
   })
 
   it('does not fall back to the roster agent description when role is empty', () => {
+    mockUseAgentRosterDetail.mockReturnValue({
+      data: {
+        id: 'agent-1',
+        name: 'Nadia',
+        description: 'Clarification Drafter',
+        icon: 'N',
+        icon_background: '#E9D7FE',
+        icon_type: 'emoji',
+        role: '',
+      },
+    })
     render(
       <AgentV2Panel
         id="agent-node"
-        data={createData({
-          agent_roster: {
-            id: 'agent-1',
-            name: 'Nadia',
-            description: 'Clarification Drafter',
-            icon: 'N',
-            icon_background: '#E9D7FE',
-            icon_type: 'emoji',
-            role: '',
-          },
-        })}
+        data={createData()}
         panelProps={panelProps}
       />,
     )

@@ -27,12 +27,22 @@ import Link from '@/next/link'
 
 const i18nPrefix = 'nodes.agent'
 
+type AgentRosterDisplayData = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  name: string
+  role?: string | null
+}
+
 function AgentRosterAvatar({
   agent,
   size = 'lg',
   className,
 }: {
-  agent: AgentRosterNodeData
+  agent: AgentRosterDisplayData
   size?: 'xs' | 'md' | 'lg'
   className?: string
 }) {
@@ -63,7 +73,7 @@ function AgentRosterDrawer({
   portalContainerRef,
   onClose,
 }: {
-  agent: AgentRosterNodeData
+  agent: AgentRosterDisplayData
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onClose: () => void
@@ -163,10 +173,12 @@ function AgentRosterDrawer({
 
 export function AgentRosterField({
   agent,
+  agentId,
   portalContainerRef,
   onChange,
 }: {
-  agent?: AgentRosterNodeData
+  agent?: AgentRosterDisplayData
+  agentId?: string
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
 }) {
@@ -179,7 +191,7 @@ export function AgentRosterField({
   })
 
   return (
-    <FieldRoot name="agent_roster" className="gap-1 px-4 py-2">
+    <FieldRoot name="agent_binding" className="gap-1 px-4 py-2">
       <div className="flex h-6 items-center gap-2">
         <FieldLabel className="min-w-0 flex-1 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t('nodes.agent.roster.label', { ns: 'workflow' })}
@@ -244,16 +256,26 @@ export function AgentRosterField({
               />
             </>
           )
-        : (
-            <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
-                <span aria-hidden className="i-ri-error-warning-line size-4" />
-              </span>
-              <span className="min-w-0 flex-1 truncate system-sm-medium text-text-destructive">
-                {rosterRequiredMessage}
-              </span>
-            </div>
-          )}
+        : agentId
+          ? (
+              <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+                <span aria-hidden className="size-8 shrink-0 rounded-lg bg-text-quaternary/20" />
+                <span aria-hidden className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span className="h-2.5 w-24 rounded-xs bg-text-quaternary/20" />
+                  <span className="h-2 w-16 rounded-xs bg-text-quaternary/15" />
+                </span>
+              </div>
+            )
+          : (
+              <div className="flex h-13 w-full min-w-0 items-center gap-2 rounded-[10px] border-[0.5px] border-state-destructive-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-state-destructive-hover text-text-destructive">
+                  <span aria-hidden className="i-ri-error-warning-line size-4" />
+                </span>
+                <span className="min-w-0 flex-1 truncate system-sm-medium text-text-destructive">
+                  {rosterRequiredMessage}
+                </span>
+              </div>
+            )}
     </FieldRoot>
   )
 }

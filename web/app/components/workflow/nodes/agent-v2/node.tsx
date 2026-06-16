@@ -3,17 +3,19 @@ import type { AgentV2NodeType } from './types'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { useTranslation } from 'react-i18next'
 import { SettingItem } from '../_base/components/setting-item'
+import { useAgentRosterDetail } from './hooks'
 import { hasInlineAgentBinding, hasValidRosterAgentBinding } from './types'
 
 function AgentNodeAvatar({
-  data,
+  agent,
+  isInlineAgent,
 }: {
-  data: AgentV2NodeType
+  agent?: ReturnType<typeof useAgentRosterDetail>['data']
+  isInlineAgent: boolean
 }) {
-  const agent = data.agent_roster
   const imageUrl = agent && (agent.icon_type === 'image' || agent.icon_type === 'link') ? agent.icon : undefined
 
-  if (hasInlineAgentBinding(data)) {
+  if (isInlineAgent) {
     return (
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background-default-burn text-text-tertiary">
         <span aria-hidden className="i-custom-vender-agent-v2-robot-3 size-5" />
@@ -22,7 +24,7 @@ function AgentNodeAvatar({
   }
 
   if (!agent)
-    return null
+    return <span aria-hidden className="size-8 shrink-0 rounded-full bg-text-quaternary/20" />
 
   return (
     <AvatarRoot
@@ -45,11 +47,16 @@ function AgentNodeAvatar({
 
 function AgentNodeModel({
   data,
+  agent,
 }: {
   data: AgentV2NodeType
+  agent?: ReturnType<typeof useAgentRosterDetail>['data']
 }) {
   const { t } = useTranslation()
   const isInlineAgent = hasInlineAgentBinding(data)
+  const name = isInlineAgent ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' }) : agent?.name
+  const role = isInlineAgent ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }) : ''
+  const showRosterPlaceholder = !isInlineAgent && !agent
 
   return (
     <div className="flex flex-col gap-0.5 py-1">
@@ -58,18 +65,25 @@ function AgentNodeModel({
       </div>
       <div className="px-2.5">
         <div className="flex min-w-0 items-center gap-1 rounded-lg bg-workflow-block-parma-bg p-1">
-          <AgentNodeAvatar data={data} />
+          <AgentNodeAvatar agent={agent} isInlineAgent={isInlineAgent} />
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <div className="truncate system-xs-regular text-text-secondary">
-              {isInlineAgent
-                ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' })
-                : data.agent_roster?.name}
-            </div>
-            <div className="truncate system-2xs-regular text-text-tertiary">
-              {isInlineAgent
-                ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' })
-                : data.agent_roster?.role}
-            </div>
+            {showRosterPlaceholder
+              ? (
+                  <div aria-hidden className="flex flex-col gap-1.5 py-0.5">
+                    <span className="h-2 w-20 rounded-xs bg-text-quaternary/20" />
+                    <span className="h-2 w-14 rounded-xs bg-text-quaternary/15" />
+                  </div>
+                )
+              : (
+                  <>
+                    <div className="truncate system-xs-regular text-text-secondary">
+                      {name}
+                    </div>
+                    <div className="truncate system-2xs-regular text-text-tertiary">
+                      {role}
+                    </div>
+                  </>
+                )}
           </div>
         </div>
       </div>
@@ -81,9 +95,11 @@ export function AgentV2Node({ data }: NodeProps<AgentV2NodeType>) {
   const { t } = useTranslation()
   const hasValidAgent = hasValidRosterAgentBinding(data)
   const isInlineAgent = hasInlineAgentBinding(data)
+  const rosterAgentId = data.agent_binding?.binding_type === 'roster_agent' ? data.agent_binding.agent_id : undefined
+  const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
 
   if (isInlineAgent || hasValidAgent)
-    return <AgentNodeModel data={data} />
+    return <AgentNodeModel data={data} agent={rosterAgentQuery.data} />
 
   return (
     <div className="mb-1 space-y-1 px-3">
@@ -92,7 +108,7 @@ export function AgentV2Node({ data }: NodeProps<AgentV2NodeType>) {
         status={hasValidAgent ? undefined : 'error'}
         tooltip={hasValidAgent ? undefined : t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.agent.roster.label', { ns: 'workflow' }) })}
       >
-        {data.agent_roster?.name}
+        {rosterAgentQuery.data?.name}
       </SettingItem>
     </div>
   )

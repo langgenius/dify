@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Node } from '../node'
 
+const mockUseAgentRosterDetail = vi.hoisted(() => vi.fn())
+
 vi.mock('../../_base/components/setting-item', () => ({
   SettingItem: ({
     label,
@@ -23,6 +25,10 @@ vi.mock('../../_base/components/setting-item', () => ({
   ),
 }))
 
+vi.mock('../hooks', () => ({
+  useAgentRosterDetail: (agentId?: string) => mockUseAgentRosterDetail(agentId),
+}))
+
 const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType => ({
   title: 'Agent',
   desc: '',
@@ -32,15 +38,6 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
     agent_id: 'agent-1',
   },
   agent_node_kind: 'dify_agent',
-  agent_roster: {
-    id: 'agent-1',
-    name: 'Nadia',
-    description: 'Clarification Drafter',
-    icon: 'N',
-    icon_background: '#E9D7FE',
-    icon_type: 'emoji',
-    role: 'Researcher',
-  },
   version: '2',
   ...overrides,
 })
@@ -48,6 +45,18 @@ const createData = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeType =
 describe('agent/node', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseAgentRosterDetail.mockImplementation((agentId?: string) => ({
+      data: agentId
+        ? {
+            id: agentId,
+            name: 'Nadia',
+            description: 'Clarification Drafter',
+            icon: 'N',
+            icon_background: '#E9D7FE',
+            icon_type: 'emoji',
+          }
+        : undefined,
+    }))
   })
 
   it('renders the selected roster agent', () => {
@@ -60,9 +69,22 @@ describe('agent/node', () => {
 
     expect(screen.getByText('workflow.nodes.agent.roster.label')).toHaveClass('px-2.5', 'py-0.5', 'system-2xs-medium-uppercase')
     expect(screen.getByText('Nadia')).toHaveClass('system-xs-regular', 'text-text-secondary')
-    expect(screen.getByText('Researcher')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
     expect(container.querySelector('.bg-workflow-block-parma-bg')).toHaveClass('gap-1', 'rounded-lg', 'p-1')
     expect(container.querySelector('.h-1.px-3')).not.toBeInTheDocument()
+  })
+
+  it('renders a stable roster placeholder while agent detail is loading', () => {
+    mockUseAgentRosterDetail.mockReturnValue({ data: undefined })
+
+    const { container } = render(
+      <AgentV2Node
+        id="agent-node"
+        data={createData()}
+      />,
+    )
+
+    expect(container.querySelector('.bg-workflow-block-parma-bg')).toBeInTheDocument()
+    expect(container.querySelector('.h-2.w-20')).toBeInTheDocument()
   })
 
   it('renders the inline setup agent style', () => {
@@ -73,7 +95,6 @@ describe('agent/node', () => {
           agent_binding: {
             binding_type: 'inline_agent',
           },
-          agent_roster: undefined,
         })}
       />,
     )
@@ -89,26 +110,10 @@ describe('agent/node', () => {
     render(
       <AgentV2Node
         id="agent-node"
-        data={createData({ agent_roster: undefined })}
+        data={createData({ agent_binding: undefined })}
       />,
     )
 
     expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent('workflow.errorMsg.fieldRequired')
-  })
-
-  it('renders an error state when the roster binding does not match the selected agent', () => {
-    render(
-      <AgentV2Node
-        id="agent-node"
-        data={createData({
-          agent_binding: {
-            binding_type: 'roster_agent',
-            agent_id: 'agent-2',
-          },
-        })}
-      />,
-    )
-
-    expect(screen.getByText(/workflow.nodes.agent.roster.label:error:/)).toHaveTextContent('Nadia')
   })
 })

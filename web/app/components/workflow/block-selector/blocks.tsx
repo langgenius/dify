@@ -122,7 +122,6 @@ const Blocks = ({
                         agent_id: agent.id,
                       },
                       agent_node_kind: 'dify_agent',
-                      agent_roster: agent,
                       version: '2',
                     })}
                   onStartFromScratch={() =>

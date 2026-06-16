@@ -98,7 +98,6 @@ export type AgentBinding = AgentRosterBinding | AgentInlineBinding
 export type AgentDefaultValue = {
   agent_binding: AgentBinding
   agent_node_kind: 'dify_agent'
-  agent_roster?: AgentRosterNodeData
   version: '2'
 }
 

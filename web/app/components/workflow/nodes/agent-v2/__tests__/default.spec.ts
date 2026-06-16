@@ -22,15 +22,6 @@ const createPayload = (overrides: Partial<AgentV2NodeType> = {}): AgentV2NodeTyp
     agent_id: 'agent-1',
   },
   agent_node_kind: 'dify_agent',
-  agent_roster: {
-    id: 'agent-1',
-    name: 'Nadia',
-    description: 'Clarification Drafter',
-    icon: 'N',
-    icon_background: '#E9D7FE',
-    icon_type: 'emoji',
-    role: 'Researcher',
-  },
   version: '2',
   ...overrides,
 })
@@ -40,8 +31,13 @@ describe('agent/default', () => {
     vi.clearAllMocks()
   })
 
-  it('requires a selected roster agent', () => {
-    const result = nodeDefault.checkValid(createPayload({ agent_roster: undefined }), t)
+  it('requires a roster agent id', () => {
+    const result = nodeDefault.checkValid(createPayload({
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: '',
+      },
+    }), t)
 
     expect(result).toEqual({
       isValid: false,
@@ -58,21 +54,7 @@ describe('agent/default', () => {
     })
   })
 
-  it('requires the roster agent binding to match the selected roster agent', () => {
-    const result = nodeDefault.checkValid(createPayload({
-      agent_binding: {
-        binding_type: 'roster_agent',
-        agent_id: 'agent-2',
-      },
-    }), t)
-
-    expect(result).toEqual({
-      isValid: false,
-      errorMessage: 'required:Agent',
-    })
-  })
-
-  it('passes validation when a roster agent is selected', () => {
+  it('passes validation when a roster agent binding is selected', () => {
     const result = nodeDefault.checkValid(createPayload(), t)
 
     expect(result).toEqual({
@@ -86,7 +68,6 @@ describe('agent/default', () => {
       agent_binding: {
         binding_type: 'inline_agent',
       },
-      agent_roster: undefined,
     }), t)
 
     expect(result).toEqual({

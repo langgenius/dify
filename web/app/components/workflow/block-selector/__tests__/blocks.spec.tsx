@@ -38,7 +38,7 @@ vi.mock('@/app/components/app/store', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    agents: {
+    agent: {
       byAgentId: {
         versions: {
           byVersionId: {
@@ -268,15 +268,6 @@ describe('Blocks', () => {
         agent_id: 'agent-1',
       },
       agent_node_kind: 'dify_agent',
-      agent_roster: {
-        description: 'Clarification Drafter',
-        icon: 'A',
-        icon_background: '#E9D7FE',
-        icon_type: 'emoji',
-        id: 'agent-1',
-        name: 'Nadia',
-        role: 'Researcher',
-      },
       version: '2',
     })
     expect(queryMocks.inviteOptionsQueryFn).toHaveBeenCalledWith({

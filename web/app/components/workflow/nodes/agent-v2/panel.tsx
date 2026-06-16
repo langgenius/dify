@@ -10,6 +10,7 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
+import { useAgentRosterDetail } from './hooks'
 import { getAgentV2DeclaredOutputs, getDeclaredOutputTypeLabel } from './output-variables'
 
 const i18nPrefix = 'nodes.agent'
@@ -39,6 +40,8 @@ export function AgentV2Panel({
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
   const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
+  const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
+  const rosterAgentQuery = useAgentRosterDetail(rosterAgentId)
 
   const handleTaskChange = useCallback((value: string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -49,7 +52,7 @@ export function AgentV2Panel({
 
   const handleRosterChange = useCallback((agent: AgentRosterNodeData) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.agent_roster = agent
+      delete (draft as AgentV2NodeType & { agent_roster?: unknown }).agent_roster
       draft.agent_binding = {
         binding_type: 'roster_agent',
         agent_id: agent.id,
@@ -71,7 +74,8 @@ export function AgentV2Panel({
     <div ref={drawerPortalContainerRef} className="pt-2">
       <div className="border-b border-divider-subtle">
         <AgentRosterField
-          agent={inputs.agent_roster}
+          agent={rosterAgentQuery.data}
+          agentId={rosterAgentId}
           portalContainerRef={drawerPortalContainerRef}
           onChange={handleRosterChange}
         />
