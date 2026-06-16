@@ -215,6 +215,123 @@ describe('E2E / error message standards (spec 5.3)', () => {
     expect(result.stderr).not.toContain(sentValue)
   })
 
+  // ── 5.70d-j  ErrorBody contract — error.server structure ─────────────────
+  // The ErrorBody unification spec introduces a canonical error body:
+  //   { code, status, message, hint?, details?[{type, loc, msg}] }
+  // On a canonical 422 the CLI attaches the full server object as error.server
+  // in the JSON envelope and uses server?.code for the human-readable header.
+
+  it('[P0] 5.70d JSON envelope contains error.server with code, status, message on validation failure', async () => {
+    // Spec: every canonical 422 from @accepts carries code:"invalid_param",
+    // status:422 and message. The CLI attaches the parsed ErrorBody verbatim as
+    // error.server — zero field copying so the contract is single-source.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    assertNonZeroExit(result)
+    const envelope = JSON.parse(result.stderr.trim()) as {
+      error: {
+        code: string
+        server?: { code: string, status: number, message: string }
+      }
+    }
+    expect(envelope.error.server, 'error.server must be present for canonical ErrorBody responses').toBeDefined()
+    expect(envelope.error.server?.code).toBe('invalid_param')
+    expect(envelope.error.server?.status).toBe(422)
+    expect(typeof envelope.error.server?.message).toBe('string')
+    expect(envelope.error.server?.message.length).toBeGreaterThan(0)
+  })
+
+  it('[P1] 5.70e error.server.details array carries field-level error entries', async () => {
+    // Spec: @accepts emits details:[{type, loc, msg}] for each failing field.
+    // CLI forwards the array as-is inside error.server.details — no truncation.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    assertNonZeroExit(result)
+    const envelope = JSON.parse(result.stderr.trim()) as {
+      error: {
+        server?: {
+          details?: Array<{ type: string, msg: string, loc?: Array<string | number> }>
+        }
+      }
+    }
+    const details = envelope.error.server?.details
+    expect(Array.isArray(details), 'error.server.details must be an array').toBe(true)
+    expect(details!.length, 'details must contain at least one entry').toBeGreaterThan(0)
+    // Each entry must have type and msg; loc is optional but expected for body fields
+    const entry = details![0]!
+    expect(typeof entry.type, 'detail.type must be a string').toBe('string')
+    expect(entry.type.length).toBeGreaterThan(0)
+    expect(typeof entry.msg, 'detail.msg must be a string').toBe('string')
+    expect(entry.msg.length).toBeGreaterThan(0)
+  })
+
+  it('[P1] 5.70f human-readable text mode renders details as indented lines', async () => {
+    // Spec: format.ts iterates server?.details and renders each entry as
+    //   "  - <loc>: <msg> (<type>)"
+    // This means field-level errors are visible without -v.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+    ])
+    assertNonZeroExit(result)
+    // Must contain at least one "  - ... (...)" detail line
+    expect(result.stderr).toMatch(/\s+-\s[^(]+\([^)]+\)/)
+  })
+
+  it('[P1] 5.70g text mode header uses server code (invalid_param) not CLI classification code', async () => {
+    // Spec: renderHuman computes headerCode = server?.code ?? e.code
+    // For a canonical 422, server.code = "invalid_param" wins over the CLI's
+    // classification code ("server_4xx_other"), so stderr starts with "invalid_param:".
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+    ])
+    assertNonZeroExit(result)
+    expect(result.stderr.trimStart()).toMatch(/^invalid_param:/)
+  })
+
+  it('[P1] 5.70h JSON envelope error.code is CLI classification; server code lives in error.server.code', async () => {
+    // Spec: toEnvelope() sets error.code = c.code (CLI classification = "server_4xx_other")
+    // while the server's semantic code sits separately in error.server.code.
+    // Agents and tooling can read error.server.code for semantic branching
+    // without parsing human-readable text.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    assertNonZeroExit(result)
+    const envelope = JSON.parse(result.stderr.trim()) as {
+      error: { code: string, server?: { code: string } }
+    }
+    expect(envelope.error.code).toBe('server_4xx_other')
+    expect(envelope.error.server?.code).toBe('invalid_param')
+  })
+
   // ── 5.76  Failed command + -o yaml → stderr is still JSON envelope ────────
 
   it('[P1] 5.76 failed command with -o yaml still outputs a JSON error envelope on stderr', async () => {
