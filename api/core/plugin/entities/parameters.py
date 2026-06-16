@@ -209,6 +209,14 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
         raise ValueError(f"The tool parameter value {repr(value)} is not in correct type of {as_normal_type(typ)}.")
 
 
+def _cast_multiple_select_value(value: Any, /) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        value = [value]
+    return [item if isinstance(item, str) else str(item) for item in value]
+
+
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
     """
     init frontend parameter by rule
@@ -220,10 +228,26 @@ def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
         if not parameter_value and rule.required:
             raise ValueError(f"tool parameter {rule.name} not found in tool config")
 
+    is_multiple_select = rule.multiple and type in {
+        PluginParameterType.SELECT,
+        PluginParameterType.CHECKBOX,
+        PluginParameterType.DYNAMIC_SELECT,
+        PluginParameterType.DYNAMIC_TREE_SELECT,
+    }
+    if is_multiple_select:
+        parameter_value = _cast_multiple_select_value(parameter_value)
+
     if type == PluginParameterType.SELECT:
         # check if tool_parameter_config in options
         options = [x.value for x in rule.options]
-        if parameter_value is not None and parameter_value not in options:
+        if isinstance(parameter_value, list):
+            invalid_options = [value for value in parameter_value if value not in options]
+            if invalid_options:
+                raise ValueError(f"tool parameter {rule.name} value {invalid_options} not in options {options}")
+        elif parameter_value is not None and parameter_value not in options:
             raise ValueError(f"tool parameter {rule.name} value {parameter_value} not in options {options}")
+
+    if is_multiple_select:
+        return parameter_value
 
     return cast_parameter_value(type, parameter_value)
