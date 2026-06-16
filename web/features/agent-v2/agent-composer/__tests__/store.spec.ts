@@ -244,6 +244,20 @@ describe('agent composer store conversions', () => {
     })
   })
 
+  it('should not hydrate a knowledge retrieval row when the config has no datasets', () => {
+    const formState = agentSoulConfigToFormState({
+      knowledge: {
+        datasets: [],
+        query_config: {
+          top_k: 4,
+        },
+        query_mode: 'generated_query',
+      },
+    })
+
+    expect(formState.knowledgeRetrievals).toEqual([])
+  })
+
   it('should omit incomplete environment variables from the publish payload', () => {
     const publishConfig = formStateToAgentSoulConfig({
       formState: {

@@ -97,7 +97,7 @@ const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledge
   const knowledge = config?.knowledge
   const datasets = knowledge?.datasets ?? []
 
-  if (!knowledge && datasets.length === 0)
+  if (datasets.length === 0)
     return []
 
   return [{
