@@ -32,6 +32,9 @@ const getCredentialVariant = (tool: AgentProviderToolDefaultValue) => {
 }
 
 const getCredentialType = (tool: AgentProviderToolDefaultValue) => {
+  if (!tool.allowDelete && !tool.credential_id)
+    return 'unauthorized' as const
+
   if (!tool.allowDelete)
     return undefined
 

@@ -237,7 +237,6 @@ const toDifyToolConfigs = (
 
   return tool.actions.map(action => ({
     enabled: true,
-    name: action.name,
     provider: tool.name,
     provider_id: tool.id,
     provider_type: tool.providerType ?? 'builtin',

@@ -4,6 +4,7 @@ import type { AgentConfigSnapshotDetailResponse, AgentIconType, AgentSoulConfig 
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -39,6 +40,38 @@ function AgentConfigurePageContent({
   agentId,
 }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
+  const configureData = useAgentConfigureData(agentId)
+  const isConfigureDataPending = configureData.agentQuery.isPending
+    || configureData.composerQuery.isPending
+    || (configureData.shouldLoadPublishedVersion && configureData.versionQuery.isPending)
+
+  if (isConfigureDataPending) {
+    return (
+      <section
+        aria-label={t('agentDetail.sections.configure')}
+        aria-busy
+        className="flex h-full min-w-0 flex-1 items-center justify-center p-1"
+      >
+        <Loading type="app" />
+      </section>
+    )
+  }
+
+  return (
+    <AgentConfigurePageLoadedContent
+      agentId={agentId}
+      configureData={configureData}
+    />
+  )
+}
+
+function AgentConfigurePageLoadedContent({
+  agentId,
+  configureData,
+}: AgentConfigurePageProps & {
+  configureData: ReturnType<typeof useAgentConfigureData>
+}) {
+  const { t } = useTranslation('agentV2')
   const [showChatFeatures, setShowChatFeatures] = useState(false)
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
@@ -49,7 +82,7 @@ function AgentConfigurePageContent({
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,
-  } = useAgentConfigureData(agentId)
+  } = configureData
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
 
   useHydrateAgentConfigureDraft({
@@ -76,7 +109,7 @@ function AgentConfigurePageContent({
   return (
     <section
       aria-label={t('agentDetail.sections.configure')}
-      aria-busy={agentQuery.isPending}
+      aria-busy={agentQuery.isFetching}
       className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden p-1"
     >
       <AgentOrchestratePanel
@@ -166,7 +199,7 @@ function useAgentConfigureData(agentId: string) {
       },
     },
   }))
-  const activeVersionId = composerQuery.data?.active_config_snapshot.id
+  const activeVersionId = composerQuery.data?.active_config_snapshot?.id
   const shouldLoadPublishedVersion = !composerQuery.data?.agent_soul
   const versionQuery = useQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
     input: activeVersionId && shouldLoadPublishedVersion
@@ -186,6 +219,7 @@ function useAgentConfigureData(agentId: string) {
     agentQuery,
     composerQuery,
     versionQuery,
+    shouldLoadPublishedVersion,
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,

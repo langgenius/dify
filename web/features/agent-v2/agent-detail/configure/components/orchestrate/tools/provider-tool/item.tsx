@@ -112,6 +112,10 @@ function CredentialStatus({
   const handleAuthorizationItemClick = useCallback((id: string) => {
     onCredentialChange(id === '__workspace_default__' ? undefined : id || undefined)
   }, [onCredentialChange])
+  const handleDefaultCredentialChange = useCallback((id?: string) => {
+    if (!tool.credentialId && id)
+      onCredentialChange(id)
+  }, [onCredentialChange, tool.credentialId])
 
   if (tool.credentialVariant === 'none')
     return null
@@ -138,6 +142,7 @@ function CredentialStatus({
         }}
         credentialId={tool.credentialId}
         onAuthorizationItemClick={handleAuthorizationItemClick}
+        onDefaultCredentialChange={handleDefaultCredentialChange}
       />
     </div>
   )

@@ -180,6 +180,7 @@ describe('agent composer store conversions', () => {
         },
       }),
     ])
+    expect(publishConfig.tools?.dify_tools?.[0]).not.toHaveProperty('name')
     expect(publishConfig.tools?.cli_tools).toEqual([
       expect.objectContaining({
         name: 'Run Tests',
