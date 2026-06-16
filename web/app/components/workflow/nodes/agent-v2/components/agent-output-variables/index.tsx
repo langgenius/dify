@@ -1,167 +1,19 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { AgentOutputVariablesProps, EditingState, OutputDraft } from './utils'
+import type { AgentOutputVariablesProps, EditingState } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
-import { Form } from '@langgenius/dify-ui/form'
-import { Switch } from '@langgenius/dify-ui/switch'
-import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import OutputVars from '../../../_base/components/output-vars'
-import { OutputTypeSelect } from './type-select'
+import { OutputEditCard } from './edit-card'
 import {
   createDraft,
-  createOutputFromDraft,
-  getDefaultValueErrorKey,
   getOutputDescription,
   getOutputDisplayType,
   getOutputTypeOptionValue,
   isDefaultOutput,
-  OUTPUT_NAME_PATTERN,
-  OUTPUT_NAME_PATTERN_SOURCE,
 } from './utils'
 
-function OutputEditCard({
-  existingOutputs,
-  state,
-  onCancel,
-  onConfirm,
-}: {
-  existingOutputs: DeclaredOutputConfig[]
-  state: EditingState
-  onCancel: () => void
-  onConfirm: (output: DeclaredOutputConfig, index?: number) => void
-}) {
-  const { t } = useTranslation()
-  const nameErrorId = useId()
-  const [draft, setDraft] = useState(state.draft)
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
-  const trimmedName = draft.name.trim()
-  const duplicateName = existingOutputs.some((output, index) => output.name === trimmedName && index !== state.index)
-  const nameInvalid = !!trimmedName && !OUTPUT_NAME_PATTERN.test(trimmedName)
-  const hasNameError = duplicateName || nameInvalid
-  const defaultValueErrorKey = getDefaultValueErrorKey(draft)
-  const confirmDisabled = !trimmedName || nameInvalid || duplicateName || !!defaultValueErrorKey
-  function updateDraft(next: Partial<OutputDraft>) {
-    setDraft(prev => ({ ...prev, ...next }))
-  }
-  function handleConfirm() {
-    if (confirmDisabled)
-      return
-    onConfirm(createOutputFromDraft(draft), state.index)
-  }
-  return (
-    <Form
-      aria-label={t('nodes.agent.outputVars.editorLabel', { ns: 'workflow' })}
-      className="flex flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-md shadow-shadow-shadow-4"
-      onSubmit={(event) => {
-        event.preventDefault()
-        handleConfirm()
-      }}
-    >
-      <div className="px-2 pt-2">
-        <div className="flex h-6 items-center gap-x-2">
-          <FieldRoot name="name" invalid={hasNameError} className="contents">
-            <FieldLabel className="sr-only">
-              {t('nodes.agent.outputVars.nameLabel', { ns: 'workflow' })}
-            </FieldLabel>
-            <FieldControl
-              aria-describedby={hasNameError ? nameErrorId : undefined}
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
-              autoFocus
-              required
-              pattern={OUTPUT_NAME_PATTERN_SOURCE}
-              size="small"
-              value={draft.name}
-              placeholder={t('nodes.agent.outputVars.namePlaceholder', { ns: 'workflow' })}
-              className="h-6 w-24 px-1.5 py-0 code-sm-semibold"
-              onChange={event => updateDraft({ name: event.currentTarget.value })}
-            />
-          </FieldRoot>
-          <OutputTypeSelect
-            value={draft.type}
-            onChange={value => updateDraft({ type: value })}
-          />
-          <FieldRoot name="required" className="contents">
-            <FieldLabel className="flex h-6 items-center gap-x-1 system-xs-regular text-text-tertiary">
-              <Switch
-                aria-label={t('nodes.agent.outputVars.requiredLabel', { ns: 'workflow' })}
-                size="xs"
-                checked={draft.required}
-                onCheckedChange={required => updateDraft({ required })}
-              />
-              {t('nodes.agent.outputVars.requiredLabel', { ns: 'workflow' })}
-            </FieldLabel>
-          </FieldRoot>
-        </div>
-        {hasNameError && (
-          <FieldRoot name="nameError" invalid className="contents">
-            <FieldError id={nameErrorId} match className="mt-1 px-1 py-0 system-xs-regular text-text-destructive">
-              {duplicateName
-                ? t('nodes.agent.outputVars.nameDuplicate', { ns: 'workflow' })
-                : t('nodes.agent.outputVars.nameInvalid', { ns: 'workflow' })}
-            </FieldError>
-          </FieldRoot>
-        )}
-        <FieldRoot name="description" className="contents">
-          <FieldLabel className="sr-only">
-            {t('nodes.agent.outputVars.descriptionLabel', { ns: 'workflow' })}
-          </FieldLabel>
-          <FieldControl
-            size="small"
-            value={draft.description}
-            placeholder={t('nodes.agent.outputVars.descriptionPlaceholder', { ns: 'workflow' })}
-            className="mt-2 h-5 border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
-            onChange={event => updateDraft({ description: event.currentTarget.value })}
-          />
-        </FieldRoot>
-      </div>
-      <button
-        type="button"
-        className="mt-2 flex h-8 items-center gap-x-1 border-t border-divider-subtle px-2 system-xs-regular text-text-tertiary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        aria-expanded={showAdvancedOptions}
-        onClick={() => setShowAdvancedOptions(value => !value)}
-      >
-        <span
-          aria-hidden="true"
-          className={cn('i-ri-arrow-down-double-line size-3', showAdvancedOptions && 'rotate-180')}
-        />
-        {t('nodes.agent.outputVars.showAdvancedOptions', { ns: 'workflow' })}
-      </button>
-      {showAdvancedOptions && (
-        <div className="border-t border-divider-subtle px-3 py-2">
-          <FieldRoot name="defaultValue" className="gap-1">
-            <FieldLabel className="py-0 system-xs-medium text-text-secondary">
-              {t('nodes.agent.outputVars.defaultValueLabel', { ns: 'workflow' })}
-            </FieldLabel>
-            <Textarea
-              size="small"
-              value={draft.defaultValue}
-              placeholder={t('nodes.agent.outputVars.defaultValuePlaceholder', { ns: 'workflow' })}
-              className="mt-1 min-h-6"
-              onValueChange={defaultValue => updateDraft({ defaultValue })}
-            />
-            {defaultValueErrorKey && (
-              <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                {t(defaultValueErrorKey, { ns: 'workflow' })}
-              </FieldError>
-            )}
-          </FieldRoot>
-        </div>
-      )}
-      <div className="flex h-12 items-center justify-end gap-x-2 px-3">
-        <Button type="button" size="small" variant="secondary" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
-        </Button>
-        <Button type="submit" size="small" variant="primary" disabled={confirmDisabled}>
-          {t('nodes.agent.outputVars.confirm', { ns: 'workflow' })}
-        </Button>
-      </div>
-    </Form>
-  )
-}
 function OutputRow({
   output,
   editable,

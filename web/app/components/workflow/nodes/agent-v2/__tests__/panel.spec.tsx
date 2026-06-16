@@ -420,6 +420,46 @@ describe('agent/panel', () => {
     )
   })
 
+  it('submits the output editor with a scoped Mod+Enter shortcut', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }))
+    const nameInput = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+    fireEvent.change(nameInput, {
+      target: {
+        value: 'summary',
+      },
+    })
+    fireEvent.keyDown(document, { key: 'Enter', ctrlKey: true })
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(nameInput, { key: 'Enter', ctrlKey: true })
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'summary',
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
   it('does not show name validation error before the user enters a name', () => {
     render(
       <AgentV2Panel
