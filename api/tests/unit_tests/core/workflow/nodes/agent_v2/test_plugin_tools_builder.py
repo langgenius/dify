@@ -32,6 +32,7 @@ class FakeRuntimeProvider:
         self.tool = tool
         self.last_agent_tool: AgentToolEntity | None = None
         self.last_invoke_from: InvokeFrom | None = None
+        self.last_allow_file_parameters: bool | None = None
 
     def get_agent_tool_runtime(
         self,
@@ -41,9 +42,11 @@ class FakeRuntimeProvider:
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Any | None = None,
+        allow_file_parameters: bool = False,
     ) -> Tool:
         self.last_agent_tool = agent_tool
         self.last_invoke_from = invoke_from
+        self.last_allow_file_parameters = allow_file_parameters
         if isinstance(self.tool, Exception):
             raise self.tool
         return self.tool
@@ -103,6 +106,31 @@ def _tool(*, runtime_parameters: dict[str, Any] | None = None) -> FakeTool:
     return FakeTool(entity=entity, runtime=runtime)
 
 
+def _file_tool() -> FakeTool:
+    parameters = [
+        ToolParameter(
+            name="audio_file",
+            label=I18nObject(en_US="Audio File"),
+            type=ToolParameter.ToolParameterType.FILE,
+            form=ToolParameter.ToolParameterForm.LLM,
+            required=True,
+            llm_description="The audio file to be converted.",
+        )
+    ]
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="langgenius",
+            name="asr",
+            label=I18nObject(en_US="Speech To Text"),
+            provider="audio",
+        ),
+        description=ToolDescription(human=I18nObject(en_US="Speech To Text"), llm="Convert audio file to text."),
+        parameters=parameters,
+    )
+    runtime = ToolRuntime(tenant_id="tenant-1", user_id="user-1", credentials={}, runtime_parameters={})
+    return FakeTool(entity=entity, runtime=runtime)
+
+
 def _build(
     builder: WorkflowAgentPluginToolsBuilder,
     tools: AgentSoulToolsConfig,
@@ -155,6 +183,36 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     # must surface that so ToolManager hits the plugin provider table, not the
     # built-in legacy table.
     assert runtime_provider.last_agent_tool.provider_type.value == "plugin"
+
+
+def test_builds_dify_plugin_tool_with_file_llm_parameter():
+    runtime_provider = FakeRuntimeProvider(_file_tool())
+    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "audio",
+                    "provider_type": "builtin",
+                    "tool_name": "asr",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    prepared = result.tools[0]
+    assert prepared.tool_name == "asr"
+    assert prepared.runtime_parameters == {}
+    assert prepared.parameters[0].name == "audio_file"
+    assert prepared.parameters[0].type == "file"
+    # The public Agent backend DTO carries non-scalar tool inputs in
+    # ``parameters``; legacy JSON schema generation omits file fields.
+    assert prepared.parameters_json_schema == {"type": "object", "properties": {}, "required": []}
+    assert runtime_provider.last_allow_file_parameters is True
 
 
 def test_rejects_duplicate_exposed_tool_names():
