@@ -46,6 +46,7 @@ export function PermissionSummaryButton({
       ? countLabels.join(' · ')
       : t('access.permission.specificDesc')
     : undefined
+  const IconClassName = loading ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none' : permissionIcon[value]
 
   return (
     <button
@@ -54,27 +55,27 @@ export function PermissionSummaryButton({
       aria-label={t('access.permissions.editAriaLabel', { environment: environmentLabel })}
       onClick={onClick}
       className={cn(
-        'inline-flex min-h-8 w-full min-w-0 items-center gap-2 rounded-lg bg-components-input-bg-normal px-2.5 py-1.5 system-sm-regular text-text-secondary outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+        'flex h-9 w-full min-w-0 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
         disabled && 'cursor-not-allowed opacity-50 hover:bg-components-input-bg-normal',
       )}
     >
-      <span
-        className={cn(
-          loading ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none' : permissionIcon[value],
-          'size-4 shrink-0 text-text-tertiary',
-        )}
-        aria-hidden="true"
-      />
-      <span className="min-w-0 flex-1 truncate text-left">
-        <span>{t(`access.permission.${value}`)}</span>
-        {specificSubjectLabel && (
-          <span className="text-text-tertiary">
-            {' · '}
-            {specificSubjectLabel}
-          </span>
-        )}
-      </span>
-      <span className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" aria-hidden="true" />
+      <div className="flex min-w-0 grow items-center gap-x-1.5 pr-1">
+        <span
+          className={cn(IconClassName, 'size-4 shrink-0 text-text-secondary')}
+          aria-hidden="true"
+        />
+        <p className="min-w-0 truncate text-left system-sm-medium text-text-secondary">
+          {t(`access.permission.${value}`)}
+        </p>
+      </div>
+      {specificSubjectLabel && (
+        <p className="shrink-0 system-xs-regular text-text-tertiary">
+          {specificSubjectLabel}
+        </p>
+      )}
+      <div className="flex size-4 shrink-0 items-center justify-center">
+        <span className="i-ri-arrow-right-s-line size-4 text-text-quaternary" aria-hidden="true" />
+      </div>
     </button>
   )
 }
