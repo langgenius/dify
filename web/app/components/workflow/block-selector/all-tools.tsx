@@ -205,6 +205,17 @@ const AllTools = ({
       return
     onSelect(type, pluginDefaultValue as ToolDefaultValue)
   }, [onSelect])
+  const toolsListTitle = useMemo(() => {
+    if (activeTab === ToolTypeEnum.BuiltIn)
+      return t('allToolPlugins', { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.Custom)
+      return t('allSwaggerAPIAsTool', { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.Workflow)
+      return t('allWorkflowAsTool', { ns: 'tools' })
+    if (activeTab === ToolTypeEnum.MCP)
+      return t('allMCP', { ns: 'tools' })
+    return t('allTools', { ns: 'tools' })
+  }, [activeTab, t])
 
   return (
     <div className={cn('max-w-[500px]', className)}>
@@ -264,7 +275,7 @@ const AllTools = ({
             {hasToolsListContent && (
               <>
                 <div className="px-3 pt-2 pb-1">
-                  <span className="system-xs-medium text-text-primary">{t('allTools', { ns: 'tools' })}</span>
+                  <span className="system-xs-medium text-text-primary">{toolsListTitle}</span>
                 </div>
                 <Tools
                   className={toolContentClassName}
