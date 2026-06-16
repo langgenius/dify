@@ -1,30 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import type { NavIcon } from '@/app/components/app-sidebar/nav-link'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  RiDashboard2Fill,
-  RiDashboard2Line,
-  RiFileList3Fill,
-  RiFileList3Line,
-  RiTerminalBoxFill,
-  RiTerminalBoxLine,
-  RiTerminalWindowFill,
-  RiTerminalWindowLine,
-} from '@remixicon/react'
-import { useUnmount } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import AppSideBar from '@/app/components/app-sidebar'
-import { AppInfoDetailLayer } from '@/app/components/app-sidebar/app-info'
-import { useAppInfoActions } from '@/app/components/app-sidebar/app-info/use-app-info-actions'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -36,6 +20,13 @@ type IAppDetailLayoutProps = {
   appId: string
 }
 
+const isNotFoundError = (error: unknown) => (
+  typeof error === 'object'
+  && error !== null
+  && 'status' in error
+  && error.status === 404
+)
+
 const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
@@ -44,113 +35,78 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
-  const appInfoActions = useAppInfoActions({ resetKey: appId })
-  const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
+  const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
-    setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
-  const [navigation, setNavigation] = useState<Array<{
-    name: string
-    href: string
-    icon: NavIcon
-    selectedIcon: NavIcon
-  }>>([])
-
-  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: AppModeEnum) => {
-    const navConfig = [
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: t('appMenus.promptEng', { ns: 'common' }),
-            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-            icon: RiTerminalWindowLine,
-            selectedIcon: RiTerminalWindowFill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
-        href: `/app/${appId}/develop`,
-        icon: RiTerminalBoxLine,
-        selectedIcon: RiTerminalBoxFill,
-      },
-      ...(isCurrentWorkspaceEditor
-        ? [{
-            name: mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
-            href: `/app/${appId}/logs`,
-            icon: RiFileList3Line,
-            selectedIcon: RiFileList3Fill,
-          }]
-        : []
-      ),
-      {
-        name: t('appMenus.overview', { ns: 'common' }),
-        href: `/app/${appId}/overview`,
-        icon: RiDashboard2Line,
-        selectedIcon: RiDashboard2Fill,
-      },
-    ]
-    return navConfig
-  }, [t])
+  const routeAppDetail = appDetailRes ?? (appDetail?.id === appId ? appDetail : null)
 
   useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
   useEffect(() => {
-    if (appDetail) {
-      const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
-      const mode = isMobile ? 'collapse' : 'expand'
-      setAppSidebarExpand(isMobile ? mode : localeMode)
-      // TODO: consider screen size and mode
-      // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
-      //   setAppSidebarExpand('collapse')
-    }
-  }, [appDetail, isMobile])
+    let ignore = false
 
-  useEffect(() => {
+    const currentAppDetail = useStore.getState().appDetail
+    if (currentAppDetail?.id === appId) {
+      return () => {
+        ignore = true
+      }
+    }
+
     setAppDetail()
-    setIsLoadingAppDetail(true)
+    void Promise.resolve().then(() => {
+      if (!ignore)
+        setIsLoadingAppDetail(true)
+    })
     fetchAppDetailDirect({ url: '/apps', id: appId }).then((res: App) => {
+      if (ignore)
+        return
+
       setAppDetailRes(res)
-    }).catch((e: any) => {
-      if (e.status === 404)
+    }).catch((error: unknown) => {
+      if (ignore)
+        return
+
+      if (isNotFoundError(error))
         router.replace('/apps')
     }).finally(() => {
+      if (ignore)
+        return
+
       setIsLoadingAppDetail(false)
     })
-  }, [appId, pathname])
+
+    return () => {
+      ignore = true
+    }
+  }, [appId, router, setAppDetail])
 
   useEffect(() => {
-    if (!appDetailRes || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
+    if (!routeAppDetail || !currentWorkspace.id || isLoadingCurrentWorkspace || isLoadingAppDetail)
       return
-    const res = appDetailRes
+    if (routeAppDetail.id !== appId)
+      return
+
     // redirection
     const canIEditApp = isCurrentWorkspaceEditor
-    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+    if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs') || pathname.endsWith('annotations'))) {
       router.replace(`/app/${appId}/overview`)
       return
     }
-    if ((res.mode === AppModeEnum.WORKFLOW || res.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
+    if ((routeAppDetail.mode === AppModeEnum.WORKFLOW || routeAppDetail.mode === AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('configuration')) {
       router.replace(`/app/${appId}/workflow`)
     }
-    else if ((res.mode !== AppModeEnum.WORKFLOW && res.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
+    else if ((routeAppDetail.mode !== AppModeEnum.WORKFLOW && routeAppDetail.mode !== AppModeEnum.ADVANCED_CHAT) && (pathname).endsWith('workflow')) {
       router.replace(`/app/${appId}/configuration`)
+      return
     }
-    else {
-      setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
-    }
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
 
-  useUnmount(() => {
-    setAppDetail()
-  })
+    if (appDetailRes && appDetail?.id !== appDetailRes.id)
+      setAppDetail({ ...appDetailRes, enable_sso: false })
+  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, pathname, routeAppDetail, router, setAppDetail])
 
   if (!appDetail) {
     return (
@@ -161,17 +117,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }
 
   return (
-    <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
-      {appDetail && (
-        <AppSideBar
-          navigation={navigation}
-          appInfoActions={appInfoActions}
-        />
-      )}
+    <div className={cn(s.app, 'relative ml-1 flex', 'overflow-hidden')}>
       <div className="grow overflow-hidden bg-components-panel-bg">
         {children}
       </div>
-      <AppInfoDetailLayer actions={appInfoActions} />
     </div>
   )
 }

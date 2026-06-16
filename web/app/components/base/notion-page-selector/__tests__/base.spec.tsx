@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
-import { useModalContextSelector } from '@/context/modal-context'
+import { useModalContext, useModalContextSelector } from '@/context/modal-context'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'
 import NotionPageSelector from '../base'
 
@@ -17,6 +17,7 @@ vi.mock('@/service/knowledge/use-import', () => ({
 }))
 
 vi.mock('@/context/modal-context', () => ({
+  useModalContext: vi.fn(),
   useModalContextSelector: vi.fn(),
 }))
 
@@ -83,6 +84,9 @@ describe('NotionPageSelector Base', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useModalContext).mockReturnValue({
+      setShowAccountSettingModal: mockSetShowAccountSettingModal,
+    } as unknown as ReturnType<typeof useModalContext>)
     vi.mocked(useModalContextSelector).mockImplementation((selector) => {
       // Execute the selector to get branch/func coverage for the inline function
       selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal } as unknown as Parameters<Parameters<typeof useModalContextSelector>[0]>[0])

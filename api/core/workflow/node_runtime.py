@@ -765,10 +765,12 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
         workflow_execution_id_getter: Callable[[], str | None] | None = None,
+        conversation_id_getter: Callable[[], str | None] | None = None,
         form_repository: HumanInputFormRepository | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._workflow_execution_id_getter = workflow_execution_id_getter
+        self._conversation_id_getter = conversation_id_getter
         self._form_repository = form_repository
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
 
@@ -817,6 +819,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         return DifyHumanInputNodeRuntime(
             self._run_context,
             workflow_execution_id_getter=self._workflow_execution_id_getter,
+            conversation_id_getter=self._conversation_id_getter,
             form_repository=form_repository,
         )
 
@@ -854,6 +857,9 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         repo = self.build_form_repository()
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id_getter() if self._workflow_execution_id_getter else None,
+            # A chatflow (advanced-chat) run carries a conversation; tag the form with
+            # it too so it is queryable per conversation. None for a pure workflow run.
+            conversation_id=self._conversation_id_getter() if self._conversation_id_getter else None,
             node_id=node_id,
             form_config=node_data,
             rendered_content=rendered_content,

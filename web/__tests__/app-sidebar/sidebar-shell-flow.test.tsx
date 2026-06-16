@@ -154,18 +154,13 @@ describe('App Sidebar Shell Flow', () => {
     expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
   })
 
-  it('switches to the workflow fullscreen dropdown shell and opens its navigation menu', async () => {
+  it('keeps the normal sidebar on workflow routes', () => {
     mockPathname = '/app/app-1/workflow'
     mockSelectedSegment = 'workflow'
-    localStorage.setItem('workflow-canvas-maximize', 'true')
 
     render(<AppDetailNav navigation={navigation} />)
 
-    expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'operation.more' }))
-
-    expect(await screen.findByText('Demo App')).toBeInTheDocument()
+    expect(screen.getByTestId('app-info')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Overview/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Logs/i })).toBeInTheDocument()
   })

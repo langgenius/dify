@@ -1,7 +1,14 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
+import {
+  appDeleteContract,
+  appListContract,
+  appStarContract,
+  appStarredListContract,
+  appUnstarContract,
+  workflowOnlineUsersContract,
+} from './console/apps'
 import { bindPartnerStackContract, invoicesContract } from './console/billing'
 import {
   exploreAppDetailContract,
@@ -13,6 +20,7 @@ import {
   exploreInstalledAppPinContract,
   exploreInstalledAppsContract,
   exploreInstalledAppUninstallContract,
+  learnDifyAppsContract,
 } from './console/explore'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
@@ -77,6 +85,7 @@ import {
   workflowDraftUpdateFeaturesContract,
 } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
+import { workspacesGetContract, workspaceSwitchContract } from './console/workspaces'
 import { collectionPluginsContract, collectionsContract, downloadPluginContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
 export const marketplaceRouterContract = {
@@ -101,11 +110,15 @@ export const consoleRouterContract = {
     ...communityContract.apps,
     list: appListContract,
     deleteApp: appDeleteContract,
+    starredList: appStarredListContract,
+    star: appStarContract,
+    unstar: appUnstarContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
   },
   explore: {
     ...communityContract.explore,
     apps: exploreAppsContract,
+    learnDifyApps: learnDifyAppsContract,
     appDetail: exploreAppDetailContract,
     installedApps: exploreInstalledAppsContract,
     uninstallInstalledApp: exploreInstalledAppUninstallContract,
@@ -196,5 +209,12 @@ export const consoleRouterContract = {
     oauthConfigure: triggerOAuthConfigureContract,
     oauthDelete: triggerOAuthDeleteContract,
     oauthInitiate: triggerOAuthInitiateContract,
+  },
+  workspaces: {
+    ...communityContract.workspaces,
+    get: workspacesGetContract,
+    switch: {
+      post: workspaceSwitchContract,
+    },
   },
 }

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { contactSalesUrl } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomWebAppBrand from '../custom-web-app-brand'
@@ -9,7 +10,7 @@ const CustomPage = () => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const showBillingTip = enableBilling && plan.type === Plan.sandbox
+  const showBillingTip = IS_CLOUD_EDITION && enableBilling && plan.type === Plan.sandbox
   const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
 
   return (

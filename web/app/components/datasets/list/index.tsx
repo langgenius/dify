@@ -1,30 +1,26 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 
 // Libraries
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchInput } from '@/app/components/base/search-input'
-import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDatasetApiBaseUrl, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useRouter } from '@/next/navigation'
+import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 // Components
+import FilterEmptyState from '../../base/filter-empty-state'
 import ExternalAPIPanel from '../external-api/external-api-panel'
-import ServiceApi from '../extra-info/service-api'
-import DatasetFooter from './dataset-footer'
 import Datasets from './datasets'
+import DatasetFirstEmptyState from './first-empty-state'
+import DatasetListHeader from './header'
 
 const List = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { push } = useRouter()
   const { isCurrentWorkspaceOwner } = useAppContext()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
@@ -52,45 +48,79 @@ const List = () => {
   }
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const isCurrentWorkspaceEditor = useAppContextSelector(state => state.isCurrentWorkspaceEditor)
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const datasetListQuery = useDatasetList({
+    initialPage: 1,
+    tag_ids: tagIDs,
+    limit: 30,
+    include_all: includeAll,
+    keyword: searchKeywords,
+  })
+  const pages = datasetListQuery.data?.pages ?? []
+  const hasResolvedFirstPage = pages.length > 0
+  const hasAnyDataset = (pages[0]?.total ?? 0) > 0
+  const hasActiveFilters = tagIDs.length > 0 || keywords.trim().length > 0 || searchKeywords.trim().length > 0 || includeAll
+  const showEmptyDataList = !hasAnyDataset && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
+  const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
 
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pt-4 pb-2">
-        <div className="flex items-center justify-center gap-2">
-          {isCurrentWorkspaceOwner && (
-            <CheckboxWithLabel
-              isChecked={includeAll}
-              onChange={toggleIncludeAll}
-              label={t('allKnowledge', { ns: 'dataset' })}
-              labelClassName="system-md-regular text-text-secondary"
-              className="mr-2"
-              tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
-            />
+      {showEmptyDataList
+        ? (
+            <>
+              <DatasetListHeader
+                apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+                includeAll={includeAll}
+                isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
+                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+                isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
+                keywords={keywords}
+                tagFilterValue={tagFilterValue}
+                onCreateDataset={() => push('/datasets/create')}
+                onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
+                onConnectDataset={() => push('/datasets/connect')}
+                onExternalApiClick={() => setShowExternalApiPanel(true)}
+                onIncludeAllChange={toggleIncludeAll}
+                onKeywordsChange={handleKeywordsChange}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onTagsChange={handleTagsChange}
+              />
+              <DatasetFirstEmptyState />
+            </>
+          )
+        : (
+            <>
+              <DatasetListHeader
+                apiBaseUrl={apiBaseInfo?.api_base_url ?? ''}
+                includeAll={includeAll}
+                isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
+                isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+                isCurrentWorkspaceOwner={isCurrentWorkspaceOwner}
+                keywords={keywords}
+                tagFilterValue={tagFilterValue}
+                onCreateDataset={() => push('/datasets/create')}
+                onCreateFromPipeline={() => push('/datasets/create-from-pipeline')}
+                onConnectDataset={() => push('/datasets/connect')}
+                onExternalApiClick={() => setShowExternalApiPanel(true)}
+                onIncludeAllChange={toggleIncludeAll}
+                onKeywordsChange={handleKeywordsChange}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+                onTagsChange={handleTagsChange}
+              />
+              <Datasets
+                datasetList={datasetListQuery.data}
+                emptyElement={showFilteredEmptyState ? <FilterEmptyState title={t('filterEmpty.noKnowledge', { ns: 'dataset' })} /> : undefined}
+                fetchNextPage={datasetListQuery.fetchNextPage}
+                hasNextPage={datasetListQuery.hasNextPage}
+                isFetching={datasetListQuery.isFetching}
+                isFetchingNextPage={datasetListQuery.isFetchingNextPage}
+                isLoading={datasetListQuery.isLoading}
+                isPlaceholderData={datasetListQuery.isPlaceholderData}
+                onOpenTagManagement={() => setShowTagManagementModal(true)}
+              />
+            </>
           )}
-          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-          <SearchInput
-            className="w-50"
-            value={keywords}
-            onValueChange={handleKeywordsChange}
-          />
-          {
-            isCurrentWorkspaceManager && (
-              <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
-            )
-          }
-          <div className="h-4 w-px bg-divider-regular" />
-          <Button
-            className="gap-0.5 shadow-xs"
-            onClick={() => setShowExternalApiPanel(true)}
-          >
-            <span className="i-custom-vender-solid-development-api-connection-mod size-4 text-components-button-secondary-text" />
-            <span className="flex items-center justify-center gap-1 px-0.5 system-sm-medium text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</span>
-          </Button>
-        </div>
-      </div>
-      <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-      {!systemFeatures.branding.enabled && <DatasetFooter />}
       <TagManagementModal
         type="knowledge"
         show={showTagManagementModal}

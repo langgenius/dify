@@ -16,6 +16,7 @@ import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender
 import UsageInfo from '@/app/components/billing/usage-info'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -113,21 +114,21 @@ const PlanComp: FC<Props> = ({
             <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
+            {IS_CLOUD_EDITION && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
                 <RiGraduationCapLine className="mr-1 size-4" />
                 {t('toVerified', { ns: 'education' })}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
+            {IS_CLOUD_EDITION && enableEducationPlan && isEducationAccount && type === Plan.sandbox && isCurrentWorkspaceManager && (
               <Button variant="ghost" onClick={handleEducationDiscount} disabled={isEducationDiscountLoading}>
                 <RiGraduationCapLine className="mr-1 size-4" />
                 {t('useEducationDiscount', { ns: 'education' })}
                 {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
-            {!isEnterprisePlan && (
+            {IS_CLOUD_EDITION && !isEnterprisePlan && (
               <UpgradeBtn
                 className="shrink-0"
                 isPlain={type === Plan.team}

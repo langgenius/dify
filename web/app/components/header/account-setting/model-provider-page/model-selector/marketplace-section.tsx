@@ -2,7 +2,8 @@ import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { getMarketplaceUrl } from '@/utils/var'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { modelNameMap, providerIconMap } from '../utils'
 
 type MarketplaceSectionProps = {
@@ -79,7 +80,7 @@ function MarketplaceSection({
             })}
             <a
               className="flex cursor-pointer items-center gap-0.5 px-3 py-1.5"
-              href={getMarketplaceUrl('', { theme })}
+              href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
               target="_blank"
               rel="noopener noreferrer"
             >

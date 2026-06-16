@@ -2,12 +2,12 @@ import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict, cast
 
 from flask import abort, request
 from flask_restx import Resource, fields
 from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -449,8 +449,16 @@ class DraftWorkflowApi(Resource):
         if not workflow:
             raise DraftWorkflowNotExist()
 
-        # return workflow, if not found, return 404
-        return dump_response(WorkflowResponse, workflow)
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        # Return workflow with response-only Agent node job projection so the
+        # front-end can treat draft graph node data as the editing source.
+        response = WorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+        )
+        return response
 
     @setup_required
     @login_required

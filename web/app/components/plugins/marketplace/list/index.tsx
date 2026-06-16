@@ -1,6 +1,6 @@
 'use client'
 import type { Plugin } from '../../types'
-import type { MarketplaceCollection } from '../types'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
@@ -14,6 +14,7 @@ type ListProps = {
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   emptyClassName?: string
+  onCollectionMoreClick?: (searchParams?: SearchParamsFromCollection) => void
 }
 const List = ({
   marketplaceCollections,
@@ -23,6 +24,7 @@ const List = ({
   cardContainerClassName,
   cardRender,
   emptyClassName,
+  onCollectionMoreClick,
 }: ListProps) => {
   return (
     <>
@@ -34,6 +36,7 @@ const List = ({
             showInstallButton={showInstallButton}
             cardContainerClassName={cardContainerClassName}
             cardRender={cardRender}
+            onCollectionMoreClick={onCollectionMoreClick}
           />
         )
       }

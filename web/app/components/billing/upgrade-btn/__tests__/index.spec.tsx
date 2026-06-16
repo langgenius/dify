@@ -6,7 +6,15 @@ import UpgradeBtn from '../index'
 // PremiumBadge, Button, SparklesSoft are all base components
 
 // ✅ Mock external dependencies only
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
 const mockSetShowPricingModal = vi.fn()
+vi.mock('@/config', () => ({
+  get IS_CLOUD_EDITION() {
+    return mockConfig.isCloudEdition
+  },
+}))
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
@@ -22,6 +30,7 @@ let mockGtag = vi.fn<GtagHandler>()
 describe('UpgradeBtn', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfig.isCloudEdition = true
     mockGtag = vi.fn<GtagHandler>()
     gtagWindow.gtag = mockGtag
   })
@@ -71,6 +80,15 @@ describe('UpgradeBtn', () => {
       const button = screen.getByRole('button')
       expect(button).toBeInTheDocument()
       expect(screen.getByText(/triggerLimitModal\.upgrade/i)).toBeInTheDocument()
+    })
+
+    it('should not render in self-hosted edition', () => {
+      mockConfig.isCloudEdition = false
+
+      const { container } = render(<UpgradeBtn />)
+
+      expect(container.firstChild).toBeNull()
+      expect(screen.queryByText(/billing\.upgradeBtn\.encourage/i)).not.toBeInTheDocument()
     })
   })
 
