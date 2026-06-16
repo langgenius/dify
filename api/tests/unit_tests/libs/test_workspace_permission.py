@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -124,10 +125,9 @@ class TestWorkspacePermissionHelper:
 
         mock_enterprise_service.WorkspacePermissionService.get_permission.assert_called_once_with("test-workspace-id")
 
-    @patch("libs.workspace_permission.logger")
     @patch("libs.workspace_permission.EnterpriseService")
     @patch("libs.workspace_permission.dify_config")
-    def test_enterprise_service_error_fails_open(self, mock_config, mock_enterprise_service, mock_logger):
+    def test_enterprise_service_error_fails_open(self, mock_config, mock_enterprise_service, caplog):
         """On enterprise service error, should fail-open (allow) and log error."""
         mock_config.ENTERPRISE_ENABLED = True
 
@@ -135,8 +135,7 @@ class TestWorkspacePermissionHelper:
         mock_enterprise_service.WorkspacePermissionService.get_permission.side_effect = Exception("Service unavailable")
 
         # Should not raise (fail-open)
-        check_workspace_member_invite_permission("test-workspace-id")
+        with caplog.at_level(logging.ERROR, logger="libs.workspace_permission"):
+            check_workspace_member_invite_permission("test-workspace-id")
 
-        # Should log the error
-        mock_logger.exception.assert_called_once()
-        assert "Failed to check workspace invite permission" in str(mock_logger.exception.call_args)
+        assert "Failed to check workspace invite permission for test-workspace-id" in caplog.text
