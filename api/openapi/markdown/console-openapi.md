@@ -726,24 +726,8 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 | ---- | ----------- | ------ |
 | 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
-### [POST] /agent/{agent_id}/skills/standardize
-Validate + standardize a Skill into an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
 ### [POST] /agent/{agent_id}/skills/upload
-Upload + validate a Skill package for an Agent App
+Upload + standardize a Skill into an Agent App drive
 
 #### Parameters
 
@@ -751,12 +735,18 @@ Upload + validate a Skill package for an Agent App
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
 
 ### [DELETE] /agent/{agent_id}/skills/{slug}
 Delete a standardized skill from an Agent App drive
@@ -1427,10 +1417,10 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### [POST] /apps/{app_id}/agent/skills/standardize
-**Upload a Skill, validate it, and standardize it into the app agent's drive**
+### [POST] /apps/{app_id}/agent/skills/upload
+**Upload a Skill, validate it, and commit drive-backed skill files**
 
-Validate + standardize a Skill into the agent drive (ENG-594)
+Upload + standardize a Skill into the agent drive
 
 #### Parameters
 
@@ -1439,32 +1429,18 @@ Validate + standardize a Skill into the agent drive (ENG-594)
 | app_id | path | Application ID | Yes | string |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
 | 400 | Invalid skill package or no bound agent |  |
-
-### [POST] /apps/{app_id}/agent/skills/upload
-**Validate an uploaded Skill package and persist the archive**
-
-Upload + validate a Skill package (.zip/.skill) and extract its manifest
-Returns a validated skill ref (to bind into the Agent soul config on save)
-plus its manifest. Standardizing into the agent drive is ENG-594.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
 
 ### [DELETE] /apps/{app_id}/agent/skills/{slug}
 Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
@@ -11999,13 +11975,6 @@ Visibility and lifecycle scope of an Agent record.
 | path | string |  | No |
 | skill_md_file_id | string |  | No |
 | skill_md_key | string |  | No |
-
-#### AgentSkillStandardizeResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
 
 #### AgentSkillUploadResponse
 

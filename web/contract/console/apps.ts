@@ -1,5 +1,3 @@
-import type { PostAgentByAgentIdSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { PostAppsByAppIdAgentSkillsUploadResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListResponse, WorkflowOnlineUsersResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppModeEnum } from '@/types/app'
@@ -87,35 +85,3 @@ export const workflowOnlineUsersContract = base
     }
   }>())
   .output(type<WorkflowOnlineUsersResponse>())
-
-export const agentSkillUploadContract = base
-  .route({
-    path: '/apps/{app_id}/agent/skills/upload',
-    method: 'POST',
-    successStatus: 201,
-  })
-  .input(type<{
-    params: {
-      app_id: string
-    }
-    body: {
-      file: File
-    }
-  }>())
-  .output(type<PostAppsByAppIdAgentSkillsUploadResponse>())
-
-export const agentAppSkillUploadContract = base
-  .route({
-    path: '/agent/{agent_id}/skills/upload',
-    method: 'POST',
-    successStatus: 201,
-  })
-  .input(type<{
-    params: {
-      agent_id: string
-    }
-    body: {
-      file: File
-    }
-  }>())
-  .output(type<PostAgentByAgentIdSkillsUploadResponse>())

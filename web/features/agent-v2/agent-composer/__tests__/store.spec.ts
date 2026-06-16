@@ -60,7 +60,13 @@ describe('agent composer store conversions', () => {
         skills: [
           {
             id: 'skill-1',
+            file_id: 'archive-file-1',
+            full_archive_file_id: 'archive-file-1',
+            full_archive_key: 'research-skill/.DIFY-SKILL-FULL.zip',
             name: 'Research Skill',
+            path: 'research-skill',
+            skill_md_file_id: 'skill-md-file-1',
+            skill_md_key: 'research-skill/SKILL.md',
           },
         ],
       },
@@ -114,8 +120,14 @@ describe('agent composer store conversions', () => {
       },
       skills: [
         {
+          fileId: 'archive-file-1',
+          fullArchiveFileId: 'archive-file-1',
+          fullArchiveKey: 'research-skill/.DIFY-SKILL-FULL.zip',
           id: 'skill-1',
           name: 'Research Skill',
+          path: 'research-skill',
+          skillMdFileId: 'skill-md-file-1',
+          skillMdKey: 'research-skill/SKILL.md',
         },
       ],
       files: [

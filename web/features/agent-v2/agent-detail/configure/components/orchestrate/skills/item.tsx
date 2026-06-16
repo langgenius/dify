@@ -13,9 +13,13 @@ import { AgentSkillDetailDialog } from './detail-dialog'
 export type AgentSkill = {
   description?: string
   files?: string[]
+  fileId?: string
+  fullArchiveFileId?: string
+  fullArchiveKey?: string
   id: string
   name: string
   path?: string
+  skillMdFileId?: string
   skillMdKey?: string
 }
 

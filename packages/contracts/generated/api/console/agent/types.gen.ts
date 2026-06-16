@@ -223,11 +223,6 @@ export type SandboxUploadResponse = {
   path: string
 }
 
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
-}
-
 export type AgentSkillUploadResponse = {
   manifest: SkillManifest
   skill: AgentSkillRefConfig
@@ -1759,28 +1754,10 @@ export type PostAgentByAgentIdSandboxFilesUploadResponses = {
 export type PostAgentByAgentIdSandboxFilesUploadResponse
   = PostAgentByAgentIdSandboxFilesUploadResponses[keyof PostAgentByAgentIdSandboxFilesUploadResponses]
 
-export type PostAgentByAgentIdSkillsStandardizeData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/skills/standardize'
-}
-
-export type PostAgentByAgentIdSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAgentByAgentIdSkillsStandardizeResponse
-  = PostAgentByAgentIdSkillsStandardizeResponses[keyof PostAgentByAgentIdSkillsStandardizeResponses]
-
 export type PostAgentByAgentIdSkillsUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     agent_id: string
   }

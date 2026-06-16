@@ -443,14 +443,6 @@ export const zAgentSkillRefConfig = z.object({
 })
 
 /**
- * AgentSkillStandardizeResponse
- */
-export const zAgentSkillStandardizeResponse = z.object({
-  manifest: zSkillManifest,
-  skill: zAgentSkillRefConfig,
-})
-
-/**
  * AgentSkillUploadResponse
  */
 export const zAgentSkillUploadResponse = z.object({
@@ -2113,21 +2105,16 @@ export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
  */
 export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
-export const zPostAgentByAgentIdSkillsStandardizePath = z.object({
-  agent_id: z.string(),
+export const zPostAgentByAgentIdSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
 })
-
-/**
- * Skill standardized into drive
- */
-export const zPostAgentByAgentIdSkillsStandardizeResponse = zAgentSkillStandardizeResponse
 
 export const zPostAgentByAgentIdSkillsUploadPath = z.object({
   agent_id: z.string(),
 })
 
 /**
- * Skill validated
+ * Skill uploaded into drive
  */
 export const zPostAgentByAgentIdSkillsUploadResponse = zAgentSkillUploadResponse
 

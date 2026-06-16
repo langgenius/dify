@@ -30,9 +30,13 @@ const toUploadedSkill = (response: PostAgentByAgentIdSkillsUploadResponse, file:
   return {
     description: response.skill?.description ?? response.manifest?.description,
     files: response.skill?.manifest_files ?? response.manifest?.files,
+    fileId: response.skill?.file_id ?? undefined,
+    fullArchiveFileId: response.skill?.full_archive_file_id ?? undefined,
+    fullArchiveKey: response.skill?.full_archive_key ?? undefined,
     id,
     name,
     path: response.skill?.path ?? undefined,
+    skillMdFileId: response.skill?.skill_md_file_id ?? undefined,
     skillMdKey: response.skill?.skill_md_key ?? undefined,
   }
 }

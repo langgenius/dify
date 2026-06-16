@@ -1,13 +1,23 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { useAgentComposerConfigSnapshot } from '@/features/agent-v2/agent-composer/store'
 import { AgentSkills } from '../index'
 
 const mocks = vi.hoisted(() => ({
   driveFilesQueryOptions: vi.fn(),
   uploadSkillMutationOptions: vi.fn(),
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
 }))
 
 vi.mock('@/service/client', () => ({
@@ -67,6 +77,16 @@ function renderAgentSkills() {
         <AgentSkills agentId="agent-1" />
       </AgentComposerProvider>
     </QueryClientProvider>,
+  )
+}
+
+function ConfigSnapshotProbe() {
+  const configSnapshot = useAgentComposerConfigSnapshot({})
+
+  return (
+    <pre data-testid="config-snapshot-probe">
+      {JSON.stringify(configSnapshot.skills_files?.skills ?? [])}
+    </pre>
   )
 }
 
@@ -132,5 +152,127 @@ describe('AgentSkills', () => {
     expect(screen.queryByText('Tender Analyzer')).not.toBeInTheDocument()
     expect(screen.getByText('Meeting Brief')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  // Upload uses the drive-backed response so the added skill can be reloaded from agent drive paths.
+  it('should add an uploaded skill with drive-backed keys when the upload succeeds', async () => {
+    const user = userEvent.setup()
+    const uploadSkill = vi.fn().mockResolvedValue({
+      manifest: {
+        files: ['SKILL.md', 'scripts/run.py'],
+        name: 'Invoice Helper',
+      },
+      skill: {
+        id: 'skill-hash',
+        manifest_files: ['SKILL.md', 'scripts/run.py'],
+        name: 'Invoice Helper',
+        path: 'invoice-helper',
+        skill_md_key: 'invoice-helper/SKILL.md',
+      },
+    })
+    mocks.uploadSkillMutationOptions.mockReturnValue({
+      mutationFn: uploadSkill,
+      mutationKey: ['upload-skill'],
+    })
+
+    renderAgentSkills()
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }))
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    await user.upload(fileInput, file)
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.upload.action' }))
+
+    await waitFor(() => {
+      expect(uploadSkill.mock.calls[0]?.[0]).toEqual({
+        body: {
+          file,
+        },
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
+    })
+    expect(await screen.findByRole('button', { name: 'Invoice Helper' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Invoice Helper' }))
+
+    expect(mocks.driveFilesQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          prefix: 'invoice-helper',
+        },
+      },
+    })
+    expect(vi.mocked(toast.success)).toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.success')
+  })
+
+  // Uploaded drive-backed refs must survive insertion into draft and serialization back to config.
+  it('should preserve archive and skill file ids from the upload response in the serialized draft', async () => {
+    const user = userEvent.setup()
+    const uploadSkill = vi.fn().mockResolvedValue({
+      manifest: {
+        files: ['SKILL.md', 'scripts/run.py'],
+        name: 'Invoice Helper',
+      },
+      skill: {
+        file_id: 'archive-upload-file-id',
+        full_archive_file_id: 'archive-tool-file-id',
+        full_archive_key: 'invoice-helper/.DIFY-SKILL-FULL.zip',
+        id: 'skill-hash',
+        manifest_files: ['SKILL.md', 'scripts/run.py'],
+        name: 'Invoice Helper',
+        path: 'invoice-helper',
+        skill_md_file_id: 'skill-md-tool-file-id',
+        skill_md_key: 'invoice-helper/SKILL.md',
+      },
+    })
+    mocks.uploadSkillMutationOptions.mockReturnValue({
+      mutationFn: uploadSkill,
+      mutationKey: ['upload-skill'],
+    })
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AgentComposerProvider initialDraft={agentSkillsDraft}>
+          <AgentSkills agentId="agent-1" />
+          <ConfigSnapshotProbe />
+        </AgentComposerProvider>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }))
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    await user.upload(fileInput, file)
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.upload.action' }))
+
+    await waitFor(() => {
+      const serializedSkills = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '[]')
+      expect(serializedSkills).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          file_id: 'archive-upload-file-id',
+          full_archive_file_id: 'archive-tool-file-id',
+          full_archive_key: 'invoice-helper/.DIFY-SKILL-FULL.zip',
+          name: 'Invoice Helper',
+          path: 'invoice-helper',
+          skill_md_file_id: 'skill-md-tool-file-id',
+          skill_md_key: 'invoice-helper/SKILL.md',
+        }),
+      ]))
+    })
   })
 })

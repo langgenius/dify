@@ -991,14 +991,6 @@ export const zAgentSkillRefConfig = z.object({
 })
 
 /**
- * AgentSkillStandardizeResponse
- */
-export const zAgentSkillStandardizeResponse = z.object({
-  manifest: zSkillManifest,
-  skill: zAgentSkillRefConfig,
-})
-
-/**
  * AgentSkillUploadResponse
  */
 export const zAgentSkillUploadResponse = z.object({
@@ -3909,25 +3901,20 @@ export const zGetAppsByAppIdAgentLogsQuery = z.object({
  */
 export const zGetAppsByAppIdAgentLogsResponse = zAgentLogResponse
 
-export const zPostAppsByAppIdAgentSkillsStandardizePath = z.object({
-  app_id: z.string(),
+export const zPostAppsByAppIdAgentSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
 })
-
-export const zPostAppsByAppIdAgentSkillsStandardizeQuery = z.object({
-  node_id: z.string().optional(),
-})
-
-/**
- * Skill standardized into drive
- */
-export const zPostAppsByAppIdAgentSkillsStandardizeResponse = zAgentSkillStandardizeResponse
 
 export const zPostAppsByAppIdAgentSkillsUploadPath = z.object({
   app_id: z.string(),
 })
 
+export const zPostAppsByAppIdAgentSkillsUploadQuery = z.object({
+  node_id: z.string().optional(),
+})
+
 /**
- * Skill validated
+ * Skill uploaded into drive
  */
 export const zPostAppsByAppIdAgentSkillsUploadResponse = zAgentSkillUploadResponse
 

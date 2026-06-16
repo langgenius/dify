@@ -210,11 +210,6 @@ export type AgentLogResponse = {
   meta: AgentLogMetaResponse
 }
 
-export type AgentSkillStandardizeResponse = {
-  manifest: SkillManifest
-  skill: AgentSkillRefConfig
-}
-
 export type AgentSkillUploadResponse = {
   manifest: SkillManifest
   skill: AgentSkillRefConfig
@@ -3128,34 +3123,16 @@ export type GetAppsByAppIdAgentLogsResponses = {
 export type GetAppsByAppIdAgentLogsResponse
   = GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
 
-export type PostAppsByAppIdAgentSkillsStandardizeData = {
-  body?: never
+export type PostAppsByAppIdAgentSkillsUploadData = {
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
   query?: {
     node_id?: string
   }
-  url: '/apps/{app_id}/agent/skills/standardize'
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeErrors = {
-  400: unknown
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponses = {
-  201: AgentSkillStandardizeResponse
-}
-
-export type PostAppsByAppIdAgentSkillsStandardizeResponse
-  = PostAppsByAppIdAgentSkillsStandardizeResponses[keyof PostAppsByAppIdAgentSkillsStandardizeResponses]
-
-export type PostAppsByAppIdAgentSkillsUploadData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
   url: '/apps/{app_id}/agent/skills/upload'
 }
 

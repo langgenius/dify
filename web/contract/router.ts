@@ -2,8 +2,6 @@ import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import {
-  agentAppSkillUploadContract,
-  agentSkillUploadContract,
   appDeleteContract,
   appListContract,
   appStarContract,
@@ -101,11 +99,6 @@ export const marketplaceRouterContract = {
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
-// Hand-written console contracts below are temporary overrides for gaps in the
-// generated community contract. Prefer fixing backend OpenAPI annotations so
-// generated contracts include accurate method, path, input, and output types;
-// once generated contracts are correct, the matching hand-written contracts
-// should be removed instead of kept in parallel.
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
@@ -119,29 +112,9 @@ export const consoleRouterContract = {
     workflowOnlineUsers: workflowOnlineUsersContract,
     byAppId: {
       ...communityContract.apps.byAppId,
-      agent: {
-        ...communityContract.apps.byAppId.agent,
-        skills: {
-          ...communityContract.apps.byAppId.agent.skills,
-          upload: {
-            post: agentSkillUploadContract,
-          },
-        },
-      },
     },
   },
-  agent: {
-    ...communityContract.agent,
-    byAgentId: {
-      ...communityContract.agent.byAgentId,
-      skills: {
-        ...communityContract.agent.byAgentId.skills,
-        upload: {
-          post: agentAppSkillUploadContract,
-        },
-      },
-    },
-  },
+  agent: communityContract.agent,
   explore: {
     ...communityContract.explore,
     apps: exploreAppsContract,
