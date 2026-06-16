@@ -200,9 +200,29 @@ class TokenBufferMemory:
         curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         if curr_message_tokens > max_token_limit:
-            while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
+            # Prune complete turns (user + assistant pair) rather than individual
+            # messages to avoid leaving orphaned assistant messages whose
+            # corresponding user query was removed.
+            while curr_message_tokens > max_token_limit and len(prompt_messages) >= 2:
+                # Remove one complete turn (user + assistant)
                 prompt_messages.pop(0)
+                if prompt_messages and prompt_messages[0].role == PromptMessageRole.ASSISTANT:
+                    prompt_messages.pop(0)
+
+                if not prompt_messages:
+                    break
                 curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
+
+            # Safety: if the first remaining message is an orphaned assistant,
+            # drop it too — it has no corresponding user query.
+            if prompt_messages and prompt_messages[0].role == PromptMessageRole.ASSISTANT:
+                prompt_messages.pop(0)
+
+            # If even a single message exceeds the budget, drop everything.
+            if prompt_messages:
+                curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
+                if curr_message_tokens > max_token_limit:
+                    prompt_messages.clear()
 
         return prompt_messages
 
