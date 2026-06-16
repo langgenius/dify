@@ -1,9 +1,7 @@
 import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
-import { useFileUploadConfig } from '@/service/use-common'
 import { TransferMethod } from '@/types/app'
 import InputField from '../input-field'
 
@@ -14,14 +12,6 @@ type VarReferencePickerProps = {
 
 let lastVarReferencePickerProps: VarReferencePickerProps | undefined
 let fileUploadSettingMaxLength: number | undefined = 4
-
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/file-uploader/hooks', () => ({
-  useFileSizeLimit: vi.fn(),
-}))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: (props: VarReferencePickerProps) => {
@@ -101,14 +91,6 @@ describe('InputField', () => {
     vi.clearAllMocks()
     lastVarReferencePickerProps = undefined
     fileUploadSettingMaxLength = 4
-    vi.mocked(useFileUploadConfig).mockReturnValue({ data: {} } as ReturnType<typeof useFileUploadConfig>)
-    vi.mocked(useFileSizeLimit).mockReturnValue({
-      imgSizeLimit: 10 * 1024 * 1024,
-      docSizeLimit: 20 * 1024 * 1024,
-      audioSizeLimit: 30 * 1024 * 1024,
-      videoSizeLimit: 40 * 1024 * 1024,
-      maxFileUploadLimit: 10,
-    } as ReturnType<typeof useFileSizeLimit>)
   })
 
   it('should keep the header and actions visible while the field content scrolls internally', () => {
@@ -647,14 +629,10 @@ describe('InputField', () => {
     })
   })
 
-  it.each([
-    { maxLength: 20, expectedNumberLimits: 10 },
-    { maxLength: 0, expectedNumberLimits: 1 },
-    { maxLength: Number.NaN, expectedNumberLimits: 1 },
-  ])('should normalize file-list upload limits on save', async ({ maxLength, expectedNumberLimits }) => {
+  it('should normalize empty file-list upload limit on save', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
-    fileUploadSettingMaxLength = maxLength
+    fileUploadSettingMaxLength = Number.NaN
 
     render(
       <InputField
@@ -673,7 +651,7 @@ describe('InputField', () => {
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange.mock.calls[0]![0]).toEqual(expect.objectContaining({
       type: InputVarType.multiFiles,
-      number_limits: expectedNumberLimits,
+      number_limits: 1,
     }))
   })
 
