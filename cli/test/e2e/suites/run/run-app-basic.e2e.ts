@@ -289,6 +289,26 @@ describe('E2E / difyctl run app', () => {
     })
   })
 
+  it('[P1] validation failure returns http_status 422 in JSON error envelope', async () => {
+    // After the @accepts/@returns server contract unification, input schema
+    // validation failures consistently return HTTP 422 (not 400 or 500).
+    // This verifies the CLI propagates the unified status code.
+    const result = await fx.r([
+      'run',
+      'app',
+      E.workflowAppId,
+      '--inputs',
+      JSON.stringify({ x: 'hello', num: 'not-a-number', enum_var: 'A', paragraph: 'ok' }),
+      '-o',
+      'json',
+    ])
+    expect(result.exitCode).not.toBe(0)
+    const envelope = JSON.parse(result.stderr.trim()) as {
+      error: { code: string, message: string, http_status?: number }
+    }
+    expect(envelope.error.http_status, 'validation failure must return http_status 422').toBe(422)
+  })
+
   // =========================================================================
   // Error scenarios
   // =========================================================================
