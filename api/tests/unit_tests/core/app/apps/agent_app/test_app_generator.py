@@ -201,17 +201,18 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.AgentAppRunner", return_value=runner)
         return runner
 
-    def _call(self, generator, mocker: MockerFixture, queue_manager):
+    def _call(self, generator, mocker: MockerFixture, queue_manager, *, is_resume=False, query="query"):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
             context=mocker.MagicMock(),
             application_generate_entity=mocker.MagicMock(
-                agent_id="a", agent_config_snapshot_id="s", model_conf=mocker.MagicMock(model="m")
+                agent_id="a", agent_config_snapshot_id="s", model_conf=mocker.MagicMock(model="m"), query=query
             ),
             queue_manager=queue_manager,
             conversation_id="conv",
             message_id="msg",
             user_from=UserFrom.END_USER,
+            is_resume=is_resume,
         )
 
     def test_happy_path_runs_backend(self, generator, mocker: MockerFixture):
@@ -226,6 +227,20 @@ class TestGenerateWorker:
         queue_manager = mocker.MagicMock()
         self._call(generator, mocker, queue_manager)
         runner.run.assert_not_called()
+
+    def test_resume_skips_input_guards_and_consumes_reply(self, generator, mocker: MockerFixture):
+        # ENG-638 (review): on resume the replayed query is NOT new end-user input.
+        # Input guards must be skipped, even if moderation/annotation would match,
+        # so the run continues and the human reply (deferred_tool_results) is used.
+        runner = self._wire(generator, mocker, handled=True)  # guards WOULD short-circuit
+        queue_manager = mocker.MagicMock()
+
+        self._call(generator, mocker, queue_manager, is_resume=True, query="the approved reply")
+
+        generator._run_input_guards.assert_not_called()
+        runner.run.assert_called_once()
+        # the replayed paused-turn query flows straight to the runner (snapshot match)
+        assert runner.run.call_args.kwargs["query"] == "the approved reply"
 
     def test_generate_task_stopped_is_swallowed(self, generator, mocker: MockerFixture):
         self._wire(generator, mocker, run_side_effect=GenerateTaskStoppedError())

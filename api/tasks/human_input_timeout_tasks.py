@@ -95,16 +95,30 @@ def check_and_handle_human_input_timeouts(limit: int = 100) -> None:
                 timeout_status=HumanInputFormStatus.EXPIRED if is_global else HumanInputFormStatus.TIMEOUT,
                 reason="global_timeout" if is_global else "node_timeout",
             )
-            assert record.workflow_run_id is not None, "workflow_run_id should not be None for non-test form"
             if is_global:
+                # Global timeout applies only to workflow-owned forms
+                # (_is_global_timeout requires a workflow_run_id): end the run.
+                assert record.workflow_run_id is not None, "global timeout requires a workflow_run_id"
                 _handle_global_timeout(
                     form_id=record.form_id,
                     workflow_run_id=record.workflow_run_id,
                     node_id=record.node_id,
                     session_factory=session_factory,
                 )
-            else:
+            elif record.workflow_run_id is not None:
+                # Workflow Agent node / Human Input node form: resume the workflow.
                 service.enqueue_resume(record.workflow_run_id)
+            elif record.conversation_id is not None:
+                # ENG-635: Agent v2 chat ask_human form is conversation-owned (no
+                # workflow_run_id). Resume the chat turn so the timeout is threaded
+                # back to the agent run as the ask_human deferred_tool_result
+                # (status="timeout"), mirroring HumanInputService.submit_form_by_token.
+                service.enqueue_agent_app_resume(conversation_id=record.conversation_id, form_id=record.form_id)
+            else:
+                logger.warning(
+                    "Timed-out form %s has neither workflow_run_id nor conversation_id; skipping resume",
+                    record.form_id,
+                )
         except Exception:
             logger.exception(
                 "Failed to handle timeout for form_id=%s workflow_run_id=%s",
