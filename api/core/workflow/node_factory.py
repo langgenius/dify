@@ -334,6 +334,7 @@ class DifyNodeFactory(NodeFactory):
                 self.graph_runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
             ),
+            conversation_id_getter=self._conversation_id,
         )
         self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
