@@ -29,7 +29,10 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
     response = httpx.post(
-        url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version}, timeout=MARKETPLACE_TIMEOUT
+        url,
+        json={"plugin_ids": plugin_ids},
+        headers={"X-Dify-Version": dify_config.project.version},
+        timeout=MARKETPLACE_TIMEOUT,
     )
     response.raise_for_status()
 
@@ -42,7 +45,10 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
 
     url = str(marketplace_api_url / "api/v1/plugins/batch")
     response = httpx.post(
-        url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version}, timeout=MARKETPLACE_TIMEOUT
+        url,
+        json={"plugin_ids": plugin_ids},
+        headers={"X-Dify-Version": dify_config.project.version},
+        timeout=MARKETPLACE_TIMEOUT,
     )
     response.raise_for_status()
 
