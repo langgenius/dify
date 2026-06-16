@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { FileTreeIconType } from '.'
 import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
   FileTreeBadge,
   FileTreeFile,
@@ -330,6 +331,19 @@ function VisualStates() {
 
 export const Default: Story = {
   render: () => <ComposedFileTree />,
+  play: async ({ canvas, userEvent }) => {
+    const srcFolder = canvas.getByRole('button', { name: 'src' })
+
+    await expect(canvas.getByRole('button', { name: 'components' })).toBeVisible()
+
+    await userEvent.click(srcFolder)
+    await expect(srcFolder).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.queryByRole('button', { name: 'components' })).not.toBeInTheDocument()
+
+    await userEvent.click(srcFolder)
+    await expect(srcFolder).toHaveAttribute('aria-expanded', 'true')
+    await expect(canvas.getByRole('button', { name: 'components' })).toBeVisible()
+  },
 }
 
 export const DataDriven: Story = {
