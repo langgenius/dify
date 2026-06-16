@@ -36,6 +36,8 @@ const envImportTipKeys = {
   other: 'agentDetail.configure.advancedSettings.envEditor.importEnvTip.other',
 } as const
 
+const maskedEnvValue = '••••••••••••'
+
 const getCurrentEnvImportPlatform = () => {
   if (typeof navigator === 'undefined')
     return 'other'
@@ -172,9 +174,12 @@ function EnvEditorRow({
   showScope?: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const [isValueRevealed, setIsValueRevealed] = useState(false)
   const gridClassName = showScope
     ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
     : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
+  const shouldMaskValue = variable.masked && !isValueRevealed
+  const displayedValue = shouldMaskValue ? maskedEnvValue : variable.value
 
   return (
     <div className={cn('grid min-h-7 border-t border-divider-subtle', gridClassName, isHighlighted && 'bg-background-default-hover')}>
@@ -196,28 +201,29 @@ function EnvEditorRow({
             )}
       </EnvEditorCell>
       <EnvEditorCell>
-        {editable
+        {editable && !shouldMaskValue
           ? (
               <EnvEditorInput
                 aria-label={t('agentDetail.configure.advancedSettings.envEditor.valueColumn')}
                 placeholder={t('agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')}
                 shouldFocus={autoFocusField === 'value'}
-                value={variable.value}
+                value={displayedValue}
                 onValueChange={onValueChange ?? (() => {})}
               />
             )
           : (
               <span className="min-w-0 truncate px-3 system-xs-regular text-text-secondary">
-                {variable.value}
+                {displayedValue}
               </span>
             )}
         {variable.masked && (
           <button
             type="button"
-            aria-label={t('agentDetail.configure.advancedSettings.envEditor.revealValue', { key: variable.key })}
+            aria-label={t(isValueRevealed ? 'agentDetail.configure.advancedSettings.envEditor.hideValue' : 'agentDetail.configure.advancedSettings.envEditor.revealValue', { key: variable.key })}
+            onClick={() => setIsValueRevealed(revealed => !revealed)}
             className="mr-2 ml-auto flex size-5 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
-            <span aria-hidden className="i-ri-eye-line size-4" />
+            <span aria-hidden className={cn(isValueRevealed ? 'i-ri-eye-off-line' : 'i-ri-eye-line', 'size-4')} />
           </button>
         )}
       </EnvEditorCell>
@@ -323,6 +329,25 @@ export function EnvVariablesTable({
   const gridClassName = showScope
     ? 'grid-cols-[minmax(76px,1fr)_minmax(84px,1.25fr)_72px_28px]'
     : 'grid-cols-[minmax(120px,180px)_minmax(160px,1fr)_28px]'
+  const checkEnvVariableKey = (key: string) => {
+    const { isValid, errorMessageKey } = checkKeys([key], false)
+    if (!isValid) {
+      toast.error(t(`varKeyError.${errorMessageKey}`, {
+        ns: 'appDebug',
+        key: t('agentDetail.configure.advancedSettings.envEditor.keyColumn'),
+      }))
+      return false
+    }
+
+    return true
+  }
+  const handleKeyChange = (id: string, key: string) => {
+    const normalizedKey = key.replaceAll(' ', '_')
+    if (normalizedKey && !checkEnvVariableKey(normalizedKey))
+      return
+
+    onKeyChange?.(id, normalizedKey)
+  }
 
   return (
     <div className="overflow-hidden rounded-lg border border-divider-regular bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3">
@@ -365,7 +390,7 @@ export function EnvVariablesTable({
           editable={editable}
           isHighlighted={index === highlightedIndex}
           onDelete={() => onDelete(variable.id)}
-          onKeyChange={key => onKeyChange?.(variable.id, key)}
+          onKeyChange={key => handleKeyChange(variable.id, key)}
           onScopeChange={scope => onScopeChange(variable.id, scope)}
           onValueChange={value => onValueChange?.(variable.id, value)}
           showScope={showScope}
@@ -427,24 +452,8 @@ export function AgentEnvEditor() {
 
     setEnvVariables([...envVariables, ...importedVariables])
   }
-  const checkEnvVariableKey = (key: string) => {
-    const { isValid, errorMessageKey } = checkKeys([key], false)
-    if (!isValid) {
-      toast.error(t(`varKeyError.${errorMessageKey}`, {
-        ns: 'appDebug',
-        key: t('agentDetail.configure.advancedSettings.envEditor.keyColumn'),
-      }))
-      return false
-    }
-
-    return true
-  }
   const updateVariableKey = (id: string, key: string) => {
-    const normalizedKey = key.replaceAll(' ', '_')
-    if (normalizedKey && !checkEnvVariableKey(normalizedKey))
-      return
-
-    updateVariable(id, variable => ({ ...variable, key: normalizedKey }))
+    updateVariable(id, variable => ({ ...variable, key }))
   }
   const updateVariableScope = (id: string, scope: EnvScope) => {
     updateVariable(id, variable => ({ ...variable, scope }))

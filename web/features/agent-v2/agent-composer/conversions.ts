@@ -250,7 +250,7 @@ const toDifyToolConfigs = (
     provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
     runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
-    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : undefined),
+    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : 'unauthorized' as const),
     credential_ref: tool.credentialId
       ? {
           id: tool.credentialId,
@@ -330,7 +330,7 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
   const envVariables = tool.envVariables ?? []
 
   return [{
-    enabled: true,
+    enabled: false,
     env: {
       variables: envVariables
         .filter(isPublishablePlainEnvVariable)
@@ -355,7 +355,7 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
     install_commands: tool.installCommand ? [tool.installCommand] : [],
     name: tool.name,
     tool_name: tool.id,
-    pre_authorized: tool.action === 'preAuthorize',
+    pre_authorized: false,
   }]
 })
 

@@ -24,6 +24,7 @@ export type AgentAppCreatePayload = {
 export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
+  app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -40,6 +41,7 @@ export type AppDetailWithSite = {
   mode: string
   model_config?: ModelConfig | null
   name: string
+  role?: string | null
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -57,14 +59,14 @@ export type AgentInviteOptionsResponse = {
   total: number
 }
 
-export type UpdateAppPayload = {
+export type AgentAppUpdatePayload = {
   description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role?: string
+  role?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -252,6 +254,7 @@ export type AgentConfigSnapshotDetailResponse = {
 
 export type AppPartial = {
   access_mode?: string | null
+  app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -269,7 +272,7 @@ export type AppPartial = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
-  role?: string
+  role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1217,6 +1220,7 @@ export type AppPaginationWritable = {
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null
   api_base_url?: string | null
+  app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -1232,6 +1236,7 @@ export type AppDetailWithSiteWritable = {
   mode: string
   model_config?: ModelConfig | null
   name: string
+  role?: string | null
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -1243,6 +1248,7 @@ export type AppDetailWithSiteWritable = {
 
 export type AppPartialWritable = {
   access_mode?: string | null
+  app_id?: string | null
   author_name?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
@@ -1259,6 +1265,7 @@ export type AppPartialWritable = {
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  role?: string | null
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1385,7 +1392,7 @@ export type GetAgentByAgentIdResponses = {
 export type GetAgentByAgentIdResponse = GetAgentByAgentIdResponses[keyof GetAgentByAgentIdResponses]
 
 export type PutAgentByAgentIdData = {
-  body: UpdateAppPayload
+  body: AgentAppUpdatePayload
   path: {
     agent_id: string
   }

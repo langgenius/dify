@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
 import {
   FieldDescription,
@@ -76,6 +77,17 @@ export const Default: Story = {
     size: 'md',
     checked: false,
     disabled: false,
+  },
+  play: async ({ canvas, userEvent }) => {
+    const switchControl = canvas.getByRole('switch', { name: 'Enable auto retry' })
+
+    await expect(switchControl).toHaveAttribute('aria-checked', 'false')
+    await expect(canvas.getByText('Failures require manual retry.')).toBeVisible()
+
+    await userEvent.click(switchControl)
+
+    await expect(switchControl).toHaveAttribute('aria-checked', 'true')
+    await expect(canvas.getByText('Failures will retry automatically.')).toBeVisible()
   },
 }
 

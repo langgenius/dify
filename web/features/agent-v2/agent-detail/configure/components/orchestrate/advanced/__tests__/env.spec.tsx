@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { AgentEnvEditor } from '../env'
+import { AgentEnvEditor, EnvVariablesTable } from '../env'
 import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -122,6 +122,36 @@ describe('AgentEnvEditor', () => {
       expect(screen.getByDisplayValue('abc123')).toBeInTheDocument()
       expect(screen.getByDisplayValue('BASE_URL')).toBeInTheDocument()
       expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument()
+    })
+
+    it('should reveal and hide masked variable values from the eye button', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <EnvVariablesTable
+          editable
+          envVariables={[{
+            id: 'env-1',
+            key: 'API_KEY',
+            value: 'sk-original',
+            scope: 'secret',
+            masked: true,
+          }]}
+          onDelete={vi.fn()}
+          onScopeChange={vi.fn()}
+          showDraftRow={false}
+        />,
+      )
+
+      expect(screen.queryByDisplayValue('sk-original')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.revealValue:{"key":"API_KEY"}' }))
+
+      expect(screen.getByDisplayValue('sk-original')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.hideValue:{"key":"API_KEY"}' }))
+
+      expect(screen.queryByDisplayValue('sk-original')).not.toBeInTheDocument()
     })
   })
 })
