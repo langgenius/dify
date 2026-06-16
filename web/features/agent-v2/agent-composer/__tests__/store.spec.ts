@@ -187,7 +187,8 @@ describe('agent composer store conversions', () => {
         name: 'Run Tests',
         tool_name: 'run-tests',
         install_command: 'pnpm install',
-        pre_authorized: true,
+        enabled: false,
+        pre_authorized: false,
       }),
     ])
     expect(publishConfig.knowledge).toMatchObject({
@@ -422,6 +423,10 @@ describe('agent composer store conversions', () => {
         },
       ],
       secret_refs: [],
+    })
+    expect(publishConfig.tools?.cli_tools?.[0]).toMatchObject({
+      enabled: false,
+      pre_authorized: false,
     })
   })
 })

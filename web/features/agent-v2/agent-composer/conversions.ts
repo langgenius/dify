@@ -322,7 +322,7 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
   const envVariables = tool.envVariables ?? []
 
   return [{
-    enabled: true,
+    enabled: false,
     env: {
       variables: envVariables
         .filter(isPublishablePlainEnvVariable)
@@ -347,7 +347,7 @@ const toCliToolConfigs = (tools: AgentTool[]) => tools.flatMap((tool) => {
     install_commands: tool.installCommand ? [tool.installCommand] : [],
     name: tool.name,
     tool_name: tool.id,
-    pre_authorized: tool.action === 'preAuthorize',
+    pre_authorized: false,
   }]
 })
 
