@@ -53,6 +53,7 @@ describe('agent/node', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAgentRosterDetail.mockImplementation((agentId?: string) => ({
+      isPending: false,
       data: agentId
         ? {
             id: agentId,
@@ -65,6 +66,7 @@ describe('agent/node', () => {
         : undefined,
     }))
     mockUseWorkflowInlineAgentDetail.mockImplementation((nodeId?: string, agentId?: string | null) => ({
+      isPending: false,
       data: nodeId && agentId
         ? {
             agent: {
@@ -144,6 +146,31 @@ describe('agent/node', () => {
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
     expect(screen.getByText('Workflow Agent 1')).toHaveClass('system-xs-regular', 'text-text-secondary')
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
+  })
+
+  it('renders a stable inline placeholder while agent detail is loading', () => {
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      isPending: true,
+      data: undefined,
+    })
+
+    const { container } = render(
+      <AgentV2Node
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+      />,
+    )
+
+    expect(screen.queryByText('workflow.nodes.agent.roster.inlineSetup.name')).not.toBeInTheDocument()
+    expect(container.querySelector('.bg-workflow-block-parma-bg')).toBeInTheDocument()
+    expect(container.querySelector('.size-8.shrink-0.rounded-full.bg-text-quaternary\\/20')).toBeInTheDocument()
+    expect(container.querySelector('.h-2.w-20')).toBeInTheDocument()
   })
 
   it('renders an error state when no roster agent is selected', () => {
