@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
+import { Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Description from '../index'
 
 // ================================
@@ -15,6 +18,7 @@ const pluginTranslations: Record<string, string> = {
   'marketplace.discover': 'Discover',
   'marketplace.difyMarketplace': 'Dify Marketplace',
   'marketplace.and': 'and',
+  'marketplace.allPlugins': 'All plugins',
   'category.models': 'Models',
   'category.tools': 'Tools',
   'category.datasources': 'Data Sources',
@@ -22,6 +26,8 @@ const pluginTranslations: Record<string, string> = {
   'category.agents': 'Agent Strategies',
   'category.extensions': 'Extensions',
   'category.bundles': 'Bundles',
+  'marketplace.pluginsHeroSubtitle': 'Use community-built plugins to power your AI development.',
+  'marketplace.pluginsHeroTitle': 'Discover. Extend. Build.',
 }
 
 const commonTranslations: Record<string, string> = {
@@ -32,15 +38,32 @@ const commonTranslations: Record<string, string> = {
 vi.mock('#i18n', () => ({
   useLocale: vi.fn(() => mockDefaultLocale),
   useTranslation: vi.fn((ns: string) => ({
-    t: (key: string) => {
-      if (ns === 'plugin')
+    t: (key: string, options?: { ns?: string }) => {
+      const namespace = options?.ns ?? ns
+      if (namespace === 'plugin')
         return pluginTranslations[key] || key
-      if (ns === 'common')
+      if (namespace === 'common')
         return commonTranslations[key] || key
       return key
     },
   })),
 }))
+
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path: string) => `https://docs.example.com${path}`,
+}))
+
+const createWrapper = (searchParams = '') => {
+  const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ searchParams })
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <JotaiProvider>
+      <NuqsWrapper>
+        {children}
+      </NuqsWrapper>
+    </JotaiProvider>
+  )
+  return { Wrapper }
+}
 
 // ================================
 // Description Component Tests
@@ -93,6 +116,44 @@ describe('Description', () => {
       expect(subheading).toHaveClass('body-md-regular')
       expect(subheading).toHaveClass('text-center')
       expect(subheading).toHaveClass('text-text-tertiary')
+    })
+
+    it('should render platform hero content and nav slot', () => {
+      const { Wrapper } = createWrapper()
+
+      render(
+        <Description
+          isMarketplacePlatform
+          marketplaceNav={<div data-testid="marketplace-nav">Nav</div>}
+        />,
+        { wrapper: Wrapper },
+      )
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Discover. Extend. Build.')
+      expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Use community-built plugins to power your AI development.')
+      expect(screen.getByTestId('marketplace-nav')).toBeInTheDocument()
+      expect(screen.getByText('All plugins')).toBeInTheDocument()
+    })
+
+    it('should keep platform nav 12px from the hero edge without nav wrapper padding', () => {
+      const { Wrapper } = createWrapper()
+      const { container } = render(<Description isMarketplacePlatform />, { wrapper: Wrapper })
+
+      const hero = container.firstElementChild
+      const navWrapper = container.querySelector('.relative.z-20.flex.w-full.flex-col.items-start')
+      const heroContentWrapper = container.querySelector('.relative.z-10.mx-5')
+      const titleWrapper = screen.getByRole('heading', { level: 1 }).parentElement?.parentElement
+      const tabs = screen.getByText('All plugins').closest('.flex.shrink-0.items-center.gap-1.overflow-x-auto')
+      const tabsWrapper = tabs?.parentElement
+
+      expect(hero).toHaveClass('px-3')
+      expect(hero).not.toHaveClass('px-8')
+      expect(hero).not.toHaveClass('mt-1')
+      expect(navWrapper).toBeInTheDocument()
+      expect(navWrapper).not.toHaveClass('p-3')
+      expect(heroContentWrapper).toBeInTheDocument()
+      expect(titleWrapper).toHaveStyle({ marginTop: '32px' })
+      expect(tabsWrapper).toHaveStyle({ marginTop: '32px' })
     })
   })
 

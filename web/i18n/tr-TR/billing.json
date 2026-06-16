@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "planlar",
   "plansCommon.triggerEvents.professional": "{{count,number}} Tetikleme Etkinlikleri/ay",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} Tetikleyici Olaylar",
-  "plansCommon.triggerEvents.tooltip": "Eklenti, Zamanlama veya Webhook tetikleyicileri aracılığıyla iş akışlarını otomatik olarak başlatan etkinliklerin sayısı.",
+  "plansCommon.triggerEvents.tooltip": "Entegrasyon, Zamanlama veya Webhook tetikleyicileri aracılığıyla iş akışlarını otomatik olarak başlatan etkinliklerin sayısı.",
   "plansCommon.triggerEvents.unlimited": "Sınırsız Tetikleme Olayları",
   "plansCommon.unavailable": "Mevcut Değil",
   "plansCommon.unlimited": "Sınırsız",

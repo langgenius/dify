@@ -73,7 +73,7 @@
   "title": "Логирование",
   "triggerBy.appRun": "Веб-приложение",
   "triggerBy.debugging": "Отладка",
-  "triggerBy.plugin": "Плагин",
+  "triggerBy.plugin": "Интеграция",
   "triggerBy.ragPipelineDebugging": "Отладка RAG",
   "triggerBy.ragPipelineRun": "Конвейер RAG",
   "triggerBy.schedule": "Расписание",

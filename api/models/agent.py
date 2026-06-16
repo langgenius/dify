@@ -38,6 +38,8 @@ class AgentScope(StrEnum):
 class AgentSource(StrEnum):
     """Origin that created or imported the Agent."""
 
+    # Created directly as a reusable Agent Roster asset.
+    ROSTER = "roster"
     # Created from an Agent App composer.
     AGENT_APP = "agent_app"
     # Created from a Workflow Agent Composer flow.
@@ -396,6 +398,12 @@ class AgentRuntimeSession(DefaultFieldsMixin, Base):
         default=AgentRuntimeSessionStatus.ACTIVE,
     )
     cleaned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # ENG-637: when a run pauses for a dify.ask_human deferred call, these link
+    # the session to the awaiting HITL form and the deferred tool_call_id, so a
+    # resumed node can map the submitted form back into deferred_tool_results.
+    # Both NULL whenever the session is not paused on human input.
+    pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    pending_tool_call_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 # Back-compat alias for the shipped workflow lifecycle code (PR #36724).

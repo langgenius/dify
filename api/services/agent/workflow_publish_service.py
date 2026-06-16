@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from models.agent import Agent, AgentScope, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
-from models.agent_config_entities import WorkflowNodeJobConfig
+from models.agent_config_entities import DeclaredOutputConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 
 
@@ -17,6 +19,43 @@ class WorkflowAgentPublishService:
 
     _DRAFT_WORKFLOW_VERSION = Workflow.VERSION_DRAFT
     _AGENT_BINDING_KEY = "agent_binding"
+    _AGENT_TASK_KEY = "agent_task"
+    _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
+
+    @classmethod
+    def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
+        """Return draft graph with persisted Agent node job config projected into node data.
+
+        Workflow draft graph is the front-end's editing source of truth, while
+        runtime/publish reads WorkflowAgentNodeBinding.node_job_config. This
+        response-only projection keeps reads aligned without writing binding
+        details back into the stored graph JSON.
+        """
+        graph = cast(dict[str, Any], copy.deepcopy(draft_workflow.graph_dict))
+        agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(graph))
+        if not agent_nodes:
+            return graph
+
+        bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == cls._DRAFT_WORKFLOW_VERSION,
+                WorkflowAgentNodeBinding.node_id.in_(list(agent_nodes.keys())),
+            )
+        ).all()
+        for binding in bindings:
+            node_data = agent_nodes.get(binding.node_id)
+            if not isinstance(node_data, dict):
+                continue
+            node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+            if node_job.workflow_prompt is not None:
+                node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
+            node_data[cls._AGENT_DECLARED_OUTPUTS_KEY] = [
+                output.model_dump(mode="json") for output in node_job.declared_outputs
+            ]
+        return graph
 
     @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
@@ -61,6 +100,7 @@ class WorkflowAgentPublishService:
                 session=session,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
+                node_data=node_data,
                 node_binding=binding_payload,
                 existing_binding=existing_by_node_id.get(node_id),
                 account_id=account_id,
@@ -74,6 +114,7 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         node_id: str,
+        node_data: Mapping[str, Any],
         node_binding: Mapping[str, Any],
         existing_binding: WorkflowAgentNodeBinding | None,
         account_id: str,
@@ -101,6 +142,10 @@ class WorkflowAgentPublishService:
             raise ValueError(f"Workflow Agent node {node_id} roster agent has no active config snapshot.")
 
         binding = existing_binding
+        node_job_config = cls._node_job_config_from_node_data(
+            existing_binding=existing_binding,
+            node_data=node_data,
+        )
         if binding is None:
             binding = WorkflowAgentNodeBinding(
                 tenant_id=draft_workflow.tenant_id,
@@ -108,17 +153,46 @@ class WorkflowAgentPublishService:
                 workflow_id=draft_workflow.id,
                 workflow_version=cls._DRAFT_WORKFLOW_VERSION,
                 node_id=node_id,
-                node_job_config=WorkflowNodeJobConfig(),
+                node_job_config=node_job_config,
                 created_by=account_id,
             )
             session.add(binding)
-        elif not binding.node_job_config:
-            binding.node_job_config = WorkflowNodeJobConfig()
+        else:
+            binding.node_job_config = node_job_config
 
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = agent.id
         binding.current_snapshot_id = agent.active_config_snapshot_id
         binding.updated_by = account_id
+
+    @classmethod
+    def _node_job_config_from_node_data(
+        cls,
+        *,
+        existing_binding: WorkflowAgentNodeBinding | None,
+        node_data: Mapping[str, Any],
+    ) -> WorkflowNodeJobConfig:
+        if existing_binding and existing_binding.node_job_config:
+            node_job = WorkflowNodeJobConfig.model_validate(existing_binding.node_job_config_dict)
+        else:
+            node_job = WorkflowNodeJobConfig()
+
+        agent_task = node_data.get(cls._AGENT_TASK_KEY)
+        if isinstance(agent_task, str):
+            node_job.workflow_prompt = agent_task
+
+        declared_outputs_payload = node_data.get(cls._AGENT_DECLARED_OUTPUTS_KEY)
+        if declared_outputs_payload is not None:
+            if not isinstance(declared_outputs_payload, list):
+                raise ValueError("Workflow Agent node agent_declared_outputs must be a list.")
+            try:
+                node_job.declared_outputs = [
+                    DeclaredOutputConfig.model_validate(output) for output in declared_outputs_payload
+                ]
+            except ValidationError as exc:
+                raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
+
+        return node_job
 
     @classmethod
     def copy_agent_node_bindings_to_published(

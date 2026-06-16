@@ -30,7 +30,7 @@ describe('CreatorsFilter', () => {
   it('should sort the current user first and filter out pending members', () => {
     render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.allCreators/i }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
 
     const options = screen.getAllByRole('button').filter(button =>
       ['Alice', 'Bob', 'Zoe'].some(name => button.textContent?.includes(name)),
@@ -48,7 +48,7 @@ describe('CreatorsFilter', () => {
   it('should search creators, clear keywords, and select a creator', () => {
     render(<CreatorsFilter value={[]} onChange={mockOnChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.allCreators/i }))
+    fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
     fireEvent.change(screen.getByPlaceholderText('app.studio.filters.searchCreators'), {
       target: { value: 'zo' },
     })

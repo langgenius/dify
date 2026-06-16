@@ -113,7 +113,7 @@ jobs:
         run: vp exec playwright install --with-deps chromium
 
       - name: Run dify-ui tests
-        run: vp test run --coverage --silent=passed-only
+        run: vp test run --project unit --coverage --silent=passed-only
 
       - name: Report coverage
         if: ${{ env.CODECOV_TOKEN != '' }}
@@ -123,3 +123,26 @@ jobs:
           flags: dify-ui
         env:
           CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+
+  dify-ui-storybook-test:
+    name: dify-ui Storybook Tests
+    runs-on: depot-ubuntu-24.04-4
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./packages/dify-ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Install Chromium for Browser Mode
+        run: vp exec playwright install --with-deps chromium
+
+      - name: Run dify-ui Storybook tests
+        run: vp run test:storybook

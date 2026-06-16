@@ -23,7 +23,7 @@ type AppInfoDetailLayerProps = {
   open?: boolean
 }
 
-export const AppInfoDetailLayer = ({
+const AppInfoDetailLayer = ({
   actions,
   open = actions.panelOpen,
 }: AppInfoDetailLayerProps) => {
@@ -84,10 +84,15 @@ export const AppInfoView = ({
     appDetail,
     panelOpen,
     setPanelOpen,
+    activeModal,
+    secretEnvList,
   } = actions
 
   if (!appDetail)
     return null
+
+  const detailLayerOpen = onlyShowDetail ? openState : panelOpen
+  const shouldRenderDetailLayer = renderDetail && (detailLayerOpen || activeModal || secretEnvList.length > 0)
 
   return (
     <div>
@@ -101,10 +106,10 @@ export const AppInfoView = ({
           }}
         />
       )}
-      {renderDetail && (
+      {shouldRenderDetailLayer && (
         <AppInfoDetailLayer
           actions={actions}
-          open={onlyShowDetail ? openState : panelOpen}
+          open={detailLayerOpen}
         />
       )}
     </div>

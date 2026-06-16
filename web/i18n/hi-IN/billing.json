@@ -139,7 +139,7 @@
   "plansCommon.title.plans": "योजनाएँ",
   "plansCommon.triggerEvents.professional": "{{count,number}} ट्रिगर इवेंट/महीना",
   "plansCommon.triggerEvents.sandbox": "{{count,number}} ट्रिगर इवेंट्स",
-  "plansCommon.triggerEvents.tooltip": "घटनाओं की संख्या जो प्लगइन, शेड्यूल या वेबहुक ट्रिगर के माध्यम से स्वतः वर्कफ़्लो शुरू करती हैं।",
+  "plansCommon.triggerEvents.tooltip": "घटनाओं की संख्या जो एकीकरण, शेड्यूल या वेबहुक ट्रिगर के माध्यम से स्वतः वर्कफ़्लो शुरू करती हैं।",
   "plansCommon.triggerEvents.unlimited": "असीमित ट्रिगर इवेंट्स",
   "plansCommon.unavailable": "अनुपलब्ध",
   "plansCommon.unlimited": "असीमित",
