@@ -62,6 +62,7 @@ export function AppListHeaderFilters({
           showLeadingIcon={false}
         />
         <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
+        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <SearchInput
           className="w-50"
           value={keywords}
@@ -70,7 +71,6 @@ export function AppListHeaderFilters({
         />
       </div>
       <div className="flex items-center gap-2">
-        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <Link
           href="/snippets"
           className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"

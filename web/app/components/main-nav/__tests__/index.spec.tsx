@@ -484,6 +484,21 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
+  it('hides the main menu on snippet detail routes while keeping account settings available', () => {
+    mockPathname = '/snippets/snippet-1/orchestrate'
+
+    renderMainNav()
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.queryByLabelText('Dify')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.menus.apps/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })).toBeInTheDocument()
+  })
+
   it('replaces global navigation with app detail navigation on app routes', () => {
     mockPathname = '/app/app-1/overview'
 
