@@ -81,4 +81,22 @@ describe('block-selector hooks', () => {
     expect(result.current.tabs.some(tab => tab.key === TabsEnum.Snippets)).toBe(false)
     expect(result.current.activeTab).toBe(TabsEnum.Blocks)
   })
+
+  it('resets the active tab to the current default tab', () => {
+    const { result } = renderHook(() => useTabs({
+      noStart: false,
+    }))
+
+    act(() => {
+      result.current.setActiveTab(TabsEnum.Start)
+    })
+
+    expect(result.current.activeTab).toBe(TabsEnum.Start)
+
+    act(() => {
+      result.current.resetActiveTab()
+    })
+
+    expect(result.current.activeTab).toBe(TabsEnum.Blocks)
+  })
 })
