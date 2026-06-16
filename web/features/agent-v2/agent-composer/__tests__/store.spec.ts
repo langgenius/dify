@@ -174,6 +174,7 @@ describe('agent composer store conversions', () => {
         provider_id: 'duckduckgo',
         provider_type: 'builtin',
         tool_name: 'ddg_search',
+        credential_type: 'unauthorized',
         runtime_parameters: {
           query: 'latest docs',
           used_in_agent_nodes: true,
@@ -219,6 +220,47 @@ describe('agent composer store conversions', () => {
         }),
       ],
     })
+  })
+
+  it('should keep unauthorized credential type when no-auth tool settings change', () => {
+    const publishConfig = formStateToAgentSoulConfig({
+      formState: {
+        ...defaultAgentSoulConfigFormState,
+        tools: [
+          {
+            id: 'duckduckgo',
+            kind: 'provider',
+            name: 'duckduckgo',
+            iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+            credentialVariant: 'none',
+            actions: [
+              {
+                id: 'duckduckgo:ddg_search',
+                name: 'DuckDuckGo Search',
+                toolName: 'ddg_search',
+                description: 'Search the web.',
+              },
+            ],
+          },
+        ],
+        toolSettings: {
+          'duckduckgo:ddg_search': {
+            query: 'updated query',
+          },
+        },
+      },
+    })
+
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        provider_id: 'duckduckgo',
+        tool_name: 'ddg_search',
+        credential_type: 'unauthorized',
+        runtime_parameters: {
+          query: 'updated query',
+        },
+      }),
+    ])
   })
 
   it('should derive model plugin_id from the selected provider when publishing', () => {

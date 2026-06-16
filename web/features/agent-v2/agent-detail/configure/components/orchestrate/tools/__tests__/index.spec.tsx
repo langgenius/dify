@@ -29,6 +29,16 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   ),
 }))
 
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
+  default: ({ formSchemas }: { formSchemas: Array<{ label?: Record<string, string>, variable?: string }> }) => (
+    <div data-testid="tool-setting-form">
+      {formSchemas.map(schema => (
+        <div key={schema.variable}>{schema.label?.en_US}</div>
+      ))}
+    </div>
+  ),
+}))
+
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: toolProviderState.builtInTools }),
   useAllCustomTools: () => ({ data: [] }),
@@ -179,7 +189,25 @@ const duckDuckGoProvider = {
         en_US: 'Search the web with DuckDuckGo.',
         zh_Hans: '使用 DuckDuckGo 搜索网页。',
       },
-      parameters: [],
+      parameters: [
+        {
+          name: 'query',
+          label: {
+            en_US: 'Search Query',
+            zh_Hans: '搜索查询',
+          },
+          human_description: {
+            en_US: 'The query to search for.',
+            zh_Hans: '要搜索的查询。',
+          },
+          type: 'string',
+          form: 'form',
+          llm_description: '',
+          required: true,
+          multiple: false,
+          default: '',
+        },
+      ],
       labels: [],
       output_schema: {},
     },
@@ -289,6 +317,23 @@ describe('AgentTools', () => {
         name: 'DuckDuckGo',
       })).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+    })
+
+    it('should open provider tool settings with catalog icon and parameters', async () => {
+      const user = userEvent.setup()
+      toolProviderState.builtInTools = [duckDuckGoProvider]
+      const { baseElement } = renderAgentTools()
+
+      await user.click(screen.getByRole('button', {
+        name: 'DuckDuckGo',
+      }))
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
+      }))
+
+      expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
+      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByText('Search Query')).toBeInTheDocument()
     })
   })
 })

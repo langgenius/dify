@@ -13,17 +13,18 @@ const localize = (value: string) => ({
   zh_Hans: value,
 })
 
-const createToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
+const createFallbackToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
   id: tool.id,
   name: tool.id,
   author: tool.name,
   description: localize(`${tool.name} tools`),
-  icon: '',
-  label: localize(tool.name),
+  icon: tool.icon ?? '',
+  icon_dark: tool.iconDark,
+  label: localize(tool.displayName ?? tool.name),
   type: (tool.providerType as CollectionType | undefined) ?? CollectionType.builtIn,
   team_credentials: {},
   is_team_authorization: true,
-  allow_delete: false,
+  allow_delete: tool.allowDelete ?? false,
   labels: [],
   meta: {
     version: '0.0.0',
@@ -41,18 +42,20 @@ const createToolCollection = (tool: AgentProviderTool): ToolWithProvider => ({
 
 export function ProviderToolSettingsDialog({
   settingTarget,
+  collection,
   onClose,
 }: {
   settingTarget: ToolSettingTarget | null
+  collection?: ToolWithProvider
   onClose: () => void
 }) {
   const [toolSettings, setToolSettings] = useToolSettings()
-  const collection = useMemo(() => {
+  const toolCollection = useMemo(() => {
     if (!settingTarget)
       return null
 
-    return createToolCollection(settingTarget.tool)
-  }, [settingTarget])
+    return collection ?? createFallbackToolCollection(settingTarget.tool)
+  }, [collection, settingTarget])
   const handleSave = useCallback((value: Record<string, unknown>) => {
     if (!settingTarget)
       return
@@ -64,15 +67,16 @@ export function ProviderToolSettingsDialog({
     onClose()
   }, [onClose, setToolSettings, settingTarget, toolSettings])
 
-  if (!settingTarget || !collection)
+  if (!settingTarget || !toolCollection)
     return null
 
   return (
     <SettingBuiltInTool
       toolName={settingTarget.action.toolName}
       setting={toolSettings[settingTarget.action.id]}
-      collection={collection}
+      collection={toolCollection}
       isModel={false}
+      credentialId={settingTarget.tool.credentialId}
       onSave={handleSave}
       onHide={onClose}
     />

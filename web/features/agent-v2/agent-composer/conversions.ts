@@ -242,7 +242,7 @@ const toDifyToolConfigs = (
     provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
     runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
-    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : undefined),
+    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : 'unauthorized' as const),
     credential_ref: tool.credentialId
       ? {
           id: tool.credentialId,

@@ -139,9 +139,11 @@ function getProviderCredentialRequired(provider?: ToolWithProvider) {
   return Object.keys(provider?.team_credentials ?? {}).length > 0
 }
 
-function useDisplayTools(tools: AgentTool[]) {
+function useDisplayTools(
+  tools: AgentTool[],
+  providerById: Map<string, ToolWithProvider>,
+) {
   const language = useGetLanguage()
-  const providerById = useAgentToolProviderMap()
 
   return useMemo(() => {
     return tools.map((tool) => {
@@ -323,6 +325,7 @@ function AddToolMenu({
 export function AgentTools() {
   const { t } = useTranslation('agentV2')
   const setProviderToolCredential = useSetProviderToolCredential()
+  const providerById = useAgentToolProviderMap()
   const {
     tools,
     selectedTools,
@@ -343,7 +346,7 @@ export function AgentTools() {
     handleCliDialogOpenChange,
     closeProviderSettingsDialog,
   } = useAgentToolsOperations()
-  const displayTools = useDisplayTools(tools)
+  const displayTools = useDisplayTools(tools, providerById)
   useEffect(() => {
     let shouldSyncCredentials = false
     const nextTools = tools.map((tool, index) => {
@@ -394,6 +397,10 @@ export function AgentTools() {
   useRegisterAgentOrchestrateAddAction('cli', openCliToolDialogFromPrompt)
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
+  const settingTargetCollection = settingTarget
+    ? providerById.get(settingTarget.tool.id)
+    ?? providerById.get(settingTarget.tool.name)
+    : undefined
 
   return (
     <>
@@ -437,6 +444,7 @@ export function AgentTools() {
       </ConfigureSection>
       <ProviderToolSettingsDialog
         settingTarget={settingTarget}
+        collection={settingTargetCollection}
         onClose={closeProviderSettingsDialog}
       />
       <CliToolDialog
