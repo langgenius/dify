@@ -114,7 +114,7 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch):
     effective = result["effective_declared_outputs"]
     assert [o["name"] for o in effective] == ["text", "files", "json"]
     files_output = next(o for o in effective if o["name"] == "files")
-    assert files_output["array_item"] == {"type": "file", "description": None}
+    assert files_output["array_item"] == {"type": "file", "description": None, "children": []}
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch):
